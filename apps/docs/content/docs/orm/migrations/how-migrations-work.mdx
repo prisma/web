@@ -6,18 +6,18 @@ metaTitle: How migrations work in Prisma ORM
 metaDescription: 'What a Prisma ORM migration is, the plan-review-apply loop, the files inside a migration directory, and why every operation is safe to retry.'
 ---
 
-A migration is how Prisma ORM changes your database when your contract changes. The **contract** is the schema description you author (a `.prisma` file or TypeScript) plus the `contract.json` artifact it compiles to. The **schema** is the database's actual structure, and migrations are what move it. You add a field to a model, and something has to run `ALTER TABLE` against every database that serves your app: your laptop, staging, production. Migrations are that something, recorded as files in your repo so the change is reviewable, repeatable, and versioned with your code.
+A migration is how Prisma ORM changes your database when your contract changes. The **contract** is the schema description you author (a `.prisma` file or TypeScript) plus the `contract.json` artifact that it compiles to. The **schema** is the actual structure of the database, which a migration changes. For example, if you add a field to a model, something has to run `ALTER TABLE` against every database that serves your app: your laptop, staging, production. Migrations are that something, recorded as files in your repo so any change is reviewable, repeatable, and versioned with your code.
 
-The workflow is a loop you will run many times a day in development:
+The workflow is comprised of a loop which you will run many times a day during development:
 
 <ConceptAnimation name="migration-loop" />
 
 1. **Change your contract**: edit your `.prisma` file, then run `contract emit`, which compiles the contract into the `contract.json` artifact that every other command reads.
 2. **Plan a migration**: `migration plan` compares the new contract against your migration history and writes a migration directory under `migrations/`.
-3. **Review it**: read the generated TypeScript and the DDL preview. Edit the migration if the change needs a data step, then re-run the file to recompile it.
+3. **Review it**: read the generated TypeScript and the DDL preview. Edit the migration if the change requires a data step, then re-run the file to recompile it.
 4. **Apply it**: `db migrate` runs the pending migrations against your database.
 
-In a project with a database connection configured (the [quickstart](/prisma-orm/quickstart/postgresql) gives you one), the whole loop is three commands. Add an optional `phone String?` field to a model in your `.prisma` file, then:
+In a project with a database connection configured (the [quickstart](/prisma-orm/quickstart/postgresql) provides one), the whole loop consists of three commands. Add an optional `phone String?` field to a model in your `.prisma` file, then:
 
 ```npm
 npx prisma@latest contract emit
@@ -46,7 +46,7 @@ and `db migrate` applies the migration to your database and confirms what it app
 ✔ Applied 1 operation(s) across 1 contract space
 ```
 
-The contract-space count only matters once you add database extensions. You can ignore it for now. If you see the `✔ Applied` line, you've already run the entire workflow. The rest of this page covers additional detail: what a migration is, and why it looks the way it does.
+The contract-space count only matters once you add database extensions and can be disregarded until then. If you see the `✔ Applied` line, you've already run the entire workflow. The rest of this page provides further details on what a migration is, and why it looks the way it does.
 
 ## What a migration contains
 
@@ -87,7 +87,7 @@ this.dataTransform(...)
 
 Because it is TypeScript, type-checked against the contract snapshots it imports from `migrations/snapshots/`, your editor autocompletes table and column names and catches mistakes before the migration touches a database.
 
-Use this file when you want to review or change what the migration does. See [Editing a migration](/orm/migrations/editing-a-migration).
+When you want to review or change what the migration does, use this file. For more information, see [Editing a migration](/orm/migrations/editing-a-migration).
 
 ### ops.json: the file Prisma runs
 
@@ -112,7 +112,7 @@ what you author   exact operations to run
 
 ### migration.json: the history marker
 
-`migration.json` records where this migration fits in your database history. Every contract compiles to a deterministic artifact, and hashing it gives a short identifier for that exact schema state. A migration records:
+`migration.json` records where this migration fits in your database history. Every contract compiles to a deterministic artifact; hashing it gives a short identifier for that exact schema state. A migration records:
 
 - the schema hash it starts `from`
 - the schema hash it moves `to`
@@ -187,7 +187,7 @@ This structure is what makes Prisma ORM migrations safe in the situations where 
 
 - **A migration fails.** On PostgreSQL the whole run is one transaction, so a failure rolls everything back and the database returns to exactly where it was. Fix the cause and re-run. Because the runner skips any operation whose postcheck already holds, re-running never double-applies work that's already true in the database. No commenting out statements, no hand-editing the database.
 - **The database isn't in the state you assumed.** The precheck catches it before the change runs, and the error names the exact operation and the exact check that failed, not a generic SQL error halfway through.
-- **Someone (or some agent) wrote the migration for you.** The intent (`migration.ts`), the exact SQL (`ops.json`), and the verification for every step are all in the diff, so review is straightforward.
+- **Someone (or an agent) wrote the migration for you.** The intent (`migration.ts`), the exact SQL (`ops.json`), and the verification for every step are all in the diff, so review is straightforward.
 
 ## The commands
 

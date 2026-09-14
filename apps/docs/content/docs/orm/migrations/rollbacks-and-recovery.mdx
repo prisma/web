@@ -6,14 +6,14 @@ metaTitle: Rollbacks and recovery in Prisma ORM
 metaDescription: 'How to roll back a Prisma ORM migration with a reverse plan, and how precheck/postcheck verification makes failed migrations safe to diagnose and retry.'
 ---
 
-Two different situations get called "rollback", and Prisma ORM treats them differently:
+"Rollback" refers to two different situations, which Prisma ORM treats differently:
 
-- **The migration applied, but the change was wrong.** You need to move the database *back* to an earlier state. That's a **rollback**, and in Prisma ORM it's one more migration.
-- **The migration failed partway.** You need to get *unstuck*. That's **recovery**, and it usually means fixing the cause and re-running, because re-running is safe.
+- **The migration applied, but the change was wrong.** In this case, you need to revert the database *back* to an earlier state. This is a **rollback**; in Prisma ORM it's one more migration.
+- **The migration failed partway.** You need to get *unstuck*. This process is **recovery**, and it usually means fixing the cause and re-running, because re-running is safe.
 
 ## Rollback: a migration like any other
 
-There is no `migrate down` command, and no separate "down migration" files. In the [graph model](/orm/migrations/the-migration-graph), the state you want to return to is a node you've already visited, so rolling back means planning a new edge that points at it. If you know git, this is `git revert`, not `git reset`. History only ever grows, and the ledger (the applied-history record every database keeps) retains the full round trip.
+There is no `migrate down` command and no separate "down migration" files. In the [graph model](/orm/migrations/the-migration-graph), the state you want to return to is a node that you've already visited, so rolling back means planning a new edge that points at it. If you know git, this is `git revert`, not `git reset`. History only ever grows; the ledger (the applied-history record every database keeps) retains the full round trip.
 
 <ConceptAnimation name="migration-rollback" />
 
@@ -42,7 +42,7 @@ DDL preview
 ALTER TABLE "public"."user" DROP COLUMN "displayName";
 ```
 
-The planner diffs the two contract states and writes the operations that undo the change, flagged **destructive** because they are. This is a real migration: review it, edit it (for example, to archive the column's data into another table before the `DROP`), commit it. Then apply it like any other migration:
+The planner diffs the two contract states: it writes the operations that undo the change and appropriately flags them as **destructive**. This is a real migration: review it, edit it (for example, to archive the column's data into another table before the `DROP`), commit it. Then apply it the same way as any other migration:
 
 ```npm
 npx prisma@latest db migrate --to 20260707T1008_add_display_name^
@@ -63,16 +63,16 @@ Afterwards the graph shows the round trip: a forward edge up, a rollback edge ba
 *   -
 ```
 
-The database's marker (its record of which graph node it currently matches) is back at `705b1a6`, and the ledger records both the apply and the rollback. Nothing was rewritten or deleted.
+The database's marker (its record of which graph node it currently matches) is back at `705b1a6`; the ledger records both the apply and the rollback. Nothing is rewritten or deleted.
 
-Two things to be clear-eyed about:
+Please be aware of these two details:
 
 - **A rollback does not resurrect data.** Dropping the column discards whatever the forward migration and the app wrote into it. If that data matters, edit the rollback migration to save it somewhere first. That's exactly why the rollback is an editable migration rather than an automatic mechanism.
-- **You don't have to retrace every step.** An edge can jump from the current state directly to any earlier node, skipping intermediate states: one planned migration, one apply, even if you're rolling back three changes.
+- **You don't need to retrace every step.** An edge can jump from the current state directly to any earlier node, skipping intermediate states: one planned migration, one apply, even if you're rolling back three changes.
 
 ### One planning caveat after a rollback
 
-A rollback edge creates a cycle in the graph (`A → B → A`), and with a cycle the planner can no longer infer "the latest state" on its own. The next time you run `migration plan`, pass `--from` explicitly (a migration directory name or hash). The error you'd otherwise get, `MIGRATION.NO_TARGET`, says exactly this.
+A rollback edge creates a cycle in the graph (`A → B → A`), and with a cycle the planner can no longer infer "the latest state" on its own. The next time you run `migration plan`, pass `--from` explicitly (via a migration directory name or hash); otherwise, you'll encounter the error `MIGRATION.NO_TARGET`.
 
 ## Recovery: when a migration fails partway
 

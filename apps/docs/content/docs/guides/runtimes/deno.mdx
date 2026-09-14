@@ -14,7 +14,7 @@ Every command below was run end to end against a live Prisma Postgres database.
 
 ## Prerequisites
 
-- [Deno](https://deno.com/) 2.0 or later (`deno --version`)
+- [Deno](https://deno.com/) 2.6 or later (`deno --version`): the scaffold command passes `--minimum-dependency-age=0`, which earlier releases reject
 
 ## Use with your agent
 
@@ -25,7 +25,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Create and verify a minimal Prisma ORM app on Deno.
 
-1. Run `deno run -A npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy --yes`.
+1. Run `deno run -A --minimum-dependency-age=0 npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy --yes`.
 2. Enter `my-deno-app`. Run `deno run -A npm:create-db@latest --env .env --ttl 24h` and show me the claim URL so I can keep the temporary database.
 3. Run `deno task db:init`, then start `deno task dev` in the background.
 4. Request `http://localhost:3000` and verify that it returns Alice, Bob, and Carol. The first request seeds these users automatically; do not add or run a separate seed command.
@@ -41,10 +41,10 @@ Use the generated tasks instead of invoking a Prisma CLI package directly.
 Run `create-prisma` through Deno and select the minimal PostgreSQL template:
 
 ```bash
-deno run -A npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy
+deno run -A --minimum-dependency-age=0 npm:create-prisma@latest my-deno-app --template minimal --provider postgres --package-manager deno --no-deploy
 ```
 
-The command creates the app, installs its npm dependencies through Deno, and emits the Prisma contract artifacts. Deno support is currently limited to the minimal PostgreSQL template.
+The command creates the app, installs its npm dependencies through Deno, and emits the Prisma contract artifacts. Deno 2.9 skips npm packages published in the previous 24 hours by default, so without `--minimum-dependency-age=0` a newly published `create-prisma` release resolves to an older version. Deno support is currently limited to the minimal PostgreSQL template.
 
 ```bash
 cd my-deno-app
@@ -92,9 +92,9 @@ The response contains the starter users:
 ```json no-copy
 {
   "users": [
-    { "email": "alice@prisma.io", "name": "Alice" },
-    { "email": "bob@prisma.io", "name": "Bob" },
-    { "email": "carol@prisma.io", "name": "Carol" }
+    { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-07-24T10:55:54.156Z" },
+    { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-07-24T10:55:54.192Z" },
+    { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-07-24T10:55:54.228Z" }
   ]
 }
 ```
@@ -139,7 +139,6 @@ deno task db:update
 ## Current limitations
 
 - Prisma Compute does not support Deno deployments yet.
-- The generated ORM tasks currently use the Deno-compatible Prisma ORM CLI entry point. The consolidated `npm:prisma@latest` CLI still loads Node-only credential storage under Deno, so use the generated tasks rather than invoking a CLI package directly.
 - The generated commands use `-A` for the filesystem, environment, and network permissions required during setup and local development. You can replace it with a narrower allow list for your application after setup.
 
 ## Next steps

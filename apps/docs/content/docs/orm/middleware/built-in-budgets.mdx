@@ -51,7 +51,7 @@ A latency violation blocks when `severities.latency` is `'error'`, or when the r
 
 The middleware checks at three points in the query lifecycle:
 
-1. **Before execution** (in `beforeQuery` for row queries, `beforeExecute` for writes), it inspects the query plan's AST. A `SELECT` with no `LIMIT` (and no aggregation that collapses the result) is treated as unbounded, and a bounded query whose estimated rows exceed `maxRows` is over budget. The estimate comes from `tableRows` and `defaultTableRows`, so tune those to your data. Violations raise `BUDGET.ROWS_EXCEEDED` before the driver runs, or warn when `severities.rowCount` is `'warn'` and the runtime is not strict.
+1. **Before execution** (in `beforeQuery` for row queries, `beforeExecute` for writes), it inspects the query before it runs. A `SELECT` with no `LIMIT` (and no aggregation that collapses the result) is treated as unbounded, and a bounded query whose estimated rows exceed `maxRows` is over budget. The estimate comes from `tableRows` and `defaultTableRows`, so tune those to your data. Violations raise `BUDGET.ROWS_EXCEEDED` before the driver runs, or warn when `severities.rowCount` is `'warn'` and the runtime is not strict.
 2. **As rows arrive** (in `onRow`), it counts what the database actually returns. If the observed count passes `maxRows`, it throws `BUDGET.ROWS_EXCEEDED` and aborts the stream, which protects you when the estimate was wrong.
 3. **After execution** (in `afterQuery` and `afterExecute`), it compares the measured `latencyMs` against `maxLatencyMs` and reports `BUDGET.TIME_EXCEEDED` when the query ran too long. This check runs after the work is done, so it cannot save the slow query itself; it exists to make slow queries loud instead of invisible.
 

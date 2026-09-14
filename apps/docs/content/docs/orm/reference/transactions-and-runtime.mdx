@@ -6,13 +6,13 @@ metaTitle: Prisma ORM transactions and runtime reference
 metaDescription: 'Reference for the Prisma ORM client lifecycle, transactions, prepared statements, and execution options.'
 ---
 
-This page documents the client lifecycle (create, connect, close), transactions, prepared statements, and per-query execution options across PostgreSQL and MongoDB. Availability is stated per method: where the two databases differ, or where a surface exists on only one of them, the Remarks say so.
+Prisma ORM 8 renames `schema.prisma` to `contract.prisma`. Run `npx prisma contract emit`. It writes two files next to it: `contract.json`, which your app imports, and `contract.d.ts`, which gives you the TypeScript types. A new project keeps all three files in `src/prisma/`. Every client you create needs `contract.json`. The query you came for, `prisma.user.findMany({ where })`, is now `db.orm.public.User.where(...).all()`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists the packages to install, the commands to run, and the rest of the renamed calls.
 
-The transaction surface is rich on PostgreSQL and not shipped on MongoDB. Where MongoDB has no equivalent, this page says so plainly and links the workaround, rather than showing an API that does not exist.
+`db` is the client that `postgres(...)` or `mongo(...)` returns. `db.runtime()` gives you the object that actually runs queries. That object is called the runtime.
 
-Every PostgreSQL example is transcribed from an executable test suite that runs against a live database. MongoDB behavior is verified the same way, including the absence probes that confirm a surface does not exist.
+Create, connect, and close the client, run transactions, prepare statements, and set per-query execution options, on PostgreSQL and MongoDB. For a task-oriented walkthrough, see the Fundamentals guide to [Transactions](/orm/fundamentals/transactions). For the ways to query inside a transaction, see the [ORM client reference](/orm/reference/orm-client), the [SQL query builder reference](/orm/reference/sql-query-builder), and the [raw queries reference](/orm/reference/raw-queries).
 
-For a task-oriented walkthrough, see the Fundamentals guide to [Transactions](/orm/fundamentals/transactions). For the query surfaces you run inside a transaction, see the [ORM client reference](/orm/reference/orm-client), the [SQL query builder reference](/orm/reference/sql-query-builder), and the [raw queries reference](/orm/reference/raw-queries).
+Transactions are not available on MongoDB. To run one there, pass your own `MongoClient` with the `mongoClient` option and use the driver's `session.withTransaction(...)`, which [Transactions on MongoDB](/orm/fundamentals/transactions#transactions-on-mongodb) shows in code.
 
 ## Client lifecycle on PostgreSQL
 
@@ -24,28 +24,40 @@ Create a PostgreSQL client.
 
 #### Remarks
 
-- Pass the contract with `contractJson` (a JSON contract you import) or `contract` (a contract value). Supply exactly one.
-- Bind to a database in one of two ways: a connection string via `url`, or an existing `pg` `Pool` or `Client` instance via `pg`. When you pass a `pg` instance, you own its lifecycle; when you pass a `url`, the client creates and owns the pool.
-- The internal pool defaults are `connectionTimeoutMillis: 20000` and `idleTimeoutMillis: 30000` (source-read from `postgres.ts`). Override them with `poolOptions`.
-- If your contract uses types from an extension pack, pass the pack in `extensions` (for example `extensions: [pgvector]`).
-- `postgres(options)` does not open a connection. Call [`connect()`](#connect) to acquire a runtime.
+- Import `contract.json` and pass it as `contractJson`, as every example below does. Pass `contract` only if you already hold a contract object; most code passes `contractJson`. Supply exactly one.
+- The `<Contract>` type argument is what types `db.orm` and `db.sql`. `contract.d.ts` exports it under the name `Contract`. Pass it yourself whenever you pass `contractJson`, because TypeScript cannot read a type out of a JSON file. It is inferred only when you use the `contract` option.
+- Tell the client which database to use in one of three ways: `url`, `pg`, or `binding`. A `binding` wraps any of the three choices in one object, with a `kind` field saying which it is: `{ kind: 'url', url }`, `{ kind: 'pgPool', pool }`, or `{ kind: 'pgClient', client }`. Use it when your code picks the source at run time. Pass exactly one of `url`, `pg`, and `binding`, or leave all three out and pass one to [`connect()`](#connect).
+- When you pass a `pg` pool or client, you own it: call `db.close()` first, then close it yourself with `pool.end()`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself.
+- Some types come from a PostgreSQL extension, such as a `pgvector.Vector(1536)` type in your `contract.prisma`. Run `npm install @prisma/orm-extension-pgvector` first. Then `import pgvector from '@prisma/orm-extension-pgvector/runtime'` and pass `extensions: [pgvector]`.
+- A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeQuery: (query) => { if (query.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the query. The hooks are `beforeCompile`, `beforeQuery`, `beforeExecute`, `interceptQuery`, `interceptExecute`, `onRow`, `afterQuery`, and `afterExecute`. See [How middleware works](/orm/middleware/how-middleware-works).
+- Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record and logs a warning on a mismatch, then runs anyway. If you see the warning, run `npx prisma db update`. `verifyMarker: false` skips the check.
+- `postgres(options)` does not open a connection. The client opens one on first use, so [`connect()`](#connect) is optional: call it to open the connection up front and fail early.
 
 #### Options
+
+Pass exactly one of `url`, `pg`, and `binding`.
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `contractJson` / `contract` | JSON contract or contract value | Yes | The contract. Supply exactly one. |
-| `url` | `string` | One binding | A PostgreSQL connection string. |
-| `pg` | `Pool` or `Client` from the `pg` package | One binding | An existing `pg` instance to bind to. You own its lifecycle. |
-| `poolOptions` | `{ connectionTimeoutMillis?: number; idleTimeoutMillis?: number }` | No | Overrides for the internal pool timeouts (defaults `20000` / `30000`). |
-| `extensions` | Array of extension packs | No | Runtime extension packs your contract's types need. |
-| `middleware` | Array of middleware | No | Middleware applied to every execution. |
+| `url` | `string` | See note | A PostgreSQL connection string. |
+| `pg` | `Pool` or `Client` from the `pg` package | See note | An existing `pg` instance to use. You close it yourself. |
+| `binding` | `{ kind: 'url' \| 'pgPool' \| 'pgClient', ... }` | See note | The same three choices in one object. |
+| `poolOptions` | `{ connectionTimeoutMillis?: number; idleTimeoutMillis?: number }` | No | Timeouts for the pool the client creates from `url` (defaults `20000` / `30000`). |
+| `extensions` | Array of extension runtimes, the default export of each package's `/runtime` subpath | No | The PostgreSQL extensions your contract's types need. Install each package, then import its `/runtime` subpath and put the default export in this array. |
+| `middleware` | Array of middleware | No | Code that runs around every query. See [How middleware works](/orm/middleware/how-middleware-works). |
+| `verifyMarker` | `'onFirstUse'` or `false` | No | Whether the first query checks that the database was set up for this contract. Defaults to `'onFirstUse'`. |
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `PostgresClient` | `postgres<Contract>({ contractJson, url })` | An unconnected client exposing `.orm`, `.sql`, `.enums`, `connect()`, `runtime()`, `transaction()`, `prepare()`, and `close()`. |
+| `PostgresClient` | `postgres<Contract>({ contractJson, url })` | A client that has not connected yet. Its members are listed below. |
+
+- `.orm` holds your models by model name. See the [ORM client reference](/orm/reference/orm-client).
+- `.sql` is the SQL query builder, keyed by schema, then table name: `db.sql.public.tag`. The table name is the model's `@@map` value, or the model name with a lowercase first letter when the model sets no `@@map`. See the [SQL query builder reference](/orm/reference/sql-query-builder). `.raw` writes raw SQL as a template string. See the [raw queries reference](/orm/reference/raw-queries).
+- `.enums` holds the enum values from your contract, by PostgreSQL schema: `db.enums.public.Role`. `.nativeEnums` holds the values of enum types that exist in PostgreSQL itself, created with `CREATE TYPE`, also by schema. Look the type up by name in brackets: `db.nativeEnums.auth['AalLevel'].values` is `['aal1', 'aal2', 'aal3']`.
+- `.contract` is the contract as an object. [`connect()`](#connect), [`runtime()`](#runtime), [`transaction()`](#dbtransactioncallback), [`prepare()`](#dbpreparedeclaration-callback), and [`close()`](#close) are documented on this page.
 
 #### Examples
 
@@ -56,8 +68,10 @@ import postgres from '@prisma/orm-postgres/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
+const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL! });
 ```
+
+These examples assume the file is beside `contract.json` in `src/prisma/`. From anywhere else, change the relative paths. Write `./contract.d` exactly like that, with no extension. The line `import contractJson from './contract.json' with { type: 'json' }` is what `prisma orm init` writes. It needs Node.js 22.18 or newer, and these `tsconfig.json` settings: `resolveJsonModule: true`, `module: "preserve"`, and `moduleResolution: "bundler"`. TypeScript types every `process.env` value as possibly undefined, so the examples write `!` after it, the same way `prisma orm init` does.
 
 ##### Bind to an existing `pg` pool
 
@@ -67,9 +81,8 @@ import { Pool } from 'pg';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
 const db = postgres<Contract>({ contractJson, pg: pool });
-// you own `pool`; close it yourself when the client is done
 ```
 
 ### `connect()`
@@ -78,8 +91,15 @@ Open a connection and return a runtime.
 
 #### Remarks
 
-- Returns a `Promise<Runtime>`. The runtime is what runs plans directly (`runtime.query(...)` for rows, `runtime.execute(...)` for writes that return none), opens connections (`runtime.connection()`), and prepares statements (`runtime.prepare(...)`).
-- Calling `connect()` after the client has been closed rejects with a structured `DRIVER.NOT_CONNECTED` error (`Postgres client is closed`).
+- Returns a `Promise<Runtime>`. The runtime is the connected object that runs queries. It has these calls:
+  - `runtime.query(built)` runs a built query and returns its rows. A built query is the object you get from `.build()` at the end of a builder or raw chain. See [Running a built query](/orm/reference/sql-query-builder#executing-a-plan).
+  - `runtime.execute(built)` runs a built query that returns no rows, such as an insert, and returns `{ affectedRows }`. See [Running a built query](/orm/reference/sql-query-builder#executing-a-plan).
+  - `runtime.connection()` takes one connection out of the pool so that several queries run on the same connection. It returns a promise, and you put the connection back with `connection.release()`: `const connection = await runtime.connection(); try { await connection.query(built) } finally { await connection.release() }`. See [Manual connection and transaction control](#manual-connection-and-transaction-control).
+  - `runtime.prepare(declaration, callback)` prepares a statement you run many times with different values. The client has a `prepare()` too, and the two do the same thing. See [Prepared statements (PostgreSQL)](#prepared-statements-postgresql).
+  - `runtime.telemetry()` reports how the most recent query went. See [`runtime.telemetry()`](#runtimetelemetry).
+- `connect()` takes the same database options as `postgres(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.DATABASE_URL! })`, or `await db.connect({ binding: { kind: 'url', url } })`.
+- Every error has a `code` property, and the [error reference](/orm/reference/error-reference) lists them all. Catch the error and compare `error.code` with the value shown here, for example `if (error.code === 'DRIVER.NOT_CONNECTED')`.
+- Call `connect()` before any query, or not at all. Running a query connects the client, so a `connect()` after that rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED`. So does a second `connect()`.
 
 #### Return type
 
@@ -102,7 +122,7 @@ Get the current runtime synchronously.
 
 #### Remarks
 
-- On PostgreSQL, `runtime()` is **synchronous**: it returns the `Runtime` directly, not a promise. This differs from MongoDB, whose `runtime()` returns a `Promise` (see [MongoDB `runtime()`](#runtime-1)).
+- On PostgreSQL, `runtime()` is **synchronous**: it returns the `Runtime` directly, not a promise. You can call it before connecting, because the client connects on first use.
 
 #### Return type
 
@@ -110,23 +130,14 @@ Get the current runtime synchronously.
 |---|---|---|
 | `Runtime` | `const runtime = db.runtime()` | The runtime, returned synchronously. |
 
-#### Examples
-
-##### Get the runtime without awaiting
-
-```typescript
-const runtime = db.runtime();
-```
-
 ### `close()`
 
 Close the client and release its pool.
 
 #### Remarks
 
-- Returns a `Promise<void>`.
-- After `close()`, calling `connect()` again rejects with `DRIVER.NOT_CONNECTED` (`Postgres client is closed`).
-- When you bound the client with `pg` (your own pool or client), close that instance yourself; the client only owns pools it created from a `url`.
+- Returns a `Promise<void>`. `close()` is safe to call at any time.
+- After `close()`, `connect()` rejects and `runtime()` throws an error whose `code` is `DRIVER.NOT_CONNECTED` (`Postgres client is closed`).
 
 #### Return type
 
@@ -139,9 +150,8 @@ Close the client and release its pool.
 ##### Close when finished
 
 ```typescript
-const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
-await db.connect();
-// ... run queries ...
+const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL! });
+const admins = await db.orm.public.User.where((u) => u.kind.eq('admin')).all();
 await db.close();
 ```
 
@@ -151,9 +161,8 @@ The client implements `Symbol.asyncDispose`, so `await using` closes it automati
 
 #### Remarks
 
-- Disposal fires at the end of the **block** the `await using` declaration lives in, not on the next line. Scope the client to the block where you need it.
-- After the block exits, the client is closed the same way `close()` closes it: a later `connect()` rejects with `DRIVER.NOT_CONNECTED`.
-- `await using` requires `@types/node` (which augments `SymbolConstructor` with `asyncDispose`) or a `lib` that declares the symbol.
+- Disposal fires at the end of the **block** the `await using` declaration lives in, not on the next line. Scope the client to the block where you need it. After the block exits, the client is closed the same way `close()` closes it: a later `connect()` rejects with an error whose `code` is `DRIVER.NOT_CONNECTED`.
+- `await using` needs `@types/node` installed, or `"esnext.disposable"` added to the `lib` array in your `tsconfig.json`.
 
 #### Examples
 
@@ -161,9 +170,8 @@ The client implements `Symbol.asyncDispose`, so `await using` closes it automati
 
 ```typescript
 {
-  await using db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
-  await db.connect();
-  // ... run queries ...
+  await using db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL! });
+  const tags = await db.runtime().query(db.sql.public.tag.select('id', 'label').build());
 } // db is closed here
 ```
 
@@ -177,26 +185,35 @@ Create a MongoDB client.
 
 #### Remarks
 
-- Pass the contract with `contractJson` or `contract` (supply exactly one).
-- Bind to a database in one of three ways: `url` (a `mongodb://` connection string, with an optional `dbName` to select or override the database, the form the examples on this page use), `uri` plus an explicit `dbName`, or `mongoClient` (an existing `MongoClient` from the `mongodb` package) plus an explicit `dbName`.
-- **Client ownership** (source-read from `binding.ts` / `mongo-driver.ts`): with `url` or `uri`, Prisma ORM creates the underlying `MongoClient` and closes it on `close()`. With `mongoClient`, you supplied the client, so Prisma ORM does **not** close it: `close()` is a no-op on your client, and you close it yourself. This is what lets you share one `MongoClient` between Prisma ORM and driver-level code.
-- `mongo(options)` does not open a connection. The runtime is built lazily on first use, or explicitly via [`connect()`](#connect-1).
+- Pass the contract with `contractJson` or `contract` (supply exactly one), the same way as on PostgreSQL.
+- Tell the client which database to use in one of four ways: `url`, `uri`, `mongoClient`, or `binding`. A `binding` wraps the choices in one object, with a `kind` field saying which it is: `{ kind: 'url', url, dbName }` or `{ kind: 'mongoClient', client, dbName }`. Use it when your code picks the source at run time, and use the `url` kind for a `uri`. Pass exactly one of the four, or leave all four out and pass one to [MongoDB `connect()`](#connect-1). `dbName` is separate and does not count as one of the four, so `{ url, dbName }` is allowed.
+- With `url`, the database name comes from the path of the connection string, as in `mongodb://host:27017/app`. Add `dbName` to override that name, or when the string has no name in its path. `uri` takes the same kind of string, and always needs `dbName`.
+- **Client ownership**: with `url` or `uri`, Prisma ORM creates the underlying `MongoClient` and closes it on `close()`. With `mongoClient`, you supplied the client, so Prisma ORM does **not** close it. Because `close()` leaves your client open, you can use one `MongoClient` both through Prisma ORM and in code you write against the `mongodb` package directly. You close that client yourself.
+- `mongo(options)` does not open a connection. The runtime is built on first use, or explicitly via [MongoDB `connect()`](#connect-1).
 
 #### Options
+
+Pass exactly one of `url`, `uri`, `mongoClient`, and `binding`. `dbName` is separate, and `uri` and `mongoClient` both require it.
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `contractJson` / `contract` | JSON contract or contract value | Yes | The contract. Supply exactly one. |
-| `url` | `string` | One binding | A `mongodb://` or `mongodb+srv://` string; combine with an optional `dbName` to select the database. |
-| `uri` + `dbName` | `string` + `string` | One binding | A connection string plus an explicit database name. |
-| `mongoClient` + `dbName` | `MongoClient` + `string` | One binding | An existing `MongoClient` you own, plus the database name. |
-| `middleware` | Array of middleware | No | Middleware applied to every execution. |
+| `url` | `string` | See note | A `mongodb://` or `mongodb+srv://` string, with the database name in its path. |
+| `uri` + `dbName` | `string` + `string` | See note | The same kind of string, plus the database name, which is required here. |
+| `mongoClient` + `dbName` | `MongoClient` + `string` | See note | An existing `MongoClient` you own, plus the database name. |
+| `binding` | `{ kind: 'url' \| 'mongoClient', ... }` | See note | The same choices in one object. |
+| `middleware` | Array of middleware | No | Code that runs around every query. See [How middleware works](/orm/middleware/how-middleware-works). |
+| `mode` | `'strict'` or `'permissive'` | No | Defaults to `'strict'`. Prisma ORM ignores this value. It is passed through to your middleware so your own code can branch on it. |
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `MongoClient` | `mongo<Contract>({ contractJson, url, dbName })` | An unconnected client exposing `.orm`, `.query`, `.raw`, `.contract`, `.enums`, `.context`, `connect()`, `runtime()`, and `close()`. |
+| `MongoClient` | `mongo<Contract>({ contractJson, url, dbName })` | A client that has not connected yet. This is Prisma ORM's own type. The `mongodb` driver has a class of the same name, so when you import both, name this one `db`. |
+
+- `.orm` holds your models by collection name, with no schema segment: `db.orm.users`. The collection name is the model's `@@map` value, or the model name with a lowercase first letter when the model sets no `@@map`. The [example schema](/orm/reference/orm-client#example-schema) sets `@@map("users")` on `User`, which is why the key here is `users`. See the [ORM client reference](/orm/reference/orm-client).
+- `.query` is the pipeline builder, which builds MongoDB aggregation pipelines. See the [pipeline builder reference](/orm/reference/pipeline-builder). `.raw` sends raw MongoDB commands. See the [raw queries reference](/orm/reference/raw-queries).
+- `.enums` holds the enum values from your contract, and `.contract` is the contract as an object. [MongoDB `connect()`](#connect-1), [MongoDB `runtime()`](#runtime-1), and [MongoDB `close()`](#close-1) are documented below.
 
 #### Examples
 
@@ -207,7 +224,7 @@ import mongo from '@prisma/orm-mongo/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-const db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL, dbName: 'app' });
+const db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL!, dbName: 'app' });
 ```
 
 ##### Share an existing `MongoClient`
@@ -218,9 +235,9 @@ import { MongoClient } from 'mongodb';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
+// `MongoClient` here is the driver's class; the `db` below is Prisma ORM's own MongoClient type
 const client = new MongoClient(process.env.MONGODB_URL!);
 const db = mongo<Contract>({ contractJson, mongoClient: client, dbName: 'app' });
-// you own `client`; db.close() will not close it for you
 ```
 
 ### `connect()`
@@ -229,9 +246,8 @@ Open a connection and return a runtime.
 
 #### Remarks
 
-- Returns a `Promise<MongoRuntime>`.
-- Calling `connect()` when the client is already connected rejects with `DRIVER.ALREADY_CONNECTED`. The first connection can happen implicitly, the moment any query builds the runtime, so a later explicit `connect()` collides the same way. PostgreSQL raises the same code from the same situation.
-- After the client has been closed, `connect()` rejects with `DRIVER.NOT_CONNECTED` (`Mongo client is closed`).
+- Returns a `Promise<MongoRuntime>`. Call `connect()` before any query, or not at all. Running a query connects the client, so a `connect()` after that rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED`. So does a second `connect()`.
+- `connect()` takes the same database options as `mongo(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.MONGODB_URL!, dbName: 'app' })`.
 
 #### Return type
 
@@ -239,28 +255,14 @@ Open a connection and return a runtime.
 |---|---|---|
 | `Promise<MongoRuntime>` | `const runtime = await db.connect()` | The connected runtime (`query`, `execute`, and `close` only). |
 
-#### Examples
-
-##### Connecting twice throws
-
-```typescript
-await db.connect();
-await db.connect(); // throws DRIVER.ALREADY_CONNECTED
-```
-
 ### `runtime()`
 
 Get the runtime.
 
 #### Remarks
 
-- On MongoDB, `runtime()` returns a **`Promise<MongoRuntime>`**: you must `await` it. The underlying driver connection is built lazily and asynchronously on first use.
-
-:::note[`runtime()` differs between databases]
-PostgreSQL's `runtime()` is synchronous and returns a `Runtime` directly. MongoDB's `runtime()` is asynchronous and returns a `Promise<MongoRuntime>`. Do not treat them as the same shape: `await db.runtime()` on MongoDB, `db.runtime()` on PostgreSQL.
-:::
-
-- The `MongoRuntime` surface is `query`, `execute`, and `close` only. It has no `connection()`, `prepare()`, or `telemetry()` (see [Transactions (MongoDB)](#transactions-mongodb) and [Execution options and results](#execution-options-and-results)).
+- On MongoDB, `runtime()` returns a **`Promise<MongoRuntime>`**: you must `await` it. PostgreSQL's `runtime()` is synchronous, so write `await db.runtime()` on MongoDB and `db.runtime()` on PostgreSQL.
+- `MongoRuntime` has `query`, `execute`, and `close` only. It has no `connection()`, `prepare()`, or `telemetry()`. See [Transactions (MongoDB)](#transactions-mongodb) and [Execution options and results](#execution-options-and-results).
 
 #### Return type
 
@@ -268,37 +270,30 @@ PostgreSQL's `runtime()` is synchronous and returns a `Runtime` directly. MongoD
 |---|---|---|
 | `Promise<MongoRuntime>` | `const runtime = await db.runtime()` | The runtime, resolved asynchronously. |
 
-#### Examples
-
-##### Await the runtime
-
-```typescript
-const runtime = await db.runtime();
-```
-
 ### `runtime.query()`
 
-Run a plan through the runtime.
+Run a built query through the runtime.
 
 #### Remarks
 
-- `(await db.runtime()).query(plan)` runs any `MongoQueryPlan`, including a plan built by the [pipeline builder](/orm/reference/pipeline-builder) (`db.query`). The client itself has no `execute()` method.
-- Returns an [`AsyncIterableResult`](#asynciterableresult): `await` it for an array, or `for await` to stream rows.
-- `runtime.execute(plan)` is the sibling call for writes that return no rows; it resolves the statement's statistics.
+- `(await db.runtime()).query(built)` runs any built MongoDB query, including one built by the [pipeline builder](/orm/reference/pipeline-builder) (`db.query`).
+- Returns an [`AsyncIterableResult`](#asynciterableresult), which holds the rows the query returns: `await` it for an array, or `for await` to read the rows one at a time as they arrive.
+- For an update or delete command, use `runtime.execute(built)`, which returns `{ affectedRows }`. Other commands throw an error whose `code` is `RUNTIME.MONGO_STATISTICS_UNSUPPORTED`. There is no `execute()` on the client itself.
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `AsyncIterableResult<Row>` | `await (await db.runtime()).query(plan)` | The plan's rows. |
+| `AsyncIterableResult<Row>` | `await (await db.runtime()).query(built)` | The built query's rows. |
 
 #### Examples
 
-##### Run a pipeline-builder plan
+##### Run a query built by the pipeline builder [#run-a-pipeline-builder-plan]
 
 ```typescript
-const plan = db.query.from('posts').build();
-const posts = await (await db.runtime()).query(plan);
+// 'posts' is the collection name, the same key you use on `db.orm`
+const built = db.query.from('posts').build();
+const posts = await (await db.runtime()).query(built);
 ```
 
 ### `close()`
@@ -307,9 +302,8 @@ Close the client.
 
 #### Remarks
 
-- Returns a `Promise<void>`.
-- After `close()`, any further use throws `DRIVER.NOT_CONNECTED` (`Mongo client is closed`). This is verified against both `db.runtime()` and ORM access such as `db.orm.users.first()`, since both route through the same runtime.
-- When you supplied a `mongoClient`, `close()` does not close your client (see [`mongo(options)`](#mongooptions)).
+- Always call `db.close()`. `runtime.close()` leaves the client looking open, and later calls fail.
+- Returns a `Promise<void>`. After `close()`, any further use rejects with an error whose `code` is `DRIVER.NOT_CONNECTED` (`Mongo client is closed`). That covers `db.runtime()` and ORM access such as `db.orm.users.first()`, since both go through the same runtime. When you supplied a `mongoClient`, `close()` does not close your client (see [`mongo(options)`](#mongooptions)).
 
 #### Return type
 
@@ -323,7 +317,7 @@ Close the client.
 
 ```typescript
 await db.close();
-await db.runtime(); // throws DRIVER.NOT_CONNECTED
+await db.runtime(); // rejects with DRIVER.NOT_CONNECTED
 ```
 
 ### `await using` (automatic disposal)
@@ -332,8 +326,7 @@ The MongoDB client implements `Symbol.asyncDispose` too, so `await using` closes
 
 #### Remarks
 
-- Disposal fires at the end of the block, exactly as on PostgreSQL.
-- After the block exits, a later `connect()` rejects with `DRIVER.NOT_CONNECTED`.
+- Disposal fires at the end of the block, exactly as on PostgreSQL. After the block exits, a later `connect()` rejects with an error whose `code` is `DRIVER.NOT_CONNECTED`.
 
 #### Examples
 
@@ -341,15 +334,14 @@ The MongoDB client implements `Symbol.asyncDispose` too, so `await using` closes
 
 ```typescript
 {
-  await using db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL, dbName: 'app' });
+  await using db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL!, dbName: 'app' });
   await db.connect();
   // ... run queries ...
 } // db is closed here
 ```
-
 ## Transactions (PostgreSQL)
 
-A transaction groups several writes into one unit: they all commit together, or they all roll back. Prisma ORM offers three levels of control, from the high-level `db.transaction(...)` facade down to a manual connection you commit yourself.
+A transaction groups several writes into one unit: they all commit together, or they all roll back. Use `db.transaction(...)` in application code. If you are writing a function that takes a runtime as a parameter instead of the client, use `withTransaction(...)`. If you need to run several statements on one connection, get a connection with `runtime.connection()` and call `commit()` or `rollback()` yourself.
 
 ### `db.transaction(callback)`
 
@@ -357,23 +349,27 @@ Run a callback inside a transaction. The transaction commits when the callback r
 
 #### Remarks
 
-- Inside the callback, query through the `tx` handle, not `db`: `tx.orm` for models, `tx.sql` with `tx.query(...)` (rows) or `tx.execute(...)` (writes that return none) for SQL builder plans, and `tx.enums` for enum members (`tx.orm`, `tx.sql`, and `tx.execute` are verified by the test suite; `tx.enums` is confirmed from the client source). Every call on `tx` rides the same transaction connection; queries on `db` run outside the transaction.
-- `tx.sql` is a full SQL builder, so it is namespace-qualified like `db.sql`: use `tx.sql.public.<table>`.
+- Query through `tx`, not `db`. `tx.orm` holds your models. Build queries with `tx.sql`, then run them with `tx.query(...)` to get rows back, or `tx.execute(...)` when the write returns no rows. `tx.execute(...)` resolves to `{ affectedRows }`, the number of rows the statement changed. Every call on `tx` uses the same transaction connection, and queries on `db` run outside the transaction.
+- `db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options, and Prisma ORM offers no way to set the isolation level. Nothing retries a failed transaction for you. Write the retry loop yourself. A transaction has no time limit. PostgreSQL's `idle_in_transaction_session_timeout` ends one that sits idle between statements, and on PostgreSQL 17 and later `transaction_timeout` caps its total length. Set either in your connection string or server configuration. See the [fundamentals transactions guide](/orm/fundamentals/transactions#options-and-isolation-level).
+- To put a time limit on the queries inside a transaction, pass a `signal` to each `tx.query(...)` and `tx.execute(...)` call, as the example below does. See [`RuntimeExecuteOptions`](#runtimeexecuteoptions).
+- `tx` has no `transaction()` method, so transactions do not nest. If a helper you call starts its own transaction, change it to take `tx` as a parameter instead. `TransactionContext`, imported from `@prisma/orm-postgres/family-runtime`, has `query` and `execute` only, so a helper typed with it cannot use `tx.orm` or `tx.sql`: `async function addTag(tx: TransactionContext) { ... }`. There is no exported type for the full `tx`, so derive it: `type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]`.
+- `tx.sql` is a full SQL builder, keyed the same way as `db.sql`: use `tx.sql.public.<table>`, where `public` is the PostgreSQL schema.
 - Reads inside the transaction see the transaction's own uncommitted writes.
+- `tx.enums` and `tx.nativeEnums` are the same enum accessors the client has, and `.values` is the list of an enum's members.
 - The callback's return value passes through as the result of `db.transaction(...)`.
-- Do not let an [`AsyncIterableResult`](#asynciterableresult) escape the callback unread. A result you return and then read after the transaction has ended rejects with `RUNTIME.TRANSACTION_CLOSED` (see the Remark below).
+- `tx.query(...)` returns an [`AsyncIterableResult`](#asynciterableresult) that works only while the transaction is open. Read it inside the callback. A result you return and then read after the transaction has ended rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`. To act on a code, catch the error and compare `error.code` with the string. Every code is listed in the [error reference](/orm/reference/error-reference).
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `callback` | `(tx) => Promise<R>` | Yes | The transactional work. `tx` exposes `orm`, `sql`, `query`, `execute`, and `enums`. |
+| `callback` | `(tx) => Promise<R>` | Yes | The transactional work. `tx` exposes `orm`, `sql`, `query`, `execute`, `enums`, and `nativeEnums`. |
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `Promise<R>` | `await db.transaction(async (tx) => ...)` | Whatever the callback returns. |
+| `Promise<R>` | `await db.transaction(async (tx) => ...)` | Whatever the callback returns, so `R` is your callback's own return type. |
 
 #### Examples
 
@@ -411,18 +407,20 @@ const { createdId, found } = await db.transaction(async (tx) => {
 // found.id === createdId
 ```
 
-##### Run a SQL builder plan with `tx.sql` and `tx.execute`
+##### Run a SQL builder query with `tx.sql` and `tx.execute` [#run-a-sql-builder-plan-with-txsql-and-txexecute]
 
 ```typescript
 await db.transaction(async (tx) => {
+  const signal = AbortSignal.timeout(5000); // give this statement five seconds
   await tx.execute(
     tx.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'tx-sql-insert' }]).build(),
+    { signal },
   );
 });
 ```
 
 :::warning[An escaped `AsyncIterableResult` throws after the transaction ends]
-An `AsyncIterableResult` is tied to the transaction connection. If you return one from the callback and read it after the transaction has committed, it rejects with `RUNTIME.TRANSACTION_CLOSED` before yielding any row. Collect the rows inside the callback (`await` the result there) and return the array instead.
+Collect the rows inside the callback by awaiting the result there, and return the array instead. A result is tied to the transaction connection. If you return one from the callback and read it after the transaction has committed, it rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`, before yielding any row.
 
 ```typescript
 const escaped = await db.transaction(async (tx) => {
@@ -452,12 +450,12 @@ The callback form does something the array form never could: one query's result 
 
 ### `withTransaction(runtime, callback)`
 
-A lower-level transaction helper you import directly, without going through the client facade.
+A transaction helper you import directly. Use it when you are writing a function that takes a runtime as a parameter instead of the client.
 
 #### Remarks
 
-- Imported from `@prisma/orm-postgres/family-runtime`.
-- The callback receives a bare transaction context whose surface is `query` and `execute` only. Unlike `db.transaction(...)`'s `tx`, it has no `.orm` or `.sql`; build plans with the client's `db.sql` (or a standalone SQL builder) and run them through `tx.query(...)` for rows or `tx.execute(...)` for writes that return none.
+- Imported from `@prisma/orm-postgres/family-runtime`, along with the `Runtime` type.
+- The callback receives a transaction handle whose only methods are `query` and `execute`. Unlike `db.transaction(...)`'s `tx`, it has no `.orm` or `.sql`. Pass a SQL builder into your function as well, such as the client's `db.sql`, and build your queries with that.
 - Commits on return, rolls back on throw, the same as `db.transaction(...)`.
 
 #### Options
@@ -478,115 +476,114 @@ A lower-level transaction helper you import directly, without going through the 
 ##### Commit two writes with `withTransaction`
 
 ```typescript
-import { withTransaction } from '@prisma/orm-postgres/family-runtime';
+import { withTransaction, type Runtime } from '@prisma/orm-postgres/family-runtime';
 
-const runtime = await db.connect();
-await withTransaction(runtime, async (tx) => {
-  await tx.execute(db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'wt-commit-1' }]).build());
-  await tx.execute(db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'wt-commit-2' }]).build());
-});
-```
-
-##### Roll back on error
-
-```typescript
-import { withTransaction } from '@prisma/orm-postgres/family-runtime';
-
-try {
-  await withTransaction(runtime, async (tx) => {
-    await tx.execute(db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'wt-rollback' }]).build());
-    throw new Error('deliberate rollback');
+async function addTags(runtime: Runtime, sql: typeof db.sql) {
+  return withTransaction(runtime, async (tx) => {
+    await tx.execute(sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'wt-commit-1' }]).build());
+    await tx.execute(sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'wt-commit-2' }]).build());
   });
-} catch {
-  // the tag was rolled back
 }
+
+await addTags(db.runtime(), db.sql);
 ```
 
 ### Manual connection and transaction control
 
-The lowest level: acquire a connection, open a transaction on it, commit or roll back yourself, and return the connection to the pool.
+The lowest level: acquire a connection, open a transaction on it, commit or roll back yourself, and return the connection to the pool. Use it when you need several statements on one connection, such as a read and then a write with no transaction around them.
 
 #### Remarks
 
-- `runtime.connection()` returns a dedicated connection. `connection.transaction()` opens a transaction on it. Run plans with `transaction.query(...)` for rows or `transaction.execute(...)` for writes that return none, then call `transaction.commit()` or `transaction.rollback()`.
-- Always `release()` the connection when done, to return it to the pool.
-- `connection.destroy(reason)` evicts that one connection from the pool instead of reusing it (source-read from `postgres-driver.ts`: it passes a truthy error to `pg`'s `PoolClient.release(err)`). It does not close the whole pool or the runtime; the runtime opens a replacement connection transparently. Use `release()` for the normal path and `destroy()` only to discard a connection you no longer trust.
+- `runtime.connection()` returns a dedicated connection. `connection.transaction()` opens a transaction on it. Run built queries with `transaction.query(...)` for rows or `transaction.execute(...)` for writes that return no rows, then call `transaction.commit()` or `transaction.rollback()`. Always `release()` the connection when done, to return it to the pool. Commit or roll back on every path first, then release: the examples nest a `try` for the transaction inside the `try` whose `finally` releases the connection, so a statement that throws neither leaves the transaction open nor leaks the connection.
+- `connection.destroy()` throws that connection away instead of returning it to the pool. Use `destroy()` only for a connection you no longer trust.
 
 #### Options
 
-| Name | Type | Required | Description |
-|---|---|---|---|
-| `runtime.connection()` | none | — | Returns a `Promise` of a dedicated connection. |
-| `connection.transaction()` | none | — | Returns a `Promise` of a transaction on that connection. |
-| `transaction.commit()` / `transaction.rollback()` | none | — | Commit or discard the transaction. |
-| `connection.release()` | none | — | Return the connection to the pool. |
-| `connection.destroy(reason)` | `Error` | — | Evict this connection from the pool. |
+| Method | Type | Description |
+|---|---|---|
+| `runtime.connection()` | none | Returns a `Promise` of a dedicated connection. |
+| `connection.transaction()` | none | Returns a `Promise` of a transaction on that connection. |
+| `transaction.commit()` / `transaction.rollback()` | none | Commit or discard the transaction. |
+| `connection.release()` | none | Return the connection to the pool. |
+| `connection.destroy()` | none | Throw this connection away instead of returning it to the pool. |
 
 #### Examples
 
 ##### Commit manually, then release
 
 ```typescript
+const runtime = db.runtime();
 const connection = await runtime.connection();
-const transaction = await connection.transaction();
-await transaction.execute(
-  db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-commit' }]).build(),
-);
-await transaction.commit();
-await connection.release();
+try {
+  await connection.query(db.sql.public.tag.select('id').limit(1).build()); // a read on this connection
+  const transaction = await connection.transaction();
+  try {
+    await transaction.execute(
+      db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-commit' }]).build(),
+    );
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+} finally {
+  await connection.release();
+}
 ```
 
 ##### Roll back manually, then release
 
 ```typescript
 const connection = await runtime.connection();
-const transaction = await connection.transaction();
-await transaction.execute(
-  db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-rollback' }]).build(),
-);
-await transaction.rollback();
-await connection.release();
+try {
+  const transaction = await connection.transaction();
+  try {
+    await transaction.execute(
+      db.sql.public.tag.insert([{ id: crypto.randomUUID(), label: 'manual-rollback' }]).build(),
+    );
+  } finally {
+    await transaction.rollback();
+  }
+} finally {
+  await connection.release();
+}
 ```
 
-##### Evict a connection with `destroy()`
+##### Throw a connection away with `destroy()`
 
 ```typescript
 const connection = await runtime.connection();
-await connection.destroy(new Error('connection no longer trusted'));
+await connection.destroy();
 // the runtime stays healthy and opens a replacement connection on the next query
 ```
 
 ## Transactions (MongoDB)
 
 :::note[MongoDB transactions are not available in Prisma ORM yet]
-There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()`, `prepare()`, or `telemetry()`. This is verified: probing each surface returns `undefined` and calling it throws `TypeError`. Single-document write operations are atomic on their own; multi-document transactions through Prisma ORM are not shipped.
-
-To run a multi-document MongoDB transaction today, use the MongoDB driver directly, sharing one `MongoClient` between Prisma ORM and your driver code. See the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) for the driver-session pattern.
+There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()`, `prepare()`, or `telemetry()`: it has `query`, `execute`, and `close` and nothing else. Single-document write operations are atomic on their own. Multi-document transactions through Prisma ORM are planned, not shipped. To run one today, create your own `MongoClient`, pass it as the `mongoClient` option when you create the client, and group the writes in `session.withTransaction(...)`, as the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) shows. The reading rules under [`AsyncIterableResult`](#asynciterableresult) apply to MongoDB too.
 :::
-
-A transaction surface for MongoDB is planned (source-read from an internal design document, not shipped): a `db.transaction(fn)` facade with `tx.orm` and `tx.query`, backed by a driver session. As designed, it will require a MongoDB replica set and must not silently degrade to non-transactional execution on a standalone server. Treat all of this as planned design, not current behavior. Nothing in this planned surface exists in the shipped packages today, so this page shows no example code for it.
 
 ## Prepared statements (PostgreSQL)
 
-A prepared statement compiles a plan once against a declaration of its parameters, then runs it repeatedly with different values. Prepared statements are PostgreSQL only.
+A prepared statement compiles a query once against a declaration of its parameters, then runs it repeatedly with different values. Prepared statements are not available on MongoDB.
 
 ### `runtime.prepare(declaration, callback)`
 
-Prepare a statement off a runtime.
+Prepare a statement from a runtime.
 
 #### Remarks
 
-- The declaration maps each parameter name to a codec id (for example `{ label: 'pg/text@1' }`).
-- The callback receives the declared `params` and returns a plan. It takes a **single** argument (`(params) => plan`); build the plan with a SQL builder you already hold in scope (such as `db.sql`).
-- A declared parameter that the callback never uses is rejected at prepare time with `RUNTIME.PREPARE_UNUSED_PARAM` (with `details.unused` listing the offending names). The rejection happens at `prepare()`, before any execution.
+- The declaration maps each parameter name to a type id, for example `{ label: 'pg/text@1' }`. Use `db.sql.public.<table>.columns.<column>.codecId` to get any column's id. The [table on the raw queries page](/orm/reference/raw-queries#binding-a-bare-value-with-param) lists the common ones.
+- The callback takes one argument, the declared `params`, and returns the built query, which is what `.build()` gives you. `SqlQueryPlan` in the tables below is the type of a built query. Build it with a SQL builder you already hold, such as `db.sql`. In the `where((f, fns) => ...)` calls below, `f` holds the table's columns and `fns` holds the comparison functions.
+- A declared parameter that the callback never uses is rejected at prepare time with an error whose `code` is `RUNTIME.PREPARE_UNUSED_PARAM`, with `details.unused` listing the parameter names you declared but did not use. The rejection happens at `prepare()`, before any execution.
 - The resulting `PreparedStatement` runs via `ps.query(target, params)`; see [`PreparedStatement.query`](#preparedstatementquerytarget-params).
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `declaration` | Object mapping param name to codec id | Yes | The statement's parameters. |
-| `callback` | `(params) => SqlQueryPlan` | Yes | Builds the plan from the declared params. |
+| `declaration` | Object mapping param name to type id | Yes | The statement's parameters. |
+| `callback` | `(params) => SqlQueryPlan` | Yes | Builds the query from the declared params. |
 
 #### Return type
 
@@ -599,12 +596,9 @@ Prepare a statement off a runtime.
 ##### Prepare and run a statement
 
 ```typescript
+const runtime = db.runtime();
 const ps = await runtime.prepare({ label: 'pg/text@1' }, (params) =>
-  db.sql.public.tag
-    .select('id', 'label')
-    .where((f, fns) => fns.eq(f.label, params.label))
-    .limit(1)
-    .build(),
+  db.sql.public.tag.select('id', 'label').where((f, fns) => fns.eq(f.label, params.label)).limit(1).build(),
 );
 
 const typescript = await ps.query(runtime, { label: 'typescript' });
@@ -616,30 +610,26 @@ const missing = await ps.query(runtime, { label: 'does-not-exist' });
 
 ```typescript
 await runtime.prepare({ label: 'pg/text@1', unused: 'pg/int4@1' }, (params) =>
-  db.sql.public.tag
-    .select('id', 'label')
-    .where((f, fns) => fns.eq(f.label, params.label))
-    .limit(1)
-    .build(),
+  db.sql.public.tag.select('id', 'label').where((f, fns) => fns.eq(f.label, params.label)).limit(1).build(),
 );
 // rejects with RUNTIME.PREPARE_UNUSED_PARAM, details: { unused: ['unused'] }
 ```
 
 ### `db.prepare(declaration, callback)`
 
-Prepare a statement off the client facade.
+Prepare a statement on the client itself.
 
 #### Remarks
 
-- Same result as `runtime.prepare(...)`, but the callback receives **two** arguments, `(sql, params)`, because the client has no closed-over SQL builder for you to reach for. Use the injected `sql` to build the plan: `sql.public.<table>`.
-- `prepare()` starts the connection itself, so calling `db.connect()` afterwards throws `DRIVER.ALREADY_CONNECTED`. Reach for the runtime with `db.runtime()` instead, which returns the one `prepare()` already built.
+- `db.prepare(...)` does the same thing as `runtime.prepare(...)`, but it passes you a SQL builder as the callback's first argument, so you do not need `db.sql`. The callback takes **two** arguments, `(sql, params)`. Build the query with `sql.public.<table>`.
+- `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` would throw an error whose `code` is `DRIVER.ALREADY_CONNECTED`, because `prepare()` already connected.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `declaration` | Object mapping param name to codec id | Yes | The statement's parameters. |
-| `callback` | `(sql, params) => SqlQueryPlan` | Yes | Builds the plan; `sql` is the client's SQL builder. |
+| `declaration` | Object mapping param name to type id | Yes | The statement's parameters. |
+| `callback` | `(sql, params) => SqlQueryPlan` | Yes | Builds the query; `sql` is the client's SQL builder. |
 
 #### Return type
 
@@ -653,11 +643,7 @@ Prepare a statement off the client facade.
 
 ```typescript
 const ps = await db.prepare({ label: 'pg/text@1' }, (sql, params) =>
-  sql.public.tag
-    .select('id', 'label')
-    .where((f, fns) => fns.eq(f.label, params.label))
-    .limit(1)
-    .build(),
+  sql.public.tag.select('id', 'label').where((f, fns) => fns.eq(f.label, params.label)).limit(1).build(),
 );
 
 const rows = await ps.query(db.runtime(), { label: 'typescript' });
@@ -669,9 +655,18 @@ Run a prepared statement against a target, with the parameter values.
 
 #### Remarks
 
-- A plan that returns rows prepares into a `PreparedStatement`, whose consumption method is `query(...)`. A plan terminated with `.affectedCount()` prepares into a `PreparedExecution` instead, consumed with `execute(target, params)`, which resolves the statement's statistics.
-- The `target` is explicit: it can be a runtime, a connection, or a transaction. One prepared statement runs against any of them.
-- A single `PreparedStatement` prepared once runs against both a runtime target and a transaction target, seeing the transaction's writes when run inside it and the committed state when run against the runtime afterward.
+- A query that returns rows prepares into a `PreparedStatement`, which you run with `query(...)`. Some queries return a row count instead of rows. End the query with `.affectedCount()`. Preparing one gives you a `PreparedExecution`, which you run with `execute(target, params)`. It resolves to `{ affectedRows }`. See the [raw queries reference](/orm/reference/raw-queries):
+
+  ```typescript
+  const archive = await runtime.prepare({ label: 'pg/text@1' }, (params) =>
+    db.raw.sql`UPDATE "tag" SET label = 'archived' WHERE label = ${params.label}`.affectedCount().build(),
+  );
+
+  const { affectedRows } = await archive.execute(runtime, { label: 'stale' });
+  ```
+
+- You must pass `target`. It is the runtime, connection, or transaction the statement runs on. One prepared statement runs against any of them.
+- A prepared statement has no `close()` method and nothing to dispose. Hold one for as long as you like and reuse it.
 
 #### Options
 
@@ -684,7 +679,7 @@ Run a prepared statement against a target, with the parameter values.
 
 | Return type | Example | Description |
 |---|---|---|
-| `AsyncIterableResult<Row>` | `await ps.query(runtime, { label })` | The statement's rows. |
+| `AsyncIterableResult<Row>` | `await ps.query(runtime, { label })` | The statement's rows. `await` the result for an array. |
 
 #### Examples
 
@@ -694,11 +689,7 @@ Run a prepared statement against a target, with the parameter values.
 import { withTransaction } from '@prisma/orm-postgres/family-runtime';
 
 const ps = await runtime.prepare({ label: 'pg/text@1' }, (params) =>
-  db.sql.public.tag
-    .select('id', 'label')
-    .where((f, fns) => fns.eq(f.label, params.label))
-    .limit(1)
-    .build(),
+  db.sql.public.tag.select('id', 'label').where((f, fns) => fns.eq(f.label, params.label)).limit(1).build(),
 );
 
 const insertedId = await withTransaction(runtime, async (tx) => {
@@ -713,24 +704,24 @@ const committed = await ps.query(runtime, { label: 'ps-both-targets' }); // runs
 
 ## Execution options and results
 
-Every runtime `query(...)` and `execute(...)` call accepts a `RuntimeExecuteOptions` object as its second argument.
+`runtime.query(...)`, `runtime.execute(...)`, `tx.query(...)`, `tx.execute(...)`, `connection.query(...)`, and `connection.execute(...)` all take a `RuntimeExecuteOptions` object as their second argument. A prepared statement takes it as a third argument, after `target` and `params`.
 
 ### `RuntimeExecuteOptions`
 
-Per-query options for cancellation and scope.
+Per-query options for cancellation.
 
 #### Remarks
 
-- `signal` is an `AbortSignal` for per-query cancellation. A signal that is **already aborted** when you call `query(...)` short-circuits before any query runs, rejecting with `RUNTIME.ABORTED` and `details.phase` of `'stream'` (verified). Per the runtime source, the signal is also threaded through codec calls and checked between rows mid-stream.
-- Aborting mid-stream (after rows have started arriving) is not separately verified in the validation harness: reliably landing an abort between two internal stream checks needs a very large result set or a fake-timer harness. The pre-aborted case above is verified.
-- `scope` is `'runtime' | 'connection' | 'transaction'` (source-read from `runtime-middleware.ts`; not separately exercised by the validation harness). It selects the execution scope for the query.
+- `signal` is an `AbortSignal` for per-query cancellation. A signal that is **already aborted** when you call `query(...)` rejects before any row is fetched, with an error whose `code` is `RUNTIME.ABORTED`. The error's `cause` is the signal's reason, exactly as you passed it to `controller.abort(...)`.
+- An abort that lands after rows have started arriving ends the stream with the same `RUNTIME.ABORTED` error. `details.phase` says where the abort landed.
+- Inside `db.transaction(...)` the aborted statement throws, so your callback throws and the transaction rolls back.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `signal` | `AbortSignal` | No | Per-query cancellation signal. |
-| `scope` | `'runtime' \| 'connection' \| 'transaction'` | No | The execution scope for the query. |
+| `scope` | `'runtime' \| 'connection' \| 'transaction'` | No | A label middleware reads. The runtime sets it; setting it yourself changes only the label, not where the query runs. |
 
 #### Examples
 
@@ -743,7 +734,7 @@ controller.abort(new Error('cancelled'));
 await runtime.query(db.sql.public.tag.select('id').limit(1).build(), {
   signal: controller.signal,
 });
-// rejects with RUNTIME.ABORTED, details: { phase: 'stream' }
+// rejects with RUNTIME.ABORTED
 ```
 
 ### `runtime.telemetry()`
@@ -752,9 +743,11 @@ Read telemetry about the most recent query.
 
 #### Remarks
 
-- PostgreSQL only. The MongoDB runtime has no `telemetry()` (probing it returns `undefined` and calling it throws `TypeError`).
-- `telemetry()` returns `null` on a freshly-connected runtime, before any query has run.
-- After a query, it returns an object of the shape `{ lane, target: 'postgres', fingerprint, outcome: 'success', durationMs? }`. It reflects only the **most recent** query, not a running history.
+- PostgreSQL only. `telemetry()` does not exist on the MongoDB runtime. Read it after a query to log how long that query took and whether it succeeded.
+- `telemetry()` returns `null` on a freshly-connected runtime, before any query has run. After a query, it returns an object of the shape `{ lane, target: 'postgres', fingerprint, outcome, durationMs? }`. The object reflects only the **most recent** query, not a running history.
+- `lane` says which API built the query, such as `orm-client` for `db.orm` or `raw` for `db.raw.sql`.
+- Every run of the same query text shares one `fingerprint`, whatever values you pass, so you can group runs of one query together.
+- `outcome` is `'success'` or `'runtime-error'`. `durationMs` is how long the query took. It is optional in the type, and it is set for every query the runtime ran.
 
 #### Return type
 
@@ -777,6 +770,8 @@ const after = runtime.telemetry();
 
 ### `AsyncIterableResult`
 
-Read terminals (`all()`, `createAll()`, and the runtime's `query(...)`) return an `AsyncIterableResult`: `await` it to collect an array, or `for await` to stream rows one at a time.
+[`all()`](/orm/reference/orm-client#all), [`createAll()`](/orm/reference/orm-client#createall), and the runtime's `query(...)` return an `AsyncIterableResult`. `all()` and `query(...)` read rows, and `createAll()` writes rows and returns the ones it wrote. `await` the result to collect an array, or `for await` it to take rows one at a time.
 
-A result is consumed once per mode. Re-`await`ing a buffered result is safe (it returns the cached array), but switching between awaiting and iterating a consumed result throws `RUNTIME.ITERATOR_CONSUMED`. For the full single-consumption rules, shared identically by PostgreSQL and MongoDB, see [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult) in the ORM client reference.
+Use `await`. Use `for await` only to handle rows as they arrive. On PostgreSQL it does not reduce memory, because every row is loaded first.
+
+Pick `await` or `for await` for a given result and do not mix the two. Calling `.toArray()` does the same thing as `await`. Re-`await`ing a result you already awaited is safe and returns the same array. Switching between `await` and `for await`, or looping a second time with `for await`, throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. For the full rules on reading a result, shared identically by PostgreSQL and MongoDB, see [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult) in the ORM client reference.
