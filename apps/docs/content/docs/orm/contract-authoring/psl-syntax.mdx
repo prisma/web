@@ -6,17 +6,19 @@ metaTitle: Author the Prisma ORM contract in PSL
 metaDescription: 'Learn how to write a Prisma ORM contract in the Prisma schema language, including named types, enums, value objects, relations, and extension types.'
 ---
 
-PSL, the Prisma Schema Language, is the preferred way to author [your contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`. You write one file, usually `src/prisma/contract.prisma`, and [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it. If you know the Prisma schema language, most of a contract file reads exactly as you expect. Prisma ORM 8 adds five things:
+PSL, the Prisma Schema Language, is the preferred way to author [your contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`. You write one file, usually `src/prisma/contract.prisma`, and [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it. If you know the Prisma schema language, most of a contract file reads exactly as you expect. Prisma ORM 8 differs in five places:
 
 - named types: give a database column type a name you can reuse on many fields.
 - enums: unchanged, except that an enum can now say how its values are stored.
 - value objects: a structured value stored inside its parent row, with no table of its own.
-- base models and variants: store several kinds of record in one table. A base model holds the shared fields, each variant adds its own, and one column says which kind each row is.
+- base models and variants: one table can hold more than one kind of record. Put the shared fields in a base model, put the differences in each variant, and Prisma ORM uses one column to tell them apart.
 - extension types: field types that come from an npm package, such as vectors.
 
 The `datasource` and `generator` blocks are gone. The connection URL and the file paths are set in `prisma.config.ts` instead. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#schema) lists every change to the schema file, including what each old `@db.` attribute becomes.
 
 ## A complete contract
+
+Every contract starts with `// use prisma-8`. Keep that line at the top.
 
 ```prisma title="src/prisma/contract.prisma" tab="PostgreSQL"
 // use prisma-8
@@ -101,7 +103,7 @@ model Post {
 }
 ```
 
-Line 1 is `// use prisma-8`. The Prisma editor extension reads it to tell that the file is a Prisma ORM 8 contract. Run `npx prisma contract emit` after any change to refresh the two files.
+`Uuid` is PostgreSQL's `uuid` type written as a field type. Run `npx prisma contract emit` after any change to refresh `contract.json` and `contract.d.ts`. Then [`npx prisma db init`](/cli/db-init) creates the tables.
 
 ## Point the config at the schema
 
@@ -126,15 +128,15 @@ This is what `prisma orm init` writes, `DATABASE_URL` included. The import choos
 
 ## Models and fields
 
-Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`. You can write a PostgreSQL type such as `VarChar(35)` or `Timestamptz` wherever you would write `String` or `DateTime`. On PostgreSQL, plain `String` is a `text` column, `Int` is `int4`, and `DateTime` is `timestamptz`.
+Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`. You can write a PostgreSQL type wherever you would write `String` or `DateTime`. The PostgreSQL types you can write are `VarChar`, `Char`, `Numeric`, `Timestamp`, `Timestamptz`, `Time`, `Timetz`, `Date`, `Uuid`, `Inet`, `SmallInt`, and `Real`, plus `DateString`, `TimestampString`, `TimestamptzString`, and `TimeString`, which store the same columns but read back as text. On PostgreSQL, plain `String` is a `text` column, `Int` is `int4`, and `DateTime` is `timestamptz`.
 
 - `@id` marks the primary key. `@@id([a, b])` declares a composite key.
 - `@unique` adds a unique constraint on one field. `@@unique([userId, title])` adds one across several fields.
 - `@@index([...])` declares a secondary index.
-- `@default(...)` sets a default. Database function defaults such as `@default(now())` become column defaults in the database. Generated defaults such as `@default(uuid())` are produced by Prisma ORM before each write, so a row written by raw SQL or another application gets no value.
+- `@default(...)` sets a default. Database function defaults such as `@default(now())` become column defaults in the database. Generated defaults such as `@default(uuid())` come from Prisma ORM, and the database will not fill them in for you, so a row written by raw SQL or another application gets no value.
 - `@map("column_name")` sets a field's column name in the database. `@@map("table_name")` sets the table or collection name when it differs from the model name.
 
-`@updatedAt` is gone. Instead of a type, write `temporal.updatedAt()` as the field's type:
+`@updatedAt` is gone. Write `temporal.updatedAt()` where the field's type would go:
 
 ```prisma
 model Post {
@@ -142,7 +144,7 @@ model Post {
 }
 ```
 
-`temporal` is built in. You do not import it or declare it. On PostgreSQL the column is `timestamptz`, and you can still set the field yourself on a write. The other member is `temporal.createdAt()`.
+Prisma ORM sets the field to the current time on every create and update. `temporal` is built in. You do not import it or declare it. On PostgreSQL the column is `timestamptz`, and you can still set the field yourself on a write. `temporal.createdAt()` sets the field once, when the row is created.
 
 How IDs map differs by database:
 
@@ -170,7 +172,7 @@ types {
 }
 ```
 
-Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. A name is optional, and a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Uuid`, or `Timestamptz`. In Prisma ORM 8 the native type is the field's type, so `String @db.VarChar(35)` from Prisma ORM 7 becomes `VarChar(35)`. The `@db.` attributes are gone.
+Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. A name is optional, and a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Uuid`, or `Timestamptz`. In Prisma ORM 8 the native type is the field's type, so `String @db.VarChar(35)` from Prisma ORM 7 becomes `VarChar(35)`. The `@db.` attributes are gone. The `types` block is PostgreSQL only.
 
 ## Enums
 
@@ -185,9 +187,9 @@ enum Priority {
 }
 ```
 
-In `pg/text@1`, `pg` is PostgreSQL, `text` is the column type, and `@1` is the version, always `@1` today. Write `@@type("pg/int4@1")` to store the values as integers instead. When a member has no explicit value, the member name itself is stored.
+In `pg/text@1`, `pg` is PostgreSQL, `text` is the column type, and `@1` is the version of how the value is stored and read. Write `@@type("pg/int4@1")` to store the values as integers instead. When a member has no explicit value, the member name itself is stored.
 
-`@@type` is optional. Leave it out and Prisma ORM picks the type from the member values: bare member names and string values give the database's text type, and integer values give its integer type. A `@default` names the member, as in `priority Priority @default(Low)`, even where the member stores a different value.
+`@@type` is optional. Leave it out and Prisma ORM picks the type from the member values: bare member names and string values give the database's text type, and integer values give its integer type. Give every member the same kind of value, because a mix of string and integer values throws an error whose `code` is `PSL_ENUM_CANNOT_INFER_TYPE`. A `@default` names the member, as in `priority Priority @default(Low)`, even where the member stores a different value.
 
 An `enum` block is not a PostgreSQL `enum` type: the column is text or an integer. For a PostgreSQL `enum` type, declare it in a `native_enum` block and type the field `pg.enum(Role)`:
 
@@ -202,7 +204,7 @@ model User {
 }
 ```
 
-Each member needs a value. `pg` comes with `@prisma/orm-postgres`, so there is nothing to import.
+Each member needs a value. `pg` comes with `@prisma/orm-postgres`, so there is nothing to import. You do not create the PostgreSQL type yourself: `npx prisma migration plan` includes the `CREATE TYPE`.
 
 ## Value objects
 
@@ -223,7 +225,7 @@ model User {
 }
 ```
 
-A value object field can be optional or a list, and a `type` block can hold a field of another `type`. Watch the two spellings: `types { ... }` declares named types, and `type X { ... }` declares a value object. Storage differs by database. On PostgreSQL a value object field is stored in a single `jsonb` column, and a list such as `addresses Address[]` is one `jsonb` column holding an array. On MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision. [MongoDB data modeling](/orm/data-modeling/mongodb#embed-or-reference) covers it.
+A value object field can be optional or a list, and a `type` block can hold a field of another `type`. Watch the two spellings: `types { ... }` declares named types, and `type X { ... }` declares a value object. Storage differs by database. On PostgreSQL a value object field is stored in a single `jsonb` column. On MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision. [MongoDB data modeling](/orm/data-modeling/mongodb#embed-or-reference) covers it.
 
 ## Relations
 
@@ -249,7 +251,7 @@ model Profile {
 }
 ```
 
-Many-to-many relations need a model for the join table. You write that model yourself: there is no implicit many-to-many. Prisma ORM matches a list field such as `tags Tag[]` to the one model that holds a foreign key to each side. That model must follow two rules. Each foreign key references every field of that side's `@id`, and its own `@@id([...])` lists exactly those two foreign-key fields.
+Many-to-many relations need a model for the join table. You write that model yourself: there is no implicit many-to-many. That model must follow two rules. If a side has a composite primary key, that model needs one foreign-key field for each part of it. Its `@@id([...])` must list exactly the foreign-key fields, and nothing else.
 
 ```prisma
 model Post {
@@ -272,7 +274,7 @@ model PostTag {
 }
 ```
 
-You then read `post.tags` as a list of `Tag`, without mentioning `PostTag` in the query. Break either rule and `npx prisma contract emit` reports which list field it could not match. If two models qualify, `npx prisma contract emit` throws an error whose `code` is `PSL_AMBIGUOUS_BACKRELATION`. Put the same `@relation("name")` on the list field and on `PostTag`'s field that points back at it.
+You then read `post.tags` as a list of `Tag`, without mentioning `PostTag` in the query. Break either rule and `npx prisma contract emit` reports which list field it could not match to a model. If two models qualify, `npx prisma contract emit` throws an error whose `code` is `PSL_AMBIGUOUS_BACKRELATION`. Put the same `@relation("name")` on both ends of one pair, so on `PostTag.post` for `Post.tags`.
 
 For which shape to choose and which side owns the foreign key, see [relational data modeling](/orm/data-modeling/relational-databases) and [MongoDB data modeling](/orm/data-modeling/mongodb).
 
@@ -301,31 +303,25 @@ model Bug {
 
 A field name is written bare, as `type` is in `@@discriminator(type)`, and a database name is quoted, as in `@@map("task")`. Rows whose `type` column holds `"bug"` are `Bug` records. A variant reuses its base model's fields, so a `Bug` has `id`, `title`, and `type` as well as `severity` and `stepsToRepro`. A variant does not declare an `@id` of its own: it takes the base model's primary key.
 
-You query a variant through the base model: `db.orm.public.Task.variant('Bug')` returns the `Bug` rows only. Here `public` is the PostgreSQL schema. See [`variant()`](/orm/reference/orm-client#variant).
+You query a variant through the base model: `db.orm.public.Task.variant('Bug')` returns the `Bug` rows only. Here `public` is the PostgreSQL schema. Writing a row of a variant starts with the same `variant('Bug')` call. See [`variant()`](/orm/reference/orm-client#variant).
 
-On PostgreSQL, whether you write `@@map` on the variant decides where its fields are stored. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
+On a variant, `@@map` does more than rename. On PostgreSQL it chooses between two storage layouts. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
 
 On MongoDB, a variant adds its fields to documents in the base model's collection, so it declares `@@base` but no `@@map` of its own.
 
 ## Extension types
 
-An extension pack is an npm package that adds field types Prisma ORM does not ship, such as vectors. Install the pack, add it to the config, then call its types in the `types` block:
+An extension pack is an npm package that adds field types Prisma ORM does not ship, such as vectors. Install the pack, add the import and the `extensions` line to the config shown above, then call its types in the `types` block:
 
 ```bash
 npm install @prisma/orm-extension-pgvector
 ```
 
 ```typescript title="prisma.config.ts"
-import { definePrismaConfig } from "prisma/config";
 import pgvector from "@prisma/orm-extension-pgvector/control";
-import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
-export default definePrismaConfig({
-  orm: ormConfig({
-    contract: "./src/prisma/contract.prisma",
+// inside ormConfig({ ... }), beside contract and db:
     extensions: [pgvector],
-  }),
-});
 ```
 
 ```prisma title="src/prisma/contract.prisma"
@@ -357,4 +353,4 @@ Projects created with `npm create prisma@latest -- my-app` include the [Prisma O
 
 - Run `npx prisma contract emit` and inspect [`contract.json` and `contract.d.ts`](/orm/contract-authoring/the-contract-artifact). You do not import them yourself. `db`, the client that reads both, is in `src/prisma/db.ts`, and `prisma orm init` writes that file. See [transactions and runtime](/orm/reference/transactions-and-runtime).
 - If you prefer defining models in code, see [authoring in TypeScript](/orm/contract-authoring/typescript-schema-builder).
-- Apply the contract to a database with [`db init`](/cli/db-init) or plan changes with [`migration plan`](/cli/migration-plan).
+- Plan changes to a database you have already created with [`migration plan`](/cli/migration-plan).

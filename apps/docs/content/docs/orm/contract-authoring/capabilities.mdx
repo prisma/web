@@ -6,7 +6,7 @@ metaDescription: 'How a Prisma ORM contract records which database features you 
 url: /orm/contract-authoring/capabilities
 ---
 
-Your [contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`, describes your data. [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it. The `capabilities` section of `contract.json` lists the database features you can use, under keys such as `sql.lateral`. Prisma ORM writes that section, and you never edit it. A feature that is not listed fails right away, with an error that names its key, instead of reaching the database and failing there.
+Your [contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`, describes your data. [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it. The `capabilities` section of `contract.json` lists the database features you can use, under keys such as `sql.lateral`. Prisma ORM writes that section, and you never edit it. If you use a feature that is not listed, Prisma ORM raises an error instead of sending the query to the database.
 
 ## Where the `capabilities` section comes from [#where-capabilities-come-from]
 
@@ -21,7 +21,7 @@ The keys come from your database package (`@prisma/orm-postgres`, `@prisma/orm-s
 }
 ```
 
-A key is written group first, so `pgvector.cosine` under `postgres` is `postgres.pgvector.cosine`. The `sql` group holds keys that more than one SQL database may support. SQLite reports `false` for most of them. Keys under `postgres` belong to PostgreSQL only. Extension packages add keys of their own, and `pgvector.cosine` comes from the pgvector package. Install it with `npm install @prisma/orm-extension-pgvector`, list it in `prisma.config.ts`, and run `npx prisma contract emit` again:
+Error messages and the table below name a key group first, `postgres.pgvector.cosine`. The `sql` group holds keys that more than one SQL database may support. SQLite reports `false` for most of them. Keys under `postgres` belong to PostgreSQL only. Extension packages add keys of their own, and `pgvector.cosine` comes from the pgvector package. Install it with `npm install @prisma/orm-extension-pgvector`, list it in `prisma.config.ts`, and run `npx prisma contract emit` again:
 
 ```typescript title="prisma.config.ts"
 import { definePrismaConfig } from "prisma/config";
@@ -37,11 +37,11 @@ export default definePrismaConfig({
 });
 ```
 
-pgvector is also a PostgreSQL server extension, and the first migration the package ships installs it in PostgreSQL for you.
+pgvector is also a PostgreSQL server extension, and the package ships a migration that installs it. Apply it with `npx prisma db migrate`, see [Using extensions](/orm/extensions/using-extensions). Run `npx prisma contract emit` after every change to the contract or to the extension list.
 
 ## What the `capabilities` section controls [#what-capabilities-gate]
 
-**When the contract is built.** If your contract uses a feature your database cannot store, `npx prisma contract emit` fails. SQLite has no `scalarList` key, so a list field such as `tags String[]` fails on SQLite:
+**When the contract is built.** If your contract uses a feature your database package does not support, `npx prisma contract emit` fails. SQLite has no `scalarList` key, so a list field such as `tags String[]` fails on SQLite:
 
 ```text
 Field "User.tags" is a scalar list, but target "sqlite" does not support
@@ -49,7 +49,7 @@ scalar lists (the adapter does not report the "scalarList" capability).
 Remove the list or author it against a target that supports scalar lists.
 ```
 
-In that message, "target" and "adapter" both mean your database package, which is `@prisma/orm-sqlite` here. Do one of the two: remove the list field, or move to a database that supports list fields. To move to PostgreSQL, change the import and the connection string in `prisma.config.ts`, then set up the new database.
+In that message, both words mean your database package, and the message's `"scalarList"` is the `sql.scalarList` key. Do one of the two: remove the list field, or move to a database that supports list fields. To move to PostgreSQL, change the `@prisma/orm-sqlite/config` import and the connection string in `prisma.config.ts`, and create the new database.
 
 **When you call a method on the [SQL query builder](/orm/reference/sql-query-builder).** A method that needs a feature throws an error whose `code` is `ORM.CAPABILITY_MISSING`. The message names the method and the key:
 
@@ -57,7 +57,7 @@ In that message, "target" and "adapter" both mean your database package, which i
 distinctOn() requires capability postgres.distinctOn
 ```
 
-That message means the method is not available on the database you are connected to. Rewrite the query without it, or move to a database that supports the feature. If the key comes from an extension package, install that package, list it in `prisma.config.ts`, and run `npx prisma contract emit` again. The error arrives when you call the method, not when you `await` the query, so a test that calls it catches it. Your own code can read the same list through `db`, the client you create once in `src/prisma/db.ts`. A value such as `db.contract.capabilities.sql?.lateral` is `true`, `false`, or `undefined` when the whole group is absent:
+That message means the method is not available on the database package you chose. Rewrite the query without it, or move to a database that supports the feature. If the key comes from an extension package, install that package and list it in `prisma.config.ts`. You do not have to run the query to get the error, so a test that only builds the query still fails. Your own code can read the same list through `db`, the client you create once in `src/prisma/db.ts`, which `npx prisma orm init` writes. A value such as `db.contract.capabilities.sql?.lateral` is `true` or `false`, or `undefined` if the whole group is missing. For a key with a dot in it, write `db.contract.capabilities.postgres?.["pgvector.cosine"]`:
 
 ```typescript
 if (db.contract.capabilities.sql?.lateral) {
@@ -77,11 +77,11 @@ A few of the keys your database package and extension packages supply:
 | `postgres.distinctOn` | `DISTINCT ON` queries (`distinctOn()`) |
 | `postgres.pgvector.cosine` | Cosine distance from the pgvector package |
 
-PostgreSQL reports `true` for all three `sql` keys above, and SQLite reports `false` for them. This table is a sample, not the full list. Open `src/prisma/contract.json` in your project to see every key you have. The check that runs when the contract is built applies on every database, MongoDB included. The keys that methods check at query time exist only on the SQL query builder, which MongoDB does not have. The [ORM reference](/orm/reference) lists the methods each database has.
+PostgreSQL reports `true` for all three `sql` keys above, and SQLite reports `false` for them. This table is a sample, not the full list. Open `src/prisma/contract.json` in your project to see every key you have. The build-time check runs for every database. The run-time check only exists on the SQL query builder, and MongoDB has no SQL query builder. The [ORM reference](/orm/reference) lists the methods each database has.
 
 ## The `capabilities` section and `prisma db verify` [#capabilities-and-verification]
 
-The keys say what your packages support, recorded when you run `npx prisma contract emit`, so the same contract behaves the same way in every environment. Checking the live database is a separate job, and [`db verify`](/cli/db-verify) compares the database against your contract. Extension packages are the main source of keys beyond the ones your database package brings, and [using extensions](/orm/extensions/using-extensions) shows the full path from install to first query.
+[`npx prisma db verify`](/cli/db-verify) checks the live database against the contract's tables and columns, not against this section. The keys say what your packages support, recorded when you run `npx prisma contract emit`.
 
 ## Prompt your coding agent
 
