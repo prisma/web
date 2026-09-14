@@ -1,5 +1,6 @@
 import { siteConfig } from "@/lib/config";
 import { bulletList, ctaList, definitionList, heading, joinBlocks, paragraphs } from "./blocks";
+import { renderTestimonialsMarkdown } from "./testimonials";
 
 /**
  * Markdown rendition of the homepage (src/app/page.tsx).
@@ -123,13 +124,16 @@ export function renderHomeMarkdown(): string {
     // ---- StackBento (stack-bento.tsx) ----
     // The <LearnMore> links render "Learn more" plus a screen-reader-only
     // " about <product>"; the full accessible name is used as the link label.
+    // Each product row is led by a <RoleKicker> label; it is kept as an italic
+    // line just under the product heading (above it, it would read as part of
+    // the previous section).
     heading(2, "The TypeScript stack, integrated by design"),
     paragraphs(
       "ORM, database, and hosting designed to work together, so your agent can build, deploy, " +
         "and iterate without coordinating between vendors.",
     ),
     heading(3, "Prisma ORM"),
-    paragraphs("Type-safe data layer"),
+    paragraphs("*Type-safe data layer*"),
     paragraphs(
       "A declarative, type-safe schema rebuilt in native TypeScript, the shared contract your " +
         "whole stack and your agent are built around.",
@@ -145,7 +149,7 @@ export function renderHomeMarkdown(): string {
     // neighbouring products together, plus its caption.
     paragraphs("`contract.prisma` — The shared contract across your stack"),
     heading(3, "Prisma Postgres"),
-    paragraphs("Managed database"),
+    paragraphs("*Managed database*"),
     paragraphs(
       "Managed Postgres already wired to your schema and co-located with your app hosting, on " +
         "infrastructure built for single-digit ms boot times.",
@@ -160,7 +164,7 @@ export function renderHomeMarkdown(): string {
     ctaList([{ label: "Learn more about Prisma Postgres", href: "/postgres" }]),
     paragraphs("`prisma.config.ts` — One config, both products"),
     heading(3, "Prisma Compute"),
-    paragraphs("App hosting"),
+    paragraphs("*App hosting*"),
     paragraphs(
       "TypeScript app hosting that runs on the same host as your database, so your agent can " +
         "deploy, debug, and redeploy end-to-end.",
@@ -260,43 +264,11 @@ export function renderHomeMarkdown(): string {
     bulletList(["One bill, one platform", "Data transfer included", "Spend limits on by default"]),
 
     // ---- TestimonialsReveal (testimonials-reveal.tsx) ----
-    // Both marquee rows render each quote twice (the second half-track is
-    // aria-hidden); the twelve unique quotes are listed once, in row order.
-    heading(2, "Real teams, real builds"),
-    bulletList([
-      "“Prisma makes database management incredibly easy. Prisma's built-in type safety helps " +
-        "us avoid mistakes that happen with manual setups.” — Ron Cohen, Co-founder & CTO, Bucket",
-      "“We chose Prisma because it provides us with type safety directly from the database. It " +
-        "has helped us tremendously to catch possible errors early on.” — Omar López, " +
-        "Sr. Software Engineer, Cal.com",
-      "“We are able to take advantage of caching to speed up queries and reduce latency, making " +
-        "them lightning fast.” — Blake Carroll, CTO, Solin",
-      "“Prisma is the best ORM I have ever used, I never want to use anything else again. The " +
-        "excellent developer experience with its incredible TypeScript support sold me at " +
-        "first.” — Max Stoiber, Founder, Stellate",
-      "“Prisma has a low learning curve. Productivity becomes higher because it gets combined " +
-        "with end-to-end type-safety using TypeScript.” — Ricardo Almeida, Software Engineer, " +
-        "Grover",
-      "“Prisma has been an absolute game changer for Memberstack. It has helped us move faster " +
-        "while also improving product stability.” — Tyler Bell, Co-founder, Memberstack",
-      "“We've proudly built the core of our APIs on top of Prisma, and we are very happy that " +
-        "we did. It doesn't make us jump through unnecessary hoops to get normal work done and " +
-        "generally just works.” — James Fox, Co-Founder, Gamma",
-      "“Prisma's approach to type-safe ORM is next-level. It provides full type-safety without " +
-        "any codegen or messy types and interfaces to write and maintain.” — Pieter Venter, " +
-        "Sr. Software Engineer, Invisible",
-      "“Prisma is a professional enterprise-ready tool that is easy to start using, ramp up and " +
-        "scale. It is the type of tool developed for the software engineers of today.” — " +
-        "Matt Matheson, Co-Founder, Trunk",
-      "“The combination of Prisma, TypeScript and our pretty thorough coverage with integration " +
-        "tests gives us the confidence to refactor critical parts of our code.” — " +
-        "Thibaut Nguyen, CTO, Poppy",
-      "“I chose Prisma because of its clean API, nice developer experience and type safety. It " +
-        "helped me ship v1 of Instatus really fast.” — Ali Salah, Founder, Instatus",
-      "“This is the fastest I've ever developed in my life, by far. The tooling has " +
-        "dramatically cut down on the amount of time I've had to spend.” — Sean Emmer, " +
-        "CTO & Co-Founder, Pearly Plan",
-    ]),
+    // Shared renderer: the section is reused on other pages, and it already
+    // dedupes the two marquee rows and their aria-hidden half-tracks down to
+    // one entry per quote. "Real teams, real builds" is the homepage heading,
+    // which is also the component's default.
+    renderTestimonialsMarkdown(),
 
     // ---- Faq (faq.tsx) ----
     // Only the first accordion item is open by default; every answer is
