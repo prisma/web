@@ -163,7 +163,15 @@ test("the stylesheet only declares Shiki custom properties", async () => {
 
   assert.ok(rules.length > 100, `expected the full palette, got ${rules.length} rules`);
   for (const rule of rules) {
-    assert.match(rule, /^\.sk[cs][0-9a-z]{4}\{(?:--shiki-[a-z-]+:[^;}]+;?)+\}$/, rule);
+    // Declarations are matched one at a time with a mandatory `;` between
+    // them. Making the separator optional would let `[^;}]+` also swallow the
+    // next `--shiki-…:` prefix, which CodeQL (js/redos) flags as exponential
+    // backtracking on inputs with many repeated declarations.
+    assert.match(
+      rule,
+      /^\.sk[cs][0-9a-z]{4}\{--shiki-[a-z-]+:[^;}]+(?:;--shiki-[a-z-]+:[^;}]+)*;?\}$/,
+      rule,
+    );
   }
 });
 
