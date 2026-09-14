@@ -126,19 +126,19 @@ export const contract = defineContract({ models: { User, Post } });
 
 On PostgreSQL, `defineContract` takes an options object and then a function. You do not set a `provider` anywhere. Importing `@prisma/orm-postgres/contract-builder` is what selects PostgreSQL. The options object lists the extension packs you use, and you write `{}` when you use none. The function returns the contract's content: `models`, plus `enums` and `types` if you have them.
 
-Take `field`, `model`, `rel`, and `type` from the function's one argument. Import `defineContract`, `enumType`, and `member` from the package. The package also exports `field`, `model`, and `rel` for use outside the function.
+Take `field`, `model`, `rel`, and `type` from the function's one argument. Import `defineContract`, `enumType`, and `member` from the package. The package also exports `model` and `rel` for use outside the function, plus a `field` that has only `column`, `generated`, and `namedType`.
 
-On MongoDB, `defineContract` takes a single object holding `models`, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder also differs from the PostgreSQL one in five ways:
+On MongoDB, `defineContract` also accepts a single object holding `models`, as above, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder differs from the PostgreSQL one in five ways:
 
 - Every model declares an `_id` field built with `field.objectId()`. That field is always the primary key, so you never mark it with `.id()` and there is no `.attributes(...)` on MongoDB.
 - The scalar helpers are `field.objectId()`, `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`.
-- The collection name and the relations are inline options on the model rather than chained calls.
+- The collection name is an inline option on the model rather than a chained call, and relations are inline as well.
 - Relations name the field on each side. `rel.hasMany` takes `{ from, to }` on MongoDB and `{ by }` on PostgreSQL. `to` accepts either the field name as a string or a typed reference such as `User.ref("_id")`, and both forms mean the same thing. PostgreSQL writes that reference as `User.refs.id`.
 - Indexes are an `indexes` option on the model, built with the `index` helper the same package exports, as in `indexes: [index({ email: 1 }, { unique: true })]`. The `1` is ascending, MongoDB's own index syntax.
 
 Enums and extension packs work on MongoDB too. `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`. Pass the enums in the same object as the models, as `defineContract({ models, enums })`, and extension packs go in the same `extensions` option.
 
-The rest of this page uses the PostgreSQL builder.
+The examples below use the PostgreSQL builder.
 
 ## Fields
 
@@ -155,7 +155,7 @@ The rest of this page uses the PostgreSQL builder.
 | date and time | `field.dateTime()` |
 | bytes | `field.bytes()` |
 | JSON | `field.json()` |
-| UUID stored as text | `field.uuidString()` |
+| UUID stored in a `character(36)` column | `field.uuidString()` |
 | UUID stored in a `uuid` column | `field.uuidNative()` |
 
 There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1", nativeType: "date" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
