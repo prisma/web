@@ -10,7 +10,7 @@ MongoDB stores data as documents grouped into collections. A document can nest o
 
 ## Documents, collections, and the _id key
 
-There is no `datasource` block on MongoDB. Your `prisma.config.ts` file holds the connection, using `defineConfig` from `@prisma/orm-mongo/config`. See [the data contract](/orm/contract-authoring/the-data-contract). A Prisma ORM model maps to a collection, and each record is a document. Every document has an `_id` field as its primary key. `ObjectId` is the type MongoDB expects for it:
+Your models go in your contract, the `contract.prisma` file that replaced `schema.prisma`. There is no `datasource` block on MongoDB. The connection string is in your `prisma.config.ts` file instead, passed to `defineConfig` from `@prisma/orm-mongo/config`. See [the data contract](/orm/contract-authoring/the-data-contract) for that file. A model maps to a collection, and each record is a document. Every document has an `_id` field as its primary key. `ObjectId` is the type MongoDB expects for it:
 
 ```prisma
 model User {
@@ -21,13 +21,13 @@ model User {
 }
 ```
 
-`@map("_id")` maps the model's `id` field to MongoDB's mandatory `_id` field, and `@@map("users")` names the collection. `@@map` is optional. Without it the collection takes the model name with a lowercase first letter, so `user`. `ObjectId` replaces `String @db.ObjectId` and `@default(auto())`. Writing either of those attributes is an error whose `code` is `PSL_UNSUPPORTED_FIELD_ATTRIBUTE`. Leave the id out of the values you pass to `create`, and MongoDB assigns it:
+In your TypeScript code the field is called `_id`, not `id`. `@map("_id")` maps the model's `id` field to MongoDB's mandatory `_id` field and sets the name on both sides, so you write `user._id` and `where({ _id })`. `@@map("users")` names the collection. `@@map` is optional. Without it the collection takes the model name with a lowercase first letter, so `user`. Write `ObjectId` for the key type. The old `String @db.ObjectId` and `@default(auto())` are no longer allowed and fail at `npx prisma contract emit`, the command that checks your contract and regenerates your types. Leave the id out of the values you pass to `create`, and MongoDB assigns it:
 
 ```ts
 const user = await db.orm.users.create({ name: "Ada", email: "ada@example.com" });
 ```
 
-`db` is the client you create once in `src/prisma/db.ts`, and `npx prisma orm init` writes that file. `db.orm.users` is the accessor for the collection, and it follows the collection name, so `@@map` renames the accessor as well. In Prisma ORM 7 it did not. The values go straight into `create`, without the `data:` wrapper Prisma ORM 7 used. The id comes back as a string, and you pass it back as a string. There is no `ObjectId` to construct:
+`npx prisma orm init` writes `src/prisma/db.ts`, which creates the client `db`. `db.orm.users` is how you query the `users` collection. The name after `db.orm.` is the collection name, so with `@@map("users")` you write `db.orm.users`, not `db.orm.user`. The values go straight into `create`, without the `data:` wrapper Prisma ORM 7 used. The id comes back as a string, and you pass it back as a string. There is no `ObjectId` to construct:
 
 ```ts
 const found = await db.orm.users.where({ _id: user._id }).first();
@@ -71,28 +71,27 @@ model User {
 }
 ```
 
-A single embedded value models a one-to-one. A list of embedded values models a one-to-many: `addresses Address[]` stores every address inside the user document, with no second collection and no join to load them. Pass an embedded value to `create` as a plain nested object:
+A single embedded value models a one-to-one relation. A list of embedded values models a one-to-many relation: `addresses Address[]` stores every address inside the user document, with no second collection and no join to load them. Pass an embedded value to `create` as a plain nested object:
 
 ```ts
 const address = { street: "1 Main St", city: "Berlin", country: "DE" };
 await db.orm.users.create({ name: "Ada", address });
 ```
 
-In an `update`, `u` gives you each field of the document to change. Give it the path to change one field inside an embedded value, and use `.push(...)` and `.pull(...)` to add to and remove from a list of scalars:
+In an `update`, `u` builds the changes you want. Use `u.fieldName` to change a top-level field, and `u("path.to.field")` to change a field inside an embedded document. Use `.push(...)` and `.pull(...)` to add to and remove from a list of scalars:
 
 ```ts
 await db.orm.users.where({ _id: user._id }).update((u) => [u("address.city").set("Hamburg")]);
 await db.orm.users.where({ _id: user._id }).update((u) => [u.tags.push("admin"), u.tags.pull("new")]);
 ```
 
-`.where()` filters on top-level model fields only. To match on a field inside an embedded document, use the pipeline builder, a chained builder for MongoDB aggregation pipelines:
+Replace a whole embedded value with `u("address").set({ ... })`, and remove it with `u("address").unset()`. A list of embedded values is replaced as a whole with `u.addresses.set([ ... ])`. `.where()` filters on top-level model fields only. To match on a field inside an embedded document, use the pipeline builder, a chained builder for MongoDB aggregation pipelines:
 
 ```ts
 const berliners = db.query.from("users").match((f) => f("address.city").eq("Berlin")).build();
-const rows = await (await db.runtime()).query(berliners);
 ```
 
-See [the pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) for the rest of the stages. Embedded arrays are only a good idea while they stay bounded. An array that grows forever slows every read of the parent and pushes the document toward MongoDB's 16 MB limit, and a write that exceeds it fails. When a list has no natural cap, reference it instead.
+See [the pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) for running it and what comes back. Embedded arrays are only a good idea while they stay bounded. An array that grows forever slows every read of the parent and pushes the document toward MongoDB's 16 MB limit, and a write that exceeds it fails. When a list has no natural cap, reference it instead.
 
 ## References across collections
 
@@ -114,7 +113,7 @@ model Post {
 }
 ```
 
-This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. To link a new post to a user, set the reference field yourself. To load a post together with its author, chain `.include("author")`, which adds the related record to every row you get back:
+This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. There are no nested writes on MongoDB: create the user first, then the post with its `authorId`. To load a post together with its author, chain `.include("author")`, which adds the related record to every row you get back:
 
 ```ts
 await db.orm.posts.create({ title: "Hello", authorId: user._id });
@@ -146,9 +145,9 @@ model Tutorial {
 }
 ```
 
-`@@discriminator(kind)` takes the name of the field that records each document's variant, so write `kind` and not `"kind"`. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A variant declares no `@@map` of its own and uses its base's collection. A variant has every field of its base plus its own, so an `Article` has `id`, `title`, `kind`, and `summary`.
+`@@discriminator(kind)` takes the name of the field that records each document's variant, so write `kind` and not `"kind"`. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A variant declares only its own fields. `id`, `title`, and `kind` come from `Post`. A variant declares no `@@map` of its own and uses its base's collection.
 
-A query for posts returns articles and tutorials together. `db.orm.posts.variant("Article")` limits the query to one variant. `.variant()` takes the variant's model name, `"Article"`, and not the discriminator value `"article"`. Creating through a variant fills in `kind` for you:
+A query for posts returns articles and tutorials together. You reach a single variant through the base model: `db.orm.posts.variant("Article")` limits the query to one variant. `.variant()` takes the variant's model name, `"Article"`, and not the discriminator value `"article"`. Creating through a variant fills in `kind` for you:
 
 ```ts
 const article = await db.orm.posts.variant("Article").create({ title: "Hello", summary: "A short post" });
@@ -167,7 +166,7 @@ Projects created with `npm create prisma@latest` include the [Prisma ORM skills]
 
 ## Next steps
 
-- Models go in your contract, the `contract.prisma` file that replaced `schema.prisma`. Run `npx prisma contract emit` after every change to it, then `npx prisma migration plan --name <name>` writes a migration and `npx prisma db migrate` applies it, creating the collections and indexes. See [generating a migration](/orm/migrations/generating-a-migration).
+- Run `npx prisma contract emit` after every change to your contract. Then `npx prisma migration plan --name <name>` writes a migration and `npx prisma db migrate` applies it, creating the collections and indexes. See [generating a migration](/orm/migrations/generating-a-migration).
 - [Query documents](/orm/fundamentals/reading-data) and [resolve references](/orm/fundamentals/relations-and-joins) with `.include(...)`.
 - Aggregate and reshape documents with the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
 - To model relational data, see the [relational data modeling guide](/orm/data-modeling/relational-databases).
