@@ -8,6 +8,7 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 import { getPageBadges } from "@/lib/page-badges";
 import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-provider";
 import { getOrmVersions } from "@/lib/version";
+import { getClientPageTree } from "@/lib/client-page-tree";
 import { VersionSwitcher } from "@/components/version-switcher";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const navbarLinks: LinkItemType[] = [...links, ...authLinks];
 
   const badges = Object.fromEntries(getPageBadges());
+  // Version list and available pathnames are derived here, on the server, and
+  // cross the boundary as two small arrays. Only the trimmed tree goes over.
   const ormVersions = getOrmVersions(source.pageTree);
   const pageUrls = source.getPages().map((page) => page.url);
 
@@ -35,7 +38,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
             </div>
           ),
         }}
-        tree={source.pageTree}
+        tree={getClientPageTree(source.pageTree)}
       >
         {children}
       </DocsLayout>
