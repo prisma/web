@@ -8,11 +8,11 @@ metaDescription: 'How to model one-to-one, one-to-many, many-to-many, and polymo
 
 In a relational database, each model becomes a table and each scalar field becomes a column. Models connect through foreign keys: a column in one table that holds the primary key of a row in another table.
 
-This page shows how to model each relation shape and, for each one, where the foreign key belongs. If you are new to models and keys, start with the [data modeling overview](/orm/data-modeling).
+If you are new to models and keys, start with the [data modeling overview](/orm/data-modeling).
 
 ## How relations are declared
 
-The model that stores the connection carries two fields: a scalar field for the foreign key column, and a relation field that navigates it. `@relation(fields:, references:)` ties them together:
+The model that stores the connection has two fields. One is a scalar field for the foreign key column. The other is a relation field, typed as the other model. `@relation(fields:, references:)` ties them together:
 
 ```prisma
 model Post {
@@ -22,7 +22,7 @@ model Post {
 }
 ```
 
-The side that carries the `fields` argument owns the foreign key. Which side that should be is the main decision in the shapes below.
+The side that declares the `fields` argument owns the foreign key. Which side that should be is the main decision in the shapes below.
 
 ## One-to-many
 
@@ -43,11 +43,11 @@ model Post {
 }
 ```
 
-The foreign key lives on the "many" side, `Post.authorId`, because each post points at exactly one user, while a user points at an open-ended list of posts. The `posts Post[]` field on `User` is the back-relation: it stores nothing in the database and is inferred from the foreign key on `Post`.
+The foreign key is on the "many" side, `Post.authorId`, because each post points at exactly one user, while a user points at an open-ended list of posts. The `posts Post[]` field on `User` is the back-relation: it stores nothing in the database and is matched to the foreign key on `Post`.
 
 Use a one-to-many whenever a record belongs to one parent and a parent has many children: comments on a post, line items on an order, employees in a department.
 
-Because the list field is virtual, you never write to it. To connect a post to a user, set the foreign key:
+To connect a post to a user, set the foreign key when you create the post:
 
 ```typescript
 const post = await db.orm.public.Post.create({
@@ -78,13 +78,13 @@ model Profile {
 }
 ```
 
-Declare the relation on the side that holds the foreign key (`Profile` here). You can add the mirror field on the other model as well (`profile Profile?` on `User`); a bare optional model-typed field is enough, and it needs no `@relation` of its own. The foreign key it mirrors must be unique, or emit rejects the field with `PSL_NON_UNIQUE_BACKRELATION`. With the mirror field in place, [the relation reads from either side](/orm/fundamentals/relations-and-joins#one-to-one).
+Declare the relation on the side that holds the foreign key, `Profile` here. You can add the mirror field on the other model as well: `profile Profile?` on `User`. A bare field typed as the other model is enough, and it needs no `@relation` of its own. It has to be optional, because nothing in the database guarantees a matching profile row. The foreign key it mirrors must be unique, or `npx prisma contract emit` rejects the field with an error whose `code` is `PSL_NON_UNIQUE_BACKRELATION`. With the mirror field in place, [the relation reads from either side](/orm/fundamentals/relations-and-joins#one-to-one).
 
 ### Which side owns the foreign key
 
 Put the foreign key on the dependent side: the record that cannot exist on its own.
 
-A profile needs a user. A user does not need a profile. So `Profile` carries `userId`:
+A profile needs a user. A user does not need a profile. So `Profile` holds `userId`:
 
 ```prisma
 model Profile {
@@ -108,7 +108,7 @@ If neither side is clearly dependent, put the key on the side you query from les
 
 A many-to-many relation (`m:n`) connects many records on each side: a post has many tags, and a tag applies to many posts.
 
-A single foreign key cannot express this, because each side needs to point at many records. The answer is a junction model: a third model that holds one record per connected pair.
+A single foreign key cannot express this, because each side needs to point at many records. The answer is the model for the join table: a third model that holds one record per connected pair.
 
 ```prisma
 model Post {
@@ -133,7 +133,7 @@ model PostTag {
 }
 ```
 
-`PostTag` is the model for the join table, and it is two one-to-many relations back to back. Its composite primary key, `@@id([postId, tagId])`, enforces one record per pair. The list fields on `Post` and `Tag` name the far side (`Tag[]`, `Post[]`), and the schema compiler connects them through `PostTag`, so queries read `post.tags` directly.
+`PostTag` is the model for the join table, and it is two one-to-many relations back to back. Its composite primary key, `@@id([postId, tagId])`, enforces one record per pair. The list fields on `Post` and `Tag` name the far side (`Tag[]`, `Post[]`), and `npx prisma contract emit` connects them through `PostTag`, so queries read `post.tags` directly.
 
 Connect a post to a tag with a nested write on the list field, or create the `PostTag` record yourself. Both write the same row, so pick one per pair: running both inserts the same composite key twice, and the second fails.
 
@@ -143,11 +143,11 @@ await db.orm.public.Post.where({ id: post.id }).update({
   tags: (t) => t.connect([{ id: tag.id }]),
 });
 
-// Or, equivalently, create the junction record yourself
+// Or create the join record yourself
 await db.orm.public.PostTag.create({ postId: post.id, tagId: tag.id });
 ```
 
-The junction is an ordinary model, so it can carry data about the pairing itself. When the tag was added, who added it, a sort order: add the field to the junction model.
+`PostTag` is an ordinary model, so it can hold data about the pairing itself. When the tag was added, who added it, a sort order: add the field to `PostTag`.
 
 ```prisma
 model PostTag {
@@ -161,11 +161,11 @@ model PostTag {
 }
 ```
 
-An implicit many-to-many (list fields on both sides with no junction model, as in Prisma ORM 7) is not supported yet: the schema compiler rejects it and asks for an explicit join model. Model the junction explicitly; [Relations and joins](/orm/fundamentals/relations-and-joins#many-to-many) shows how to traverse it in one query.
+An implicit many-to-many, with list fields on both sides and no model for the join table, as in Prisma ORM 7, is not supported. `npx prisma contract emit` rejects it with an error whose `code` is `PSL_ORPHANED_BACKRELATION`, and the message tells you to add an explicit model for the join table. Declare that model yourself. [Relations and joins](/orm/fundamentals/relations-and-joins#many-to-many) shows how to read across it in one query.
 
 ## Polymorphic relations
 
-Sometimes several kinds of record share a common core but each carries its own extra fields: every `Task` has a title, but a `Bug` also has a severity and a `Feature` has a target release.
+Sometimes several kinds of record share a common core but each has its own extra fields: every `Task` has a title, but a `Bug` also has a severity and a `Feature` has a target release.
 
 Prisma ORM models this with a base model plus variant models. A discriminator field records which variant each row is:
 
@@ -195,32 +195,32 @@ model Feature {
 
 `@@discriminator(type)` marks the field that records the variant. `@@base(Task, "bug")` declares that `Bug` is the `"bug"` variant of `Task`.
 
-Variants appear as their own models in queries (`db.orm.public.Bug` alongside `db.orm.public.Task`), and a query on the base model returns every variant. To write a variant, narrow the base collection with `.variant(...)` and create through it; the discriminator is injected for you:
+Variants appear as their own models in queries, `db.orm.public.Bug` alongside `db.orm.public.Task`. A query on the base model returns every variant. To write a variant, limit the query to one variant with `.variant(...)` and create through it. The discriminator value is filled in for you:
 
 ```typescript
 await db.orm.public.Task.variant("Bug").create({ title: "Crash on save", severity: "high" });
 ```
 
-Chaining `.variant(...)` on a read narrows the same way, applying the discriminator filter and giving the collection the variant's row shape.
+On a read, `.variant(...)` works the same way. It limits the query to one variant by filtering on the discriminator, and the rows come back with that variant's fields.
 
 Each variant picks one of two storage layouts:
 
-- A variant with no `@@map`, like `Bug`, shares the base table. Its extra columns live alongside the base columns and must be nullable at the storage level, because a `Feature` row has no severity.
-- A variant with its own `@@map`, like `Feature`, gets its own table holding only its extra columns, linked back to the base table's primary key. Its columns keep their constraints, at the cost of a join to read a full variant.
+- A variant with no `@@map`, like `Bug`, shares the base table. Its extra columns are added to the base table and have to be nullable there, because a `Feature` row has no severity.
+- A variant with its own `@@map`, like `Feature`, gets its own table. That table holds its extra columns plus the base model's primary key, which links it back to the base table. Its columns keep their constraints, at the cost of a join to read a full variant.
 
-Use polymorphism when you query the variants together (one feed of tasks, one stream of events) and each variant carries real structure of its own. If you never query them together, separate models are simpler. If the variants differ by one nullable field, a single model is simpler still.
+Use a base model with variants when you query the variants together (one feed of tasks, one stream of events) and each variant has real structure of its own. If you never query them together, separate models are simpler. If the variants differ by one nullable field, a single model is simpler still.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers relation modeling. Prompts that map to each section:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers relation modeling. Prompts that map to each section:
 
 - "Using the prisma-8 skill, add a one-to-many between User and Post with the foreign key on Post."
 - "Make the Profile relation one-to-one by adding a unique constraint to its foreign key."
-- "Model a many-to-many between Post and Tag with an explicit junction model and an addedAt timestamp."
+- "Model a many-to-many between Post and Tag with an explicit model for the join table and an addedAt timestamp."
 - "Split Task into Bug and Feature variants with a discriminator field."
 
 ## Next steps
 
-- [Query relations](/orm/fundamentals/relations-and-joins) with `.include(...)`, relation predicates, and junction traversal.
+- [Query relations](/orm/fundamentals/relations-and-joins) with `.include(...)`, filters on relation data, and reads across the join table.
 - To model for MongoDB, see the [MongoDB data modeling guide](/orm/data-modeling/mongodb).
-- Referential actions work today: add `onDelete` and `onUpdate` to `@relation` with `Cascade`, `Restrict`, `SetNull`, `SetDefault`, or `NoAction`, as in `@relation(fields: [userId], references: [id], onDelete: Cascade)`, and the emitter lowers them to the foreign key's `ON DELETE` / `ON UPDATE` clause.
+- Referential actions: add `onDelete` and `onUpdate` to `@relation` with `Cascade`, `Restrict`, `SetNull`, `SetDefault`, or `NoAction`, as in `@relation(fields: [userId], references: [id], onDelete: Cascade)`. They become the foreign key's `ON DELETE` and `ON UPDATE` clauses.

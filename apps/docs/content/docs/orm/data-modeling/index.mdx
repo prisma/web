@@ -10,18 +10,16 @@ Data modeling is the process of describing the data your application needs and h
 
 For example, a blog has users, posts, and comments. A user has fields like an email and a name. A post has fields like a title and content. These models also relate to each other: a user can write many posts, and a post can have many comments.
 
-In Prisma ORM, you define this structure in a `contract.prisma` file. This file becomes the shared contract between your application code, your database migrations, and your developer tools.
+In Prisma ORM, you define this structure in your contract, the `contract.prisma` file that replaced `schema.prisma`. Prisma ORM derives your TypeScript types, your migrations, and the client's configuration from it.
 
-If you are coming from Prisma ORM 7, `contract.prisma` plays a similar role to the `schema.prisma` file you used before.
-
-This page introduces the four building blocks of every Prisma ORM contract:
+Every contract is built from four things:
 
 - [Models](#models): the things your application works with
 - [Primary keys](#primary-keys): how each record is identified
 - [Scalar fields](#scalar-fields): the values a model stores
 - [Relations](#relations): how models connect to each other
 
-These building blocks apply to every database. Where databases differ is in how you model relations, and the [relational](/orm/data-modeling/relational-databases) and [MongoDB](/orm/data-modeling/mongodb) guides cover that in depth.
+All four apply to every database. How you model relations is where databases differ, so continue with [relational data modeling](/orm/data-modeling/relational-databases) or [MongoDB data modeling](/orm/data-modeling/mongodb).
 
 ## Models
 
@@ -35,13 +33,13 @@ model User {
 }
 ```
 
-Every record of a model has its own identity and its own lifecycle. Two posts with the same title are still two different posts, and a user who changes their email address is still the same user.
+Every record of a model has its own identity and its own history. Two posts with the same title are still two different posts, and a user who changes their email address is still the same user.
 
 On a relational database, a model becomes a table. On MongoDB, it becomes a collection.
 
 ## Primary keys
 
-A primary key is the field that uniquely identifies each record. Every model needs one. Mark it with `@id`:
+A primary key is the field that uniquely identifies each record. Give every model one, because Prisma ORM needs a primary key to update or delete a record. Mark it with `@id`:
 
 ```prisma tab="PostgreSQL"
 model User {
@@ -58,7 +56,7 @@ model User {
 }
 ```
 
-On MongoDB, the primary key maps to the document's mandatory `_id` field, and `ObjectId` is the idiomatic type for it.
+On MongoDB, the primary key is the document's mandatory `_id` field, and it must be an `ObjectId`.
 
 ### Natural keys
 
@@ -73,7 +71,7 @@ model Country {
 }
 ```
 
-Records that point at `Country` now store a readable value (`US`, `DE`) instead of an opaque number. Currencies (`USD`, `EUR`) and similar lookup tables work the same way.
+Records that point at `Country` now store a readable value (`US`, `DE`) instead of a meaningless number. Currencies (`USD`, `EUR`) and similar lookup tables work the same way.
 
 ### Surrogate keys
 
@@ -121,7 +119,7 @@ model ApiToken {
 A UUID is wider than an integer and random UUIDs index a little worse, but independent services never collide and nothing is leaked.
 
 ```prisma
-// ObjectId: the idiomatic MongoDB key. Generated without
+// ObjectId: the MongoDB key. Generated without
 // coordination and embeds its own creation time.
 model Post {
   id ObjectId @id @map("_id")
@@ -142,25 +140,27 @@ model UserTag {
 }
 ```
 
-A duplicate `(userId, tagId)` pair would be meaningless, so the pair is the key. Avoid composite keys on ordinary models: everything that points at the model then has to carry all of the key's fields.
+A duplicate `(userId, tagId)` pair would be meaningless, so the pair is the key. Avoid composite keys for ordinary models: everything that points at the model then has to store all of the key's fields.
 
 ## Scalar fields
 
 A scalar field holds a single value. The common types:
 
-| Type       | Stores                                                                      |
-| ---------- | --------------------------------------------------------------------------- |
-| `String`   | Text                                                                          |
-| `Int`      | 32-bit integer                                                                |
-| `BigInt`   | 64-bit integer                                                                |
-| `Float`    | Floating-point number                                                         |
-| `Decimal`  | Exact decimal, PostgreSQL `numeric`. The runtime value is a decimal string, so binary floating point never loses digits. Write the type as `Numeric(10, 2)` when you want an explicit precision and scale; PostgreSQL then rounds stored values to that scale and rejects values that exceed the precision |
-| `Boolean`  | `true` / `false`                                                              |
-| `DateTime` | Timestamp                                                                     |
-| `Bytes`    | Binary data, PostgreSQL `bytea`. The runtime value is a `Uint8Array`          |
-| `Json`     | Arbitrary JSON value, stored in PostgreSQL's native `json`                     |
-| `Jsonb`    | Arbitrary JSON value, stored in PostgreSQL's `jsonb`. This is what `field.json()` and value objects use, and what a `Json` field meant before 0.17 |
-| `ObjectId` | MongoDB document identifier                                                   |
+| Type       | Stores                                           |
+| ---------- | ------------------------------------------------ |
+| `String`   | Text                                             |
+| `Int`      | 32-bit integer                                   |
+| `BigInt`   | 64-bit integer                                   |
+| `Float`    | Floating-point number                            |
+| `Decimal`  | Exact decimal, PostgreSQL `numeric`              |
+| `Boolean`  | `true` / `false`                                 |
+| `DateTime` | Timestamp, PostgreSQL `timestamptz`              |
+| `Bytes`    | Binary data, PostgreSQL `bytea`                  |
+| `Json`     | Arbitrary JSON value, PostgreSQL's native `json` |
+| `Jsonb`    | Arbitrary JSON value, PostgreSQL's `jsonb`       |
+| `ObjectId` | MongoDB document identifier                      |
+
+A `Decimal` value reaches your code as a decimal string, so binary floating point never loses digits. Write the type as `Numeric(10, 2)` when you want an explicit precision and scale. A `DateTime` value reaches your code as a `Temporal.Instant`, and a `Bytes` value as a `Uint8Array`. `Jsonb` is also the storage the TypeScript builder's `field.json()` and value objects use.
 
 Filtering on a `Jsonb` field is whole-value equality only: you can ask whether the column equals a given document, not whether a key inside it matches. A `Json` field offers no comparison at all in the ORM filter. Reach into the document with [raw SQL](/orm/reference/raw-queries) when you need a path query.
 
@@ -202,7 +202,7 @@ model Post {
 }
 ```
 
-When you are unsure between two sizes, lean toward the wider one (`BigInt` over `Int` for a counter that could grow). Widening a type later is a migration; the wider type today is free.
+When you are unsure between two sizes, lean toward the wider one (`BigInt` over `Int` for a counter that could grow). Widening a type later is a migration. The wider type today is free.
 
 Mark a field optional (`?`) only when "absent" means something different from a sensible default. A required field with a default is often the clearer model.
 
@@ -212,8 +212,8 @@ A relation connects two models: a user has many posts, a post belongs to one use
 
 Two kinds of field describe a relation:
 
-- A field that stores the connection. This is a real column or document field, like `authorId`, holding the other record's primary key.
-- A relation field, typed as the other model, like `author User`. It stores nothing itself; it tells Prisma ORM how to navigate the connection in queries.
+- The field that stores the other record's primary key, like `authorId`. On a relational database this is the foreign key column, and on MongoDB it is the field holding the other document's `_id`.
+- A relation field, typed as the other model, like `author User`. It stores nothing in the database. It tells Prisma ORM how to follow the connection in a query.
 
 The `@relation` attribute ties them together: `fields` names the local field that stores the link, and `references` names the field it points at on the other model.
 
@@ -233,12 +233,12 @@ Relations come in three shapes:
 
 How each shape is stored, and which model should hold the connecting field, is where relational and document databases differ. Continue with the guide for your database:
 
-- [Relational data modeling](/orm/data-modeling/relational-databases) for PostgreSQL and other SQL databases: foreign keys, junction tables, and which side owns the key.
+- [Relational data modeling](/orm/data-modeling/relational-databases) for PostgreSQL and other SQL databases: foreign keys, the model for the join table, and which side owns the key.
 - [MongoDB data modeling](/orm/data-modeling/mongodb): embedding versus referencing, and polymorphic collections.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; the `prisma-8` skill covers contract authoring. Prompts that map to each section:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers contract authoring. Prompts that map to each section:
 
 - "Using the prisma-8 skill, add a Product model with a surrogate id and a unique sku field."
 - "Add a Country reference table keyed by its ISO code."
@@ -248,5 +248,5 @@ Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/
 ## Next steps
 
 - [Model relational data](/orm/data-modeling/relational-databases): one-to-one, one-to-many, many-to-many, and polymorphic relations on SQL databases.
-- [Model MongoDB data](/orm/data-modeling/mongodb): embed or reference, and single-collection polymorphism.
-- [Query your models](/orm/fundamentals/reading-data) once the schema is in place.
+- [Model MongoDB data](/orm/data-modeling/mongodb): embed or reference, and polymorphic collections.
+- [Query your models](/orm/fundamentals/reading-data) once your contract is in place.
