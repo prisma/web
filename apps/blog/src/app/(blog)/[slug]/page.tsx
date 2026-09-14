@@ -199,7 +199,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const MDX = page.data.body;
   const blogPostingJsonLd = getBlogPostingJsonLd(page);
   const seriesContext = getSeriesContext(page);
-  const relatedPosts = seriesContext ? [] : getRelatedPosts(page, 2);
+  // Series posts get recommendations too. `getRelatedPosts` excludes the
+  // current post's own series, so "Keep reading" points outside it and the
+  // series' own neighbours stay the job of `SeriesNavigation` below.
+  const relatedPosts = getRelatedPosts(page, 2);
 
   return (
     <div className="z-1 mx-auto w-full max-w-257 gap-12 px-4 pt-10 pb-8 md:grid md:grid-cols-[1fr_180px] md:pt-20">
@@ -247,7 +250,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
               <div className="filter-badge flex flex-wrap gap-2">
                 {page.data?.tags?.map((tag) => (
                   <Link
-                    href={{ pathname: "/", query: { tag } }}
+                    // next/link prepends the /blog basePath itself, so this
+                    // must stay basePath-free. The `?tag=` query it used to
+                    // point at is a redirect now.
+                    href={`/tag/${tag}`}
                     key={tag}
                     className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
                   >
@@ -318,9 +324,11 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             <SeriesBanner series={seriesContext} />
             <SeriesNavigation series={seriesContext} />
           </>
-        ) : (
-          <KeepReading posts={relatedPosts} />
-        )}
+        ) : null}
+        {/* `SeriesNavigation` closes with `my-12` and `KeepReading` opens with
+            `my-16`; adjacent margins collapse, so the two blocks stack with the
+            larger gap and neither needed a style change. */}
+        <KeepReading posts={relatedPosts} />
 
         {/* Conversion CTA */}
         <BlogCTA />
