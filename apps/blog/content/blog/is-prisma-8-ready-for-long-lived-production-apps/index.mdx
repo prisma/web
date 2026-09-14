@@ -1,0 +1,112 @@
+---
+title: "Is Prisma 8 Ready for Long-Lived Production Apps?"
+slug: "is-prisma-8-ready-for-long-lived-production-apps"
+date: "2026-09-09"
+authors:
+  - "Will Madden"
+metaTitle: "Is Prisma 8 Ready for Long-Lived Production Apps?"
+metaDescription: "Prisma 8's lead developer answers three concerns from a Reddit thread: the new architecture, Prisma's commercial incentives, and whether the migration model hides your SQL."
+heroImagePath: "/is-prisma-8-ready-for-long-lived-production-apps/imgs/hero.png"
+heroImageAlt: "Will Madden, Prisma 8 lead developer, answers the Reddit question: would you start a new long-lived production project on Prisma 8 today?"
+metaImagePath: "/is-prisma-8-ready-for-long-lived-production-apps/imgs/meta.png"
+tags:
+  - "orm"
+series: prisma-8
+seriesIndex: 14
+---
+
+A recent [Reddit thread](https://www.reddit.com/r/node/comments/1w94upg/) raised questions about [Prisma 8](https://www.prisma.io/docs/orm), its new migration architecture, and whether Prisma's commercial products change the long-term incentives around the ORM. This post responds to those concerns for anyone evaluating Prisma 8 for a long-lived production system.
+
+Hi, I'm Will Madden, the lead developer on Prisma 8. The contract and migration design is mine, and I pitched the rewrite, so I can explain with certainty what we intended and hopefully address some of the concerns developers may have.
+
+The Reddit post raises three main concerns:
+
+1. Prisma 8 feels like a totally different product architecture
+2. The company's incentives now point toward [Prisma Postgres](https://www.prisma.io/docs/postgres) and [Prisma Compute](https://www.prisma.io/docs/compute)
+3. The migration model makes the underlying SQL feel further away
+
+I'll respond to each in that order.
+
+## Prisma 8 is a different product architecture
+
+Yes, it is! Prisma 8 is built to be the [first agent-native ORM](/the-next-evolution-of-prisma-orm).
+
+By agent-native, we mean designed for a world where developers work alongside agents to build software faster. We believe this is where software development is headed, so Prisma 8 gives both developers and agents an architecture they can understand, extend, and adapt.
+
+Prisma 7 was a single, monolithic Rust engine that knew everything about every database it supported. Unsurprisingly, that meant it became unmanageably complex to maintain, since every database operates differently. Because it was so complex, we couldn't keep up with bug reports or feature requests, and there was a list of features we wanted for years and couldn't build: some small, and some large, like row-level security.
+
+Worse, nobody but the core team could understand the codebase, which was split across two repositories and two languages, Rust and TypeScript. We became the bottleneck for all progress.
+
+The core principle of Prisma 8 is extensibility. Prisma 8 is a framework that knows nothing about any database by default. Postgres support is an extension. So is [MongoDB support](/mongodb-without-compromise). Both are written by us. IndexedDB support is a community extension written by WhyAsh that runs Prisma 8 entirely in the browser on IndexedDB, migrations included: [prisma-idb.dev](https://prisma-idb.dev/docs/prisma-next).
+
+The query builder and ORM client are also replaceable components. Developers can replace them or use an extension's query API instead. The contract source, PSL or TypeScript today, is a component. [CipherStash built searchable encryption](/search-encrypted-data-with-prisma-next-and-cipherstash) as an extension. Supabase support is an extension.
+
+That is why this rewrite happened and why it won't happen again: there is no monolith left to replace, and none of this would have been possible with the architecture in Prisma 7 and earlier. Future major versions will change APIs, but they won't change the paradigm.
+
+## Do Prisma's incentives now point toward "Prisma everything"?
+
+We want to make the Prisma experience, including both the ORM and our hosted products, the best experience available.
+
+The hosted products are where our salaries come from, and they fund our work on our open-source products. Prisma has always been a privately funded company. We've always been committed to open source, and that's not going to change.
+
+The ORM will stay Apache-2.0 and it will not go closed source.
+
+It will not lose features, and we will not limit it to make the paid products look better. The ORM itself contains no Prisma Cloud logic at all. The `prisma` CLI does ship tooling for the wider platform, and that stays, but using the hosted tools is optional.
+
+The larger point is the architecture described above. Every component of the Prisma ORM framework is replaceable and interchangeable. The core doesn't even know about Postgres, let alone Prisma Postgres. It is in no way coupled to our commercial offerings, and it will remain independent.
+
+In Prisma 7, the core team was the only group that could realistically make changes. In Prisma 8, developers can [add database support, middleware, an integration with a validation library, or a contract format](/prisma-next-call-for-extension-authors) without us. Our priorities will be biased toward our financial incentives, but that doesn't mean the community is stuck waiting for us.
+
+What we will do is strive to make Prisma ORM and Prisma Cloud the best possible combined experience by adding features to the database and hosting provider we control, which we couldn't do otherwise.
+
+For example, a migration preflight API could take a migration, run it against a fork of a production database with its data, and report the timing and errors from running that migration on real data before production is touched.
+
+Or query analytics could use the database's own internals to show which ORM queries are slow and why.
+
+We want the combined Prisma experience to be the best one available, but we will achieve that by improving the platform, never by limiting or disabling the ORM.
+
+## Developers still own the SQL and PostgreSQL underneath Prisma
+
+That hasn't changed. In fact, transparency is one of the [migration system's core design principles](/rethinking-database-migrations).
+
+Every migration directory contains an `ops.json` file. For Postgres, the operations in it are literal SQL:
+
+```json title="One operation from ops.json, trimmed to its execute step"
+{
+  "execute": [
+    { "sql": "CREATE TABLE IF NOT EXISTS public.\"feature_flag\" (\"key\" text NOT NULL PRIMARY KEY, \"enabled\" boolean NOT NULL)" }
+  ]
+}
+```
+
+These files are designed to be reviewed after they're generated. Developers who want to see the SQL on its own can use the [`migration show`](https://www.prisma.io/docs/cli/migration-show) CLI command.
+
+Editing SQL migrations in Prisma 7 and earlier was a pain and a common footgun, so we introduced [`migration.ts` files](/typescript-migrations-in-prisma-next) to make editing simpler and safer. Developers can extend the vocabulary of migration operations in TypeScript and share utilities or libraries of common operations beyond what we provide. This makes it safer for teams to write custom migrations when they're needed.
+
+The JSON structure, with its [pre-checks and post-checks](/stop-your-ai-agent-dropping-your-database), makes migration operations idempotent and ensures they have the intended effect when executed. The contract signature, its hash, is used to navigate migrations as a graph. This means two developers working on different topic branches can no longer end up with migrations on disk that are out of order.
+
+Because each migration is a list of operations rather than an opaque SQL script, squashing two migrations into one, or splitting one apart, becomes a mechanical transformation instead of a hand edit. Those commands [haven't shipped yet](https://www.prisma.io/docs/orm/migrations/the-migration-graph#release-candidate-limitations), but the format was designed for them, and none of it is possible with black-box SQL files.
+
+When a developer queries the state of migrations on disk or in a database, the framework understands the relationship between the migrations, their operations, and the database, and it can [present that relationship as a graph](/prisma-studio-migrations-view).
+
+This is a different design from the linear migration systems that have dominated the industry for the last two decades. We aimed to address the common pitfalls we experienced building web applications in teams with multiple developers working on separate topic branches.
+
+This matters more than ever because agent-assisted tools accelerate the pain points we felt in the past. If two developers working on separate topic branches can create conflicts today, imagine how often those conflicts will occur when each developer shepherds multiple agents, each working on its own topic branch.
+
+## Would I start a multi-year project on Prisma 8 today?
+
+For anyone wondering whether this architecture will change dramatically again a year from now, the answer is no. Its APIs will change with major versions, but not its paradigm.
+
+For anyone asking whether this migration system is the right choice for a professional team, I believe it's a better solution than any other design on the market.
+
+Prisma 8 is a release candidate today, and the final 8.0.0 release is four to eight weeks out. Until then, a release candidate can ship a breaking change, but each one comes with an upgrade recipe that a developer or coding agent can apply, and they're getting rarer with every release.
+
+The risk teams are taking today is gaps in the implementation. This is a bigger issue when porting a query from Prisma 7 to Prisma 8 and looking for its equivalent.
+
+Our own cloud platform API already runs on Prisma 8, so I can say from experience that it's worth it.
+
+For teams already using Prisma 7 on PostgreSQL, I recommend migrating incrementally. Unlike previous versions of Prisma, Prisma 8 and earlier versions can run in parallel against the same database. Queries or execution paths can be switched over one by one and checked to ensure they behave as expected. See the [PostgreSQL upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) for more details.
+
+Prisma 7 will receive bug fixes and security updates for the next 12 months, so teams that want to wait until they have more confidence can do that too.
+
+If you've had similar concerns, I hope this provides more context on the decisions behind Prisma 8 and addresses the questions raised in the original post and its comments. The Prisma team and I are happy to answer more questions in our [public community Discord](https://pris.ly/discord).

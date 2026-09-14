@@ -8,7 +8,13 @@ import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button
 import { ArrowRight } from "@/components/icons/forma";
 import { siteConfig } from "@/lib/config";
 import { getContentSlugs } from "@/lib/content";
-import { formatChangelogDate, getChangelogEntry, rewriteChangelogAssets } from "@/lib/changelog";
+import {
+  type ChangelogFrontmatter,
+  formatChangelogDate,
+  getChangelogEntry,
+  getChangelogNeighbours,
+  rewriteChangelogAssets,
+} from "@/lib/changelog";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -47,10 +53,40 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
+function NeighbourLink({
+  entry,
+  label,
+  align,
+}: {
+  entry: { slug: string; frontmatter: ChangelogFrontmatter };
+  label: string;
+  align: "start" | "end";
+}) {
+  return (
+    <Link
+      href={`/changelog/${entry.slug}`}
+      className={`group flex flex-col gap-1 rounded-[1rem] border border-black/[0.08] p-5 transition-colors hover:border-black/20 ${
+        align === "end" ? "text-right" : ""
+      }`}
+    >
+      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+        {align === "start" && <ArrowRight className="size-4 rotate-180" aria-hidden />}
+        {label}
+        {align === "end" && <ArrowRight className="size-4" aria-hidden />}
+      </span>
+      <span className="text-balance leading-snug transition-colors group-hover:text-prism-cyan-700">
+        {entry.frontmatter.headline ?? entry.frontmatter.title}
+      </span>
+    </Link>
+  );
+}
+
 export default async function ChangelogEntryPage({ params }: Props) {
   const { slug } = await params;
   const entry = getChangelogEntry(slug);
   if (!entry) notFound();
+
+  const { newer, older } = getChangelogNeighbours(slug);
 
   return (
     <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
@@ -80,6 +116,16 @@ export default async function ChangelogEntryPage({ params }: Props) {
             options={{ mdxOptions }}
           />
         </div>
+
+        {(newer || older) && (
+          <nav
+            aria-label="More changelog entries"
+            className="mt-16 grid gap-4 border-t border-black/[0.08] pt-10 sm:grid-cols-2"
+          >
+            {older ? <NeighbourLink entry={older} label="Older entry" align="start" /> : <div />}
+            {newer ? <NeighbourLink entry={newer} label="Newer entry" align="end" /> : null}
+          </nav>
+        )}
       </div>
     </article>
   );

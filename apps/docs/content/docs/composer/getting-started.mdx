@@ -43,31 +43,7 @@ npm install -D typescript @types/bun
 
 `"type": "module"` matters: Composer loads your entry file as an ES module, and without it every Composer command stops at `COMPOSE.ENTRY_UNLOADABLE` ("Cannot use import statement outside a module").
 
-Then pin `effect` in your `package.json` to the exact version your installed `@prisma/composer` requires. This works around an upstream bug in Composer's deploy engine, whose own version ranges float past the versions its code supports. Without the pin, a fresh install ends up with two conflicting copies of `effect`, and every Composer command refuses to run with `DEPS.EFFECT_VERSION_CONFLICT`, naming the version to pin.
-
-Read the required version from `dependencies.effect` in `node_modules/@prisma/composer/package.json` (for `@prisma/composer@0.13.0` it is `4.0.0-rc.111`), and pin it:
-
-```json title="package.json (npm)"
-{
-  "overrides": {
-    "effect": "4.0.0-rc.111"
-  }
-}
-```
-
-With pnpm, the same map goes under `"pnpm"` instead:
-
-```json title="package.json (pnpm)"
-{
-  "pnpm": {
-    "overrides": {
-      "effect": "4.0.0-rc.111"
-    }
-  }
-}
-```
-
-Run your install again after adding the block. (Yarn users: the equivalent field is `"resolutions"`. Bun reads the npm-style top-level `"overrides"`.) The pin is per-version: after upgrading `@prisma/composer`, re-read the package's `dependencies.effect` and update the override to match, or the next Composer command stops on the version conflict.
+You do not need to pin `effect` yourself. `@prisma/composer` and `@prisma/composer-prisma-cloud` pin every `effect`-family package their deploy engine needs, so a fresh install resolves a single copy. `DEPS.EFFECT_VERSION_CONFLICT` only appears when something in your dependency tree, your own `effect` pin or another dependency's, hoists a different `effect` where the deploy engine resolves it; see [When a deploy stops on an effect version conflict](/composer/deploying#when-a-deploy-stops-on-an-effect-version-conflict).
 
 :::note[Bun workspaces]
 
@@ -305,6 +281,8 @@ npx prisma@latest deploy module.ts
 
 (In CI, where the browser sign-in is not an option, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` from the [Prisma Console](https://console.prisma.io) instead; see [Deploying](/composer/deploying#credentials).)
 
+A new project needs a region, so give it one before the first deploy, in the deploy config or in the environment. The [`deploy` reference](/cli/deploy) shows both ways.
+
 The CLI creates a project named `my-app` in your workspace (a project this module deployed before is reused; one whose hosted state the CLI cannot verify stops the deploy with `HostedStateBootstrapError`, so pass `--name <unique-name>` in that case), provisions both services on Prisma Compute, points the gateway's `quotes` dependency at the deployed quotes service, and starts everything. The deploy finishes by printing what it made: your module names, the platform resource each became, and the public URLs. Open the gateway's URL and you get a quote.
 
 Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage:
@@ -318,7 +296,7 @@ Tearing a stage down is the `destroy` operation of the [control API](/cli/deploy
 ## Where to go next
 
 - [Apps and Modules](/composer/apps-and-modules): package a service and its database as a reusable Module.
-- [Databases](/composer/databases): add a Postgres, plain or typed by a Prisma 8 contract.
+- [Databases](/composer/databases): add a Postgres, plain or typed by a Prisma ORM contract.
 - [Building blocks](/composer/building-blocks): compose the ready-made cron, storage, and streams Modules.
 - [Testing](/composer/testing): unit tests with `mockService`, integration tests with `bootstrapService`.
 - [Porting an existing app](/composer/porting-an-app): keep your server code and declare the app around it.

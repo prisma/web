@@ -194,9 +194,9 @@ const prisma = new PrismaClient({ adapter })
 
 If you went through the previous steps, you can query your database as you're used to with Prisma Client. No other changes are needed.
 
-## Usage with Prisma Accelerate or Prisma Postgres
+## Usage with Prisma Postgres
 
-When using the Rust-free version of Prisma ORM with [Prisma Accelerate](/accelerate) or [Prisma Postgres](/postgres), you **should not** use driver adapters. Instead, you can directly instantiate Prisma Client with the appropriate extension.
+Use the Rust-free version of Prisma ORM with hosted [Prisma Postgres](/postgres) through the [Prisma Postgres serverless driver](/postgres/database/serverless-driver). This requires `@prisma/adapter-ppg` instead of the Accelerate extension.
 
 ### 1. Set `engineType` on the `generator` block
 
@@ -206,7 +206,7 @@ generator client {
   output          = "../generated/prisma"
   engineType      = "client" // enable Prisma ORM without Rust
 }
-````
+```
 
 ### 2. Re-generate Prisma Client
 
@@ -216,20 +216,36 @@ To make the configuration take effect, you need re-generate Prisma Client:
 npx prisma generate
 ```
 
-### 3. Instantiate Prisma Client with Accelerate
+### 3. Install and configure the Prisma Postgres adapter
 
-Import and instantiate Prisma Client with the Accelerate extension:
+Install the serverless driver adapter:
 
-```typescript
-import { PrismaClient } from "../generated/prisma/client";
-import { withAccelerate } from "@prisma/extension-accelerate";
+```npm title="Terminal"
+npm install @prisma/adapter-ppg @prisma/ppg
+```
 
-const prisma = new PrismaClient().$extends(withAccelerate());
+Import and instantiate Prisma Client with the adapter:
+
+```typescript title="src/lib/prisma.ts"
+import { PrismaPostgresAdapter } from "@prisma/adapter-ppg";
+import { PrismaClient } from "../../generated/prisma/client";
+
+const adapter = new PrismaPostgresAdapter({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+const prisma = new PrismaClient({ adapter });
 ```
 
 ### 4. Query your database
 
 If you went through the previous steps, you can query your database as you're used to with Prisma Client. No other changes are needed.
+
+:::warning[Existing Accelerate integrations]
+
+Hosted Accelerate connections will be retired on December 1, 2026. Existing Prisma Postgres applications using `prisma+postgres://accelerate.prisma-data.net` should follow [Connect to Prisma Postgres without Accelerate](/postgres/database/switch-from-accelerate). For other databases, follow [Keep your existing database](/accelerate/keep-your-database).
+
+:::
 
 ## Usage with older versions (Preview)
 

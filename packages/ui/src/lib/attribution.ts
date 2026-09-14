@@ -96,12 +96,9 @@ function omitUndefined(input: Record<string, string | boolean | undefined>) {
  * Returns `undefined` when neither touch was paid, so organic visitors never
  * get paid properties written to them.
  *
- * @param now ISO timestamp for the touch. Injected so callers can keep this
- *   deterministic in tests.
  */
 export function getPaidPersonProperties(
   attribution: UtmAttribution | undefined,
-  now: string,
 ): PaidPersonProperties | undefined {
   if (!attribution) {
     return undefined;
@@ -110,18 +107,15 @@ export function getPaidPersonProperties(
   const first = classifyPaidTouch(attribution.first);
   const last = classifyPaidTouch(attribution.last);
 
-  // When only the last touch was paid, it is also the earliest paid touch we
-  // know of — otherwise `first_paid_source` would be permanently empty, since
-  // `$set_once` cannot be filled in later.
+  // An organic first touch can precede the first paid visit.
   const firstPaid = first ?? last;
 
   if (!firstPaid) {
     return undefined;
   }
 
-  // Prefer the time the touch was captured. Falling back to `now` would
-  // restamp an old touch every time stored attribution is replayed.
-  const firstPaidAt = (first ? attribution.firstSeenAt : attribution.lastSeenAt) ?? now;
+  // Legacy storage without capture times must not invent a new paid visit.
+  const firstPaidAt = first ? attribution.firstSeenAt : attribution.lastSeenAt;
 
   const setOnce = omitUndefined({
     is_paid_acquired: true,
@@ -136,7 +130,7 @@ export function getPaidPersonProperties(
   // Only claim a recent paid touch when the last touch actually was one.
   const set = last
     ? (omitUndefined({
-        last_paid_at: attribution.lastSeenAt ?? now,
+        last_paid_at: attribution.lastSeenAt,
         last_paid_source: last.source,
         last_paid_campaign: last.campaign,
         last_paid_medium: last.medium,

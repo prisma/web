@@ -251,6 +251,58 @@ const securityHeaders = [
   },
 ];
 
+/**
+ * The marketing pages that also have a Markdown rendition. Mirrors
+ * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts and the matcher in
+ * src/proxy.ts; src/lib/agent-markdown.test.ts asserts the three agree.
+ */
+const agentMarkdownPaths = [
+  "/",
+  "/orm",
+  "/postgres",
+  "/compute",
+  "/pricing",
+  "/studio",
+  "/stack",
+  "/enterprise",
+  "/mcp",
+];
+
+/**
+ * Content-negotiation headers for the pages above.
+ *
+ * `Link` advertises the Markdown rendition to agents that read headers rather
+ * than guessing at a suffix, the same way apps/docs advertises
+ * `/docs/:path.md`. The homepage's rendition is `/index.md`, since `/.md` is
+ * not a URL anybody would type.
+ *
+ * `Vary: Accept` says the same URL has an HTML and a Markdown variant, so a
+ * shared cache must key them apart. Under `next start` it does not reach the
+ * client on these nine pages: Next writes its own RSC `Vary` onto an
+ * app-router response after both `headers()` and middleware headers have been
+ * merged, and neither survives it (measured; a middleware `append` was tried
+ * and dropped the same way, and apps/docs does not set it at all). It is
+ * declared here anyway because the Markdown responses carry `Vary: Accept`
+ * themselves, which is the direction that matters — a cache will not hand a
+ * stored Markdown response to a browser — and because this is the right place
+ * for it the moment Next stops overwriting it or Vercel's routing layer
+ * applies it after the origin responds.
+ */
+function agentMarkdownHeaders(path) {
+  const markdownPath = path === "/" ? "/index.md" : `${path}.md`;
+
+  return {
+    source: path,
+    headers: [
+      { key: "Vary", value: "Accept" },
+      {
+        key: "Link",
+        value: `<${markdownPath}>; rel="alternate"; type="text/markdown", </llms.txt>; rel="llms-txt"`,
+      },
+    ],
+  };
+}
+
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
@@ -406,7 +458,8 @@ const config = {
       {
         permanent: true,
         source: "/tutorials/postgres-configuring-user-authentication-db06",
-        destination: "https://www.prisma.io/dataguide/postgresql/configuring-user-authentication",
+        destination:
+          "/dataguide/postgresql/authentication-and-authorization/configuring-user-authentication",
       },
       {
         permanent: true,
@@ -437,9 +490,10 @@ const config = {
           "/blog/backend-prisma-typescript-orm-with-postgresql-rest-api-validation-dcba1ps7kip3",
       },
       {
-        permanent: false,
+        permanent: true,
         source: "/blog/prisma-the-complete-orm-inw24qjeawmb",
-        destination: "https://www.prisma.io/docs/orm/overview/introduction/why-prisma",
+        // The unversioned /docs/orm/overview/... path is redirected on to v6.
+        destination: "/docs/orm/v6/overview/introduction/why-prisma",
       },
       {
         permanent: true,
@@ -469,7 +523,7 @@ const config = {
       {
         permanent: true,
         source: "/with-graphql",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
@@ -479,12 +533,12 @@ const config = {
       {
         permanent: true,
         source: "/client/client-javascript",
-        destination: "/docs/reference/tools-and-interfaces/prisma-client/api",
+        destination: "/docs/orm/v7/reference/prisma-client-reference",
       },
       {
         permanent: true,
         source: "/client/client-typescript",
-        destination: "/docs/reference/tools-and-interfaces/prisma-client/api",
+        destination: "/docs/orm/v7/reference/prisma-client-reference",
       },
       {
         permanent: true,
@@ -494,27 +548,27 @@ const config = {
       {
         permanent: true,
         source: "/features/bindings",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
         source: "/features/data-modeling",
-        destination: "/docs/understand-prisma/data-modeling",
+        destination: "/docs/orm/v6/overview/introduction/data-modeling",
       },
       {
         permanent: true,
         source: "/features/databases",
-        destination: "/docs/more/supported-databases",
+        destination: "/docs/orm/v7/core-concepts/supported-databases",
       },
       {
         permanent: true,
         source: "/features/graphql-api",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
         source: "/features/query-engine",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/graphql",
+        destination: "/docs/orm/v6/overview/prisma-in-your-stack/graphql",
       },
       {
         permanent: true,
@@ -535,12 +589,12 @@ const config = {
       {
         permanent: true,
         source: "/blog/prisma-now-supports-postgres-aad74ba479cb",
-        destination: "https://www.prisma.io/docs/orm/overview/databases/postgresql",
+        destination: "/docs/orm/v7/core-concepts/supported-databases/postgresql",
       },
       {
         permanent: true,
         source: "/blog/introducing-prisma-cloud-a-graphql-database-platform-ed591baa8737",
-        destination: "https://www.prisma.io/cloud",
+        destination: "https://app.prisma.io",
       },
       {
         permanent: true,
@@ -565,19 +619,21 @@ const config = {
         destination: "/data-platform/:any*",
         permanent: true,
       },
+      // Point straight at the final 200 destination: /accelerate and /optimize
+      // are themselves redirected to / by vercel.json, and /pulse to /postgres.
       {
         source: "/data-platform/accelerate",
-        destination: "/accelerate",
+        destination: "/",
         permanent: true,
       },
       {
         source: "/data-platform/pulse",
-        destination: "/pulse",
+        destination: "/postgres",
         permanent: true,
       },
       {
         source: "/data-platform/optimize",
-        destination: "/optimize",
+        destination: "/",
         permanent: true,
       },
       {
@@ -587,7 +643,7 @@ const config = {
       },
       {
         source: "/optimise",
-        destination: "/optimize",
+        destination: "/",
         permanent: true,
       },
       {
@@ -607,7 +663,7 @@ const config = {
       },
       {
         source: "/jobs",
-        destination: "/careers",
+        destination: "/company/careers",
         permanent: true,
       },
       {
@@ -632,7 +688,8 @@ const config = {
       },
       {
         source: "/ambassador",
-        destination: "/partners",
+        // /partners is itself redirected to /programs/partners.
+        destination: "/programs/partners",
         permanent: true,
       },
       {
@@ -657,28 +714,26 @@ const config = {
       },
       {
         source: "/blog/prisma-studio-3rtf78dg99fe",
-        destination: "/docs/orm/tools/prisma-studio",
+        // /docs/orm/tools/prisma-studio is redirected on to the Studio docs.
+        destination: "/docs/studio/getting-started",
         permanent: true,
       },
       {
         source: "/blog/fullstack-remix-prisma-mongodb-1-7D0BfTXBmB6r",
-        destination: "/docs/guides/react-router-7",
+        destination: "/docs/guides/frameworks/react-router-7",
         permanent: true,
       },
       {
         source: "/blog/series/fullstack-nextjs-and-graphql-md1tczpfz1",
-        destination: "/docs/guides/nextjs",
+        destination: "/docs/guides/frameworks/nextjs",
         permanent: true,
       },
       {
         source: "/blog/performance-engineering-aeduv0rei0jk",
-        destination: "/blog/optimize-now-generally-available",
+        // /blog/optimize-now-generally-available is redirected to /blog by the
+        // blog zone, so go there directly.
+        destination: "/blog",
         permanent: true,
-      },
-      {
-        source: "/learn",
-        destination: "/docs/guides",
-        permanent: false,
       },
       {
         source: "/:path*", // Match all routes under playground.prisma.io
@@ -699,11 +754,6 @@ const config = {
       {
         permanent: true,
         source: "/blog/build-real-time-durable-workflows-with-pulse-and-inngest",
-        destination: "https://www.prisma.io/docs/postgres",
-      },
-      {
-        permanent: true,
-        source: "/blog/increased-security-static-ip-support-prisma-pulse",
         destination: "https://www.prisma.io/docs/postgres",
       },
       {
@@ -734,16 +784,6 @@ const config = {
       {
         permanent: false,
         source: "/affiliates",
-        destination: "/",
-      },
-      {
-        permanent: true,
-        source: "/react-server-components",
-        destination: "/react",
-      },
-      {
-        permanent: false,
-        source: "/partners/affiliates",
         destination: "/",
       },
     ];
@@ -854,6 +894,23 @@ const config = {
           missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
         },
       ],
+      afterFiles: [
+        // Markdown renditions of the marketing pages: /orm.md, /pricing.md,
+        // /index.md for the homepage, and so on, all handled by
+        // src/app/llms.mdx/[[...slug]]/route.ts.
+        //
+        // This lives in afterFiles, not beforeFiles, for two reasons. Filesystem
+        // routes are matched first, so the site's hand-written Markdown
+        // responders (/changelog.md, /skill.md, /.well-known/agent-skills/
+        // prisma/SKILL.md) keep serving themselves instead of being swallowed
+        // by the catch-all. And the /docs/:any* and /blog/:any* zone forwards
+        // in beforeFiles above have already claimed /docs/*.md and /blog/*.md,
+        // so those keep going to the zones that render them.
+        {
+          source: "/:path*.md",
+          destination: "/llms.mdx/:path*",
+        },
+      ],
       fallback: [
         // Files
         {
@@ -885,6 +942,9 @@ const config = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      // Extends, rather than replaces, the rule above: Next.js applies every
+      // matching headers() entry.
+      ...agentMarkdownPaths.map(agentMarkdownHeaders),
     ];
   },
 };

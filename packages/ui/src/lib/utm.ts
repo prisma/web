@@ -120,21 +120,14 @@ export function mergeUtmAttribution(
     return validExisting;
   }
 
-  const isFirst = !validExisting;
-
+  const firstSeenAt = validExisting ? validExisting.firstSeenAt : now;
+  const lastSeenAt = now ?? validExisting?.lastSeenAt;
   return {
     first: validExisting?.first ?? validLatest,
     last: validLatest,
-    // Recorded at capture time so replaying stored attribution on a later
-    // page load cannot restamp the touch as if it just happened.
-    ...(now && {
-      firstSeenAt: isFirst ? now : (validExisting?.firstSeenAt ?? now),
-      lastSeenAt: now,
-    }),
-    ...(!now && {
-      firstSeenAt: validExisting?.firstSeenAt,
-      lastSeenAt: validExisting?.lastSeenAt,
-    }),
+    // Replaying legacy storage must not invent a first-touch timestamp.
+    ...(firstSeenAt && { firstSeenAt }),
+    ...(lastSeenAt && { lastSeenAt }),
   };
 }
 
@@ -181,6 +174,12 @@ export function syncUtmAttribution(
 
   // Carry click IDs across to the console so a signup there can be tied back to
   // the ad click that started the visit.
+  for (const key of Array.from(url.searchParams.keys())) {
+    if (isClickIdKey(key) && !(key in attribution.last)) {
+      url.searchParams.delete(key);
+      updated = true;
+    }
+  }
   for (const [key, value] of Object.entries(attribution.last)) {
     if (isClickIdKey(key) && url.searchParams.get(key) !== value) {
       url.searchParams.set(key, value);
@@ -189,7 +188,12 @@ export function syncUtmAttribution(
   }
 
   for (const key of Array.from(url.searchParams.keys())) {
-    if ((key.startsWith("first_utm_") || key === "first_ref") && !(key in firstTouchParams)) {
+    if (
+      (key.startsWith("first_utm_") ||
+        key === "first_ref" ||
+        (key.startsWith("first_") && isClickIdKey(key.slice(6)))) &&
+      !(key in firstTouchParams)
+    ) {
       url.searchParams.delete(key);
       updated = true;
     }

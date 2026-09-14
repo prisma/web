@@ -24,6 +24,17 @@ export function getChangelogEntries() {
   );
 }
 
+// `getChangelogEntries()` is sorted newest first, so the entry before this one
+// in the list is the newer neighbour and the entry after it is the older one.
+// Entry pages link both ways, which gives every entry inbound internal links
+// from its neighbours on top of the one from the index.
+export function getChangelogNeighbours(slug: string) {
+  const entries = getChangelogEntries();
+  const index = entries.findIndex((entry) => entry.slug === slug);
+  if (index === -1) return { newer: undefined, older: undefined };
+  return { newer: entries[index - 1], older: entries[index + 1] };
+}
+
 export function getChangelogEntry(slug: string) {
   return getContentBySlug<ChangelogFrontmatter>("changelog", slug);
 }

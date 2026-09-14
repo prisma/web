@@ -40,8 +40,11 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
 // device storage, and the visitor has not made a decision yet; cookieless
 // capture already covers them.
 onAnalyticsConsentChange((status) => {
-  if (status === "granted") posthog.opt_in_capturing();
-  else if (status === "denied") posthog.opt_out_capturing();
+  if (status === "granted") {
+    posthog.opt_in_capturing();
+    const stored = readStoredUtmAttribution(UTM_ATTRIBUTION_STORAGE_KEY);
+    if (stored) recordPaidTouch(stored);
+  } else if (status === "denied") posthog.opt_out_capturing();
   // Both transitions reset the SDK state that held the registered
   // super-properties, so re-register or later events lose site_name.
   if (status !== "pending") posthog.register(SUPER_PROPERTIES);
@@ -54,7 +57,8 @@ onAnalyticsConsentChange((status) => {
 // console.prisma.io (same `.prisma.io` cookie domain) onto every later event.
 // No-ops while opted out, so this stays behind the same consent gate.
 function recordPaidTouch(attribution: UtmAttribution) {
-  const properties = getPaidPersonProperties(attribution, new Date().toISOString());
+  if (!hasAnalyticsConsent()) return;
+  const properties = getPaidPersonProperties(attribution);
   if (!properties) return;
 
   posthog.setPersonProperties(properties.set, properties.setOnce);

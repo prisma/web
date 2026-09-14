@@ -1,6 +1,5 @@
-import React from "react";
 import { formatTag, formatDate } from "@/lib/format";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { blog } from "@/lib/source";
@@ -22,6 +21,8 @@ import { BackToBlogLink } from "@/components/BackToBlogLink";
 import { getSeriesContext } from "@/lib/series";
 import { getRelatedPosts } from "@/lib/related-posts";
 import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
+import { findCanonicalSlug } from "@/lib/slug-fallback";
+import { containsLink, extractText, headingAnchorId } from "@/lib/heading-anchor";
 import Link from "next/link";
 import { Text } from "lucide-react";
 import type { Metadata } from "next";
@@ -164,24 +165,44 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
   return jsonLd;
 }
 
-function extractText(node: React.ReactNode): string {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return String(node);
-  if (Array.isArray(node)) return node.map(extractText).join("");
-  if (React.isValidElement(node))
-    return extractText((node.props as { children?: React.ReactNode }).children);
-  return "";
+/**
+ * Resolves a requested slug to a post, recovering mis-cased legacy links.
+ *
+ * A miss is not immediately a 404: if a post exists whose slug differs only in
+ * case, we 308 once to the canonical URL. `permanentRedirect` takes a
+ * basePath-free path — Next.js prepends `basePath` itself when it writes the
+ * `Location` header (see `addPathPrefix` in
+ * next/dist/server/app-render/app-render.js) — so `/${slug}` becomes
+ * `/blog/${slug}` on the wire. Passing `withBlogBasePath(...)` here would
+ * double the prefix.
+ *
+ * Called from both the page and `generateMetadata`, so the redirect wins over
+ * metadata generation whichever runs first.
+ */
+function getPageOrRedirect(slug: string) {
+  const page = blog.getPage([slug]);
+  if (page) return page;
+
+  const canonicalSlug = findCanonicalSlug(
+    slug,
+    blog.getPages().map((candidate) => candidate.slugs[0]),
+  );
+  if (canonicalSlug) permanentRedirect(`/${canonicalSlug}`);
+
+  notFound();
 }
 
 export default async function Page(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
-  const page = blog.getPage([params.slug]);
+  const page = getPageOrRedirect(params.slug);
 
-  if (!page) notFound();
   const MDX = page.data.body;
   const blogPostingJsonLd = getBlogPostingJsonLd(page);
   const seriesContext = getSeriesContext(page);
-  const relatedPosts = seriesContext ? [] : getRelatedPosts(page, 2);
+  // Series posts get recommendations too. `getRelatedPosts` excludes the
+  // current post's own series, so "Keep reading" points outside it and the
+  // series' own neighbours stay the job of `SeriesNavigation` below.
+  const relatedPosts = getRelatedPosts(page, 2);
 
   return (
     <div className="z-1 mx-auto w-full max-w-257 gap-12 px-4 pt-10 pb-8 md:grid md:grid-cols-[1fr_180px] md:pt-20">
@@ -220,23 +241,27 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
               </>
             ) : null}
           </div>
-          {page.data.tags && page.data.tags.length > 0 && (
-            // Same ghost pill as the home page's category chips, so a tag reads
-            // identically wherever it appears. Hover is the docs shell's accent
-            // wash (`fd-accent` = cyan-100 light / cyan-950 dark) rather than a
-            // grey tint, so pointing at a pill answers in the brand hue.
-            <div className="filter-badge flex flex-wrap gap-2">
-              {page.data?.tags?.map((tag) => (
-                <Link
-                  href={{ pathname: "/", query: { tag } }}
-                  key={tag}
-                  className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
-                >
-                  {formatTag(tag)}
-                </Link>
-              ))}
-            </div>
-          )}
+          {page.data.tags &&
+            page.data.tags.length > 0 && (
+              // Same ghost pill as the home page's category chips, so a tag reads
+              // identically wherever it appears. Hover is the docs shell's accent
+              // wash (`fd-accent` = cyan-100 light / cyan-950 dark) rather than a
+              // grey tint, so pointing at a pill answers in the brand hue.
+              <div className="filter-badge flex flex-wrap gap-2">
+                {page.data?.tags?.map((tag) => (
+                  <Link
+                    // next/link prepends the /blog basePath itself, so this
+                    // must stay basePath-free. The `?tag=` query it used to
+                    // point at is a redirect now.
+                    href={`/tag/${tag}`}
+                    key={tag}
+                    className="inline-flex items-center rounded-circle border border-stroke-neutral px-3 py-1 text-xs font-medium capitalize text-foreground-neutral-weak transition-colors duration-300 hover:border-stroke-ppg-weak hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none"
+                  >
+                    {formatTag(tag)}
+                  </Link>
+                ))}
+              </div>
+            )}
           {seriesContext ? <SeriesMarker series={seriesContext} /> : null}
         </header>
 
@@ -251,24 +276,37 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
                     typeof (props as { id?: unknown }).id === "string"
                       ? ((props as { id?: string }).id ?? "")
                       : "";
-                  const final_id =
-                    providedId ||
-                    extractText(props.children)
-                      .trim()
-                      .toLowerCase()
-                      .replace(/\s+/g, "-")
-                      .replace(/[^a-z0-9-]/g, "")
-                      .replace(/-+/g, "-")
-                      .replace(/^-|-$/g, "");
+                  const final_id = providedId || headingAnchorId(props.children);
+                  // A heading whose MDX contains a link cannot also be wrapped
+                  // in the permalink anchor — that nests <a> inside <a>. There
+                  // the link icon becomes the permalink instead.
+                  const hasLink = containsLink(props.children);
+                  const icon = (
+                    <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
+                  );
                   return (
                     <h2
-                      className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&>i]:opacity-100"
+                      className="type-title-2xl flex scroll-m-28 flex-row items-center gap-2 hover:[&_i]:opacity-100"
                       id={final_id}
                     >
-                      <a data-card href={`#${final_id}`}>
-                        {props.children}
-                      </a>
-                      <i className="fa-regular text-lg! fa-link shrink-0 text-fd-muted-foreground opacity-0 transition-opacity" />
+                      {hasLink ? (
+                        props.children
+                      ) : (
+                        <a data-card href={`#${final_id}`}>
+                          {props.children}
+                        </a>
+                      )}
+                      {hasLink ? (
+                        <a
+                          data-card
+                          href={`#${final_id}`}
+                          aria-label={`Permalink to ${extractText(props.children)}`}
+                        >
+                          {icon}
+                        </a>
+                      ) : (
+                        icon
+                      )}
                     </h2>
                   );
                 },
@@ -286,9 +324,11 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             <SeriesBanner series={seriesContext} />
             <SeriesNavigation series={seriesContext} />
           </>
-        ) : (
-          <KeepReading posts={relatedPosts} />
-        )}
+        ) : null}
+        {/* `SeriesNavigation` closes with `my-12` and `KeepReading` opens with
+            `my-16`; adjacent margins collapse, so the two blocks stack with the
+            larger gap and neither needed a style change. */}
+        <KeepReading posts={relatedPosts} />
 
         {/* Conversion CTA */}
         <BlogCTA />
@@ -323,8 +363,7 @@ export async function generateMetadata({
   params: Promise<PageParams>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const page = blog.getPage([slug]);
-  if (!page) notFound();
+  const page = getPageOrRedirect(slug);
 
   const title = page.data.metaTitle ?? page.data.title;
   const description = page.data.metaDescription ?? page.data.description;

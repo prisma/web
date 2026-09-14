@@ -30,13 +30,34 @@ interface UtmPersistenceProps {
   storageKey: string;
 }
 
-function getActiveAttribution(storageKey: string) {
+export function getActiveAttribution(storageKey: string) {
   const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search), {
     // Click IDs are advertising identifiers. Without analytics consent nothing
     // downstream records them, so there is no reason to hold one.
     includeClickIds: hasAnalyticsConsent(),
   });
-  const stored = readStoredUtmAttribution(storageKey);
+  let stored = readStoredUtmAttribution(storageKey);
+  if (stored && !hasAnalyticsConsent()) {
+    const previous = stored;
+    stored = mergeUtmAttribution(
+      undefined,
+      getUtmParams(new URLSearchParams(stored.first), { includeClickIds: false }),
+      stored.firstSeenAt,
+    );
+    stored = mergeUtmAttribution(
+      stored,
+      getUtmParams(new URLSearchParams(previous.last), { includeClickIds: false }),
+      previous.lastSeenAt,
+    );
+    if (stored) writeStoredUtmAttribution(storageKey, stored);
+    else {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        /* Storage can be unavailable. */
+      }
+    }
+  }
   const attribution = mergeUtmAttribution(stored, currentUtmParams, new Date().toISOString());
 
   if (!attribution || Object.keys(currentUtmParams).length === 0) {
@@ -72,6 +93,13 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
 
   useEffect(() => {
     getActiveAttribution(storageKey);
+    const refresh = () => getActiveAttribution(storageKey);
+    document.addEventListener("cookieyes_consent_update", refresh);
+    document.addEventListener("cookieyes_banner_load", refresh);
+    return () => {
+      document.removeEventListener("cookieyes_consent_update", refresh);
+      document.removeEventListener("cookieyes_banner_load", refresh);
+    };
   }, [pathname, storageKey]);
 
   useEffect(() => {

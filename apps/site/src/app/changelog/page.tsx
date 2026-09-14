@@ -73,11 +73,16 @@ export default function ChangelogPage() {
                       {preview}
                     </p>
                   )}
+                  {/* "Read more" on its own is a generic anchor: the visible
+                      label stays, the hidden half names the entry it opens. */}
                   <Link
                     href={`/changelog/${entry.slug}`}
                     className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground"
                   >
                     Read more
+                    <span className="sr-only">
+                      : {entry.frontmatter.headline ?? entry.frontmatter.title}
+                    </span>
                     <ArrowRight
                       className="size-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transition-none"
                       aria-hidden

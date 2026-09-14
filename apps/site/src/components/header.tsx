@@ -1,5 +1,7 @@
 "use client";
 
+import { UnifiedSearchTrigger } from "@prisma-docs/ui/components/unified-search";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, Menu } from "@/components/icons/forma";
@@ -117,6 +119,7 @@ export function Header() {
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
+          <UnifiedSearchTrigger />
           <Button variant="ghost" asChild className="spectrum-ink-text">
             <a
               href="https://console.prisma.io/login"
@@ -149,75 +152,78 @@ export function Header() {
           </Button>
         </div>
 
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[300px]" aria-describedby={undefined}>
-            <SheetTitle className="sr-only">Menu</SheetTitle>
-            <nav className="mt-8 flex flex-col gap-4 px-5 pb-6 text-left">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Platform
-              </p>
-              {[...siteConfig.platform, siteConfig.stack].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-lg font-medium"
-                  onClick={() => setOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <div className="border-t pt-4 flex flex-col gap-4">
-                {siteConfig.nav.map((item) => (
-                  <SiteLink
+        <div className="flex items-center gap-2 md:hidden">
+          <UnifiedSearchTrigger />
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px]" aria-describedby={undefined}>
+              <SheetTitle className="sr-only">Menu</SheetTitle>
+              <nav className="mt-8 flex flex-col gap-4 px-5 pb-6 text-left">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Platform
+                </p>
+                {[...siteConfig.platform, siteConfig.stack].map((item) => (
+                  <Link
                     key={item.href}
                     href={item.href}
                     className="text-lg font-medium"
                     onClick={() => setOpen(false)}
                   >
                     {item.label}
-                  </SiteLink>
+                  </Link>
                 ))}
-              </div>
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
-                <Button variant="outline" asChild>
-                  <a
-                    href="https://console.prisma.io/login"
-                    onClick={() =>
-                      trackCTA({
-                        cta_text: "Log in",
-                        cta_location: "navbar",
-                        cta_destination: "https://console.prisma.io/login",
-                        section: "website",
-                      })
-                    }
-                  >
-                    Log in
-                  </a>
-                </Button>
-                <Button asChild>
-                  <a
-                    href="https://console.prisma.io/sign-up"
-                    onClick={() =>
-                      trackCTA({
-                        cta_text: "Get Started",
-                        cta_location: "navbar",
-                        cta_destination: "https://console.prisma.io/sign-up",
-                        section: "website",
-                      })
-                    }
-                  >
-                    Get Started
-                  </a>
-                </Button>
-              </div>
-            </nav>
-          </SheetContent>
-        </Sheet>
+                <div className="border-t pt-4 flex flex-col gap-4">
+                  {siteConfig.nav.map((item) => (
+                    <SiteLink
+                      key={item.href}
+                      href={item.href}
+                      className="text-lg font-medium"
+                      onClick={() => setOpen(false)}
+                    >
+                      {item.label}
+                    </SiteLink>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+                  <Button variant="outline" asChild>
+                    <a
+                      href="https://console.prisma.io/login"
+                      onClick={() =>
+                        trackCTA({
+                          cta_text: "Log in",
+                          cta_location: "navbar",
+                          cta_destination: "https://console.prisma.io/login",
+                          section: "website",
+                        })
+                      }
+                    >
+                      Log in
+                    </a>
+                  </Button>
+                  <Button asChild>
+                    <a
+                      href="https://console.prisma.io/sign-up"
+                      onClick={() =>
+                        trackCTA({
+                          cta_text: "Get Started",
+                          cta_location: "navbar",
+                          cta_destination: "https://console.prisma.io/sign-up",
+                          section: "website",
+                        })
+                      }
+                    >
+                      Get Started
+                    </a>
+                  </Button>
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

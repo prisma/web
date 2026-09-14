@@ -12,8 +12,9 @@ import { ProductPlatform } from "@/components/product/product-platform";
 import { ProductProblem } from "@/components/product/product-problem";
 
 export const metadata = createPageMetadata({
-  title: "Prisma ORM",
-  description: "Give your agent database access it can't get wrong.",
+  title: "Prisma ORM | Type-Safe ORM for TypeScript and Node.js",
+  description:
+    "Prisma ORM is a type-safe ORM for TypeScript and Node.js. Model your data, run migrations, and query your database, with access your agent can't get wrong.",
   path: "/orm",
   ogKicker: "Prisma ORM",
   ogAccent: "cyan",

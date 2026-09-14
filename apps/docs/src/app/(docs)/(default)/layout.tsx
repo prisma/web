@@ -4,25 +4,12 @@ import { authLinks, baseOptions, links } from "@/lib/layout.shared";
 import type { LinkItemType } from "@/components/layout/link-item";
 import { DocsLayout } from "@/components/layout/notebook";
 import { StatusIndicator } from "@/components/status-indicator";
-import { SidebarBannerCarousel, type BannerSlide } from "@/components/sidebar-banner";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { getPageBadges } from "@/lib/page-badges";
 import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-provider";
 import { getOrmVersions } from "@/lib/version";
+import { getClientPageTree } from "@/lib/client-page-tree";
 import { VersionSwitcher } from "@/components/version-switcher";
-
-// Sidebar announcement slides — set to [] to hide the banner
-const SIDEBAR_SLIDES: BannerSlide[] = [
-  {
-    title: "Building the Stack for the Next Million Products",
-    description:
-      "Prisma is building a software factory: ORM, Postgres, and Compute connected into one loop for builders and agents.",
-    href: "https://www.prisma.io/blog/building-the-stack-for-the-next-million-products?utm_source=docs&utm_medium=sidebar-banner&utm_campaign=prisma-rebrand-2026",
-    gradient: "ppg" as const,
-    badge: "New",
-    cta: "Read the post",
-  },
-];
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const { nav, ...base } = baseOptions();
@@ -30,6 +17,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const navbarLinks: LinkItemType[] = [...links, ...authLinks];
 
   const badges = Object.fromEntries(getPageBadges());
+  // Version list and available pathnames are derived here, on the server, and
+  // cross the boundary as two small arrays. Only the trimmed tree goes over.
   const ormVersions = getOrmVersions(source.pageTree);
   const pageUrls = source.getPages().map((page) => page.url);
 
@@ -45,12 +34,11 @@ export default async function Layout({ children }: { children: React.ReactNode }
           components: { Item: SidebarBadgeItem },
           footer: ({ className, ...props }: ComponentProps<"div">) => (
             <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>
-              <SidebarBannerCarousel slides={SIDEBAR_SLIDES} />
               <StatusIndicator />
             </div>
           ),
         }}
-        tree={source.pageTree}
+        tree={getClientPageTree(source.pageTree)}
       >
         {children}
       </DocsLayout>

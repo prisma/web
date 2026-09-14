@@ -1,4 +1,5 @@
 import { ArrowRight } from "@/components/icons/forma";
+import { MANUAL_CONFIG, TALLY_HREF } from "../mcp-content";
 import { AgentCard } from "./agent-card";
 import { InkCode } from "./ink-code";
 
@@ -9,20 +10,6 @@ export type McpAgent = {
   href?: string;
   copyText?: string;
 };
-
-const TALLY_HREF = "https://tally.so/r/wA1R1N";
-
-const MANUAL_CONFIG = JSON.stringify(
-  {
-    mcpServers: {
-      Prisma: {
-        url: "https://mcp.prisma.io/mcp",
-      },
-    },
-  },
-  null,
-  2,
-);
 
 export function McpAgentsSection({ agents }: { agents: readonly McpAgent[] }) {
   return (

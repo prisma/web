@@ -261,13 +261,12 @@ const config = {
         destination: "/series/prisma-8",
         permanent: true,
       },
-      // Legacy slug suffixes are mixed case; lowercased copies of this one
-      // still arrive from old links and search results.
-      {
-        source: "/nestjs-prisma-authentication-7d056s1s0k3l",
-        destination: "/nestjs-prisma-authentication-7D056s1s0k3l",
-        permanent: true,
-      },
+      // Mis-cased legacy slugs (e.g. the all-lowercase copy of
+      // /nestjs-prisma-authentication-7D056s1s0k3l) are NOT handled here.
+      // Next.js matches redirect `source` case-insensitively, so a rule whose
+      // source and destination differ only in case matches its own destination
+      // and 308-redirects forever. The case-insensitive fallback lives in
+      // src/app/(blog)/[slug]/page.tsx instead.
       {
         source: "/xeito-prisma-customer-story",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
@@ -278,9 +277,43 @@ const config = {
         destination: "/series/agentic-engineering",
         permanent: true,
       },
+      // Legacy query-string listings. `/blog?page=2` and `/blog?tag=orm` were
+      // the only way to reach a page of the archive before it had real URLs;
+      // they are now static routes. `has` matches the query string, and the
+      // named groups are substituted into the destination.
+      //
+      // Order matters: Next.js applies the first rule that matches, and a rule
+      // listing only `tag` also matches a URL that carries `page`, so the
+      // combined forms come first. `?page=1` is deliberately not matched: the
+      // destination would be this very URL (Next.js forwards the source's query
+      // string to a redirect destination), which is a loop. It renders page 1
+      // and canonicalises to /blog, which is what it already did.
+      {
+        source: "/",
+        has: [
+          { type: "query", key: "tag", value: "(?<tag>[a-z0-9-]+)" },
+          { type: "query", key: "page", value: "(?<n>[2-9]|[1-9][0-9]+)" },
+        ],
+        destination: "/tag/:tag/page/:n",
+        permanent: true,
+      },
+      {
+        source: "/",
+        has: [{ type: "query", key: "tag", value: "(?<tag>[a-z0-9-]+)" }],
+        destination: "/tag/:tag",
+        permanent: true,
+      },
+      {
+        source: "/",
+        has: [{ type: "query", key: "page", value: "(?<n>[2-9]|[1-9][0-9]+)" }],
+        destination: "/page/:n",
+        permanent: true,
+      },
+      // The bare tag slugs (/blog/orm) used to chain through the query form:
+      // /orm -> /?tag=orm -> (now) /tag/orm. They point at the final URL.
       ...tagSlugs.map((tag) => ({
         source: `/${tag}`,
-        destination: `/?tag=${tag}`,
+        destination: `/tag/${tag}`,
         permanent: true,
       })),
     ];

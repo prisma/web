@@ -7,6 +7,7 @@ import { z } from "zod";
 import convert from "npm-to-yarn";
 import remarkConsoleUtm from "@/lib/remark-console-utm";
 import { BADGE_TYPES } from "@/lib/badge-types";
+import { rehypeCodeOptions } from "@prisma-docs/ui/mdx/rehype-code-options";
 
 // npm-to-yarn only converts the last line of multi-line strings,
 // so we split, convert each line, and rejoin.
@@ -53,6 +54,10 @@ export const docs = defineDocs({
       url: z.string(),
       metaTitle: z.string(),
       metaDescription: z.string(),
+      // Docs-relative URL of the page this one consolidates into, e.g.
+      // `/orm/v7/more/troubleshooting/nuxt`. Set only where two docs URLs are
+      // materially the same document; pages are self-canonical otherwise.
+      canonical: z.string().optional(),
       aiPrompt: z.string().optional(),
       noindex: z.boolean().optional(),
       // Visually hides the docs sidebar on landing pages; the pages stay in
@@ -71,6 +76,8 @@ export const docs = defineDocs({
 export default defineConfig({
   plugins: [lastModified()],
   mdxOptions: {
+    // Class-based Shiki token colours instead of a style attribute per token.
+    rehypeCodeOptions,
     remarkPlugins: [
       remarkDirective,
       [

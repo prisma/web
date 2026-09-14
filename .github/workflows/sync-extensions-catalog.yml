@@ -1,0 +1,67 @@
+name: Sync Extensions Catalog
+
+# The extension directory registry (packages/ui/src/data/extensions/*.json)
+# feeds both prisma.io/extensions and the catalog tables in the Prisma 8 docs.
+# Whenever the registry changes on any branch, including the branches the
+# submission form at prisma.io/extensions/submit opens pull requests from,
+# regenerate the docs tables and commit them back so the pull request stays
+# self-contained.
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "packages/ui/src/data/extensions/**"
+      - "apps/docs/scripts/generate-extensions-catalog.mjs"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-extensions-catalog-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Regenerate docs catalog tables
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Regenerate catalog tables
+        working-directory: apps/docs
+        run: node ./scripts/generate-extensions-catalog.mjs
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -z "$(git status --porcelain -- apps/docs/content/docs/orm)" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Catalog tables already up to date"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git status --short -- apps/docs/content/docs/orm
+          fi
+
+      - name: Commit and push
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN_DOCS_COMMIT }}
+          TARGET_REPO: ${{ github.repository }}
+          TARGET_REF: ${{ github.ref_name }}
+        run: |
+          git config user.email "prismabots@gmail.com"
+          git config user.name "Prismo"
+          git add apps/docs/content/docs/orm
+          git commit -m "chore(docs): sync Prisma 8 extensions catalog"
+          git push "https://x-access-token:${BOT_TOKEN}@github.com/${TARGET_REPO}.git" "HEAD:${TARGET_REF}"

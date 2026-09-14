@@ -14,131 +14,116 @@ With Prisma Postgres, a hosted version of Prisma Studio is available in your pro
 
 ![View of Prisma Studio open in the console.](/img/ppg-studio.png)
 
-You can also run Prisma Studio locally by running:
+You can also run Prisma Studio locally. Studio ships with the Prisma ORM 7 CLI and works with Prisma ORM 7 and Prisma ORM 8 databases alike. Point it at the **direct** connection string of your database:
 
 ```npm
-npx prisma studio
+npx prisma@7.10.0 studio --url="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
 This should start a live server in `http://localhost:5555` where you can visit and interact with your database.
 
-If your database is managed with [Prisma 8](/orm), Studio also shows a **Migrations** view alongside your tables, with a visual diff of what each applied migration changed. See [Studio with Prisma 8](/studio/prisma-next).
+If your database is managed with [Prisma ORM](/orm), Studio also shows a **Migrations** view alongside your tables, with a visual diff of what each applied migration changed. See [Studio with Prisma ORM](/studio/prisma-next).
 
 ## Connecting to Prisma Postgres instance with 3rd party database editors
 
-You can connect to your Prisma Postgres instance using third party database editors like pgAdmin, TablePlus, Postico etc using [`@prisma/ppg-tunnel` package](https://www.npmjs.com/package/@prisma/ppg-tunnel). See the example below to connect using TablePlus.
+You can connect to your Prisma Postgres instance using third party database editors like pgAdmin, TablePlus, DataGrip, DBeaver or Postico with the direct connection string of your database. See the examples below.
 
-### 1. Create a TCP tunnel to access Prisma Postgres directly
+### 1. Get your direct connection string
 
-If you already have a `.env` file in your current directory with `DATABASE_URL` set, the tunnel CLI will automatically pick it up, no need to manually export it. However, if you haven't set up a `.env` file, you'll need to set the `DATABASE_URL` environment variable explicitly.
+In the [Prisma Console](https://console.prisma.io/), select your database, click **Connect to your database** and generate a connection string. Copy the **direct** value, which looks like this:
 
-In your terminal, to set the environment variable `DATABASE_URL` referring to your Prisma Postgres instance which you want to connect to (be sure to replace the `API_KEY` placeholder with the connection string value for your Prisma Postgres instance):
-
-```bash tab="macOS"
-export DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=API_KEY"
+```bash
+postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require
 ```
 
-```bash tab="Linux"
-export DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=API_KEY"
-```
+Database editors typically ask for the individual parts of that connection string:
 
-```cmd tab="Windows"
-set "DATABASE_URL=prisma+postgres://accelerate.prisma-data.net/?api_key=API_KEY"
-```
+| Field        | Value                                            |
+| ------------ | ------------------------------------------------ |
+| **Host**     | `db.prisma.io`                                   |
+| **Port**     | `5432`                                           |
+| **Database** | `postgres`                                       |
+| **User**     | The `USER` part of the connection string         |
+| **Password** | The `PASSWORD` part of the connection string     |
+| **SSL mode** | `require`                                        |
 
-:::note
-If you explicitly set `DATABASE_URL` in your terminal, that value will take precedence over the one in your `.env` file.
+Use the direct connection string for database editors, migrations and other administrative tooling. Application traffic should use the pooled connection string instead. Learn more in [Connecting to your database](/postgres/database/connecting-to-your-database).
+
+:::warning[Accelerate retirement]
+
+Hosted Prisma Postgres `prisma+postgres://accelerate.prisma-data.net` connections will be retired on December 1, 2026. Connecting a database editor through the `@prisma/ppg-tunnel` package with such a URL is a legacy path: generate a direct connection string in the Prisma Console and connect your editor with it instead. If your application still uses a hosted Accelerate connection, [switch to pooled TCP or the Prisma Postgres serverless driver](/postgres/database/switch-from-accelerate).
+
 :::
-
-Run the following command to connect to your Prisma Postgres instance via `@prisma/ppg-tunnel` package:
-
-```npm
-npx @prisma/ppg-tunnel --host 127.0.0.1 --port 52604
-```
-
-```text wrap
-Prisma Postgres auth proxy listening on 127.0.0.1:52604 🚀
-
-Your connection is authenticated using your Prisma Postgres API key.
-...
-
-==============================
-hostname:  127.0.0.1
-port:      52604
-username:  <anything>
-password:  <none>
-==============================
-```
-
-Copy the **`port`** from the output above, you will need it in the next step.
-
-Keep this tunnel process running while you are using the database editor to maintain the connection.
 
 ### 2a. Connect to Prisma Postgres using TablePlus
 
-Based on the database editor you are using, you can connect to your Prisma Postgres instance using the details you obtained from the output of the `@prisma/ppg-tunnel` package. To add the connection string in TablePlus:
+To add the connection in TablePlus:
 
 1. Open TablePlus and click on the **+** icon to add a new connection.
 2. Select **PostgreSQL** as the database type.
 3. Enter the following details:
    - **Name**: Any name you want to give to your connection.
-   - **Host**: `127.0.0.1` in this case.
-   - **Port**: The **`port`** number you obtained from the output of the `@prisma/ppg-tunnel` package.
-   - **User**: This will be ignored due to the tunnel, you can provide any value here.
-   - **Password**: This will be ignored due to the tunnel, you can provide any value here.
+   - **Host**: `db.prisma.io`.
+   - **Port**: `5432`.
+   - **User**: The `USER` part of your direct connection string.
+   - **Password**: The `PASSWORD` part of your direct connection string.
+   - **Database**: `postgres`.
+   - **SSL mode**: `require`.
 4. Click on **Connect** to connect to your Prisma Postgres instance.
 
-![View of TablePlus connected to Prisma Postgres via tunnel](/img/ppg-tableplus.png)
+![View of TablePlus connected to Prisma Postgres](/img/ppg-tableplus.png)
 
 ### 2b. Connect to Prisma Postgres using DataGrip
 
-Based on the database editor you are using, you can connect to your Prisma Postgres instance using the details you obtained from the output of the `@prisma/ppg-tunnel` package. To add the connection string in DataGrip:
+To add the connection in DataGrip:
 
 1. Open DataGrip and click on the **+** icon and select "Datasource".
 2. Select **PostgreSQL** as the database type.
 3. Enter the following details:
    - **Name**: Any name you want to give to your connection.
-   - **Host**: `127.0.0.1` in this case.
-   - **Port**: The **`port`** number you obtained from the output of the `@prisma/ppg-tunnel` package.
-   - **User**: This will be ignored due to the tunnel, you can keep this field empty.
-   - **Password**: This will be ignored due to the tunnel, you can keep this field empty.
-   - **URL**: In the URL append the following query parameter `?sslmode=disable` to the end of the URL.
+   - **Host**: `db.prisma.io`.
+   - **Port**: `5432`.
+   - **Database**: `postgres`.
+   - **User**: The `USER` part of your direct connection string.
+   - **Password**: The `PASSWORD` part of your direct connection string.
+   - **URL**: Make sure the URL ends with the query parameter `?sslmode=require`.
 4. Click on **Test Connection** to ensure that DataGrip can connect to your Prisma Postgres instance. Once successful, click **OK** to save the connection.
 
-![View of DataGrip connected to Prisma Postgres via tunnel](/img/ppg-datagrip.png)
+![View of DataGrip connected to Prisma Postgres](/img/ppg-datagrip.png)
 
 ### 2c. Connect to Prisma Postgres using DBeaver
 
-Based on the database editor you are using, you can connect to your Prisma Postgres instance using the details you obtained from the output of the `@prisma/ppg-tunnel` package. To add the connection string in DBeaver:
+To add the connection in DBeaver:
 
 1. Open DBeaver and click on the **New Database Connection** button or **File** > **New** to add a new connection.
 2. Select **PostgreSQL** as the database type.
 3. Select **URL** option in Connect by section.
 4. Enter the URL in this format:
-   - **URL**: Your URL should be in this format: `jdbc:postgresql://localhost:52604/postgres?sslmode=disable`. Here make sure that you enter the port number you obtained from the output of the `@prisma/ppg-tunnel` package. In this case, the port number is `52604`. There is no need to enter Username or Password as authentication is manged by Tunnel.
+   - **URL**: Your URL should be in this format: `jdbc:postgresql://db.prisma.io:5432/postgres?sslmode=require`. Enter the `USER` and `PASSWORD` parts of your direct connection string as **Username** and **Password**.
 5. Click on **Test Connection** to ensure that DBeaver can connect to your Prisma Postgres instance. If successful, click **Finish**.
 
-![View of DBeaver connected to Prisma Postgres via tunnel](/img/ppg-dbeaver.png)
+![View of DBeaver connected to Prisma Postgres](/img/ppg-dbeaver.png)
 
 ### 2d. Connect to Prisma Postgres using Postico
 
-Based on the database editor you are using, you can connect to your Prisma Postgres instance using the details you obtained from the output of the `@prisma/ppg-tunnel` package. To add the connection string in Postico:
+To add the connection in Postico:
 
 1. Open Postico and click on the **New Server** button to add a new connection.
 2. Enter the following details:
    - **Name**: Any name you want to give to your connection.
-   - **Host**: `127.0.0.1` in this case.
-   - **Port**: The **`port`** number you obtained from the output of the `@prisma/ppg-tunnel` package.
-   - **User**: This will be ignored due to the tunnel, you can keep this field empty.
-   - **Password**: This will be ignored due to the tunnel, you can keep this field empty.
+   - **Host**: `db.prisma.io`.
+   - **Port**: `5432`.
+   - **User**: The `USER` part of your direct connection string.
+   - **Password**: The `PASSWORD` part of your direct connection string.
+   - **Database**: `postgres`.
 3. Check "Pre-Connect Shell Script" and enter:
    ```sh
    cat <<eof
    {
-   "sslmode":"disable",
+   "sslmode":"require",
    }
    eof
    ```
 4. Click on **Test Connection** to ensure that Postico can connect to your Prisma Postgres instance. If successful, click **Connect**.
 
-![View of Postico connected to Prisma Postgres via tunnel](/img/ppg-postico.png)
+![View of Postico connected to Prisma Postgres](/img/ppg-postico.png)

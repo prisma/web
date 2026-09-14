@@ -79,8 +79,7 @@ const ALTERNATIVES = [
       // the same promise as Prisma's. Don't trim it.
       {
         label: "Spend limits",
-        value:
-          "Spend cap on by default for covered usage; database compute excluded",
+        value: "Spend cap on by default for covered usage; database compute excluded",
       },
     ],
   },
@@ -135,8 +134,7 @@ function costFraction(cost: string): number | null {
 // claim about Supabase and is wrong by more than 3x. The multiple only ever
 // describes the widest column, so it says which one that is.
 const PRISMA_MID = costMidpoint(PRISMA.cost);
-const SAVINGS_MULTIPLE =
-  PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
+const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
 const WIDEST = ALTERNATIVES.reduce((a, b) =>
   (costMidpoint(b.cost) ?? 0) > (costMidpoint(a.cost) ?? 0) ? b : a,
 );
@@ -211,20 +209,18 @@ export function PricingComparison() {
             </Reveal>
             <Reveal delay={0.1}>
               <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
-                Prisma charges per operation: each query your app runs against
-                your database counts as one. No seats. No egress fees. And every
-                paid plan includes a hard spend limit so there are no surprises.
+                Prisma charges per operation: each query your app runs against your database counts
+                as one. No seats. No egress fees. And every paid plan includes a hard spend limit so
+                there are no surprises.
               </p>
             </Reveal>
             <Reveal delay={0.15}>
               <p className="mx-auto mt-5 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
                 At around 50K monthly active users,{" "}
                 <strong className="font-semibold text-foreground">
-                  Prisma Pro can cost up to 5x less than a typical Neon + Vercel
-                  setup
+                  Prisma Pro can cost up to 5x less than a typical Neon + Vercel setup
                 </strong>
-                , with one bill, included data transfer, and spend limits on by
-                default.
+                , with one bill, included data transfer, and spend limits on by default.
               </p>
             </Reveal>
 
@@ -257,9 +253,7 @@ export function PricingComparison() {
                   ) : (
                     <p className="mt-5 font-heading text-[clamp(2rem,3.4vw,2.75rem)] font-medium leading-none tracking-tight text-muted-foreground">
                       <CountUp value={alt.cost} />
-                      <span className="ml-1.5 align-baseline text-base font-normal">
-                        /month
-                      </span>
+                      <span className="ml-1.5 align-baseline text-base font-normal">/month</span>
                     </p>
                   )}
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -275,9 +269,7 @@ export function PricingComparison() {
                   <dl className="mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
                     {alt.rows.map((r) => (
                       <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">
-                          {r.label}
-                        </dt>
+                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
                         <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                           {alt.pending ? (
                             <PendingBadge />
@@ -320,9 +312,7 @@ export function PricingComparison() {
                   </div>
 
                   <div className="relative flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                    <RoleKicker color="bg-prism-cyan-400">
-                      {PRISMA.name}
-                    </RoleKicker>
+                    <RoleKicker color="bg-prism-cyan-400">{PRISMA.name}</RoleKicker>
                     {SAVINGS_MULTIPLE !== null && (
                       <Marker className="-mt-0.5 shrink-0">
                         Up to {SAVINGS_MULTIPLE}x less vs {WIDEST.shortName}
@@ -335,9 +325,7 @@ export function PricingComparison() {
                       /month
                     </span>
                   </p>
-                  <p className="relative mt-2 text-sm text-muted-foreground">
-                    at ~50K MAU
-                  </p>
+                  <p className="relative mt-2 text-sm text-muted-foreground">at ~50K MAU</p>
 
                   <CostBar
                     className="relative mt-5"
@@ -349,9 +337,7 @@ export function PricingComparison() {
                   <dl className="relative mt-7 flex flex-col gap-5 border-t border-black/[0.06] pt-6">
                     {PRISMA.rows.map((r) => (
                       <div key={r.label}>
-                        <dt className="text-sm font-semibold text-foreground/70">
-                          {r.label}
-                        </dt>
+                        <dt className="text-sm font-semibold text-foreground/70">{r.label}</dt>
                         <dd className="mt-1.5 flex items-start gap-3 text-pretty text-[0.9375rem] font-semibold leading-relaxed text-foreground">
                           <CheckBold
                             className="mt-1 size-4 shrink-0 text-prism-cyan-500"

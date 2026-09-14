@@ -9,7 +9,13 @@ export type PastEvent = {
   name: string;
   date: string;
   description: string;
-  link: string;
+  /**
+   * Omitted for events whose page has been retired. Every /day, /day-20xx and
+   * /enterprise-event-2021 URL now redirects to the homepage, so linking them
+   * sent readers somewhere that answers nothing about the event (audit finding
+   * 1.3). The card renders without a link instead.
+   */
+  link?: string;
   virtual: boolean;
 };
 
@@ -72,7 +78,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 15–16, 2022",
     description:
       "Prisma Day was a two-day hybrid event of talks and workshops about modern application development and databases, featuring and led by members of our community.",
-    link: "https://www.prisma.io/day",
     virtual: false,
   },
   {
@@ -88,7 +93,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 29–30, 2021",
     description:
       "Prisma Day was a two day event of talks and workshops by members of the Prisma community, on modern application development.",
-    link: "https://www.prisma.io/day-2021",
     virtual: false,
   },
   {
@@ -96,7 +100,6 @@ export const pastEvents: PastEvent[] = [
     date: "March 25, 2021",
     description:
       "An online conference focused on the challenges large companies and enterprises face with the management of application data.",
-    link: "https://www.prisma.io/enterprise-event-2021",
     virtual: true,
   },
   {
@@ -104,7 +107,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 25–26, 2020",
     description:
       "Prisma Day 2020 was a two day, community-focused online conference on modern application development and databases.",
-    link: "https://www.prisma.io/day-2020",
     virtual: true,
   },
   {
@@ -112,7 +114,6 @@ export const pastEvents: PastEvent[] = [
     date: "June 19, 2019",
     description:
       "Prisma Day was a one day, single-track conference in Berlin focused on databases and application development.",
-    link: "https://www.prisma.io/day-2019",
     virtual: false,
   },
 ];

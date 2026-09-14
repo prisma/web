@@ -1,37 +1,41 @@
 ---
 title: Raw queries reference
-description: 'Reference for Prisma 8 raw query escape hatches: PostgreSQL raw SQL and MongoDB raw commands.'
+description: 'Reference for Prisma ORM raw queries: PostgreSQL raw SQL and MongoDB raw commands.'
 url: /orm/reference/raw-queries
-metaTitle: Prisma 8 raw queries reference
-metaDescription: 'Reference for Prisma 8 raw query escape hatches: PostgreSQL raw SQL and MongoDB raw commands.'
+metaTitle: Prisma ORM raw queries reference
+metaDescription: 'Reference for Prisma ORM raw queries: PostgreSQL raw SQL and MongoDB raw commands.'
 ---
 
-Raw queries are the escape hatches for the queries the typed surfaces can't express. Reach for a typed surface first: the [ORM client](/orm/reference/orm-client) for everyday reads and writes, the [SQL query builder](/orm/reference/sql-query-builder) for PostgreSQL joins and aggregates, and the [pipeline builder](/orm/reference/pipeline-builder) for MongoDB aggregation. When none of them reaches the SQL clause or MongoDB command you need, drop down to raw.
+Raw queries are the way out when the typed APIs can't express the query you need. Reach for a typed API first: the [ORM client](/orm/reference/orm-client) for everyday reads and writes, the [SQL query builder](/orm/reference/sql-query-builder) for PostgreSQL joins and aggregates, and the [pipeline builder](/orm/reference/pipeline-builder) for MongoDB aggregation. When none of them reaches the SQL clause or MongoDB command you need, drop down to raw.
 
-This page covers two escape hatches: **PostgreSQL raw SQL** (the `fns.raw` tagged template and the client-level `db.raw` tag) and **MongoDB raw commands** (`db.raw.collection(...)` and `db.query.rawCommand(...)`). Every example is transcribed from an executable test suite that runs against a live database.
-
-:::warning[Raw results bypass codec decoding]
-Unlike the typed surfaces, raw queries do not carry a result shape, so their results are **not codec-decoded**. On MongoDB this means raw results come back as native BSON: `_id` fields are raw driver `ObjectId` instances (not decoded hex strings), and write methods return the driver's own result envelopes (`{ insertedId }`, `{ matchedCount, modifiedCount }`, `{ deletedCount }`). You are responsible for value handling: compare an `ObjectId` with `String(...)`, and read the envelope keys directly.
-:::
+There are two kinds of raw query: **PostgreSQL raw SQL** (the `fns.raw` tagged template for fragments and the `db.raw.sql` tag for whole statements) and **MongoDB raw commands** (`db.raw.collection(...)` and `db.query.rawCommand(...)`).
 
 ## PostgreSQL raw SQL
 
-Raw SQL lives inside the [SQL query builder](/orm/reference/sql-query-builder), not as a standalone statement. You write a SQL fragment as a tagged template and splice it into a `select()`, `where()`, `orderBy()`, or `update()` call. There is no way to run a bare raw SQL string on its own; every raw fragment is part of a builder query that you [`build()`](/orm/reference/sql-query-builder#build) and run with `runtime.execute(...)`.
+Raw SQL comes in two forms.
 
-The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)`, connect it for a runtime, and reach tables through `db.sql.public`:
+A **raw fragment** is a piece of SQL you put inside a builder query. Write it as a tagged template with `fns.raw` and pass it to a `select()`, `where()`, `orderBy()`, or `update()` call. The rest of the query stays typed.
+
+A **whole raw statement** is a complete SQL statement written with `db.raw.sql`. If it returns rows, end it with `.returnsRow(spec).build()`, where the spec is a column list [defined below](#the-client-level-dbrawsql-tag), and pass the result to `runtime.query(...)`. If it does not, end it with `.affectedCount().build()` and pass the result to `runtime.execute(...)`.
+
+:::warning[Only `.returnsRow()` converts values for you]
+A type id such as `pg/text@1` tells Prisma ORM what JavaScript type a column should become. The property is named `codecId`. `.returnsRow(spec)` names a type id for every column of a whole `db.raw.sql` statement, so you get real JavaScript values back. A fragment's `.returns(...)` does not convert anything. It only tells TypeScript what type to expect, so the value is whatever the `pg` package, the PostgreSQL driver underneath, gives you. For a `text` or an `integer` column that is already a JavaScript string or number. A `numeric` column arrives as a string. A date column gets no conversion by Prisma ORM, so you get the `pg` package's own value for that column.
+:::
+
+The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)` and reach tables through `db.sql.public`, which is keyed by table name (the model name with a lowercase first letter unless the model sets the `@@map` attribute, which renames a table). `db.runtime()` gives you the connection that runs a built query.
 
 ```ts
 import postgres from '@prisma/orm-postgres/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
-
 const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
-const runtime = await db.connect();
+const runtime = db.runtime();
+const aliceId = '00000000-0000-4000-8000-000000000001';
 ```
 
 ### `fns.raw` in a projection
 
-Inside a `select()` callback you get a function bag `fns` whose `raw` member is a tagged template. Write a SQL fragment, interpolate columns and values with `${...}`, and declare the fragment's result type with `.returns(codecId)`.
+A projection is the `select()` list. A `select()` callback receives two arguments: `f`, with one property per column, and `fns`, with the expression helpers. `fns.raw` is a tagged template. Write a SQL fragment, interpolate columns and values with `${...}`, and declare the fragment's result type with `.returns(typeId)`. See [`select()`](/orm/reference/sql-query-builder#select) for every form it accepts.
 
 ```ts
 const plan = db.sql.public.user
@@ -39,61 +43,67 @@ const plan = db.sql.public.user
   .select('upperEmail', (f, fns) => fns.raw`UPPER(${f.email})`.returns('pg/text@1'))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // rows === [{ id: aliceId, upperEmail: 'ALICE@EXAMPLE.COM' }]
 ```
 
-`.returns(codecId)` is a compile-time type annotation only. It declares how the fragment's result is typed on the JavaScript side; it does not cast the value in SQL or change how the driver decodes it. See the SQL query builder's [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) for the full treatment.
+`.returns(...)` only tells TypeScript what to expect. It does not cast the value in SQL and it does not change how the `pg` package reads it. It takes a type id string, or an object of the form `{ codecId, nullable }`. See [Binding a bare value with `param()`](#binding-a-bare-value-with-param) for the type ids you are most likely to write, and the SQL query builder's [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) for the full treatment.
 
 ### `fns.raw` as a `where()` predicate
 
-`where()`'s callback returns a boolean expression, which is the same generic `Expression` shape the comparison helpers return. A raw fragment typed `.returns('pg/bool@1')` satisfies `where()` on its own, with no `fns.eq(...)` wrapper.
+`where()`'s callback returns a boolean expression, the same thing the comparison helpers such as `fns.eq(...)` return. A raw fragment that declares `.returns('pg/bool@1')` is itself a boolean expression, so you can pass it straight to `where()` without wrapping it in `fns.eq(...)`.
 
 ```ts
 const plan = db.sql.public.user
   .select('id', 'email')
   .where((f, fns) => fns.raw`LENGTH(${f.email}) > 15`.returns('pg/bool@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // only users whose email is longer than 15 characters
 ```
 
 ### Interpolating a typed expression
 
-Interpolating another `Expression` (a comparison, a field reference, or nested raw) splices that expression's AST into the fragment. It is **not** a string concatenation of rendered SQL: the interpolated expression lowers to its own AST node, so it stays parameterized and type-checked.
+You can interpolate another expression, such as a comparison, a column reference, or another raw fragment. The expression itself goes into the fragment, not its rendered SQL, so it stays type-checked. An interpolated value is sent as a query parameter, never pasted into the SQL. A column or table name cannot be interpolated as a string, because a string becomes a parameter. When the column is chosen at run time, pick it in your own code from a fixed set of columns you control, and choose the matching `fns.raw` fragment or `select()` call for each one.
 
 ```ts
 const plan = db.sql.public.user
   .select('id', 'kind')
-  .select('kindLabel', (f, fns) =>
-    fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN 'admin' ELSE 'regular user' END`.returns(
-      'pg/text@1',
-    ),
-  )
+  .select('kindLabel', (f, fns) => fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN 'admin' ELSE 'regular user' END`.returns('pg/text@1'))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // each row's kindLabel is 'admin' or 'regular user'
 ```
 
 ### Binding a bare value with `param()`
 
-To interpolate a bound value that has no adjacent column to infer a codec from, wrap it in `param(value, { codecId })` and give it an explicit, versioned codec id. Import `param` from `@prisma/orm-postgres/relational-core/expression`.
+Interpolate a plain `number`, `string`, `boolean`, `bigint`, or `Uint8Array` directly. For anything else, such as a point in time or a decimal you want stored as `numeric`, wrap the value in `param(value, { codecId })` and name the type id yourself. Import `param` from `@prisma/orm-postgres/relational-core/expression`.
+
+A bare value that you do interpolate directly gets the type id Prisma ORM picks from its JavaScript type:
+
+| The value you interpolate | The type id it gets |
+| --- | --- |
+| a whole `number` from `-2147483648` to `2147483647` | `pg/int4@1` |
+| a larger whole `number`, up to `9007199254740991` | `pg/int8number@1`, which reads back as a `number` |
+| any other `number`, including a fractional one | `pg/float8@1` |
+| a `bigint` | `pg/int8@1`, which reads back as a `bigint` |
+| a `string` | `pg/text@1` |
+| a `boolean` | `pg/bool@1` |
+| a `Uint8Array` | `pg/bytea@1` |
+
+A type id is `pg/`, a name, and `@1`. The name is usually the PostgreSQL type, and a few carry a suffix that says which JavaScript type you get, such as `pg/int8number@1` for a `number` and `pg/timestamptz-temporal@1` for a `Temporal.Instant`. Between those two, pick `pg/int8@1` when the value can exceed 2^53. Three more you are likely to write are `pg/uuid@1`, `pg/numeric@1`, and `pg/jsonb@1`. Those are the common ones, not the whole set. For any column, `db.sql.public.<table>.columns.<column>.codecId` is its id, and the same ids are in `contract.json` under `storage.namespaces.<schema>.entries.table.<table>.columns.<column>.codecId`. A point in time is the case `param()` exists for, and `pg/timestamptz-temporal@1` takes a `Temporal.Instant`, the standard JavaScript object for a point in time, not a `Date`. `Temporal` is a global in Node.js 26.8.2 and later, and on earlier versions you install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
 
 ```ts
 import { param } from '@prisma/orm-postgres/relational-core/expression';
 
-const targetLength = param(15, { codecId: 'pg/int4@1' });
+const cutoff = param(Temporal.Instant.from('2024-01-01T00:00:00Z'), { codecId: 'pg/timestamptz-temporal@1' });
 const plan = db.sql.public.user
   .select('id', 'email')
-  .where((f, fns) => fns.raw`LENGTH(${f.email}) = ${targetLength}`.returns('pg/bool@1'))
+  .where((f, fns) => fns.raw`${f.createdAt} > ${cutoff}`.returns('pg/bool@1'))
   .build();
-const rows = await runtime.execute(plan);
-// users whose email is exactly 15 characters long
+const rows = await runtime.query(plan);
+// users created after the start of 2024
 ```
-
-:::warning[Always wrap bare values in `param(...)`]
-Bare-scalar interpolation (`` fns.raw`${limit}` ``) is currently broken against the real PostgreSQL adapter: its codec inferer emits unversioned codec ids (`pg/int4`) that don't match the versioned registry (`pg/int4@1`), so rendering throws. This is empirically verified. Always wrap values in `param(...)` with an explicit versioned codec id (`param(15, { codecId: 'pg/int4@1' })`). Interpolating a column or a typed `Expression` is also safe, because neither goes through codec inference.
-:::
 
 ### Declaring a nullable result
 
@@ -102,110 +112,151 @@ The object form of `.returns()` declares a nullable result. Use it when a fragme
 ```ts
 const plan = db.sql.public.user
   .select('id')
-  .select('adminName', (f, fns) =>
-    fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN ${f.displayName} END`.returns({
-      codecId: 'pg/text@1',
-      nullable: true,
-    }),
-  )
+  .select('adminName', (f, fns) => fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN ${f.displayName} END`.returns({ codecId: 'pg/text@1', nullable: true }))
   .build();
-const rows = await runtime.execute(plan);
+const rows = await runtime.query(plan);
 // adminName is the displayName for admins, null for everyone else
 ```
 
-### The client-level `db.raw` tag
+### The client-level `db.raw.sql` tag
 
-`db.raw` on a connected client is the same tagged template as `fns.raw`, just reachable outside a builder callback. It has no field-accessor context (no `f` / `fns`), so use it to build a standalone `Expression` ahead of time and splice it into a query.
+`db.raw` is the client's raw API, beside `db.sql` and `db.orm`. On PostgreSQL it holds `sql`, the same tagged template as `fns.raw`. On MongoDB it holds `collection(...)` instead, which the [MongoDB raw commands](#mongodb-raw-commands) section covers. Unlike `fns.raw`, `db.raw.sql` works outside a builder callback, and it has the extra methods that turn a whole statement into a query you can run.
+
+Use `.returns(...)` to build an expression ahead of time and pass it to the object form of [`select()`](/orm/reference/sql-query-builder#select), which names each output column:
 
 ```ts
-const serverNow = db.raw`now()`.returns('pg/timestamptz@1');
+const serverNow = db.raw.sql`now()`.returns('pg/timestamptz-temporal@1');
 const plan = db.sql.public.user
   .select((f) => ({ id: f.id, serverNow }))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.execute(plan);
-// rows[0].serverNow is a Date
+const rows = await runtime.query(plan);
 ```
 
-`db.raw` is not a way to execute a standalone raw SQL statement: there is no plan-building or execution path for a bare `db.raw` result. Every use embeds the `.returns(...)`-typed `Expression` into a `select()`, `where()`, or other builder call.
+Use `.returnsRow(spec)` to run a whole statement and get converted rows back. The spec names the columns of every returned row. Each entry is either a column from your contract or a type id. A column such as `db.sql.public.user.columns.id` brings its own conversion, nullability, and TypeScript type. Write a type id for a column your contract has no match for, and the object form `{ codecId: 'pg/text@1', nullable: true }` when that column can be `NULL`, as a `LEFT JOIN` column can. If a returned row has no column your spec names, the query throws an error whose `code` is `RUNTIME.RAW_ROW_COLUMN_MISSING`. A failing statement throws a `SqlQueryError` whose `sqlState` is the PostgreSQL error code for the failure, such as `23505` for a unique-constraint violation.
+
+```ts
+const user = db.sql.public.user;
+const post = db.sql.public.post;
+
+const plan = db.raw.sql`
+  SELECT u.id, u.email, count(p.id) AS "postCount"
+  FROM "user" u
+  LEFT JOIN "post" p ON p."userId" = u.id
+  GROUP BY u.id, u.email
+  ORDER BY count(p.id) DESC, u.email ASC
+  LIMIT ${10}
+`
+  .returnsRow({ id: user.columns.id, email: user.columns.email, postCount: 'pg/int8@1' })
+  .build();
+
+const rows = await runtime.query(plan);
+// row.email is a string; row.postCount is a bigint
+```
+
+Use `.affectedCount()` for a statement that returns no rows. It takes no spec. Pass the built query to `runtime.execute(...)`, which resolves to `{ affectedRows }`, the number of rows the statement changed. You can also run a built raw query inside a transaction: [`db.transaction()`](/orm/reference/transactions-and-runtime#dbtransactioncallback) gives you a `tx`, and `tx.query(...)` and `tx.execute(...)` take the same built queries as `runtime.query(...)` and `runtime.execute(...)` do.
+
+```ts
+const plan = db.raw.sql`
+  UPDATE "post"
+  SET priority = ${'urgent'}
+  WHERE "userId" IN (SELECT id FROM "user" WHERE kind = ${'admin'})
+`.affectedCount().build();
+
+const stats = await runtime.execute(plan);
+// stats.affectedRows
+```
+
+You can nest a `.returnsRow()` query inside another. That is how you write a subquery or a CTE, which is a `WITH` query. Interpolate it before `.build()`, and call `.build()` on the outer one only. Its `.returns` property holds its declared columns, so `outer.returnsRow({ postCount: inner.returns.postCount })` reuses a declaration. You cannot nest a statement that ends with `.affectedCount()`, because it produces no rows. You can nest an `UPDATE ... RETURNING`, because it does.
+
+:::note[Three names look alike]
+`.returns(typeId)` is a method on a fragment, `.returnsRow(spec)` is a method on a statement, and `.returns` is a property on the object `.returnsRow()` gives you.
+:::
+
+```ts
+const authorsWithPosts = db.raw.sql`
+  SELECT p."userId" AS "userId", count(*) AS "postCount"
+  FROM "post" p
+  GROUP BY p."userId"
+  HAVING count(*) >= ${3}
+`.returnsRow({ userId: post.columns.userId, postCount: 'pg/int8@1' });
+
+const plan = db.raw.sql`
+  WITH active AS (${authorsWithPosts})
+  SELECT u.email, active."postCount"
+  FROM active
+  JOIN "user" u ON u.id = active."userId"
+  ORDER BY active."postCount" DESC, u.email ASC
+`.returnsRow({ email: user.columns.email, postCount: authorsWithPosts.returns.postCount }).build();
+```
 
 ### Unsupported interpolation
 
-Interpolation accepts columns, typed expressions, `param(...)` values, and the bare scalar types (`number`, `bigint`, `string`, `boolean`, `Uint8Array`), though bare scalars then fail at render time on PostgreSQL (see [the warning above](#binding-a-bare-value-with-param)). Interpolating anything else, such as a `Date`, throws synchronously with code `RUNTIME.RAW_SQL_UNSUPPORTED_INTERPOLATION`:
+Interpolation accepts columns, expressions, `param(...)` values, raw queries that return rows, and the bare types `number`, `bigint`, `string`, `boolean`, and `Uint8Array`. Interpolating anything else, such as a `Date`, is rejected by TypeScript when you compile. In plain JavaScript the tagged template throws as soon as you call it, with an error whose `code` is `RUNTIME.RAW_SQL_UNSUPPORTED_INTERPOLATION` and this message:
 
 ```
-... wrap this value in `param(...)` with an explicit codec ...
+unsupported JS value type for raw-SQL interpolation: wrap this value in `param(...)` with an explicit codec
 ```
 
-TypeScript already rejects an unsupported value at compile time. If you need to bind a `Date` (or any value with no supported type), wrap it in [`param(value, { codecId })`](#binding-a-bare-value-with-param) with the right codec.
+To bind any value whose type is not in the list, wrap it in [`param(value, { codecId })`](#binding-a-bare-value-with-param) with the right type id. For a `Date`, convert it to a `Temporal.Instant` first and bind that.
 
 ## MongoDB raw commands
 
-`db.raw.collection(rootName)` returns a raw collection with nine methods for running MongoDB commands directly against a collection. The root name is the contract's lowercase plural root (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`).
+`db.raw.collection(collectionName)` returns an object with nine methods for running MongoDB commands directly against a collection. The collection name is the one your contract declares (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`). MongoDB has no schemas, so there is no `public` segment here and none on `db.orm`. There is no raw `find()`, so use `aggregate<Row>()` with a `$match` stage. MongoDB has no transactions in Prisma ORM, so a raw command cannot run inside one. See [Transactions (MongoDB)](/orm/reference/transactions-and-runtime#transactions-mongodb).
 
-Each method returns a buildable command: call `.build()` to get a plan, then run it with `db.execute(plan)`. Because raw filters carry native BSON values, the examples below construct ids with the driver's `ObjectId` class:
+Each of these nine methods builds a command. Call `.build()` on it, then run every one of them with `runtime.query(...)`, including the writes. The raw collection methods all run through `query()`. A write returns a one-element array, so destructure it with `const [result] = ...`.
+
+:::warning[MongoDB raw results are native BSON values]
+Nothing on the MongoDB side of this page is converted for you. An `_id` comes back as it is stored: one that MongoDB generated is an `ObjectId` instance from the `mongodb` package, the MongoDB driver underneath, not a hex string. Compare one with `String(row._id) === aliceId`. Raw filters take native BSON values too, so build ids with that package's `ObjectId` class. The write methods give you the counts and ids under the `mongodb` package's own key names, `{ insertedId }`, `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`, and `{ deletedCount }`, and you read those keys directly.
+:::
+
+The examples in this section run against the `users` / `posts` schema from the pipeline builder page. See its [example schema](/orm/reference/pipeline-builder#example-schema) for the full model definitions. Create the client with `mongo(...)`, get the connection that runs a built query from `await db.runtime()`, and declare the two example ids once:
 
 ```ts
+import mongo from '@prisma/orm-mongo/runtime';
 import { ObjectId } from 'mongodb';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+const db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL, dbName: 'app' });
+const runtime = await db.runtime();
+const aliceId = '6539a1f2c3d4e5f60718293a';
+const bobId = '6539a1f2c3d4e5f60718293b';
 ```
-
-The examples in this section run against the `users` / `posts` schema from the pipeline builder page. See its [example schema](/orm/reference/pipeline-builder#example-schema) for the full model definitions.
-
-:::warning[Raw command results are undecoded]
-As noted in the page-level warning at the top, raw command results are native BSON. `_id` and other ObjectId-valued fields come back as raw driver `ObjectId` instances, and write methods return the driver's result envelopes rather than decoded documents. Compare an `ObjectId` with `String(...)`, and read envelope keys (`insertedId`, `matchedCount`, `deletedCount`) directly.
-:::
 
 ### `aggregate<Row>()`
 
-Run a raw aggregation pipeline against a collection. The generic type parameter types the yielded rows; the pipeline stages are raw MongoDB documents.
+Run a raw aggregation pipeline against a collection. The type parameter says what each returned row looks like. The pipeline stages are raw MongoDB documents, sent as you wrote them, so a filter on `_id` with a real `ObjectId` matches.
 
 ```ts
-const plan = db.raw
-  .collection('posts')
-  .aggregate<{ _id: unknown; title: string }>([{ $match: { title: 'Hello world' } }])
-  .build();
-const rows = await db.execute(plan);
-// rows[0].title === 'Hello world'
-// rows[0]._id is a raw ObjectId — String(rows[0]._id) is the hex string
+const plan = db.raw.collection('posts').aggregate<{ _id: unknown; title: string }>([{ $match: { title: 'Hello world' } }]).build();
+const [row] = await runtime.query(plan);
+// row.title === 'Hello world'; row._id is a raw ObjectId
 ```
 
 ### `insertOne()` and `insertMany()`
 
-Insert one or many documents. Both return the driver's insert envelope, with `ObjectId` instances for the generated ids.
+Insert one or many documents. Both return the `mongodb` package's own insert result, with `ObjectId` instances for the generated ids. `insertMany()`'s `insertedIds` is a plain array of `ObjectId`, in the order you passed the documents.
 
 ```ts
-const onePlan = db.raw
-  .collection('users')
-  .insertOne({ name: 'Dave', email: 'dave@example.com', role: 'author' })
-  .build();
-const [oneResult] = await db.execute(onePlan);
+const users = db.raw.collection('users');
+const onePlan = users.insertOne({ name: 'Dave', email: 'dave@example.com', role: 'author' }).build();
+const [oneResult] = await runtime.query(onePlan);
 // { insertedId: <ObjectId> }
 
-const manyPlan = db.raw
-  .collection('users')
-  .insertMany([
-    { name: 'Eve', email: 'eve@example.com', role: 'author' },
-    { name: 'Frank', email: 'frank@example.com', role: 'author' },
-  ])
-  .build();
-const [manyResult] = await db.execute(manyPlan);
+const manyPlan = users.insertMany([{ name: 'Eve', email: 'eve@example.com', role: 'author' }, { name: 'Frank', email: 'frank@example.com', role: 'author' }]).build();
+const [manyResult] = await runtime.query(manyPlan);
 // { insertedCount: 2, insertedIds: [<ObjectId>, <ObjectId>] }
 ```
 
-`insertMany()`'s `insertedIds` is a plain array of `ObjectId`, reshaped from the native driver's index-keyed map.
-
 ### `updateOne()` and `updateMany()`
 
-Update one or every matching document. The first argument is a raw filter document; the second is either an update document (`{ $set: ... }`) or an aggregation pipeline (an array of stages). Both return `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`.
+Update one or every matching document. The first argument is a raw filter document. The second is either an update document such as `{ $set: ... }` or an aggregation pipeline, which is an array of stages. Both return `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`.
 
 #### Update document form
 
 ```ts
-const plan = db.raw
-  .collection('users')
-  .updateOne({ _id: new ObjectId(aliceId) }, { $set: { bio: 'Updated bio' } })
-  .build();
-const [result] = await db.execute(plan);
+const plan = db.raw.collection('users').updateOne({ _id: new ObjectId(aliceId) }, { $set: { bio: 'Updated bio' } }).build();
+const [result] = await runtime.query(plan);
 // { matchedCount: 1, modifiedCount: 1, ... }
 ```
 
@@ -214,11 +265,8 @@ const [result] = await db.execute(plan);
 An array update is a full aggregation-pipeline update, so a stage can reference the document's other fields.
 
 ```ts
-const plan = db.raw
-  .collection('users')
-  .updateMany({ role: 'author' }, [{ $set: { bio: { $concat: ['bio for ', '$name'] } } }])
-  .build();
-const [result] = await db.execute(plan);
+const plan = db.raw.collection('users').updateMany({ role: 'author' }, [{ $set: { bio: { $concat: ['bio for ', '$name'] } } }]).build();
+const [result] = await runtime.query(plan);
 // { matchedCount: 2, modifiedCount: 2, ... }
 ```
 
@@ -228,60 +276,79 @@ Delete one or every matching document. Both return `{ deletedCount }`.
 
 ```ts
 const onePlan = db.raw.collection('users').deleteOne({ _id: new ObjectId(bobId) }).build();
-const [oneResult] = await db.execute(onePlan);
+const [oneResult] = await runtime.query(onePlan);
 // { deletedCount: 1 }
 
 const manyPlan = db.raw.collection('users').deleteMany({ role: 'author' }).build();
-const [manyResult] = await db.execute(manyPlan);
+const [manyResult] = await runtime.query(manyPlan);
 // { deletedCount: 2 }
 ```
 
 ### `findOneAndUpdate()`
 
-Atomically update a matching document and return an image of it. The third argument accepts `{ upsert }`; when no document matches and `upsert` is `true`, the update inserts one.
+Atomically update a matching document and return the document as it was before the update. When no document matches and `upsert` is `true`, the update inserts one.
 
 #### Remarks
 
-- The MongoDB command AST carries `sort` and `returnDocument` fields, but the public `findOneAndUpdate()` wrapper does **not** expose them. Passing them in the options object has no effect: they are silently dropped, not a type or runtime error. A caller who needs either must build the raw command directly, bypassing this collection wrapper.
-- Because `returnDocument` is never forwarded, the native driver's own default applies, which is `'before'` (the pre-update image). This has a surprising consequence for the classic upsert-counter pattern, shown below.
+- `findOneAndUpdate()` accepts only `{ upsert }` as its third argument. It cannot sort, and it cannot give you the document as it is after the update. TypeScript rejects `sort` or `returnDocument` in the options object.
+
+To sort, or to read the document after the update, build the command yourself and run it through `db.query.rawCommand(...)`. `new RawFindOneAndUpdateCommand(...)` takes six arguments:
+
+- `collection`: the collection name. Required.
+- `filter`: the filter document. Required.
+- `update`: an update document, or an array of aggregation-pipeline stages. Required.
+- `upsert`: a boolean. Optional, and `false` when you leave it out.
+- `sort`: a record of field name to `1` or `-1`. Optional.
+- `returnDocument`: `'before'` or `'after'`. Optional. Leave it out and you get the document as it was before the update.
+
+```ts
+import { RawFindOneAndUpdateCommand } from '@prisma/orm-mongo/query-ast/execution';
+
+// collection, filter, update, upsert, sort, returnDocument
+const command = new RawFindOneAndUpdateCommand('users', { _id: new ObjectId(aliceId) }, { $inc: { count: 1 } }, true, { count: -1 }, 'after');
+const [updated] = await runtime.query(db.query.rawCommand(command));
+```
 
 ##### Upsert counter pattern
 
-Because the wrapper always uses the driver's `'before'` default, the **first** call to an upsert counter returns an **empty** result: the upsert creates a brand-new document, so there is no pre-image to return, and the driver yields `null`. Read the counter value on the second and later calls, each of which returns the pre-image of its own increment.
+`findOneAndUpdate()` returns the document as it was **before** your update. The first call creates the document, so there is nothing to return and you get `[]`. The second call returns `count: 1`, which is the value before that call added one. The example schema has no counter collection, so `users` stands in for one here. MongoDB allows a plain string `_id`, so `'pageViews'` is a valid id. The advice to build ids with `ObjectId` applies to ids MongoDB generated.
 
 ```ts
 const filter = { _id: 'pageViews' };
 const update = { $inc: { count: 1 }, $setOnInsert: { _id: 'pageViews' } };
 const counter = db.raw.collection('users');
-
-const first = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
-const second = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
-const third = await db.execute(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
-// first  === []                    — no pre-image exists on the insert
-// second === [{ ..., count: 1 }]   — the pre-image after the first increment
-// third  === [{ ..., count: 2 }]
+const bump = () => runtime.query(counter.findOneAndUpdate(filter, update, { upsert: true }).build());
+const first = await bump(); // [], because the insert has no earlier version
+const second = await bump(); // [{ ..., count: 1 }], the version before the second increment
+const third = await bump(); // [{ ..., count: 2 }]
 ```
 
 ### `findOneAndDelete()`
 
-Atomically delete a matching document and return it. The yielded row is the raw matched document itself, not an envelope, so its `_id` is a raw `ObjectId`.
+Atomically delete a matching document and return it. The yielded row is the raw matched document itself, not a wrapper object, so its `_id` is a raw `ObjectId`.
 
 ```ts
 const plan = db.raw.collection('users').findOneAndDelete({ _id: new ObjectId(aliceId) }).build();
-const [deleted] = await db.execute(plan);
-// deleted is the removed document; deleted._id is a raw ObjectId
+const [deleted] = await runtime.query(plan);
+// deleted is the removed document, and its _id is a raw ObjectId
+const isAlice = String(deleted._id) === aliceId; // true
 ```
 
 ## `db.query.rawCommand()`
 
-`db.query.rawCommand(command)` runs a raw MongoDB aggregate command through the [pipeline builder](/orm/reference/pipeline-builder), bypassing the typed AST. Its rows come back as `unknown`; you type them yourself.
+`db.query.rawCommand(command)` runs a raw MongoDB command, sent exactly as you wrote it. See the [pipeline builder](/orm/reference/pipeline-builder). It returns a built query already, so do not call `.build()` on it. Unlike `aggregate<Row>()` it has no row type parameter, so its rows come back as `unknown` and you cast them yourself.
 
 ```ts
 import { RawAggregateCommand } from '@prisma/orm-mongo/query-ast/execution';
 
 const plan = db.query.rawCommand(new RawAggregateCommand('posts', [{ $count: 'total' }]));
-const rows = await db.execute(plan);
+const rows = (await runtime.query(plan)) as { total: number }[];
 // [{ total: 2 }]
 ```
 
-`rawCommand()` is the escape hatch for anything the typed pipeline builder can't express, including `_id` equality filters (a real `ObjectId` in a raw pipeline document matches correctly) and `$redact` with `$$KEEP` / `$$PRUNE`. For the full treatment, including the working `_id`-filter pattern, see the pipeline builder's [`rawCommand()`](/orm/reference/pipeline-builder#rawcommand) section.
+`rawCommand()` is the way out when the typed pipeline builder can't express a query, such as filtering by `_id` equality. The command you pass is sent unchanged, so a real `ObjectId` in a pipeline document matches. `aggregate<Row>()` on `db.raw.collection()` handles `_id` filtering too, and it gives you a row type. Use `rawCommand()` when you are already working in `db.query` and need one raw command there. For the full treatment see the pipeline builder's [`rawCommand()`](/orm/reference/pipeline-builder#rawcommand) section.
+
+```ts
+const plan = db.query.rawCommand(new RawAggregateCommand('posts', [{ $match: { _id: new ObjectId('6539a1f2c3d4e5f60718293c') } }]));
+const rows = await runtime.query(plan);
+```

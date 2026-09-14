@@ -1,6 +1,15 @@
 "use client";
 
-import { Component, createRef, useEffect, useRef, useState, type RefObject } from "react";
+import {
+  Component,
+  createRef,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import { Pre, type HighlightedCode } from "codehike/code";
 import {
   calculateTransitions,
@@ -178,6 +187,29 @@ export function BloomFilterDemoClient({ snippets }: Props) {
     setPhaseIndex(((index % PHASES.length) + PHASES.length) % PHASES.length);
   }
 
+  // The step pills are a real tablist: each pill names the panel it controls,
+  // and arrow keys move between them so the roving tab order stays reachable
+  // from the keyboard.
+  const baseId = useId();
+  const tabId = (index: number) => `${baseId}-tab-${index}`;
+  const panelId = `${baseId}-panel`;
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const count = PHASES.length;
+    let next = index;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % count;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+      next = (index - 1 + count) % count;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = count - 1;
+    else return;
+
+    event.preventDefault();
+    goTo(next);
+    const pills = event.currentTarget.parentElement?.children;
+    (pills?.[next] as HTMLElement | undefined)?.focus();
+  }
+
   return (
     <div ref={containerRef} className="bloom-demo not-prose" data-verdict={phase.verdict}>
       <div className="bloom-demo-header">
@@ -219,7 +251,13 @@ export function BloomFilterDemoClient({ snippets }: Props) {
             key={p.step}
             type="button"
             role="tab"
+            id={tabId(i)}
             aria-selected={i === phaseIndex}
+            aria-controls={panelId}
+            // Roving tab order: the tablist is one tab stop, arrow keys move
+            // between the steps inside it.
+            tabIndex={i === phaseIndex ? 0 : -1}
+            onKeyDown={(event) => onTabKeyDown(event, i)}
             data-active={i === phaseIndex ? "true" : undefined}
             className="bloom-demo-step-pill"
             onClick={() => goTo(i)}
@@ -230,7 +268,13 @@ export function BloomFilterDemoClient({ snippets }: Props) {
         ))}
       </div>
 
-      <div className="bloom-demo-body">
+      <div
+        className="bloom-demo-body"
+        role="tabpanel"
+        id={panelId}
+        aria-labelledby={tabId(phaseIndex)}
+        tabIndex={0}
+      >
         <div className="bloom-demo-code">
           <SmoothPre code={code} />
         </div>

@@ -5,7 +5,7 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 
 export const metadata = createPageMetadata({
-  title: "The Prisma Stack",
+  title: "The Prisma Stack | ORM, Postgres, and Compute for TypeScript",
   description:
     "ORM, Postgres, and Compute, one platform for your app and its database, with one shared context across your stack.",
   path: "/stack",
