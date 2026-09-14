@@ -1,21 +1,21 @@
 ---
 title: Turborepo
-description: 'Share one Prisma 8 database package across the apps in a Turborepo monorepo, with contract emit and migrations wired into turbo tasks.'
+description: 'Share one Prisma ORM database package across the apps in a Turborepo monorepo, with contract emit and migrations wired into turbo tasks.'
 image: /img/guides/prisma-turborepo-setup.png
 url: /guides/deployment/turborepo
-metaTitle: How to use Prisma 8 with Turborepo
-metaDescription: 'Set up Prisma 8 as a shared database package in a Turborepo monorepo, wire contract emit and migrations into turbo.json, and render data from a Next.js app.'
+metaTitle: How to use Prisma ORM with Turborepo
+metaDescription: 'Set up Prisma ORM as a shared database package in a Turborepo monorepo, wire contract emit and migrations into turbo.json, and render data from a Next.js app.'
 ---
 
 ## Introduction
 
-This guide shows you how to set up Prisma 8 as a standalone package in a [Turborepo](https://turborepo.dev/docs) monorepo, so that every app shares one database client, one contract, and one migration workflow. You scaffold a monorepo, add a `packages/database` package that owns the Prisma 8 setup, wire its tasks into `turbo.json`, and render users from the `web` Next.js app.
+This guide shows you how to set up Prisma ORM as a standalone package in a [Turborepo](https://turborepo.dev/docs) monorepo, so that every app shares one database client, one contract, and one migration workflow. You scaffold a monorepo, add a `packages/database` package that owns the Prisma ORM setup, wire its tasks into `turbo.json`, and render users from the `web` Next.js app.
 
 Every command and output below was run end to end against a local PostgreSQL database.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/deployment/turborepo](/guides/v7/deployment/turborepo).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/turborepo](/guides/v7/deployment/turborepo).
 
 :::
 
@@ -32,7 +32,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Set up Prisma 8 as a shared database package in a new Turborepo monorepo and render users from the web app.
+Set up Prisma ORM as a shared database package in a new Turborepo monorepo and render users from the web app.
 
 1. Scaffold: `npx create-turbo@latest turborepo-prisma` with pnpm. Then run `npx prisma@latest init` at the monorepo root so the Prisma agent skills are installed and stay current, and use them.
 2. Create `packages/database` with `{ "name": "@repo/db", "version": "0.0.0", "private": true }` as its package.json. Because pnpm refuses to run dependency build scripts until they are allowed, add `allowBuilds: { esbuild: true, msgpackr-extract: true, workerd: true }` to `pnpm-workspace.yaml` first. Then run `npx prisma@latest orm init --yes --target postgres --authoring psl` inside `packages/database`, and move the package to the current CLI with `pnpm add -D prisma@latest --filter @repo/db`.
@@ -96,7 +96,7 @@ mkdir -p packages/database
 
 ### 2.2. Allow the build scripts Prisma needs
 
-pnpm does not run dependency build scripts until you allow them, and pnpm 11 and later fail the install when they find scripts they were not told about (the `allowBuilds` key exists since pnpm 10.26). Prisma 8's toolchain ships three packages with build scripts, so declare them in `pnpm-workspace.yaml` before you install anything:
+pnpm does not run dependency build scripts until you allow them, and pnpm 11 and later fail the install when they find scripts they were not told about (the `allowBuilds` key exists since pnpm 10.26). Prisma ORM's toolchain ships three packages with build scripts, so declare them in `pnpm-workspace.yaml` before you install anything:
 
 ```yaml title="pnpm-workspace.yaml"
 packages:
@@ -110,9 +110,9 @@ allowBuilds: # [!code ++]
 
 Skip this step on npm, yarn, or Bun. If you forget it, `orm init` in the next step stops with `CLI.INIT_INSTALL_FAILED`; run `pnpm approve-builds`, then re-run the `pnpm add` commands it printed and `pnpm contract:emit`.
 
-### 2.3. Initialize Prisma 8
+### 2.3. Initialize Prisma ORM
 
-Run `orm init` inside the package. It is the existing-project path: it adds Prisma 8 to the package you just created instead of scaffolding a new app.
+Run `orm init` inside the package. It is the existing-project path: it adds Prisma ORM to the package you just created instead of scaffolding a new app.
 
 ```bash
 cd packages/database
@@ -150,7 +150,7 @@ written
 `orm init` detects pnpm from the workspace, adds the packages to `@repo/db`, sets `"type": "module"`, and writes four files that matter for the rest of this guide:
 
 - `src/prisma/contract.prisma`: your schema. It starts with `User` and `Post` models.
-- `src/prisma/contract.json` and `src/prisma/contract.d.ts`: the emitted contract the runtime and the CLI read. They replace Prisma 7's generated client: there is no `prisma generate` step and no generated directory to ignore. Commit both files; `.gitattributes` already marks them as generated so they collapse in diffs.
+- `src/prisma/contract.json` and `src/prisma/contract.d.ts`: the emitted contract the runtime and the CLI read. They replace Prisma ORM 7's generated client: there is no `prisma generate` step and no generated directory to ignore. Commit both files; `.gitattributes` already marks them as generated so they collapse in diffs.
 - `src/prisma/db.ts`: the client instance, typed by the contract.
 - `prisma.config.ts`: where the CLI finds the contract and the database connection.
 
@@ -208,7 +208,7 @@ model Post {
 
 ### 2.6. Add scripts and export the client
 
-Add the database scripts and a package entrypoint to `packages/database/package.json`. `orm init` already added `contract:emit`; the rest map to the Prisma 8 migration loop:
+Add the database scripts and a package entrypoint to `packages/database/package.json`. `orm init` already added `contract:emit`; the rest map to the Prisma ORM migration loop:
 
 ```json title="packages/database/package.json"
 {
@@ -239,7 +239,7 @@ Add the database scripts and a package entrypoint to `packages/database/package.
 }
 ```
 
-Keep the versions `orm init` and the upgrade wrote for you; the ones shown are placeholders. The scripts replace the Prisma 7 trio of `db:generate`, `db:migrate`, and `db:deploy`:
+Keep the versions `orm init` and the upgrade wrote for you; the ones shown are placeholders. The scripts replace the Prisma ORM 7 trio of `db:generate`, `db:migrate`, and `db:deploy`:
 
 - `contract:emit` compiles `contract.prisma` into `contract.json` and `contract.d.ts`. It is offline and deterministic, which is what makes it cacheable in Turborepo.
 - `migration:plan` diffs the emitted contract against your migration history and writes a reviewable migration directory. Also offline.
@@ -308,7 +308,7 @@ cd ../..
 What each entry does:
 
 - `contract:emit` is a normal cached task. Its inputs are the contract source and the Prisma config, and its outputs are the two emitted files. When nothing changed, Turborepo replays the cache hit; when the contract changed, it re-emits before anything depends on it.
-- `build`, `dev`, and `check-types` depend on `^contract:emit`, so any app that depends on `@repo/db` gets a fresh contract before it compiles. In Prisma 7 this slot held `db:generate`; here the artifacts are committed, and the dependency keeps them from going stale when someone edits the contract and forgets to emit.
+- `build`, `dev`, and `check-types` depend on `^contract:emit`, so any app that depends on `@repo/db` gets a fresh contract before it compiles. In Prisma ORM 7 this slot held `db:generate`; here the artifacts are committed, and the dependency keeps them from going stale when someone edits the contract and forgets to emit.
 - `migration:plan` depends on the package's own `contract:emit`, so a plan always diffs the current contract. Planning and migrating are never cached because they change files on disk and the database.
 - `globalEnv` lets `DATABASE_URL` from your shell reach every task and makes it part of the task hash. The `.env*` input on `build` does the same for the per-app `.env` files.
 
@@ -360,7 +360,7 @@ pnpm turbo run db:migrate --filter=@repo/db
 @repo/db:db:migrate: ✔ Advanced ref "db" → 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
 ```
 
-Commit the `migrations/` directory with the rest of the package. The same `db:migrate` task is what CI or a deploy hook runs against staging and production; there is no separate `migrate deploy` command in Prisma 8.
+Commit the `migrations/` directory with the rest of the package. The same `db:migrate` task is what CI or a deploy hook runs against staging and production; there is no separate `migrate deploy` command in Prisma ORM.
 
 ## 5. Use the `database` package in the web app
 
@@ -576,7 +576,7 @@ In the web app, never call `db.runtime().close()` in a page or route handler; th
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once at the monorepo root to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. It adds a root `prisma.config.ts` that only configures the skills, a `prisma` dev dependency, and a `postinstall` hook that re-syncs them. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once at the monorepo root to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. It adds a root `prisma.config.ts` that only configures the skills, a `prisma` dev dependency, and a `postinstall` hook that re-syncs them. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a `apps/docs` page that lists posts with their authors through `@repo/db`."
 - "Add a `published Boolean @default(false)` field to Post, plan the migration, and show me the DDL before applying it."
@@ -586,5 +586,5 @@ Run [`npx prisma@latest init`](/cli/init) once at the monorepo root to install t
 
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
 - [How migrations work](/orm/migrations/how-migrations-work): the plan, review, apply loop your `turbo.json` tasks now run.
-- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
 - [Turborepo docs](https://turborepo.dev/docs) and [Next.js docs](https://nextjs.org/docs) for the rest of the monorepo.

@@ -1,20 +1,20 @@
 ---
 title: SQL ORMs
-description: Learn how to migrate from Sequelize or TypeORM to Prisma 8
+description: Learn how to migrate from Sequelize or TypeORM to Prisma ORM
 url: /guides/switch-to-prisma-orm/from-sql-orms
-metaTitle: How to migrate from TypeORM or Sequelize to Prisma 8
-metaDescription: 'Add Prisma 8 to an existing Sequelize or TypeORM project: infer a contract from the live database, sign it, and replace queries one at a time.'
+metaTitle: How to migrate from TypeORM or Sequelize to Prisma ORM
+metaDescription: 'Add Prisma ORM to an existing Sequelize or TypeORM project: infer a contract from the live database, sign it, and replace queries one at a time.'
 ---
 
 ## Introduction
 
-This guide shows you how to migrate an application from Sequelize or TypeORM to Prisma 8. Your database already exists and your current ORM already shaped it, so Prisma 8 starts from the live schema: it reads the tables into a contract, records that the database matches it, and lets you replace queries one at a time while the old ORM keeps running.
+This guide shows you how to migrate an application from Sequelize or TypeORM to Prisma ORM. Your database already exists and your current ORM already shaped it, so Prisma ORM starts from the live schema: it reads the tables into a contract, records that the database matches it, and lets you replace queries one at a time while the old ORM keeps running.
 
-The example is a small TypeORM app with users and posts. Every command and query below was run against it on a local PostgreSQL database; the Sequelize calls in the [query mapping](#6-query-mapping) table map onto the same Prisma 8 calls.
+The example is a small TypeORM app with users and posts. Every command and query below was run against it on a local PostgreSQL database; the Sequelize calls in the [query mapping](#6-query-mapping) table map onto the same Prisma ORM calls.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/switch-to-prisma-orm/from-sql-orms](/guides/v7/switch-to-prisma-orm/from-sql-orms).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/switch-to-prisma-orm/from-sql-orms](/guides/v7/switch-to-prisma-orm/from-sql-orms).
 
 :::
 
@@ -22,7 +22,7 @@ Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported;
 
 - [Node.js](https://nodejs.org) 24 or later
 - A Sequelize or TypeORM project that already connects to a PostgreSQL database
-- `"type": "module"` in your `package.json` (the generated Prisma 8 files are ES modules)
+- `"type": "module"` in your `package.json` (the generated Prisma ORM files are ES modules)
 
 ## Use with your agent
 
@@ -31,7 +31,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Add Prisma 8 to this Sequelize or TypeORM project so I can migrate queries incrementally.
+Add Prisma ORM to this Sequelize or TypeORM project so I can migrate queries incrementally.
 
 1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` contains the DATABASE_URL the app already uses and that package.json has "type": "module".
 2. Run `npx prisma@latest contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file, change every `Timestamptz` field type to `TimestamptzString`, and keep the `@@map` attributes so model names stay clean while table names stay as they are.
@@ -97,9 +97,9 @@ The project reads its connection string from `DATABASE_URL`:
 DATABASE_URL="postgres://user:password@localhost:5432/mydb"
 ```
 
-Nothing about the database changes in this guide. Prisma 8 adopts the tables as they are, TypeORM keeps working next to it, and both read and write the same rows.
+Nothing about the database changes in this guide. Prisma ORM adopts the tables as they are, TypeORM keeps working next to it, and both read and write the same rows.
 
-## 2. Initialize Prisma 8
+## 2. Initialize Prisma ORM
 
 From the project root, run:
 
@@ -136,7 +136,7 @@ export const db = postgres<Contract>({
 });
 ```
 
-There is no `prisma generate` and no driver adapter in Prisma 8: the runtime reads `contract.json`, which `contract emit` writes, and connects with the `url` you pass. `orm init` also rewrites `tsconfig.json` so `contract.json` can be imported; it keeps `experimentalDecorators` and `emitDecoratorMetadata` in place for TypeORM.
+There is no `prisma generate` and no driver adapter in Prisma ORM: the runtime reads `contract.json`, which `contract emit` writes, and connects with the `url` you pass. `orm init` also rewrites `tsconfig.json` so `contract.json` can be imported; it keeps `experimentalDecorators` and `emitDecoratorMetadata` in place for TypeORM.
 
 ## 3. Infer the contract from your database
 
@@ -193,7 +193,7 @@ model Post {
 }
 ```
 
-This is also the moment to drop tables you do not want Prisma 8 to see yet, or to rename a model while keeping its `@@map`. The [PSL syntax](/orm/contract-authoring/psl-syntax) page lists the attributes.
+This is also the moment to drop tables you do not want Prisma ORM to see yet, or to rename a model while keeping its `@@map`. The [PSL syntax](/orm/contract-authoring/psl-syntax) page lists the attributes.
 
 ## 4. Emit and sign
 
@@ -219,7 +219,7 @@ npx prisma@latest db sign
 "marker": { "created": true, "updated": false }
 ```
 
-`db sign` verifies the schema first and refuses to sign if the database does not satisfy the contract. It replaces the baseline migration from Prisma 7 (`migrate diff` plus `migrate resolve`): the database is not touched, only marked. Check it at any time with:
+`db sign` verifies the schema first and refuses to sign if the database does not satisfy the contract. It replaces the baseline migration from Prisma ORM 7 (`migrate diff` plus `migrate resolve`): the database is not touched, only marked. Check it at any time with:
 
 ```npm
 npx prisma@latest db verify
@@ -233,7 +233,7 @@ If you edit the contract again later, run `contract emit` and then `db sign` aga
 
 ## 5. Replace queries
 
-Rewrite queries one at a time. The TypeORM tab shows the queries the app runs today; the Prisma 8 tab shows the same operations rewritten, in a script that runs against the rows TypeORM created (it uses new emails so both scripts can run against the same database). The sequence covers the calls most apps live on: create, a transaction, find many, find one with a relation, update, and delete.
+Rewrite queries one at a time. The TypeORM tab shows the queries the app runs today; the Prisma ORM tab shows the same operations rewritten, in a script that runs against the rows TypeORM created (it uses new emails so both scripts can run against the same database). The sequence covers the calls most apps live on: create, a transaction, find many, find one with a relation, update, and delete.
 
 ```typescript tab="TypeORM" title="src/typeorm-queries.ts"
 import { AppDataSource } from "./data-source.js";
@@ -279,7 +279,7 @@ console.log("count", await userRepository.count());
 await AppDataSource.destroy();
 ```
 
-```typescript tab="Prisma 8" title="src/prisma-queries.ts"
+```typescript tab="Prisma ORM" title="src/prisma-queries.ts"
 import { db } from "./prisma/db.ts";
 
 // Create
@@ -353,18 +353,18 @@ What changed, in the order the script runs:
 - Models are addressed by schema on PostgreSQL: `db.orm.public.User`, not a repository or a model class. There is no `save()` step; `create` inserts and returns the full row, defaults included.
 - `db.transaction` gives the callback a `tx` with the same `orm` surface. Use `tx.orm` inside it; whatever the callback returns comes out of `db.transaction`.
 - Filters and sorting chain: `.where({ active: true })` for equality, a lambda such as `(u) => u.createdAt.desc()` for sorting, `.limit()` for `take`, and `.all()` or `.first()` to run the query.
-- `.include("posts")` replaces `relations: { posts: true }`. The row Prisma 8 returned for Bob carries the post TypeORM wrote, because both ORMs read the same table.
+- `.include("posts")` replaces `relations: { posts: true }`. The row Prisma ORM returned for Bob carries the post TypeORM wrote, because both ORMs read the same table.
 - `.update()` and `.delete()` act on one row and return it. For many rows use `updateAll()` and `deleteAll()`, or `updateAndCount()` and `deleteAndCount()` when you only need the number.
 - A total count is an aggregate: `.aggregate((a) => ({ users: a.count() }))`.
 - The script closes the pool with `db.runtime().close()` because it is a one-off process. A server keeps the client open for its lifetime.
 
-TypeORM still reads everything Prisma 8 wrote; a `find({ relations: { posts: true } })` after the script returned Dave and his post alongside Bob. Keep TypeORM for the queries you have not rewritten yet, and remove it when the last one is gone.
+TypeORM still reads everything Prisma ORM wrote; a `find({ relations: { posts: true } })` after the script returned Dave and his post alongside Bob. Keep TypeORM for the queries you have not rewritten yet, and remove it when the last one is gone.
 
 ## 6. Query mapping
 
-Every Prisma 8 call in this table was run against the sandbox app above. The Sequelize and TypeORM columns show the call it replaces.
+Every Prisma ORM call in this table was run against the sandbox app above. The Sequelize and TypeORM columns show the call it replaces.
 
-| Operation | Sequelize | TypeORM | Prisma 8 |
+| Operation | Sequelize | TypeORM | Prisma ORM |
 | --- | --- | --- | --- |
 | Find many | `User.findAll({ where: { active: true }, order: [["createdAt", "DESC"]], limit: 10 })` | `repo.find({ where: { active: true }, order: { createdAt: "DESC" }, take: 10 })` | `db.orm.public.User.where({ active: true }).orderBy((u) => u.createdAt.desc()).limit(10).all()` |
 | Find one | `User.findOne({ where: { email } })` | `repo.findOne({ where: { email } })` | `db.orm.public.User.where({ email }).first()` |
@@ -387,14 +387,14 @@ Every Prisma 8 call in this table was run against the sandbox app above. The Seq
 
 Two differences to keep in mind while you translate:
 
-- Prisma 8 queries return plain objects, not entity instances. There is nothing to `save()` after changing a field; call `.update()` with the fields.
+- Prisma ORM queries return plain objects, not entity instances. There is nothing to `save()` after changing a field; call `.update()` with the fields.
 - A thrown error inside `db.transaction` rolls everything back, the same as both ORMs. The sandbox confirmed that a user created before a `throw` did not exist afterwards.
 
 ## Common gotchas
 
 :::warning
 
-Turn off schema synchronization in the ORM you are leaving once the database is signed: `synchronize: false` in the TypeORM data source, and no `sequelize.sync()` on startup. Prisma 8 only knows the columns in the contract, so a column the old ORM adds behind it is invisible to your Prisma 8 queries until you update the contract and run `contract emit` again. `db verify` accepts extra columns, so it will not warn you.
+Turn off schema synchronization in the ORM you are leaving once the database is signed: `synchronize: false` in the TypeORM data source, and no `sequelize.sync()` on startup. Prisma ORM only knows the columns in the contract, so a column the old ORM adds behind it is invisible to your Prisma ORM queries until you update the contract and run `contract emit` again. `db verify` accepts extra columns, so it will not warn you.
 
 :::
 
@@ -406,15 +406,15 @@ Turn off schema synchronization in the ORM you are leaving once the database is 
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
-- "Using the prisma-8 skill, rewrite every TypeORM read in `src/services/users.ts` as a Prisma 8 query and leave the writes on TypeORM."
-- "Translate the Sequelize `include` in the posts list to a Prisma 8 `.include()` with only `id` and `title` selected."
+- "Using the prisma-8 skill, rewrite every TypeORM read in `src/services/users.ts` as a Prisma ORM query and leave the writes on TypeORM."
+- "Translate the Sequelize `include` in the posts list to a Prisma ORM `.include()` with only `id` and `title` selected."
 - "Move the signup flow's two inserts into a single [`db.transaction`](/orm/fundamentals/transactions)."
 
 ## Next steps
 
 - [Reading data](/orm/fundamentals/reading-data) and [writing data](/orm/fundamentals/writing-data): the full filter, sort, pagination, and mutation surface.
 - [Relations and joins](/orm/fundamentals/relations-and-joins): `.include()` with refinements and relation filters.
-- [How migrations work](/orm/migrations/how-migrations-work): once Prisma 8 owns the schema, change the contract and use [`db update`](/cli/db-update) in development or [`migration plan`](/cli/migration-plan) for checked-in migrations.
-- [Add Prisma 8 to an existing PostgreSQL project](/prisma-orm/add-to-existing-project/postgresql): the same `orm init`, `contract infer`, `db sign` flow without the ORM context.
+- [How migrations work](/orm/migrations/how-migrations-work): once Prisma ORM owns the schema, change the contract and use [`db update`](/cli/db-update) in development or [`migration plan`](/cli/migration-plan) for checked-in migrations.
+- [Add Prisma ORM to an existing PostgreSQL project](/prisma-orm/add-to-existing-project/postgresql): the same `orm init`, `contract infer`, `db sign` flow without the ORM context.
