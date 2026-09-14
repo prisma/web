@@ -35,7 +35,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 Set up a pnpm workspaces monorepo with a shared Prisma 8 database package and a Next.js app that renders users from it.
 
 1. Create `my-monorepo` with `pnpm init`, a `pnpm-workspace.yaml` listing `apps/*` and `packages/*` with `allowBuilds` for `esbuild`, `msgpackr-extract`, and `workerd`, and the directories `apps` and `packages/database`.
-2. In `packages/database`, run `pnpm init`, then `npx prisma@latest orm init --yes --target postgres --authoring psl`. Its final "Emit the contract" step fails under pnpm; fix it with `pnpm add -D prisma@latest @prisma/cli-engine@latest`, then run `pnpm prisma contract emit`. Then run `pnpm prisma init` in the same directory so the Prisma agent skills are installed, and use them.
+2. In `packages/database`, run `pnpm init`, then `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `pnpm prisma init` in the same directory so the Prisma agent skills are installed, and use them.
 3. Write `packages/database/.env` with `DATABASE_URL` (use the connection string I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints). Run `pnpm prisma db init` in `packages/database`.
 4. Add `src/index.ts` exporting `db` from `./prisma/db`, set `"exports": { ".": "./src/index.ts" }` in the package's package.json, add a `src/seed.ts` that upserts two users with `db.orm.public.User.upsert(...)` and closes with `await db.runtime().close()`, and run it with `node src/seed.ts`.
 5. In `apps`, run `pnpm create next-app@latest web --yes --skip-install`, delete `apps/web/.git` and `apps/web/pnpm-workspace.yaml`, add `"database": "workspace:*"` to `apps/web/package.json`, copy `packages/database/.env` to `apps/web/.env`, and run `pnpm install` from the workspace root.
@@ -95,10 +95,10 @@ Answer the prompts: choose `PSL` for the authoring style and keep the default sc
 ✔ pnpm add @prisma/orm-postgres dotenv
 ▸ pnpm add -D prisma@latest @types/node
 ✔ pnpm add -D prisma@latest @types/node
-▸ pnpm add -D @prisma/cli-engine
-✔ pnpm add -D @prisma/cli-engine
+▸ pnpm add -D @prisma/cli-engine@0.4.0
+✔ pnpm add -D @prisma/cli-engine@0.4.0
 ▸ Emit the contract
-✘ Emit the contract
+✔ Emit the contract
 │  target:     postgres
 │  authoring:  psl
 │  schema:     src/prisma/contract.prisma
@@ -112,31 +112,12 @@ written
 ├─ .gitignore
 ├─ .gitattributes
 └─ package.json
-✘ [CLI.INIT_EMIT_FAILED] Failed to emit contract
 ```
 
-The scaffold is complete, but the final emit step fails in a pnpm workspace: pnpm links the `@prisma/cli-engine` that `orm init` adds last to a directory that does not exist, so the CLI cannot evaluate `prisma.config.ts`. Re-add both packages; this repairs the link:
-
-```bash
-pnpm add -D prisma@latest @prisma/cli-engine@latest
-```
-
-pnpm replaces both dev dependencies and relinks them.
-
-Now emit the contract with the package's own CLI:
+The `@prisma/cli-engine` version comes from the `prisma` package the previous step installed, so the two always match. `orm init` emits the contract itself, so `src/prisma/contract.json` and `src/prisma/contract.d.ts` exist as soon as it finishes. After every schema edit, re-emit with the package's own CLI:
 
 ```bash
 pnpm prisma contract emit
-```
-
-```text no-copy
-▸ Resolving contract source...
-✔ Resolving contract source...
-▸ Emitting contract...
-✔ Emitting contract...
-│  contract:  src/prisma/contract.json
-│  types:     src/prisma/contract.d.ts
-✔ Emitted contract.json and contract.d.ts
 ```
 
 `orm init` wrote a starter contract with `User` and `Post` models in `src/prisma/contract.prisma`, and a client in `src/prisma/db.ts`:
