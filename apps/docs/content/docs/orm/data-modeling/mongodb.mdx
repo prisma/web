@@ -10,30 +10,30 @@ MongoDB stores data as documents grouped into collections. A document can nest o
 
 ## Documents, collections, and the _id key
 
-Your models go in your contract, the `contract.prisma` file that replaced `schema.prisma`. There is no `datasource` block on MongoDB. The connection string is in your `prisma.config.ts` file instead, passed to `defineConfig` from `@prisma/orm-mongo/config`. See [the data contract](/orm/contract-authoring/the-data-contract) for that file. A model maps to a collection, and each record is a document. Every document has an `_id` field as its primary key. `ObjectId` is the type MongoDB expects for it:
+Your models go in your contract, the `contract.prisma` file that replaced `schema.prisma`. A model maps to a collection, and each record is a document. Every document has an `_id` field as its primary key. Your connection string goes in `prisma.config.ts`, passed to `defineConfig` from `@prisma/orm-mongo/config`. See [the data contract](/orm/contract-authoring/the-data-contract). That page shows the config file. There is no `datasource` block on MongoDB.
 
 ```prisma
 model User {
   id    ObjectId @id @map("_id")
   name  String
-  email String
+  email String   @unique
   @@map("users")
 }
 ```
 
-In your TypeScript code the field is called `_id`, not `id`. `@map("_id")` maps the model's `id` field to MongoDB's mandatory `_id` field and sets the name on both sides, so you write `user._id` and `where({ _id })`. `@@map("users")` names the collection. `@@map` is optional. Without it the collection takes the model name with a lowercase first letter, so `user`. Write `ObjectId` for the key type. The old `String @db.ObjectId` and `@default(auto())` are no longer allowed and fail at `npx prisma contract emit`, the command that checks your contract and regenerates your types. Leave the id out of the values you pass to `create`, and MongoDB assigns it:
+In the contract you call the field `id`. In TypeScript it is always `_id`, never `id`. `@map("_id")` sets the name in the database and in your code, so you write `user._id` and `where({ _id })`. `@@map("users")` names the collection. `@@map` is optional. Without it the collection takes the model name with a lowercase first letter, so `user`. `@unique` on `email` becomes a unique index when you migrate.
+
+Write `ObjectId` for the key type. `ObjectId` is the contract type. In TypeScript ids are plain strings, so there is no `ObjectId` to construct. The old `String @db.ObjectId` and `@default(auto())` are no longer allowed.
+
+Leave the id out of the values you pass to `create`, and MongoDB assigns it. `db` is the client created in `src/prisma/db.ts`. `db.orm` is the ORM client, one of the query APIs on `db`. See [the ORM reference](/orm/reference).
 
 ```ts
+import { db } from "./prisma/db";
 const user = await db.orm.users.create({ name: "Ada", email: "ada@example.com" });
-```
-
-`npx prisma orm init` writes `src/prisma/db.ts`, which creates the client `db`. `db.orm.users` is how you query the `users` collection. The name after `db.orm.` is the collection name, so with `@@map("users")` you write `db.orm.users`, not `db.orm.user`. The values go straight into `create`, without the `data:` wrapper Prisma ORM 7 used. The id comes back as a string, and you pass it back as a string. There is no `ObjectId` to construct:
-
-```ts
 const found = await db.orm.users.where({ _id: user._id }).first();
 ```
 
-You `await` the whole chain, and the last call says what you want back: `.first()` for one document or `null`, `.all()` for every matching document.
+The name after `db.orm.` is the collection name, so with `@@map("users")` you write `db.orm.users`, not `db.orm.user`. The values go straight into `create`, without the `data:` wrapper Prisma ORM 7 used. You `await` the whole chain, and the last call says what you want back: `.first()` for one document or `null`, `.all()` for every matching document.
 
 ## Embed or reference
 
@@ -78,7 +78,7 @@ const address = { street: "1 Main St", city: "Berlin", country: "DE" };
 await db.orm.users.create({ name: "Ada", address });
 ```
 
-In an `update`, `u` builds the changes you want. Use `u.fieldName` to change a top-level field, and `u("path.to.field")` to change a field inside an embedded document. Use `.push(...)` and `.pull(...)` to add to and remove from a list of scalars:
+In an `update`, `u` builds the changes you want. `update` takes a callback that returns an array, so several changes go in one call. Use `u.fieldName` to change a top-level field. Use `u("path.to.field")` for a field inside an embedded document, written as a string because a dotted path is not a property name. Use `.push(...)` and `.pull(...)` to add to and remove from a list of scalars:
 
 ```ts
 await db.orm.users.where({ _id: user._id }).update((u) => [u("address.city").set("Hamburg")]);
@@ -88,10 +88,10 @@ await db.orm.users.where({ _id: user._id }).update((u) => [u.tags.push("admin"),
 Replace a whole embedded value with `u("address").set({ ... })`, and remove it with `u("address").unset()`. A list of embedded values is replaced as a whole with `u.addresses.set([ ... ])`. `.where()` filters on top-level model fields only. To match on a field inside an embedded document, use the pipeline builder, a chained builder for MongoDB aggregation pipelines:
 
 ```ts
-const berliners = db.query.from("users").match((f) => f("address.city").eq("Berlin")).build();
+const query = db.query.from("users").match((f) => f("address.city").eq("Berlin")).build();
 ```
 
-See [the pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) for running it and what comes back. Embedded arrays are only a good idea while they stay bounded. An array that grows forever slows every read of the parent and pushes the document toward MongoDB's 16 MB limit, and a write that exceeds it fails. When a list has no natural cap, reference it instead.
+`build()` returns the query, not the rows. See [the pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) for how to run it and what comes back. Embedded arrays are only a good idea while they stay bounded. An array that grows forever slows every read of the parent and pushes the document toward MongoDB's 16 MB limit, and a write that exceeds it fails. When a list has no natural cap, reference it instead.
 
 ## References across collections
 
@@ -113,14 +113,14 @@ model Post {
 }
 ```
 
-This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. There are no nested writes on MongoDB: create the user first, then the post with its `authorId`. To load a post together with its author, chain `.include("author")`, which adds the related record to every row you get back:
+This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. There are no nested writes on MongoDB: create the user first, then the post with its `authorId`. In `references: [id]` you write the field's contract-side name, `id`, not `_id`. To load a post together with its author, chain `.include("author")`, which adds the related record to every row you get back:
 
 ```ts
 await db.orm.posts.create({ title: "Hello", authorId: user._id });
 const posts = await db.orm.posts.include("author").all();
 ```
 
-See [relations and joins](/orm/fundamentals/relations-and-joins) for the rest of the query API. Resolving a reference costs a second read. If a read runs often, you can copy the few fields it needs into the parent document, such as a comment storing its author's name. The copy then goes stale on its own, and keeping it up to date is your job.
+`.include("posts")` on `db.orm.users` works the other way and gives each user an array of their posts. See [relations and joins](/orm/fundamentals/relations-and-joins) for the rest of the query API. Resolving a reference costs a second read. If a read runs often, you can copy the few fields it needs into the parent document, such as a comment storing its author's name. If the original changes, the copy does not. You update it yourself.
 
 ## Polymorphic collections
 
@@ -166,7 +166,7 @@ Projects created with `npm create prisma@latest` include the [Prisma ORM skills]
 
 ## Next steps
 
-- Run `npx prisma contract emit` after every change to your contract. Then `npx prisma migration plan --name <name>` writes a migration and `npx prisma db migrate` applies it, creating the collections and indexes. See [generating a migration](/orm/migrations/generating-a-migration).
+- Start a new project with `npm create prisma@latest -- my-app`, or run `npx prisma orm init` in an existing one. After every change to your contract, run `npx prisma contract emit`, which checks your contract and regenerates your types. Then `npx prisma migration plan --name <name>` writes a migration, and `npx prisma db migrate` applies it, creating the collections and indexes. See [generating a migration](/orm/migrations/generating-a-migration).
 - [Query documents](/orm/fundamentals/reading-data) and [resolve references](/orm/fundamentals/relations-and-joins) with `.include(...)`.
 - Aggregate and reshape documents with the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
 - To model relational data, see the [relational data modeling guide](/orm/data-modeling/relational-databases).
