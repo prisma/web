@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { CopyPromptButton, LLMCopyButton, ViewOptions } from "@/components/page-actions";
 import { getPromptContent } from "@/lib/get-prompt-content";
+import { getPageFooterItems } from "@/lib/page-footer-items";
 import {
   DocsBody,
   DocsDescription,
@@ -58,6 +59,11 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         }}
         toc={page.data.toc}
         full={page.data.full}
+        // Resolved here rather than in the client footer: it is the only
+        // consumer of the page tree's `description`, and keeping it on the
+        // client meant shipping every page's description in the RSC payload
+        // of every page. Same two cards, same subtitles.
+        footer={{ items: getPageFooterItems(source.pageTree, page.url) }}
       >
         <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
           <div className="flex flex-row flex-wrap items-center gap-3">

@@ -251,6 +251,58 @@ const securityHeaders = [
   },
 ];
 
+/**
+ * The marketing pages that also have a Markdown rendition. Mirrors
+ * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts and the matcher in
+ * src/proxy.ts; src/lib/agent-markdown.test.ts asserts the three agree.
+ */
+const agentMarkdownPaths = [
+  "/",
+  "/orm",
+  "/postgres",
+  "/compute",
+  "/pricing",
+  "/studio",
+  "/stack",
+  "/enterprise",
+  "/mcp",
+];
+
+/**
+ * Content-negotiation headers for the pages above.
+ *
+ * `Link` advertises the Markdown rendition to agents that read headers rather
+ * than guessing at a suffix, the same way apps/docs advertises
+ * `/docs/:path.md`. The homepage's rendition is `/index.md`, since `/.md` is
+ * not a URL anybody would type.
+ *
+ * `Vary: Accept` says the same URL has an HTML and a Markdown variant, so a
+ * shared cache must key them apart. Under `next start` it does not reach the
+ * client on these nine pages: Next writes its own RSC `Vary` onto an
+ * app-router response after both `headers()` and middleware headers have been
+ * merged, and neither survives it (measured; a middleware `append` was tried
+ * and dropped the same way, and apps/docs does not set it at all). It is
+ * declared here anyway because the Markdown responses carry `Vary: Accept`
+ * themselves, which is the direction that matters — a cache will not hand a
+ * stored Markdown response to a browser — and because this is the right place
+ * for it the moment Next stops overwriting it or Vercel's routing layer
+ * applies it after the origin responds.
+ */
+function agentMarkdownHeaders(path) {
+  const markdownPath = path === "/" ? "/index.md" : `${path}.md`;
+
+  return {
+    source: path,
+    headers: [
+      { key: "Vary", value: "Accept" },
+      {
+        key: "Link",
+        value: `<${markdownPath}>; rel="alternate"; type="text/markdown", </llms.txt>; rel="llms-txt"`,
+      },
+    ],
+  };
+}
+
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
@@ -842,6 +894,23 @@ const config = {
           missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
         },
       ],
+      afterFiles: [
+        // Markdown renditions of the marketing pages: /orm.md, /pricing.md,
+        // /index.md for the homepage, and so on, all handled by
+        // src/app/llms.mdx/[[...slug]]/route.ts.
+        //
+        // This lives in afterFiles, not beforeFiles, for two reasons. Filesystem
+        // routes are matched first, so the site's hand-written Markdown
+        // responders (/changelog.md, /skill.md, /.well-known/agent-skills/
+        // prisma/SKILL.md) keep serving themselves instead of being swallowed
+        // by the catch-all. And the /docs/:any* and /blog/:any* zone forwards
+        // in beforeFiles above have already claimed /docs/*.md and /blog/*.md,
+        // so those keep going to the zones that render them.
+        {
+          source: "/:path*.md",
+          destination: "/llms.mdx/:path*",
+        },
+      ],
       fallback: [
         // Files
         {
@@ -873,6 +942,9 @@ const config = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      // Extends, rather than replaces, the rule above: Next.js applies every
+      // matching headers() entry.
+      ...agentMarkdownPaths.map(agentMarkdownHeaders),
     ];
   },
 };

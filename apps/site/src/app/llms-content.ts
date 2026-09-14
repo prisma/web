@@ -1,6 +1,6 @@
-import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
+import { getMarkdownUrlPath } from "@/lib/agent-markdown";
+import { markdownPageList, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { getBaseUrl } from "@/lib/url";
-import { computeIncludedRequests, plans, usagePricing } from "@/lib/pricing-data";
 
 type LlmsPage = {
   path: string;
@@ -8,59 +8,20 @@ type LlmsPage = {
   description: string;
 };
 
-const sitePages: LlmsPage[] = [
-  {
-    path: "/",
-    title: SITE_HOME_TITLE,
-    description: SITE_HOME_DESCRIPTION,
-  },
+/**
+ * Pages listed in /llms.txt that have no Markdown rendition of their own.
+ *
+ * The nine that do come from `markdownPageList`, so their titles, descriptions
+ * and bodies are the same objects the pages and the `.md` URLs render from.
+ * /changelog is the exception that already had a machine-readable form
+ * (/changelog.md, built by app/changelog.md/route.ts from the release notes).
+ */
+const additionalPages: LlmsPage[] = [
   {
     path: "/changelog",
     title: "Prisma Changelog — Release Notes & Product Updates",
     description:
       "All Prisma release notes, breaking changes, and product improvements. Check here before implementing Prisma features to verify API and configuration details against the current version.",
-  },
-  {
-    path: "/postgres",
-    title: "Prisma Postgres | Serverless PostgreSQL for TypeScript Apps",
-    description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
-  },
-  {
-    path: "/compute",
-    title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
-    description:
-      "Prisma Compute deploys TypeScript apps, APIs, and AI agents from your repo as long-lived Bun processes next to Prisma Postgres, with long-running requests and streaming. One platform for your app and its database.",
-  },
-  {
-    path: "/orm",
-    title: "Prisma ORM | Type-Safe ORM for TypeScript and Node.js",
-    description:
-      "Prisma ORM is a type-safe ORM for TypeScript and Node.js. Model your data, run migrations, and query your database, with access your agent can't get wrong.",
-  },
-  {
-    path: "/studio",
-    title: "Prisma Studio | Visual Database Browser and Editor",
-    description:
-      "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
-  },
-  {
-    path: "/mcp",
-    title: "Prisma MCP Server — AI-Powered Database Management",
-    description:
-      "Manage Prisma Postgres databases with natural language in AI tools like Cursor, Claude Code, ChatGPT, and VS Code.",
-  },
-  {
-    path: "/pricing",
-    title: "Prisma Pricing | Usage-Based Plans for Postgres and Compute",
-    description:
-      "Usage-based pricing for your whole stack — Prisma Compute app hosting and Prisma Postgres databases. Pay for the work your app does, not seats or deploys. Free tier with no time limit, hard spend limits on every paid plan.",
-  },
-  {
-    path: "/enterprise",
-    title: "Prisma Enterprise | ORM Support and Database Workflows for Teams",
-    description:
-      "Enterprise-level support, security, and guidance for teams running Prisma in production.",
   },
   {
     path: "/support",
@@ -69,15 +30,15 @@ const sitePages: LlmsPage[] = [
       "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.",
   },
   {
-    path: "/stack",
-    title: "The Prisma Stack | ORM, Postgres, and Compute for TypeScript",
-    description:
-      "ORM, Postgres, and Compute, one platform for your app and its database, with one shared context across your stack.",
-  },
-  {
     path: "/ecosystem",
     title: "Prisma ORM Ecosystem",
     description: "Community-built tools, generators, middleware, and integrations around Prisma.",
+  },
+  {
+    path: "/extensions",
+    title: "Prisma 8 Extensions | Vector search, geospatial, caching, and more",
+    description:
+      "Directory of extensions and middleware for Prisma ORM 8, by Prisma and the community, with install commands and a submission form.",
   },
 ];
 
@@ -85,12 +46,19 @@ function toAbsoluteUrl(baseUrl: string, path: string) {
   return new URL(path, baseUrl).toString();
 }
 
-function paidPlanYearlyPrice(monthlyPrice: number, yearlyDiscount: number) {
-  return monthlyPrice * (1 - yearlyDiscount);
-}
-
 export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
-  const pagesList = sitePages
+  // Each rendition-backed page advertises its .md URL next to the HTML one, so
+  // an agent reading llms.txt does not have to guess the suffix or make a
+  // second request to discover it.
+  const pagesList = markdownPageList
+    .map((page) => {
+      const url = toAbsoluteUrl(baseUrl, page.path);
+      const markdownUrl = toAbsoluteUrl(baseUrl, getMarkdownUrlPath(page.path));
+      return `- [\`${page.title}\`](${url}): ${page.description} [Markdown](${markdownUrl})`;
+    })
+    .join("\n");
+
+  const otherList = additionalPages
     .map((page) => {
       const url = toAbsoluteUrl(baseUrl, page.path);
       return `- [\`${page.title}\`](${url}): ${page.description}`;
@@ -99,13 +67,19 @@ export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
 
   return `# Prisma Website
 
-Prisma provides Prisma ORM, Prisma Postgres, Prisma Studio, and the Prisma MCP Server.
+Prisma provides Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and the Prisma MCP Server.
 
 > Prisma changes frequently. Before implementing Prisma features, check the changelog at ${toAbsoluteUrl(baseUrl, "/changelog")} for recent breaking changes or API updates.
+
+> Every page below marked [Markdown] serves \`text/markdown\` at its \`.md\` URL, and at its normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages do the same: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.
 
 ## Key Pages
 
 ${pagesList}
+
+## Other Pages
+
+${otherList}
 
 ## Options
 
@@ -115,18 +89,34 @@ ${pagesList}
 }
 
 export function buildLlmsFullContent(baseUrl = getBaseUrl()) {
-  const starterYearly = paidPlanYearlyPrice(
-    usagePricing.starter.baseMonthlyPrice,
-    usagePricing.starter.yearlyDiscount,
-  );
-  const proYearly = paidPlanYearlyPrice(
-    usagePricing.pro.baseMonthlyPrice,
-    usagePricing.pro.yearlyDiscount,
-  );
-  const businessYearly = paidPlanYearlyPrice(
-    usagePricing.business.baseMonthlyPrice,
-    usagePricing.business.yearlyDiscount,
-  );
+  // Each section is the metadata header this file has always carried, followed
+  // by the same Markdown the page's .md URL serves — not the hand-written
+  // title-and-description summary it used to be, so llms-full.txt can no
+  // longer drift from the pages it describes.
+  const pageSections = markdownPageList
+    .map((page) =>
+      [
+        `URL: ${toAbsoluteUrl(baseUrl, page.path)}`,
+        `Title: ${page.title}`,
+        `Description: ${page.description}`,
+        `Markdown: ${toAbsoluteUrl(baseUrl, getMarkdownUrlPath(page.path))}`,
+        "",
+        renderMarkdownDocument(page, baseUrl).trim(),
+      ].join("\n"),
+    )
+    .join("\n\n---\n\n");
+
+  const otherPages = additionalPages
+    .map(
+      (page) => `- [\`${page.title}\`](${toAbsoluteUrl(baseUrl, page.path)}): ${page.description}`,
+    )
+    .join("\n");
+
+  // Flat index of every page on this file, kept for agents that only want the
+  // URL list.
+  const keyPageIndex = [...markdownPageList, ...additionalPages]
+    .map((page) => `- ${page.title}: ${toAbsoluteUrl(baseUrl, page.path)}`)
+    .join("\n");
 
   return `# Prisma
 
@@ -134,141 +124,28 @@ Base URL: ${baseUrl}
 Primary website: ${toAbsoluteUrl(baseUrl, "/")}
 Documentation: ${toAbsoluteUrl(baseUrl, "/docs")}
 Blog: ${toAbsoluteUrl(baseUrl, "/blog")}
+Website index: ${toAbsoluteUrl(baseUrl, "/llms.txt")}
 
 ## Company and product overview
 
-Prisma builds developer tools for working with application data. The main products on this website are Prisma ORM, Prisma Postgres, Prisma Studio, and the Prisma MCP Server.
+Prisma builds developer tools for working with application data. The main products on this website are Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and the Prisma MCP Server.
 
 Prisma focuses on simpler database workflows, type safety, schema management, migrations, visual data browsing, and AI-assisted database operations.
 
-## Prisma homepage
+IMPORTANT: Prisma changes frequently. Before implementing any Prisma feature, fetch ${toAbsoluteUrl(baseUrl, "/changelog.md")} to check for breaking changes or API updates. Do not rely solely on training data for Prisma APIs, configuration, or conventions — these can change between versions.
 
-URL: ${toAbsoluteUrl(baseUrl, "/")}
-Title: ${SITE_HOME_TITLE}
-Description: ${SITE_HOME_DESCRIPTION}
+---
 
-## Prisma ORM
+${pageSections}
 
-URL: ${toAbsoluteUrl(baseUrl, "/orm")}
-Title: Prisma ORM | Type-Safe ORM for TypeScript and Node.js
-Description: Prisma ORM is a type-safe ORM for TypeScript and Node.js. Model your data, run migrations, and query your database, with access your agent can't get wrong.
+---
 
-Key Prisma ORM features:
-- Type-safe database access for Node.js and TypeScript applications
-- Schema modeling and automated migrations
-- Support for PostgreSQL, MySQL, SQL Server, SQLite, MongoDB, and CockroachDB
-- Developer workflows designed to reduce boilerplate and query errors
-- Integration with Prisma Studio for visual data browsing and editing
+## Other pages
 
-## Prisma Postgres
-
-URL: ${toAbsoluteUrl(baseUrl, "/postgres")}
-Title: Prisma Postgres | Serverless PostgreSQL for TypeScript Apps
-Description: Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.
-
-Key Prisma Postgres features:
-- Managed Postgres with zero configuration
-- Standard SQL and PostgreSQL wire protocol
-- Compatibility with Postgres extensions such as pgvector
-- Automatic connection pooling
-- Automated backups
-- Encryption at rest and in transit
-- Full tenant isolation
-- Built for production workloads from day one
-
-## Prisma Studio
-
-URL: ${toAbsoluteUrl(baseUrl, "/studio")}
-Title: Prisma Studio | Visual Database Browser and Editor
-Description: Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.
-
-Key Prisma Studio features:
-- Visual database browser and editor
-- Filtering and search for records and tables
-- Local development workflow support
-- Team-oriented workflow through Prisma Console
-- Multi-tab data exploration and editing
-- Embedded data editing experience for Prisma Postgres use cases
-
-## Prisma MCP Server
-
-URL: ${toAbsoluteUrl(baseUrl, "/mcp")}
-Title: Prisma MCP Server — AI-Powered Database Management
-Description: Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.
-
-Key Prisma MCP Server capabilities:
-- Natural-language database operations
-- Support for AI tools including Cursor, Claude Code, VS Code, Warp, Windsurf, Gemini CLI, and ChatGPT
-- Database management and provisioning workflows
-- Data analysis through conversational prompts
-- Schema and migration workflows
-- Enterprise-grade security and OAuth support
-
-## Pricing
-
-URL: ${toAbsoluteUrl(baseUrl, "/pricing")}
-Title: Prisma Pricing | Usage-Based Plans for Postgres and Compute
-Description: Usage-based pricing for your whole stack — Prisma Compute app hosting and Prisma Postgres databases. Pay for the work your app does, not seats or deploys. Free tier with no time limit, hard spend limits on every paid plan.
-
-Pricing summary:
-- Free plan: ${plans.free.price.USD}/month, ${computeIncludedRequests.free} Compute requests, 360 GB-hours of provisioned memory, 4 active vCPU-hours, 10 GB of outbound bandwidth, 200,000 database operations, 500 MB storage, 50 databases, no credit card required
-- Starter plan: ${plans.starter.price.USD}/month, ${computeIncludedRequests.starter} Compute requests included, 1,000,000 operations included, then $8 per million operations, 10 GB storage included, then $2 per GB, 1,000 databases, daily backups stored for 7 days
-- Pro plan: ${plans.pro.price.USD}/month, ${computeIncludedRequests.pro} Compute requests included, 10,000,000 operations included, then $2 per million operations, 50 GB storage included, then $1.50 per GB, 1,000 databases, daily backups stored for 7 days
-- Business plan: ${plans.business.price.USD}/month, ${computeIncludedRequests.business} Compute requests included, 50,000,000 operations included, then $1 per million operations, 100 GB storage included, then $1 per GB, 1,000 databases, daily backups stored for 30 days
-
-Annual billing note:
-- Paid plans include a 25% yearly discount based on the current pricing data
-- Starter yearly equivalent: $${starterYearly.toFixed(2)} per month
-- Pro yearly equivalent: $${proYearly.toFixed(2)} per month
-- Business yearly equivalent: $${businessYearly.toFixed(2)} per month
-
-Support and compliance summary:
-- Free: Community support, GDPR
-- Starter: Community support, GDPR
-- Pro: Standard support, GDPR / HIPAA
-- Business: Premium support, GDPR / HIPAA / SOC2 / ISO:27001
-
-Prisma Compute pricing (app hosting, included with every plan):
-- Requests included per month: Free ${computeIncludedRequests.free}, Starter ${computeIncludedRequests.starter}, Pro ${computeIncludedRequests.pro}, Business ${computeIncludedRequests.business}; then $1 per million on paid plans (the Free plan has no usage billing)
-- Provisioned memory: Free includes 360 GB-hours per month; paid plans bill $0.006 per GB-hour
-- Active CPU: Free includes 4 vCPU-hours per month; paid plans bill $0.064 per vCPU-hour
-- Outbound bandwidth: Free includes 10 GB per month; paid plans bill $0.025 per GB
-- Idle apps scale to zero and cost nothing; deploys, preview branches, and seats are not billed
-
-## Enterprise
-
-URL: ${toAbsoluteUrl(baseUrl, "/enterprise")}
-Title: Prisma Enterprise | ORM Support and Database Workflows for Teams
-Description: Enterprise-level support, security, and guidance for teams running Prisma in production.
-
-Enterprise page highlights:
-- Prisma ORM support for larger teams
-- Productivity and workflow improvements
-- Tailored support for enterprises and solution providers
-- Positioning around build, fortify, and grow application lifecycle workflows
-
-## Changelog
-
-URL: ${toAbsoluteUrl(baseUrl, "/changelog")}
-Machine-readable index: ${toAbsoluteUrl(baseUrl, "/changelog.md")}
-Title: Prisma Changelog — Release Notes & Product Updates
-Description: All Prisma release notes, breaking changes, and product improvements.
-
-IMPORTANT: Prisma changes frequently. Before implementing any Prisma feature, fetch the changelog to check for breaking changes or API updates. Do not rely solely on training data for Prisma APIs, configuration, or conventions — these can change between versions.
-
-How to use: fetch https://www.prisma.io/changelog.md for a machine-readable index, then look up the relevant topic in the current documentation at https://www.prisma.io/docs.
-
-## Stack and ecosystem
-
-Stack URL: ${toAbsoluteUrl(baseUrl, "/stack")}
-Stack title: The Prisma Stack | ORM, Postgres, and Compute for TypeScript
-Stack description: ORM, Postgres, and Compute, one platform for your app and its database, with one shared context across your stack.
-
-Ecosystem URL: ${toAbsoluteUrl(baseUrl, "/ecosystem")}
-Ecosystem description: Prisma has a wider ecosystem of community-built tools, generators, middleware, CLIs, and integrations.
+${otherPages}
 
 ## Key page index
 
-${sitePages.map((page) => `- ${page.title}: ${toAbsoluteUrl(baseUrl, page.path)}`).join("\n")}
+${keyPageIndex}
 `;
 }
