@@ -1,23 +1,23 @@
 ---
 title: Docker
-description: Build an Express app on Prisma 8, run PostgreSQL from Docker Compose, then run the app and the database together in containers.
+description: Build an Express app on Prisma ORM, run PostgreSQL from Docker Compose, then run the app and the database together in containers.
 image: /img/guides/prisma-orm-docker.png
 url: /guides/deployment/docker
-metaTitle: How to use Prisma 8 in Docker
-metaDescription: Build an Express app on Prisma 8, run PostgreSQL from Docker Compose, then containerize the app and run both services together with one command.
+metaTitle: How to use Prisma ORM in Docker
+metaDescription: Build an Express app on Prisma ORM, run PostgreSQL from Docker Compose, then containerize the app and run both services together with one command.
 ---
 
 ## Introduction
 
-This guide walks you through running a Prisma 8 application in Docker. You build a small Node.js app with [Express](https://expressjs.com/), add Prisma 8 to it with `orm init`, run PostgreSQL from Docker Compose to apply the first migration, and then containerize the app so the app and the database start together with one command.
+This guide walks you through running a Prisma ORM application in Docker. You build a small Node.js app with [Express](https://expressjs.com/), add Prisma ORM to it with `orm init`, run PostgreSQL from Docker Compose to apply the first migration, and then containerize the app so the app and the database start together with one command.
 
-Prisma 8 has no query engines, no `prisma generate` step, and no `schema.prisma`. That makes the container story short: the image needs Node.js, your dependencies, the committed contract artifacts, and the migrations directory. The container applies pending migrations at start and then runs the server.
+Prisma ORM has no query engines, no `prisma generate` step, and no `schema.prisma`. That makes the container story short: the image needs Node.js, your dependencies, the committed contract artifacts, and the migrations directory. The container applies pending migrations at start and then runs the server.
 
 Every command and output below was run end to end with Docker Desktop.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide lives at [/guides/v7/deployment/docker](/guides/v7/deployment/docker).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/docker](/guides/v7/deployment/docker).
 
 :::
 
@@ -49,7 +49,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Containerize a new Express app on Prisma 8 with Docker Compose, following https://www.prisma.io/docs/guides/deployment/docker.md.
+Containerize a new Express app on Prisma ORM with Docker Compose, following https://www.prisma.io/docs/guides/deployment/docker.md.
 
 1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
 2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma@latest contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
@@ -60,9 +60,9 @@ Containerize a new Express app on Prisma 8 with Docker Compose, following https:
 
 </AgentPrompt>
 
-## 1. Set up your Node.js and Prisma 8 application
+## 1. Set up your Node.js and Prisma ORM application
 
-Start by creating a small Node.js application with Express and Prisma 8.
+Start by creating a small Node.js application with Express and Prisma ORM.
 
 ### 1.1. Initialize your project
 
@@ -77,7 +77,7 @@ npm install express
 
 Installing Express first also creates `package-lock.json`, which is how the next command detects that you use npm.
 
-### 1.2. Add Prisma 8
+### 1.2. Add Prisma ORM
 
 Run `orm init` in the project. It preselects PostgreSQL and the PSL authoring style, installs the runtime and the CLI, and emits the contract artifacts:
 
@@ -290,7 +290,7 @@ App space
 └─ marker 3bb5103a83e513d042e9a53dec29c899f92b5209b3b88944fee251cbe86c0e9b
 ```
 
-`db migrate` applies the migration packages in `migrations/` and records the resulting contract hash in the database. Running it again is safe; it reports `Already up to date`. This is the same command the container runs at start in step 3, which replaces `prisma migrate deploy` from Prisma 7. There is no generate step afterwards: the runtime reads `contract.json`, which you already emitted.
+`db migrate` applies the migration packages in `migrations/` and records the resulting contract hash in the database. Running it again is safe; it reports `Already up to date`. This is the same command the container runs at start in step 3, which replaces `prisma migrate deploy` from Prisma ORM 7. There is no generate step afterwards: the runtime reads `contract.json`, which you already emitted.
 
 Confirm the database and the contract agree:
 
@@ -365,7 +365,7 @@ The new lockfile records every platform's optional packages, so the same `npm ci
 
 ### 3.2. Create the Dockerfile
 
-Prisma 8 ships no native query engine, so the choice between Alpine and Debian base images is only about image size and your other dependencies. Both `node:24-alpine` and `node:24-slim` were tested with this guide and behave the same; no `openssl` or `libc6-compat` package is needed.
+Prisma ORM ships no native query engine, so the choice between Alpine and Debian base images is only about image size and your other dependencies. Both `node:24-alpine` and `node:24-slim` were tested with this guide and behave the same; no `openssl` or `libc6-compat` package is needed.
 
 First, keep the host's `node_modules` and local environment files out of the image:
 
@@ -499,7 +499,7 @@ docker-test-server-1  | ...,"summary":"Already up to date",...
 docker-test-server-1  | Server is running on http://localhost:3000
 ```
 
-Your Prisma 8 app and database now run together under Docker Compose. To stop everything and remove the containers, network, and volumes:
+Your Prisma ORM app and database now run together under Docker Compose. To stop everything and remove the containers, network, and volumes:
 
 ```bash
 docker compose down -v
@@ -507,7 +507,7 @@ docker compose down -v
 
 ### 3.6. Bonus: browse the database with Prisma Studio
 
-[Prisma Studio](/studio) lets you view and edit your data in the browser. With the Compose stack running, the database is published on port `5432`, so run Studio on your machine against it. Studio ships with the Prisma 7 CLI and takes the connection string directly; run it from a directory outside the project, because that CLI cannot read the Prisma 8 `prisma.config.ts`:
+[Prisma Studio](/studio) lets you view and edit your data in the browser. With the Compose stack running, the database is published on port `5432`, so run Studio on your machine against it. Studio ships with the Prisma ORM 7 CLI and takes the connection string directly; run it from a directory outside the project, because that CLI cannot read the Prisma ORM 8 `prisma.config.ts`:
 
 ```bash
 cd .. && npx prisma@7.10.0 studio --url "postgresql://postgres:prisma@localhost:5432/postgres"
@@ -517,9 +517,9 @@ cd .. && npx prisma@7.10.0 studio --url "postgresql://postgres:prisma@localhost:
 Prisma Studio is running at: http://localhost:5555
 ```
 
-Open [`http://localhost:5555`](http://localhost:5555) to browse the `user` table. Once the database has an applied migration, Studio also shows a **Migrations** view with the history `db migrate` recorded; see [Studio with Prisma 8](/studio/prisma-next).
+Open [`http://localhost:5555`](http://localhost:5555) to browse the `user` table. Once the database has an applied migration, Studio also shows a **Migrations** view with the history `db migrate` recorded; see [Studio with Prisma ORM](/studio/prisma-next).
 
-Running Studio as a Compose service, as the Prisma 7 guide did, does not work from the host: the Studio server binds to `127.0.0.1` inside its container, so a published port never reaches it.
+Running Studio as a Compose service, as the Prisma ORM 7 guide did, does not work from the host: the Studio server binds to `127.0.0.1` inside its container, so a published port never reaches it.
 
 ## Common gotchas
 
@@ -537,7 +537,7 @@ Do not call `db.runtime().close()` in a route handler. The client's connection p
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a POST /users route that creates a user from the request body."
 - "Add a `Post` model with an author relation to the contract, plan a migration named add_posts, and apply it with db migrate."
@@ -547,4 +547,4 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](
 
 - Change the schema in `src/prisma/contract.prisma`, run `npm run contract:emit`, then `npx prisma@latest migration plan --name <change>`; the next `docker compose up --build` applies it. See [Generating a migration](/orm/migrations/generating-a-migration) and [Applying a migration](/orm/migrations/applying-a-migration).
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
-- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.

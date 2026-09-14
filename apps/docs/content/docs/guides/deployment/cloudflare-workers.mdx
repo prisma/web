@@ -1,23 +1,23 @@
 ---
 title: Cloudflare Workers
-description: 'Add Prisma 8 to a Cloudflare Worker, query PostgreSQL from the fetch handler with the nodejs_compat flag, and deploy it with Wrangler.'
+description: 'Add Prisma ORM to a Cloudflare Worker, query PostgreSQL from the fetch handler with the nodejs_compat flag, and deploy it with Wrangler.'
 image: /img/guides/prisma-cloudflare-workers-cover.png
 url: /guides/deployment/cloudflare-workers
-metaTitle: How to use Prisma 8 with Cloudflare Workers
-metaDescription: 'Add Prisma 8 to a Cloudflare Worker with orm init, run typed PostgreSQL queries inside the fetch handler under nodejs_compat, test it with wrangler dev, and deploy with Wrangler.'
+metaTitle: How to use Prisma ORM with Cloudflare Workers
+metaDescription: 'Add Prisma ORM to a Cloudflare Worker with orm init, run typed PostgreSQL queries inside the fetch handler under nodejs_compat, test it with wrangler dev, and deploy with Wrangler.'
 ---
 
 ## Introduction
 
-In this guide, you add Prisma 8 to a Cloudflare Worker, create tables in a PostgreSQL database, insert and count rows from the Worker's `fetch` handler, and deploy the Worker with Wrangler.
+In this guide, you add Prisma ORM to a Cloudflare Worker, create tables in a PostgreSQL database, insert and count rows from the Worker's `fetch` handler, and deploy the Worker with Wrangler.
 
-Cloudflare Workers do not expose raw TCP sockets by default, which is why most PostgreSQL drivers cannot run in them. With the `nodejs_compat` compatibility flag enabled, the `pg` driver that `@prisma/orm-postgres` uses connects through Cloudflare's Node.js socket API, so Prisma 8 runs inside the Worker without a special build. This works with [Prisma Postgres](/postgres), which pools connections for you, with any PostgreSQL server reachable over TCP and TLS, and with [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) in front of your own database.
+Cloudflare Workers do not expose raw TCP sockets by default, which is why most PostgreSQL drivers cannot run in them. With the `nodejs_compat` compatibility flag enabled, the `pg` driver that `@prisma/orm-postgres` uses connects through Cloudflare's Node.js socket API, so Prisma ORM runs inside the Worker without a special build. This works with [Prisma Postgres](/postgres), which pools connections for you, with any PostgreSQL server reachable over TCP and TLS, and with [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) in front of your own database.
 
 Every command, code block, and output below was run with `wrangler dev` against a local PostgreSQL 17 database, and the same Worker was also run against a Prisma Postgres database over TLS.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/deployment/cloudflare-workers](/guides/v7/deployment/cloudflare-workers).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/cloudflare-workers](/guides/v7/deployment/cloudflare-workers).
 
 :::
 
@@ -34,7 +34,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Add Prisma 8 to a new Cloudflare Worker, query PostgreSQL from it, and prepare it for deployment.
+Add Prisma ORM to a new Cloudflare Worker, query PostgreSQL from it, and prepare it for deployment.
 
 1. Scaffold: `npm create cloudflare@latest prisma-cloudflare-worker -- --type=hello-world --lang=ts --git --no-deploy --no-agents`. In `prisma-cloudflare-worker`, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them.
 2. Add `"compatibility_flags": ["nodejs_compat"]` to `wrangler.jsonc`. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`; both the Prisma CLI and `wrangler dev` read that file.
@@ -80,11 +80,11 @@ The flags skip the interactive prompts. Drop them if you prefer to answer the qu
 cd prisma-cloudflare-worker
 ```
 
-## 2. Add Prisma 8
+## 2. Add Prisma ORM
 
-### 2.1. Initialize Prisma 8 in the project
+### 2.1. Initialize Prisma ORM in the project
 
-Prisma 8 has no Prisma Client to generate, no driver adapter package, and no query engine binary. `orm init` adds everything the Worker needs:
+Prisma ORM has no Prisma Client to generate, no driver adapter package, and no query engine binary. `orm init` adds everything the Worker needs:
 
 ```npm
 npx prisma@latest orm init --yes --target postgres --authoring psl
@@ -147,7 +147,7 @@ npx prisma@latest db init
 "summary": "Applied 5 operation(s) across 1 space(s), database signed"
 ```
 
-`db init` creates the `user` and `post` tables from the contract and signs the database, which records that it matches the emitted contract. There is no `prisma migrate dev` in Prisma 8; use [`db update`](/cli/db-update) for later schema changes during development and [`migration plan`](/cli/migration-plan) when you want a checked-in migration.
+`db init` creates the `user` and `post` tables from the contract and signs the database, which records that it matches the emitted contract. There is no `prisma migrate dev` in Prisma ORM; use [`db update`](/cli/db-update) for later schema changes during development and [`migration plan`](/cli/migration-plan) when you want a checked-in migration.
 
 ## 3. Query the database from the Worker
 
@@ -247,7 +247,7 @@ Paste the connection string when prompted. In production, the database must acce
 npm run deploy
 ```
 
-Wrangler bundles the Worker (about 1.4 MB, 300 KB gzipped, with Prisma 8 included) and prints the live URL, `https://prisma-cloudflare-worker.<your-subdomain>.workers.dev`. Open it: the Worker creates a user in your production database on every request, exactly as it did locally. The upload itself was not run while validating this guide; the bundle size comes from `wrangler deploy --dry-run`, and the production path (TLS to Prisma Postgres from inside `workerd`) was verified with `wrangler dev`.
+Wrangler bundles the Worker (about 1.4 MB, 300 KB gzipped, with Prisma ORM included) and prints the live URL, `https://prisma-cloudflare-worker.<your-subdomain>.workers.dev`. Open it: the Worker creates a user in your production database on every request, exactly as it did locally. The upload itself was not run while validating this guide; the bundle size comes from `wrangler deploy --dry-run`, and the production path (TLS to Prisma Postgres from inside `workerd`) was verified with `wrangler dev`.
 
 ### 4.3. Optional: connect through Hyperdrive
 
@@ -284,7 +284,7 @@ Everything else in the handler stays the same. The `localConnectionString` must 
 
 :::warning
 
-Do not share a Prisma 8 client across requests in a Worker. The module-level `db` in `src/prisma/db.ts` keeps a connection pool alive between requests, and the second request that reuses a pooled socket never completes. `wrangler dev` reports:
+Do not share a Prisma ORM client across requests in a Worker. The module-level `db` in `src/prisma/db.ts` keeps a connection pool alive between requests, and the second request that reuses a pooled socket never completes. `wrangler dev` reports:
 
 ```text no-copy
 ✘ [ERROR] Uncaught Error: The Workers runtime canceled this request because it detected that your Worker's code had hung and would never generate a response.
@@ -308,7 +308,7 @@ Create the client inside `fetch` and close it with `ctx.waitUntil(db.close())`, 
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a `GET /users` route to the Worker that returns all users as JSON."
 - "Add a `POST /users` route that creates a user from the request body and returns 201."
@@ -320,4 +320,4 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](
 - Change the schema in `src/prisma/contract.prisma`, then run `npm run contract:emit` and [`npx prisma@latest db update`](/cli/db-update).
 - Use [Hono](https://hono.dev/) for routing on Workers; the [Hono guide](/guides/frameworks/hono) shows the same per-route query pattern.
 - [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/) and the [Node.js compatibility reference](https://developers.cloudflare.com/workers/runtime-apis/nodejs/).
-- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
