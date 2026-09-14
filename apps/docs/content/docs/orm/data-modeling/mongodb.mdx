@@ -75,7 +75,7 @@ A single embedded value models a one-to-one relation. A list of embedded values 
 
 ```ts
 const address = { street: "1 Main St", city: "Berlin", country: "DE" };
-await db.orm.users.create({ name: "Ada", address });
+await db.orm.users.create({ name: "Ada", tags: [], address });
 ```
 
 In an `update`, `u` builds the changes you want. `update` takes a callback that returns an array, so several changes go in one call. Use `u.fieldName` to change a top-level field. Use `u("path.to.field")` for a field inside an embedded document, written as a string because a dotted path is not a property name. Use `.push(...)` and `.pull(...)` to add to and remove from a list of scalars:
@@ -85,7 +85,7 @@ await db.orm.users.where({ _id: user._id }).update((u) => [u("address.city").set
 await db.orm.users.where({ _id: user._id }).update((u) => [u.tags.push("admin"), u.tags.pull("new")]);
 ```
 
-Replace a whole embedded value with `u("address").set({ ... })`, and remove it with `u("address").unset()`. A list of embedded values is replaced as a whole with `u.addresses.set([ ... ])`. `.where()` filters on top-level model fields only. To match on a field inside an embedded document, use the pipeline builder, a chained builder for MongoDB aggregation pipelines:
+Replace a whole embedded value with `u.address.set({ ... })`, and remove it with `u.address.unset()`. A list of embedded values is replaced as a whole with `u.addresses.set([ ... ])`. `.where()` filters on top-level model fields only. To match on a field inside an embedded document, use the pipeline builder, a chained builder for MongoDB aggregation pipelines:
 
 ```ts
 const query = db.query.from("users").match((f) => f("address.city").eq("Berlin")).build();
@@ -145,7 +145,7 @@ model Tutorial {
 }
 ```
 
-`@@discriminator(kind)` takes the name of the field that records each document's variant, so write `kind` and not `"kind"`. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A variant declares only its own fields. `id`, `title`, and `kind` come from `Post`. A variant declares no `@@map` of its own and uses its base's collection.
+`@@discriminator(kind)` takes the name of the field that records each document's variant, so write `kind` and not `"kind"`. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A variant declares only its own fields. `id`, `title`, and `kind` come from `Post`. A variant uses its base's collection, so it needs no `@@map` of its own.
 
 A query for posts returns articles and tutorials together. You reach a single variant through the base model: `db.orm.posts.variant("Article")` limits the query to one variant. `.variant()` takes the variant's model name, `"Article"`, and not the discriminator value `"article"`. Creating through a variant fills in `kind` for you:
 
