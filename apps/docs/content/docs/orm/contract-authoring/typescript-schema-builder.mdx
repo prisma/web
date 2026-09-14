@@ -49,76 +49,46 @@ export default definePrismaConfig({
 
 The builder comes from your database's package: `@prisma/orm-postgres/contract-builder` for PostgreSQL, `@prisma/orm-mongo/contract-builder` for MongoDB.
 
-Export the contract under the name `contract`, as below, or as the file's default export. `prisma contract emit` looks for those two names and nothing else.
+Export the contract under the name `contract`, as below, or as the file's default export. Those are the only two names `prisma contract emit` looks for. Run `npx prisma contract emit` again after every edit to the contract, and commit the contract file together with [`contract.json` and `contract.d.ts`](/orm/contract-authoring/the-contract-artifact).
 
 ```typescript title="src/prisma/contract.ts" tab="PostgreSQL"
-import pgvector from "@prisma/orm-extension-pgvector/pack";
-import { defineContract, enumType, member, rel } from "@prisma/orm-postgres/contract-builder";
+import { defineContract, enumType, member } from "@prisma/orm-postgres/contract-builder";
 
 const pgText = { codecId: "pg/text@1", nativeType: "text" } as const;
 
-const Priority = enumType(
-  "Priority",
-  pgText,
-  member("Low", "low"),
-  member("High", "high"),
-  member("Urgent", "urgent"),
-);
+const Priority = enumType("Priority", pgText, member("Low", "low"), member("High", "high"));
 
-export const contract = defineContract(
-  {
-    extensions: { pgvector },
-  },
-  ({ field, model, type }) => {
-    const types = {
-      Embedding1536: type.pgvector.Vector(1536),
-    } as const;
+export const contract = defineContract({}, ({ field, model, rel }) => {
+  const User = model("User", {
+    fields: {
+      id: field.id.uuidv4String(),
+      email: field.text(),
+      createdAt: field.temporal.createdAt(),
+      address: field.json().optional(),
+    },
+  });
 
-    const User = model("User", {
-      fields: {
-        id: field.id.uuidv4String(),
-        email: field.text(),
-        createdAt: field.temporal.createdAt(),
-        updatedAt: field.temporal.updatedAt(),
-        address: field.json().optional(),
-      },
-    });
+  const Post = model("Post", {
+    fields: {
+      id: field.id.uuidv4String(),
+      title: field.text(),
+      userId: field.uuidString(),
+      priority: field.namedType(Priority).default(Priority.members.Low),
+      createdAt: field.temporal.createdAt(),
+      updatedAt: field.temporal.updatedAt(),
+    },
+  });
 
-    const Post = model("Post", {
-      fields: {
-        id: field.id.uuidv4String(),
-        title: field.text(),
-        userId: field.uuidString(),
-        priority: field.namedType(Priority).default(Priority.members.Low),
-        createdAt: field.temporal.createdAt(),
-        updatedAt: field.temporal.updatedAt(),
-        embedding: field.namedType(types.Embedding1536).optional(),
-      },
-    });
-
-    return {
-      enums: { Priority },
-      types,
-      models: {
-        User: User.relations({
-          posts: rel.hasMany(Post, { by: "userId" }),
-        }).sql({
-          table: "user",
-        }),
-        Post: Post.relations({
-          user: rel.belongsTo(User, { from: "userId", to: "id" }),
-        }).sql(({ cols, constraints }) => ({
-          table: "post",
-          foreignKeys: [
-            constraints.foreignKey(cols.userId, User.refs.id, {
-              name: "post_userId_fkey",
-            }),
-          ],
-        })),
-      },
-    };
-  },
-);
+  return {
+    enums: { Priority },
+    models: {
+      User: User.relations({ posts: rel.hasMany(Post, { by: "userId" }) }).sql({ table: "user" }),
+      Post: Post.relations({
+        user: rel.belongsTo(User, { from: "userId", to: "id" }).sql({ fk: { name: "post_userId_fkey" } }),
+      }).sql({ table: "post" }),
+    },
+  };
+});
 ```
 
 ```typescript title="src/prisma/contract.ts" tab="MongoDB"
@@ -128,9 +98,7 @@ const User = model("User", {
   collection: "users",
   fields: {
     _id: field.objectId(),
-    name: field.string(),
     email: field.string(),
-    bio: field.string().optional(),
   },
   relations: {
     posts: rel.hasMany("Post", { from: "_id", to: "authorId" }),
@@ -150,19 +118,24 @@ const Post = model("Post", {
   },
 });
 
-export const contract = defineContract({
-  models: {
-    User,
-    Post,
-  },
-});
+export const contract = defineContract({ models: { User, Post } });
 ```
 
 ## How `defineContract` works
 
-On PostgreSQL, `defineContract` takes an options object and then a function. You never name your database, because the package you import carries it. The options object lists the extension packs you use. The function returns the contract's content: `models`, plus `enums` and `types` if you have them. Its one argument holds `field`, `model`, `rel`, and `type`. The package exports `field`, `model`, `rel`, `member`, and `enumType`. So `field`, `model`, and `rel` have two sources and either one works. The example takes `field`, `model`, and `type` from the argument, and imports `defineContract`, `enumType`, `member`, and `rel`. `enumType` and `member` must be imported, because enums are declared outside the function. `type.pgvector` exists in the example only because `pgvector` is listed in `extensions`.
+On PostgreSQL, `defineContract` takes an options object and then a function. You never name your database, because the package you import carries it. The options object lists the extension packs you use, and you write `{}` when you use none. The function returns the contract's content: `models`, plus `enums` and `types` if you have them.
 
-On MongoDB, `defineContract` takes a single object holding `models`, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder differs from the PostgreSQL one in four more ways. Every model declares an `_id` field built with `field.objectId()`, and that field is the primary key, so you never mark it with `.id()`. The scalar helpers are `field.objectId()`, `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`. The collection name and the relations are inline options on the model rather than chained calls. Relations name the field on each side, as in `rel.hasMany("Post", { from: "_id", to: "authorId" })`, and a field on another model is written `User.ref("_id")` where PostgreSQL writes `User.refs.id`. Enums, extension packs, and indexes all work on MongoDB. `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`, extension packs go in the same `extensions` option, and indexes are an `indexes` option on the model. There is no `.attributes(...)` on MongoDB, because `_id` is always the primary key.
+Take `field`, `model`, `rel`, and `type` from the function's one argument. Import `defineContract`, `enumType`, and `member` from the package, because you use them outside the function.
+
+On MongoDB, `defineContract` takes a single object holding `models`, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder also differs from the PostgreSQL one in five ways:
+
+- Every model declares an `_id` field built with `field.objectId()`. That field is always the primary key, so you never mark it with `.id()` and there is no `.attributes(...)` on MongoDB.
+- The scalar helpers are `field.objectId()`, `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`.
+- The collection name and the relations are inline options on the model rather than chained calls.
+- Relations name the field on each side, as in `rel.hasMany("Post", { from: "_id", to: "authorId" })`, and a field on another model is written `User.ref("_id")` where PostgreSQL writes `User.refs.id`.
+- Indexes are an `indexes` option on the model, built with the `index` helper the same package exports, as in `indexes: [index({ email: 1 }, { unique: true })]`.
+
+Enums and extension packs work on MongoDB too. `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`, and extension packs go in the same `extensions` option.
 
 The rest of this page uses the PostgreSQL builder.
 
@@ -184,9 +157,9 @@ The rest of this page uses the PostgreSQL builder.
 | UUID stored as text | `field.uuidString()` |
 | UUID stored in a `uuid` column | `field.uuidNative()` |
 
-There is no helper for a date without a time, or a time without a date. To store a date with no time, write that model in [PSL](/orm/contract-authoring/psl-syntax) and give the field the `Date` type. Extension packs add more helpers of their own.
+There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1", nativeType: "date" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
 
-For a primary key whose value your app generates, use `field.id.uuidv4String()`, `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, or `field.id.ksuid()`. Each names a different format for the generated ID string, and each marks the field as the primary key for you. `field.id.uuidv4Native()` and `field.id.uuidv7Native()` do the same in a `uuid` column.
+For a primary key whose value your app generates, use `field.id.uuidv4String()`, `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, or `field.id.ksuid()`. They all generate the ID in your app, and `uuidv4String` is the common choice. Each marks the field as the primary key for you. `field.id.uuidv4Native()` and `field.id.uuidv7Native()` do the same in a `uuid` column.
 
 `field.temporal.createdAt()` fills the column with `now()` when the row is created. `field.temporal.updatedAt()` fills it on every create and every update. `field.namedType(x)` takes an enum or a type from an extension pack.
 
@@ -194,20 +167,22 @@ Every field builder supports chained modifiers:
 
 - `.optional()` makes the field nullable.
 - `.default(value)` sets a literal default. `.defaultSql(expression)` sets a default the database computes, and the argument is a SQL expression as a string: `.defaultSql("now()")`.
-- `.unique()` adds a unique constraint. `.id()` marks the primary key.
+- `.unique()` adds a unique constraint. `.id()` marks the primary key, for a key that is not generated, such as an integer you set yourself.
 - `.column("column_name")` sets the column name in the database when it differs from the field name.
 
 ## Enums
 
 `enumType` declares an enum, the type its values are stored as, and its members, as `Priority` does in the full example above.
 
-The second argument says how each member is stored. `codecId` is a string of the form `pg/<PostgreSQL type>@1`. `nativeType` is the column type in the database. Write `as const` after the object. To store the members as integers, pass `{ codecId: "pg/int4@1", nativeType: "int4" } as const`. [Raw queries](/orm/reference/raw-queries#binding-a-bare-value-with-param) lists more type ids.
+The second argument says how each member is stored. `codecId` names the PostgreSQL type plus a version, always `@1` today. `nativeType` is the column type in the database. Write `as const` after the object. To store the members as integers, pass `{ codecId: "pg/int4@1", nativeType: "int4" } as const`. [Raw queries](/orm/reference/raw-queries#binding-a-bare-value-with-param) lists more type ids.
 
 Each `member(name, storedValue)` pairs the TypeScript-visible name with the value stored in the column. Fields reference the enum with `field.namedType(Priority)`, and defaults reference a member as `Priority.members.Low`. Include the enum in the returned `enums` map so it reaches the two files.
 
 Members are stored in whatever column type you name here, `text` above. For a real PostgreSQL `enum` type, declare it with `nativeEnum` and type the field with `pg.enum`, both exported by `@prisma/orm-postgres/contract-builder`. The type is created in the database under the name you give it:
 
 ```typescript
+import { field, model, nativeEnum, pg } from "@prisma/orm-postgres/contract-builder";
+
 const Role = nativeEnum("Role", "user", "admin");
 
 const Account = model("Account", {
@@ -217,21 +192,23 @@ const Account = model("Account", {
 });
 ```
 
+`Role` does not go in the returned `enums` map. Using it on a field is enough to create the type in the database.
+
 ## Relations
 
 Relations are declared on the model builder with `.relations(...)` and the `rel` helpers, as the full example above shows.
 
 `rel.hasMany(Model, { by })` names the foreign key field on the other model. `rel.hasOne(Model, { by })` is the same with at most one row on the other side. `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the field it points at.
 
-`rel.manyToMany(Model, { through, from, to })` goes through a join table. You declare the model for the join table yourself and pass it as `through`. `from` and `to` name the two foreign key fields on that model:
+`rel.manyToMany(Model, { through, from, to })` goes through a join table. You declare the model for the join table yourself and pass it as `through`. Below, `PostTag` is that model, and it holds the two foreign key fields `postId` and `tagId`:
 
 ```typescript
-User.relations({
-  teams: rel.manyToMany(Team, { through: Membership, from: "userId", to: "teamId" }),
+Post.relations({
+  tags: rel.manyToMany(Tag, { through: PostTag, from: "postId", to: "tagId" }),
 });
 ```
 
-`rel.belongsTo` on its own does not create a foreign key constraint in the database. Ask for one in either of two places. Chain `.sql(...)` on the relation itself, inside the `.relations({ ... })` object:
+`rel.belongsTo` on its own does not create a foreign key constraint in the database. Ask for one by chaining `.sql(...)` on the relation itself, inside the `.relations({ ... })` object, as the full example above does:
 
 ```typescript
 Post.relations({
@@ -239,9 +216,9 @@ Post.relations({
 });
 ```
 
-Or list `constraints.foreignKey(...)` in the model's `.sql({ foreignKeys: [...] })`, as the full example above does. Both forms take `name`, `onDelete`, and `onUpdate`.
+`fk` takes `name`, `onDelete`, and `onUpdate`.
 
-Prisma ORM checks that the two sides of a relation name the same number of fields. It does not check that their column types match, so choose a field helper that produces the same column type as the key you point at.
+Prisma ORM does not check that the column types on the two sides of a relation match, so choose a field helper that produces the same column type as the key you point at.
 
 `rel.hasMany`, `rel.hasOne`, `rel.belongsTo`, and `rel.manyToMany` also accept the model name as a string. Pass the model object, as above, and a typo is a compile error. Pass a string and the typo is reported when `prisma contract emit` builds the contract.
 
@@ -249,16 +226,13 @@ Prisma ORM checks that the two sides of a relation name the same number of field
 
 `.sql(...)` maps a model to its table. The object form covers the common case: `User.sql({ table: "user" })`.
 
-You can chain `.relations(...)`, `.attributes(...)`, and `.sql(...)` in any order, and you can skip any of them. Each returns a new model builder and leaves the one you called it on unchanged. `rel.belongsTo(User, ...)` may point at either the bare `User` or the chained one, because both carry the same model name. A model with no relations calls `.sql({ table })` straight after `model(...)`.
+You can chain `.relations(...)`, `.attributes(...)`, and `.sql(...)` in any order, and you can skip any of them. You can pass `User` to `rel.belongsTo(User, ...)` before chaining `.sql()` onto it. A model with no relations calls `.sql({ table })` straight after `model(...)`.
 
-The callback form gives you the model's columns as `cols` and the constraint builders as `constraints`. Use it for indexes and for foreign keys with explicit names:
+The callback form gives you the model's columns as `cols` and the constraint builders as `constraints`. Use it for indexes:
 
 ```typescript
 Post.relations({ ... }).sql(({ cols, constraints }) => ({
   table: "post",
-  foreignKeys: [
-    constraints.foreignKey(cols.userId, User.refs.id, { name: "post_userId_fkey" }),
-  ],
   indexes: [
     constraints.index([cols.userId]),
     constraints.index([cols.userId, cols.createdAt], { name: "post_user_created_idx" }),
@@ -273,16 +247,31 @@ Post.relations({ ... }).sql(({ cols, constraints }) => ({
 For a primary key made of two fields, use `.attributes(...)` instead of `.sql(...)`, and build it from the field references:
 
 ```typescript
-Membership.attributes(({ fields, constraints }) => ({
-  id: constraints.id([fields.userId, fields.teamId]),
+PostTag.attributes(({ fields, constraints }) => ({
+  id: constraints.id([fields.postId, fields.tagId]),
 }));
 ```
 
-The keys in that object are fixed. `id` takes one constraint, and `uniques` takes a list, so `uniques: [constraints.unique([fields.userId, fields.teamId])]` makes a unique constraint across two fields. `cols` in `.sql(...)` and `fields` in `.attributes(...)` are the same model fields under two names. For a key made of one field, `.id()` on the field is enough, and the `field.id.*` helpers already do it.
+That object accepts exactly two keys, `id` and `uniques`. `id` takes one constraint, and `uniques` takes a list, so `uniques: [constraints.unique([fields.postId, fields.tagId])]` makes a unique constraint across two fields. `cols` in `.sql(...)` and `fields` in `.attributes(...)` are the same model fields under two names. For a key made of one field, `.id()` on the field is enough, and the `field.id.*` helpers already do it.
 
 ## Extension types
 
-An extension pack is an npm package that adds column types to the builder. Declare packs in `defineContract`'s options and the `type` helper exposes their constructors. The full example above imports `pgvector` from `@prisma/orm-extension-pgvector/pack`, lists it in `extensions`, builds `type.pgvector.Vector(1536)` in the returned `types` map, and uses it on a field with `field.namedType(types.Embedding1536)`.
+An extension pack is an npm package that adds column types to the builder. List packs in `defineContract`'s options object, and the `type` helper exposes their constructors:
+
+```typescript title="src/prisma/contract.ts"
+import pgvector from "@prisma/orm-extension-pgvector/pack";
+import { defineContract } from "@prisma/orm-postgres/contract-builder";
+
+export const contract = defineContract({ extensions: { pgvector } }, ({ field, model, type }) => {
+  const types = { Embedding1536: type.pgvector.Vector(1536) } as const;
+  const Post = model("Post", {
+    fields: { id: field.id.uuidv4String(), embedding: field.namedType(types.Embedding1536) },
+  });
+  return { types, models: { Post: Post.sql({ table: "post" }) } };
+});
+```
+
+The key on `type.pgvector` is the pack's own name, not the name you gave the import. `Embedding1536` is a name you choose, and it appears under that name in `contract.d.ts`. Return the `types` map so the name reaches the two files.
 
 Add the same pack to `prisma.config.ts`. It goes inside `ormConfig({ ... })`, beside `contract`, and the config imports the pack's `/control` export while the contract file imports its `/pack` export:
 
@@ -301,11 +290,12 @@ export default definePrismaConfig({
 
 ## Keep the contract file free of changing values [#keep-the-contract-file-pure]
 
-The contract file describes structure. Three rules keep it usable:
+The contract file describes structure. These rules keep it usable:
 
-- Do not read `process.env`, the current time, or random values into the contract. Prisma ORM compares a hash of the contract across runs, and a contract that changes every run fails that comparison.
+- Do not read `process.env`, the current time, or random values into the contract. A contract built from those values makes `npx prisma contract emit` produce a different `contract.json` on each run.
 - Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions, class instances, and `Date` objects do not serialize.
-- Keep the file free of side effects. `prisma contract emit` runs the file, but it does not type-check it. Type errors show in your editor and when you run `tsc`.
+- Keep the file free of side effects. `npx prisma contract emit` runs the file, so anything it does while loading, such as writing a file or calling a service, happens every time you run the command.
+- `npx prisma contract emit` runs the file but does not type-check it. Type errors show in your editor and when you run `tsc`.
 
 Configuration that legitimately varies per environment, such as the database URL, belongs in `prisma.config.ts`, not in the contract.
 
