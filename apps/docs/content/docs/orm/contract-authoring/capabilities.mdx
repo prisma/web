@@ -1,18 +1,18 @@
 ---
-title: Capabilities
-description: 'Capabilities record what your database stack supports, so Prisma ORM can reject unsupported features early with a clear error.'
+title: Supported database features
+description: 'The contract records which database features your setup supports, so Prisma ORM can reject an unsupported one early with a clear error.'
 url: /orm/contract-authoring/capabilities
-metaTitle: Capabilities in Prisma ORM
-metaDescription: 'How Prisma ORM capabilities are derived from the target, adapter, and extension packs, what they gate, and what happens when a required capability is missing.'
+metaTitle: Supported database features in Prisma ORM
+metaDescription: 'How a Prisma ORM contract records which database features your setup supports, where those declarations come from, what each key controls, and what happens when one is missing.'
 ---
 
 Not every database stack supports every feature. One setup can run lateral joins, `RETURNING` clauses, and vector distance operations; another cannot.
 
-Capabilities are how the [data contract](/orm/contract-authoring/the-data-contract) records what yours supports. Prisma ORM checks them before using a gated feature. An unsupported feature fails early with an error that names the missing capability, instead of surfacing as a database error mid-query.
+The `capabilities` section of your contract, the `contract.prisma` file that replaced `schema.prisma`, records which features yours supports. Prisma ORM checks it before it uses one of them. A feature your stack lacks fails early with an error that names the missing key, instead of reaching the database and failing there.
 
-## Where capabilities come from
+## Where the `capabilities` section comes from [#where-capabilities-come-from]
 
-You do not write capabilities yourself. When [`contract emit`](/cli/contract-emit) runs, it merges the capability declarations of every component composed in your project: the target (PostgreSQL, SQLite, MongoDB), its adapter and driver, and any extension packs from the config. The merged result lands in the contract's `capabilities` section, grouped by namespace:
+You do not write this section yourself. [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside the source, and while it does so it merges the declarations of every component composed in your project: the target (PostgreSQL, SQLite, MongoDB), its adapter, and any extension packs named in the config. The merged result lands in the contract's `capabilities` section, grouped by namespace:
 
 ```json title="prisma/contract.json (excerpt)"
 {
@@ -27,6 +27,7 @@ You do not write capabilities yourself. When [`contract emit`](/cli/contract-emi
       "returning": true
     },
     "sql": {
+      "checkConstraint": true,
       "defaultInInsert": true,
       "enums": true,
       "lateral": true,
@@ -37,61 +38,61 @@ You do not write capabilities yourself. When [`contract emit`](/cli/contract-emi
 }
 ```
 
-The `sql` namespace holds keys shared across SQL databases; the `postgres` namespace holds PostgreSQL-specific keys. Extension packs contribute keys of their own: composing the pgvector pack is what adds `pgvector.cosine` above. Because the packs declare the keys, adding or removing an extension in `prisma.config.ts` and re-running `contract emit` changes the capability set with no further work.
+The `sql` namespace holds keys shared across SQL databases. The `postgres` namespace holds PostgreSQL-specific keys. Extension packs contribute keys of their own: composing the pgvector pack is what adds `pgvector.cosine` above. Because the packs declare the keys, adding or removing an extension in `prisma.config.ts` and running `npx prisma contract emit` again changes the set with no further work.
 
-## What capabilities gate
+## What the `capabilities` section controls [#what-capabilities-gate]
 
-Capabilities are checked at two points, both before any SQL reaches the database.
+The keys are checked at two points, both before any SQL reaches the database.
 
-**When the contract is built.** If the schema uses a feature the target cannot store, `contract emit` fails with a diagnostic. For example, SQLite does not report the `scalarList` capability, so a scalar list field in a contract targeting SQLite fails to emit:
+**When the contract is built.** If the contract uses a feature the target cannot store, `npx prisma contract emit` fails with a diagnostic. SQLite does not report `scalarList`, so a scalar list field in a contract targeting SQLite fails:
 
 ```text
 Field "User.tags" is a scalar list, but target "sqlite" does not support
 scalar lists (the adapter does not report the "scalarList" capability).
 ```
 
-**When a query is built.** Query-builder methods that depend on a capability check the contract's `capabilities` section and throw if the key is missing, naming the method and the capability:
+**When a query is built.** Query-builder methods that need a key read the contract's `capabilities` section and throw an error whose `code` is `ORM.CAPABILITY_MISSING`, naming the method and the key:
 
 ```text
 distinctOn() requires capability postgres.distinctOn
 lateralJoin() requires capability sql.lateral
 ```
 
-The error fires when your code constructs the query, so a test that builds the query catches it: a query that uses a feature your stack lacks cannot be built at all.
+The error is raised when your code constructs the query, so a test that builds the query catches it. A query that uses a feature your stack lacks cannot be built at all.
 
-## Example capabilities
+## Example keys [#example-capabilities]
 
-A few of the keys the built-in components declare, to give a sense of the granularity:
+A few of the keys the built-in components declare:
 
-| Capability | Gates |
+| Key | What it covers |
 | --- | --- |
-| `sql.lateral` | Lateral joins (`lateralJoin()`); PostgreSQL declares it, SQLite does not |
+| `sql.lateral` | Lateral joins (`lateralJoin()`); PostgreSQL reports `true`, SQLite reports `false` |
 | `sql.returning` | `RETURNING` clauses on writes |
-| `sql.enums` | Enum value sets enforced in the database; SQLite does not declare it |
+| `sql.enums` | Enum value sets enforced in the database; SQLite reports `false` |
 | `sql.defaultInInsert` | Using `DEFAULT` as a value in multi-row inserts |
-| `sql.scalarList` | Scalar list fields in the schema |
+| `sql.scalarList` | Scalar list fields in the contract |
 | `postgres.distinctOn` | `DISTINCT ON` queries (`distinctOn()`) |
 | `postgres.jsonAgg` | JSON aggregation for nested reads |
-| `postgres.pgvector.cosine` | Cosine distance operations, contributed by the pgvector pack |
+| `postgres.pgvector.cosine` | Contributed by the pgvector pack, alongside its cosine operations |
 
-This table is a sample, not the full registry. Each target, adapter, and pack ships its own declarations. Your project's emitted `contract.json` is the authoritative list of what your stack supports.
+This table is a sample, not the full list. Each target, adapter, and pack ships its own declarations. Your project's emitted `contract.json` is the full list of what your stack supports.
 
-MongoDB currently declares no capability keys: the capability system mostly differentiates SQL targets and their extensions, and the MongoDB pipeline does not yet gate features this way.
+MongoDB currently declares no keys: this mechanism mostly separates SQL targets and their extensions, and the MongoDB pipeline does not yet check features this way.
 
-## Capabilities and verification
+## The `capabilities` section and `prisma db verify` [#capabilities-and-verification]
 
-Capabilities describe what the composed software stack supports, as declared by the target, adapter, and packs. They are recorded in the contract at emit time rather than probed from the live database, so the same contract behaves identically in every environment. Database-side verification is separate: [`db verify`](/cli/db-verify) checks that the database matches the contract's schema and profile, using the hashes described in [the contract artifact](/orm/contract-authoring/the-contract-artifact#the-content-hashes).
+The keys describe what the composed software supports, as declared by the target, the adapter, and the packs. They are recorded in the contract when you run `npx prisma contract emit` rather than read from the live database, so the same contract behaves identically in every environment. Checking the database itself is separate: [`db verify`](/cli/db-verify) compares the database against the contract's schema and profile, using the hashes described in [the contract artifact](/orm/contract-authoring/the-contract-artifact#the-content-hashes).
 
-Extensions are the main source of capabilities beyond the core. [Using extensions](/orm/extensions/using-extensions) shows the full flow from install to first query.
+Extensions are the main source of keys beyond the core set. [Using extensions](/orm/extensions/using-extensions) shows the full flow from install to first query.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. The `prisma-8` skill covers this page. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent; in an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers this material. Ask your agent to:
 
-- "Which capabilities does our contract currently require, and which package provides each?"
-- "Add pgvector to the project and confirm the capability shows up in the emitted contract."
+- "Which keys does the `capabilities` section of our contract require, and which package provides each?"
+- "Add pgvector to the project and confirm its key shows up in the emitted contract."
 
 ## Next steps
 
-- See where the `capabilities` block sits in [the contract artifact](/orm/contract-authoring/the-contract-artifact).
-- Compose extension packs, and the capabilities they bring, in the [CLI configuration](/cli/configuration).
+- See where the `capabilities` block is in [contract.json and contract.d.ts](/orm/contract-authoring/the-contract-artifact).
+- Compose extension packs, and the keys they bring, in the [CLI configuration](/cli/configuration).
