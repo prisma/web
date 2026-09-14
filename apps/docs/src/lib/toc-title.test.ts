@@ -69,3 +69,17 @@ test("renders nothing for nullish, boolean and childless input", () => {
 test("keeps numeric title segments", () => {
   assert.equal(render(["Prisma ", 7, " CLI"]), "<span>Prisma 7 CLI</span>");
 });
+
+test("passes a React Flight lazy node through so React can resolve it", () => {
+  // The shape a client component receives for a deferred ($L) chunk: a lazy
+  // node, not an element, whose _init yields the value. Long TOCs are streamed
+  // this way, and dropping the node rendered empty anchors in the server HTML.
+  const lazyTitle = {
+    $$typeof: Symbol.for("react.lazy"),
+    _payload: "Update a number field",
+    _init: (payload: unknown) => payload,
+  } as unknown as Parameters<typeof stripTocLinks>[0];
+
+  assert.equal(render(lazyTitle), "<span>Update a number field</span>");
+  assert.equal(render(["Prefix ", lazyTitle]), "<span>Prefix Update a number field</span>");
+});

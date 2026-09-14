@@ -1,27 +1,25 @@
-import { blog, getPageImage } from "@/lib/source";
-import { getSeriesMetadata, seriesRegistry } from "@/lib/series-registry";
-import { type BlogCardItem } from "@/components/BlogGrid";
-import { FeaturedSeriesShelf, type SeriesShelfItem } from "@/components/SeriesShelf";
-import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 import type { Metadata } from "next";
-import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
-import { Suspense } from "react";
-import { BlogHomeClient } from "@/components/BlogHomeClient";
+
+import { getPageImage } from "@/lib/source";
+import { FeaturedSeriesShelf } from "@/components/SeriesShelf";
+import { BlogListing } from "@/components/BlogListing";
+import { BlogListingHero } from "@/components/BlogListingHero";
+import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
+import { getListingItems, getListingTags, getSeriesShelfItems } from "@/lib/blog-listing-data";
+import { getPageSlice, getTotalPages } from "@/lib/blog-listing";
+import { withBlogBasePath } from "@/lib/url";
 
 /**
- * Opt into full static rendering for this route.
+ * Page 1 of the blog archive, rendered entirely on the server.
  *
- * Previously, the page accepted `searchParams` as a Server Component prop which
- * forced Next.js into dynamic rendering and emitted:
- *   Cache-Control: private, no-cache, no-store
+ * The listing used to be handed to `BlogHomeClient`, a client component that
+ * read `?page=` / `?tag=` from `useSearchParams()`. Next.js renders a Suspense
+ * fallback for such a component during static prerendering, so the HTML this
+ * route shipped contained the hero and an empty `<div>` — no post links at all
+ * (audit 3.2). Pagination was a query string, which robots.txt then disallowed.
  *
- * By removing `searchParams` from this component and delegating URL-based
- * filtering/pagination to the `BlogHomeClient` client component (which reads
- * `useSearchParams()` after hydration), the page is now statically rendered and
- * receives proper public cache headers from Next.js / Vercel's edge network.
- *
- * All post data is passed as props so the RSC payload ships the full dataset —
- * no extra network round-trip is needed during client hydration.
+ * Now: this route serves page 1, `page/[n]` serves the rest, `tag/[tag]` serves
+ * the filters, and all of them are static with real URLs.
  */
 export const revalidate = false;
 
@@ -50,148 +48,21 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function BlogHome() {
-  const sortedByDate = blog.getPages().sort((a, b) => {
-    const aTime =
-      a.data.date instanceof Date
-        ? a.data.date.getTime()
-        : new Date((a.data.date as unknown as string) ?? "").getTime();
-    const bTime =
-      b.data.date instanceof Date
-        ? b.data.date.getTime()
-        : new Date((b.data.date as unknown as string) ?? "").getTime();
-    return bTime - aTime;
-  });
-
-  // Pinned posts are surfaced ahead of the chronological feed so the latest
-  // pinned post takes the featured slot (and the top of the list) instead of
-  // the most recent post by date. The date sort above is stable, so pinned
-  // posts keep their newest-first order among themselves.
-  const isPinned = (post: (typeof sortedByDate)[number]): boolean =>
-    (post.data as { pinned?: boolean }).pinned === true;
-  const posts = [...sortedByDate.filter(isPinned), ...sortedByDate.filter((p) => !isPinned(p))];
-
-  const getAllAuthors = (post: (typeof posts)[number]): string[] => {
-    const data = post.data as any;
-    const authors = Array.isArray(data?.authors) ? data.authors : [];
-    return authors.filter((name: unknown): name is string => typeof name === "string");
-  };
-
-  const items: BlogCardItem[] = posts.map((post) => {
-    const data = post.data as any;
-
-    let dateISO = "";
-    if (data.date) {
-      try {
-        const dateObj = new Date(data.date);
-        if (!isNaN(dateObj.getTime())) {
-          dateISO = dateObj.toISOString();
-        }
-      } catch {
-        dateISO = "";
-      }
-    }
-
-    let updatedAtISO: string | null = null;
-    if (data.updatedAt) {
-      const updatedObj = new Date(data.updatedAt);
-      if (!isNaN(updatedObj.getTime())) {
-        updatedAtISO = updatedObj.toISOString();
-      }
-    }
-
-    const authors = getAllAuthors(post);
-
-    return {
-      url: withBlogBasePath(post.url),
-      title: data.title as string,
-      date: dateISO,
-      updatedAt: updatedAtISO,
-      excerpt: data.metaDescription as string,
-      author: authors[0] ?? null,
-      authors,
-      imageSrc: withBlogBasePathForImageSrc(post.data.heroImagePath ?? ""),
-      imageAlt: (data.heroImageAlt as string) ?? (data.title as string),
-      seriesTitle: typeof data.series === "string" ? getSeriesMetadata(data.series).title : null,
-      tags: data.tags,
-    };
-  });
-
-  const uniqueTags = [
-    ...new Set(
-      items.flatMap((item) => item.tags ?? []).filter((tag): tag is string => Boolean(tag)),
-    ),
-  ];
-
-  const seriesCounts = new Map<string, number>();
-  for (const post of posts) {
-    const seriesKey = (post.data as { series?: string }).series;
-    if (typeof seriesKey === "string") {
-      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) ?? 0) + 1);
-    }
-  }
-
-  const seriesItems: SeriesShelfItem[] = Object.keys(seriesRegistry)
-    .map((key) => {
-      const meta = getSeriesMetadata(key);
-      return {
-        key,
-        title: meta.title,
-        description: meta.description,
-        featured: meta.featured ?? false,
-        count: seriesCounts.get(key) ?? 0,
-      };
-    })
-    .filter((item) => item.count > 0)
-    .sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
-      // Featured series keep their registry order (the first one becomes the
-      // home highlight card); the rest rank by part count.
-      if (a.featured && b.featured) return 0;
-      return b.count - a.count;
-    });
+  const items = getListingItems();
+  const uniqueTags = getListingTags(items);
+  const { featured, posts } = getPageSlice(items, 1, true);
 
   return (
-    // Site width (1400px) — the same container the rebranded marketing pages
-    // use, so the blog's grid lines up with the rest of prisma.io.
     <main className="z-1 mx-auto w-full max-w-[87.5rem] flex-1 px-4 sm:px-6 lg:px-8">
-      {/* CF's centered hero on calm prismatic ground: spectral washes only.
-          The page's single ray lives on the featured-series card below — one
-          brand moment per view, and a diagonal band can't safely cross
-          centered text at every breakpoint anyway. Static by design. */}
-      <header className="relative isolate mx-auto max-w-2xl py-16 text-center sm:py-20">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -inset-x-24 -inset-y-8 -z-10 overflow-hidden dark:opacity-70"
-        >
-          <div
-            className="absolute inset-0"
-            style={{
-              background: [
-                "radial-gradient(34% 48% at 18% 30%, color-mix(in srgb, var(--color-prism-cyan-400) 16%, transparent), transparent 68%)",
-                "radial-gradient(30% 42% at 84% 24%, color-mix(in srgb, var(--color-prism-yellow-300) 13%, transparent), transparent 66%)",
-                "radial-gradient(30% 44% at 70% 88%, color-mix(in srgb, var(--color-prism-red-500) 12%, transparent), transparent 68%)",
-              ].join(","),
-            }}
-          />
-        </div>
-        <h1 className="landing-h1">Blog</h1>
-        <p className="mt-6 text-lg leading-relaxed text-foreground-neutral-weak text-balance">
-          {BLOG_HOME_DESCRIPTION}
-        </p>
-      </header>
-      {/*
-       * Suspense is required here because BlogHomeClient uses useSearchParams().
-       * During static pre-rendering Next.js renders the fallback; after hydration
-       * the client component takes over and applies URL-driven filtering instantly
-       * since all post data is already present in the RSC payload.
-       */}
-      <Suspense fallback={<div className="min-h-96 pb-20" />}>
-        <BlogHomeClient
-          items={items}
-          uniqueTags={uniqueTags}
-          seriesShelf={<FeaturedSeriesShelf series={seriesItems} />}
-        />
-      </Suspense>
+      <BlogListingHero title="Blog" description={BLOG_HOME_DESCRIPTION} />
+      <BlogListing
+        items={posts}
+        featuredPost={featured}
+        uniqueTags={uniqueTags}
+        currentPage={1}
+        totalPages={getTotalPages(items.length)}
+        seriesShelf={<FeaturedSeriesShelf series={getSeriesShelfItems()} />}
+      />
     </main>
   );
 }
