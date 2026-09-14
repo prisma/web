@@ -6,40 +6,42 @@ metaTitle: The Prisma ORM contract artifacts
 metaDescription: 'What contract.json and contract.d.ts contain, why the same source always produces the same two files, how the hashes work, and how your app and the CLI read them.'
 ---
 
-[`prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside the source by default:
+You write [your contract](/orm/contract-authoring/the-data-contract) in one source file: `src/prisma/contract.prisma` in PSL, or `src/prisma/contract.ts` in TypeScript. [`npx prisma contract emit`](/cli/contract-emit) reads that file and writes two files beside it:
 
 | File | Contents | Read by |
 | --- | --- | --- |
-| `contract.json` | The machine-readable contract: models, how they are stored, which database features they need, and the hashes | `db`, the migration tooling, the database checks, and anything else that needs to read your schema |
+| `contract.json` | The machine-readable contract: models, how they are stored, which database features they need, and the hashes | `db`, `prisma db sign`, `prisma db verify`, and `prisma migration plan` |
 | `contract.d.ts` | TypeScript declarations derived from the contract | The query APIs and your application code, for typed models and results |
 
-Both files are generated. Do not edit them. Change the [PSL](/orm/contract-authoring/psl-syntax) or [TypeScript](/orm/contract-authoring/typescript-schema-builder) source and run `prisma contract emit` again. Each file starts with a notice that says exactly this.
+`db` is the client you create once in `src/prisma/db.ts`. `prisma orm init` writes that file for you.
+
+Both files are generated. Do not edit them. Change the [PSL](/orm/contract-authoring/psl-syntax) or [TypeScript](/orm/contract-authoring/typescript-schema-builder) source and run `npx prisma contract emit` again. Each file starts with a notice that says exactly this. To write the two files to another directory, see [`prisma contract emit`](/cli/contract-emit).
 
 ## The same source always produces the same two files [#deterministic-emission]
 
-Run `prisma contract emit` on the same source on any machine and you get byte-identical files. Keys are written in a fixed key order and values in a normalized form, which is what lets you read the files in a code review and hash them.
+Run `npx prisma contract emit` on the same source on any machine and you get the same two files, byte for byte. You can read the diff of either file in a code review.
 
-That is also why the contract source must not read the environment, the clock, or random values. A source that did would produce different files each run, and every hash below would stop meaning anything. The [TypeScript authoring page](/orm/contract-authoring/typescript-schema-builder#keep-the-contract-file-pure) lists the rules.
+That only holds if the contract source does not read the environment, the clock, or random values. A source that did would produce different files each run, and every hash below would stop meaning anything. The [TypeScript authoring page](/orm/contract-authoring/typescript-schema-builder#keep-the-contract-file-pure) lists the rules.
 
 ## The content hashes
 
-`prisma contract emit` computes a hash over each of these parts of the contract:
+`npx prisma contract emit` computes a hash over each of these parts of the contract. You never compute or compare them yourself.
 
 | Hash | Covers | Changes when |
 | --- | --- | --- |
-| `storageHash` | The storage layout: tables, columns, primary keys, uniques, indexes, foreign keys, and the value sets behind enums | A table, column, key, constraint, or index changes |
+| `storageHash` | The storage layout: tables, columns, primary keys, uniques, indexes, foreign keys, and the allowed values of each enum | A table, column, key, constraint, or index changes |
 | `executionHash` | The defaults Prisma ORM applies before a write, such as `@default(uuid())` | A generated default changes |
-| `profileHash` | The database this contract targets, and its family | The contract targets a different database |
+| `profileHash` | The database this contract targets, and whether it is SQL or MongoDB | The contract targets a different database |
 
-The hashes are how Prisma ORM connects the contract to a live database. [`prisma db sign`](/cli/db-sign) checks that the database satisfies the contract, then records `storageHash` and `profileHash` in a small table it creates in the database. [`prisma db verify`](/cli/db-verify) compares the contract you hold against that record and against the live schema, and fails when they disagree. `db` makes the same comparison before its first query, but it logs a warning and carries on.
+The hashes are how Prisma ORM connects the contract to a live database. [`npx prisma db sign`](/cli/db-sign) checks that the database satisfies the contract, then records `storageHash` and `profileHash` in a table it creates called `prisma_contract.marker`. You never write to that table yourself. Run `db sign` when the live database already matches the contract, for example after [`prisma contract infer`](/cli/contract-infer) on an existing database, or after a deployment applied the changes. [`npx prisma db verify`](/cli/db-verify) compares the contract you hold against that record and against the live schema, and fails when they disagree.
 
 ## Inside `contract.json`
 
-The contract separates what your application models from how it is stored. The `domain` section describes models, fields, and relations; the `storage` section describes tables, columns, keys, and indexes. On MongoDB it describes collections and indexes instead. Each model's own `storage` block joins the two. Everything is grouped by namespace. On PostgreSQL the namespace is the schema, `public` unless you set one.
+The contract keeps your application's view of the data separate from the way the database stores it. The `domain` section describes models, fields, and relations. The `storage` section describes tables, columns, keys, and indexes. On MongoDB it describes collections and indexes instead. Each model's own `storage` block joins the two. Everything is grouped by namespace. On PostgreSQL the namespace is the schema. It is `public` unless you put the models in a `namespace` block, such as `namespace auth { }`, in your [PSL source](/orm/contract-authoring/psl-syntax).
 
 An abridged `contract.json` for a `User` and `Post` schema:
 
-```json title="prisma/contract.json (abridged)"
+```json title="src/prisma/contract.json (abridged)"
 {
   "schemaVersion": "1",
   "targetFamily": "sql",
@@ -101,18 +103,24 @@ An abridged `contract.json` for a `User` and `Post` schema:
 
 The sections, top to bottom:
 
-- **`schemaVersion`, `targetFamily`, `target`**: the contract format version and the database this contract targets.
-- **`roots`**: each table name mapped to the model stored in it. The SQL query builder is keyed by those table names, as in `db.sql.public.user`, and the model name is what `db.orm.public.User` uses.
-- **`domain`**: the application's view. Each scalar field records whether it is nullable and its type id, such as `pg/text@1`, the PostgreSQL type plus a version, always `@1` today. Relations record how many records are on each side and the fields they join on. The model's `storage` block maps fields to columns.
-- **`storage`**: the database's view. Tables with their columns, each with a native type and a type id, plus primary keys, uniques, indexes, foreign keys, check constraints, and the value sets behind enums. This is the section the migration tooling compares between versions and `prisma db verify` checks the live schema against.
-- **`execution`**: the defaults Prisma ORM applies before a write, such as `@default(uuid())`. These are not column defaults in the database.
-- **`capabilities`** and **`extensions`**: which database features this contract can use, collected from the adapter for your database and any extension packs when you run `prisma contract emit`. The query APIs check these before building a query that needs one. See [which database features the contract needs](/orm/contract-authoring/capabilities).
+- **`schemaVersion`, `targetFamily`, `target`**: the contract format version, whether the database is SQL or MongoDB, and which database this contract targets.
+- **`roots`**: the table name of every model, so the query APIs know what to call each one. The SQL query builder uses the table name, as in `db.sql.public.user`. The model API uses the model name, as in `db.orm.public.User`. Both are described in the [ORM reference](/orm/reference).
+- **`domain`**: the application's view. Each scalar field records whether it is nullable and its `codecId`, such as `pg/text@1`, which is the PostgreSQL type plus a version. Every id ends in `@1` today. Relations record how many records are on each side and the fields they join on. The model's `storage` block maps fields to columns.
+- **`storage`**: the database's view. Tables with their columns, each with a native type and a `codecId`, plus primary keys, uniques, indexes, foreign keys, check constraints, and the allowed values of each enum. This is the section the migration tooling compares between versions and `prisma db verify` checks the live schema against.
+- **`execution`**: the defaults Prisma ORM applies before a write, such as `@default(uuid())`. Prisma ORM fills these in as it sends the write. They are not column defaults in the database, so a write that does not go through Prisma ORM gets whatever the column itself defaults to.
+- **`capabilities`**: which database features this contract can use. `npx prisma contract emit` collects them from the adapter for your database and from any extension packs named in your config. The query APIs check them before building a query that needs one. See [supported database features](/orm/contract-authoring/capabilities).
+- **`extensions`**: one entry for each extension pack composed in your project, with the types that pack adds. It is `{}` when you compose none.
 
 ## Inside `contract.d.ts`
 
-The declarations file gives the type system the same information. It exports the contract type, branded hash types matching `contract.json`, and input/output types for every model:
+The declarations file gives the type system the same information. It exports:
 
-```typescript title="prisma/contract.d.ts (excerpt)"
+- `Contract`, the type the client is built from. `db.ts` imports it.
+- One type per hash, such as `StorageHash` and `ProfileHash`. The hash string is part of the type.
+- `<Name>Output` and `<Name>Input` for each `type` block in your contract, such as `AddressOutput` and `AddressInput` below.
+- `FieldOutputTypes` and `FieldInputTypes`, which hold the field types of every model, keyed by namespace and model name.
+
+```typescript title="src/prisma/contract.d.ts (excerpt)"
 export type StorageHash =
   StorageHashBase<"9f49f8f9e51a9cc016f1ec2098ebae9406521a3cc2cf00207adc795078333d8b">;
 export type ProfileHash =
@@ -126,27 +134,34 @@ export type AddressOutput = {
 };
 ```
 
-Because the hashes are literal types, a client built against one version of the contract will not type-check against another version's files. TypeScript catches a mismatched contract before `prisma db verify` has to.
+`CodecTypes`, `StorageHashBase`, and `ProfileHashBase` are helper types the file declares for itself. You never write them. Because the hash string is part of the type, files from two different runs of `npx prisma contract emit` do not type-check against each other. If you regenerate `contract.json` and not `contract.d.ts`, TypeScript catches it before `prisma db verify` has to.
 
 ## How the application consumes the artifacts
 
 `db` is built from both files: `contract.json` as the value, `contract.d.ts` as the type. `prisma orm init` writes `src/prisma/db.ts` for you.
 
 ```typescript title="src/prisma/db.ts"
+import "dotenv/config";
 import postgres from "@prisma/orm-postgres/runtime";
 import type { Contract } from "./contract.d";
 import contractJson from "./contract.json" with { type: "json" };
 
 export const db = postgres<Contract>({
   contractJson,
+  url: process.env['DATABASE_URL']!,
 });
 ```
 
-Before its first query, `db` reads the record `prisma db sign` wrote in the database and compares it with the contract's hashes. If they do not match, it logs a warning and runs the query anyway. Run `prisma db verify` when you need the check to fail instead.
+The connection string comes from the `DATABASE_URL` environment variable. The import path `./contract.d` is written that way on purpose. It is not a typo, and TypeScript resolves it to `contract.d.ts`. Before its first query, `db` reads the record `prisma db sign` wrote in the database and compares it with the contract's hashes. If they do not match, it logs a warning and runs the query anyway. Run `prisma db verify` when you need the check to fail instead.
 
 ## Version control
 
-Commit `contract.json` and `contract.d.ts` alongside the source. They hold structure only, no data and no credentials. Committing them lets teammates, CI, and deploys read the contract without running `prisma contract emit` first. Run `prisma contract emit` after every source change so the two files never trail the source. A CI job can enforce this by running the command and failing if the working tree changes.
+Commit `contract.json` and `contract.d.ts` alongside the source. They hold structure only, no data and no credentials. Committing them lets teammates, CI, and deploys read the contract without running `npx prisma contract emit` first. Run `npx prisma contract emit` after every source change so the two files never trail the source. A CI job can check this in two lines:
+
+```bash
+npx prisma contract emit
+git diff --exit-code src/prisma
+```
 
 ## Prompt your coding agent
 

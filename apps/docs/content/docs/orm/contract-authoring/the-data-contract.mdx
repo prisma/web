@@ -8,9 +8,9 @@ metaDescription: 'What the Prisma ORM data contract is, how PSL and TypeScript a
 
 Every Prisma ORM project has one description of its data: the models, their fields, and how they map to database tables. That description is the data contract, the `contract.prisma` file that replaced `schema.prisma`.
 
-For example, a blog's contract declares a `User` and a `Post`, the fields each carries, and how they relate. You author it in PSL, the Prisma schema language:
+For example, a blog's contract declares a `User` and a `Post`, the fields each one has, and how they relate. You author it in PSL, the Prisma schema language:
 
-```prisma title="prisma/contract.prisma"
+```prisma title="src/prisma/contract.prisma"
 // use prisma-8
 
 model User {
@@ -28,11 +28,11 @@ model Post {
 }
 ```
 
-The first line of every `.prisma` contract is `// use prisma-8`. It marks the file as a Prisma ORM 8 contract rather than a Prisma ORM 7 schema. The Prisma language server only offers diagnostics, completion, and formatting on files that carry it. Completion covers field, model, and block attribute names and their argument keys, taken from the installed target and extensions. Contracts written before `8.0.0-rc.10` start with `// use prisma-next`. The language server still accepts that line and replaces it when you format the file.
+The first line of every `.prisma` contract is `// use prisma-8`. It marks the file as a Prisma ORM 8 contract rather than a Prisma ORM 7 schema file. Editor support depends on that line: the Prisma language server only reports problems, autocompletes, and formats files that start with it. Contracts written before `8.0.0-rc.10` start with `// use prisma-next` instead. The language server still accepts that older line and replaces it when you format the file.
 
-`prisma contract emit` turns this source into two machine-readable files, and the rest of the toolchain works against them. Your queries are type-checked against the contract, migrations are planned as changes to it, and `prisma db verify` checks a live database against it.
+`prisma contract emit` turns this file into two files that the rest of the toolchain reads: `contract.json` and `contract.d.ts`. Your queries are type-checked against the contract, migrations are planned as changes to it, and `prisma db verify` checks a live database against it. Think of it as a `package-lock.json` for your data: an exact, versioned record of what your application expects from its database.
 
-Think of it as a `package-lock.json` for your data: an exact, versioned record of what your application expects from its database.
+If you already have a Prisma ORM 7 `schema.prisma`, [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists what changed and the [PostgreSQL upgrade guide](/guides/upgrade-prisma-orm/postgresql) walks through converting the file.
 
 :::note[Contract vs. schema]
 
@@ -42,15 +42,13 @@ In Prisma ORM, the **contract** is what you write in your code, and the **schema
 
 ## Why a contract
 
-Prisma ORM 7 compiles your schema into generated client code. The description of your data is in there, but only the generated client can read it.
+Prisma ORM 7 compiles your `schema.prisma` into generated client code. The description of your data is in there, but only the generated client can read it. Prisma ORM keeps that description in the open. Your contract file compiles to two plain files. `contract.json` describes your models, how they are stored, and [which database features they need](/orm/contract-authoring/capabilities), such as pgvector. `contract.d.ts` holds the TypeScript types derived from it. The same source always produces the same two files, so you can read them in a code review, hash them, and hand them to tools and coding agents.
 
-Prisma ORM keeps that description in the open. Your contract source compiles to two plain files. `contract.json` describes your models, how they are stored, and which database features the contract needs. `contract.d.ts` holds the TypeScript types derived from it. The same source always produces the same two files, so you can read them in a code review, hash them, and hand them to tools and coding agents.
-
-The contract also identifies the exact version of the schema it describes. `prisma contract emit` computes hashes over its contents. When you run [`prisma db sign`](/cli/db-sign), Prisma ORM records which contract the database matches in a small table it creates in the database. The client reads that record before its first query and logs a warning if the record does not match the contract the client holds. To fail instead of warn, for example in a deploy check, run [`prisma db verify`](/cli/db-verify).
+The contract also identifies its own exact version. `prisma contract emit` computes hashes from the contract and writes them into `contract.json`. [`prisma db sign`](/cli/db-sign) checks that your database satisfies the contract, then records those hashes in the `prisma_contract.marker` table, which it creates in your database. Run it once the database matches the contract, after you have applied your migrations. Your app then logs a warning when the database stops matching. To fail instead of warn, for example in a deploy check, run [`prisma db verify`](/cli/db-verify).
 
 ## How it works
 
-A Prisma ORM project declares one contract source in `prisma.config.ts`:
+A Prisma ORM project declares one contract file in `prisma.config.ts`:
 
 ```typescript title="prisma.config.ts"
 import { definePrismaConfig } from "prisma/config";
@@ -58,42 +56,43 @@ import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 
 export default definePrismaConfig({
   orm: ormConfig({
-    contract: "./prisma/contract.prisma",
+    contract: "./src/prisma/contract.prisma",
   }),
 });
 ```
 
-The source is either a Prisma schema file (`contract.prisma`) or a TypeScript file (`contract.ts`). The file extension selects the authoring mode. Both modes describe the same things: models with fields and relations, the tables and columns they map to, named types, enums, and any extension-provided types.
+`prisma orm init` writes that config for you and installs the database package it imports, `@prisma/orm-postgres` for PostgreSQL. It also writes the contract file and `src/prisma/db.ts`. The contract file is either a Prisma schema file (`contract.prisma`) or a TypeScript file (`contract.ts`). The file extension selects the authoring mode, so to author in TypeScript you point `contract` at `./src/prisma/contract.ts`. Both modes describe the same things: models with fields and relations, the tables and columns they map to, named types, enums, and any types that [extension packages](/orm/contract-authoring/psl-syntax#extension-types) add.
 
-Run `prisma contract emit` after every change to the contract. It writes `contract.json` and `contract.d.ts` beside the source:
+Run `prisma contract emit` after every change to the contract. It replaces `prisma generate`, which Prisma ORM 8 does not have. It writes `contract.json` and `contract.d.ts` beside the source:
 
 ```npm
 npx prisma contract emit
 ```
 
-From there, the rest of the toolchain takes over:
+From there, the rest of the toolchain takes over. `db` is the client you create once in `src/prisma/db.ts`, and `prisma orm init` writes that file for you:
 
-- The query APIs load `contract.d.ts` to give you typed models, fields, and results.
+- `db` loads `contract.d.ts` to give you typed models, fields, and results.
 - `db` reads `contract.json` and compares its hashes with the record `prisma db sign` wrote in the database.
-- The migration tooling compares two contracts to plan schema changes, and [`prisma db verify`](/cli/db-verify) checks a live database against the current contract.
+- The migration tooling compares two contracts to plan database changes, and [`prisma db verify`](/cli/db-verify) checks a live database against the current contract.
 
 ## Two authoring modes, one `contract.json` [#two-authoring-modes-one-artifact]
 
-**[PSL](/orm/contract-authoring/psl-syntax)** is the usual way to write the contract. It is a compact language for describing data. It is what `npm create prisma@latest` scaffolds, and what [`prisma contract infer`](/cli/contract-infer) writes when you start from an existing database.
+**[PSL](/orm/contract-authoring/psl-syntax)** is the usual way to write the contract. It is a compact language for describing data. It is what `npm create prisma@latest` scaffolds, and what [`prisma contract infer`](/cli/contract-infer) writes when you start from an existing database. That command reads the live database and writes a `contract.prisma` from what it finds.
 
-For the cases PSL does not cover, define models with the **[TypeScript builder](/orm/contract-authoring/typescript-schema-builder)** instead. Reach for it when model definitions must be composed, generated, or shared as ordinary TypeScript modules.
+Define models with the **[TypeScript builder](/orm/contract-authoring/typescript-schema-builder)** instead when you want to build them with code. Reach for it when model definitions must be composed, generated, or shared as ordinary TypeScript modules.
 
-Both modes produce the same contract. For an equivalent schema they write the same `contract.json`, so migrations, database checks, and the query APIs behave the same no matter which mode you write. You give up nothing by staying with PSL. A project has exactly one contract file, the one named by `contract` in the config. Keep the other form out of the project, or treat it as a generated reference, so the two can never disagree.
+Both modes produce the same contract. For the same models they write the same `contract.json`, so migrations, database checks, and `db` behave the same no matter which mode you write. A project has exactly one contract file, the one named by `contract` in the config. Do not keep a `contract.prisma` and a `contract.ts` in the same project, so the two can never disagree.
 
 ## What the contract contains
 
 The contract describes structure, not data:
 
 - models, fields, and relations, plus how they map to tables and columns
-- storage details: primary keys, unique constraints, indexes, and foreign keys
-- named types, enums, and `type` blocks, each a structured value stored inside its parent row with no table of its own
-- the types and database features that extension packs add, such as pgvector's `Vector`
-- hashes that identify this exact version of the schema
+- how the data is stored: primary keys, unique constraints, indexes, and foreign keys
+- [named types](/orm/contract-authoring/psl-syntax#named-types) and enums
+- [`type` blocks](/orm/contract-authoring/psl-syntax#value-objects), each a structured value stored inside its parent row with no table of its own
+- the types and database features that extension packages add, such as pgvector's `Vector`
+- hashes that identify this exact version of the contract
 
 It contains no rows, no credentials, and no connection details, so committing the source, `contract.json`, and `contract.d.ts` to version control is safe and expected.
 
