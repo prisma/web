@@ -114,10 +114,21 @@ function literalHeadings(source: string): string[] {
   const headings: string[] = [];
 
   for (const [, , inner] of source.matchAll(HEADING_PATTERN)) {
-    const flattened = inner
-      // JSX's explicit whitespace literal, used to keep a space before a tag.
-      .replace(/\{" "\}/g, " ")
-      .replace(/<[^>]*>/g, "");
+    // JSX's explicit whitespace literal, used to keep a space before a tag.
+    let flattened = inner.replace(/\{" "\}/g, " ");
+
+    // Strip the wrappers' tags until none are left. This runs to a fixpoint
+    // rather than in one pass because CodeQL's
+    // js/incomplete-multi-character-sanitization rule flags a lone
+    // `<[^>]*>` replace (`<<b>b>` would survive it) and a loop is the shape it
+    // recognises as complete. The input is this repo's own source, not
+    // untrusted markup, so the loop is about keeping the scan green, not safe.
+    let previous: string;
+    do {
+      previous = flattened;
+      flattened = flattened.replace(/<[^>]*>/g, "");
+    } while (flattened !== previous);
+
     if (flattened.includes("{")) continue;
 
     const text = flattened
