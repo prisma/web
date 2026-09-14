@@ -8,7 +8,9 @@ function toCandidate(page: BlogPage): RelatedCandidate & { page: BlogPage } {
   return {
     page,
     slug: page.slugs[0] ?? "",
-    tags: Array.isArray(data.tags) ? data.tags.filter((t): t is string => typeof t === "string") : [],
+    tags: Array.isArray(data.tags)
+      ? data.tags.filter((t): t is string => typeof t === "string")
+      : [],
     series: typeof data.series === "string" ? data.series : undefined,
   };
 }

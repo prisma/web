@@ -78,7 +78,10 @@ test("the same corpus always produces the same recommendations", () => {
   // ...and the input order does not decide it either.
   const shuffled = corpus().reverse();
   for (const post of shuffled) {
-    assert.deepEqual(rankRelated(post, shuffled, 2).map((p) => p.slug), first.get(post.slug));
+    assert.deepEqual(
+      rankRelated(post, shuffled, 2).map((p) => p.slug),
+      first.get(post.slug),
+    );
   }
 });
 

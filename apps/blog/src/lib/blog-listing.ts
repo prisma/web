@@ -40,7 +40,11 @@ export function getTotalPages(count: number): number {
  * `items[0]` plus `slice(1, PAGE_SIZE)` — so page 2 still starts at index
  * `PAGE_SIZE` and no post falls between the two pages.
  */
-export function getPageSlice<T>(items: T[], page: number, includeFeatured = false): ListingSlice<T> {
+export function getPageSlice<T>(
+  items: T[],
+  page: number,
+  includeFeatured = false,
+): ListingSlice<T> {
   if (includeFeatured && page === 1) {
     return { featured: items[0], posts: items.slice(1, PAGE_SIZE) };
   }

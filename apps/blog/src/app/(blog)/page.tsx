@@ -5,11 +5,7 @@ import { FeaturedSeriesShelf } from "@/components/SeriesShelf";
 import { BlogListing } from "@/components/BlogListing";
 import { BlogListingHero } from "@/components/BlogListingHero";
 import { BLOG_HOME_DESCRIPTION, BLOG_HOME_TITLE } from "@/lib/blog-metadata";
-import {
-  getListingItems,
-  getListingTags,
-  getSeriesShelfItems,
-} from "@/lib/blog-listing-data";
+import { getListingItems, getListingTags, getSeriesShelfItems } from "@/lib/blog-listing-data";
 import { getPageSlice, getTotalPages } from "@/lib/blog-listing";
 import { withBlogBasePath } from "@/lib/url";
 

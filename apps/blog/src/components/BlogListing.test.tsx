@@ -104,7 +104,12 @@ test("prev/next point at the neighbouring pages and stop at the ends", () => {
   const first = renderPage(items, 1);
   assert.ok(!/Previous/.test(first), "page 1 has no Previous control");
   assert.ok(/Next/.test(first));
-  assert.deepEqual(paginationHrefs(first), ["/blog", "/blog/page/2", "/blog/page/3", "/blog/page/2"]);
+  assert.deepEqual(paginationHrefs(first), [
+    "/blog",
+    "/blog/page/2",
+    "/blog/page/3",
+    "/blog/page/2",
+  ]);
 
   const middle = renderPage(items, 2);
   assert.ok(/Previous/.test(middle) && /Next/.test(middle));
@@ -120,7 +125,12 @@ test("prev/next point at the neighbouring pages and stop at the ends", () => {
   const last = renderPage(items, 3);
   assert.ok(/Previous/.test(last), "the last page still has Previous");
   assert.ok(!/Next/.test(last), "the last page has no Next control");
-  assert.deepEqual(paginationHrefs(last), ["/blog/page/2", "/blog", "/blog/page/2", "/blog/page/3"]);
+  assert.deepEqual(paginationHrefs(last), [
+    "/blog/page/2",
+    "/blog",
+    "/blog/page/2",
+    "/blog/page/3",
+  ]);
 });
 
 test("the current page is marked and the others are plain links", () => {

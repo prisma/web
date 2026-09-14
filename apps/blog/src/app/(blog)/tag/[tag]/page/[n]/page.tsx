@@ -43,9 +43,7 @@ function resolvePage(tag: string, n: string, totalPages: number): number {
   return page;
 }
 
-export default async function BlogTagArchivePage(props: {
-  params: Promise<TagPageNumberParams>;
-}) {
+export default async function BlogTagArchivePage(props: { params: Promise<TagPageNumberParams> }) {
   const { tag, n } = await props.params;
   const { items, tagged } = getTagListing(tag);
   const totalPages = getTotalPages(tagged.length);

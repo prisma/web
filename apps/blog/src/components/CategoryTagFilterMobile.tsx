@@ -36,7 +36,10 @@ export function CategoryTagFilterMobile({
         <span className="capitalize">{formatTag(currentCategory)}</span>
         <ChevronDown className="size-4 text-foreground-neutral-weak" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[calc(100vw-2rem)] max-w-sm rounded-square-high p-2">
+      <PopoverContent
+        align="start"
+        className="w-[calc(100vw-2rem)] max-w-sm rounded-square-high p-2"
+      >
         <div className="flex flex-col">
           {choices.map((choice) => {
             const isSelected = currentCategory === choice.value;
