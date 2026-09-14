@@ -43,7 +43,13 @@ function buildTree(): PageTree.Root {
         children: [
           page("Overview", "/postgres/overview"),
           page("Getting started", "/postgres/getting-started"),
-          { $id: "ext", type: "page", name: "Status", url: "https://status.prisma.io", external: true },
+          {
+            $id: "ext",
+            type: "page",
+            name: "Status",
+            url: "https://status.prisma.io",
+            external: true,
+          },
           page("Pricing", "/postgres/pricing"),
         ],
       },
@@ -84,10 +90,7 @@ test("skips external links, as the client footer did", () => {
 });
 
 test("stays inside the active ORM version", () => {
-  const items = getPageFooterItems(
-    buildTree(),
-    "/orm/v7/reference/prisma-client-reference",
-  );
+  const items = getPageFooterItems(buildTree(), "/orm/v7/reference/prisma-client-reference");
 
   assert.equal(items.previous?.url, "/orm/v7");
   assert.equal(items.next?.url, "/orm/v7/reference/prisma-schema-reference");

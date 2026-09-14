@@ -30,9 +30,10 @@ function resolveTreeRoot(tree: PageTree.Root, pathname: string): PageTree.Root |
     (tree.fallback ? searchPath(tree.fallback.children, pathname) : null) ??
     [];
 
-  return (path.findLast((item) => item.type === "folder" && item.root) as
-    | PageTree.Folder
-    | undefined) ?? tree;
+  return (
+    (path.findLast((item) => item.type === "folder" && item.root) as PageTree.Folder | undefined) ??
+    tree
+  );
 }
 
 /**
@@ -60,7 +61,9 @@ export function getPageFooterItems(tree: PageTree.Root, pathname: string): PageF
   const next = list[index + 1];
 
   return {
-    ...(previous && { previous: { name: previous.name, description: previous.description, url: previous.url } }),
+    ...(previous && {
+      previous: { name: previous.name, description: previous.description, url: previous.url },
+    }),
     ...(next && { next: { name: next.name, description: next.description, url: next.url } }),
   };
 }

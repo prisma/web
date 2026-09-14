@@ -104,7 +104,10 @@ export function parseShikiTokenStyle(style: string): Map<string, string> | null 
     if (separator === -1) return null;
 
     const property = trimmed.slice(0, separator).trim().toLowerCase();
-    const value = trimmed.slice(separator + 1).trim().toLowerCase();
+    const value = trimmed
+      .slice(separator + 1)
+      .trim()
+      .toLowerCase();
 
     if (!property.startsWith(CSS_VARIABLE_PREFIX) || value.length === 0) return null;
     if (property.endsWith(BACKGROUND_SUFFIX)) return null;
@@ -147,9 +150,7 @@ export interface ShikiTokenClassGroup {
  * Pure, and the single source of truth shared by this transformer and the
  * stylesheet generator.
  */
-export function shikiTokenClassGroups(
-  declarations: Map<string, string>,
-): ShikiTokenClassGroup[] {
+export function shikiTokenClassGroups(declarations: Map<string, string>): ShikiTokenClassGroup[] {
   const colors: [string, string][] = [];
   const styles: [string, string][] = [];
 

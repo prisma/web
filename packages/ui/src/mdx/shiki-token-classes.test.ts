@@ -40,11 +40,19 @@ function codeBlockTree(lang: string, code: string, meta = "") {
   };
 }
 
-const transform = rehypeCode(rehypeCodeOptions);
+/**
+ * `rehypeCode` is typed as a unified plugin, so calling it outside a processor
+ * needs the `this` context dropped. The transformer it returns is a plain
+ * function of the tree.
+ */
+const createTransform = rehypeCode as unknown as (
+  options: unknown,
+) => (tree: unknown, file: unknown) => Promise<void>;
+const transform = createTransform(rehypeCodeOptions);
 
 async function highlight(lang: string, code: string, meta = "") {
   const tree = codeBlockTree(lang, code, meta);
-  await (transform as (tree: unknown, file: unknown) => Promise<void>)(tree, {});
+  await transform(tree, {});
   return hastToHtml(tree as never);
 }
 
@@ -54,10 +62,7 @@ async function highlight(lang: string, code: string, meta = "") {
  */
 const SNIPPETS: [lang: string, code: string, meta?: string][] = [
   ["ts", `const answer: number = 42; // a comment\nexport function go() { return "x" }`],
-  [
-    "tsx",
-    `export const App = () => (\n  <div className="x" data-y={1}>{/* hi */}text</div>\n);`,
-  ],
+  ["tsx", `export const App = () => (\n  <div className="x" data-y={1}>{/* hi */}text</div>\n);`],
   [
     "prisma",
     `model User {\n  id    Int    @id @default(autoincrement())\n  email String @unique\n}`,
@@ -72,7 +77,7 @@ const SNIPPETS: [lang: string, code: string, meta?: string][] = [
   ["ts", `const a = 1 // [!code focus]\nconst b = 2`],
   ["ts", `const kept = 1 // [!code ++]\nconst gone = 2 // [!code --]`],
   ["ts", `const needle = haystack // [!code word:haystack]`],
-  ["ts", `const a = 1\nconst b = 2`, "title=\"example.ts\" lineNumbers"],
+  ["ts", `const a = 1\nconst b = 2`, 'title="example.ts" lineNumbers'],
 ];
 
 async function highlightCorpus() {
@@ -251,10 +256,7 @@ test("falls back to the inline style when the class has no rule", () => {
   };
 
   // An empty allowlist stands in for a stylesheet that does not cover the pair.
-  transformerShikiTokenClasses({ knownClasses: new Set() }).root!.call(
-    {} as never,
-    tree as never,
-  );
+  transformerShikiTokenClasses({ knownClasses: new Set() }).root!.call({} as never, tree as never);
 
   assert.equal(
     (tree.children[0] as { properties: Record<string, unknown> }).properties.style,

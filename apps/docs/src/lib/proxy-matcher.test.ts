@@ -96,7 +96,11 @@ test("the user-agent condition covers every token the runtime check accepts", ()
   const matcher = hasMatcher(headerEntry("user-agent").value);
 
   for (const token of AGENT_USER_AGENT_TOKENS) {
-    for (const userAgent of [token, token.toUpperCase(), `Mozilla/5.0 (compatible; ${token}/1.0)`]) {
+    for (const userAgent of [
+      token,
+      token.toUpperCase(),
+      `Mozilla/5.0 (compatible; ${token}/1.0)`,
+    ]) {
       assert.ok(matcher.test(userAgent), `${userAgent} should reach the proxy`);
       assert.equal(
         getAgentMarkdownSignal(new Headers({ "user-agent": userAgent })),

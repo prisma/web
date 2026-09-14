@@ -41,9 +41,14 @@ import { createHighlighter, type ThemeRegistrationResolved } from "shiki";
 import { getTokenStyleObject } from "shiki/core";
 import { FontStyle } from "shiki/textmate";
 import { shikiTokenClassGroups } from "@prisma-docs/ui/mdx/shiki-token-classes";
+import { resolveShikiThemes } from "@prisma-docs/ui/mdx/rehype-code-options";
 
-/** Must match the `themes` the MDX pipeline uses (fumadocs-mdx's default). */
-export const SHIKI_THEMES = { light: "github-light", dark: "github-dark" } as const;
+/**
+ * The themes the MDX pipeline actually uses, read off the fumadocs defaults so
+ * the stylesheet cannot be generated from a different palette than the one the
+ * tokens are highlighted with.
+ */
+export const SHIKI_THEMES = resolveShikiThemes();
 
 const VARIANTS = ["light", "dark"] as const;
 const CSS_VARIABLE_PREFIX = "--shiki-";
@@ -175,6 +180,10 @@ export async function generateShikiTokenCss(): Promise<string> {
     " * `transformerShikiTokenClasses` puts the matching class(es) on the token",
     " * instead of repeating the declarations inline on all 6,000-odd of them.",
     " * See src/mdx/shiki-token-classes.ts.",
+    " *",
+    " * One rule per line, and excluded from oxfmt in .oxfmtrc.json: the format is",
+    " * asserted by shiki-token-classes.test.ts, which compares this file byte for",
+    " * byte against a fresh generator run.",
     " */",
     "",
   ].join("\n");
