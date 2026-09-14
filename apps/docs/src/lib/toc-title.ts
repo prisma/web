@@ -45,5 +45,13 @@ export function stripTocLinks(title: ReactNode): ReactNode {
     return cloneElement(title, undefined, children);
   }
 
-  return null;
+  // Anything else is a node React knows how to render but this helper does not:
+  // in practice a lazy reference. React Flight streams a long `toc` array
+  // progressively, so titles past its byte budget reach this client component
+  // as `$L` lazy nodes (not elements, so `isValidElement` is false) that React
+  // resolves during render. Returning null here dropped them, which left most
+  // TOC entries on long pages as empty anchors in the server HTML. Hand them
+  // back untouched so React renders them; a deferred title that contains a
+  // link is not unwrapped, but headings should not contain links anyway.
+  return title;
 }
