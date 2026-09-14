@@ -54,6 +54,8 @@ export async function generateMetadata({
   params: Promise<TagPageParams>;
 }): Promise<Metadata> {
   const { tag } = await params;
+  // 404 before describing a tag that has no posts, whichever of the two runs
+  // first.
   getTagListing(tag);
 
   const title = blogTagTitle(tag);
