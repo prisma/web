@@ -150,11 +150,11 @@ for (const page of markdownPageList) {
     const document = renderMarkdownDocument(page, baseUrl);
     const lines = document.split("\n");
 
-    const h1Lines = lines.filter((line) => /^# /.test(line));
+    const h1Lines = lines.filter((line) => line.startsWith("# "));
     assert.equal(h1Lines.length, 1, `${page.path} should have exactly one H1`);
     assert.equal(h1Lines[0], `# ${page.h1} (${page.path})`);
 
-    const h2Lines = lines.filter((line) => /^## /.test(line));
+    const h2Lines = lines.filter((line) => line.startsWith("## "));
     assert.ok(
       h2Lines.length >= 2,
       `${page.path} should have at least two H2 sections, got ${h2Lines.length}`,
@@ -250,8 +250,7 @@ test("llms.txt lists every rendition and links its .md URL", async () => {
 
   const index = buildLlmsIndexContent(baseUrl);
   for (const page of markdownPageList) {
-    const markdownUrl =
-      page.path === "/" ? `${baseUrl}/index.md` : `${baseUrl}${page.path}.md`;
+    const markdownUrl = page.path === "/" ? `${baseUrl}/index.md` : `${baseUrl}${page.path}.md`;
     assert.ok(index.includes(page.title), `llms.txt is missing ${page.path}`);
     assert.ok(index.includes(markdownUrl), `llms.txt does not link ${markdownUrl}`);
   }

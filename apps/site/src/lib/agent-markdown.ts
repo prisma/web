@@ -101,19 +101,24 @@ export function getAgentMarkdownPath(pathname: string): AgentMarkdownPath | unde
   const normalized =
     pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 
-  return AGENT_MARKDOWN_PATH_SET.has(normalized)
-    ? (normalized as AgentMarkdownPath)
-    : undefined;
+  return AGENT_MARKDOWN_PATH_SET.has(normalized) ? (normalized as AgentMarkdownPath) : undefined;
 }
 
 /**
  * The internal route that serves a supported page's Markdown, or undefined
  * when the request should be left to the normal HTML route.
+ *
+ * The homepage goes to `/llms.mdx/index`, not the bare `/llms.mdx` that
+ * apps/docs uses. A proxy rewrite is re-run through `rewrites()`, and
+ * `/llms.mdx` matches the site's existing `/:path*.mdx` rule, which would send
+ * it straight back to `/llms.mdx/llms` and 404. `/llms.mdx/index` has no `.mdx`
+ * suffix, so it lands on the route handler, which reads `index` as the
+ * homepage — the same slug `/index.md` produces.
  */
 export function getAgentMarkdownRewritePathname(pathname: string): string | undefined {
   const path = getAgentMarkdownPath(pathname);
   if (!path) return undefined;
-  return path === "/" ? "/llms.mdx" : `/llms.mdx${path}`;
+  return path === "/" ? "/llms.mdx/index" : `/llms.mdx${path}`;
 }
 
 /** The public `.md` URL for a supported page. Homepage is `/index.md`. */

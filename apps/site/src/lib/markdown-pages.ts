@@ -6,7 +6,11 @@ import {
   getMarkdownUrlPath,
   type AgentMarkdownPath,
 } from "@/lib/agent-markdown";
-import { ENTERPRISE_H1, ENTERPRISE_SUBHEADLINE, renderEnterpriseMarkdown } from "./markdown/enterprise";
+import {
+  ENTERPRISE_H1,
+  ENTERPRISE_SUBHEADLINE,
+  renderEnterpriseMarkdown,
+} from "./markdown/enterprise";
 import { HOME_H1, HOME_SUBHEADLINE, renderHomeMarkdown } from "./markdown/home";
 import { MCP_H1, MCP_SUBHEADLINE, renderMcpMarkdown } from "./markdown/mcp";
 import { PRICING_H1, PRICING_SUBHEADLINE, renderPricingMarkdown } from "./markdown/pricing";

@@ -79,7 +79,8 @@ test("Accept wins over the user agent when both are present", () => {
 });
 
 test("supported pages map to their llms.mdx route", () => {
-  assert.equal(getAgentMarkdownRewritePathname("/"), "/llms.mdx");
+  // Not the bare "/llms.mdx": that would re-match the /:path*.mdx rewrite.
+  assert.equal(getAgentMarkdownRewritePathname("/"), "/llms.mdx/index");
   assert.equal(getAgentMarkdownRewritePathname("/orm"), "/llms.mdx/orm");
   assert.equal(getAgentMarkdownRewritePathname("/pricing"), "/llms.mdx/pricing");
   assert.equal(getAgentMarkdownRewritePathname("/mcp"), "/llms.mdx/mcp");
@@ -136,7 +137,10 @@ test("everything the proxy must not intercept maps to undefined", () => {
 
 test("MCP protocol traffic is recognised so /mcp keeps working as an endpoint", () => {
   // The three conditions next.config.mjs uses to forward /mcp to mcp.prisma.io.
-  assert.equal(isMcpProtocolRequest(headers({ accept: "application/json, text/event-stream" })), true);
+  assert.equal(
+    isMcpProtocolRequest(headers({ accept: "application/json, text/event-stream" })),
+    true,
+  );
   assert.equal(isMcpProtocolRequest(headers({ "content-type": "application/json" })), true);
   assert.equal(isMcpProtocolRequest(headers({ "mcp-session-id": "abc" })), true);
   // A plain markdown request for the /mcp marketing page is not protocol traffic.
@@ -166,7 +170,11 @@ test("the proxy matcher covers exactly AGENT_MARKDOWN_PATHS", () => {
   // config.matcher has to be a statically analysable literal, so it cannot be
   // derived from AGENT_MARKDOWN_PATHS. Read it back out of the source instead.
   const proxySource = readFileSync(join(siteRoot, "src/proxy.ts"), "utf8");
-  const alternation = proxySource.match(/source:\s*"\/:page\(([^)]+)\)"/)?.[1];
+  const matcher = proxySource.match(/matcher:\s*\[([\s\S]*?)\]/)?.[1];
+  assert.ok(matcher, "expected a matcher array in src/proxy.ts");
+  assert.ok(matcher.includes('"/"'), "the proxy matcher should cover the homepage");
+
+  const alternation = matcher.match(/"\/:page\(([^)]+)\)"/)?.[1];
   assert.ok(alternation, "expected a /:page(...) matcher source in src/proxy.ts");
 
   const matched = new Set(["/", ...alternation.split("|").map((page) => `/${page}`)]);

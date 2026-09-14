@@ -271,12 +271,22 @@ const agentMarkdownPaths = [
 /**
  * Content-negotiation headers for the pages above.
  *
- * `Vary: Accept` is the important one: the same URL answers with HTML for a
- * browser and Markdown for an agent that sends `Accept: text/markdown`, so a
- * shared cache must key the two variants apart. `Link` advertises the Markdown
- * rendition to agents that read headers rather than guessing at a suffix, the
- * same way apps/docs advertises `/docs/:path.md`. The homepage's rendition is
- * `/index.md`, since `/.md` is not a URL anybody would type.
+ * `Link` advertises the Markdown rendition to agents that read headers rather
+ * than guessing at a suffix, the same way apps/docs advertises
+ * `/docs/:path.md`. The homepage's rendition is `/index.md`, since `/.md` is
+ * not a URL anybody would type.
+ *
+ * `Vary: Accept` says the same URL has an HTML and a Markdown variant, so a
+ * shared cache must key them apart. Under `next start` it does not reach the
+ * client on these nine pages: Next writes its own RSC `Vary` onto an
+ * app-router response after both `headers()` and middleware headers have been
+ * merged, and neither survives it (measured; a middleware `append` was tried
+ * and dropped the same way, and apps/docs does not set it at all). It is
+ * declared here anyway because the Markdown responses carry `Vary: Accept`
+ * themselves, which is the direction that matters — a cache will not hand a
+ * stored Markdown response to a browser — and because this is the right place
+ * for it the moment Next stops overwriting it or Vercel's routing layer
+ * applies it after the origin responds.
  */
 function agentMarkdownHeaders(path) {
   const markdownPath = path === "/" ? "/index.md" : `${path}.md`;

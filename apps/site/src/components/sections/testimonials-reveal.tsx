@@ -12,7 +12,6 @@ import { TESTIMONIALS, type Testimonial } from "./testimonials-data";
 // Client logos are the real brand marks (/logos/customers/*.png) where a
 // square mark exists; the rest use letter chips.
 
-
 // Six unique quotes per row, interleaving case-study and showcase voices; a
 // half-track is ~2,200px, so a quote only recurs a full loop apart — never
 // twice inside a normal viewport. The half-track is still doubled so the

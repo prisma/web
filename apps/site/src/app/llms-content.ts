@@ -102,8 +102,7 @@ export function buildLlmsFullContent(baseUrl = getBaseUrl()) {
 
   const otherPages = additionalPages
     .map(
-      (page) =>
-        `- [\`${page.title}\`](${toAbsoluteUrl(baseUrl, page.path)}): ${page.description}`,
+      (page) => `- [\`${page.title}\`](${toAbsoluteUrl(baseUrl, page.path)}): ${page.description}`,
     )
     .join("\n");
 
