@@ -6,9 +6,7 @@ metaTitle: MongoDB data modeling in Prisma ORM
 metaDescription: 'How to model data in Prisma ORM for MongoDB, including documents and collections, embedded documents versus references, and polymorphic collections.'
 ---
 
-MongoDB stores data as documents grouped into collections. A document can nest objects and arrays directly, which gives you a real choice for related data: keep it inside the document (embed it) or store it in its own collection and link to it (reference it).
-
-Making that choice well is the core of MongoDB data modeling. If you are new to models and keys, start with the [data modeling overview](/orm/data-modeling).
+MongoDB stores data as documents grouped into collections. A document can nest objects and arrays directly, which gives you a real choice for related data: keep it inside the document (embed it) or store it in its own collection and link to it (reference it). Making that choice well is the core of MongoDB data modeling. If you are new to models and keys, start with the [data modeling overview](/orm/data-modeling).
 
 ## Documents, collections, and the _id key
 
@@ -23,15 +21,23 @@ model User {
 }
 ```
 
-`@map("_id")` maps the model's `id` field to MongoDB's mandatory `_id` field, and `@@map("users")` names the collection. `@@map` is optional. Without it the collection takes the model name with a lowercase first letter, so `user`.
+`@map("_id")` maps the model's `id` field to MongoDB's mandatory `_id` field, and `@@map("users")` names the collection. `@@map` is optional. Without it the collection takes the model name with a lowercase first letter, so `user`, and you reach it in code as `db.orm.user`.
+
+`ObjectId` is the type of the field. There is no `@default(auto())` and no `@db.ObjectId`. Leave `id` out of the values you pass to `create`, and MongoDB assigns the `ObjectId`:
+
+```ts
+const user = await db.orm.users.create({ name: "Ada", email: "ada@example.com" });
+```
+
+`db` is the client you create once in `src/prisma/db.ts`, and `prisma orm init` writes that file. `db.orm` holds your models, and on MongoDB the accessor is the collection name, so `db.orm.users`. The values go straight in, without the `data:` wrapper Prisma ORM 7 used. Models themselves go in your contract, the `contract.prisma` file that replaced `schema.prisma`. Run `npx prisma contract emit` after every change to it. MongoDB has migrations like any other database: `npx prisma migration plan` writes one and `npx prisma db migrate` applies it, creating the collections and indexes. See [the data contract](/orm/contract-authoring/the-data-contract).
 
 ## Embed or reference
 
 Two pieces of related data can live together in one document (embedded) or in separate collections linked by an id (referenced).
 
-Embedding nests the data inside its parent: an order and its line items in one document. One read returns everything, and a write updates parent and children together, atomically. The trade-off is that embedded data has no independent life. You cannot read it without its parent, and it comes back on every read of the parent.
+Embedding nests the data inside its parent: an order and its line items in one document. One read returns everything, and a write updates parent and children together, atomically. The trade-off is that you cannot read embedded data without its parent, and it comes back on every read of the parent.
 
-Referencing keeps the data in its own collection and stores the linked document's `_id`. Loading both takes a second lookup, but each record stands on its own: it can be queried, listed, and updated independently, and it is not duplicated when several parents point at it.
+Referencing keeps the data in its own collection and stores the linked document's `_id`. Loading both takes a second read, but each record stands on its own: it can be queried, listed, and updated independently, and it is not duplicated when several parents point at it.
 
 A quick way to decide:
 
@@ -54,7 +60,6 @@ Describe the shape of embedded data with a `type` block, then use it as a field.
 type Address {
   street  String
   city    String
-  zip     String?
   country String
 }
 
@@ -66,31 +71,24 @@ model User {
 }
 ```
 
-A single embedded value models a one-to-one. A list of embedded values models a one-to-many:
+A single embedded value models a one-to-one. A list of embedded values models a one-to-many: `items CartItem[]` on a `Cart` model stores every line item inside the cart document, with no second collection and no join to load them.
 
-```prisma
-type CartItem {
-  productId String
-  name      String
-  amount    Int
-}
+An embedded value has no `_id` and no collection of its own. It is created, loaded, updated, and deleted with the document that holds it. Pass it to `create` as a plain nested object:
 
-model Cart {
-  id    ObjectId   @id @map("_id")
-  items CartItem[]
-  @@map("carts")
-}
+```ts
+const address = { street: "1 Main St", city: "Berlin", country: "DE" };
+await db.orm.users.create({ name: "Ada", email: "ada@example.com", address });
 ```
 
-`Cart.items` is stored inside the cart document. There is no separate collection and no join to load the items. Every read of a cart returns them.
+To change one field inside an embedded value, give `update` the path to it:
 
-An embedded `Address` has no `_id` and no collection of its own, so you cannot read it without its parent. It is loaded, updated, and deleted with the document that holds it. You can still match on its fields through the parent, with a path such as `address.city` in the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder). That is the right behavior for values that belong to their parent, and the wrong one for records with their own life.
+```ts
+await db.orm.users.where({ email: "ada@example.com" }).update((u) => [u("address.city").set("Hamburg")]);
+```
 
-:::warning
+`.where()` filters on top-level model fields only. To match on a field inside an embedded document, use the pipeline builder, the API for MongoDB aggregation pipelines, with a path such as `address.city`. See [the pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
 
 Embedded arrays are only a good idea while they stay bounded. An array that grows forever slows every read of the parent and pushes the document toward MongoDB's 16 MB limit. When a list has no natural cap, reference it instead.
-
-:::
 
 ## References across collections
 
@@ -113,15 +111,17 @@ model Post {
 }
 ```
 
-This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. When you [include the relation in a query](/orm/fundamentals/relations-and-joins), Prisma ORM resolves it with a `$lookup` aggregation.
+This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. To load a post together with its author, chain `.include("author")`, which adds the related record to every row you get back:
 
-A `$lookup` is a real cost on reads that run often, so document models often keep a small copy of the fields a read needs inside the parent. A comment stores its author's name, while the full author record stays in its own collection. You trade some duplication, and the work of keeping the copy in sync, for reads that touch one document.
+```ts
+const posts = await db.orm.posts.include("author").all();
+```
+
+See [relations and joins](/orm/fundamentals/relations-and-joins) for the rest of the query API. Resolving a reference costs a second read. If a read runs constantly, you can copy the few fields it needs into the parent document, such as a comment storing its author's name.
 
 ## Polymorphic collections
 
-MongoDB collections do not enforce a single shape. The usual choice is to store documents of different kinds in one collection and tell them apart with a discriminator field.
-
-Prisma ORM models this with a base model plus variant models, all sharing one collection:
+Prisma ORM models a collection that holds more than one kind of document with a base model plus variant models, all sharing one collection. MongoDB collections do not enforce a single shape, so this is the usual way to keep the kinds together and tell them apart by a discriminator field, a field whose value says which kind each document is.
 
 ```prisma
 model Post {
@@ -147,13 +147,19 @@ model Tutorial {
 }
 ```
 
-`@@discriminator(kind)` names the field that records each document's variant. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A query for posts returns articles and tutorials together. `db.orm.posts.variant("Article")` limits the query to one variant.
+`@@discriminator(kind)` takes the name of the field that records each document's variant, so write `kind` and not `"kind"`. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A variant has every field of its base plus its own, so an `Article` has `id`, `title`, `kind`, and `summary`.
 
-Use one polymorphic collection when the variants are handled together far more than separately: a notifications collection of email, SMS, and push messages read as one stream. Prefer separate collections when the types rarely appear in the same query or need very different indexes.
+A query for posts returns articles and tutorials together. `db.orm.posts.variant("Article")` limits the query to one variant. `.variant()` takes the variant's model name, `"Article"`, and not the discriminator value `"article"`. Creating through a variant fills in `kind` for you:
+
+```ts
+const article = await db.orm.posts.variant("Article").create({ title: "Hello", summary: "A short post" });
+```
+
+Use one collection when you almost always query the variants together, for example email, SMS, and push notifications that you read as a single feed. Prefer separate collections when the types rarely appear in the same query or need very different indexes. Indexes are declared on the model with `@@index([authorId])`, which is covered in [PSL syntax](/orm/contract-authoring/psl-syntax).
 
 ## Prompt your coding agent
 
-Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers document modeling. Prompts that map to each section:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for coding agents. In an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers document modeling. Prompts that map to each section:
 
 - "Using the prisma-8 skill, add an embedded Address type to the User model."
 - "Cart items are always read with the cart. Model them as an embedded list."
