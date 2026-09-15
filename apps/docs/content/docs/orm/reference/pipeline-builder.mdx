@@ -8,7 +8,7 @@ metaDescription: 'Reference for the Prisma ORM MongoDB pipeline builder''s stage
 
 The pipeline builder gives you a typed way to build MongoDB aggregation pipelines. You reach it through `db.query`, chain aggregation stages onto a starting collection, and finish the chain with the call that builds the query. It is the MongoDB counterpart to the [SQL query builder](/orm/reference/sql-query-builder): a lower-level API for the queries the [ORM client](/orm/reference/orm-client) doesn't express.
 
-Everything the builder produces becomes a MongoDB aggregation pipeline. There is no `find()` or `distinct()` here. Use `db.orm` or [`rawCommand()`](#rawcommand) for those. To fetch a single document, filter and then `limit(1)`. Use the ORM client (`db.orm`) for everyday reads and writes across models and relations. Reach for the pipeline builder when you need to group documents, to join another collection and keep transforming the result, or to write the result into a collection (`$out` and `$merge`). This page documents every stage, accumulator, expression helper, and write method.
+Everything the builder produces becomes a MongoDB aggregation pipeline. There is no `find()` or `distinct()` here, so use `db.orm` or [`rawCommand()`](#rawcommand) for those. To fetch a single document, filter and then `limit(1)`. Use the ORM client (`db.orm`) for everyday reads and writes across models and relations. Reach for the pipeline builder when you need to group documents, to join another collection and keep transforming the result, or to write the result into a collection (`$out` and `$merge`). This page documents every stage, accumulator, expression helper, and write method.
 
 :::note[This is the MongoDB pipeline builder]
 The pipeline builder targets MongoDB only. PostgreSQL has no pipeline builder: use the [SQL query builder](/orm/reference/sql-query-builder) for PostgreSQL joins and aggregates, and the [ORM client](/orm/reference/orm-client) for everyday queries on either database.
@@ -79,7 +79,7 @@ model Tutorial {
 
 ## Entry points
 
-Every pipeline starts with `db.query.from('posts')`, naming the collection to aggregate over. It ends with a call that turns the chain into a query you can run. Between them you chain stages.
+Every pipeline starts with `db.query.from('posts')`, naming the collection to aggregate over. It ends with a call that turns the chain into a query you can run, and between them you chain stages.
 
 `db` is the client you create with `mongo(...)`, whose `dbName` option is the name of the MongoDB database to use. See [Transactions and runtime](/orm/reference/transactions-and-runtime#mongooptions) for every option and for how to create the client. Three Prisma ORM import paths appear on this page: `@prisma/orm-mongo/runtime` holds the `mongo()` client, `@prisma/orm-mongo/query-builder` holds `mongoQuery`, `fn`, `acc`, and `expr`, and `@prisma/orm-mongo/query-ast/execution` holds the `Mongo*Stage` classes, `MongoAggFieldRef`, and `MongoFieldFilter`. Every example holds the built query in a variable named `plan`.
 
@@ -203,7 +203,7 @@ const recent = await runtime.query(plan);
 ```
 
 :::warning[`_id` equality filters do not work through the pipeline builder]
-Filtering by `_id` equality inside `match()` **never matches any document**. Neither a hex string (`f._id.eq('507f...')`) nor an `ObjectId` matches. There is no supported way to filter by `_id` equality through the typed pipeline builder. To fetch one document by its id, use the [ORM client](/orm/reference/orm-client), which converts the hex string for you. The pipeline builder does not convert it:
+Filtering by `_id` equality inside `match()` **never matches any document**: neither a hex string (`f._id.eq('507f...')`) nor an `ObjectId` matches. There is no supported way to filter by `_id` equality through the typed pipeline builder. To fetch one document by its id, use the [ORM client](/orm/reference/orm-client), which converts the hex string for you, while the pipeline builder does not convert it:
 
 ```typescript
 const postId = '6650f1c2a1b2c3d4e5f60003';
@@ -833,7 +833,7 @@ const [{ firstTitle, lastTitle }] = await runtime.query(plan);
 
 ##### `push()` and `addToSet()`
 
-Both take one expression: `group((f) => ({ _id: null, allTitles: acc.push(f.title), distinctKinds: acc.addToSet(f.kind) }))`. `allTitles` holds one entry per document. `distinctKinds` holds each value once.
+Both take one expression: `group((f) => ({ _id: null, allTitles: acc.push(f.title), distinctKinds: acc.addToSet(f.kind) }))`. `allTitles` holds one entry per document, while `distinctKinds` holds each value once.
 
 ##### `firstN()` (an `N`-variant)
 
@@ -851,7 +851,7 @@ const [{ firstTwo, newestTitle }] = await runtime.query(plan);
 
 ## Expression helpers
 
-Expression helpers (`fn.*`) build the computed values used inside stages like `addFields()`, `project()`, `group()` accumulators, and `match()` (via `expr()`). Inside a stage, write `f.title` or `fn.toUpper(...)`, never `'hello'` or `3` on their own. Wrap a constant in `fn.literal('hello')`. The update operators on the [write methods](#write-methods) and the `MongoFieldFilter` methods work the other way round. They take ordinary JavaScript values, so write `f.bio.set('hello')`, not `f.bio.set(fn.literal('hello'))`. Import the helpers from `@prisma/orm-mongo/query-builder`:
+Expression helpers (`fn.*`) build the computed values used inside stages like `addFields()`, `project()`, `group()` accumulators, and `match()` (via `expr()`). Inside a stage, write `f.title` or `fn.toUpper(...)`, never `'hello'` or `3` on their own, so wrap a constant in `fn.literal('hello')`. The update operators on the [write methods](#write-methods) and the `MongoFieldFilter` methods work the other way round: they take ordinary JavaScript values, so write `f.bio.set('hello')`, not `f.bio.set(fn.literal('hello'))`. Import the helpers from `@prisma/orm-mongo/query-builder`:
 
 ```typescript
 import { fn } from '@prisma/orm-mongo/query-builder';
@@ -1063,7 +1063,7 @@ const [insertManyResult] = await runtime.query(manyPlan);
 
 ##### `upsertOne()` on the root (filter, then updater)
 
-`upsertOne(filterCallback, updaterCallback)`. The first callback returns the filter. The second returns the array of update operations.
+`upsertOne(filterCallback, updaterCallback)`. The first callback returns the filter, and the second returns the array of update operations.
 
 ```typescript
 const plan = db.query.from('users')
@@ -1113,7 +1113,7 @@ const [result] = await runtime.query(plan);
 
 ##### `findOneAndUpdate()` and `returnDocument`
 
-`findOneAndUpdate()` returns the matched document. Its second argument is optional. That argument takes `returnDocument`, which controls which version you get back: `'before'` returns the document before the update, `'after'` returns it after. The default is `'after'`. The same argument takes `upsert`, which defaults to `false` and inserts a document when nothing matches.
+`findOneAndUpdate()` returns the matched document. Its second argument is optional and takes `returnDocument`, which controls which version you get back: `'before'` returns the document before the update, `'after'` returns it after. The default is `'after'`. The same argument takes `upsert`, which defaults to `false` and inserts a document when nothing matches.
 
 ```typescript
 const plan = db.query.from('users').match((f) => f.email.eq('alice@example.com'))
@@ -1123,7 +1123,7 @@ const [beforeDoc] = await runtime.query(plan);
 ```
 
 :::warning[The option is `returnDocument`, not `returnNewDocument`]
-Use `returnDocument: 'before' | 'after'`. `returnNewDocument` is not a valid option name. TypeScript rejects it and suggests `returnDocument`. If a cast gets it past TypeScript, the unknown key is ignored and you silently get the default `'after'`.
+Use `returnDocument: 'before' | 'after'`. `returnNewDocument` is not a valid option name, so TypeScript rejects it and suggests `returnDocument`. If a cast gets it past TypeScript, the unknown key is ignored and you silently get the default `'after'`.
 :::
 
 ##### `findOneAndDelete()`

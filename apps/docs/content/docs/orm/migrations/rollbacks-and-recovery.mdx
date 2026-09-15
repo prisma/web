@@ -48,7 +48,7 @@ The planner diffs the two contract states: it writes the operations that undo th
 npx prisma@latest db migrate --to 20260707T1008_add_display_name^
 ```
 
-A rollback also leaves a cycle in the graph, so the next `migration plan` cannot pick its starting point automatically. It fails with `MIGRATION.NO_TARGET` and lists the reachable states. Plan with an explicit `--from <state>` until history moves forward again.
+A rollback also leaves a cycle in the graph, so the next `migration plan` cannot pick its starting point automatically: it fails with `MIGRATION.NO_TARGET` and lists the reachable states. Plan with an explicit `--from <state>` until history moves forward again.
 
 One loose end remains after the database moves back: your contract source still contains the change, so `db verify` reports a hash mismatch until you revert the schema and re-run `contract emit`. Roll back the contract in the same commit as the rollback migration and the two stay in step.
 
@@ -91,7 +91,7 @@ The playbook:
 2. **Nothing to clean up.** On PostgreSQL the whole run was one transaction, so the failure rolled it back completely: the database is exactly where it was before the run, and migrations applied in earlier runs are untouched. There is no "half-applied migration" to untangle by hand.
 3. **Fix the cause, then re-run `db migrate`.** Sometimes the cause is the environment (extension missing, permissions). Sometimes it's the migration itself; here you'd [edit the migration](/orm/migrations/editing-a-migration) to add a backfill before the `setNotNull`, recompile with `node migration.ts`, and apply again. Re-running is safe, for the reasons covered in [the failure model](/orm/migrations/applying-a-migration#when-something-goes-wrong).
 
-The precheck also protects you when a migration works in development but would fail in production. Your dev database had no `NULL`s, but production does. The precheck halts production *before* the destructive `ALTER` touches anything, with an error pointing at the exact rows-with-NULLs condition instead of a generic constraint violation mid-statement.
+The precheck also protects you when a migration works in development but would fail in production. Your dev database had no `NULL`s, but production does, so the precheck halts production *before* the destructive `ALTER` touches anything, with an error pointing at the exact rows-with-NULLs condition instead of a generic constraint violation mid-statement.
 
 ### Drift: when the database isn't where migrations left it
 
@@ -103,7 +103,7 @@ If someone changed the database outside of migrations (a hand-run `ALTER`, a res
 
 :::note[What's early]
 
-Reverse planning (`--to <dir>^`), destructive-operation warnings, resumable re-runs, and the ledger all work today, as shown above. Some gaps remain. There's no rehearsal mode that executes a migration against a shadow copy first. Recovery from drift beyond the `db verify`/`db update`/`db init` trio is manual. The planning caveat after cycles (explicit `--from`) is a real papercut we expect to smooth out. For deep or unusual situations, `#prisma-next` on [Discord](https://pris.ly/discord) is the fastest route.
+Reverse planning (`--to <dir>^`), destructive-operation warnings, resumable re-runs, and the ledger all work today, as shown above. Some gaps remain: there's no rehearsal mode that executes a migration against a shadow copy first, and recovery from drift beyond the `db verify`/`db update`/`db init` trio is manual. The planning caveat after cycles (explicit `--from`) is a real papercut we expect to smooth out. For deep or unusual situations, `#prisma-next` on [Discord](https://pris.ly/discord) is the fastest route.
 
 :::
 

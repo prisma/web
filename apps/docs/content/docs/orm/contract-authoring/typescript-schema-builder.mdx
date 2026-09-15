@@ -6,22 +6,22 @@ metaTitle: Author the Prisma ORM contract in TypeScript
 metaDescription: 'How to define a Prisma ORM contract in TypeScript with defineContract, including fields, relations, enums, storage mapping, and extension types.'
 ---
 
-In Prisma ORM 8, `schema.prisma` is replaced by a file called [the contract](/orm/contract-authoring/the-data-contract). It holds the model definitions you used to write in `schema.prisma`. You can write it in two forms. One is a `.prisma` file written in PSL, short for Prisma Schema Language. The other is TypeScript, in `src/prisma/contract.ts`, built with the `defineContract` builder. Both forms produce the same two files. [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` into the folder that holds your contract file.
+In Prisma ORM 8, `schema.prisma` is replaced by a file called [the contract](/orm/contract-authoring/the-data-contract), which holds the model definitions you used to write in `schema.prisma`. You can write it in two forms: one is a `.prisma` file written in PSL, short for Prisma Schema Language, and the other is TypeScript, in `src/prisma/contract.ts`, built with the `defineContract` builder. Both forms produce the same two files: [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` into the folder that holds your contract file.
 
 ## When to choose TypeScript over PSL
 
-[PSL](/orm/contract-authoring/psl-syntax) is the preferred way to write the contract. Both forms produce the same two files, so you give up nothing by staying with PSL. Use the TypeScript builder for the cases PSL does not cover. Reach for it when:
+[PSL](/orm/contract-authoring/psl-syntax) is the preferred way to write the contract, and both forms produce the same two files, so you give up nothing by staying with PSL. Use the TypeScript builder for the cases PSL does not cover, and reach for it when:
 
 - model definitions must be split, composed, or reused across ordinary TypeScript modules or packages
 - you want to build models in a loop from data you already keep in TypeScript, such as one model per entry in a list of table names
 
-If neither applies, write PSL. It is more compact, and it is what [`contract infer`](/cli/contract-infer) writes.
+If neither applies, write PSL, which is more compact and is what [`contract infer`](/cli/contract-infer) writes.
 
 ## Point the config at the contract file
 
-For a new project, run [`npx prisma orm init`](/cli/orm-init). It asks how you want to write your schema, and choosing TypeScript creates the contract file and the config together.
+For a new project, run [`npx prisma orm init`](/cli/orm-init), which asks how you want to write your schema, and choosing TypeScript creates the contract file and the config together.
 
-The config's `contract` path names the one file Prisma ORM reads. A `.ts` extension selects TypeScript authoring:
+The config's `contract` path names the one file Prisma ORM reads, and a `.ts` extension selects TypeScript authoring:
 
 ```typescript title="prisma.config.ts" tab="PostgreSQL"
 import { definePrismaConfig } from "prisma/config";
@@ -49,7 +49,7 @@ export default definePrismaConfig({
 
 The builder comes from your database's package: `@prisma/orm-postgres/contract-builder` for PostgreSQL, `@prisma/orm-mongo/contract-builder` for MongoDB.
 
-Export the contract under the name `contract`, as below, or as the file's default export. Those are the only two names `prisma contract emit` looks for. Run `npx prisma contract emit` again after every edit to the contract, and commit the contract file together with [`contract.json` and `contract.d.ts`](/orm/contract-authoring/the-contract-artifact).
+Export the contract under the name `contract`, as below, or as the file's default export, because those are the only two names `prisma contract emit` looks for. Run `npx prisma contract emit` again after every edit to the contract, and commit the contract file together with [`contract.json` and `contract.d.ts`](/orm/contract-authoring/the-contract-artifact).
 
 ```typescript title="src/prisma/contract.ts" tab="PostgreSQL"
 import { defineContract, enumType, member } from "@prisma/orm-postgres/contract-builder";
@@ -124,9 +124,9 @@ export const contract = defineContract({ models: { User, Post } });
 
 ## How `defineContract` works
 
-On PostgreSQL, `defineContract` takes an options object and then a function. You do not set a `provider` anywhere. Importing `@prisma/orm-postgres/contract-builder` is what selects PostgreSQL. The options object lists the extension packs you use, and you write `{}` when you use none. The function returns the contract's content: `models`, plus `enums` and `types` if you have them.
+On PostgreSQL, `defineContract` takes an options object and then a function. You do not set a `provider` anywhere: importing `@prisma/orm-postgres/contract-builder` is what selects PostgreSQL. The options object lists the extension packs you use, and you write `{}` when you use none. The function returns the contract's content: `models`, plus `enums` and `types` if you have them.
 
-Take `field`, `model`, `rel`, and `type` from the function's one argument. Import `defineContract`, `enumType`, and `member` from the package. The package also exports `model` and `rel` for use outside the function, plus a `field` that has only `column`, `generated`, and `namedType`.
+Take `field`, `model`, `rel`, and `type` from the function's one argument, and import `defineContract`, `enumType`, and `member` from the package. The package also exports `model` and `rel` for use outside the function, plus a `field` that has only `column`, `generated`, and `namedType`.
 
 On MongoDB, `defineContract` also accepts a single object holding `models`, as above, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder differs from the PostgreSQL one in five ways:
 
@@ -136,7 +136,7 @@ On MongoDB, `defineContract` also accepts a single object holding `models`, as a
 - Relations name the field on each side. `rel.hasMany` takes `{ from, to }` on MongoDB and `{ by }` on PostgreSQL. `to` accepts either the field name as a string or a typed reference such as `User.ref("_id")`, and both forms mean the same thing. PostgreSQL writes that reference as `User.refs.id`.
 - Indexes are an `indexes` option on the model, built with the `index` helper the same package exports, as in `indexes: [index({ email: 1 }, { unique: true })]`. The `1` is ascending, MongoDB's own index syntax.
 
-Enums and extension packs work on MongoDB too. `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`. Pass the enums in the same object as the models, as `defineContract({ models, enums })`, and extension packs go in the same `extensions` option.
+Enums and extension packs work on MongoDB too: `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`. Pass the enums in the same object as the models, as `defineContract({ models, enums })`, and extension packs go in the same `extensions` option.
 
 The examples below use the PostgreSQL builder.
 
@@ -160,9 +160,9 @@ The examples below use the PostgreSQL builder.
 
 There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1", nativeType: "date" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
 
-For a primary key whose value your app generates, use `field.id.uuidv4String()`, `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, or `field.id.ksuid()`. They all generate the ID in your app, and `uuidv4String` is the common choice. Each marks the field as the primary key for you. `field.id.uuidv4Native()` and `field.id.uuidv7Native()` do the same in a `uuid` column. There is no auto-increment helper, so use one of those `field.id.*` helpers. For a key the database generates instead, write `field.uuidNative().defaultSql("gen_random_uuid()").id()`.
+For a primary key whose value your app generates, use `field.id.uuidv4String()`, `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, or `field.id.ksuid()`. They all generate the ID in your app, and `uuidv4String` is the common choice. Each marks the field as the primary key for you, and `field.id.uuidv4Native()` and `field.id.uuidv7Native()` do the same in a `uuid` column. There is no auto-increment helper, so use one of those `field.id.*` helpers. For a key the database generates instead, write `field.uuidNative().defaultSql("gen_random_uuid()").id()`.
 
-`field.temporal.createdAt()` fills the column with `now()` when the row is created. `field.temporal.updatedAt()` fills it on every create and every update, and Prisma ORM sets it in the client, not with a database trigger. `field.namedType(x)` takes an enum or a type from an extension pack.
+`field.temporal.createdAt()` fills the column with `now()` when the row is created, while `field.temporal.updatedAt()` fills it on every create and every update, and Prisma ORM sets it in the client, not with a database trigger. `field.namedType(x)` takes an enum or a type from an extension pack.
 
 Every field builder supports chained modifiers:
 
@@ -192,15 +192,15 @@ export const contract = defineContract({}, ({ field, model }) => {
 });
 ```
 
-`Role` does not go in the returned `enums` map. Using it on a field is enough to create the type in the database.
+`Role` does not go in the returned `enums` map: using it on a field is enough to create the type in the database.
 
 ## Relations
 
 Relations are declared on the model builder with `.relations(...)` and the `rel` helpers, as the full example above shows.
 
-`rel.hasMany(Model, { by })` names the foreign key field on the other model. `rel.hasOne(Model, { by })` is the same with at most one row on the other side. `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the field it points at.
+`rel.hasMany(Model, { by })` names the foreign key field on the other model, and `rel.hasOne(Model, { by })` is the same with at most one row on the other side. `rel.belongsTo(Model, { from, to })` maps the local foreign key field to the field it points at.
 
-`rel.manyToMany(Model, { through, from, to })` goes through a join table. You declare the model for the join table yourself and pass it as `through`. Below, `PostTag` is that model, and it holds the two foreign key fields `postId` and `tagId`:
+`rel.manyToMany(Model, { through, from, to })` goes through a join table: you declare the model for the join table yourself and pass it as `through`. Below, `PostTag` is that model, holding the two foreign key fields `postId` and `tagId`:
 
 ```typescript
 Post.relations({
@@ -208,7 +208,7 @@ Post.relations({
 });
 ```
 
-`rel.belongsTo` on its own does not create a foreign key constraint in the database. Ask for one by chaining `.sql(...)` on the relation itself, inside the `.relations({ ... })` object, as the full example above does:
+`rel.belongsTo` on its own does not create a foreign key constraint in the database, so ask for one by chaining `.sql(...)` on the relation itself, inside the `.relations({ ... })` object, as the full example above does:
 
 ```typescript
 Post.relations({
@@ -220,13 +220,13 @@ Post.relations({
 
 Prisma ORM does not check that the column types on the two sides of a relation match, so choose a field helper that produces the same column type as the key you point at.
 
-`rel.hasMany`, `rel.hasOne`, `rel.belongsTo`, and `rel.manyToMany` also accept the model name as a string. Pass the model object, as above, and a typo is a compile error. Pass a string and the typo is reported when `prisma contract emit` builds the contract.
+`rel.hasMany`, `rel.hasOne`, `rel.belongsTo`, and `rel.manyToMany` also accept the model name as a string. Pass the model object, as above, and a typo is a compile error, but pass a string and the typo is reported when `prisma contract emit` builds the contract.
 
 ## Storage mapping
 
-`.sql(...)` maps a model to its table. The object form covers the common case: `User.sql({ table: "user" })`.
+`.sql(...)` maps a model to its table, and the object form covers the common case: `User.sql({ table: "user" })`.
 
-You can chain `.relations(...)`, `.attributes(...)`, and `.sql(...)` in any order, and you can skip any of them. A model with no relations calls `.sql({ table })` straight after `model(...)`.
+You can chain `.relations(...)`, `.attributes(...)`, and `.sql(...)` in any order, and you can skip any of them, so a model with no relations calls `.sql({ table })` straight after `model(...)`.
 
 The callback form gives you the model's columns as `cols` and the constraint builders as `constraints`. Use it for indexes:
 
@@ -273,7 +273,7 @@ export const contract = defineContract({ extensions: { pgvector } }, ({ field, m
 
 The key on `type.pgvector` is the pack's own name, not the name you gave the import. The name is in the pack's documentation, and pgvector's is `pgvector`. `Embedding1536` is a name you choose, and it appears under that name in `contract.d.ts`. Return the `types` map so the name reaches the two files.
 
-Add the same pack to `prisma.config.ts`. It goes inside `ormConfig({ ... })`, beside `contract`, and the config imports the pack's `/control` export while the contract file imports its `/pack` export:
+Add the same pack to `prisma.config.ts`: it goes inside `ormConfig({ ... })`, beside `contract`, and the config imports the pack's `/control` export while the contract file imports its `/pack` export:
 
 ```typescript title="prisma.config.ts"
 import { definePrismaConfig } from "prisma/config";
@@ -290,7 +290,7 @@ export default definePrismaConfig({
 
 ## Keep the contract file free of changing values [#keep-the-contract-file-pure]
 
-The contract file describes structure. These rules keep it usable:
+The contract file describes structure, and these rules keep it usable:
 
 - Do not read `process.env`, the current time, or random values into the contract. A contract built from those values makes `npx prisma contract emit` produce a different `contract.json` on each run.
 - Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions, class instances, and `Date` objects do not serialize.
@@ -301,13 +301,13 @@ Configuration that legitimately varies per environment, such as the database URL
 
 ## Parity with PSL
 
-TypeScript and [PSL](/orm/contract-authoring/psl-syntax) authoring produce the same `contract.json` and `contract.d.ts` for an equivalent contract. You can move between the two forms without changing anything downstream. A project names exactly one contract file in its config.
+TypeScript and [PSL](/orm/contract-authoring/psl-syntax) authoring produce the same `contract.json` and `contract.d.ts` for an equivalent contract, so you can move between the two forms without changing anything downstream. A project names exactly one contract file in its config.
 
-No command converts a `.prisma` contract into TypeScript. To move an existing project, write the TypeScript file by hand, point `contract` in `prisma.config.ts` at it, and delete the `.prisma` file so the two can never disagree.
+No command converts a `.prisma` contract into TypeScript, so to move an existing project, write the TypeScript file by hand, point `contract` in `prisma.config.ts` at it, and delete the `.prisma` file so the two can never disagree.
 
 ## Prompt your coding agent
 
-Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. The `prisma-8` skill covers TypeScript authoring. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync` to add them. The `prisma-8` skill covers TypeScript authoring, so ask your agent to:
 
 - "Convert this contract.prisma to the TypeScript schema builder."
 - "Using the prisma-8 skill, add a unique constraint to the email field in our TypeScript schema."

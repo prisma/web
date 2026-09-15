@@ -23,6 +23,10 @@ Use it after `docs-writer` (or any other writing pass) and after the fact review
 
 Run `scripts/check-plain.sh` on every changed page. It fails on the words in `references/banned-terms.md`, which lists source-code vocabulary and the plain words to use instead, and it ignores code blocks and inline code. Replace every hit before going further. Do not argue that a term is fine in context. The one exception: if the sentence itself defines the term in plain words, add `{/* plain-language:defined */}` to that line; the checker skips it and the reader review will confirm the definition landed. Terms the list marks "(unexplained)" are not checked by the script; the reviewer catches them.
 
+### 1b. Run the staccato check
+
+Run `scripts/check-staccato.py` on every changed page. It flags paragraphs with three or more consecutive sentences under nine words, the usual signature of a page whose long sentences were split without keeping the connectives. Read each flagged paragraph aloud. Rejoin sentences that are cause and effect, contrast, or condition and result with "because", "so", "but", "while", or a colon, and leave apart the ones that are separate ideas. The script only finds the worst runs; a paragraph of eleven-word sentences that all land the same way is still staccato, so read the whole page for rhythm, not only the hits. Reference entries that are fragments by design (a `Payload:` line, a one-line table note) are not prose and do not count.
+
 ### 2. Dispatch the reader
 
 Hand the page to a fresh reviewer that has no memory of writing it, using `references/reader-persona.md` verbatim as its instructions. The reviewer reads the page once, top to bottom, with nothing else open, and reports:

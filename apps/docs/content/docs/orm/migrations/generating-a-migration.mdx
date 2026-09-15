@@ -6,7 +6,7 @@ metaTitle: Generating a migration in Prisma ORM
 metaDescription: 'A step-by-step tutorial for the migration plan command, from contract change to a planned, reviewable migration, entirely offline.'
 ---
 
-This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**. `migration plan` reads your emitted contract and your existing migrations; it never connects to a database. This means you can plan on a plane, in CI, or in a sandbox with no credentials.
+This tutorial takes a contract change from your editor to a planned migration on disk. Planning is **fully offline**: `migration plan` reads your emitted contract and your existing migrations, and it never connects to a database. This means you can plan on a plane, in CI, or in a sandbox with no credentials.
 
 Start from a minimal project; you can scaffold one with `npm create prisma@latest`.
 
@@ -24,13 +24,13 @@ model User {
 }
 ```
 
-First, emit the contract. This compiles the schema into the `contract.json` artifact that every other command reads:
+First, emit the contract, which compiles the schema into the `contract.json` artifact that every other command reads:
 
 ```npm
 npx prisma@latest contract emit
 ```
 
-Now plan. `--name` sets the human-readable part of the directory name. If you omit it, the directory will be called `migration`:
+Now plan. `--name` sets the human-readable part of the directory name, and if you omit it, the directory will be called `migration`:
 
 ```npm
 npx prisma@latest migration plan --name init
@@ -114,7 +114,7 @@ export default class M extends Migration<never, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-When reading it, note two things: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres. Treat it as noise when reviewing.
+When reading it, note two things: the `col(...)` calls mirror your contract fields, and you never write `codecRef` by hand. The planner fills it in to pin how values convert between TypeScript and Postgres, so treat it as noise when reviewing.
 
 For a simple change you don't need to touch this file. When you do (to add a data backfill, reorder operations, or drop in raw SQL), refer to [Editing a migration](/orm/migrations/editing-a-migration).
 
@@ -159,7 +159,7 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 ### The db ref: skipping --from
 
-You don't have to pass `--from` every time. If a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Four things move it forward:
+You don't have to pass `--from` every time: if a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named **`db`** exists, planning starts from whatever it points at by default. Four things move it forward:
 
 - `db init` and `db update` advance it after a successful run, but only when you leave `--db` off and let the connection come from `prisma.config.ts`. Passing `--db` suppresses the advancement unless you also pass `--advance-ref db`.
 - `db sign` advances it after a successful signature, with or without `--db`. This is what makes the first plan after adopting an existing database contain only your change. Pass `--no-advance-ref` to sign without moving it.
@@ -178,7 +178,7 @@ npx prisma@latest migration plan --name next_change   # starts from the db ref a
 
 If there's no `db` ref and you omit `--from`, `migration plan` refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` whenever migrations already exist on disk. Planning from empty there would produce a full `CREATE`-everything package that no database carrying the earlier migrations could apply, so the command stops instead and names the three exits: `migration ref set db <contract>`, `--from <ref>`, or `--from @empty` to plan from an empty database deliberately.
 
-Only an empty `migrations/app/` still plans from empty on its own. That is the first migration in a new project, described above. The command prints `No db ref set — planning from an empty database` under its summary when that happens, so you can tell a fresh first plan from a plan that recreates a database you already have.
+Only an empty `migrations/app/` still plans from empty on its own: that is the first migration in a new project, described above. The command prints `No db ref set — planning from an empty database` under its summary when that happens, so you can tell a fresh first plan from a plan that recreates a database you already have.
 
 :::
 
@@ -222,7 +222,7 @@ npx prisma@latest migration check
 
 :::note[What's early]
 
-Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column**, flagged destructive with a data-loss warning. For a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode. The planner writes its best answer and leaves refinement to you in `migration.ts`.
+Planning covers tables, columns, indexes, constraints, and the backfill scaffold shown above. Rename inference is not built yet: renaming a field plans as **drop column + add column**, flagged destructive with a data-loss warning. For a true rename, edit the migration and replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`. There is also no interactive mode: the planner writes its best answer and leaves refinement to you in `migration.ts`.
 
 :::
 

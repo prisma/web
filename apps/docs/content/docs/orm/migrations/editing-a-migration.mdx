@@ -57,7 +57,7 @@ override get operations() {
 }
 ```
 
-A `dataTransform` takes two closures. `check` asks "are there rows that still need this?" It must be a row-returning query where *any row* means work remains. The conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, wired to the contract snapshot the migration imports from `migrations/snapshots/`:
+A `dataTransform` takes two closures. `check` asks "are there rows that still need this?", so it must be a row-returning query where *any row* means work remains. The conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, wired to the contract snapshot the migration imports from `migrations/snapshots/`:
 
 ```ts title="migration.ts (filled in)"
 import type { Contract as End } from '../../snapshots/e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63/contract';
@@ -119,7 +119,7 @@ These two details should be noted:
 - **The types come from the migration's end-contract snapshot** (`migrations/snapshots/<contract hash>/contract`), not your live app contract. You're type-checking against the schema *as it will exist when this step runs*. That's why the builder happily references `displayName` even though the column doesn't exist yet, and why a migration written months ago keeps compiling after your contract moves on.
 - **The query is real application-grade TypeScript.** You can import shared constants, and typos in column names fail the type check instead of failing in production.
 
-The wiring block at the top (deserializing the contract, building the `db` handle) is the current shape. Expect it to shrink to a one-liner. It's the price of a query builder that's typed against this migration's snapshot instead of your live app client.
+The wiring block at the top (deserializing the contract, building the `db` handle) is the current shape, but expect it to shrink to a one-liner. It's the price of a query builder that's typed against this migration's snapshot instead of your live app client.
 
 Recompile with `node migration.ts` and inspect what the backfill became:
 
@@ -174,7 +174,7 @@ rawSql({
 }),
 ```
 
-The prechecks and postchecks are optional, but they're what makes a failed run resumable and a mistake diagnosable: skipping them trades away most of what this system gives you. If you write the same `rawSql` twice, lift it into a function. The built-in factories are plain functions doing exactly this.
+The prechecks and postchecks are optional, but they're what makes a failed run resumable and a mistake diagnosable: skipping them trades away most of what this system gives you. If you write the same `rawSql` twice, lift it into a function: the built-in factories are plain functions doing exactly this.
 
 ## The same pattern on MongoDB
 

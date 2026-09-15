@@ -12,7 +12,7 @@ Applying is the one step that touches a database, via a single command:
 npx prisma@latest db migrate
 ```
 
-Note that the command is `db migrate`, not `migration apply`. The `migration ...` subcommands manage files on disk; `db migrate` moves a database. It reads where the database currently is (its **marker**), finds a path through the [migration graph](/orm/migrations/the-migration-graph) to the target, and applies each migration along the path, running every operation's precheck, execute, and postcheck as it goes.
+Note that the command is `db migrate`, not `migration apply`: the `migration ...` subcommands manage files on disk, while `db migrate` moves a database. It reads where the database currently is (its **marker**), finds a path through the [migration graph](/orm/migrations/the-migration-graph) to the target, and applies each migration along the path, running every operation's precheck, execute, and postcheck as it goes.
 
 By default, the connection comes from `db.connection` in `prisma.config.ts`. Pass `--db` to override it:
 
@@ -97,7 +97,7 @@ npx prisma@latest db migrate --to prod --db $DATABASE_URL
 
 If the graph has branched and more than one tip is reachable, `db migrate` stops and asks for an explicit `--to`. That's the graph protecting you: two feature branches may both be valid futures, and picking one is a human decision.
 
-`--advance-ref` moves a named ref to the post-apply state in the same step, which is what keeps [`migration plan`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) incremental. Plain `db migrate` never moves a ref. That is deliberate: a deploy or a CI apply should not move a ref that lives in the repository, so in development you pass `--advance-ref db` and in production you leave it off. The [`db migrate` reference](/cli/db-migrate#options) has the full `--to` grammar (refs, hashes, migration names, `<dir>^`) and the flag contract.
+`--advance-ref` moves a named ref to the post-apply state in the same step, which is what keeps [`migration plan`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) incremental. Plain `db migrate` never moves a ref, which is deliberate: a deploy or a CI apply should not move a ref that lives in the repository, so in development you pass `--advance-ref db` and in production you leave it off. The [`db migrate` reference](/cli/db-migrate#options) has the full `--to` grammar (refs, hashes, migration names, `<dir>^`) and the flag contract.
 
 ## When something goes wrong
 
@@ -119,7 +119,7 @@ Before running any DDL, `db migrate` also verifies the database's marker is a st
 
 ## Development vs. production
 
-The commands are the same everywhere. What changes is where the files come from and who runs them.
+The commands are the same everywhere: what changes is where the files come from and who runs them.
 
 **In development**, you're the one planning and editing, and you apply immediately:
 
@@ -137,7 +137,7 @@ npx prisma@latest db migrate --db $DATABASE_URL
 
 The runner executes only `ops.json`, which is plain data, so your `migration.ts` files, and any TypeScript they import, are never executed with production credentials.
 
-Concurrent deploys are safe: on PostgreSQL the whole apply runs inside a transaction guarded by an advisory lock, so two `db migrate` runs serialize instead of interleaving. On MongoDB, cross-collection DDL transactions don't exist. Instead, each migration advances the marker with compare-and-swap, and the runner verifies the resulting schema before committing the marker, so a re-run converges rather than double-applying.
+Concurrent deploys are safe: on PostgreSQL the whole apply runs inside a transaction guarded by an advisory lock, so two `db migrate` runs serialize instead of interleaving. On MongoDB, cross-collection DDL transactions don't exist: instead, each migration advances the marker with compare-and-swap, and the runner verifies the resulting schema before committing the marker, so a re-run converges rather than double-applying.
 
 ## Extension spaces
 

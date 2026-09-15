@@ -62,13 +62,13 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 
 The `DateTime` type reads and writes its values as `Temporal.Instant` objects. If you would rather work with the timestamp as a string, write `TimestamptzString` in place of `DateTime`.
 
-`Temporal` is built into Node.js 26 and later. It is not in Node.js 22 or 24. On those versions, install `temporal-polyfill` and add this line at the top of `src/prisma/db.ts`:
+`Temporal` is built into Node.js 26 and later, but not in Node.js 22 or 24. On those versions, install `temporal-polyfill` and add this line at the top of `src/prisma/db.ts`:
 
 ```ts
 import "temporal-polyfill/full/global";
 ```
 
-Homebrew's build of Node.js 26 leaves `Temporal` out. Check with `node -p "typeof Temporal"`; if it prints `undefined`, add the polyfill.
+Homebrew's build of Node.js 26 leaves `Temporal` out, so check with `node -p "typeof Temporal"`; if it prints `undefined`, add the polyfill.
 
 :::
 
@@ -95,7 +95,7 @@ model PostTag {
 }
 ```
 
-That is complete as written. You do not need a `PostTag[]` field on `Post` or `Tag`. `.include("tags")` gives you `post.tags` as a `Tag[]`, and `connect` and `disconnect` work on it. `set` does not; see [Not available](#not-available-yet) below.
+That is complete as written: you do not need a `PostTag[]` field on `Post` or `Tag`. `.include("tags")` gives you `post.tags` as a `Tag[]`, and `connect` and `disconnect` work on it. `set` does not; see [Not available](#not-available-yet) below.
 
 If the join table already exists from Prisma ORM 7, it is named `_PostToTag` with columns `A` and `B`. Keep the table by mapping the model to those names: `@@map("_PostToTag")` on the model, `@map("A")` on the field that points at the model whose name sorts first alphabetically (`postId`), and `@map("B")` on the other (`tagId`).
 
@@ -159,7 +159,7 @@ The rest are in the [CLI reference](/cli).
 
 ## `src/prisma/db.ts` replaces `PrismaClient`
 
-There is no generated `PrismaClient`. You create the client once, in `src/prisma/db.ts`, from the two files `prisma contract emit` wrote:
+There is no generated `PrismaClient`: you create the client once, in `src/prisma/db.ts`, from the two files `prisma contract emit` wrote:
 
 ```ts title="src/prisma/db.ts"
 import "dotenv/config";
@@ -279,7 +279,7 @@ const update = db.raw.sql`UPDATE "user" SET active = false WHERE id = ${id}`
 await db.runtime().execute(update);
 ```
 
-The table is `user`, not `User`: Prisma ORM 8 names a table after its model with a lowercase first letter, unless the model sets `@@map`. Every raw query that returns rows needs `.returnsRow(...)` with a type per column. Take the type from the table, as above. For a computed column, write the type name instead, such as `pg/int4@1` or `pg/text@1`; the `@1` is a version number and is always `1` today. [Raw queries](/orm/reference/raw-queries) lists the names. Finish the query with `.build()` and pass it to `db.runtime().query()` for rows or `db.runtime().execute()` for a count.
+The table is `user`, not `User`: Prisma ORM 8 names a table after its model with a lowercase first letter, unless the model sets `@@map`. Every raw query that returns rows needs `.returnsRow(...)` with a type per column, and you take the type from the table, as above. For a computed column, write the type name instead, such as `pg/int4@1` or `pg/text@1`; the `@1` is a version number and is always `1` today. [Raw queries](/orm/reference/raw-queries) lists the names. Finish the query with `.build()` and pass it to `db.runtime().query()` for rows or `db.runtime().execute()` for a count.
 
 ### Transaction
 

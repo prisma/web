@@ -193,6 +193,6 @@ Before you finish, check:
 - [ ] Is there a way to verify success at the end?
 - [ ] Did you cut every phrase from "Cut the slop"?
 - [ ] Did you check the page against every pattern in "Don't write like a model"?
-- [ ] Did you read the prose aloud and rejoin any run of clipped sentences that belong together?
+- [ ] Did you read the prose aloud and rejoin any run of clipped sentences that belong together? `.claude/skills/docs-reader-review/scripts/check-staccato.py <page>` finds the worst runs.
 - [ ] Are product names and limitations accurate?
 - [ ] Has the page been through `docs-reader-review`? A fact review checks truth; the reader review checks whether a reader without your context can follow it. Nothing is finished until that pass reports no sentence the reader could not restate.
