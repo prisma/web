@@ -6,11 +6,9 @@ metaTitle: Editing a migration in Prisma ORM
 metaDescription: 'How to edit a Prisma ORM migration.ts by filling placeholder data transforms, writing typed backfills, using rawSql, and recompiling ops.json with node migration.ts.'
 ---
 
-The planner writes a good first draft, but many migrations require the input of a human (or agent) for key decisions: what to put in existing rows when a column becomes required, which order to run two steps in, one statement the planner has no factory for. In Prisma ORM you make those changes by editing `migration.ts` (ordinary TypeScript with autocomplete and type checking) and recompiling it. You never hand-edit SQL files or `ops.json`.
+The planner, `npx prisma migration plan`, writes a first draft of each migration, but some decisions need you. You decide what to put in existing rows when a column becomes required, which order to run two steps in, and how to write a statement that the migration class has no method for. Those methods are the `this.addColumn(...)`-style calls in `migration.ts`, a TypeScript file with autocomplete and type checking. The SQL that runs is in `ops.json`, and you never edit it by hand. You edit `migration.ts` and recompile it, and recompiling writes `ops.json` again.
 
-The rule that makes this safe:
-
-> **You edit `migration.ts`, and running it regenerates `ops.json`. The runner only ever executes `ops.json`.**
+> **You edit `migration.ts`, and running it regenerates `ops.json`. `npx prisma db migrate` runs only `ops.json`.**
 
 After any edit, recompile from your project's root directory:
 
@@ -22,11 +20,13 @@ node migrations/app/20260707T1008_add_display_name/migration.ts
 Wrote ops.json + migration.json to /path/to/my-app/migrations/app/20260707T1008_add_display_name
 ```
 
-Recompiling also records a new `migrationHash` in `migration.json`, computed from `migration.json` and `ops.json`. If someone hand-edits `ops.json` afterwards, `migration check` fails with a hash mismatch. `migration.ts` is not part of that hash, so `migration check` cannot tell when someone edits `migration.ts` and forgets to recompile. Commit `migration.ts` and `ops.json` together.
+Each migration is a directory under `migrations/app/`. Run the command from the project root, because inside the migration directory it fails with an error whose `code` is `CONFIG.FILE_NOT_FOUND`. If someone hand-edits `ops.json` after you recompile, `npx prisma migration check` fails. It does not read `migration.ts`, so it cannot tell when you edit `migration.ts` and forget to recompile. Commit `migration.ts`, `ops.json`, `migration.json`, and the `migrations/snapshots/<hash>/` directories that `migration.ts` imports, all together.
+
+An edit reaches only the databases that have not applied the migration yet, because `npx prisma db migrate` does not compare the migrations a database already applied with the files on disk. To change a database that already applied a migration, plan a new migration.
 
 ## Worked example: making a column required
 
-This is the classic case: `User` gets a required `displayName`, but the table already has rows and those rows have no `displayName`. Plan it:
+You add a required `displayName` field to `User` in your contract, the `contract.prisma` file that replaced `schema.prisma`. The `user` table already has rows, and those rows have no `displayName`. Run `npx prisma contract emit`, then plan the migration as [Generating a migration](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) describes:
 
 ```npm
 npx prisma migration plan --name add_display_name
@@ -34,11 +34,9 @@ npx prisma migration plan --name add_display_name
 
 ```text
 ⚠ Planned migration with placeholder(s) — edit migration.ts then run `node migration.ts` to self-emit
-
-Replace each placeholder(...) call in migrations/app/20260707T1008_add_display_name/migration.ts with your query
 ```
 
-The planner writes the three steps this change needs (add the column as nullable, backfill it, then make it required) and leaves the backfill query to you:
+The `node migration.ts` in that output is the recompile step, which you run from the project root as shown above. The planner writes the three steps this change needs and leaves the backfill query to you. `this.addColumn(...)` adds the column as nullable, `this.dataTransform(...)` holds the backfill, and `this.setNotNull(...)` makes the column required. The table name `user` is the model name with a lowercase first letter:
 
 ```ts title="migration.ts (as planned)"
 override get operations() {
@@ -57,24 +55,21 @@ override get operations() {
 }
 ```
 
-A `dataTransform` takes two closures. `check` asks "are there rows that still need this?", so it must be a row-returning query where *any row* means work remains. The conventional shape is `select('id').where(<violation>).limit(1)`. `run` performs the change. Fill them with the typed SQL query builder, built from the snapshot of your contract (the `contract.prisma` file that replaced `schema.prisma`) that the migration imports from `migrations/snapshots/`:
+A `dataTransform` takes two callbacks. `check` finds rows that still need the backfill, so it must be a query that returns rows, and any row it returns means work remains. A typical `check` is `select('id').where(<rows not yet fixed>).limit(1)`. `run` makes the change. Write both with the `sql` query builder, which gets its types from a snapshot. A snapshot is a saved copy of your contract in `migrations/snapshots/<contract hash>/`. This migration imports two: the start contract, from before the migration, and the end contract, from after it.
 
 ```ts title="migration.ts (filled in)"
+#!/usr/bin/env -S node
 import type { Contract as End } from '../../snapshots/e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63/contract';
-import endContractJson from '../../snapshots/e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63/contract.json' with {
-  type: 'json',
-};
+import endContractJson from '../../snapshots/e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63/contract.json' with { type: 'json' };
 import type { Contract as Start } from '../../snapshots/925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72/contract';
-import startContractJson from '../../snapshots/925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72/contract.json' with {
-  type: 'json',
-};
+import startContractJson from '../../snapshots/925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72/contract.json' with { type: 'json' };
 import { Migration, MigrationCLI, col } from '@prisma/orm-postgres/migration';
 import postgresAdapter from '@prisma/orm-postgres/adapter/runtime';
 import { sql } from '@prisma/orm-postgres/builder/runtime';
 import { createExecutionContext, createSqlExecutionStack } from '@prisma/orm-postgres/family-runtime';
 import postgresTarget, { PostgresContractSerializer } from '@prisma/orm-postgres/target/runtime';
 
-const endContract = new PostgresContractSerializer().deserializeContract(endContractJson);
+const endContract = new PostgresContractSerializer().deserializeContract<End>(endContractJson);
 const stack = createSqlExecutionStack({ target: postgresTarget, adapter: postgresAdapter });
 
 const db = sql<End>({
@@ -112,14 +107,11 @@ export default class M extends Migration<Start, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-`sql()` needs both a `context` and the adapter's `rawCodecInferer`. `rawCodecInferer` is what works out how to convert a bare JavaScript value you interpolate into a raw SQL fragment. It is a required field, so a call without it does not type-check. Keeping the execution stack in its own `const` lets you pass `stack.adapter.rawCodecInferer`, the same value the Prisma ORM client passes.
+Compared with the planned file, you add the four imports below the `@prisma/orm-postgres/migration` import and the three statements that build `db`. You also remove `placeholder` from that import. The planner imports the two snapshot JSON files as `endContract` and `startContract`, so rename them to `endContractJson` and `startContractJson` in the imports and in the class fields. Copy the setup lines as they are, and keep the planner's operations as they are, including each `codecRef`. `rawCodecInferer` is required, so `sql()` does not type-check without it. In each `where`, `f` holds the table's columns and `fns` holds functions such as `eq`.
 
-Two details matter here:
+`db` is built from the end contract, so its types describe the database after the whole migration has run. A column that exists at the end, such as `displayName`, type-checks, even though it is still nullable while the backfill runs. A column the migration drops is not in those types, as the next section shows. A snapshot never changes, so a migration written months ago keeps compiling after your contract changes.
 
-- **The types come from the migration's end-contract snapshot** (`migrations/snapshots/<contract hash>/contract`), not your app's current contract. You're type-checking against the database *as it will exist when this step runs*. That's why the builder accepts `displayName` even though the column doesn't exist yet, and why a migration written months ago keeps compiling after your contract changes.
-- **The query is ordinary TypeScript.** You can import shared constants, and typos in column names fail the type check instead of failing in production.
-
-Recompile with `node migration.ts` and inspect what the backfill became:
+Recompile with `node migrations/app/20260707T1008_add_display_name/migration.ts` from the project root, and look at what the backfill became in `ops.json`:
 
 ```json title="ops.json (the compiled dataTransform)"
 {
@@ -151,15 +143,17 @@ Recompile with `node migration.ts` and inspect what the backfill became:
 }
 ```
 
-Your `check` closure became both the [precheck](/orm/migrations/how-migrations-work#every-operation-checks-itself) (`EXISTS`: is there work?) and the postcheck (`NOT EXISTS`: is it done?). Your `run` became a parameterized `UPDATE`. `"Anonymous"` is sent in `params` and bound by the database driver, so it is never written into the SQL text. The reviewer reading your PR sees intent in `migration.ts` and the exact statements in `ops.json`, side by side.
+Your `check` callback became both the [precheck](/orm/migrations/how-migrations-work#every-operation-checks-itself), which uses `EXISTS` to ask whether there is work, and the postcheck, which uses `NOT EXISTS` to ask whether the work is done. Your `run` became an `UPDATE`, with `"Anonymous"` in `params`. When no rows need the backfill, the postcheck already passes, so `npx prisma db migrate` skips the operation instead of failing the precheck.
+
+If the model has a column declared as `temporal.updatedAtString()`, such as `updatedAt` in the starter contract that `npx prisma orm init` writes, the backfill's `update` sets that column too. Its value is the time you ran `node migration.ts`, so every recompile writes a new time into `ops.json`. `npx prisma migration check` then fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, even right after a recompile. To avoid this, build `db` from a contract that declares the column as `updatedAt TimestamptzString`, which the backfill leaves unchanged. The next section shows how to build `db` from a contract of your own.
 
 ## When a backfill reads a column the migration removes
 
-Suppose the next migration replaces the boolean `isAdmin` on `User` with a required text column, `role`. The backfill has to read `isAdmin` to decide each row's `role`. The end contract has no `isAdmin`. The start contract has no `role`. If you build `db` from the end contract, TypeScript rejects `f.isAdmin`. If you run `node migration.ts` anyway, it stops with an error before it writes `ops.json`.
+Suppose the next migration replaces the boolean `isAdmin` on `User` with a required text column, `role`. The backfill has to read `isAdmin` to decide each row's `role`. The end contract has no `isAdmin`, and the start contract has no `role`. If you build `db` from the end contract, TypeScript rejects `f.isAdmin`. If you run `node migration.ts` anyway, it stops with an error that does not name the column, and it writes nothing.
 
-Instead, describe `User` as it is while the backfill runs, in a contract of its own. Copy your contract into the migration directory as `intermediate.prisma`, and give `User` both columns. `role` is optional here because it is still empty:
+Instead, build `db` from a third contract that describes the database while the backfill runs. Copy your whole contract into the migration directory as `intermediate.prisma`. In its `User` model, add `isAdmin` back and make `role` optional, because `role` is still empty while the backfill runs. Leave the other models and fields as they are. If `User` has an `updatedAt temporal.updatedAtString()` column, change it to `updatedAt TimestamptzString` in this file.
 
-```prisma title="intermediate.prisma (the User model)"
+```prisma title="intermediate.prisma (User, other fields left out)"
 model User {
   id          Int     @id
   displayName String
@@ -168,13 +162,15 @@ model User {
 }
 ```
 
-`npx prisma contract emit` reads only the contract file that a config file names. Add a second config file, `intermediate.config.ts`, next to `intermediate.prisma`. Run `npx prisma contract emit --config intermediate.config.ts` from the migration directory, because paths in a config file are relative to where you run the command. It writes `intermediate.json` and `intermediate.d.ts` next to `intermediate.prisma`.
+Next to it, add `intermediate.config.ts`. It is a second config file, beside your project's `prisma.config.ts`, and it names `intermediate.prisma` as the contract. It needs no database connection:
 
 ```ts title="intermediate.config.ts"
 import { definePrismaConfig } from 'prisma/config';
 import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 export default definePrismaConfig({ orm: ormConfig({ contract: './intermediate.prisma' }) });
 ```
+
+Then run `npx prisma contract emit --config intermediate.config.ts` from the migration directory. Its output mentions `contract.json`, but it writes `intermediate.json` and `intermediate.d.ts` next to `intermediate.prisma`. Commit all four `intermediate.*` files with the migration. `migration.ts` imports the `.json` and `.d.ts` files, and you need the other two to run `npx prisma contract emit` again.
 
 ```text title="migrations/app/20260708T0900_replace_is_admin/"
 ├── intermediate.config.ts
@@ -186,12 +182,12 @@ export default definePrismaConfig({ orm: ormConfig({ contract: './intermediate.p
 └── ops.json
 ```
 
-In `migration.ts`, import the intermediate contract and build `db` from it. Pass the same contract to `dataTransform`. If the two differ, `node migration.ts` fails with an error whose `code` is `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`. These lines replace `endContract`, `db`, and the `operations` getter in the example above:
+In `migration.ts`, import the intermediate contract and build `db` from it. Pass the same contract to `dataTransform`, because if the two differ, `node migration.ts` fails with an error whose `code` is `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`. Start from the setup in the `displayName` example. The block below replaces its `endContract` statement, its `db` statement, and its `operations` getter, so delete the old `endContract` statement. The imports, the `stack` statement, and the `endContractJson` and `startContractJson` class fields stay. The planner puts `dropColumn` for `isAdmin` first, so move it after the backfill, as shown:
 
 ```ts title="migration.ts (what changes)"
 import type { Contract as Mid } from './intermediate';
 import midContractJson from './intermediate.json' with { type: 'json' };
-const midContract = new PostgresContractSerializer().deserializeContract(midContractJson);
+const midContract = new PostgresContractSerializer().deserializeContract<Mid>(midContractJson);
 const db = sql<Mid>({
   context: createExecutionContext({ contract: midContract, stack }),
   rawCodecInferer: stack.adapter.rawCodecInferer,
@@ -212,13 +208,11 @@ override get operations() {
 }
 ```
 
-Type a transform against the end contract when it writes only columns the end contract has and reads only columns it keeps. Use an intermediate contract when it reads a column the migration removes or renames. The alternative is two migrations: the first adds and backfills `role`, and the second drops `isAdmin`. That costs an extra contract state, which exists only so the backfill can be written.
-
-If `User` has a column that sets itself on every update, such as `updatedAt temporal.updatedAtString()` in the model `npx prisma orm init` writes, the backfill's `update` sets that column too. The value is the time you ran `node migration.ts`, so every row gets that time, and each recompile writes a new one into `ops.json`. In `intermediate.prisma`, declare the column as a plain `TimestamptzString`, and the backfill leaves it unchanged.
+Build `db` from the end contract if the backfill uses only columns that still exist after the migration. If it reads a column the migration drops or renames, build `db` from an intermediate contract. You can also split the change into two migrations: the first adds and backfills `role`, and the second drops `isAdmin`. That adds one more [contract state](/orm/migrations/the-migration-graph#terms-used-on-this-page), a version of your contract in the migration history, which exists only so the backfill can be written.
 
 ## Raw SQL [#escape-hatch-raw-sql]
 
-For a statement the operation factories don't cover (such as `CREATE INDEX CONCURRENTLY` or a vendor-specific statement), use `rawSql` from `@prisma/orm-postgres/migration`, and give it a precheck and a postcheck if you can:
+For a statement the migration class has no method for, such as `CREATE INDEX CONCURRENTLY` or `CREATE EXTENSION`, import `rawSql` from `@prisma/orm-postgres/migration` and put the call inside the `operations` array. Set `operationClass` to one of the [operation classes](/orm/migrations/how-migrations-work#every-operation-checks-itself), and note that `destructive` makes the CLI mark the operation with a data-loss warning. Give it a precheck and a postcheck if you can:
 
 ```ts
 rawSql({
@@ -236,11 +230,11 @@ rawSql({
 }),
 ```
 
-The `precheck` and `postcheck` arrays can be empty, but the runner skips an operation only when its postchecks already pass, and stops when a precheck fails. See [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) for what that means on a failed run. If you write the same `rawSql` twice, move it into a function.
+Each check is a query that must return a row whose first column is true, and the column's name does not matter. An empty `precheck` or `postcheck` array always passes. But `npx prisma db migrate` skips an operation as already done only when its postcheck passes before the operation runs, so an operation with an empty `postcheck` is never skipped. [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) explains when that matters. If you write the same `rawSql` twice, move it into a function.
 
 ## The same pattern on MongoDB
 
-On MongoDB, you import `dataTransform` from `@prisma/orm-mongo/target/migration`, and `check` puts its query in `{ source }`. It compiles to a precheck, a `run` step, and a postcheck. Hand-written MongoDB transforms build their queries from command objects such as `AggregateCommand` and `RawUpdateManyCommand`, not the typed query builder, because the runner cannot read the builder's update commands back from `ops.json`:
+On MongoDB, import `dataTransform` from `@prisma/orm-mongo/target/migration`. Its `check` is an object whose `source` is a callback that returns the query, and it compiles to a precheck, a `run` step, and a postcheck. A `check` can use the query builder, but an update in `run` cannot use it yet. Build updates from command classes such as `RawUpdateManyCommand`, and other hand-built queries from classes such as `AggregateCommand`. Both are imported from `@prisma/orm-mongo/query-ast/execution`:
 
 ```ts title="migration.ts (MongoDB, excerpt)"
 import { dataTransform, setValidation } from '@prisma/orm-mongo/target/migration';
@@ -261,29 +255,29 @@ override get operations() {
 }
 ```
 
-The full working migration, including the two functions that build its queries, is in the Prisma ORM repo's [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts).
+`existingProductsWithoutStatus` and `backfillRun` are helper functions that return the two queries. They take the end contract's hash, and each query stores that hash in its `meta`. Both are defined in the full migration in the Prisma ORM repo's [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts).
 
 ## Starting from a blank migration
 
-Sometimes you want a data-only migration, or you'd rather write the whole thing by hand. `migration new` writes a migration directory with a `migration.ts` that has no operations, an empty `ops.json`, and a `migration.json` that already has a `migrationHash`:
+Sometimes you want a data-only migration, or you'd rather write the whole thing by hand. `npx prisma migration new` writes a migration directory with an empty `ops.json`, a `migration.json`, and a `migration.ts`. That `migration.ts` has the snapshot imports, the class, and an empty `operations` array, but no `db` setup, so copy the setup from the `displayName` example:
 
 ```npm
 npx prisma migration new --name backfill_scores
 ```
 
-If your contract has not changed since the last migration, that command fails with an error whose `code` is `MIGRATION.NO_CHANGES`. For a data-only migration, pass the `to` hash from your latest migration's `migration.json`: `npx prisma migration new --name backfill_scores --from <hash>`. Then write your operations in the generated `migration.ts` and recompile it the same way: `node migration.ts`.
+The new migration starts at the end contract of your latest migration and ends at your current contract. If your contract has not changed since that migration, the command fails with an error whose `code` is `MIGRATION.NO_CHANGES`. For a data-only migration, pass the hash your latest migration ends at, which is the `to` value in its `migration.json`: `npx prisma migration new --name backfill_scores --from <hash>`. Until you add an operation to that migration and recompile it, `npx prisma migration check` fails with an error whose `code` is `MIGRATION.CHECK_NOOP_SELF_EDGE`, and `npx prisma migration plan` fails with `MIGRATION.CONTRACT_SPACE_VIOLATION`. Write your operations in the generated `migration.ts`, then recompile it from the project root with `node migrations/app/<dir>/migration.ts`.
 
 ## Editing checklist
 
 1. Edit `migration.ts`, never `ops.json`.
-2. Recompile: `node <migration-dir>/migration.ts`.
+2. Recompile from the project root: `node migrations/app/<dir>/migration.ts`.
 3. Review the diff of `ops.json`, because that's what will run.
 4. Verify: `npx prisma migration check`.
-5. Commit `migration.ts`, `ops.json`, and `migration.json` together.
+5. Commit `migration.ts`, `ops.json`, `migration.json`, and the `migrations/snapshots/<hash>/` directories that `migration.ts` imports. If the migration has `intermediate.*` files, commit those too.
 
 :::note[What's early]
 
-Hand-written MongoDB data transforms cannot use the typed query builder for updates, because the runner cannot read those commands back from `ops.json`. Nothing checks that `ops.json` still matches `migration.ts`, so recompile after every edit.
+Hand-written MongoDB data transforms cannot use the query builder for updates. Nothing checks that `ops.json` still matches `migration.ts`, so recompile after every edit.
 
 :::
 
@@ -297,6 +291,6 @@ Projects created with `npm create prisma@latest` include the [Prisma ORM skills]
 
 ## See also
 
-- [Generating a migration](/orm/migrations/generating-a-migration): where the scaffold comes from
+- [Generating a migration](/orm/migrations/generating-a-migration): where the first draft of `migration.ts` comes from
 - [Applying a migration](/orm/migrations/applying-a-migration): run the edited migration
-- [Data Migrations in Prisma 8](https://www.prisma.io/blog/data-migrations-in-prisma-next): the design story for `dataTransform`
+- [Data Migrations in Prisma 8](https://www.prisma.io/blog/data-migrations-in-prisma-next): how `dataTransform` was designed
