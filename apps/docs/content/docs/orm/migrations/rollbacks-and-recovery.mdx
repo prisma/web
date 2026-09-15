@@ -17,7 +17,7 @@ There is no `migrate down` command and no separate "down migration" files. A rol
 
 <ConceptAnimation name="migration-rollback" />
 
-Suppose you applied `20260707T1008_add_display_name` in production and need to undo it. Your contract is the `contract.prisma` file that replaced `schema.prisma`. A contract state is one version of your contract, named by a hash computed from the contract. [`npx prisma migration plan`](/orm/migrations/generating-a-migration) writes a migration from one contract state to another, so use it to write the rollback. In the command, a directory name means the state after that migration, and the same name followed by `^` means the state before it:
+Suppose you applied `20260707T1008_add_display_name` in production and need to undo it. Your contract is the `contract.prisma` or `contract.ts` file that replaced `schema.prisma`. A contract state is one version of your contract, named by a hash computed from the contract. [`npx prisma migration plan`](/orm/migrations/generating-a-migration) writes a migration from one contract state to another, so use it to write the rollback. In the command, a directory name means the state after that migration, and the same name followed by `^` means the state before it:
 
 ```npm
 npx prisma migration plan \
@@ -46,13 +46,13 @@ ALTER TABLE "public"."user" DROP COLUMN "displayName";
 Review the new migration before you apply it, because `db migrate` runs destructive operations without asking. Open its `migration.ts`, and run `npx prisma migration show 20260707T1010_rollback_display_name` to see its SQL. Then finish the rollback in this order:
 
 1. **Save the data, if you need it.** Dropping the column deletes its data for good. To copy the column into a table that already exists, add a [`rawSql` operation](/orm/migrations/editing-a-migration#escape-hatch-raw-sql) that runs an `INSERT ... SELECT`, and put it before the `dropColumn` call in this migration's `migration.ts`. Then recompile the migration by running `node migrations/app/20260707T1010_rollback_display_name/migration.ts` from your project's root directory. This rewrites `ops.json`, which holds the operations `db migrate` runs.
-2. **Revert the change in your contract.** Remove `displayName` from `contract.prisma`, then run `npx prisma contract emit`, which replaces `prisma generate` and rewrites `contract.json`. Step 4 needs this, because `db migrate` moves the database to the contract state in that file.
-3. **Commit the migration and the contract together.** Commit the new migration's directory, `contract.prisma`, `contract.json`, and `contract.d.ts`. A rollback adds no directory under `migrations/snapshots/`, because it ends at a contract state that already has one.
+2. **Revert the change in your contract.** Remove `displayName` from your contract file, then run `npx prisma contract emit`, which replaces `prisma generate` and rewrites `contract.json`. Step 4 needs this, because `db migrate` moves the database to the contract state in that file.
+3. **Commit the migration and the contract together.** Commit the new migration's directory, your contract file, `contract.json`, and `contract.d.ts`. A rollback adds no directory under `migrations/snapshots/`, because it ends at a contract state that already has one.
 4. **Apply the rollback.** In CI and production, run `npx prisma db migrate`, which replaces [`migrate deploy`](/orm/coming-from-prisma-orm-7). In development, run `npx prisma db migrate --advance-ref db` instead. The flag updates the [`db` ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from), a file in `migrations/app/refs/` that names the contract state you last applied in development. By default, `migration plan` starts from that state, so without the flag your next migration repeats changes you already applied.
 
 After step 4, `npx prisma db verify` passes. `db migrate` runs neither migration on a database that never applied `add_display_name`, such as a staging database you had not deployed it to. It takes the shortest path to the contract state, and that path skips both.
 
-To undo several migrations, write one migration with `npx prisma migration plan --from <newest-migration-dir> --to "<oldest-migration-to-undo>^" --name rollback_changes`, then follow the same four steps. In step 2, restore `contract.prisma` from a commit made before you added the oldest migration you undo, for example with `git checkout <commit> -- src/prisma/contract.prisma`, and run `npx prisma contract emit`.
+To undo several migrations, write one migration with `npx prisma migration plan --from <newest-migration-dir> --to "<oldest-migration-to-undo>^" --name rollback_changes`, then follow the same four steps. In step 2, restore your contract file from a commit made before you added the oldest migration you undo, for example with `git checkout <commit> -- src/prisma/contract.prisma`, and run `npx prisma contract emit`.
 
 ### One planning caveat after a rollback
 
