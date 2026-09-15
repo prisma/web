@@ -4,11 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const cwd = path.dirname(fileURLToPath(import.meta.url));
 const docsRoot = path.resolve(cwd, "..");
-const broadDestinations = new Set([
-  "/docs",
-  "/docs/orm",
-  "/docs/orm/reference/supported-databases",
-]);
+const broadDestinations = new Set(["/docs", "/docs/orm", "/docs/orm/supported-databases"]);
 const acceptableBroadRedirects = new Set([
   "/docs/orm/more/upgrade-guides/upgrading-versions/codemods -> /docs/guides/upgrade-prisma-orm/v7",
   "/docs/orm/accelerate/getting-started/connection-pooler/client-extensions -> /docs/postgres/database/connection-pooling",
