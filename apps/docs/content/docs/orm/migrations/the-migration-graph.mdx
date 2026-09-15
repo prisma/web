@@ -24,7 +24,7 @@ A contract state is one version of your contract. Each migration records the con
 
 :::tip[You probably need only these five commands]
 
-After you change the contract, run `npx prisma contract emit`, which replaces `prisma generate`. Then create a migration with `npx prisma migration plan --name <name>`. In development, apply it with `npx prisma db migrate --advance-ref db`. That flag points the `db` ref, a file in `migrations/app/refs/` that names the contract state you last applied in development, at the state you just applied. `migration plan` starts from the `db` ref, so if you leave off the flag, your next migration repeats changes you already applied. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) shows how to fix that. To see the graph, run `npx prisma migration graph`. To check where a database is and what `db migrate` would run next, run `npx prisma migration status`.
+After you change the contract, run `npx prisma contract emit`, which replaces `prisma generate`. Then create a migration with `npx prisma migration plan --name <name>`. In development, apply it with `npx prisma db migrate --advance-ref db`. That flag points the `db` ref, a file in `migrations/app/refs/` that names the contract state you last applied in development, at the state you just applied. `migration plan` starts from the `db` ref, so if you leave off the flag, your next migration can repeat changes you already applied. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) shows how to fix that. To see the graph, run `npx prisma migration graph`. To check where a database is and what `db migrate` would run next, run `npx prisma migration status`.
 
 :::
 
@@ -36,7 +36,7 @@ After you change the contract, run `npx prisma contract emit`, which replaces `p
 | **Contract state** | One version of your contract, named by its hash. |
 | **Hash** | An identifier computed from the database layout your contract describes, not from the text of `contract.prisma`. The graph output shows its first seven characters, like `789dd79`. |
 | **Node** | A contract state, drawn as a `○` row in `migration graph` output. |
-| **Edge** | A migration, drawn as a `↑` row. It moves the database from one node to another. |
+| **Edge** | A migration, drawn as a `↑`, `↓`, or `⟲` row. It moves the database from one node to another. |
 | **Marker** | The record in the database of which contract state it currently matches. It is a stored value, so reading it does not check the tables. |
 | **Ledger** | The database's own list of every migration applied to it, with when each one ran. |
 | **Ref** | A name for a contract state, like `prod`, stored as a file in `migrations/app/refs/`. |
@@ -52,14 +52,16 @@ A database with a **marker** is at one contract state, the one its marker holds.
 
 ## A worked example
 
-Here is the situation from the top of the page as a graph, after the two merge migrations described below were added. `(prod)` marks a ref that [Name important states with refs](#name-important-states-with-refs) sets:
+Here is the situation from the top of the page as a graph, after the two merge migrations described below were added. [Name important states with refs](#name-important-states-with-refs) explains `@contract` and `(prod)`:
 
 ```npm
 npx prisma migration graph
 ```
 
 ```text
-○     f9a41d7  (prod)
+│  migrations:  migrations
+
+○     f9a41d7  @contract (prod)
 │─╮
 │↑│   20260303T1000_merge_alice      93be6c2 → f9a41d7  1 ops
 │ │↑  20260303T1100_merge_bob        7e3fa7f → f9a41d7  1 ops
@@ -108,7 +110,7 @@ If no chain of migrations leads from the marker to the target, the run fails wit
 | Where is my database, and what would `db migrate` run next? | `npx prisma migration status` | Yes |
 | What has actually been applied, and when? | `npx prisma migration log` | Yes |
 
-`migration log` reads the **ledger**. A rollback appears there as one more applied migration, so no history is ever deleted. Run `migration check` in CI before you deploy, and see [Reviewing what you planned](/orm/migrations/generating-a-migration#reviewing-what-you-planned) for its exit codes.
+`migration log` reads the **ledger**. A rollback appears there as one more applied migration, so no history is deleted. Run `migration check` in CI before you deploy, and see [Reviewing what you planned](/orm/migrations/generating-a-migration#reviewing-what-you-planned) for its exit codes.
 
 ### Try it on real fixtures
 
@@ -116,7 +118,7 @@ The [Prisma ORM repository](https://github.com/prisma/orm) has this diamond and 
 
 ## Name important states with refs
 
-Hashes are long and hard to remember, so name the states that matter. A **ref** is a name for a contract state, stored as a small file in `migrations/app/refs/`. You create and move refs with `npx prisma migration ref set`, and you pass one to `db migrate --to`. `prod` here is only an example name:
+Hashes are hard to remember, so name the states that matter. A **ref** is a name for a contract state, stored as a file in `migrations/app/refs/`. You create and move refs with `npx prisma migration ref set`, and you pass one to `db migrate --to`. `prod` here is only an example name:
 
 ```npm
 npx prisma migration ref set prod f9a41d7
@@ -142,7 +144,7 @@ Alice and Bob each planned a migration from `789dd79` on their own branches. Bot
 
 ### History you can trust
 
-Each migration records the contract state it starts `from`, so it does not run against a database at a different state. Before any operation runs, `db migrate` checks that the marker is a state in your migration history, and stops if it is not. That happens, for example, after `npx prisma db update` applies a contract that no migration ends at. Like Prisma ORM 7's `db push`, `db update` changes a database to match the contract without writing a migration. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) explains what to do next. This first check reads only the marker. `db migrate` checks the tables only after it runs operations, and not when it has nothing to run. To compare the tables with your contract at any time, run `npx prisma db verify`.
+Each migration records the contract state it starts `from`, so it does not run against a database at a different state. Before any operation runs, `db migrate` checks that the marker is a state in your migration history, and stops if it is not. That happens, for example, after `npx prisma db update` applies a contract that no migration ends at. Like Prisma ORM 7's `db push`, `db update` changes a database to match the contract without writing a migration. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) explains what to do next. This first check reads only the marker. `db migrate` checks the tables only after it runs operations, and not when it has nothing to run. To compare the tables with your contract, run `npx prisma db verify --schema-only`.
 
 ### Rollback as a normal move
 
@@ -167,7 +169,7 @@ Straight lines, branches, and branches that join again all use the same commands
 The graph and the commands are the same on every database that [Prisma ORM 8 supports](/orm/supported-databases). What differs is where the marker and ledger are stored, and what a failed `db migrate` run leaves behind.
 
 - **PostgreSQL**: the marker is the `prisma_contract.marker` table and the ledger is the `prisma_contract.ledger` table. The whole run is one transaction, so a failed run leaves the database and its marker where they were.
-- **MongoDB**: the marker and ledger are documents in a `_prisma_migrations` collection. Prisma ORM 7 had no migrations on MongoDB, so this collection is new in Prisma ORM 8. A `db migrate` run is not wrapped in a transaction, so operations that finished before a failure stay in the database. A re-run skips those operations and continues.
+- **MongoDB**: the marker and ledger are documents in a `_prisma_migrations` collection. Prisma ORM 7 had no migrations on MongoDB, so this collection is new in Prisma ORM 8. A `db migrate` run is not wrapped in a transaction, so operations that finished before a failure stay in the database.
 
 ## Release-candidate limitations
 

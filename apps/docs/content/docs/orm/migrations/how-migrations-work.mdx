@@ -1,9 +1,9 @@
 ---
 title: How migrations work
-description: 'Change your contract, plan a migration, review it, apply it. Every step is checked before and after it runs.'
+description: 'Change your contract, plan a migration, review it, apply it. Operations can check the database before and after they run.'
 url: /orm/migrations/how-migrations-work
 metaTitle: How migrations work in Prisma ORM
-metaDescription: 'What a Prisma ORM migration is, the plan-review-apply loop, the files inside a migration directory, and why every operation is safe to retry.'
+metaDescription: 'What a Prisma ORM migration is, the plan-review-apply loop, the files inside a migration directory, and how operations check the database.'
 ---
 
 A migration is how Prisma ORM changes your database when your contract changes. Your contract is the `contract.prisma` file that replaced `schema.prisma`, and `npx prisma orm init` puts it in `src/prisma/`. After you edit it, run `npx prisma contract emit`, which replaces `prisma generate`. It writes two files next to `contract.prisma`: `contract.json`, which the migration commands read, and `contract.d.ts`, which your client's types come from.
@@ -124,7 +124,7 @@ Only destructive operations get a warning, `This migration contains destructive 
 
 The checks help in two situations:
 
-- **A migration fails.** On PostgreSQL, one `db migrate` run is one transaction, so a failure leaves the database as it was before the run. On MongoDB, a `db migrate` run is not wrapped in a transaction, so operations that finished before a failure stay in the database, and a re-run skips them. [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) covers recovery.
+- **A migration fails.** On PostgreSQL, one `db migrate` run is one transaction, so a failure leaves the database as it was before the run. On MongoDB, a `db migrate` run is not wrapped in a transaction, so operations that finished before a failure stay in the database. [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) covers recovery.
 - **The database isn't in the state you assumed.** The precheck stops the run before the change runs. For example, a precheck stops a migration that sets `NOT NULL` on a column that still holds `NULL` values. The error names the operation and the check that failed. To fix it, edit `migration.ts` to fill those rows first, recompile it, and run `npx prisma db migrate` again, as [Recovery](/orm/migrations/rollbacks-and-recovery#recovery-when-a-migration-fails-partway) shows.
 
 ## The commands

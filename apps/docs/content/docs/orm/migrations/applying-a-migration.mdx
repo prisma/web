@@ -16,7 +16,7 @@ npx prisma db migrate
 
 The `db` commands, `migration status`, and `migration log` connect to a database. They use `db.connection` in `prisma.config.ts`, for example `db: { connection: process.env["DATABASE_URL"]! }`, as [The data contract](/orm/contract-authoring/the-data-contract) shows. The `--db` flag is optional. Pass it to connect to a different database, such as production with `--db "$PRODUCTION_DATABASE_URL"`.
 
-A successful run lists each operation it applied, then the marker it left behind:
+A successful run lists each applied migration's operations, then the marker it left behind:
 
 ```text
 ✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
@@ -47,7 +47,7 @@ npx prisma db migrate --show --db "$PRODUCTION_DATABASE_URL"
 npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
 ```
 
-To see which contract state a database is at and which migrations are pending, run `npx prisma migration status --db "$PRODUCTION_DATABASE_URL"`, or leave off `--db` for your development database. It never changes the database. It draws your migration history and marks each migration as applied or pending:
+To see which contract state a database is at and which migrations are pending, run `npx prisma migration status --db "$PRODUCTION_DATABASE_URL"`. It never changes the database. It draws your migration history and marks each migration as applied or pending:
 
 ```text
 ○   925198f  @contract
@@ -119,19 +119,19 @@ When an operation fails, `db migrate` stops and prints what failed and why:
 Here, an operation from the pgvector [Prisma ORM extension package](#extension-spaces) failed because the `vector` PostgreSQL extension is not available on the database server. Install it on the server, or enable it in your database host's settings, then run the same `db migrate` command again. Three things make a failure easy to recover from:
 
 - **On PostgreSQL, a failed run leaves nothing behind.** The whole `db migrate` run is one transaction, so everything from that run is rolled back. Migrations applied in *earlier* runs stay applied.
-- **The error is specific.** It names the operation, the step that failed, and why. The step is either the SQL statement or a [check before or after it](/orm/migrations/how-migrations-work#every-operation-checks-itself), such as the check that no row still holds `NULL` before a column becomes `NOT NULL`. Fix what the error names, then run the command again.
-- **Re-running is safe.** `db migrate` skips each operation whose change is already in the database. On MongoDB, a `db migrate` run is not wrapped in a transaction. Operations that finished before a failure stay in the database, and a re-run skips them and continues. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) covers other ways to recover.
+- **The error is specific.** It names the operation and the step that failed. The step is either the SQL statement or a [check before or after it](/orm/migrations/how-migrations-work#every-operation-checks-itself), such as the check that no row still holds `NULL` before a column becomes `NOT NULL`. Fix what the error names, then run the command again.
+- **Re-running skips finished work.** `db migrate` skips each operation whose change is already in the database, unless it has no check after it. On MongoDB, a `db migrate` run is not wrapped in a transaction, so operations that finished before a failure stay in the database. A re-run then stops at the precheck of any collection the failed run already created.
 
 `db migrate` also refuses to start when the database's marker is at a contract state that none of your migrations starts or ends at. It fails with an error whose `code` is `MIGRATION.MARKER_MISMATCH`, and no operation runs. Two things cause this:
 
-- **`npx prisma db update`**, which replaces `prisma db push` on a database that already has tables. Before you change your contract again, run `npx prisma migration plan --from <dir> --name <name>` with the directory name of your most recent migration. The new migration ends at the state `db update` applied, as [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) shows.
-- **A migration from a Git branch you have not merged**, which a shared database such as staging already applied. Merge that branch to get the migration.
+- **`npx prisma db update`**, which replaces `prisma db push` for local development and preview environments. Before you change your contract again, run `npx prisma migration plan --from <dir> --name <name>` with the directory name of your most recent migration. The new migration ends at the state `db update` applied, as [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) shows.
+- **A migration from a Git branch you have not merged**, which a shared database such as staging already applied. Merge that branch to get the migration. If your branch also added migrations, plan merge migrations too, as [A worked example](/orm/migrations/the-migration-graph#a-worked-example) shows.
 
 A database that already had tables gets its marker from `npx prisma db sign`. `db migrate` refuses that database until a migration in your history ends at the signed state, as [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) shows. For a database that Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) in the upgrade guide.
 
 ## Development vs. production
 
-You run the same `db migrate` command everywhere. In development, you apply changes you just planned yourself. In CI and production, you apply migrations that were already planned and reviewed.
+You run the same `db migrate` command everywhere.
 
 **In development**, emit the contract, plan a migration, review it, and apply it with `--advance-ref db`:
 
@@ -158,7 +158,6 @@ If your project uses a [Prisma ORM extension package](/orm/extensions/using-exte
 Extension space: pgvector
 ├─ Enable extension "vector"
 └─ marker 3d2c56a2944685bd21b05bc8a8d73164397df51c014201902932fbe7e80ff1b8
-
 App space
 ├─ Create table "user"
 └─ ...

@@ -71,7 +71,7 @@ The `No db ref set` line means the project has no `db` ref yet, so `migration pl
 - An empty database needs nothing, because `npx prisma db migrate` creates the tables. It does not create the database itself.
 - A database whose tables all match your contract needs [`npx prisma db sign`](/cli/db-sign), then the steps in [The automatic baseline](#the-automatic-baseline). `db sign` checks the tables against your contract, then saves a record in the database, called the [marker](/orm/migrations/the-migration-graph#terms-used-on-this-page), that says which contract state the database matches.
 - A database that has only some of your tables needs [`npx prisma db init`](/cli/db-init). It only adds what is missing, and it stops if matching your contract would need a change that could lose data, such as dropping a column.
-- A development database that should match your contract without migration files needs [`npx prisma db update`](/cli/db-update). Unlike `db init`, it also makes changes that could lose data, but it first asks you to type the database name.
+- A local development or preview database that should match your contract without migration files needs [`npx prisma db update`](/cli/db-update). Unlike `db init`, it also makes changes that could lose data, but it first asks you to type the database name.
 
 Each migration directory holds three files and no SQL file: `migration.ts`, which you read and sometimes edit, and `ops.json` and `migration.json`, which `npx prisma db migrate` reads. Commit the migration directory and any new directories under `migrations/snapshots/`, which hold saved copies of your contract. Commit `contract.prisma`, `contract.json`, and `contract.d.ts` too. Open `migration.ts`, which lists the change as method calls:
 
@@ -204,7 +204,7 @@ to:         e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
-The new `migration.ts` has a `dataTransform` step, which updates existing rows, between the `ADD COLUMN` and `SET NOT NULL` steps. Its two `placeholder(...)` calls mark where your queries go: one finds rows that still need a `displayName`, and one fills it in. You write both in TypeScript with the [SQL query builder](/orm/reference/sql-query-builder), as [Editing a migration](/orm/migrations/editing-a-migration) shows. Then recompile, the step the output calls self-emit. Run it from your project root, with the path shown here: `node migrations/app/20260707T1008_add_display_name/migration.ts`. `migration plan` leaves `ops.json` empty when it writes placeholders, so until you recompile, `npx prisma db migrate` fails and changes nothing.
+The new `migration.ts` has a `dataTransform` step, which updates existing rows, between the `ADD COLUMN` and `SET NOT NULL` steps. Its two `placeholder(...)` calls mark where your queries go: one finds rows that still need a `displayName`, and one fills it in. You write both in TypeScript with the [SQL query builder](/orm/reference/sql-query-builder), as [Editing a migration](/orm/migrations/editing-a-migration) shows. Then recompile, the step the output calls self-emit. Run `node migrations/app/20260707T1008_add_display_name/migration.ts` from your project root. `migration plan` leaves `ops.json` empty when it writes placeholders, so until you recompile, `npx prisma db migrate` fails and changes nothing.
 
 ## Reviewing what you planned
 
@@ -219,11 +219,11 @@ npx prisma migration graph
 npx prisma migration check
 ```
 
-In CI, run `npx prisma migration check` as a step and read its exit code. `0` means every check passed. `4` means it found an integrity failure, such as a missing file or an `ops.json` that someone edited by hand. `2` means it could not find a migration you named. It never reads `migration.ts`, so it cannot tell whether you recompiled after your last edit. To confirm that, run the `node migrations/app/<dir>/migration.ts` command again from your project root. If `git status` then shows no change to `ops.json` or `migration.json`, they were already up to date. That does not work for a backfill on a model with an [`updatedAt` column](/orm/migrations/editing-a-migration#worked-example-making-a-column-required).
+In CI, run `npx prisma migration check` and read its exit code. `0` means every check passed. `4` means it found an integrity failure, such as a missing file or an `ops.json` that someone edited by hand. `2` means it could not find a migration you named. It never reads `migration.ts`, so it cannot tell whether you recompiled after your last edit. To confirm that, stage the migration with `git add`, then run `node migrations/app/<dir>/migration.ts` again from your project root. If `git status` shows no unstaged change to `ops.json` or `migration.json`, they were already up to date. That does not work for a backfill on a model with an [`updatedAt` column](/orm/migrations/editing-a-migration#worked-example-making-a-column-required).
 
 :::note[What's early]
 
-Planning covers tables, columns, indexes, constraints, and the backfill placeholder shown above. Column renames are not detected yet: renaming a field plans as **drop column + add column**, and `migration plan` prints a data-loss warning. `db migrate` runs destructive operations without asking, so read `npx prisma migration show <dir>` before you apply. To rename a column and keep its data, edit `migration.ts`, replace the pair with a [`rawSql` operation](/orm/migrations/editing-a-migration#escape-hatch-raw-sql) that runs `ALTER TABLE ... RENAME COLUMN`, and recompile. Unlike Prisma ORM 7's `migrate dev`, `migration plan` never asks you questions.
+Planning covers tables, columns, indexes, constraints, and the backfill placeholder shown above. Column renames are not detected yet: renaming an optional field plans as **drop column + add column**, and `migration plan` prints a data-loss warning. `db migrate` runs destructive operations without asking, so read `npx prisma migration show <dir>` before you apply. To rename a column and keep its data, edit `migration.ts`, replace the pair with a [`rawSql` operation](/orm/migrations/editing-a-migration#escape-hatch-raw-sql) that runs `ALTER TABLE ... RENAME COLUMN`, and recompile. Unlike Prisma ORM 7's `migrate dev`, `migration plan` never asks you questions.
 
 :::
 

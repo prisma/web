@@ -35,6 +35,8 @@ npx prisma migration plan --name add_display_name
 ```text
 ⚠ Planned migration with placeholder(s) — edit migration.ts then run `node migration.ts` to self-emit
 
+from:       925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72
+to:         e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
@@ -57,7 +59,7 @@ override get operations() {
 }
 ```
 
-A `dataTransform` takes two callbacks, and each returns a query built with the [`sql` query builder](/orm/reference/sql-query-builder), not a SQL string. `check` returns rows that still need the backfill, and `run` changes them. In each `where`, `f` holds the table's columns and `fns` holds [functions](/orm/reference/sql-query-builder#expressions-and-functions) such as `eq`, and `fns.eq(f.displayName, null)` becomes `IS NULL`. To set a column from another column, pass [`update()`](/orm/reference/sql-query-builder#update) a callback: `update((f) => ({ displayName: f.email }))`. A snapshot is a copy of your contract that `migration plan` saves in `migrations/snapshots/<hash>/`. This migration imports two: the start contract, from before the migration, and the end contract, from after it.
+A `dataTransform` takes two callbacks, and each returns a query built with the [`sql` query builder](/orm/reference/sql-query-builder), not a SQL string. `check` returns rows that still need the backfill, and `run` changes them. In each `where`, `f` holds the table's columns and `fns` holds [functions](/orm/reference/sql-query-builder#expressions-and-functions) such as `eq`, and `fns.eq(f.displayName, null)` becomes `IS NULL`. To set a column from another column, pass [`update()`](/orm/reference/sql-query-builder#update) a callback: `update((f) => ({ displayName: f.email }))`. A snapshot is a copy of your contract that `migration plan` saves in `migrations/snapshots/<hash>/`. This migration imports two: the start contract, from before it, and the end contract, from after it.
 
 ```ts title="migration.ts (filled in)"
 #!/usr/bin/env -S node
@@ -111,11 +113,11 @@ MigrationCLI.run(import.meta.url, M);
 
 To turn the planned file into the filled-in file, make three changes:
 
-1. Remove `placeholder` from the planned `import { Migration, MigrationCLI, col, placeholder } from '@prisma/orm-postgres/migration'`. Below it, copy the four other `@prisma/orm-postgres` imports and the `endContract`, `stack`, and `db` statements as they are. This `db` only builds queries and never connects to a database.
+1. Remove `placeholder` from the planned `import { Migration, MigrationCLI, col, placeholder } from '@prisma/orm-postgres/migration'`. Below it, copy the four other `@prisma/orm-postgres` imports and the `endContract`, `stack`, and `db` statements unchanged. This `db` only builds queries and never connects to a database.
 2. Rename the two snapshot `contract.json` imports from `endContract` and `startContract` to `endContractJson` and `startContractJson`, because change 1's `const endContract` now uses that name. Use the new names on the right side of the two `override readonly` lines.
 3. Replace the two `placeholder(...)` calls with your `check` and `run` queries. Keep the rest of each operation, such as `codecRef`, as `migration plan` wrote it.
 
-Recompile from the project root. While a `placeholder(...)` call is left, recompiling fails with an error whose `code` is `MIGRATION.UNFILLED_PLACEHOLDER`. Until you recompile, `npx prisma db migrate` fails, because `ops.json` is still empty. Then check that the compiled `UPDATE` in `ops.json` sets the value you meant on the rows you meant:
+Recompile. While a `placeholder(...)` call is left, recompiling fails with an error whose `code` is `MIGRATION.UNFILLED_PLACEHOLDER`. Until you recompile, `npx prisma db migrate` fails, because `ops.json` is still empty. Then check that the compiled `UPDATE` in `ops.json` sets the value you meant on the rows you meant:
 
 ```json title="ops.json (the compiled dataTransform)"
 {
@@ -230,7 +232,7 @@ Instead of an intermediate contract, you can split the change into two migration
 
 ## Raw SQL [#escape-hatch-raw-sql]
 
-For a statement that has no method, such as `COMMENT ON`, import `rawSql` from `@prisma/orm-postgres/migration` and add the call to the `operations` array. Set `operationClass` to one of the [four classes](/orm/migrations/how-migrations-work#every-operation-checks-itself): `additive`, `widening`, `destructive`, or `data`. `npx prisma db migrate` runs all four, but `destructive` adds a data-loss warning. Give each operation its own `id`, because error messages name the operation by it and Prisma ORM does not check that it is unique. The CLI prints the `label`. On PostgreSQL, one `npx prisma db migrate` run is [one transaction](/orm/migrations/applying-a-migration#when-something-goes-wrong), so `rawSql` cannot run a statement that must run outside one, such as `CREATE INDEX CONCURRENTLY`. Use plain `CREATE INDEX`, which blocks writes to the table while it builds. This example enables the `pgcrypto` PostgreSQL extension:
+For a statement that has no method, such as `COMMENT ON`, import `rawSql` from `@prisma/orm-postgres/migration` and add the call to the `operations` array. Set `operationClass` to one of the [four classes](/orm/migrations/how-migrations-work#every-operation-checks-itself): `additive`, `widening`, `destructive`, or `data`. `npx prisma db migrate` runs all four, but `destructive` adds a data-loss warning. Give each operation its own `id`, because error messages name the operation by it and Prisma ORM does not check that it is unique. The CLI prints the `label`. On PostgreSQL, one `npx prisma db migrate` run is [one transaction](/orm/migrations/applying-a-migration#when-something-goes-wrong), so `rawSql` cannot run a statement that must run outside one, such as `CREATE INDEX CONCURRENTLY`. Use `this.createIndex`, a plain `CREATE INDEX` that blocks writes while it builds. This example enables the `pgcrypto` PostgreSQL extension, which `this.installExtension` also does:
 
 ```ts
 rawSql({
@@ -252,7 +254,7 @@ Give each operation a precheck and postcheck if you can. Each check is a query w
 
 ## The same pattern on MongoDB
 
-On MongoDB, import `dataTransform` from `@prisma/orm-mongo/target/migration`. Its `check` is an object whose `source` is a callback that returns the query. This example builds its `check` query with `AggregateCommand` and its `run` update with `RawUpdateManyCommand`, both from `@prisma/orm-mongo/query-ast/execution`, so it needs no `db` statements. `new RawUpdateManyCommand('products', { status: { $exists: false } }, { $set: { status: 'active' } })` takes the collection name, a filter, and an update. The helpers `existingProductsWithoutStatus` and `backfillRun` return the two queries. Each takes the end contract's `storageHash`, because every MongoDB query records the hash of the contract it was built for. `setValidation` is there only because this migration also adds a `status` field, which the `products` validator must include. Both helpers are in the full [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts):
+On MongoDB, import `dataTransform` from `@prisma/orm-mongo/target/migration`. Its `check` is an object whose `source` is a callback that returns the query. This example builds its `check` query with `AggregateCommand` and its `run` update with `RawUpdateManyCommand`, both from `@prisma/orm-mongo/query-ast/execution`, so it needs no `db` statements. `new RawUpdateManyCommand('products', { status: { $exists: false } }, { $set: { status: 'active' } })` takes the collection name, a filter, and an update. The helpers `existingProductsWithoutStatus` and `backfillRun` return the two queries. Each takes the end contract's `storageHash`, because every MongoDB query records the hash of the contract it was built for. `setValidation` is there only because this migration also adds fields to `products`, which its validator must include. Both helpers are in the full [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts):
 
 ```ts title="migration.ts (MongoDB, excerpt)"
 import { dataTransform, setValidation } from '@prisma/orm-mongo/target/migration';
@@ -277,7 +279,7 @@ override get operations() {
 
 For a data-only migration, or one you write by hand, run `npx prisma migration new`. It writes an empty `ops.json`, a `migration.json`, and a `migration.ts` with the snapshot imports, the class, and an empty `operations` array. Add the `db` setup with changes 1 and 2 from the `displayName` example. A blank migration has no `placeholder` import to remove.
 
-Without `--from`, `migration new` starts where your newest migration ends. For a data-only migration, your contract has not changed since then, so the command fails with an error whose `code` is `MIGRATION.NO_CHANGES`. Passing `--from` tells it you want a migration that starts and ends at the same state. Pass your contract's hash, which `npx prisma migration graph` marks `@contract`, or its first characters, such as `866ab88`:
+Without `--from`, `migration new` starts where your newest migration ends. For a data-only migration, your contract has not changed since then, so the command fails with an error whose `code` is `MIGRATION.NO_CHANGES`. Passing `--from` tells it you want a migration that starts and ends at the same state. Pass your contract's hash, which `npx prisma migration graph` marks `@contract`, or its first characters, such as `e6b5c28`:
 
 ```npm
 npx prisma migration new --name backfill_scores --from <hash>
