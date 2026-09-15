@@ -1,100 +1,98 @@
 ---
 title: The migration graph
-description: 'You changed your schema, a teammate changed theirs, both merged. The migration graph is what lets every database catch up without renaming files or rebuilding history.'
+description: 'You changed your contract, a teammate changed theirs, both merged. The migration graph is what lets every database catch up without renaming files or rebuilding history.'
 url: /orm/migrations/the-migration-graph
 metaTitle: The migration graph in Prisma ORM
 metaDescription: 'How Prisma ORM models migrations as a graph of contract states, why that makes branching and parallel work safe, and the commands to inspect it.'
 ---
 
-Consider this situation: you add a `phone` column to the schema on your branch, a teammate adds an `avatarUrl` column on theirs, and both branches merge the same afternoon. Now your laptop, your teammate's laptop, staging, and production each have a slightly different version of the schema. Something has to bring them all to the merged state, without losing work or running the same change twice.
+Consider this situation: on your branch you add a `phone` field to your contract, the `contract.prisma` file that replaced `schema.prisma`. A teammate adds an `avatar` field on theirs, and both branches merge the same afternoon. Now your laptop, your teammate's laptop, staging, and production each have a slightly different version of the database. Something has to bring them all to the merged state, without losing work or running the same change twice.
 
-Classic migration tools make this a complicated and time-consuming process. Migrations are kept in a single folder and run just once, in timestamp order; as a result, when multiple branches each add a migration, the timestamps interleave. This breaks the "run once in order" assumption, and someone has to spend an afternoon renaming files to force a clean line. Prisma ORM avoids this with a different approach: the migration graph.
+Classic migration tools make this a complicated and time-consuming process. Migrations are kept in a single folder and run just once, in timestamp order. When multiple branches each add a migration, the timestamps interleave. This breaks the "run once in order" assumption, and someone has to spend an afternoon renaming files to force a clean line. Prisma ORM avoids this with a different approach: the migration graph.
 
 ## When this matters
 
 You can build a whole app without thinking about the graph. However, the moment that any of the following occur and more than one line of history exists, it becomes vital:
 
-- Two people (or two AI agents) change the schema on separate branches and merge.
-- You need to roll a database back to an earlier schema and then forward again.
+- Two people (or two AI agents) change the contract on separate branches and merge.
+- You need to roll a database back to an earlier contract state and then forward again.
 - A database is behind (a fresh clone, a long-lived staging box) and has to catch up through several changes.
-- You want to point an environment at an exact schema state and prove in review that it is there.
-
-If none of these apply yet, refer to [How migrations work](/orm/migrations/how-migrations-work) instead and revisit this when required.
+- You want to point an environment at an exact contract state and prove in review that it is there.
 
 ## The short version
 
-Prisma ORM does not treat migrations as one timestamp-ordered list. Each migration records the schema state it starts from and the schema state it produces; those links form a graph. A database moves through the graph by following migrations from wherever it currently sits to wherever you tell it to go. Because every migration is anchored to real schema states rather than to its position in a folder, branches, merges, and rollbacks are all just paths through the same graph.
+Prisma ORM does not treat migrations as one timestamp-ordered list. Each migration records the contract state it starts from and the contract state it produces, and those links form a graph. A database moves through the graph by following migrations from its current contract state to wherever you tell it to go. Because every migration is anchored to real contract states rather than to its position in a folder, branches, merges, and rollbacks are all just paths through the same graph.
 
 :::tip[You probably just need three commands]
 
-Usually you won't ever touch the graph directly. To see it, run `migration graph`. To check where a database is and what is pending, run `migration status`. To move a database to a specific state, run `db migrate --to <ref>`. The rest of this page explains what those commands are showing you.
+Usually you won't ever touch the graph directly. To see it, run `migration graph`. To check where a database is and what is pending, run `migration status`. To move a database to a specific state, run `db migrate --to <ref>`.
 
 :::
 
-## Terms used on this page
+## Terms [#terms-used-on-this-page]
 
 | Term | Meaning |
 | --- | --- |
-| **Contract** | The schema you author, and the `contract.json` artifact it compiles to. |
-| **Contract state** | One exact shape of the schema at a point in history. |
-| **Hash** | A short fingerprint of a contract state, like `705b1a6…`, the way a Git commit hash names an exact state of your files. |
+| **Contract** | Your contract, the `contract.prisma` file that replaced `schema.prisma`, compiled to `contract.json`. |
+| **Contract state** | One version of your contract, named by its hash. |
+| **Hash** | A short identifier computed from the contract, like `789dd79…`, the way a Git commit hash names an exact state of your files. |
 | **Node** | A contract state in the graph, identified by its hash. |
 | **Edge** | A migration. It moves the database from one node (`from`) to another (`to`). |
-| **Marker** | A record Prisma ORM keeps inside the database naming the one node it currently matches. |
-| **Ref** | A human-readable name for a node, like `prod`, stored as a file in your repo. |
+| **Marker** | The record in the database of which contract state it currently matches. |
+| **Ref** | A name for a contract state, like `prod`, stored as a file in `migrations/app/refs/`. |
 
 ## How it works
 
-Every time you emit your contract, you get a deterministic JSON artifact, and hashing it produces an identifier for that exact schema shape. Those hashes are the **nodes** of the graph.
+Every time you run `prisma contract emit` after a change to the contract, it writes `contract.json` with the contract's hash. The same contract always produces the same hash. Those hashes are the **nodes** of the graph.
 
-A migration is an **edge**: it records the contract hash it starts `from` and the hash it moves the database `to`. Nothing about a migration's place in history comes from its file name: the timestamps in directory names are for humans, and the real linkage lives in the `from`/`to` hashes inside each `migration.json`.
+A migration is an **edge**: it records the contract hash it starts `from` and the hash it moves the database `to`. Nothing about a migration's place in history comes from its file name: the timestamps in directory names are for humans, and the `from` and `to` hashes inside each `migration.json` are what link migrations together.
 
 <ConceptAnimation name="migration-graph" />
 
-A database always sits at exactly one node: its **marker**, a record Prisma ORM keeps in the database itself, holds the hash of the contract it currently matches. Applying a migration means walking one edge and moving the marker.
+A database is always at exactly one node: its **marker** holds the hash of the contract state it currently matches. Applying a migration means walking one edge and moving the marker.
 
 ## A worked example
 
-Here is the Alice-and-Bob situation as an actual graph. Alice adds `phone`, Bob adds `avatarUrl`, and both branches merge:
+Here is the Alice-and-Bob situation as an actual graph. Alice adds `phone`, Bob adds `avatar`, and both branches merge:
 
 ```npm
-npx prisma@latest migration graph
+npx prisma migration graph
 ```
 
 ```text
-*     f9a41d7  (prod)
-|-\
-|^|   20260303T1000_merge_alice          93be6c2 -> f9a41d7  1 ops
-| |^  20260303T1100_merge_bob            7e3fa7f -> f9a41d7  1 ops
-* |   93be6c2
-|^|   20260302T1000_alice_add_phone      705b1a6 -> 93be6c2  1 ops
-| *   7e3fa7f
-| |^  20260302T1100_bob_add_avatar_url   705b1a6 -> 7e3fa7f  1 ops
-|-/
-*     705b1a6
-|^    20260301T1000_init                       - -> 705b1a6  1 ops
-*     -
+○     f9a41d7  (prod)
+│─╮
+│↑│   20260303T1000_merge_alice      93be6c2 → f9a41d7  1 ops
+│ │↑  20260303T1100_merge_bob        7e3fa7f → f9a41d7  1 ops
+○ │   93be6c2
+│↑│   20260302T1000_alice_add_phone  789dd79 → 93be6c2  1 ops
+│ ○   7e3fa7f
+│ │↑  20260302T1100_bob_add_avatar   789dd79 → 7e3fa7f  1 ops
+│─╯
+○     789dd79
+│↑    20260301T1000_init                   ∅ → 789dd79  1 ops
+○     ∅
 
 1 space(s), 5 contract(s), 5 migration(s)
 ```
 
-Read it bottom-up. From an empty database (`-`), `init` establishes state `705b1a6`. Alice and Bob both branch from `705b1a6`: her migration produces `93be6c2`, his produces `7e3fa7f`. Each branch then has a merge migration into the combined state `f9a41d7`, which the `prod` ref points at. This shape is a diamond: one start, two parallel branches, one shared end.
+Read it bottom-up. From an empty database (`∅`), `init` produces contract state `789dd79`. Alice and Bob both branch from `789dd79`: her migration produces `93be6c2`, his produces `7e3fa7f`. Each branch then has a merge migration into the combined state `f9a41d7`, which the `prod` ref points at. This is a diamond: one start, two parallel branches, one shared end.
 
-The payoff is in the last column and the two merge edges. A database that follows Alice's branch is sitting at `93be6c2` and reaches `f9a41d7` through `merge_alice`, while a database that follows Bob's is at `7e3fa7f` and takes `merge_bob`. Neither developer needed to know about the other's migration, and no files were renamed to make the timestamps line up.
+The payoff is in the `from → to` column and the two merge edges. A database that follows Alice's branch is at `93be6c2` and reaches `f9a41d7` through `merge_alice`, while a database that follows Bob's is at `7e3fa7f` and takes `merge_bob`. Neither developer needed to know about the other's migration, and no files were renamed to make the timestamps line up.
 
-(The summary line counts contract *spaces*: independent migration lanes, one for your app plus one per [database extension](/orm/migrations/applying-a-migration#extension-spaces).)
+The summary line counts contract spaces: a separate migration history for your app, and one for each [database extension](/orm/migrations/applying-a-migration#extension-spaces) that ships its own migrations.
 
 ## What happens when you run db migrate
 
 When you run `db migrate`, the runner walks the graph for you:
 
 1. It reads the database's **marker** to find which node the database is on now.
-2. It resolves your target: the merged state, a ref like `prod`, or the latest state if you did not pass `--to`.
+2. It resolves your target: the state `--to` names, such as the `prod` ref, or the contract you last emitted if you did not pass `--to`.
 3. It finds a path of edges from the marker to the target.
-4. It applies each edge in order, moving the marker after each one.
-5. If any migration's precheck fails, it stops before running SQL and names the mismatch.
+4. It applies each edge in order, then moves the marker to the target.
+5. If an operation's precheck fails, it stops before that operation runs and names the operation and the check that failed.
 
-If two branch tips are both reachable and neither is clearly the target, the runner does not guess: it stops and asks you to pick one with `--to`.
+`db migrate` never has to choose between branch tips, because its target is always one contract state. If no chain of migrations leads from the marker to the target, it stops with an error whose `code` is `MIGRATION.PATH_UNREACHABLE`.
 
 ## Inspecting the graph
 
@@ -102,12 +100,12 @@ Four read-only commands, each answering a different question:
 
 | Question you have | Command | Needs a database? |
 | --- | --- | --- |
-| What does the whole topology look like? | `migration graph` | No |
+| What does the whole graph look like? | `migration graph` | No |
 | Which migration directories exist on disk? | `migration list` | No |
 | Where is my database, and what is pending? | `migration status` | Yes |
 | What has actually been applied, and when? | `migration log` | Yes |
 
-`migration graph` also takes `--json` for machine-readable output, `--dot` to render with Graphviz, and `--legend` to print a key for the glyphs. `migration log` reads a **ledger** the runner appends to on every apply, so even a rollback shows up as history rather than as deleted history.
+`migration log` reads the **ledger**, the database's own list of every migration applied to it. The runner adds to the ledger on every apply, so even a rollback shows up as history rather than as deleted history.
 
 ### Try it on real fixtures
 
@@ -117,40 +115,42 @@ The Prisma ORM repo ships example graphs (a diamond, a wide fan-out, converging 
 git clone https://github.com/prisma/orm
 cd orm && pnpm install && pnpm -w build && pnpm install
 cd examples/prisma-8-demo
-npx prisma@latest migration graph --config fixtures/showcase/prisma.config.ts --legend
+pnpm exec prisma migration graph --config ./fixtures/showcase/prisma.config.ts --legend
 ```
 
 Swap `showcase` for `diamond`, `wide-fan`, `converging-branches`, `multi-branch`, `long-spine`, or `skip-rollback` to explore each shape.
 
 ## Name important states with refs
 
-Raw hashes are awkward to type and impossible to remember, so name the states that matter. A **ref** is a human-readable pointer to a node, stored as a small file in `migrations/app/refs/` and committed to your repo:
+Raw hashes are awkward to type and impossible to remember, so name the states that matter. A **ref** is a name for a contract state, stored as a small file in `migrations/app/refs/` and committed to your repo:
 
 ```npm
-npx prisma@latest migration ref set prod f9a41d7...
-npx prisma@latest migration ref list
-npx prisma@latest db migrate --to prod
+npx prisma migration ref set prod f9a41d7
+npx prisma migration ref list
+npx prisma db migrate --to prod
 ```
 
 Because refs are committed, "where production should be" is a reviewable fact in a pull request instead of tribal knowledge in someone's terminal history.
 
-One ref name is special: a ref called `db` is the default starting point `migration plan` uses when you do not pass `--from`. Keep it current and planning stays incremental on its own. `db init` and `db update` advance it after a successful run, but only when you leave `--db` off and let the connection come from `prisma.config.ts`; with `--db` you have to add `--advance-ref db`. `db sign` advances it whenever it signs, `--db` or not. At apply time, `db migrate --advance-ref db` moves it; plain `db migrate` never does.
+In development, add `--advance-ref db` to `db migrate` so the next `migration plan` starts from what you just applied, as [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) explains.
 
-Three reserved tokens also work where a command accepts a contract reference, without setting up a ref:
+Three reserved tokens name a contract state without setting up a ref:
 
 - `@contract`: the contract you most recently emitted.
-- `@db`: whatever state the connected database's marker holds. Only the commands that connect accept it; the offline ones, `migration ref set` among them, do not.
-- `@empty`: the empty database, the origin with no prior storage state.
+- `@db`: the contract state that the connected database's marker holds.
+- `@empty`: the empty database, before any migration.
+
+Only `db migrate --show` accepts `@contract` and `@db`. `@empty` also works in `migration plan --from`.
 
 ## What the graph gives you
 
 ### Parallel work without ordering conflicts
 
-Alice and Bob each planned a migration from `705b1a6` on their own branches. In a timestamp-ordered system, whoever merges second inherits a broken history, but here both edges are in the graph and every environment finds its own path to the merged state. This matters even more when the "two developers" are two AI agents planning migrations concurrently, since neither has to know anything at all about the other.
+Alice and Bob each planned a migration from `789dd79` on their own branches. In a timestamp-ordered system, whoever merges second inherits a broken history, but here both edges are in the graph and every environment finds its own path to the merged state. This matters even more when the "two developers" are two AI agents planning migrations concurrently, since neither has to know anything at all about the other.
 
 ### History you can trust
 
-Because each edge declares its `from` state, a migration will not run against a database in the wrong shape. If the marker does not match, the run stops before any SQL executes, with an error naming the mismatch.
+Because each edge declares its `from` state, a migration will not run against a database at a different contract state. If the marker does not match, the run stops before any operation runs, with an error that names the mismatch.
 
 ### Rollback as a normal move
 
@@ -162,28 +162,28 @@ The graph accommodates whatever your workflow produces: long linear spines, wide
 
 ## Baselines
 
-A database that already exists can become the graph's starting node without replaying anything. When the graph is empty and the `db` ref names a contract whose snapshot is stored under `migrations/snapshots/`, one `migration plan` run writes two packages: a baseline from nothing to the ref's contract, and the delta from there to your emitted contract.
+A database that already exists can become the graph's starting node without replaying anything. When the graph is empty and the `db` ref names a contract whose snapshot is stored under `migrations/snapshots/`, one `migration plan` run writes two migrations: a baseline from nothing to the ref's contract, and the delta from there to your emitted contract.
 
-For a deployed database you must not touch, `--from @empty` is the explicit retrofit: bring the contract source back to the deployed state, emit, plan the baseline, then restore the current contract and plan the delta from it.
+For a deployed database you must not touch, `--from @empty` is the explicit retrofit: bring the contract back to the deployed state, emit, plan the baseline, then restore the current contract and plan the delta from it.
 
-A baseline is never replayed against a database that already carries a marker: the runner starts at the marker and applies only the edges past it.
+A baseline is never replayed against a database that already has a marker: the runner starts at the marker and applies only the edges past it.
 
 ## Database-specific details
 
-The graph model is family-neutral: same nodes, same edges, same commands on every database. The parts that differ are in how the marker and ledger are stored.
+The graph works the same on every database: same nodes, same edges, same commands. What differs is how the marker and ledger are stored.
 
-- **PostgreSQL**: the marker lives in a `prisma_contract.marker` table, and each apply runs inside a transaction guarded by an advisory lock so two runners cannot move the same database at once.
-- **MongoDB**: the marker and ledger live in a `_prisma_migrations` collection, updated with a compare-and-swap so a concurrent apply is rejected rather than interleaved.
+- **PostgreSQL**: the marker is in a `prisma_contract.marker` table, and each apply runs inside a transaction that takes an advisory lock, so two runners cannot move the same database at once.
+- **MongoDB**: the marker and ledger are documents in a `_prisma_migrations` collection. The marker is updated with a compare-and-swap, so an apply fails if another process changed the marker while it ran.
 
 ## Release-candidate limitations
 
-The graph, pathfinding, refs, and the marker/ledger model all work now. However, some features that you might expect have not yet been built:
+The graph, pathfinding, refs, and the marker and ledger all work now. However, some features that you might expect have not yet been built:
 
 - **No squash.** You cannot yet collapse a long chain of migrations into one, including into a single baseline after the fact. The chain stays as-is.
 - **No split.** You cannot yet break one large migration into smaller ones after the fact.
-- **Ambiguous targets need a choice.** When two branch tips are both reachable, `db migrate` asks you to pick one with `--to` rather than guessing.
+- **Branch tips need an explicit start.** When the graph has more than one branch tip, `migration new` cannot pick its starting state and fails with an error whose `code` is `MIGRATION.AMBIGUOUS_TARGET`. Pass `--from` instead.
 
-The graph has been designed with these in mind, but the commands have not shipped yet. Each migration page calls out what is missing rather than papering over it.
+The graph has been designed with these in mind, but the commands have not shipped yet.
 
 ## Common tasks
 
@@ -194,12 +194,12 @@ The graph has been designed with these in mind, but the commands have not shippe
 | Move a database to a named state | `db migrate --to prod` |
 | Name a contract state `prod` | `migration ref set prod <hash>` |
 | List the refs you have named | `migration ref list` |
-| Roll a database back one state | `db migrate --to <earlier-ref-or-hash>` |
+| Apply a rollback migration you planned | `db migrate --to <earlier-ref-or-hash>` |
 | Verify migration files and graph integrity | `migration check` |
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. Ask your agent to:
 
 - "Draw the migration graph for this project and explain the branches."
 - "Which contract state is the `prod` ref pointing at, and is the database there yet?"
