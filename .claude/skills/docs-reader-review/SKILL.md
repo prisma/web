@@ -42,7 +42,7 @@ For each reported sentence:
 | The reviewer said | Do this |
 | --- | --- |
 | a word it had to guess | replace with the plain words from `references/banned-terms.md`, or define it in that sentence |
-| too many ideas in one sentence | one idea per sentence; a table cell with three ideas becomes a note under the table |
+| too many ideas in one sentence | one idea per sentence, keeping the connective (because, so, but) that ties related facts together; a row of clipped one-clause sentences is its own failure, not a fix. A table cell with three ideas becomes a note under the table |
 | "so what do I type?" | add the command or the code, or the link to the page that has it |
 | mechanism instead of action | delete the mechanism, keep what the reader does and what they see |
 | a reference it could not resolve ("the plan", "the ref", "spec") | show the thing, or name where it comes from |

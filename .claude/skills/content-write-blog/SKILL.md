@@ -2,7 +2,7 @@
 name: content-write-blog
 description: Use when the operator wants to write a blog post, draft a blog article, start a new post for the Prisma blog, or publish to prisma.io/blog.
 metadata:
-  version: "2026.7.9"
+  version: "2026.9.15"
 ---
 
 # Write Blog Post
@@ -180,7 +180,8 @@ The lead you draft, and the prose the author later writes over your stubs, ship 
 - **Be specific.** Replace "this changes everything" or "the implications are significant" with the concrete change. Drop "every", "always", and "never" where a real number fits better.
 - **Cut filler.** No "really", "simply", "just", and no marketing verbs like "leverage", "unlock", "seamless", "powerful".
 - **Say it straight.** "Not X, but Y" and "X isn't the problem, Y is" telegraph the reversal. State Y.
-- **Vary sentence length**, and use a comma, colon, or period in place of em dashes.
+- **Vary sentence length.** A run of short, clipped sentences with no connectives reads as staccato ("The fix shipped. Latency dropped. Users noticed."), and it is the most common tell of a model-drafted post. When facts are cause and effect or contrast, join them with "because", "so", or "but", and let a longer sentence carry them. Then let a short one land the point.
+- **Use a comma, colon, or period in place of em dashes.**
 
 ## Anti-patterns
 
