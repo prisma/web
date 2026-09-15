@@ -1,9 +1,9 @@
 ---
 title: Authoring custom middleware
-description: 'Build, register, and run your own Prisma 8 middleware, step by step, starting with a query logger.'
+description: 'Build, register, and run your own Prisma ORM middleware, step by step, starting with a query logger.'
 url: /orm/middleware/authoring-custom-middleware
-metaTitle: Authoring custom middleware in Prisma 8
-metaDescription: 'Write a custom Prisma 8 middleware step by step. Build a query logger, register it, run it, and learn the full hook surface.'
+metaTitle: Authoring custom middleware in Prisma ORM
+metaDescription: 'Write a custom Prisma ORM middleware step by step. Build a query logger, register it, run it, and learn the full hook surface.'
 ---
 
 ## Introduction
@@ -16,10 +16,10 @@ This entire guide was run end to end on a fresh `create-prisma` project against 
 
 ## Prerequisites
 
-- A Prisma 8 project with a working `src/prisma/db.ts`. The [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) sets one up in a few minutes:
+- A Prisma ORM project with a working `src/prisma/db.ts`. The [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) sets one up in a few minutes:
 
-```bash
-npx create-prisma@latest --provider postgres
+```npm
+npm create prisma@latest -- --provider postgres
 cd my-app
 npm run db:init
 ```
@@ -152,15 +152,15 @@ Hooks run in registration order, and a middleware that throws stops the ones aft
 
 ## 5. Know which family to declare
 
-Prisma 8 groups databases into families: SQL (PostgreSQL) and document (MongoDB). Set `familyId: 'sql'` when your middleware touches anything SQL-shaped, like `plan.sql` in the logger above. The runtime then rejects it on MongoDB at startup with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, instead of failing at query time.
+Prisma ORM groups databases into families: SQL (PostgreSQL) and document (MongoDB). Set `familyId: 'sql'` when your middleware touches anything SQL-shaped, like `plan.sql` in the logger above. The runtime then rejects it on MongoDB at startup with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, instead of failing at query time.
 
-Leave `familyId` out only when the middleware sticks to family-neutral surfaces (`interceptQuery`, `onRow`, `afterQuery` on the shared result shape). Such a middleware runs on PostgreSQL and MongoDB alike; the [cache](/orm/middleware/built-in-cache) works this way.
+Leave `familyId` out only when your middleware uses hooks that work on both families: `interceptQuery`, `onRow`, and `afterQuery`, reading only the result fields both databases have. Such a middleware runs on PostgreSQL and MongoDB alike; the [cache](/orm/middleware/built-in-cache) works this way.
 
-You have a working, configurable middleware. The rest of this page is the surface you reach for as your middleware grows.
+You have a working, configurable middleware. The rest of this page describes the other hooks and options you reach for as your middleware grows.
 
 ## The hooks
 
-`afterQuery` is one hook on one of two lifecycles. Row queries and non-returning writes take different paths, and `beforeCompile` is the only hook they share. Implement any subset:
+`afterQuery` is one hook on one of two lifecycles: row queries and non-returning writes take different paths, and `beforeCompile` is the only hook they share. Implement any subset:
 
 | Hook | Lifecycle | Runs | Use it to |
 | --- | --- | --- | --- |
@@ -179,7 +179,7 @@ There is no generic `intercept` and no fallback between the two lifecycles. A mi
 
 ### Rewrite queries with beforeCompile
 
-`beforeCompile` sees the typed AST before it becomes SQL. Return a new draft to rewrite the query. This middleware adds a predicate to every `SELECT` on the `user` table:
+`beforeCompile` sees the typed AST before it becomes SQL, so return a new draft to rewrite the query. This middleware adds a predicate to every `SELECT` on the `user` table:
 
 ```ts title="src/prisma/scope-user-selects.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -234,9 +234,9 @@ The `postgres(...)` client does not expose a way to attach a log sink yet, so ev
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
+Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
 
-- "Write a Prisma 8 middleware that logs every query slower than 250ms, and register it before budgets."
+- "Write a Prisma ORM middleware that logs every query slower than 250ms, and register it before budgets."
 - "Add a beforeCompile middleware that scopes every SELECT on the user table to the current tenant."
 - "Write an interceptQuery middleware that returns fixture rows for the products table in tests."
 

@@ -26,10 +26,13 @@ function walk(dir: string): string[] {
   return out;
 }
 
+/** Helpers that return a `/blog`-prefixed URL, so a `<Link>` must not use them. */
+const PREFIXING_HELPERS = ["withBlogBasePath", "buildListingHref"];
+
 /**
- * Matches `href={withBlogBasePath(` on a `<Link>` element, tolerating the
- * formatting oxfmt produces (attributes on their own lines, comments between
- * the tag name and the attribute).
+ * Matches `href={withBlogBasePath(` (or any other prefixing helper) on a
+ * `<Link>` element, tolerating the formatting oxfmt produces (attributes on
+ * their own lines, comments between the tag name and the attribute).
  */
 export function findBasePathLinkViolations(source: string): number[] {
   const violations: number[] = [];
@@ -52,7 +55,8 @@ export function findBasePathLinkViolations(source: string): number[] {
       end = i;
     }
     const tag = source.slice(match.index, end + 1);
-    if (/href=\{\s*withBlogBasePath\s*\(/.test(tag)) {
+    const prefixed = new RegExp(`href=\\{\\s*(?:${PREFIXING_HELPERS.join("|")})\\s*\\(`);
+    if (prefixed.test(tag)) {
       violations.push(source.slice(0, match.index).split("\n").length);
     }
   }
@@ -70,6 +74,9 @@ test("the violation matcher recognises the shape it is guarding against", () => 
   assert.deepEqual(findBasePathLinkViolations("<Link href={`/series/${k}`}>"), []);
   // A plain anchor legitimately needs the basePath.
   assert.deepEqual(findBasePathLinkViolations("<a href={withBlogBasePath(post.url)}>"), []);
+  // The listing helper prefixes too, so it is caught the same way.
+  assert.deepEqual(findBasePathLinkViolations("<Link href={buildListingHref(tag, 2)}>"), [1]);
+  assert.deepEqual(findBasePathLinkViolations("<a href={buildListingHref(tag, 2)}>"), []);
 });
 
 test("no <Link> in apps/blog/src wraps its href in withBlogBasePath", () => {

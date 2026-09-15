@@ -53,6 +53,21 @@ provision(cron({ schedule, runner: promotionsService }), {
 });
 ```
 
+A runner that declares an `input` schema (see [Service input](/composer/service-input)) takes its binding on `cron()` itself, with `envSecret(...)` where the schema expects a secret. It is required exactly when the runner declares a schema, the same rule `provision()` applies:
+
+```ts title="module.ts"
+provision(
+  cron({
+    schedule,
+    runner: ingestService,
+    input: { token: envSecret('INGEST_TOKEN') },
+  }),
+  { deps: { catalog: catalog.rpc } },
+);
+```
+
+The scheduler is the one service in your app that never sleeps. Compute scales an idle service to zero, and the scheduler receives no requests of its own, so it holds the platform's keep-awake guard for its whole lifetime. One warm instance per app is the cost of the clock; the runner sleeps like any other service and wakes when the scheduler calls it.
+
 ## Storage and streams
 
 The `storage` Module provisions an S3-backed blob store, with its own Postgres and minted credentials, and exposes a `store` port. The `streams` Module builds durable append-only event streams on top of a `store`. For working versions, including the streams Module's secret binding, see [`examples/storage`](https://github.com/prisma/composer/tree/main/examples/storage) and [`examples/streams`](https://github.com/prisma/composer/tree/main/examples/streams) in the Composer repository.

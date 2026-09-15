@@ -414,6 +414,12 @@ const config = {
       { source: "/guides/next", destination: "/guides", permanent: true },
       { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
+      { source: "/prisma-orm/release-status", destination: "/orm/release-status", permanent: true },
+      {
+        source: "/prisma-orm/supported-databases",
+        destination: "/orm/supported-databases",
+        permanent: true,
+      },
       // The CLI engine composes structured-error docsUrls as
       // <docsBaseUrl>/<CODE> (path form); the pages anchor codes as #<CODE>.
       {
@@ -639,8 +645,8 @@ const config = {
       },
       {
         source: "/orm/reference/supported-databases",
-        destination: "/orm/v7/reference/supported-databases",
-        permanent: false,
+        destination: "/orm/supported-databases",
+        permanent: true,
       },
       {
         source: "/orm/reference/system-requirements",
@@ -755,6 +761,21 @@ const config = {
   experimental: {
     globalNotFound: true,
   },
+  // No Cache-Control here, deliberately. The SEO audit's TTFB finding invited a
+  // short browser `max-age` with `stale-while-revalidate` on HTML, and the
+  // platform does not allow it: measured on production (2026-09-14) every 200
+  // from this zone comes back as exactly `public, max-age=0, must-revalidate`
+  // — the prerendered reference page (`x-nextjs-prerender: 1`,
+  // `x-vercel-cache: HIT`), the prerendered `/docs/llms-full.txt`, and the
+  // dynamic `/docs/api/search` alike — while `/docs-static/_next/**` comes
+  // back as `public,max-age=31536000,immutable`. Vercel normalises the
+  // client-facing header for every function and ISR response and owns
+  // freshness itself through `x-nextjs-stale-time: 300` plus on-demand
+  // revalidation. Setting one here would either be overwritten or, if it were
+  // not, would pin a merged docs change in readers' browsers for the window
+  // with no purge path (a deployment clears the edge cache, not browser
+  // caches). Not worth fighting; the TTFB work that is left is the multi-zone
+  // proxy hop and regional cache misses, which are infra, not this config.
   async headers() {
     return [
       {

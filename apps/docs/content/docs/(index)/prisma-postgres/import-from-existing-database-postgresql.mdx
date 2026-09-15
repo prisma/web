@@ -8,7 +8,7 @@ metaDescription: 'Export an existing PostgreSQL database, restore it into Prisma
 
 Move an existing PostgreSQL database to Prisma Postgres with `pg_dump` and `pg_restore`, then reconnect and verify your application.
 
-This guide works with Prisma 8, Prisma 7, earlier Prisma ORM versions, and standard PostgreSQL clients. Moving your database does not require changing your ORM version.
+This guide works with Prisma ORM 8, Prisma ORM 7, earlier Prisma ORM versions, and standard PostgreSQL clients. Moving your database does not require changing your ORM version.
 
 :::warning[This migration copies a snapshot]
 
@@ -205,13 +205,13 @@ diff -u source-row-counts.txt target-row-counts.txt
 
 Choose the path that matches your application:
 
-- [I already use Prisma 8](#already-use-prisma-8)
-- [I use Prisma 7 or earlier](#use-prisma-7-or-earlier)
+- [I already use Prisma ORM 8](#already-use-prisma-8)
+- [I use Prisma ORM 7 or earlier](#use-prisma-7-or-earlier)
 - [I do not use Prisma ORM](#do-not-use-prisma-orm)
 
 Every path uses the two connection strings from step 2: the pooled URL for application queries and the direct URL for migrations and other CLI tools.
 
-### Already use Prisma 8
+### Already use Prisma ORM 8 [#already-use-prisma-8]
 
 Keep your existing contract, migrations, and application code. The dump copied the `prisma_contract` schema, so the imported database still carries the marker that ties it to your contract.
 
@@ -232,7 +232,7 @@ npx prisma@latest db verify --db "$DIRECT_URL"
 
 The command exits with code `0` when the marker and schema match the contract. Exit code `4` means the database does not match. Check that the restore included the `prisma_contract` schema before you change anything else. Do not run `orm init` or `contract infer` against the new database; your existing contract already describes it.
 
-### Use Prisma 7 or earlier
+### Use Prisma ORM 7 or earlier [#use-prisma-7-or-earlier]
 
 Set the pooled URL for runtime queries and the direct URL for Prisma CLI commands:
 
@@ -241,7 +241,7 @@ DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode
 DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
-Prisma 7 reads the CLI connection from `datasource.url` in `prisma.config.ts`. Point it at `DIRECT_URL` as shown in the [Prisma 7 PostgreSQL setup](/orm/v7/core-concepts/supported-databases/postgresql). Prisma 6 and earlier read `url` and `directUrl` from the `datasource` block in `schema.prisma`.
+Prisma ORM 7 reads the CLI connection from `datasource.url` in `prisma.config.ts`. Point it at `DIRECT_URL` as shown in the [Prisma ORM 7 PostgreSQL setup](/orm/v7/core-concepts/supported-databases/postgresql). Prisma ORM 6 and earlier read `url` and `directUrl` from the `datasource` block in `schema.prisma`.
 
 If your application did not use Prisma Accelerate, run `npx prisma generate` and continue to step 7.
 
@@ -257,7 +257,7 @@ npm uninstall @prisma/extension-accelerate
 
 In your Prisma Client setup, remove the `@prisma/extension-accelerate` import, `withAccelerate()`, and `accelerateUrl`. Remove `cacheStrategy` options from queries, and remove calls to `withAccelerateInfo`, `$accelerate.invalidate`, and `$accelerate.invalidateAll`.
 
-Undo any build settings you added for Accelerate: imports from `@prisma/client/edge`, `engineType = "client"` in the generator block, and the `--no-engine`, `--accelerate`, or `--data-proxy` flags on `prisma generate`. For Prisma 7, connect through the PostgreSQL driver adapter. For Prisma 6 or earlier, use Prisma Client with its bundled query engine or a driver adapter your version supports.
+Undo any build settings you added for Accelerate: imports from `@prisma/client/edge`, `engineType = "client"` in the generator block, and the `--no-engine`, `--accelerate`, or `--data-proxy` flags on `prisma generate`. For Prisma ORM 7, connect through the PostgreSQL driver adapter. For Prisma ORM 6 or earlier, use Prisma Client with its bundled query engine or a driver adapter your version supports.
 
 Accelerate reached edge runtimes over HTTP. For an edge or TCP-constrained runtime, use the [Prisma Postgres serverless driver](/postgres/database/serverless-driver). For a conventional Node.js or Bun runtime, use the Prisma Postgres pooled TCP connection.
 
@@ -292,9 +292,9 @@ After you have verified the application and retained any audit evidence you need
 rm postgres-to-prisma-postgres.dump postgres-restore.list row-counts.sql source-row-counts.txt target-row-counts.txt
 ```
 
-## Recommended next step: adopt Prisma 8
+## Recommended next step: adopt Prisma ORM
 
-Your database migration is complete. Prisma 8 is the current Prisma ORM release, but upgrading is a separate application change. Follow the [incremental Prisma 7 to Prisma 8 guide](/guides/upgrade-prisma-orm/postgresql) after the application is stable on Prisma Postgres.
+Your database migration is complete. Prisma ORM 8 is the current release, but upgrading is a separate application change. Follow the [incremental Prisma ORM 7 to 8 guide](/guides/upgrade-prisma-orm/postgresql) after the application is stable on Prisma Postgres.
 
 If you want to complete both changes on the same day, deploy and verify the Prisma Postgres connection first. Upgrade Prisma ORM in a separate commit or deployment so failures have one clear cause.
 
