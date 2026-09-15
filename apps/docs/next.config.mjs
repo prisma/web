@@ -414,6 +414,12 @@ const config = {
       { source: "/guides/next", destination: "/guides", permanent: true },
       { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
+      { source: "/prisma-orm/release-status", destination: "/orm/release-status", permanent: true },
+      {
+        source: "/prisma-orm/supported-databases",
+        destination: "/orm/supported-databases",
+        permanent: true,
+      },
       // The CLI engine composes structured-error docsUrls as
       // <docsBaseUrl>/<CODE> (path form); the pages anchor codes as #<CODE>.
       {
