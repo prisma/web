@@ -6,7 +6,7 @@ metaTitle: Generating a migration in Prisma ORM
 metaDescription: 'A step-by-step tutorial for the migration plan command, from a contract change to a planned migration you can review, without connecting to a database.'
 ---
 
-This tutorial takes a change to your contract, the `contract.prisma` file that replaced `schema.prisma`, from your editor to a migration on disk that you review before it runs. After every change to the contract, run `npx prisma contract emit`, which replaces `prisma generate`. It writes `contract.json` and `contract.d.ts`, and in this tutorial they go to `src/prisma/`. `npx prisma migration plan` reads that `contract.json` and your existing migrations. It never connects to a database, so you can plan in CI or in a sandbox with no credentials. To create a project first, follow the [quickstart](/prisma-orm/quickstart/postgresql).
+This tutorial takes a change to your contract, the `contract.prisma` file that replaced `schema.prisma`, from your editor to a migration on disk that you review before it runs. After every change to the contract, run `npx prisma contract emit`, which replaces `prisma generate` and writes `contract.json` and `contract.d.ts` next to `contract.prisma`. `npx prisma migration plan` finds that `contract.json` through `prisma.config.ts` and writes a new migration from it without applying anything. It never connects to a database, so you can plan in CI or in a sandbox with no credentials. Once your first migration exists, every later change follows the [five steps under The db ref](#the-db-ref-skipping---from). To create a project first, follow the [quickstart](/prisma-orm/quickstart/postgresql).
 
 ## Your first migration
 
@@ -22,7 +22,7 @@ model User {
 }
 ```
 
-Emit the contract, then plan. With `--name init`, the new directory is named `<timestamp>_init`, and without `--name` its name ends in `_migration`:
+Run both commands. With `--name init`, the new directory is named `<timestamp>_init`, and without `--name` its name ends in `_migration`:
 
 ```npm
 npx prisma contract emit
@@ -58,19 +58,20 @@ CREATE TABLE "public"."user" (
 
 Four things to note:
 
-- **The DDL preview** is the SQL the migration will run. Nothing has run against a database yet.
-- **`(baseline)`** in `migration plan` output means the migration starts from an empty database. A baseline migration is a first migration from an empty database to a contract state. What Prisma ORM 7 called baselining (marking an existing database as already migrated) is `npx prisma db sign` in Prisma ORM 8.
-- **`to:` is your contract's hash**, an identifier computed from the contract. Each version of your contract, called a contract state, has its own hash.
-- **`app space:`** is the new migration's directory, inside `migrations/app/`. The `migrations/` directory is found in the directory you run the command from, unless you set `migrations.dir` in `prisma.config.ts`.
+- **`Planned 2 operation(s)`** counts the migration's steps, which are listed under its directory. The DDL preview is the SQL those steps will run, and nothing has run against a database yet.
+- **`to:`** is your contract's hash. Each version of your contract is a contract state, named by its hash.
+- **`from: (baseline)`** means the migration starts from an empty database, the same state that `--from @empty` names. A baseline migration is a first migration from an empty database to a contract state. What Prisma ORM 7 called baselining, marking an existing database as already migrated, is `npx prisma db sign` in Prisma ORM 8.
+- **`app space:`** is the new migration's directory. `migrations/app/` holds your app's migrations, and Prisma ORM looks for `migrations/` in the directory you run the command from. To use another directory, set `migrations.dir` in `prisma.config.ts` to the directory that should hold `app/` and `snapshots/`.
 
 The `No db ref set` line means the project has no `db` ref yet. A [ref](/orm/migrations/the-migration-graph#terms-used-on-this-page) is a name for a contract state, stored as a file in `migrations/app/refs/`. If you already have a database, what to run depends on what it holds:
 
 - An empty database needs nothing, because `npx prisma db migrate` creates the tables.
-- A database whose tables match your contract needs [`npx prisma db sign`](/cli/db-sign). It checks the tables against your contract, then writes the marker, the record in the database of which contract state it currently matches.
-- [`npx prisma db init`](/cli/db-init) adds missing tables and keeps compatible ones. It stops if a change would be destructive.
+- A database whose tables all match your contract needs [`npx prisma db sign`](/cli/db-sign). It checks the tables against your contract, then saves a record in the database, called the [marker](/orm/migrations/the-migration-graph#terms-used-on-this-page), that says which contract state the database matches.
+- A database that has only some of your tables needs [`npx prisma db init`](/cli/db-init). It adds what is missing and keeps what is already there, but it stops if matching your contract would need a destructive change.
+- A development database that should match your contract without a migration needs [`npx prisma db update`](/cli/db-update).
 - A database that Prisma ORM 7 migrated needs the steps in the [upgrade guide](/guides/upgrade-prisma-orm/postgresql).
 
-Each migration directory holds `migration.ts`, `ops.json`, and `migration.json`, and there is no SQL file. You edit only `migration.ts`, and only when a migration needs a change. Commit all three files, the `migrations/snapshots/<hash>/` directories that `migration.ts` imports, and `contract.json` and `contract.d.ts`. Open `migration.ts`, which lists the change as method calls:
+Each migration directory holds three files and no SQL file. `ops.json` lists the operations that `npx prisma db migrate` runs, and `migration.json` records the hashes of the contract states the migration goes from and to. `migration.ts` imports saved copies of your contract from `migrations/snapshots/`. Commit the migration directory, any new directories under `migrations/snapshots/`, and `contract.prisma`, `contract.json`, and `contract.d.ts`. Open `migration.ts`, which lists the change as method calls:
 
 ```ts title="migrations/app/20260707T1005_init/migration.ts"
 #!/usr/bin/env -S node
@@ -101,11 +102,13 @@ export default class M extends Migration<never, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-The `operations` list is the change, and for a simple change you don't edit this file. When you need a data backfill, a different operation order, or raw SQL, see [Editing a migration](/orm/migrations/editing-a-migration).
+The `operations` list is the change, and for a simple change you don't edit this file. You also leave the rest as `migration plan` wrote it: the imports load the saved contract, `never` means the migration starts from an empty database, each `codecId` is the column's PostgreSQL type plus a version, and `MigrationCLI.run` lets `node` run the file. When you need a data backfill, a different operation order, or raw SQL, see [Editing a migration](/orm/migrations/editing-a-migration).
 
 ## The second migration: planning a delta
 
-Apply the first migration to your development database with `npx prisma db migrate --advance-ref db`. It connects with the connection string you pass with `--db`, or otherwise with [`db.connection`](/orm/contract-authoring/the-data-contract) in `prisma.config.ts`. `--advance-ref db` then sets the `db` ref to the contract state it applied, and the next `migration plan` starts from there. [Applying a migration](/orm/migrations/applying-a-migration) covers this step in detail. Now add an optional `phone String?` field to `User`, then emit and plan again, with no `--from`:
+Apply the first migration to your development database with `npx prisma db migrate --advance-ref db`. It connects to [`db.connection`](/orm/contract-authoring/the-data-contract) in `prisma.config.ts`, such as `db: { connection: process.env["DATABASE_URL"]! }`, unless you pass a connection string with `--db`. `--advance-ref db` saves the contract state it applied in the `db` ref, so the next `migration plan` starts from there. [Applying a migration](/orm/migrations/applying-a-migration) covers this step in detail.
+
+Now add an optional `phone String?` field to `User`, and run both commands again to plan a migration with only that change:
 
 ```npm
 npx prisma contract emit
@@ -136,29 +139,26 @@ To start from a different contract state, pass `--from`, for example `npx prisma
 - A migration directory name, as in that example, means the state after that migration.
 - `<dir>^` means the state before that migration.
 - A contract hash can be given in full, or as its first 6 or more characters when they match only one hash.
-- A ref name, such as `db`, means the state that ref points at.
+- A ref name, such as the `db` ref, means the state that ref points at.
 - `@empty` means an empty database.
 
 ### The db ref: skipping --from
 
-If a ref named **`db`** exists, `migration plan` starts from the contract state it points at, so you don't pass `--from`. The `db` ref is a file in `migrations/app/refs/`, and the marker is a record in the database: `migration plan` reads the ref, and `db migrate` reads the marker. This everyday loop replaces Prisma ORM 7's `migrate dev` when you want migration files, as the [command table](/orm/coming-from-prisma-orm-7#commands) shows:
+If the **`db` ref** exists, `migration plan` starts from the contract state it points at, so you don't pass `--from`. The `db` ref is a file in `migrations/app/refs/`, not a record in the database, so it can point at a different contract state than your database's marker. For every change after your first migration, repeat these five steps, which replace Prisma ORM 7's `migrate dev` when you want migration files, as the [command table](/orm/coming-from-prisma-orm-7#commands) shows:
 
 1. Edit your contract.
 2. Run `npx prisma contract emit`. If you skip it, `migration plan` reads the old `contract.json`, so it prints `No changes detected` or plans without your latest edit.
-3. Run `npx prisma migration plan --name <name>`, with no `--from`.
-4. Review the migration with `npx prisma migration show <dir>`. If you edit `migration.ts`, recompile it from your project's root directory with `node migrations/app/<dir>/migration.ts`.
-5. Apply it. In development, run `npx prisma db migrate --advance-ref db`, which moves the `db` ref to the state it applied. In CI and production, run `npx prisma db migrate`.
+3. Run `npx prisma migration plan --name <name>`.
+4. Review the migration with `npx prisma migration show <dir>`. If you edit `migration.ts`, [recompile it](/orm/migrations/editing-a-migration) from your project's root directory with `node migrations/app/<dir>/migration.ts`, which rewrites `ops.json` and `migration.json` without connecting to a database. The Prisma ORM CLI needs Node.js 22.18 or later, and those versions run `migration.ts` directly.
+5. Apply it. In development, run `npx prisma db migrate --advance-ref db`. In CI and production, run `npx prisma db migrate`.
 
-If you leave off `--advance-ref db` in development, the `db` ref stays at the older contract state. The next `migration plan` then plans from that state to your contract, so the new migration repeats the changes of the migration you already planned.
+If you leave off `--advance-ref db` in development, the `db` ref stays at the older contract state. The next `migration plan` then plans from that state to your contract, so the new migration repeats the changes of the migration you already planned. To fix it, delete the repeated migration's directory, run `npx prisma migration ref set db <dir>` with the directory name of the last migration you applied, and plan again.
 
-These commands move the `db` ref:
+Other commands move the `db` ref too:
 
-- `npx prisma db init` and `npx prisma db update` move it after a successful run. They leave it alone with `--dry-run`, and also when you pass `--db`, unless you add `--advance-ref db`.
-- `npx prisma db sign` moves it after it signs the database, with or without `--db`. To leave it alone, add `--no-advance-ref`.
-- `npx prisma db migrate` moves it only when you pass `--advance-ref db`, after the migrations are applied.
-- `npx prisma migration ref set db <contract>` sets it by hand, where `<contract>` is a hash, a ref name, a migration directory name, or `<dir>^`, as in the `--from` list.
-
-To start using migrations with a database that already has tables, sign it first with `npx prisma db sign`, which moves the `db` ref to that database's contract state. With no migrations on disk yet, the next `migration plan` writes a baseline migration from empty to that state, plus a migration with your change. The baseline never runs on the signed database, because its marker is already at that state.
+- `npx prisma db init` and `npx prisma db update` move it after a successful run. With `--dry-run` they never move it, and with `--db` they move it only if you add `--advance-ref db`.
+- `npx prisma db sign` moves it even with `--db`, because you usually sign a database that way. Add `--no-advance-ref` to leave it alone.
+- [`npx prisma migration ref set db <dir>`](/cli/migration-ref) points it at the state after the migration you name.
 
 When you leave off `--from`, `migration plan` does one of four things:
 
@@ -173,22 +173,22 @@ In the last case, planning from an empty database would write a migration that r
 
 ### The automatic baseline
 
-The second row of the table is the usual state after `db sign` or a few `db update` runs: `migrations/app/` is empty, and the `db` ref points at a contract state. One `migration plan` run then writes a baseline migration from an empty database to the ref's state. When your emitted contract differs from that state, it also writes a second migration with the change. Expect one or two new directories in `git status`.
+The second row of the table is the usual state after you run `npx prisma db sign` on a database that already has tables, or after a few `db update` runs: `migrations/app/` is empty, and the `db` ref points at a contract state. The next `migration plan` writes a baseline migration from an empty database to that state. When `contract.json` differs from that state, it also writes a second migration with the change, so expect one or two new directories in `git status`. Plan before you run `npx prisma db migrate`, because `db migrate` refuses a signed database until a migration in your history ends at its contract state.
 
-`db migrate` applies only the migrations after a database's marker, so the baseline never runs on a database that has a marker. On a database with tables and no marker, `db migrate` starts from your first migration. It skips each operation whose work already exists, such as creating a table that is already there, and then writes a marker. To adopt such a database, run `npx prisma db sign` instead, because it checks the tables against your contract before it writes the marker. The migration graph page has the full rule under [Baselines](/orm/migrations/the-migration-graph#baselines).
+`db migrate` applies only the migrations after a database's marker, so the baseline never runs on a database that has a marker. For a database that has tables but no marker, run `npx prisma db sign` rather than `db migrate`, because `db sign` checks the tables against your contract before it writes the marker. The migration graph page has the full rule under [Baselines](/orm/migrations/the-migration-graph#baselines).
 
-Create a baseline by hand when your `db` ref is already ahead of a deployed database. The automatic baseline goes to the `db` ref's state, so it would not describe that database:
+Write the baseline migration by hand when a deployed database, such as production, does not have changes that your development database already has. The automatic baseline ends at the `db` ref's state, which includes those changes, so it would not match the deployed database:
 
 1. Change your contract back to the deployed state. With Git, that could be `git show <commit>:<contract path> > <contract path>`.
 2. Run `npx prisma contract emit`.
 3. Run `npx prisma migration plan --name baseline --from @empty`.
-4. Run `npx prisma db sign --db "$DATABASE_URL" --no-advance-ref` against the deployed database. It writes the marker, so `db migrate` never runs the baseline there, and `--no-advance-ref` leaves your `db` ref alone.
+4. Run `npx prisma db sign --db "$PRODUCTION_DATABASE_URL" --no-advance-ref` against the deployed database. It writes the marker there, and `--no-advance-ref` leaves your `db` ref alone.
 5. Restore your current contract and run `npx prisma contract emit` again.
 6. Plan the change with `npx prisma migration plan --name <name> --from <baseline dir>`, using the baseline's directory name.
 
 ## When the planner needs your input
 
-Some changes can't be planned from the contract change alone. Add a **required** field with no default to an existing table, and the planner can write the `ADD COLUMN` and the `SET NOT NULL`, but only you know what the existing rows should contain. Rather than guessing, it leaves that decision as a **placeholder**. To see one, apply `add_user_phone` with `npx prisma db migrate --advance-ref db`. Then add a required `displayName String` field to `User`, and emit and plan:
+Some changes can't be planned from the contract change alone. Add a **required** field with no default to an existing table, and `migration plan` can write the `ADD COLUMN` and the `SET NOT NULL`, but only you know what the existing rows should contain. Rather than guessing, it leaves that decision as a **placeholder**. To see one, apply `add_user_phone` with `npx prisma db migrate --advance-ref db`. Then add a required `displayName String` field to `User`, and run both commands again:
 
 ```npm
 npx prisma contract emit
@@ -207,11 +207,11 @@ to:         e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
-The generated migration puts a `dataTransform` step between the `ADD COLUMN` and `SET NOT NULL` steps, with `placeholder(...)` where your query that fills `displayName` for existing rows goes. "Self-emit" in the output means recompiling. After you fill in the placeholder, recompile from your project's root directory with `node migrations/app/20260707T1008_add_display_name/migration.ts`. If you run `npx prisma db migrate` before that, it fails because the `displayName` column is still missing, and it changes nothing. [Editing a migration](/orm/migrations/editing-a-migration) explains how to fill it in.
+The new `migration.ts` has a `dataTransform` step, which updates existing rows, between the `ADD COLUMN` and `SET NOT NULL` steps. Its two `placeholder(...)` calls mark where your queries go: one finds rows that still need a `displayName`, and one fills it in. You write both in TypeScript with the query builder, as [Editing a migration](/orm/migrations/editing-a-migration) shows. Then recompile from your project's root directory with `node migrations/app/20260707T1008_add_display_name/migration.ts`. The output's `node migration.ts` means this same step, and the root directory matters because that is where it finds `prisma.config.ts`. If you run `npx prisma db migrate` before you recompile, it fails and changes nothing, because `ops.json` is still empty.
 
 ## Reviewing what you planned
 
-Three offline commands let you check the migration before anything runs:
+Three commands check the migration before anything runs, and none of them connects to a database:
 
 ```npm
 # One migration in detail: operations, metadata, DDL preview
@@ -222,17 +222,17 @@ npx prisma migration graph
 npx prisma migration check
 ```
 
-In CI, run `npx prisma migration check` as a step and read its exit code. `0` means every check passed. `4` means it found an integrity failure, such as a missing file or an `ops.json` that someone edited by hand. `2` means it could not find a migration you named, as in `npx prisma migration check 20260707T1006_add_user_phone`.
+In CI, run `npx prisma migration check` as a step and read its exit code. `0` means every check passed. `4` means it found an integrity failure, such as a missing file or an `ops.json` that someone edited by hand. `2` means it could not find a migration you named, as in `npx prisma migration check 20260707T1006_add_user_phone`. It does not read `migration.ts`, so it cannot tell whether you recompiled after your last edit.
 
 :::note[What's early]
 
-Planning covers tables, columns, indexes, constraints, and the backfill placeholder shown above. Column renames are not detected yet: renaming a field plans as **drop column + add column**, and `migration plan` prints a data-loss warning. `db migrate` runs destructive operations without asking, so read `npx prisma migration show <dir>` in review to catch one before it runs. For a true rename, edit `migration.ts`, replace the pair with a [`rawSql` operation](/orm/migrations/editing-a-migration#escape-hatch-raw-sql) that runs `ALTER TABLE ... RENAME COLUMN`, and recompile. There is also no interactive mode: the planner writes its best answer and leaves changes to you in `migration.ts`.
+Planning covers tables, columns, indexes, constraints, and the backfill placeholder shown above. Column renames are not detected yet: renaming a field plans as **drop column + add column**, and `migration plan` prints a data-loss warning. `db migrate` runs destructive operations without asking, so read `npx prisma migration show <dir>` in review to catch one before it runs. To rename a column and keep its data, edit `migration.ts`, replace the pair with a [`rawSql` operation](/orm/migrations/editing-a-migration#escape-hatch-raw-sql) that runs `ALTER TABLE ... RENAME COLUMN`, and recompile. Unlike Prisma ORM 7's `migrate dev`, `migration plan` never asks you questions, so you make any changes in `migration.ts`.
 
 :::
 
 ## Prompt your coding agent
 
-Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. The skills are instruction files your agent reads, so you can ask it to:
 
 - "Add a required `displayName` field to User, emit the contract, and plan the migration."
 - "Plan a migration named `add-orders-table` and show me its DDL preview before I commit it."
