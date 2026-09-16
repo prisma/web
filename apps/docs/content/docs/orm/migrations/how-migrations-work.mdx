@@ -17,7 +17,7 @@ You run this loop many times a day during development:
 1. **Change your contract**: edit `contract.prisma`, then run `npx prisma contract emit`.
 2. **Plan a migration**: `migration plan` compares your new contract with an earlier contract state and writes a migration directory under `migrations/app/`. A contract state is one version of your contract, named by its hash, an identifier computed from the contract. By default, the earlier state is the one named by the `db` ref, a file in `migrations/app/refs/` that names the contract state you last applied in development.
 3. **Review it**: run `npx prisma migration show <dir>`, where `<dir>` is the migration's directory name, to see the operations and SQL that `db migrate` will run. If you also need to change rows, such as filling a new column, edit `migration.ts` as [Editing a migration](/orm/migrations/editing-a-migration) shows. Then recompile it: run `node migrations/app/<dir>/migration.ts` from your project root, which rewrites `ops.json` and `migration.json` without connecting to a database. The Prisma ORM CLI needs Node.js 22.18 or later, and those versions run `migration.ts` directly.
-4. **Apply it**: `db migrate` reads the database's marker, the record in the database of which contract state it currently matches. Then it runs the migrations that lead from that state to your current contract. In development, add `--advance-ref db`, which moves the `db` ref to the state you just applied, so the next `migration plan` starts from there.
+4. **Apply it**: `db migrate` reads the database's marker, the record in the database of which contract state it currently matches. Then it runs the migrations that lead from that state to your current contract. In development, add `--advance-ref db`, which points the `db` ref at the state you just applied, so the next `migration plan` starts from there.
 
 In a project with a database connection, which the [quickstart](/prisma-orm/quickstart/postgresql) sets up, add an optional `phone String?` field to the `User` model in `contract.prisma`, then run:
 
@@ -95,7 +95,7 @@ After `migration plan`, commit the new migration directory and any new directori
 `migration.json` records where this migration fits in your migration history:
 
 - the contract hash it starts `from`
-- the contract hash it moves `to`
+- the contract hash it ends at, `to`
 - when it was created
 - its own hash, `migrationHash`, which lets `npx prisma migration check` catch a hand edit to `ops.json` or `migration.json`
 
@@ -176,7 +176,7 @@ Here is the whole loop in motion, from idea to typed code against the new contra
 
 The commands, the file layout, the migration history, and each operation's precheck and postcheck work the same way on PostgreSQL and MongoDB. On PostgreSQL, operations run SQL statements such as `ALTER TABLE`. On MongoDB, operations create collections, indexes, and JSON Schema validators.
 
-Each database keeps a [marker and a ledger](/orm/migrations/the-migration-graph#terms-used-on-this-page). The marker records the one contract state the database matches now, and `db migrate` moves it after applying migrations. The ledger is the database's own list of every migration applied to it, and `migration log` reads that list.
+Each database keeps a [marker and a ledger](/orm/migrations/the-migration-graph#terms-used-on-this-page). The marker records the one contract state the database matches now, and `db migrate` updates it after applying migrations. The ledger is the database's own list of every migration applied to it, and `migration log` reads that list.
 
 :::note[Migrations are early]
 

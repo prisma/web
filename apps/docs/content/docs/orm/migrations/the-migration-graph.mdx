@@ -16,7 +16,7 @@ You can build a whole app without thinking about the graph. You need to understa
 
 - Two people, or two AI agents, change the contract on separate branches and merge.
 - You need to roll a database back to an earlier version of your contract and then forward again.
-- A database is behind and has to catch up through several changes, for example after a fresh clone or on a long-lived staging database.
+- A database is several contract states out of date, for example after a fresh clone or on a long-lived staging database.
 
 ## The short version
 
@@ -36,7 +36,7 @@ After you change the contract, run `npx prisma contract emit`, which replaces `p
 | **Contract state** | One version of your contract, named by its hash. |
 | **Hash** | An identifier computed from the database layout your contract describes, not from the text of `contract.prisma`. The graph output shows its first seven characters, like `789dd79`. |
 | **Node** | A contract state, drawn as a `○` row in `migration graph` output. |
-| **Edge** | A migration, drawn as a `↑`, `↓`, or `⟲` row. It moves the database from one node to another. |
+| **Edge** | A migration, drawn as a `↑`, `↓`, or `⟲` row. Applying it changes the database from the state at one node to the state at the other. |
 | **Marker** | The record in the database of which contract state it currently matches. It is a stored value, so reading it does not check the tables. |
 | **Ledger** | The database's own list of every migration applied to it, with when each one ran. |
 | **Ref** | A name for a contract state, like `prod`, stored as a file in `migrations/app/refs/`. |
@@ -96,7 +96,7 @@ You need both merge migrations when databases exist at both `93be6c2` and `7e3fa
 
 `npx prisma db migrate` starts at the database's marker and runs the migrations on the path to its target. The target is `contract.json`, or the contract state that `--to` names. If an operation fails, the run stops. [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) explains how to re-run, and [Recovery](/orm/migrations/rollbacks-and-recovery#recovery-when-a-migration-fails-partway) explains what to do next.
 
-When more than one path leads to the target, `db migrate` takes the one with the fewest migrations. On a tie, it prefers the migration with the earlier `createdAt` in its `migration.json`. So a database at `789dd79` runs `alice_add_phone` and then `merge_alice`, and never runs `bob_add_avatar`. Both paths end at the same contract state, and after running operations, `db migrate` checks the tables against that contract before it moves the marker. Preview the path with `npx prisma db migrate --show`.
+When more than one path leads to the target, `db migrate` takes the one with the fewest migrations. On a tie, it prefers the migration with the earlier `createdAt` in its `migration.json`. So a database at `789dd79` runs `alice_add_phone` and then `merge_alice`, and never runs `bob_add_avatar`. Both paths end at the same contract state, and after running operations, `db migrate` checks the tables against that contract before it updates the marker. Preview the path with `npx prisma db migrate --show`.
 
 If no chain of migrations leads from the marker to the target, the run fails with an error whose `code` is `MIGRATION.PATH_UNREACHABLE`. First check that `--to` names the state you meant. If it does, plan the missing migration from the marker's hash with `npx prisma migration plan --from <hash> --name <name>`. `npx prisma migration status` shows that hash next to `@db`, its label for the database's current state.
 
@@ -118,7 +118,7 @@ The [Prisma ORM repository](https://github.com/prisma/orm) has this diamond and 
 
 ## Name important states with refs
 
-Hashes are hard to remember, so name the states that matter. A **ref** is a name for a contract state, stored as a file in `migrations/app/refs/`. You create and move refs with `npx prisma migration ref set`, and you pass one to `db migrate --to`. `prod` here is only an example name:
+Hashes are hard to remember, so name the states that matter. A **ref** is a name for a contract state, stored as a file in `migrations/app/refs/`. You create refs and point them at states with `npx prisma migration ref set`, and you pass one to `db migrate --to`. `prod` here is only an example name:
 
 ```npm
 npx prisma migration ref set prod f9a41d7
@@ -126,7 +126,7 @@ npx prisma migration ref list
 npx prisma db migrate --to prod
 ```
 
-`ref set` takes a hash or a prefix of one, a ref name, a migration directory name, or `<dir>^`, but none of the `@` tokens below. `npx prisma db migrate --to prod` moves the database to the state the `prod` ref names. It changes the database that `prisma.config.ts` connects to, unless you pass a connection string with the `--db` flag.
+`ref set` takes a hash or a prefix of one, a ref name, a migration directory name, or `<dir>^`, but none of the `@` tokens below. `npx prisma db migrate --to prod` applies migrations until the database matches the state the `prod` ref names. It changes the database that `prisma.config.ts` connects to, unless you pass a connection string with the `--db` flag.
 
 Three reserved tokens, names that start with `@`, let you name a contract state without creating a ref:
 
@@ -146,7 +146,7 @@ Alice and Bob each planned a migration from `789dd79` on their own branches. Bot
 
 Each migration records the contract state it starts `from`, so it does not run against a database at a different state. Before any operation runs, `db migrate` checks that the marker is a state in your migration history, and stops if it is not. That happens, for example, after `npx prisma db update` applies a contract that no migration ends at. Like Prisma ORM 7's `db push`, `db update` changes a database to match the contract without writing a migration. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) explains what to do next. This first check reads only the marker. `db migrate` checks the tables only after it runs operations, and not when it has nothing to run. To compare the tables with your contract, run `npx prisma db verify --schema-only`.
 
-### Rollback as a normal move
+### Rollback as one more migration [#rollback-as-a-normal-move]
 
 A migration can go backwards, from a later contract state to an earlier one. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) shows the commands, including reverting your contract before you apply the rollback.
 

@@ -1,6 +1,6 @@
 ---
 title: Applying a migration
-description: 'The db migrate command moves your database from where it is to where you want it, with a preview, checks on every operation, and safe re-runs.'
+description: 'The db migrate command applies the migrations you planned, until your database matches your contract, with a preview, checks on every operation, and safe re-runs.'
 url: /orm/migrations/applying-a-migration
 metaTitle: Applying a migration in Prisma ORM
 metaDescription: 'How the Prisma ORM db migrate command applies migrations, from targeting refs and hashes and previewing with --show to checking status and running safely in development and production.'
@@ -91,7 +91,7 @@ Applied at                  Migration                     Change             Ops
 
 ## Choosing a target
 
-With no `--to`, `db migrate` moves the database to the contract you last emitted. To stop before that, for example to apply only some of the pending migrations, name a contract state with `--to`. This example uses `prod`, a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) you create with `npx prisma migration ref set prod <dir>`, which points `prod` at the state after the migration you name:
+With no `--to`, `db migrate` applies migrations until the database matches the contract you last emitted. To stop before that, for example to apply only some of the pending migrations, name a contract state with `--to`. This example uses `prod`, a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) you create with `npx prisma migration ref set prod <dir>`, which points `prod` at the state after the migration you name:
 
 ```npm
 npx prisma db migrate --to prod --db "$PRODUCTION_DATABASE_URL"
@@ -139,7 +139,7 @@ If you edit `migration.ts` during review, recompile it with `node migrations/app
 
 **In CI and production**, migrations arrive through your repository, already planned, reviewed, and merged. With each migration, commit its directory, the new directories `migration plan` added under `migrations/snapshots/`, and `contract.prisma`, `contract.json`, and `contract.d.ts`. `migrations/snapshots/` holds one directory for each contract state. Deploy with the three commands in [Check before, preview, then apply](#check-before-preview-then-apply). `migration check` recomputes each migration's hash from its `ops.json` and [`migration.json`](/orm/migrations/how-migrations-work#migrationjson-the-history-marker) and compares it with the stored hash. It catches a hand edit to `ops.json`, but not a `migration.ts` edited without recompiling. If it fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, restore the migration's files from Git, or move the hand edit into `migration.ts` and recompile.
 
-On PostgreSQL, when two `db migrate` runs start against the same database, one waits for the other to finish. On MongoDB, if another `db migrate` run moves the marker while yours is running, yours fails with `Marker was modified by another process during migration execution.` Run `npx prisma migration status` to see where the database is now, then run `npx prisma db migrate` again.
+On PostgreSQL, when two `db migrate` runs start against the same database, one waits for the other to finish. On MongoDB, if another `db migrate` run updates the marker while yours is running, yours fails with `Marker was modified by another process during migration execution.` Run `npx prisma migration status` to see which contract state the database matches now, then run `npx prisma db migrate` again.
 
 ## Extension spaces
 
@@ -172,7 +172,7 @@ Projects created with `npm create prisma@latest` include the [Prisma ORM skills]
 
 ## See also
 
-- [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery): when you need to go back instead of forward
+- [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery): when a change was wrong and the database needs an earlier contract state
 - [The migration graph](/orm/migrations/the-migration-graph): markers, refs, and how migrations connect
 - [Generating a migration](/orm/migrations/generating-a-migration): producing what `db migrate` runs
 - [Studio with Prisma ORM](/studio/prisma-next): read the ledger you just wrote as a visual timeline, with the executed SQL and a schema diff per migration
