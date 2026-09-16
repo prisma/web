@@ -316,8 +316,10 @@ export function buildMcpDiscovery() {
 export function buildMcpServerCard(baseUrl = getBaseUrl()) {
   return {
     name: "Prisma MCP",
+    title: "Prisma",
     description:
       "Manage Prisma Postgres databases using natural language. Create and list databases, connection strings, and backups; run SQL queries; introspect schemas; and search the Prisma documentation.",
+    websiteUrl: baseUrl,
     icons: [
       {
         src: `${baseUrl}/icon.svg`,
