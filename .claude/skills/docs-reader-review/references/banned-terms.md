@@ -52,6 +52,8 @@ Migrations invite movement metaphors: the database travels, the ref moves, the r
 
 `from` and `to` are field names in `migration.json`, so "starts `from`" and "ends at, `to`" are literal, not metaphors.
 
+`scripts/check-plain.sh` enforces the database, marker and ref rows. It does not enforce "path", because the graph page uses that word correctly, or "the database is behind", because sample prompts quote a user's own words. The reader review judges those two.
+
 ## Sentence shapes to avoid
 
 - A noun with three or more modifiers: "per-request cursor-enabled serverless facade".
