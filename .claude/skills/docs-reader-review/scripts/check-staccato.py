@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Flags staccato prose: runs of short, one-clause sentences with no connective between them.
+"""Flags staccato prose: runs of short, one-clause sentences with no connective between them,
+counting lead-ins ("Four things change it:"), and fragment openers ("One name is special.").
 
 Usage: check-staccato.py <file.mdx> [more files...]   Exit 1 on any hit.
 
-A hit is a paragraph containing three or more consecutive sentences that are each
-under MAX_WORDS words. Fenced code, tables, headings, list items, front matter, and
+A run hit is a paragraph containing three or more consecutive sentences that are each
+under MAX_WORDS words. A lead-in hit is a paragraph ending in a colon that introduces its
+list by counting the items. An opener hit is a paragraph whose first sentence has
+OPENER_WORDS words or fewer and is followed by more sentences. See
+references/explain-not-state.md for why these read badly and what to write instead. Fenced code, tables, headings, list items, front matter, and
 import lines are skipped. Colons that introduce a code span or example are not
 treated as sentence ends. The heuristic is deliberately simple: it finds the
 paragraphs a human should read aloud, and the reader decides whether the sentences
@@ -17,6 +21,14 @@ import sys
 
 MAX_WORDS = 9
 RUN = 3
+OPENER_WORDS = 5
+COUNT = r"(one|two|three|four|five|six|seven|eight|nine|ten|several|a few|a couple of|\d+)"
+COUNT_LEADIN = re.compile(
+    r"(\b" + COUNT + r" (things|commands|cases|reasons|situations|ways|fixes|steps|parts|rules|options|"
+    r"kinds|forms|labels|files|conditions|causes|places|questions|points)\b[^.:]*:$"
+    r"|\bmeans " + COUNT + r" things\b|^(here are|there are) " + COUNT + r"\b)",
+    re.I,
+)
 
 CODE = re.compile(r"`[^`]*`")
 LINK = re.compile(r"\]\([^)]*\)")
@@ -75,8 +87,13 @@ def check(path):
             run = run + 1 if is_short else 0
             if run == RUN:
                 first = j - RUN + 1
-                hits.append((lineno, " | ".join(sents[first : j + 1])))
+                hits.append((lineno, "run: " + " | ".join(sents[first : j + 1])))
                 break
+        plain = LINK.sub("]", CODE.sub("CODE", para)).strip()
+        if COUNT_LEADIN.search(plain):
+            hits.append((lineno, "counting lead-in: " + plain))
+        if len(sents) > 1 and len(sents[0].split()) <= OPENER_WORDS and sents[0].endswith("."):
+            hits.append((lineno, "fragment opener: " + sents[0] + " | " + sents[1]))
     return hits
 
 
@@ -89,7 +106,7 @@ def main(argv):
             print(f"== {path}")
             for lineno, snippet in hits:
                 print(f"{lineno}: {snippet[:180]}")
-    print("staccato check: clean" if status == 0 else "staccato check: clipped runs found, read them aloud")
+    print("staccato check: clean" if status == 0 else "staccato check: hits found, read them aloud (references/explain-not-state.md)")
     return status
 
 

@@ -27,6 +27,10 @@ Run `scripts/check-plain.sh` on every changed page. It fails on the words in `re
 
 Run `scripts/check-staccato.py` on every changed page. It flags paragraphs with three or more consecutive sentences under nine words, the usual signature of a page whose long sentences were split without keeping the connectives. Read each flagged paragraph aloud. Rejoin sentences that are cause and effect, contrast, or condition and result with "because", "so", "but", "while", or a colon, and leave apart the ones that are separate ideas. The script only finds the worst runs; a paragraph of eleven-word sentences that all land the same way is still staccato, so read the whole page for rhythm, not only the hits. Reference entries that are fragments by design (a `Payload:` line, a one-line table note) are not prose and do not count.
 
+### 1c. Read for explanation, not statement
+
+Read `references/explain-not-state.md` before fixing anything. It names the habit that a plain-language pass and a word budget both produce: true, short sentences that state a fact and never say what it means for the reader. The staccato check flags the mechanical signs (counting lead-ins like "Four things change it:", fragment openers like "One name is special."), but most of the work is the desk test in that file: read each paragraph aloud as if to a colleague, and add the sentence you would say out loud. A page may grow when it gains explanation. Word budgets are for repetition only.
+
 ### 2. Dispatch the reader
 
 Hand the page to a fresh reviewer that has no memory of writing it, using `references/reader-persona.md` verbatim as its instructions. The reviewer reads the page once, top to bottom, with nothing else open, and reports:
