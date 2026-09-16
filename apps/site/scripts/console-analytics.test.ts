@@ -89,3 +89,20 @@ test("separates advertising consent and disables automatic hits on revocation", 
   assert.equal(app.window["ga-disable-G-4B72WBX9ET"], true);
   assert.equal(app.commands().filter(([command]) => command === "event").length, 1);
 });
+
+test("rejects empty handoff IDs without measuring or acknowledging them", () => {
+  const app = setup();
+  app.send({ ...grant, conversion: { ...grant.conversion, id: "" } });
+  assert.equal(app.commands().filter(([command]) => command === "event").length, 0);
+  assert.equal(app.messages.length, 1);
+  app.send(grant);
+  assert.equal(app.commands().filter(([command]) => command === "event").length, 1);
+});
+
+test("deduplicates retries while the Google script has not loaded", () => {
+  const app = setup();
+  for (let retry = 0; retry < 5; retry++) app.send(grant);
+  assert.equal(app.scripts.length, 1);
+  assert.equal(app.commands().filter(([command]) => command === "event").length, 1);
+  assert.equal(app.messages.length, 6);
+});

@@ -58,7 +58,7 @@
       script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
       document.head.appendChild(script);
     }
-    if (!conversion || typeof conversion.id !== "string" || conversion.id.length > 128 ||
+    if (!conversion || typeof conversion.id !== "string" || conversion.id.length === 0 || conversion.id.length > 128 ||
         !["sign_up", "login"].includes(conversion.event) || !["google", "github", "email"].includes(conversion.method)) return;
     if (!seen.has(conversion.id)) {
       seen.add(conversion.id);
