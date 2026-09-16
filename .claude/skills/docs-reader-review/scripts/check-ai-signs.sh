@@ -8,9 +8,10 @@
 # comprehensive, explore, highlight, ecosystem, navigate, significant) are left to the reader, as
 # are bold-label lists, the rule of three, participle tails, elegant variation, puffed
 # significance, and "represents"/"refers to" in place of "is"; the reader review covers those.
-# What is skipped: fenced code (a fence closes only on a fence at least as long, so ```` blocks
-# may hold ``` fences), indented code blocks, inline code, link targets, pinned heading
-# anchors, href attributes, front matter, and import/export lines.
+# What is skipped: fenced code (a fence closes only on a bare fence at least as long, so ````
+# blocks may hold ``` fences and ```js lines), indented code blocks, inline code with one, two,
+# or three backticks, link targets, pinned heading anchors, href attributes, front matter, and
+# import/export lines.
 set -u
 # Apostrophe in "it's", "isn't", "here's": straight or curly, as a literal alternation so it
 # matches under a C locale too, where "." is a single byte and would never match a three-byte ’.
@@ -29,14 +30,14 @@ for f in "$@"; do
     /^[[:space:]]*(```|~~~)/ {
       match($0, /(```+|~~~+)/); m = substr($0, RSTART, RLENGTH)
       if (!infence) { infence = 1; fence = m; next }
-      if (substr(m, 1, 1) == substr(fence, 1, 1) && length(m) >= length(fence)) { infence = 0 }
+      if (substr(m, 1, 1) == substr(fence, 1, 1) && length(m) >= length(fence) && substr($0, RSTART + RLENGTH) ~ /^[[:space:]]*$/) { infence = 0 }
       next
     }
     infence { next }
     /^(    |\t)/ { next }
     /^(import|export) / { next }
     { print NR": "$0 }
-  ' "$f" | sed -E 's/`[^`]*`//g; s/\]\([^)]*\)/]/g; s/\[#[^]]*\]//g; s/href="[^"]*"//g')
+  ' "$f" | sed -E 's/```[^`]*```//g; s/``[^`]*``//g; s/`[^`]*`//g; s/\]\([^)]*\)/]/g; s/\[#[^]]*\]//g; s/href="[^"]*"//g')
   hits=$(
     printf '%s\n' "$prose" | grep -E -i "$vocab|$shapes|$leaked"
     printf '%s\n' "$prose" | grep -E "$typo" | sed -E 's/^([0-9]+): /\1: [em dash or curly quote] /'
