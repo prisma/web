@@ -6,9 +6,9 @@ metaTitle: Prisma ORM transactions and runtime reference
 metaDescription: 'Reference for the Prisma ORM client lifecycle, transactions, prepared statements, and execution options.'
 ---
 
-Prisma ORM 8 renames `schema.prisma` to `contract.prisma`. Run `npx prisma contract emit`. It writes two files next to it: `contract.json`, which your app imports, and `contract.d.ts`, which gives you the TypeScript types. A new project keeps all three files in `src/prisma/`. Every client you create needs `contract.json`. The query you came for, `prisma.user.findMany({ where })`, is now `db.orm.public.User.where(...).all()`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists the packages to install, the commands to run, and the rest of the renamed calls.
+Prisma ORM 8 renames `schema.prisma` to `contract.prisma`. Run `npx prisma contract emit`, which writes two files next to it: `contract.json`, which your app imports, and `contract.d.ts`, which gives you the TypeScript types. A new project keeps all three files in `src/prisma/`. Every client you create needs `contract.json`. The query you came for, `prisma.user.findMany({ where })`, is now `db.orm.public.User.where(...).all()`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists the packages to install, the commands to run, and the rest of the renamed calls.
 
-`db` is the client that `postgres(...)` or `mongo(...)` returns. `db.runtime()` gives you the object that actually runs queries. That object is called the runtime.
+`db` is the client that `postgres(...)` or `mongo(...)` returns. `db.runtime()` gives you the object that actually runs queries, and that object is called the runtime.
 
 Create, connect, and close the client, run transactions, prepare statements, and set per-query execution options, on PostgreSQL and MongoDB. For a task-oriented walkthrough, see the Fundamentals guide to [Transactions](/orm/fundamentals/transactions). For the ways to query inside a transaction, see the [ORM client reference](/orm/reference/orm-client), the [SQL query builder reference](/orm/reference/sql-query-builder), and the [raw queries reference](/orm/reference/raw-queries).
 
@@ -71,7 +71,7 @@ import contractJson from './contract.json' with { type: 'json' };
 const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL! });
 ```
 
-These examples assume the file is beside `contract.json` in `src/prisma/`. From anywhere else, change the relative paths. Write `./contract.d` exactly like that, with no extension. The line `import contractJson from './contract.json' with { type: 'json' }` is what `prisma orm init` writes. It needs Node.js 22.18 or newer, and these `tsconfig.json` settings: `resolveJsonModule: true`, `module: "preserve"`, and `moduleResolution: "bundler"`. TypeScript types every `process.env` value as possibly undefined, so the examples write `!` after it, the same way `prisma orm init` does.
+These examples assume the file is beside `contract.json` in `src/prisma/`, so from anywhere else, change the relative paths. Write `./contract.d` exactly like that, with no extension. The line `import contractJson from './contract.json' with { type: 'json' }`, which `prisma orm init` writes, needs Node.js 22.18 or newer, and these `tsconfig.json` settings: `resolveJsonModule: true`, `module: "preserve"`, and `moduleResolution: "bundler"`. TypeScript types every `process.env` value as possibly undefined, so the examples write `!` after it, the same way `prisma orm init` does.
 
 ##### Bind to an existing `pg` pool
 
@@ -420,7 +420,7 @@ await db.transaction(async (tx) => {
 ```
 
 :::warning[An escaped `AsyncIterableResult` throws after the transaction ends]
-Collect the rows inside the callback by awaiting the result there, and return the array instead. A result is tied to the transaction connection. If you return one from the callback and read it after the transaction has committed, it rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`, before yielding any row.
+Collect the rows inside the callback by awaiting the result there, and return the array instead. A result is tied to the transaction connection, so if you return one from the callback and read it after the transaction has committed, it rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`, before yielding any row.
 
 ```typescript
 const escaped = await db.transaction(async (tx) => {
@@ -560,7 +560,7 @@ await connection.destroy();
 ## Transactions (MongoDB)
 
 :::note[MongoDB transactions are not available in Prisma ORM yet]
-There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()`, `prepare()`, or `telemetry()`: it has `query`, `execute`, and `close` and nothing else. Single-document write operations are atomic on their own. Multi-document transactions through Prisma ORM are planned, not shipped. To run one today, create your own `MongoClient`, pass it as the `mongoClient` option when you create the client, and group the writes in `session.withTransaction(...)`, as the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) shows. The reading rules under [`AsyncIterableResult`](#asynciterableresult) apply to MongoDB too.
+There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()`, `prepare()`, or `telemetry()`: it has `query`, `execute`, and `close` and nothing else. Single-document write operations are atomic on their own, while multi-document transactions through Prisma ORM are planned, not shipped. To run one today, create your own `MongoClient`, pass it as the `mongoClient` option when you create the client, and group the writes in `session.withTransaction(...)`, as the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) shows. The reading rules under [`AsyncIterableResult`](#asynciterableresult) apply to MongoDB too.
 :::
 
 ## Prepared statements (PostgreSQL)
@@ -772,6 +772,6 @@ const after = runtime.telemetry();
 
 [`all()`](/orm/reference/orm-client#all), [`createAll()`](/orm/reference/orm-client#createall), and the runtime's `query(...)` return an `AsyncIterableResult`. `all()` and `query(...)` read rows, and `createAll()` writes rows and returns the ones it wrote. `await` the result to collect an array, or `for await` it to take rows one at a time.
 
-Use `await`. Use `for await` only to handle rows as they arrive. On PostgreSQL it does not reduce memory, because every row is loaded first.
+Use `await`, and use `for await` only to handle rows as they arrive. On PostgreSQL it does not reduce memory, because every row is loaded first.
 
-Pick `await` or `for await` for a given result and do not mix the two. Calling `.toArray()` does the same thing as `await`. Re-`await`ing a result you already awaited is safe and returns the same array. Switching between `await` and `for await`, or looping a second time with `for await`, throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. For the full rules on reading a result, shared identically by PostgreSQL and MongoDB, see [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult) in the ORM client reference.
+Pick `await` or `for await` for a given result and do not mix the two. Calling `.toArray()` does the same thing as `await`. Re-`await`ing a result you already awaited is safe and returns the same array, but switching between `await` and `for await`, or looping a second time with `for await`, throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. For the full rules on reading a result, shared identically by PostgreSQL and MongoDB, see [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult) in the ORM client reference.

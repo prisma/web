@@ -3,7 +3,7 @@ name: docs-writer
 description: Use when writing, rewriting, or improving technical docs (quickstarts, how-tos, tutorials, concept pages, or API references).
 metadata:
   author: Prisma
-  version: "2026.9.11"
+  version: "2026.9.15"
 ---
 
 # Docs Writer
@@ -163,6 +163,7 @@ Model-drafted docs share habits a reviewer can spot in one pass. None of these i
 - **Contrast slogans**: "X, not Y" constructions ("injected, not discovered", "built for agents, not just terminals", "refuses to guess"). One per page at most. A page of balanced contrasts reads like ad copy; state the behavior plainly instead.
 - **Absolute stacking**: "never", "every", "nothing", "always", "cannot drift" piling up across a page. Each absolute is a promise the product has to keep. Keep the ones you can verify and that the reader needs; describe what happens rather than asserting what can't.
 - **Exception-packed sentences**: one sentence carrying the normal case, an exception, its reason, the alternative, and a safety condition, held together by semicolons. One idea per sentence: state the default first ("By default, the command uses…"), then the exception as its own sentence ("In CI or other headless environments, set…"). A semicolon joining distinct ideas is usually two sentences.
+- **Staccato**: the opposite failure, and the usual result of over-correcting the one above. A run of short, clipped sentences, each holding one fact, with no connective between them: "The field takes no `@default`. Omit `id` when you create a document and MongoDB assigns it." or "A profile needs a user. A user does not need a profile. So `Profile` holds `userId`." Every sentence lands with the same thud and the reader has to work out how the facts relate. One idea per sentence does not mean one clause per sentence. When two facts are cause and effect, contrast, or condition and result, join them with "because", "so", "but", "while", or a colon, and let one sentence carry both: "A profile needs a user, but a user does not need a profile, so `Profile` holds `userId`." Vary sentence length within a paragraph, and read it aloud before finishing: if three sentences in a row are under ten words, at least two of them probably belong together.
 - **Manager-voice openers**: "`service` manages services…", "handles", "manages everything around". Lead with the user action or outcome ("Use `service` commands to manage…") and use concrete verbs: creates, stores, uses, selects, targets, deploys, builds.
 - **Coined shorthand**: compressed phrases invented mid-page ("local pin", "pick a target") instead of saying what actually happens. Spell out the relationship, and keep one consistent user-facing vocabulary: service, project, configuration, deployment, credentials.
 - **Implementation language**: internal detail that doesn't help the reader act ("the root node is `<entry>`'s default export"). Translate it into the behavior they observe ("the application exported as the default export from `<entry>`").
@@ -192,5 +193,6 @@ Before you finish, check:
 - [ ] Is there a way to verify success at the end?
 - [ ] Did you cut every phrase from "Cut the slop"?
 - [ ] Did you check the page against every pattern in "Don't write like a model"?
+- [ ] Did you read the prose aloud and rejoin any run of clipped sentences that belong together? `.claude/skills/docs-reader-review/scripts/check-staccato.py <page>` finds the worst runs.
 - [ ] Are product names and limitations accurate?
 - [ ] Has the page been through `docs-reader-review`? A fact review checks truth; the reader review checks whether a reader without your context can follow it. Nothing is finished until that pass reports no sentence the reader could not restate.

@@ -243,13 +243,13 @@ export function SidebarFolderContent({
 
 function PageTreeFolder({ item, children }: { item: PageTree.Folder; children: ReactNode }) {
   const path = useTreePath();
+  const active = path.some(
+    (node) =>
+      node === item || (node.type === "folder" && node.$id !== undefined && node.$id === item.$id),
+  );
 
   return (
-    <SidebarFolder
-      collapsible={item.collapsible}
-      active={path.includes(item)}
-      defaultOpen={item.defaultOpen}
-    >
+    <SidebarFolder collapsible={item.collapsible} active={active} defaultOpen={item.defaultOpen}>
       {item.index ? (
         <SidebarFolderLink href={item.index.url} external={item.index.external}>
           {item.icon}

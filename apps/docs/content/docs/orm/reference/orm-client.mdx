@@ -12,7 +12,7 @@ This page assumes your tables already exist. [Coming from Prisma ORM 7](/orm/com
 
 ## Example schema
 
-All examples on this page run against the schema below, except the grouped-aggregate ones, which use a separate `Customer` / `Order` schema shown under [Grouped aggregates](#grouped-aggregates). `contract.prisma` replaces `schema.prisma`. This page calls it the contract. Running `npx prisma contract emit` compiles it into two generated files: `contract.json`, read at run time, and `contract.d.ts`, read by TypeScript. You import both, as the examples below do. Run `npx prisma contract emit` again after every change to `contract.prisma`. A new project keeps all three files in `src/prisma/`.
+All examples on this page run against the schema below, except the grouped-aggregate ones, which use a separate `Customer` / `Order` schema shown under [Grouped aggregates](#grouped-aggregates). `contract.prisma` replaces `schema.prisma`, and this page calls it the contract. Running `npx prisma contract emit` compiles it into two generated files: `contract.json`, read at run time, and `contract.d.ts`, read by TypeScript. You import both, as the examples below do. Run `npx prisma contract emit` again after every change to `contract.prisma`. A new project keeps all three files in `src/prisma/`.
 
 <details>
 
@@ -199,7 +199,7 @@ Some parts of the schema the examples rely on:
 
 ## Setting up the client
 
-Create a client with `postgres(...)` or `mongo(...)`, then read and write your models through `db.orm`. The same `db` also has a query builder, `db.sql` on PostgreSQL and `db.query` on MongoDB, plus `db.raw` for raw queries. This page covers none of those three. See [Advanced queries](/orm/fundamentals/advanced-queries). Create `db` once per process, and close it with `await db.close()` when the process shuts down. The two databases have different entry points, and they name the models differently.
+Create a client with `postgres(...)` or `mongo(...)`, then read and write your models through `db.orm`. The same `db` also has a query builder, `db.sql` on PostgreSQL and `db.query` on MongoDB, plus `db.raw` for raw queries. This page covers none of those three: see [Advanced queries](/orm/fundamentals/advanced-queries). Create `db` once per process, and close it with `await db.close()` when the process shuts down. The two databases have different entry points, and they name the models differently.
 
 ### PostgreSQL
 
@@ -245,7 +245,7 @@ const users = await db.orm.users.all();
 
 ## Query-building methods
 
-These methods narrow a query. Each returns a collection. On this page, a collection is the query object you chain more methods on, such as `db.orm.public.User` or `db.orm.public.User.where(...)`. When this page says "a MongoDB collection", it means that query object. MongoDB itself calls its store of documents a collection too, and the name is the same one. You run the query with a [read method](#read-terminals) such as `all()` or `first()`. MongoDB supports fewer of these methods than PostgreSQL, and each method's Remarks say which databases it works on.
+These methods narrow a query, and each returns a collection. On this page, a collection is the query object you chain more methods on, such as `db.orm.public.User` or `db.orm.public.User.where(...)`. When this page says "a MongoDB collection", it means that query object. MongoDB itself calls its store of documents a collection too, and the name is the same one. You run the query with a [read method](#read-terminals) such as `all()` or `first()`. MongoDB supports fewer of these methods than PostgreSQL, and each method's Remarks say which databases it works on.
 
 Some examples import a filter helper you can use on its own. On PostgreSQL those come from `@prisma/orm-postgres/orm-client`, on MongoDB from `@prisma/orm-mongo/query-ast/execution`. See [Filter conditions and operators](#filter-conditions-and-operators).
 
@@ -408,7 +408,7 @@ For a task-oriented guide to loading related records, see [Relations and joins](
 
 ### Refinements, aggregates, and combine
 
-On PostgreSQL, the callback you pass to `include()` receives the related rows as a collection. This page calls that callback a refinement, which is the word in the heading above. You can filter, order, and paginate the related rows in it. You can also reduce them to a single value, or use `combine()` to return several results at once. To count or sum a whole model instead of a relation, see [Grouped aggregates](#grouped-aggregates), where `aggregate((agg) => ({ n: agg.count() }))` counts every row.
+On PostgreSQL, the callback you pass to `include()` receives the related rows as a collection. This page calls that callback a refinement, which is the word in the heading above. You can filter, order, and paginate the related rows in it, and you can also reduce them to a single value, or use `combine()` to return several results at once. To count or sum a whole model instead of a relation, see [Grouped aggregates](#grouped-aggregates), where `aggregate((agg) => ({ n: agg.count() }))` counts every row.
 
 #### Remarks
 
@@ -493,7 +493,7 @@ const users = await db.orm.public.User.include('posts', (posts) =>
 ```
 
 :::note[`min()` and `max()` over a date column]
-`min('createdAt')` over a `DateTime` column compiles. It returns a `Temporal.Instant`, the standard JavaScript object for a point in time. Not every JavaScript engine has `Temporal` yet. Check with `typeof Temporal === 'undefined'`, and if yours does not, install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
+`min('createdAt')` over a `DateTime` column compiles and returns a `Temporal.Instant`, the standard JavaScript object for a point in time. Not every JavaScript engine has `Temporal` yet. Check with `typeof Temporal === 'undefined'`, and if yours does not, install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
 
 `sum('createdAt')` and `avg('createdAt')` do not compile.
 :::
@@ -747,9 +747,9 @@ const tutorials = await db.orm.posts.variant('Tutorial').all();
 
 ## Read methods [#read-terminals]
 
-A read method runs the query and gives you the rows. `all()` and `first()` are available on both databases. `aggregate()` and `groupBy()` are PostgreSQL only and are documented under [Grouped aggregates](#grouped-aggregates).
+A read method runs the query and gives you the rows. `all()` and `first()` are available on both databases, while `aggregate()` and `groupBy()` are PostgreSQL only and are documented under [Grouped aggregates](#grouped-aggregates).
 
-There is no `count()` method on either database. On PostgreSQL, count with `aggregate((a) => ({ n: a.count() }))`. On MongoDB, counting takes two steps. `db.query`, the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder), builds the pipeline, and `runtime.query(...)` runs it:
+There is no `count()` method on either database, so on PostgreSQL, count with `aggregate((a) => ({ n: a.count() }))`. On MongoDB, counting takes two steps: `db.query`, the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder), builds the pipeline, and `runtime.query(...)` runs it.
 
 ```typescript
 const built = db.query.from('posts').count('total').build();
@@ -912,14 +912,14 @@ const features = await tasks.Task.features().all();
 
 ## Write methods [#mutation-terminals]
 
-A write method changes the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases. The differences between the two are listed under each method.
+A write method changes the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases, and the differences between the two are listed under each method.
 
 For Prisma ORM 7 users: `createMany` is `createAll()` or `createAndCount()`, `updateMany` is `updateAll()` or `updateAndCount()`, `deleteMany` is `deleteAll()` or `deleteAndCount()`, and `count` is [`aggregate()`](#grouped-aggregates) on PostgreSQL, or the two steps shown under [Read methods](#read-terminals) on MongoDB. There is no `skipDuplicates` option.
 
 To catch one of the errors named below, wrap the call in `try` and `catch`, then compare `error.code` with the string given here. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data). On MongoDB, a write method rejects a chain that already has `orderBy()`, `limit()`, or `offset()` on it, and every write except `updateAll()` and `deleteAll()` also rejects `include()`. Both throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. For grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
 
 :::warning[Filter before you update or delete]
-Always call `where()` before an update or a delete. On MongoDB the six update and delete methods and `upsert()` check for a filter and throw an error whose `code` is `ORM.WHERE_MISSING`, with a message naming the method you called, such as `updateAll() requires a .where() filter. Call .where() before .updateAll()`. On PostgreSQL, these methods do not compile without a `where()`. Nothing checks at run time. If a call without a filter does reach the database, `update()` and `delete()` change a single row and you cannot predict which one, and `updateAll()` and `deleteAll()` change every row.
+Always call `where()` before an update or a delete. On MongoDB the six update and delete methods and `upsert()` check for a filter and throw an error whose `code` is `ORM.WHERE_MISSING`, with a message naming the method you called, such as `updateAll() requires a .where() filter. Call .where() before .updateAll()`. On PostgreSQL, these methods do not compile without a `where()`, but nothing checks at run time. If a call without a filter does reach the database, `update()` and `delete()` change a single row and you cannot predict which one, and `updateAll()` and `deleteAll()` change every row.
 :::
 
 The examples below use `aliceId`, `bobId`, `carolId`, `postId`, `tagId`, `tutorialId`, and `userId` for the ids of rows that already exist. Substitute your own.
@@ -1433,7 +1433,7 @@ For Prisma ORM 7 users, `upsert()` replaces the `where` argument with `conflictO
 
 ## Grouped aggregates
 
-These methods exist only on PostgreSQL collections. `aggregate()` treats every row the query matches as one group. `groupBy().aggregate()` aggregates per group, and `having()` filters those groups. A MongoDB model's collection has none of them. To aggregate on MongoDB, use the pipeline builder, which is Prisma ORM's API for MongoDB's aggregation pipeline. It is described in [MongoDB: Pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
+These methods exist only on PostgreSQL collections. `aggregate()` treats every row the query matches as one group, while `groupBy().aggregate()` aggregates per group and `having()` filters those groups. A MongoDB model's collection has none of them, so to aggregate on MongoDB, use the pipeline builder, which is Prisma ORM's API for MongoDB's aggregation pipeline and is described in [MongoDB: Pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder).
 
 The examples below use a separate `Customer` / `Order` schema, where `Order.amount` is a numeric column:
 
@@ -1487,7 +1487,7 @@ Compute aggregates over the rows the query matches. `aggregate()` runs the query
 | `Int`, `BigInt` | `number \| null` | `number \| null` | `sumBigInt()`, `avgDecimal()` |
 | `Decimal` | `string \| null` | `string \| null` | `avgDecimal()` |
 
-Use `sumBigInt()` when the total can pass `Number.MAX_SAFE_INTEGER`. A `sum()` whose total passes it throws an error whose `code` is `RUNTIME.DECODE_FAILED`, thrown when the query result is read. Use `avgDecimal()` when you need the exact mean as a string, such as `'10.3333333333333333'`. Over a `Decimal` column `sum()` and `avg()` are already exact, and `sumBigInt()` is not available.
+Use `sumBigInt()` when the total can pass `Number.MAX_SAFE_INTEGER`, because a `sum()` whose total passes it throws an error whose `code` is `RUNTIME.DECODE_FAILED`, thrown when the query result is read. Use `avgDecimal()` when you need the exact mean as a string, such as `'10.3333333333333333'`. Over a `Decimal` column `sum()` and `avg()` are already exact, and `sumBigInt()` is not available.
 
 #### Options
 
@@ -1654,7 +1654,7 @@ const bigSpenders = await db.orm.public.Order.groupBy('customerId')
 
 ## Filter conditions and operators
 
-A condition says which rows match. You write one inside `where()`, and inside a relation filter such as `u.posts.some(...)`. If you call `where()` more than once, the conditions are ANDed. One call can take the object form and the next the callback form. PostgreSQL and MongoDB write conditions differently.
+A condition says which rows match. You write one inside `where()`, and inside a relation filter such as `u.posts.some(...)`. If you call `where()` more than once, the conditions are ANDed, and one call can take the object form and the next the callback form. PostgreSQL and MongoDB write conditions differently.
 
 - **PostgreSQL** compares a field with a method on that field, such as `u.email.eq(...)`, inside a callback. You name the callback's argument yourself, so the `u` and `p` below are only names. To combine conditions, import `and`, `or`, `not`, and `all` from `@prisma/orm-postgres/orm-client`.
 - **MongoDB** has no callback form. `where()` takes either the shorthand object or a filter such as `MongoFieldFilter.eq('name', 'Alice')`. The full list is under [`MongoFieldFilter`](#mongofieldfilter). Import `MongoFieldFilter`, `MongoAndExpr`, and `MongoOrExpr` from `@prisma/orm-mongo/query-ast/execution`. To combine conditions, use `.and()`, `.not()`, and `MongoOrExpr.of([...])`, described under [Combinators](#combinators).
@@ -1917,7 +1917,7 @@ import { MongoFieldFilter } from '@prisma/orm-mongo/query-ast/execution';
 const usersInSf = await db.orm.users.where(MongoFieldFilter.eq('address.city', 'San Francisco')).all();
 ```
 
-`MongoFieldFilter.eq` is the recommended form. The object form needs a cast, and the cast drops type checking for every key in that object:
+`MongoFieldFilter.eq` is the recommended form, because the object form needs a cast, and the cast drops type checking for every key in that object:
 
 ```typescript
 const usersInSf = await db.orm.users
@@ -1926,12 +1926,12 @@ const usersInSf = await db.orm.users
 ```
 ## Field update operations
 
-On MongoDB, `update()`, `updateAll()`, `updateAndCount()`, and `upsert()` take a callback in place of a data object. The callback gets one argument, the update builder, written `u` in these examples, and returns an array of the operations you want. `updateAndCount()` takes the callback in the same place as `update()`. `upsert()` takes it as its `update` key, beside `create`. PostgreSQL has no callback form: pass an object to [`update()`](#update) instead.
+On MongoDB, `update()`, `updateAll()`, `updateAndCount()`, and `upsert()` take a callback in place of a data object. The callback gets one argument, the update builder, written `u` in these examples, and returns an array of the operations you want. `updateAndCount()` takes the callback in the same place as `update()`, while `upsert()` takes it as its `update` key, beside `create`. PostgreSQL has no callback form: pass an object to [`update()`](#update) instead.
 
 - For a top-level field, read it off the update builder as a property: `u.bio.set('Hello')`.
 - For a field inside an embedded object, call the update builder as a function with the dot path: `u('address.city').set('San Francisco')`. The `upsert()` callback cannot use a dot path. Given one, `upsert()` throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. Set the whole embedded object on its top-level field instead, as in `u.address.set({ street: '1 Market St', city: 'San Francisco', zip: '94105', country: 'US' })`. Give every field of the embedded object, including the optional ones.
 
-All four methods require `.where()`. Without one they throw an error whose `code` is `ORM.WHERE_MISSING`. `.where({})` does not satisfy that rule, because an empty object adds no condition. To change every document, pass a filter that matches them all, such as `MongoFieldFilter.isNotNull('_id')`. A `_id` filter takes the hex string that a read gives you back, as the examples below show. On `upsert()`, `.where()` picks the document to update, exactly as on `update()`, and the full example is under [`upsert()`](#upsert). `update()` returns the updated document, or `null` when nothing matched. `updateAll()` returns an [`AsyncIterableResult`](#asynciterableresult) of the changed documents. [`updateAndCount()`](#updateandcount) exists on both databases, and it returns the number of changed documents.
+All four methods require `.where()`, and without one they throw an error whose `code` is `ORM.WHERE_MISSING`. `.where({})` does not satisfy that rule, because an empty object adds no condition. To change every document, pass a filter that matches them all, such as `MongoFieldFilter.isNotNull('_id')`. A `_id` filter takes the hex string that a read gives you back, as the examples below show. On `upsert()`, `.where()` picks the document to update, exactly as on `update()`, and the full example is under [`upsert()`](#upsert). `update()` returns the updated document, or `null` when nothing matched, and `updateAll()` returns an [`AsyncIterableResult`](#asynciterableresult) of the changed documents. [`updateAndCount()`](#updateandcount) exists on both databases, and it returns the number of changed documents.
 
 ### Available operations (MongoDB)
 
@@ -1950,7 +1950,7 @@ These examples use the MongoDB accessors from [Setting up the client](#setting-u
 
 ##### `set()` (MongoDB)
 
-Return as many operations as you want. They are applied together, in one write.
+Return as many operations as you want, and they are applied together, in one write.
 
 ```typescript
 const updated = await db.orm.users
@@ -2044,7 +2044,7 @@ The methods `all()` / `createAll()` / `updateAll()` / `deleteAll()` return an `A
 - `await` the result (or call `.toArray()`) to get every row in one array.
 - Loop over it with `for await ... of` to take rows one at a time.
 
-`createAll()`, `updateAll()`, and `deleteAll()` exist on PostgreSQL as well as MongoDB. [Write methods](#mutation-terminals) documents what each one takes, with examples. If you need the type by name, import it from `@prisma/orm-postgres/components/runtime` on PostgreSQL, or from `@prisma/orm-mongo/components/runtime` on MongoDB.
+`createAll()`, `updateAll()`, and `deleteAll()` exist on PostgreSQL as well as MongoDB, and [Write methods](#mutation-terminals) documents what each one takes, with examples. If you need the type by name, import it from `@prisma/orm-postgres/components/runtime` on PostgreSQL, or from `@prisma/orm-mongo/components/runtime` on MongoDB.
 
 #### Single consumption and mode switching
 
@@ -2053,7 +2053,7 @@ Each result is read once, one way:
 - Re-`await`ing (or calling `.toArray()` on) a result you already awaited is **safe**. It returns the same array.
 - Looping a result a second time with `for await` throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. So does switching from one way to the other, such as awaiting a result and then looping it. The message contains `already been consumed`. To recognise the error, import `isRuntimeError` from `@prisma/orm-postgres/components/runtime` on PostgreSQL, or from `@prisma/orm-mongo/components/runtime` on MongoDB, and check `error.code`.
 
-PostgreSQL and MongoDB behave the same here. The example below uses the PostgreSQL accessor. On MongoDB the same methods are on `db.orm.users`, see [Setting up the client](#setting-up-the-client). `all()` returns the result object straight away, and the `await` is what runs the query, so the example holds the result in a variable.
+PostgreSQL and MongoDB behave the same here, and the example below uses the PostgreSQL accessor. On MongoDB the same methods are on `db.orm.users`, see [Setting up the client](#setting-up-the-client). `all()` returns the result object straight away, and the `await` is what runs the query, so the example holds the result in a variable.
 
 ```typescript
 import { isRuntimeError } from '@prisma/orm-postgres/components/runtime';

@@ -3,7 +3,7 @@ title: Limitations
 description: What Prisma Composer does not do yet, so you can name the gap instead of working around it blind.
 url: /composer/limitations
 metaTitle: Limitations | Prisma Composer
-metaDescription: Current limitations of Prisma Composer in Early Access, including contract kinds, interactive auth, streaming responses, and Windows support.
+metaDescription: Current limitations of Prisma Composer in Early Access, including contract kinds, in-memory bindings, interactive auth, and Windows support.
 ---
 
 Prisma Composer is in [Early Access](/console/more/feature-maturity#early-access). This page lists what it does not do yet, so you can plan around a gap instead of discovering it mid-build. If something you need is missing here and below, check the [examples](https://github.com/prisma/composer/tree/main/examples) and design docs in the [Composer repository](https://github.com/prisma/composer), then file an issue there rather than guessing at an API.
@@ -12,7 +12,6 @@ Prisma Composer is in [Early Access](/console/more/feature-maturity#early-access
 
 - **RPC over HTTP is the only contract kind.** No gRPC, WebSocket, or streaming contracts.
 - **No in-memory contract bindings.** A dependency cannot yet be wired to a co-located handler without HTTP; use [`bootstrapService`](/composer/testing#integration-tests-bootstrapservice) with a loopback fake in tests.
-- **Streaming responses do not stream in production.** The platform's HTTP front door buffers a response until it completes, so an open SSE tail delivers nothing and times out at 60 seconds.
 
 ## Deploys and auth
 
@@ -32,6 +31,7 @@ These are properties of running on [Prisma Compute](/compute) rather than missin
 - Compute scales to zero, so idle database connections get closed and cold calls can see `ECONNRESET`.
 - A deployed RPC endpoint answers only its wired consumers; hand-rolled probes get `401`.
 - Environment variables prefixed `COMPOSER_*` belong to the deploy and are rewritten on every deploy.
+- Streaming responses are delivered as your service sends them, but the service has 60 seconds to send the first bytes before the ingress returns `504 Gateway Time-out`; see [Request timeout](/compute/request-timeout).
 
 ## Next steps
 

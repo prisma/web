@@ -54,11 +54,11 @@ npx prisma@latest contract emit
 1. `contract.json`: a canonical JSON description of your models, storage layout, and required capabilities.
 2. `contract.d.ts`: the TypeScript types derived from it, which is what makes your queries type-safe.
 
-Every other part of the toolchain reads these artifacts, not your source file. The query APIs read `contract.d.ts` for types. The migration planner diffs two `contract.json` files. The runtime verifies `contract.json` against the database. That is why `contract emit` comes first in almost every workflow: after any contract change, emit before you plan, migrate, or run.
+Every other part of the toolchain reads these artifacts, not your source file: the query APIs read `contract.d.ts` for types, the migration planner diffs two `contract.json` files, and the runtime verifies `contract.json` against the database. That is why `contract emit` comes first in almost every workflow: after any contract change, emit before you plan, migrate, or run.
 
-Emission is deterministic. The same source always produces byte-identical artifacts, so both files are committed to version control and diff cleanly in code review. Think of the pair like `package.json` and `package-lock.json`: the source is what you ask for, the artifacts are the exact resolved result.
+Emission is deterministic: the same source always produces byte-identical artifacts, so both files are committed to version control and diff cleanly in code review. Think of the pair like `package.json` and `package-lock.json`: the source is what you ask for, the artifacts are the exact resolved result.
 
-See [The emitted artifacts](/orm/contract-authoring/the-contract-artifact) for what is inside each file.
+See [contract.json and contract.d.ts](/orm/contract-authoring/the-contract-artifact) for what is inside each file.
 
 ## Hashes and the database signature
 
@@ -119,7 +119,7 @@ Prisma ORM's layering exists for extensibility. Our core remains small, because 
 
 ## Capabilities
 
-A **capability** is a specific feature that a database may or may not support, such as `RETURNING` clauses or vector indexes. Your contract declares the capabilities it needs; the adapter reports what the connected database provides. Prisma ORM compares the two at startup, so a missing feature surfaces as one clear error when the app boots, instead of as a failed query later. See [Capabilities](/orm/contract-authoring/capabilities) for more information.
+A **capability** is a specific feature that a database may or may not support, such as `RETURNING` clauses or vector indexes. Your contract declares the capabilities it needs; the adapter reports what the connected database provides. Prisma ORM compares the two at startup, so a missing feature surfaces as one clear error when the app boots, instead of as a failed query later. See [Supported database features](/orm/contract-authoring/capabilities) for more information.
 
 ## Codecs
 
@@ -159,11 +159,11 @@ Three middleware ship with Prisma ORM at present, and they are in the early stag
 
 ## Migrations: a graph of contracts
 
-A **migration** is a recorded change that moves the database's schema from the state one contract describes to the state another describes. It is a directory in your repository containing the change as editable TypeScript (`migration.ts`), the compiled operations that Prisma runs (`ops.json`), and metadata recording which contract hash it starts `from` and moves `to`.
+A **migration** is a recorded change to your database. Most migrations change the database schema from what one contract describes to what another describes, so each one records which contract hash it starts `from` and which it ends at, `to`. A migration that only changes rows, such as a backfill, starts and ends at the same contract state. On disk, a migration is a directory in your repository that holds the change as editable TypeScript (`migration.ts`), the compiled operations that Prisma ORM runs (`ops.json`), and that `from` and `to` metadata (`migration.json`).
 
-One command applies them: [`db migrate`](/cli/db-migrate) advances a live database along the recorded migrations. The other `migration ...` commands never touch a database; they create and inspect the migration files in your repository.
+Only one of these commands changes a database: [`db migrate`](/cli/db-migrate) applies the recorded migrations to it. The other `migration ...` commands create and inspect the migration files in your repository, and never connect to a database.
 
-Because every migration records its `from` and `to` hashes, the migrations in a repository form a **graph**: contracts are the nodes, migrations are the edges. When two branches each add a migration and both merge, the graph has a fork and a join, and `db migrate` finds a path from wherever a database currently is to wherever you want it to be. No renumbering, no rebasing migration files.
+Because every migration records its `from` and `to` hashes, the migrations in a repository form a **graph**: contracts are the nodes, migrations are the edges. When two branches each add a migration and both merge, the graph has a fork and a join, and `db migrate` works out which migrations to run, given the contract state the database matches and the one you name. No renumbering, no rebasing migration files.
 
 A **ref** is a named pointer at a contract, such as `production` or `staging`, managed with [`migration ref`](/cli/migration-ref). Refs let deployment commands target an environment by name: `db migrate --to production`.
 

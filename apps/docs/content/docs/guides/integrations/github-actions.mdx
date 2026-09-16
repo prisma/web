@@ -4,7 +4,7 @@ description: 'Provision a Prisma Postgres database for every pull request with G
 image: /img/guides/prisma-postgres-github-actions-cover.png
 url: /guides/integrations/github-actions
 metaTitle: How to provision preview databases with GitHub Actions and Prisma Postgres
-metaDescription: 'Provision and manage Prisma Postgres databases per pull request with GitHub Actions and the Prisma 8 CLI: create the database, run migrations and seed it in CI, and clean it up on close.'
+metaDescription: 'Provision and manage Prisma Postgres databases per pull request with GitHub Actions and the Prisma CLI: create the database, run migrations and seed it in CI, and clean it up on close.'
 ---
 
 ## Introduction
@@ -17,9 +17,9 @@ When the pull request is closed, the workflow deletes the database. Every pull r
 
 The project setup, migrations, seed script, and the `postgres create`, `postgres list`, and `postgres connection create` commands below were run against a live Prisma Postgres database. The workflow file is assembled from those commands.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/integrations/github-actions](/guides/v7/integrations/github-actions).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/integrations/github-actions](/guides/v7/integrations/github-actions).
 
 :::
 
@@ -37,9 +37,9 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Set up per-pull-request Prisma Postgres databases for this project with GitHub Actions and Prisma 8.
+Set up per-pull-request Prisma Postgres databases for this project with GitHub Actions and Prisma ORM.
 
-1. Add Prisma 8 to the project with `npx prisma@latest orm init --yes --target postgres --authoring psl` (run it after a lockfile exists), then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Define User and Post models in `src/prisma/contract.prisma`, run `npx prisma@latest contract emit`, then `npx prisma@latest migration plan --name init` and `npx prisma@latest db migrate` against the DATABASE_URL I give you (or one from `npx create-db@latest`).
+1. Add Prisma ORM to the project with `npx prisma@latest orm init --yes --target postgres --authoring psl` (run it after a lockfile exists), then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Define User and Post models in `src/prisma/contract.prisma`, run `npx prisma@latest contract emit`, then `npx prisma@latest migration plan --name init` and `npx prisma@latest db migrate` against the DATABASE_URL I give you (or one from `npx create-db@latest`).
 2. Write `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, skips when users already exist (use `.aggregate((a) => ({ total: a.count() }))`, not `.count()`), and ends with `await db.close()`. Add a `seed` script and verify `npm run seed` works twice.
 3. Check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login`. Create a dedicated platform project with `npx prisma@latest project create <name>` and show me the project id.
 4. Write `.github/workflows/prisma-postgres-preview.yml` following https://www.prisma.io/docs/guides/integrations/github-actions.md: a provision job that finds or creates a database named after the pull request with `npx prisma@latest postgres list|create --project "$PRISMA_PROJECT_ID" --json`, reads `.envelope.result.connectionString` with jq, runs `db migrate --db`, `db verify --db`, and `npm run seed`, then comments on the pull request; and a cleanup job that deletes the database with `postgres delete <id> --confirm <id>` when the pull request closes. Always pass `--project`; the CLI does not read PRISMA_PROJECT_ID from the environment for these commands.
@@ -61,11 +61,11 @@ npm install
 
 The empty `npm install` writes a `package-lock.json`. `orm init` picks the package manager from the lockfile it finds, so creating one first keeps the setup on npm.
 
-## 2. Add Prisma 8
+## 2. Add Prisma ORM
 
-In this step you add Prisma 8 to the project, define the data model, create the first migration, and seed the database locally. Everything you do here runs again inside GitHub Actions in step 4, against a fresh database.
+In this step you add Prisma ORM to the project, define the data model, create the first migration, and seed the database locally. Everything you do here runs again inside GitHub Actions in step 4, against a fresh database.
 
-### 2.1. Initialize Prisma 8
+### 2.1. Initialize Prisma ORM
 
 ```npm
 npx prisma@latest orm init --yes --target postgres --authoring psl
@@ -187,7 +187,7 @@ Commit the `migrations/` directory. Whenever you change the contract, run `contr
 
 ### 2.5. Seed the database
 
-Create `src/prisma/seed.ts`. Prisma 8 writes take one row at a time and return the inserted row, so create each user, then create its posts with the returned `id`:
+Create `src/prisma/seed.ts`. Prisma ORM writes take one row at a time and return the inserted row, so create each user, then create its posts with the returned `id`:
 
 ```typescript title="src/prisma/seed.ts"
 import { db } from "./db.ts";
@@ -702,7 +702,7 @@ Use `--json` in every CI step that needs a value back. The `--json` stream ends 
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a `Comment` model to the contract, plan a migration for it, and update the seed script."
 - "Add a test job to the preview workflow that runs `npm test` against the provisioned database after the seed step."
