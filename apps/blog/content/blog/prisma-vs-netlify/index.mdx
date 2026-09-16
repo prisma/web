@@ -13,7 +13,7 @@ tags:
   - "orm"
 ---
 
-Prisma and Netlify both provide application hosting and managed Postgres. The main difference is how they bring the application together. Prisma connects the data model, database, and services through TypeScript definitions. Netlify connects functions, data, and web delivery through its deployment workflow.
+Prisma and Netlify both provide application hosting and managed Postgres. The main difference is how they bring the application together. Prisma connects the data model, database, and services through TypeScript definitions. Netlify builds and publishes a site's frontend and backend functions together, with preview URLs for reviewing changes before they go live.
 
 That difference becomes more useful to understand as an application grows. A feature might need a schema change, a new API, and a frontend that calls it. With Prisma, the definitions for those parts live in the codebase, where a developer or coding agent can inspect them and the compiler can check that they agree.
 
@@ -40,7 +40,7 @@ The practical differences show up in what you deploy, how you connect it, and wh
 | Application hosting | TypeScript HTTP services on Prisma Compute, running on Bun | Serverless Functions and Edge Functions alongside site deployment |
 | Managed PostgreSQL | Prisma Postgres, usable with any PostgreSQL client | Netlify Database, built on Neon and managed through Netlify |
 | Typed data access | Prisma ORM 8, or your preferred PostgreSQL client | Native database SDK, Drizzle integration, or another PostgreSQL-compatible client |
-| Application composition | Composer declares services, resources, and typed dependencies together | Functions and platform services integrate with the site's deploy workflow |
+| Application composition | Composer declares services, resources, and typed dependencies together | Site code and functions are built and versioned together, with database branches connected to previews |
 | Preview databases | Branches can own separate databases; configure the database connection for each environment | Netlify Database creates a production-data copy for each Deploy Preview |
 | Deployment charges | No separate charge for deployments or preview branch creation; resource usage is billed | Production deploys consume credits; preview deployment events have no deployment charge, but usage still counts |
 
@@ -72,7 +72,9 @@ Prisma Compute gives each branch its own application environment, and branches c
 
 This gives a team somewhere to test a change to the application and its schema together. When supplying a `DATABASE_URL` yourself, configure a separate database for the preview environment. Prisma's [branching model](https://www.prisma.io/docs/compute/branching) supports that isolation; it doesn't automatically copy production data into every preview.
 
-Netlify Database takes a different approach to preview data. Each Deploy Preview gets a database branch containing a copy of production data from when the preview was first created. Netlify also applies migrations through its deployment lifecycle. Those changes stay separate from production, as described in its [database documentation](https://docs.netlify.com/build/data-and-storage/netlify-database/).
+On Netlify, you can connect a Git repository and configure a build command. With continuous deployment enabled, pushing code triggers a build of the site and its functions. A pull request gets a Deploy Preview URL for the team to review; merging into the configured production branch triggers a production deployment. The functions are versioned with the site, so the preview runs the backend code belonging to that change. Netlify documents this in its [Git workflow](https://docs.netlify.com/build/git-workflows/overview/) and [Functions overview](https://docs.netlify.com/build/functions/overview/).
+
+Netlify Database extends that process to preview data. Each Deploy Preview gets a database branch containing a copy of production data from when the preview was first created. Netlify also applies migrations as part of production and preview deployments. Changes made in the preview database stay separate from production, as described in its [database documentation](https://docs.netlify.com/build/data-and-storage/netlify-database/).
 
 Both workflows let you test database-backed changes before shipping. With Prisma, the database can also be part of the service's declared dependencies, alongside the other resources it needs. As you add services, you keep describing and deploying them through Composer.
 
