@@ -73,7 +73,7 @@ Do not commit `.env`. `orm init` already lists it in `.gitignore`.
 
 ### 1.3. Where a plan starts
 
-`migration plan` is offline. It never asks the database where it is, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`, otherwise the empty database. Keep the `db` ref pointing at the state your local database is on by applying with `--advance-ref db`:
+`migration plan` is offline. It never asks the database which contract state it matches, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`, otherwise the empty database. Keep the `db` ref pointing at the state your local database matches by applying with `--advance-ref db`:
 
 ```npm
 npx prisma@latest db migrate --advance-ref db
@@ -138,7 +138,7 @@ The `{bin}` in the hint is the CLI's placeholder for however you invoked it. Rea
 
 ### 2.1. Pull, check, apply
 
-When a teammate merges a schema change, it arrives as three things: an edited `contract.prisma`, the re-emitted `contract.json` and `contract.d.ts`, and a new migration directory. Pull them, then ask Prisma where your database is:
+When a teammate merges a schema change, it arrives as three things: an edited `contract.prisma`, the re-emitted `contract.json` and `contract.d.ts`, and a new migration directory. Pull them, then ask Prisma which contract state your database matches:
 
 ```bash
 git pull
@@ -158,7 +158,7 @@ If nothing changed, you see the whole history marked applied:
 ✔ Up to date
 ```
 
-`@db` marks where your database is, `@contract` where the emitted contract is, and `(db)` where the `db` ref points. When migrations are pending, the tree flags each one with `⧗ pending` and a summary line tells you how many. Apply them and update the `db` ref in one step:
+`@db` marks the contract state your database matches, `@contract` the emitted contract, and `(db)` the state the `db` ref names. When migrations are pending, the tree flags each one with `⧗ pending` and a summary line tells you how many. Apply them and update the `db` ref in one step:
 
 ```npm
 npx prisma@latest db migrate --advance-ref db
@@ -330,7 +330,7 @@ npx prisma@latest contract emit
 storageHash:    cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
 ```
 
-- `migrations/app/refs/db.json` records where a local database was. Each branch advanced it to its own state, and neither is where your database is. Take either side; you will set it correctly when you apply in section 3.5.
+- `migrations/app/refs/db.json` records the contract state a local database last matched. Each branch pointed it at its own state, and neither is the state your database matches now. Take either side; you will set it correctly when you apply in section 3.5.
 
 ```bash
 git checkout --ours migrations/app/refs/db.json
@@ -472,9 +472,9 @@ git add -A
 git commit -m "Merge javier/tag-model and plan merge migrations"
 ```
 
-### 3.6. Every database catches up on its own path
+### 3.6. Every database runs only the migrations it needs [#36-every-database-catches-up-on-its-own-path]
 
-Ania pulls `main`. Her database is on `9bba644`, so only the migration that adds Javier's table is pending for her:
+Ania pulls `main`. Her database matches `9bba644`, so only the migration that adds Javier's table is pending for her:
 
 ```npm
 npx prisma@latest migration status
