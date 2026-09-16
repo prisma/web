@@ -2,7 +2,7 @@
 name: content-write-blog
 description: Use when the operator wants to write a blog post, draft a blog article, start a new post for the Prisma blog, or publish to prisma.io/blog.
 metadata:
-  version: "2026.9.15"
+  version: "2026.9.16"
 ---
 
 # Write Blog Post
@@ -163,7 +163,7 @@ Spawn one reviewer agent per applicable lens, every lens that applies, regardles
 3. **Distinct lenses, one per reviewer** — diversity catches what redundancy misses. The lenses:
    - **Fact refuter**: attack every number, price, version, date, and named behavior. Verify each against the live primary source (vendor pricing page, official docs), not from memory. Report any claim whose source does not say what the post says.
    - **Code refuter** (posts with code): run every sample fresh against the stated versions. Report anything that does not compile, run, or produce the shown output.
-   - **Reader skeptic**: where does the post confuse, overclaim, contradict itself, or read like marketing? Where would a knowledgeable reader stop trusting it?
+   - **Reader skeptic**: where does the post confuse, overclaim, contradict itself, or read like marketing? Where would a knowledgeable reader stop trusting it? Give this reviewer `.claude/skills/docs-reader-review/references/ai-writing-signs.md` so it names the pattern it is reacting to.
    - **Positioning refuter**: report claims that contradict the positioning doc (fetched from `https://raw.githubusercontent.com/prisma/ignite/main/docs/prisma/positioning.md`) or overstate product status (GA claims, superlatives, unverified benchmarks).
 4. **The implementer fixes; reviewers re-review.** Findings come back to the authoring session, which applies fixes. Re-run the reviewers on the fixed draft. Repeat until a round produces no confirmed findings. The implementer never marks its own finding as resolved without a reviewer pass confirming it.
 
@@ -179,9 +179,14 @@ The lead you draft, and the prose the author later writes over your stubs, ship 
 - **Name the actor.** A person or a product does the thing. Write "the team shipped the fix that week", not "the fix happened".
 - **Be specific.** Replace "this changes everything" or "the implications are significant" with the concrete change. Drop "every", "always", and "never" where a real number fits better.
 - **Cut filler.** No "really", "simply", "just", and no marketing verbs like "leverage", "unlock", "seamless", "powerful".
-- **Say it straight.** "Not X, but Y" and "X isn't the problem, Y is" telegraph the reversal. State Y.
+- **Say it straight.** "Not X, but Y", "not just X but also Y", and "X isn't the problem, Y is" telegraph the reversal. State Y.
 - **Vary sentence length.** A run of short, clipped sentences with no connectives reads as staccato ("The fix shipped. Latency dropped. Users noticed."), and it is the most common tell of a model-drafted post. When facts are cause and effect or contrast, join them with "because", "so", or "but", and let a longer sentence carry them. Then let a short one land the point.
-- **Use a comma, colon, or period in place of em dashes.**
+- **Use "is" and "has".** Not "serves as", "acts as", "represents", "boasts", "offers".
+- **No participle tails.** A fact followed by "..., ensuring", "..., making it easy to", "..., allowing teams to" is the model's opinion glued to your fact. Cut the tail or make the consequence its own concrete sentence.
+- **Count the things you have.** Three adjectives, three examples, three bullets by reflex is a tell. Two and four are allowed.
+- **No section summaries or didactic openers.** No "In summary", "In conclusion", "It's important to note", "It's worth noting". No "Despite these challenges, X remains..." paragraphs.
+- **Sentence case headings, straight quotes, no `---` between sections.** Use a comma, colon, or period in place of em dashes.
+- **Run the checker.** `.claude/skills/docs-reader-review/scripts/check-ai-signs.sh <post>` flags the signs a regex can catch. The full list with replacements, adapted from Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), is in `.claude/skills/docs-reader-review/references/ai-writing-signs.md`; the reader-skeptic reviewer in Step 10 should have it.
 
 ## Anti-patterns
 

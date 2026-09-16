@@ -3,7 +3,7 @@ name: docs-writer
 description: Use when writing, rewriting, or improving technical docs (quickstarts, how-tos, tutorials, concept pages, or API references).
 metadata:
   author: Prisma
-  version: "2026.9.15"
+  version: "2026.9.16"
 ---
 
 # Docs Writer
@@ -151,16 +151,31 @@ Delete these on sight. They add length, not clarity.
 - **Meta-commentary**: "In this section, we'll…", "As we'll see…", "Now, let's…". Just write the section.
 - **Filler adverbs**: really, just, simply, actually, basically, of course. ("Simply run" insults a stuck reader.)
 - **Business jargon**: leverage, unlock, seamless, robust, powerful, deep dive, game-changer. Replace with the plain verb or cut.
+- **Machine vocabulary**: crucial, pivotal, key (as an adjective), enhance, foster, empower, showcase, underscore, highlight (as a verb), delve, landscape, ecosystem, tapestry, testament, vibrant, comprehensive, streamlined, cutting-edge, "Additionally," opening a sentence, utilize for use, authored for wrote. The full table with replacements is in `.claude/skills/docs-reader-review/references/ai-writing-signs.md`.
+- **Didactic openers**: "It's important to note that", "It's worth noting", "Keep in mind that". Cut the opener; the sentence stands alone. Use a `:::note` directive when the point must stand out.
+- **Section summaries**: "In summary", "In conclusion", "Overall", or a closing paragraph that restates the section. Stop when the last step is done.
 - **Vague value claims**: "a powerful experience", "the future of X", "everything you need". Replace with a specific capability or remove.
-- **Em dashes**. Use a comma, colon, or period instead.
+- **Em dashes**. Use a comma, colon, or period instead. Straight quotes, not curly.
 - **Hype**: don't sell inside docs. The reader already chose the product; they want it to work.
 
 ## Don't write like a model
 
-Model-drafted docs share habits a reviewer can spot in one pass. None of these is wrong in isolation; their density is what gives a page a synthetic voice. Check for each before finishing.
+Model-drafted docs share habits a reviewer can spot in one pass. None of these is wrong in isolation; their density is what gives a page a synthetic voice. Check for each before finishing. The list below is the docs-specific set; the longer catalogue, adapted from Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), is in `.claude/skills/docs-reader-review/references/ai-writing-signs.md`, and `.claude/skills/docs-reader-review/scripts/check-ai-signs.sh` catches the ones a regex can.
 
+The cause behind all of them: a model writes the most likely sentence, which is the one that could be true of anything. Specific facts get smoothed into generic praise. So the fix is never a synonym; the fix is the specific thing: the exact command, the number, what the reader sees.
+
+- **Copula avoidance**: "serves as", "acts as", "functions as", "stands as", "represents", "boasts", "offers" where "is" or "has" is the word. "Prisma Postgres is a managed database", not "serves as a managed database solution".
+- **Participle tails**: a fact followed by an "-ing" clause that editorializes about it: "..., ensuring your queries stay fast", "..., making it easy to scale", "..., allowing teams to move faster". Delete the tail. If the consequence is real, give it its own sentence with a concrete claim.
+- **Puffed significance**: a feature described by its importance ("plays a crucial role", "is essential for", "marks a shift") rather than its behavior. Say what it does.
+- **Vague connection**: "associated with", "in connection with", "related to", "tied to" in place of the actual relationship. Say what points at what.
+- **Vague attribution**: "many developers find", "it is widely considered", "best practice suggests". Name who, or state the recommendation as ours.
+- **Elegant variation**: the same thing called the client, then the library, then the ORM, then the runtime, to avoid repeating a word. In docs the reader cannot tell if those are one thing or four. Pick one name and repeat it.
+- **Bold-label lists everywhere**: `**Label:** description` bullets in place of paragraphs. Use them for items of the same kind the reader will scan; put reasoning in prose. Bold is otherwise for UI labels and the rare must-not-miss warning.
+- **Limitations formula**: "Despite its advantages, X faces several challenges... Despite these challenges, X remains a strong choice." State each limitation as a plain fact where the reader hits it, and stop.
+- **Title Case headings** and `---` breaks between sections. House style is sentence case, and headings already separate sections.
+- **Leaked chat**: "Here's an overview of", "I hope this helps", "Let me know if", unfilled `[placeholders]`, and "while specific details are not widely documented, X likely..." (the page either knows or marks a `Q` for the operator; it never guesses).
 - **Frontmatter echo**: the body's first sentence repeats the frontmatter `description` almost verbatim. The description summarizes the page for cards and search results; the opening orients the reader. Write them differently, and define the product once, not once per metadata field.
-- **Contrast slogans**: "X, not Y" constructions ("injected, not discovered", "built for agents, not just terminals", "refuses to guess"). One per page at most. A page of balanced contrasts reads like ad copy; state the behavior plainly instead.
+- **Contrast slogans and negative parallelism**: "X, not Y", "not just X but also Y", "it isn't X, it's Y", "Y rather than X" ("injected, not discovered", "built for agents, not just terminals", "refuses to guess"). Each frames a misconception the reader did not have and then resolves it. One per page at most, and only where the reader would genuinely have assumed X. State the behavior plainly instead.
 - **Absolute stacking**: "never", "every", "nothing", "always", "cannot drift" piling up across a page. Each absolute is a promise the product has to keep. Keep the ones you can verify and that the reader needs; describe what happens rather than asserting what can't.
 - **Exception-packed sentences**: one sentence carrying the normal case, an exception, its reason, the alternative, and a safety condition, held together by semicolons. One idea per sentence: state the default first ("By default, the command uses…"), then the exception as its own sentence ("In CI or other headless environments, set…"). A semicolon joining distinct ideas is usually two sentences.
 - **Staccato**: the opposite failure, and the usual result of over-correcting the one above. A run of short, clipped sentences, each holding one fact, with no connective between them: "The field takes no `@default`. Omit `id` when you create a document and MongoDB assigns it." or "A profile needs a user. A user does not need a profile. So `Profile` holds `userId`." Every sentence lands with the same thud and the reader has to work out how the facts relate. One idea per sentence does not mean one clause per sentence. When two facts are cause and effect, contrast, or condition and result, join them with "because", "so", "but", "while", or a colon, and let one sentence carry both: "A profile needs a user, but a user does not need a profile, so `Profile` holds `userId`." Vary sentence length within a paragraph, and read it aloud before finishing: if three sentences in a row are under ten words, at least two of them probably belong together.
@@ -172,8 +187,10 @@ Model-drafted docs share habits a reviewer can spot in one pass. None of these i
 - **Mid-clause links**: a link dropped between unrelated clauses. Introduce it after the context it supports: "See [Deploying](…) for details."
 - **Definition cascade**: a landing page that defines every noun in identical rhythm ("An application is… A service is… A branch is…"). Define a term where the reader first needs it. If a glossary earns its place, keep it short and hand off to a page that goes deeper.
 - **Prose restating code**: after a code block, narrating what each line does. Explain only what the code can't show: why, or a non-obvious consequence.
-- **Triad reflex**: three-part lists everywhere ("reviewable, repeatable, and versioned"). Vary list length; cut members that don't earn their place.
+- **Triad reflex**: three-part lists everywhere ("reviewable, repeatable, and versioned"), three adjectives, three examples, three bullets. Models reach for three by reflex. Use the number of items there actually are; cut members that don't earn their place.
 - **Exhaustive nav dumps**: a "What to read next" that lists every sibling page in the same grammatical form. Pick the two or three pages this reader most likely needs next; the sidebar already lists everything.
+
+What is not a sign, and not a reason to rewrite: correct grammar, precise vocabulary in general (the signal is the specific words above, not formality), a single "However" or "so", or short well-organized paragraphs. Plain "is", "has", "wrote", "used", and hedges like "usually" or "perhaps" are how people write; keep them.
 
 The same applies to PR descriptions for docs changes: write a short reviewer-facing summary of what changed and why, and put validation details (commands run, environments used) in a collapsed section. Don't paste the working session's log.
 
@@ -194,5 +211,6 @@ Before you finish, check:
 - [ ] Did you cut every phrase from "Cut the slop"?
 - [ ] Did you check the page against every pattern in "Don't write like a model"?
 - [ ] Did you read the prose aloud and rejoin any run of clipped sentences that belong together? `.claude/skills/docs-reader-review/scripts/check-staccato.py <page>` finds the worst runs.
+- [ ] Does `.claude/skills/docs-reader-review/scripts/check-ai-signs.sh <page>` come back clean?
 - [ ] Are product names and limitations accurate?
 - [ ] Has the page been through `docs-reader-review`? A fact review checks truth; the reader review checks whether a reader without your context can follow it. Nothing is finished until that pass reports no sentence the reader could not restate.
