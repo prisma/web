@@ -48,11 +48,10 @@ Migrations invite movement metaphors: the database travels, the ref moves, the r
 | moves the `db` ref | points the `db` ref at that state; updates the `db` ref | A ref is a name for one contract state |
 | the database is behind and has to catch up | the database is several contract states out of date | |
 | it takes the shortest path to the contract state | it runs the fewest migrations that end at that state | Keep "path" where the page is about the graph itself |
-| the database's schema | the database, or its tables and columns | "Schema" is the PostgreSQL namespace, such as `public` |
 
 `from` and `to` are field names in `migration.json`, so "starts `from`" and "ends at, `to`" are literal, not metaphors.
 
-`scripts/check-plain.sh` enforces the database, marker and ref rows. It does not enforce "path", because the graph page uses that word correctly, or "the database is behind", because sample prompts quote a user's own words. The reader review judges those two.
+`scripts/check-plain.sh` enforces the database, marker and ref rows. "Database schema" is the ordinary term for the tables, columns and constraints, and stays allowed. It does not enforce "path", because the graph page uses that word correctly, or "the database is behind", because sample prompts quote a user's own words. The reader review judges those two.
 
 ## Sentence shapes to avoid
 
