@@ -1,15 +1,16 @@
 "use client";
 import * as Primitive from "fumadocs-core/toc";
+import { stripTocLinks } from "../../lib/toc-title";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { TocThumb, useTOCItems } from "./index";
 import { mergeRefs } from "../../lib/merge-refs";
-import { useI18n } from "@fumadocs/base-ui/contexts/i18n";
+import { useTranslations } from "@fuma-translate/react";
 
 export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
   const containerRef = useRef<HTMLDivElement>(null);
   const items = useTOCItems();
-  const { text } = useI18n();
+  const t = useTranslations({ note: "table of contents" });
 
   const [svg, setSvg] = useState<{
     path: string;
@@ -63,7 +64,7 @@ export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
   if (items.length === 0)
     return (
       <div className="rounded-square border bg-fd-card p-3 text-xs text-fd-muted-foreground">
-        {text.tocNoHeadings}
+        {t("No Headings")}
       </div>
     );
 
@@ -160,7 +161,9 @@ function TOCItem({
           insetInlineStart: offset,
         }}
       />
-      {item.title}
+      {/* Anchors are unwrapped: a heading that contains a link would otherwise nest
+          an <a> inside this one and emit a basePath-less href. */}
+      {stripTocLinks(item.title)}
     </Primitive.TOCItem>
   );
 }

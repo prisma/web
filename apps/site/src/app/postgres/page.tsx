@@ -3,8 +3,9 @@ import { postgresContent } from "@/components/product/content/postgres";
 import { ProductPage } from "@/components/product/product-page";
 
 export const metadata = createPageMetadata({
-  title: "Prisma Postgres",
-  description: "Production-ready Postgres, already wired to your stack.",
+  title: "Prisma Postgres | Serverless PostgreSQL for TypeScript Apps",
+  description:
+    "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
   path: "/postgres",
   ogKicker: "Prisma Postgres",
   ogAccent: "yellow",

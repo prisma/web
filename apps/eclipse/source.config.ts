@@ -4,6 +4,7 @@ import { remarkImage } from "fumadocs-core/mdx-plugins";
 import { defineConfig, defineDocs, frontmatterSchema, metaSchema } from "fumadocs-mdx/config";
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import convert from "npm-to-yarn";
+import { rehypeCodeOptions } from "@prisma-docs/ui/mdx/rehype-code-options";
 
 // You can customise Zod schemas for frontmatter and `meta.json` here
 // see https://fumadocs.dev/docs/mdx/collections
@@ -23,6 +24,8 @@ export const designSystem = defineDocs({
 export default defineConfig({
   plugins: [lastModified()],
   mdxOptions: {
+    // Class-based Shiki token colours instead of a style attribute per token.
+    rehypeCodeOptions,
     remarkPlugins: [remarkDirective, remarkDirectiveAdmonition, remarkImage, remarkMdxFiles],
     remarkCodeTabOptions: {
       parseMdx: true,

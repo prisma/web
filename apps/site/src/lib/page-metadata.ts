@@ -30,6 +30,25 @@ function withSiteName(title: string): string {
   return SITE_NAME_PATTERN.test(title) ? title : `${title} | ${SITE_NAME}`;
 }
 
+/**
+ * The generated card already prints the kicker as its eyebrow, so a descriptive
+ * title that opens with the same product name would print it twice: "Prisma ORM"
+ * over "Prisma ORM | Type-Safe ORM for TypeScript and Node.js". When the leading
+ * segment is exactly what the eyebrow already says, the card headline carries the
+ * descriptive half alone. Titles that don't repeat the kicker are untouched, and
+ * the `<title>`, `og:title`, and `twitter:title` always keep the full string.
+ */
+function ogCardHeadline(rawTitle: string, kicker: string): string {
+  const separator = rawTitle.indexOf(" | ");
+  if (separator === -1) return rawTitle;
+
+  const lead = rawTitle.slice(0, separator);
+  const rest = rawTitle.slice(separator + 3);
+  const duplicatesKicker = lead === kicker || lead === `${SITE_NAME} ${kicker}`;
+
+  return duplicatesKicker ? rest : rawTitle;
+}
+
 export function createPageMetadata({
   title: rawTitle,
   description,
@@ -39,7 +58,7 @@ export function createPageMetadata({
 }: PageMetadataOptions): Metadata {
   const title = withSiteName(rawTitle);
   const ogImagePath = getOgCardUrl({
-    title: rawTitle,
+    title: ogCardHeadline(rawTitle, ogKicker ?? SITE_NAME),
     description,
     kicker: ogKicker,
     accent: ogAccent,

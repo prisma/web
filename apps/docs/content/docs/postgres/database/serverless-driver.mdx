@@ -1,77 +1,100 @@
 ---
 title: Serverless driver
 description: Connect to Prisma Postgres from serverless and edge environments
-badge: early-access
 url: /postgres/database/serverless-driver
 metaTitle: Serverless driver
 metaDescription: 'A lightweight PostgreSQL driver for Prisma Postgres optimized for serverless and edge environments with HTTP/WebSocket support, result streaming, and minimal memory footprint.'
 ---
 
-The Prisma Postgres serverless driver ([`@prisma/ppg`](https://www.npmjs.com/package/@prisma/ppg)) is a lightweight client for connecting to Prisma Postgres using raw SQL. It uses HTTP and WebSocket protocols instead of traditional TCP connections, enabling database access in constrained environments where native PostgreSQL drivers cannot run.
+The Prisma Postgres serverless driver connects to hosted Prisma Postgres databases over HTTP and WebSockets. Use it with Prisma ORM through [`@prisma/adapter-ppg`](https://www.npmjs.com/package/@prisma/adapter-ppg), or query with raw SQL through [`@prisma/ppg`](https://www.npmjs.com/package/@prisma/ppg).
 
-:::warning
+## Choose a connection method
 
-The Prisma Postgres serverless driver is currently in [Early Access](/orm/v7/more/releases#early-access) and not yet recommended for production scenarios.
+| Runtime | Recommended connection | Package |
+| --- | --- | --- |
+| Conventional Node.js or Bun runtime with PostgreSQL TCP support | [Pooled TCP](/postgres/database/connection-pooling) | `@prisma/adapter-pg` with `pg` |
+| Edge or TCP-constrained runtime with `fetch` and `WebSocket` support | Prisma Postgres serverless driver | `@prisma/adapter-ppg` with Prisma ORM, or `@prisma/ppg` for raw SQL |
 
-:::
+Use the serverless driver when a conventional PostgreSQL TCP driver cannot run. It also supports streaming, pipelined queries, transactions, batch operations, SQL template literals, and custom type handling.
 
-## Key features
+If your application currently uses a hosted `prisma+postgres://` Accelerate connection, follow [Connect to Prisma Postgres without Accelerate](/postgres/database/switch-from-accelerate).
 
-The serverless driver uses HTTP and WebSocket protocols instead of TCP, enabling database access in environments where traditional PostgreSQL drivers cannot run:
+## Get your connection string
 
-- Compatible with Cloudflare Workers, Vercel Edge Functions, Deno Deploy, AWS Lambda, Bun, and browsers
-- Stream results row-by-row to handle large datasets with constant memory usage
-- Pipeline multiple queries over a single connection, reducing latency by up to 3x
-- SQL template literals with automatic parameterization and full TypeScript support
-- Built-in transactions, batch operations, and extensible type system
-- Automatic connection pooling across [all available Prisma Postgres regions](/postgres/faq#what-regions-is-prisma-postgres-available-in)
+The serverless driver accepts the direct Prisma Postgres connection-string format:
 
-Use this driver for edge/serverless environments without full Node.js support, or when working with large result sets that benefit from streaming.
-
-For standard Node.js environments, use the [`node-postgres` driver](/orm/v7/core-concepts/supported-databases/postgresql#using-driver-adapters) for lower latency with direct TCP connections.
-
-## Prerequisite: Get your connection string
-
-The serverless driver requires a Prisma Postgres TCP connection string:
-
-```
+```text title="Direct connection string"
 postgres://identifier:key@db.prisma.io:5432/postgres?sslmode=require
 ```
 
-Find and manage your connection string from your [Prisma Postgres dashboard](https://console.prisma.io)
+It uses this value as a credential, then communicates with Prisma Postgres over HTTP and WebSockets. It does not open a TCP connection.
+
+In the [Prisma Console](https://console.prisma.io), select your database, choose **Connect to your database**, generate a connection string, and copy the direct value. Do not construct the value by editing another connection string.
 
 If you don't have a Prisma Postgres database, create one using the [`create-db` CLI](/postgres/npx-create-db) tool:
 
-```npm
+```npm title="Terminal"
 npx create-db@latest
 ```
+
+:::warning[Keep credentials server-side]
+
+Store `DATABASE_URL` in server-side runtime secrets. Never commit it to source control or include it in code delivered to a browser.
+
+:::
 
 ## Installation
 
 Install the appropriate package based on your use case:
 
-```npm tab="Without Prisma ORM"
-npm install @prisma/ppg
-```
-
-```npm tab="With Prisma ORM"
+```npm title="Terminal" tab="With Prisma ORM"
 npm install @prisma/ppg @prisma/adapter-ppg
 ```
 
-## Usage
+```npm title="Terminal" tab="Raw SQL"
+npm install @prisma/ppg
+```
 
-### Query with SQL template literals
+## Use with Prisma ORM
 
-Use the `prismaPostgres()` high-level API with SQL template literals and automatic parameterization:
+Use the [`PrismaPostgresAdapter`](https://www.npmjs.com/package/@prisma/adapter-ppg) to connect Prisma Client via the serverless driver.
 
-```ts
+When you generate Prisma Client for an edge runtime, set the generator's [`runtime`](/orm/v7/prisma-schema/overview/generators#field-reference) to the deployment target. For example, use `workerd` for Cloudflare Workers, `vercel-edge` for Vercel Edge Functions, or `deno` for Deno:
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  runtime  = "workerd"
+}
+```
+
+Generate the client, then instantiate it with the serverless driver adapter:
+
+```ts title="src/lib/prisma.ts"
+import { PrismaClient } from "../../generated/prisma/client";
+import { PrismaPostgresAdapter } from "@prisma/adapter-ppg";
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPostgresAdapter({
+    connectionString: process.env.DATABASE_URL!,
+  }),
+});
+
+const users = await prisma.user.findMany();
+```
+
+## Query with raw SQL
+
+Use the `prismaPostgres()` high-level API for SQL template literals with automatic parameterization:
+
+```ts title="src/lib/query.ts"
 import { prismaPostgres, defaultClientConfig } from "@prisma/ppg";
 
-const ppg = prismaPostgres(defaultClientConfig(process.env.PRISMA_DIRECT_TCP_URL!));
+const ppg = prismaPostgres(defaultClientConfig(process.env.DATABASE_URL!));
 
 type User = { id: number; name: string; email: string };
 
-// SQL template literals with automatic parameterization
 const users = await ppg.sql<User>`
   SELECT * FROM users WHERE email = ${"user@example.com"}
 `.collect();
@@ -79,28 +102,11 @@ const users = await ppg.sql<User>`
 console.log(users[0].name);
 ```
 
-### Use with Prisma ORM
-
-Use the [`PrismaPostgresAdapter`](https://www.npmjs.com/package/@prisma/adapter-ppg) to connect Prisma Client via the serverless driver:
-
-```ts
-import { PrismaClient } from "../generated/prisma/client";
-import { PrismaPostgresAdapter } from "@prisma/adapter-ppg";
-
-const prisma = new PrismaClient({
-  adapter: new PrismaPostgresAdapter({
-    connectionString: process.env.PRISMA_DIRECT_TCP_URL,
-  }),
-});
-
-const users = await prisma.user.findMany();
-```
-
 ### Stream results
 
 Results are returned as `CollectableIterator<T>`. Stream rows one at a time for constant memory usage, or collect all rows into an array:
 
-```ts
+```ts title="src/lib/stream.ts"
 type User = { id: number; name: string; email: string };
 
 // Stream rows one at a time (constant memory usage)
@@ -116,10 +122,10 @@ const allUsers = await ppg.sql<User>`SELECT * FROM users`.collect();
 
 Send multiple queries over a single WebSocket connection without waiting for responses. Queries are sent immediately and results arrive in FIFO order:
 
-```ts
+```ts title="src/lib/pipeline.ts"
 import { client, defaultClientConfig } from "@prisma/ppg";
 
-const cl = client(defaultClientConfig(process.env.PRISMA_DIRECT_TCP_URL!));
+const cl = client(defaultClientConfig(process.env.DATABASE_URL!));
 const session = await cl.newSession();
 
 // Send all queries immediately (pipelined)
@@ -132,16 +138,16 @@ const [usersResult, ordersResult, productsResult] = await Promise.all([
 session.close();
 ```
 
-With 100ms network latency, 3 sequential queries take 300ms (3 x RTT), but pipelined queries take only 100ms (1 x RTT).
+Pipelining reduces network round trips by sending multiple queries before waiting for their responses. The effect on end-to-end latency depends on network conditions and query execution time.
 
 ### Parameter streaming
 
 Parameters over 1KB are automatically streamed without buffering in memory. For large binary parameters, you must use `boundedByteStreamParameter()` which creates a `BoundedByteStreamParameter` object that carries the total byte size, required by the PostgreSQL protocol:
 
-```ts
+```ts title="src/lib/upload.ts"
 import { client, defaultClientConfig, boundedByteStreamParameter, BINARY } from "@prisma/ppg";
 
-const cl = client(defaultClientConfig(process.env.PRISMA_DIRECT_TCP_URL!));
+const cl = client(defaultClientConfig(process.env.DATABASE_URL!));
 
 // Large binary data (e.g., file content)
 const stream = getReadableStream(); // Your ReadableStream source
@@ -156,10 +162,10 @@ await cl.query("INSERT INTO files (data) VALUES ($1)", streamParam);
 
 For `Uint8Array` data, use `byteArrayParameter()`:
 
-```ts
+```ts title="src/lib/bytes.ts"
 import { client, defaultClientConfig, byteArrayParameter, BINARY } from "@prisma/ppg";
 
-const cl = client(defaultClientConfig(process.env.PRISMA_DIRECT_TCP_URL!));
+const cl = client(defaultClientConfig(process.env.DATABASE_URL!));
 
 const bytes = new Uint8Array([1, 2, 3, 4]);
 const param = byteArrayParameter(bytes, BINARY);
@@ -173,7 +179,7 @@ The `boundedByteStreamParameter()` function is provided by the `@prisma/ppg` lib
 
 Transactions automatically handle BEGIN, COMMIT, and ROLLBACK:
 
-```ts
+```ts title="src/lib/transaction.ts"
 const result = await ppg.transaction(async (tx) => {
   await tx.sql.exec`INSERT INTO users (name) VALUES ('Alice')`;
   const users = await tx.sql<User>`SELECT * FROM users WHERE name = 'Alice'`.collect();
@@ -183,7 +189,7 @@ const result = await ppg.transaction(async (tx) => {
 
 Batch operations execute multiple statements in a single round-trip within an automatic transaction:
 
-```ts
+```ts title="src/lib/batch.ts"
 const [users, affected] = await ppg.batch<[User[], number]>(
   { query: "SELECT * FROM users WHERE id < $1", parameters: [5] },
   { exec: "INSERT INTO users (name) VALUES ($1)", parameters: ["Charlie"] },
@@ -194,10 +200,10 @@ const [users, affected] = await ppg.batch<[User[], number]>(
 
 When using `defaultClientConfig()`, common PostgreSQL types are automatically parsed (`boolean`, `int2`, `int4`, `int8`, `float4`, `float8`, `text`, `varchar`, `json`, `jsonb`, `date`, `timestamp`, `timestamptz`):
 
-```ts
+```ts title="src/lib/types.ts"
 import { prismaPostgres, defaultClientConfig } from "@prisma/ppg";
 
-const ppg = prismaPostgres(defaultClientConfig(process.env.PRISMA_DIRECT_TCP_URL!));
+const ppg = prismaPostgres(defaultClientConfig(process.env.DATABASE_URL!));
 
 // JSON/JSONB automatically parsed
 const rows = await ppg.sql<{ data: { key: string } }>`
@@ -220,26 +226,27 @@ const dates = await ppg.sql<{
 
 Extend or override the type system with custom parsers (by PostgreSQL OID) and serializers (by type guard):
 
-```ts
+```ts title="src/lib/custom-parser.ts"
 import { client, defaultClientConfig } from "@prisma/ppg";
 import type { ValueParser } from "@prisma/ppg";
 
 // Custom parser for UUID type
-const uuidParser: ValueParser<string> = {
+const uuidParser: ValueParser<string | null> = {
   oid: 2950,
   parse: (value) => (value ? value.toUpperCase() : null),
 };
 
-const config = defaultClientConfig(process.env.PRISMA_DIRECT_TCP_URL!);
+const config = defaultClientConfig(process.env.DATABASE_URL!);
 const cl = client({
   ...config,
-  parsers: [...config.parsers, uuidParser], // Append to defaults
+  parsers: [...(config.parsers ?? []), uuidParser], // Append to defaults
 });
 ```
 
 For custom serializers, place them before defaults so they take precedence:
 
-```ts
+```ts title="src/lib/custom-serializer.ts"
+import { client, defaultClientConfig } from "@prisma/ppg";
 import type { ValueSerializer } from "@prisma/ppg";
 
 class Point {
@@ -254,10 +261,10 @@ const pointSerializer: ValueSerializer<Point> = {
   serialize: (value: Point) => `(${value.x},${value.y})`,
 };
 
-const config = defaultClientConfig(process.env.PRISMA_DIRECT_TCP_URL!);
+const config = defaultClientConfig(process.env.DATABASE_URL!);
 const cl = client({
   ...config,
-  serializers: [pointSerializer, ...config.serializers], // Your serializer first
+  serializers: [pointSerializer, ...(config.serializers ?? [])], // Your serializer first
 });
 
 await cl.query("INSERT INTO locations (point) VALUES ($1)", new Point(10, 20));
@@ -267,7 +274,7 @@ See the [npm package documentation](https://www.npmjs.com/package/@prisma/ppg) f
 
 ## Platform compatibility
 
-The driver works in any environment with `fetch` and `WebSocket` APIs:
+The driver works in server-side environments with `fetch` and `WebSocket` APIs:
 
 | Platform              | HTTP Transport | WebSocket Transport |
 | --------------------- | -------------- | ------------------- |
@@ -277,7 +284,8 @@ The driver works in any environment with `fetch` and `WebSocket` APIs:
 | Deno Deploy           | ✅             | ✅                  |
 | Bun                   | ✅             | ✅                  |
 | Node.js 18+           | ✅             | ✅                  |
-| Browsers              | ✅             | ✅ (with CORS)      |
+
+The package can run in browser environments, but a database connection string is a server credential. Do not use the driver in browser-delivered code. Route browser requests through a server-side endpoint instead.
 
 ## Transport modes
 
@@ -300,7 +308,7 @@ See the [npm package](https://www.npmjs.com/package/@prisma/ppg) for complete AP
 
 Structured error types are provided: `DatabaseError`, `HttpResponseError`, `WebSocketError`, `ValidationError`.
 
-```ts
+```ts title="src/lib/errors.ts"
 import { DatabaseError } from "@prisma/ppg";
 
 try {
@@ -312,18 +320,13 @@ try {
 }
 ```
 
-## Connection pooling enabled by default
+## Connection pooling
 
-The serverless driver automatically uses connection pooling [across all available Prisma Postgres regions](/postgres/faq#what-regions-is-prisma-postgres-available-in).
-
-Connection pooling is enabled by default and requires no additional configuration.
-
-Connections are reused regardless of your deployment region, which reduces connection overhead.
+The serverless driver uses Prisma Postgres connection pooling by default and requires no additional pool configuration. See the [Prisma Postgres regions](/postgres/faq#what-regions-is-prisma-postgres-available-in).
 
 ## Limitations
 
 - Requires a Prisma Postgres instance and does not work with [Local Postgres](/local-development/postgres) databases
-- Currently in Early Access and not yet recommended for production
 
 ## Learn more
 

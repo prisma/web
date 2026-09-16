@@ -97,9 +97,6 @@ async function getOpenAPISpec() {
 }
 
 export const openapi = createOpenAPI({
-  input: async () => {
-    const doc = await getOpenAPISpec();
-    return { "rest-api": doc };
-  },
+  input: { "rest-api": getOpenAPISpec },
   proxyUrl: "/api/proxy",
 });

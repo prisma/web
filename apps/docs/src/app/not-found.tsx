@@ -1,4 +1,5 @@
 import { source } from "@/lib/source";
+import { getClientPageTree } from "@/lib/client-page-tree";
 import { authLinks, baseOptions, links } from "@/lib/layout.shared";
 import type { LinkItemType } from "@/components/layout/link-item";
 import { DocsLayout } from "@/components/layout/notebook";
@@ -22,7 +23,7 @@ export default function NotFound() {
       links={navbarLinks}
       nav={{ ...nav }}
       sidebar={{ collapsible: false }}
-      tree={source.pageTree}
+      tree={getClientPageTree(source.pageTree)}
     >
       <NotFoundTracker />
       <DocsPage

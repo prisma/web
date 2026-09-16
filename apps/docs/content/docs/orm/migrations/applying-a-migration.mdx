@@ -1,182 +1,178 @@
 ---
 title: Applying a migration
-description: 'The db migrate command walks the graph from where your database is to where you want it, with a preview, a checkpoint at every step, and safe retries.'
+description: 'The db migrate command applies the migrations you planned, until your database matches your contract, with a preview, checks on every operation, and safe re-runs.'
 url: /orm/migrations/applying-a-migration
-metaTitle: Applying a migration in Prisma 8
-metaDescription: 'How the Prisma 8 db migrate command applies migrations, from targeting refs and hashes and previewing with --show to checking status and running safely in development and production.'
+metaTitle: Applying a migration in Prisma ORM
+metaDescription: 'How the Prisma ORM db migrate command applies migrations, from targeting refs and hashes and previewing with --show to checking status and running safely in development and production.'
 ---
 
-Applying is the one step that touches a database, and it has one command:
+Once you have planned migrations with `npx prisma migration plan`, `npx prisma db migrate` is the command that runs them against a database, until that database matches your contract. It replaces Prisma ORM 7's [`prisma migrate deploy`](/orm/coming-from-prisma-orm-7#commands), and works on the [supported databases](/orm/supported-databases), PostgreSQL and MongoDB, with SQLite still experimental.
 
 ```npm
-npx prisma@latest db migrate
+npx prisma db migrate
 ```
 
-The command is `db migrate`, not `migration apply`. The `migration ...` subcommands manage files on disk; `db migrate` moves a database. It reads where the database currently is (its **marker**), finds a path through the [migration graph](/orm/migrations/the-migration-graph) to the target, and applies each migration along the path, running every operation's precheck, execute, and postcheck as it goes.
+Prisma ORM decides what to run by comparing two records: the contract you want, and the contract state the database has. Each version of your contract, the `contract.prisma` file, is a **contract state**, and the database itself stores a [**marker**](/orm/migrations/the-migration-graph#terms-used-on-this-page), which is the record of which contract state that database matches. So when you run `db migrate`, it reads the marker to find the contract state the database already matches, and then runs the migrations from that state to the contract you last emitted with [`npx prisma contract emit`](/cli/contract-emit).
 
-By default, the connection comes from `db.connection` in `prisma.config.ts`. Pass `--db` to override it:
+`migration status`, `migration log`, and the `db` commands connect to a database using `db.connection` in `prisma.config.ts`, as [The data contract](/orm/contract-authoring/the-data-contract) shows. When you want to work against a different database, production rather than your own machine for example, pass `--db` with that database's connection string, as in `--db "$PRODUCTION_DATABASE_URL"`.
 
-```npm
-npx prisma@latest db migrate --db $DATABASE_URL
-```
-
-A successful run reports every operation it performed and the marker it left behind:
+When a run succeeds, it shows you what it did: each migration's operations, and then the marker it wrote:
 
 ```text
 ✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
 
 App space
-  ├─ Add column "displayName" to "user"
-  ├─ Data transform: backfill-user-displayName
-  └─ Set NOT NULL on "user"."displayName" (destructive)
-  marker: sha256:e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
+├─ Add column "displayName" to "user"
+├─ Data transform: backfill-user-displayName
+├─ ⚠ Set NOT NULL on "user"."displayName"
+└─ marker e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
 
-Next: prisma-cli migration status
+⚠ This migration contains destructive operations that may cause data loss.
 ```
 
-The `prisma-cli` in that hint is the binary's own name for itself. When you invoke it as `npx prisma@latest`, run the suggested subcommand the same way (`npx prisma@latest migration status`).
-
-`App space` is your application's migration lane, one of the run's *contract spaces*. Projects that use database extensions gain additional spaces, covered in [Extension spaces](#extension-spaces) below.
+Each `├─` line under `App space` is an operation, one step of an app migration. A data transform changes existing rows, here filling in `displayName`, and you write its queries in `migration.ts`, as [Editing a migration](/orm/migrations/editing-a-migration) shows. A `⚠` marks a [destructive](/orm/migrations/how-migrations-work#every-operation-checks-itself) operation, one that removes or changes something that already exists, such as setting `NOT NULL`, which deletes no rows but still counts. `db migrate` runs destructive operations without asking you to confirm, and there is no flag that makes it refuse, so the time to catch one is while you are reviewing the migration rather than while it is running. During review, run `npx prisma migration show <dir>` with the migration's directory name in `migrations/app/`, and it prints the same warning.
 
 ## Check before, preview, then apply
 
-The habit worth building, especially against shared databases, is a three-step rhythm:
+Before you apply migrations to staging or production, run the following commands in order, so that you check the migration files, then see what would run, and only then run it:
 
 ```npm
-# 1. Where is the database, what's pending?
-npx prisma@latest migration status --db $DATABASE_URL
+# 1. Were any migration files edited by hand or deleted? Needs no database.
+npx prisma migration check
 
-# 2. What exactly would run?
-npx prisma@latest db migrate --show --db $DATABASE_URL
+# 2. Which migrations would run?
+npx prisma db migrate --show --db "$PRODUCTION_DATABASE_URL"
 
-# 3. Run it.
-npx prisma@latest db migrate --db $DATABASE_URL
+# 3. Run them.
+npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
 ```
 
-`migration status` draws the path between the database's marker and the target, flagging each migration as applied or pending:
+`npx prisma migration status --db "$PRODUCTION_DATABASE_URL"` never changes the database, so you can run it against production whenever you want to know which contract state that database matches. It draws your migration history, marks each migration as applied or pending, and shows which contract state the database matches:
 
 ```text
-*   925198f  @contract
-|^  20260707T1006_add_user_phone  705b1a6 -> 925198f  1 ops  > pending
-*   705b1a6  @db (db)
-|^  20260707T1005_init                  - -> 705b1a6  2 ops  + applied
-*   -
-
-1 pending — run `prisma-cli migrate --to 925198f3cc27`
+○   925198f  @contract
+│↑  20260707T1006_add_user_phone  705b1a6 → 925198f  1 ops  ⧗ pending
+○   705b1a6  @db (db)
+│↑  20260707T1005_init                  ∅ → 705b1a6  2 ops  ✓ applied
+○   ∅
 ```
 
-The output above is verbatim. `prisma-cli migrate` is the binary's internal name for the command; run it as `npx prisma@latest db migrate --to 925198f3cc27`.
+Read the diagram from the bottom up, because it starts with an empty database and ends with the contract you last emitted: `∅` is an empty database, each `○` line is a contract state shown by the first 7 characters of its hash, and each `│↑` line is a migration from the state below it to the one above. You never have to type a whole hash when you name one of these states, because commands accept any prefix of 6 or more characters that matches one hash. The labels on the right say what points at each state:
 
-Read the markers on the right: `@db` is where the database is, `@contract` is where your emitted contract is, and `(db)` is the [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) of that name pointing at the same node.
+- `@contract` is the contract you last emitted.
+- `@db` is the contract state the database's marker records.
+- `(db)` is the `db` [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs), a file in `migrations/app/refs/` that names the contract state you last applied in development.
 
-`db migrate --show` is the read-only dry run: it draws the path from the database's position to the target and stops. Nothing touches the database:
+When migrations are pending, `migration status` also prints a `db migrate --to <hash>` command that you can copy, and if that hash is your `@contract` state you can leave `--to` off, because that is the state `db migrate` runs to anyway.
+
+`db migrate --show` is the preview, and it changes nothing: it draws the same history, marks each migration it would apply with `will run`, and lists them in the order they would run:
 
 ```text
+○   925198f  @contract
 │↑  20260707T1006_add_user_phone  705b1a6 → 925198f  ↑ will run
-○   705b1a6
-│↑  20260707T1005_init                  ∅ → 705b1a6  ↑ will run
-○   ∅  @db
+○   705b1a6  @db (db)
+│↑  20260707T1005_init                  ∅ → 705b1a6
+○   ∅
 
-The following 2 migrations will run:
-  20260707T1005_init                ∅ → 705b1a6
+ℹ The following 1 migration will run:
+
   20260707T1006_add_user_phone  705b1a6 → 925198f
 ```
 
-After applying, `migration log` shows the database's own record of what ran: an append-only **ledger** the runner writes alongside the marker:
+`--show` tells you which migrations will run, but not what is inside them, so when you want one migration's operations and its SQL, run `npx prisma migration show 20260707T1006_add_user_phone` instead, as [Reviewing what you planned](/orm/migrations/generating-a-migration#reviewing-what-you-planned) shows.
+
+After applying, `npx prisma migration log --db "$PRODUCTION_DATABASE_URL"` shows you what that database has actually had applied to it, rather than what your local files say: it prints the **ledger**, the database's own list of every migration applied to it. Like `--show`, it changes nothing:
 
 ```text
- Applied at             Migration                       Change                 Ops
----------------------- ------------------------------- -------------------- ------
- 2026-07-07 10:05:32Z   20260707T1005_init              - -> 705b1a6         2 ops
- 2026-07-07 10:09:55Z   20260707T1006_add_user_phone    705b1a6 -> 925198f   1 ops
+Applied at                  Migration                     Change             Ops
+2026-07-07 10:05:32 +00:00  20260707T1005_init            ∅ → 705b1a6        2 ops
+2026-07-07 10:09:55 +00:00  20260707T1006_add_user_phone  705b1a6 → 925198f  1 ops
 ```
 
 ## Choosing a target
 
-With no `--to`, `db migrate` advances toward your emitted contract. To aim somewhere specific, name the target with `--to`, for example a ref:
+By default `db migrate` runs everything that is pending, so when you want to stop part way, name the contract state you want to stop at with `--to`. The example below uses `prod`, a ref created with `npx prisma migration ref set prod <dir>`, which points `prod` at the state after that migration:
 
 ```npm
-npx prisma@latest db migrate --to prod --db $DATABASE_URL
+npx prisma db migrate --to prod --db "$PRODUCTION_DATABASE_URL"
 ```
 
-If the graph has branched and more than one tip is reachable, `db migrate` stops and asks for an explicit `--to`. That's the graph protecting you: two feature branches may both be valid futures, and picking one is a human decision.
-
-`--advance-ref` moves a named ref to the post-apply state in the same step, which is what keeps [`migration plan`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) incremental. The [`db migrate` reference](/cli/db-migrate#options) has the full `--to` grammar (refs, hashes, migration names, `<dir>^`) and the flag contract.
+When the state you want is an earlier one than the database already matches, plan a rollback migration first, as [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) shows, because `db migrate` only ever runs migrations you already have. That is also why, if no migrations lead from the state the database matches to the one you name, the run fails with an error whose `code` is `MIGRATION.PATH_UNREACHABLE`. The [`db migrate` reference](/cli/db-migrate#options) lists every form of `--to` and the other options.
 
 ## When something goes wrong
 
-The runner stops at the first failing operation and tells you which one, why, and what to do:
+When an operation fails, `db migrate` stops and prints what failed and why:
 
 ```text
-✖ Operation pgvector.install-vector-extension failed during execution: create extension "vector" (PN-RUN-3000)
-  Why: extension "vector" is not available
-  Fix: Fix the issue and re-run `prisma-cli migrate --to <contract>` — previously applied migrations are preserved.
+✘ [MIGRATION.RUNNER_FAILED] Operation pgvector.install-vector-extension failed during execution: create extension "vector"
+  why: extension "vector" is not available
+  docs: https://docs.prisma.io/docs/orm/v8/reference/error-reference/MIGRATION.RUNNER_FAILED
 ```
 
-That hint is the CLI's literal output; `prisma-cli migrate` is its internal name for `db migrate`, so re-run `npx prisma@latest db migrate --to <contract>`.
+Here, an operation from the pgvector [extension package](#extension-spaces) failed because the `vector` PostgreSQL extension is not available on the database server. Install it there, or enable it in your database host's settings, and then run `db migrate` again.
 
-Three properties make failure boring instead of terrifying:
+On PostgreSQL you can do that without any tidying up first, because a failed run leaves no changes in the database at all. The whole run is one transaction, so everything the failed run did is rolled back, while migrations applied in *earlier* runs stay applied. The error itself tells you where it stopped, because it names the operation and the failing step, which is either the SQL statement or a [check before or after it](/orm/migrations/how-migrations-work#every-operation-checks-itself), such as the check that no row still holds `NULL` before a column becomes `NOT NULL`. And when you fix the problem and run the command again, it does not repeat work that is already done, because `db migrate` skips each operation whose change is already in the database, unless the operation has no postcheck.
 
-- **On PostgreSQL, a failed run leaves nothing behind.** The entire `db migrate` run executes inside one transaction, so when an operation fails, everything from that run rolls back and the database is exactly where it was before you started. Migrations applied in *earlier* runs are untouched. That's what "previously applied migrations are preserved" means.
-- **The error is specific.** It names the operation, the phase (precheck, execute, or postcheck), and the check that failed, which is enough to fix the cause without spelunking.
-- **Re-running is safe.** Operations are idempotent: before running one, the runner evaluates its postcheck and skips it if the database already satisfies it. A change made outside of migrations doesn't break the run. The runner skips the operation instead. On MongoDB, where cross-collection transactions don't exist, this same mechanism is what makes a partially-applied run converge on retry. See [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) for the full failure playbook.
+MongoDB does not give you that clean slate, because a run there is not one transaction. Operations that finished before the failure stay in the database, and a re-run stops at the precheck of any collection the failed run already created.
 
-Before running any DDL, `db migrate` also verifies the database's marker is a state the graph knows. A database that was changed outside of migrations fails fast with a marker mismatch instead of getting SQL applied on top of unknown drift.
+`db migrate` also refuses to start when the marker records a contract state that none of your migrations starts or ends at, because it cannot then work out which migrations to run. It fails with an error whose `code` is `MIGRATION.MARKER_MISMATCH`, and no operation runs. You see this when the database's contract state was set by something other than the migrations you have on disk, which happens in the following situations:
+
+- **`npx prisma db update`**, which replaces `prisma db push` for local development and preview environments. Before your next contract change, run `npx prisma migration plan --from <dir> --name <name>` with your most recent migration's directory name. The new migration ends at the state `db update` applied, as [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) shows.
+- **A migration from a Git branch you have not merged**, which a shared database such as staging already applied. Merge that branch so that you have the migration too, and if your branch also added migrations, plan merge migrations, as [A worked example](/orm/migrations/the-migration-graph#a-worked-example) shows.
+
+A database that already had tables gets its marker from `npx prisma db sign`, so `db migrate` refuses to run against it until a migration in your history ends at the signed state, as [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) shows. For a database Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) in the upgrade guide.
 
 ## Development vs. production
 
-The commands are the same everywhere. What changes is where the files come from and who runs them.
+The command is the same everywhere, and what changes is the work you do around it.
 
-**In development**, you're the one planning and editing, and you apply immediately:
-
-```npm
-npx prisma@latest migration plan --name my_change && npx prisma@latest db migrate --advance-ref db
-```
-
-**In CI and production**, migrations arrive via your repo, already planned, reviewed, and merged. That's why the [editing rule](/orm/migrations/editing-a-migration) matters: commit `migration.ts` and `ops.json` together, and run `migration check` to catch a stale recompile before deploy. See [Generating a migration](/orm/migrations/generating-a-migration#reviewing-what-you-planned) for its exit codes. The deploy step is:
+**In development**, you emit the contract, plan a migration, review it, and then apply it:
 
 ```npm
-npx prisma@latest migration check          # files intact, graph well-formed (offline)
-npx prisma@latest db migrate --show --db $DATABASE_URL   # log what's about to run
-npx prisma@latest db migrate --db $DATABASE_URL
+npx prisma contract emit
+npx prisma migration plan --name my_change
+# Review the new migration directory before you apply it.
+npx prisma db migrate --advance-ref db
 ```
 
-The runner executes only `ops.json`, which is plain data, so your `migration.ts` files, and any TypeScript they import, are never executed with production credentials.
+`--advance-ref db` is what keeps your local development in step, because it points the `db` ref at the state you just applied, so the next `migration plan` starts from there. You only want that on your own machine, so leave the flag off in CI and production, and see [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) for what happens without it and how to fix a missed flag. If you edit `migration.ts` while reviewing the migration, recompile it with `node migrations/app/<dir>/migration.ts`, which is safe to do at any point because recompiling only rewrites files and never connects to a database, as [Editing a migration](/orm/migrations/editing-a-migration) explains.
 
-Concurrent deploys are safe: on PostgreSQL the whole apply runs inside a transaction guarded by an advisory lock, so two `db migrate` runs serialize instead of interleaving. On MongoDB, cross-collection DDL transactions don't exist. Instead, each migration advances the marker with compare-and-swap, and the runner verifies the resulting schema before committing the marker, so a re-run converges rather than double-applying.
+**In CI and production**, you never plan a migration, because migrations arrive through your repository, already reviewed and merged. For that to work, commit each migration's directory, the directories `migration plan` added under `migrations/snapshots/`, one per contract state, and `contract.prisma`, `contract.json`, and `contract.d.ts`. Deploy with the three commands in [Check before, preview, then apply](#check-before-preview-then-apply). The point of the `migration check` step is to tell you that what you are about to apply is still what was reviewed: it recomputes each migration's hash from its `ops.json` and [`migration.json`](/orm/migrations/how-migrations-work#migrationjson-the-history-marker) and compares it with the stored hash, which catches a hand edit to `ops.json`, though not a `migration.ts` that was edited without recompiling. When it fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, either restore the migration's files from Git, or move the hand edit into `migration.ts` and recompile.
+
+If two deployments can run at once, what happens next depends on your database. On PostgreSQL, when two `db migrate` runs start against the same database, one of them waits for the other. On MongoDB, if another run updates the marker while yours is running, yours fails with `Marker was modified by another process during migration execution.` When that happens, run `npx prisma migration status` to see which contract state the database matches, and then run `db migrate` again.
 
 ## Extension spaces
 
-If your project uses [database extensions](/orm/extensions/using-extensions) (say pgvector), you'll see more than one *contract space* in the output. Extensions ship their own migrations (for example `CREATE EXTENSION vector`), tracked in `migrations/<extension>/` next to your app's. One `db migrate` run walks them all (extensions first, then your app) and reports each space separately:
+If your project uses a [Prisma ORM extension package](/orm/extensions/using-extensions), such as pgvector support, the output shows more than one **contract space**, which is a separate migration history: your app has one, and so does each extension package that ships migrations. `migration plan` writes an extension's migrations to `migrations/<space>/`, such as `migrations/pgvector/`, and you have to commit that directory, because `db migrate` fails without it. A single run applies every space and reports each one separately, while `--to` applies only to your app. What an extension space ends up matching is decided by what you committed rather than by what is in `node_modules`, because `db migrate` applies the migrations in that committed directory until the database matches the newest state there, not the package version you have installed:
 
 ```text
 ✔ Applied 2 migration(s) (20 operation(s)) across 2 contract space(s)
 
 Extension space: pgvector
-  └─ Enable extension "vector"
-
+├─ Enable extension "vector"
+└─ marker 3d2c56a2944685bd21b05bc8a8d73164397df51c014201902932fbe7e80ff1b8
 App space
-  ├─ Create table "user"
-  └─ ...
+├─ Create table "user"
+└─ ...
 ```
 
 :::note[What's early]
 
-Apply, targeting, preview, refs, the ledger, and multi-space runs all work today. Not built yet: a shadow-database rehearsal, and an apply-time check that `ops.json` still matches `migration.ts`. Until then, `db migrate` runs against the real target, so rehearse with `--show` and a staging database, and run `migration check` in CI to catch a stale `ops.json`.
+Applying, targeting, previewing, refs, the ledger, and applying several contract spaces in one run all work today. Not built yet: a rehearsal that applies migrations to a throwaway copy of the database first, and a check at apply time that `ops.json` still matches `migration.ts`. Until then, preview with `--show` and rehearse on a staging database.
 
 :::
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Ask your agent to:
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. Ask your agent to:
 
 - "Check migration status against staging and apply whatever is pending."
-- "Preview what `db migrate --to prod` would run and summarize the destructive operations."
+- "List what `db migrate --to prod` would run, then run `migration show` on each migration and summarize the destructive operations."
 - "Apply the pending migrations and advance the `db` ref."
 
 ## See also
 
-- [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery): when you need to go back instead of forward
-- [The migration graph](/orm/migrations/the-migration-graph): markers, refs, and pathfinding
+- [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery): when the database needs an earlier contract state
+- [The migration graph](/orm/migrations/the-migration-graph): markers, refs, and how migrations connect
 - [Generating a migration](/orm/migrations/generating-a-migration): producing what `db migrate` runs
-- [Studio with Prisma 8](/studio/prisma-next): read the ledger you just wrote as a visual timeline, with the executed SQL and a schema diff per migration
+- [Studio with Prisma ORM](/studio/prisma-next): read the ledger as a visual timeline, with the executed SQL and a schema diff per migration

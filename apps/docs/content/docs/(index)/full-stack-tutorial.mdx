@@ -1,18 +1,18 @@
 ---
 title: Deploy the full Prisma stack
-description: A single tutorial from empty directory to live URL, with Prisma Composer, Prisma 8, and Prisma Postgres.
+description: A single tutorial from empty directory to live URL, with Prisma Composer, Prisma ORM, and Prisma Postgres.
 url: /full-stack-tutorial
 metaTitle: "Tutorial: the full Prisma stack"
-metaDescription: Compose an app with Prisma Composer, model data with Prisma 8, run it on a local Prisma Postgres, then deploy app and database to Prisma Compute with one command.
+metaDescription: Compose an app with Prisma Composer, model data with Prisma ORM, run it on a local Prisma Postgres, then deploy app and database to Prisma Compute with one command.
 ---
 
-This tutorial takes you through the whole recommended stack in one sitting. [Prisma Composer](/composer) declares your app: its services, its databases, and how they connect. [Prisma 8](/orm) types your data. [Prisma Postgres](/postgres) stores it, locally while you develop and on the platform when you deploy. One declaration drives everything: the same `module.ts` runs the app on your machine and deploys it to [Prisma Compute](/compute). Plan on about 15 minutes.
+This tutorial takes you through the whole recommended stack in one sitting. [Prisma Composer](/composer) declares your app: its services, its databases, and how they connect. [Prisma ORM](/orm) types your data. [Prisma Postgres](/postgres) stores it, locally while you develop and on the platform when you deploy. One declaration drives everything: the same `module.ts` runs the app on your machine and deploys it to [Prisma Compute](/compute). Plan on about 15 minutes.
 
 It uses the `hono` template so you get a small API you can verify with curl at every step. The same journey works for the other templates; the [framework guides](/guides) cover each one.
 
 ## Prerequisites
 
-- Node.js 24 or later (or Bun)
+- Node.js 22.18 or newer (on the 24 line, 24.11 or newer; 24 recommended), or Bun
 - A [Prisma Data Platform account](https://pris.ly/pdp) for the deploy step, free to create
 - No database needed: local runs provision a local Prisma Postgres, and deploys provision a real one, both from your Composer declaration
 
@@ -20,12 +20,14 @@ It uses the `hono` template so you get a small API you can verify with curl at e
 
 If you would rather hand the work to a coding agent, this prompt runs the same journey as the one on the [getting started page](/), with the `hono` template chosen for you:
 
+The prompt uses npm and Node.js. On Bun, replace `npm create prisma@latest --` with `bun create prisma@latest`, `npx` with `bunx`, and `npm run` with `bun run`.
+
 <AgentPrompt>
 
 ```text
-Create a new Hono API composed with Prisma Composer and Prisma 8, run it locally, and deploy it to Prisma Compute.
+Create a new Hono API composed with Prisma Composer and Prisma ORM, run it locally, and deploy it to Prisma Compute.
 
-1. Scaffold: `npx create-prisma@latest create my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` so the Prisma agent skills are installed and stay current, and use them.
+1. Scaffold: `npm create prisma@latest -- my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` to confirm the Prisma agent skills the scaffold installed are current, and use them.
 2. Read `module.ts` and `service.ts` first: the Composer module provisions the database and the service, and it is what `dev` and `deploy` operate on.
 3. Build and run locally: `npm run build`, then `npx prisma@latest dev module.ts`. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify the local URL that `dev` prints: its /users endpoint returns the seeded users.
 4. Deploy: check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login` (it opens a browser). Capture the baseline migration first with `npx prisma@latest migration plan --name init` and note the migration directory it writes. Then run `npx prisma@latest deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
@@ -36,19 +38,19 @@ Create a new Hono API composed with Prisma Composer and Prisma 8, run it locally
 
 ## 1. Scaffold the app
 
-One command creates a Composer-declared app with Prisma 8 wired in:
+One command creates a Composer-declared app with Prisma ORM wired in:
 
 ```npm
-npx create-prisma@latest create my-app --template hono --provider postgres
+npm create prisma@latest -- my-app --template hono --provider postgres
 ```
 
-Answer the prompts for contract authoring style and package manager, then enter the project:
+Answer the prompts for contract authoring style and package manager, or pass the `--authoring` and `--package-manager` flags to skip them (see the [create-prisma reference](/prisma-orm/create-prisma); Deno projects cannot deploy to Prisma Compute yet, so this tutorial uses Node.js or Bun). Then enter the project:
 
 ```npm
 cd my-app
 ```
 
-If you work with a coding agent, run [`npx prisma@latest init`](/cli/init) once. The scaffold has already synced the [Prisma agent skills](/ai/tools/skills) that ship inside its Prisma packages and added the `postinstall` hook that keeps them current, so on a fresh scaffold `init` confirms that setup and reports each step as already done. It is still worth running, because it is the command that repairs the setup after you upgrade a Prisma package. See [`skills`](/cli/skills).
+If you work with a coding agent, run [`npx prisma@latest init`](/cli/init) once. The scaffold ran it already, so on a fresh project `init` confirms the setup and reports each step as already done: the [Prisma agent skills](/ai/tools/skills) that ship inside the Prisma packages are synced, and `package.json` has a `postinstall` hook (`prisma skills sync || exit 0`) that resyncs them on every install, plus a `skills:sync` script for refreshing them by hand. Running `init` again is what repairs the setup after you upgrade a Prisma package. See [`skills`](/cli/skills).
 
 ## 2. The Composer app
 
@@ -95,9 +97,9 @@ export default compute({
 
 Notice there is no connection string anywhere. The database is a declared dependency, typed by your contract, and Composer injects the connection wherever the app runs. The declaration is ordinary TypeScript: `npx tsc --noEmit` checks the wiring, and mistakes fail the compile instead of a deploy. [Composer](/composer) covers the model in full: modules, services, dependencies, and the first-party building blocks.
 
-## 3. The Prisma 8 data model
+## 3. The Prisma ORM data model
 
-The data side lives under `src/prisma/`. Your schema is the starter contract in `src/prisma/contract.prisma`; `npm run contract:emit` compiles it into the contract artifacts your queries are type-checked against, and `src/prisma/db.ts` is the typed client the route handlers import. The `/users` route in `src/index.ts` is ordinary Hono code calling an ordinary Prisma 8 query.
+The data side lives under `src/prisma/`. Your schema is the starter contract in `src/prisma/contract.prisma`; `npm run contract:emit` compiles it into the contract artifacts your queries are type-checked against, and `src/prisma/db.ts` is the typed client the route handlers import. The `/users` route in `src/index.ts` is ordinary Hono code calling an ordinary Prisma ORM query.
 
 Change the contract when you are ready to model your own data, re-emit it, and the compiler walks you through every query the change touches. The [fundamentals](/orm/fundamentals/reading-data) cover the query patterns.
 
@@ -191,6 +193,8 @@ The same three users come back, now served from production next to your database
 Live apps outgrow their starter schema, so give users a role. Add one line to the contract:
 
 ```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -198,8 +202,8 @@ model User {
   name      String?
   role      String   @default("member")
   posts     Post[]
-  createdAt DateTime @default(now())
-  updatedAt temporal.updatedAt()
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
 }
 ```
 
@@ -221,10 +225,10 @@ ALTER TABLE "public"."user" ADD COLUMN "role" text DEFAULT 'member' NOT NULL
 Emitting also updated the query types, so surface the new field in the route's typed select in `src/prisma/users.ts`, adding `"role"` to the `.select(...)` list and `role: user.role` to the returned object:
 
 ```ts title="src/prisma/users.ts"
-const users = await db.orm.public.User.select("id", "email", "username", "name", "role", "createdAt").take(limit).all();
+const users = await db.orm.public.User.select("id", "email", "username", "name", "role", "createdAt").limit(limit).all();
 ```
 
-This is the Prisma 8 loop: the contract is the source of truth, the emit step regenerates the types, and the compiler points at every query the change touches.
+This is the Prisma ORM loop: the contract is the source of truth, the emit step regenerates the types, and the compiler points at every query the change touches.
 
 If you want to see the change on your machine first, run `npm run build` and `npx prisma@latest dev module.ts` again; the local database applies the new migration on start and `/users` returns the role there too. Then build and deploy again:
 

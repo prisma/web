@@ -6,11 +6,17 @@ metaTitle: Prisma Postgres via Netlify Extension
 metaDescription: Learn how to create Prisma Postgres databases via the official Netlify extension and deploy your applications with it.
 ---
 
+:::note[This guide uses Prisma ORM 7]
+
+The commands and code on this page target Prisma ORM 7, which remains fully supported. To start a new Prisma ORM 8 project, see the [Prisma ORM 8 quickstart](/prisma-orm/quickstart/postgresql); to add Prisma ORM 8 to an existing app, see [Add to an existing project](/prisma-orm/add-to-existing-project/postgresql). A Prisma ORM 8 version of this guide is planned.
+
+:::
+
 The [Netlify extension for Prisma Postgres](https://www.netlify.com/integrations/prisma) connects your Netlify sites with Prisma Postgres instances. Once connected, the extension will automatically set the `DATABASE_URL` environment variable on your deployed Netlify sites.
 
 ## Features
 
-- Automatic generation of Prisma Postgres API keys for production and preview environments.
+- Automatic generation of Prisma Postgres connection strings for production and preview environments.
 - Simplified environment configuration for your Netlify site.
 
 ## Usage
@@ -47,19 +53,37 @@ Perform the following steps _for every Netlify site_ in which you want to use Pr
 
 ### Ensure your project uses the `DATABASE_URL` environment variable
 
-Ensure that the data source in your `prisma.config.ts` file is configured to use the `DATABASE_URL` environment variable:
+The extension sets `DATABASE_URL` to a Prisma Postgres [connection string](/postgres/database/connecting-to-your-database) that starts with `postgres://`. Netlify Functions run on a conventional Node.js runtime, so use the pooled connection string for application queries and the direct connection string for Prisma CLI commands:
 
-```typescript
-// prisma.config.ts
+```bash title=".env"
+# Application queries
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+
+# Prisma CLI commands, which bypass the connection pooler
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+:::warning[Accelerate retirement]
+
+Hosted Prisma Postgres `prisma+postgres://accelerate.prisma-data.net` connections will be retired on December 1, 2026. If an existing Netlify site still receives such a URL in `DATABASE_URL`, [switch to pooled TCP or the Prisma Postgres serverless driver](/postgres/database/switch-from-accelerate) and update the environment variable on the site.
+
+:::
+
+Ensure that the data source in your `prisma.config.ts` file is configured to use the `DIRECT_URL` environment variable:
+
+```ts title="prisma.config.ts"
 import "dotenv/config";
-import { defineConfig, env } from "@prisma/config";
+import { defineConfig, env } from "prisma/config";
+
 export default defineConfig({
+  schema: "prisma/schema.prisma",
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DIRECT_URL"),
   },
-  schema: "./prisma/schema.prisma",
 });
 ```
+
+Set `DIRECT_URL` in your Netlify site's environment variables too, so that Prisma CLI commands that run during a deploy, such as the `postinstall` script below, can resolve it.
 
 ### Generate Prisma Client in a `postinstall` script in `package.json`
 
@@ -104,7 +128,8 @@ Next, set up a Prisma Postgres instance:
 1. In the **Region** dropdown, select the region that's closest to your current location, e.g. **US East (N. Virginia)**.
 1. Click the **Create project** button.
 1. Click the **Connect to your Database** button
-1. Save the `DATABASE_URL` environment variable, you'll need it in the next section.
+1. Generate a connection string and copy both the pooled value (host `pooled.db.prisma.io`) and the direct value (host `db.prisma.io`). Both start with `postgres://`.
+1. Save both values, you'll need them in the next section: the pooled value becomes `DATABASE_URL`, the direct value becomes `DIRECT_URL`.
 
 ### 3. Locally add Prisma Postgres to the project
 
@@ -120,7 +145,13 @@ In this section, you are going to add Prisma Postgres to the starter project _on
 npm install prisma@7.10.0 --save-dev
 ```
 
-4. Initialize Prisma ORM to create Prisma schema, config and `.env` file:
+4. Install the PostgreSQL driver adapter that Prisma Client uses to connect over TCP:
+
+```npm title="Terminal"
+npm install @prisma/adapter-pg pg
+```
+
+5. Initialize Prisma ORM to create Prisma schema, config and `.env` file:
 
 ```npm
 npx prisma init
@@ -147,14 +178,29 @@ npx prisma init
    } // [!code ++]
    ```
 
-1. Open the newly created `.env` file and paste the `DATABASE_URL` environment variable from the previous section into it.
+1. Open the newly created `.env` file and add the pooled connection string as `DATABASE_URL` and the direct connection string as `DIRECT_URL`, as shown [above](#ensure-your-project-uses-the-database_url-environment-variable). Prisma Client uses the pooled value, the Prisma CLI uses the direct one.
+1. Open the newly created `prisma.config.ts` file and point the datasource at `DIRECT_URL`. `prisma init` generates it with `DATABASE_URL`, which would send the migration and Studio commands below through the connection pooler:
+
+   ```ts title="prisma.config.ts"
+   import "dotenv/config";
+   import { defineConfig, env } from "prisma/config";
+
+   export default defineConfig({
+     schema: "prisma/schema.prisma",
+     datasource: {
+       url: env("DATABASE_URL"), // [!code --]
+       url: env("DIRECT_URL"), // [!code ++]
+     },
+   });
+   ```
+
 1. Run your first migration to map the `User` model to the database:
 
 ```npm
 npx prisma migrate dev --name init
 ```
 
-4. Create (at least) one `User` record in the database with Prisma Studio:
+5. Create (at least) one `User` record in the database with Prisma Studio:
 
 ```npm
 npx prisma studio
@@ -166,12 +212,13 @@ Open the `app/page.jsx` file and replace the entire contents with this code:
 
 ```tsx title="app/page.jsx"
 import "dotenv/config";
-import { PrismaClient } from "../path/to/generated/prisma/client";
-import { withAccelerate } from "@prisma/extension-accelerate";
-const databaseUrl = process.env.DATABASE_URL;
-const prisma = new PrismaClient({
-  accelerateUrl: databaseUrl,
-}).$extends(withAccelerate());
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../src/generated/prisma/client";
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+const prisma = new PrismaClient({ adapter });
 
 export default async function Page() {
   const users = await prisma.user.findMany();
@@ -229,12 +276,13 @@ As mentioned [above](#generate-prisma-client-in-a-postinstall-script-in-packagej
   },
   "dependencies": {
     "@netlify/blobs": "^8.1.0",
+    "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
-    "@prisma/extension-accelerate": "^1.2.1",
     "blobshape": "^1.0.0",
     "bright": "^0.8.5",
     "markdown-to-jsx": "^7.4.5",
     "next": "15.1.6",
+    "pg": "^8.16.3",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "unique-names-generator": "^4.7.1"

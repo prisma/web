@@ -1,3 +1,5 @@
+import "@prisma-docs/ui/search.css";
+import { UnifiedSearchProvider } from "@prisma-docs/ui/components/unified-search";
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import type React from "react";
@@ -107,11 +109,13 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <ThemeProvider>
-          <UtmPersistence />
-          <BuildersDayBanner />
-          <Header />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
+          <UnifiedSearchProvider>
+            <UtmPersistence />
+            <BuildersDayBanner />
+            <Header />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+          </UnifiedSearchProvider>
         </ThemeProvider>
       </body>
     </html>

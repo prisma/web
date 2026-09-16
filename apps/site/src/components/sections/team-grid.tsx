@@ -1,4 +1,4 @@
-import { Linkedin, Twitter } from "lucide-react";
+import { FiLinkedin as Linkedin, FiTwitter as Twitter } from "react-icons/fi";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 type TeamMember = {

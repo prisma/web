@@ -7,8 +7,9 @@ import { ProductPlatform } from "@/components/product/product-platform";
 import { ProductProblem } from "@/components/product/product-problem";
 
 export const metadata = createPageMetadata({
-  title: "Prisma Compute",
-  description: "One platform for your app and its database.",
+  title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+  description:
+    "Prisma Compute deploys TypeScript apps, APIs, and AI agents from your repo as long-lived Bun processes next to Prisma Postgres, with long-running requests and streaming. One platform for your app and its database.",
   path: "/compute",
   ogKicker: "Prisma Compute",
   ogAccent: "red",

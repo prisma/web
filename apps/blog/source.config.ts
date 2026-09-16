@@ -9,6 +9,7 @@ import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
+import { rehypeCodeOptions } from "@prisma-docs/ui/mdx/rehype-code-options";
 
 export const blogPosts = defineCollections({
   type: "doc",
@@ -57,6 +58,8 @@ export const blogPosts = defineCollections({
 export default defineConfig({
   plugins: [lastModified()],
   mdxOptions: {
+    // Class-based Shiki token colours instead of a style attribute per token.
+    rehypeCodeOptions,
     remarkPlugins: [
       remarkDirective,
       remarkDirectiveAdmonition,

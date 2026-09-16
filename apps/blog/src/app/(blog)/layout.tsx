@@ -54,7 +54,7 @@ export function baseOptions() {
           },
           {
             text: "Prisma Partners",
-            url: "https://www.prisma.io/partners",
+            url: "https://www.prisma.io/programs/partners",
             icon: "fa-regular fa-lightbulb",
           },
           {
@@ -80,7 +80,7 @@ export function baseOptions() {
           },
           {
             text: "Customer stories",
-            url: "https://www.prisma.io/showcase",
+            url: "https://www.prisma.io/customers",
             icon: "fa-regular fa-users",
           },
           {
