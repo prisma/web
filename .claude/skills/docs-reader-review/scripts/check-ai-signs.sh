@@ -37,7 +37,7 @@ for f in "$@"; do
     /^(    |\t)/ { next }
     /^(import|export) / { next }
     { print NR": "$0 }
-  ' "$f" | sed -E 's/```[^`]*```//g; s/``[^`]*``//g; s/`[^`]*`//g; s/\]\([^)]*\)/]/g; s/\[#[^]]*\]//g; s/href="[^"]*"//g')
+  ' "$f" | sed -E 's/```(``?[^`]|[^`])+```//g; s/``(`[^`]|[^`])+``//g; s/`[^`]*`//g; s/\]\([^)]*\)/]/g; s/\[#[^]]*\]//g; s/href="[^"]*"//g')
   hits=$(
     printf '%s\n' "$prose" | grep -E -i "$vocab|$shapes|$leaked"
     printf '%s\n' "$prose" | grep -E "$typo" | sed -E 's/^([0-9]+): /\1: [em dash or curly quote] /'
