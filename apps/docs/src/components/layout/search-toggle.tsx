@@ -61,7 +61,7 @@ export function LargeSearchToggle({
     <button
       type="button"
       data-search-full=""
-      aria-label={showLabel ? undefined : "Open Search"}
+      aria-label={showLabel ? undefined : t("Search")}
       {...props}
       className={cn(
         // The navbar's pill: hairline ring on a paper wash, kbd chips squared
