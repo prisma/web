@@ -28,7 +28,7 @@ The migration runs in five phases. The application works at the end of each one.
 4. **Transfer migration ownership.** Prisma ORM 8 takes over planning and applying schema changes.
 5. **Remove Prisma ORM 7** once nothing imports it.
 
-The ownership timeline matters more than the code timeline. Prisma ORM 7 owns schema migrations through phases 1 to 3, and routes move to Prisma ORM 8 independently of that. Prisma ORM 8 takes over migrations only in phase 4, after a baseline migration, a database signature, and a ref are in place. You can pause between phases for as long as you need.
+The ownership timeline matters more than the code timeline. Prisma ORM 7 owns schema migrations through phases 1 to 3, and routes move to Prisma ORM 8 independently of that. Prisma ORM 8 takes over migrations only in phase 4, after a database signature and a `db` ref are in place; the first `migration plan` then writes the baseline migration itself. You can pause between phases for as long as you need.
 
 The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) repository shows the finished result of each phase (tags `step-0` through `step-3`).
 
@@ -431,45 +431,22 @@ Prisma ORM 8 tracks schema state with four pieces, and the handoff creates each 
 - The **marker** is Prisma ORM 8's record, stored in the database, of which contract hash the database currently satisfies.
 - A **ref** is a named pointer at a contract hash. `migration plan` uses the `db` ref as its starting point.
 
-Steps 4.1 to 4.3 create the baseline migration, set the marker, and set the ref.
+Step 4.1 creates the marker and the ref with one command. The baseline migration is written by the first `migration plan` in step 4.3.
 
-### 4.1. Create a baseline migration
+### 4.1. Sign the existing database
 
-```npm
-npx prisma migration plan --name baseline
-```
-
-The command writes a migration package under `migrations/app/<timestamp>_baseline/` plus a contract snapshot under `migrations/snapshots/`. It captures the full schema Prisma ORM 7 built, but you will not run it against your database.
-
-### 4.2. Sign the existing database
-
-Your database already has these tables, so adopt it instead of replaying the baseline:
+Your database already has every table the contract describes, so adopt it rather than replay anything:
 
 ```npm
 npx prisma db sign
-```
-
-`db sign` verifies the live schema matches the emitted contract and writes Prisma ORM 8's marker at that contract version.
-
-**Expected result:** `Database signed`. Then confirm nothing is pending:
-
-```npm
 npx prisma migration status
 ```
 
-The current and target contract hashes should match, with the baseline migration listed as already satisfied.
+`db sign` verifies that the live schema matches the emitted contract, writes Prisma ORM 8's marker at that contract version, stores the contract snapshot under `migrations/snapshots/`, and points a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at it. `migration plan` starts from that ref, so plans chain from the schema Prisma ORM 7 built and contain only your own changes.
 
-### 4.3. Set the `db` ref
+**Expected result:** `Database signed`, and `migration status` shows the current and target contract hashes match with nothing pending.
 
-Point a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at the baseline, using the directory name from step 4.1:
-
-```npm
-npx prisma migration ref set db <timestamp>_baseline
-```
-
-Without a ref, the next `migration plan` has no origin. Because migrations now exist on disk, it refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` rather than plan a full `CREATE TABLE` package. With the ref set, plans chain from the baseline and contain only your actual changes.
-
-### 4.4. Retire the Prisma ORM 7 migration scripts
+### 4.2. Retire the Prisma ORM 7 migration scripts
 
 Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `prisma7 generate`, because the legacy routes still need their client:
 
@@ -483,7 +460,7 @@ Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `
 }
 ```
 
-### 4.5. Verify the handoff with a schema change
+### 4.3. Verify the handoff with a schema change
 
 Verify the migration handoff with a small additive schema change. Add a field to the contract:
 
@@ -506,7 +483,7 @@ npx prisma db migrate --advance-ref db
 npx prisma db verify
 ```
 
-**Expected result:** `migration plan` contains a single operation, `Add column "bio" to "User"`. If it fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN` instead, the `db` ref from step 4.3 is missing. `db migrate` applies the migration, `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
+**Expected result:** `migration plan` reports `Planned baseline + 1 operation(s)` and writes two packages under `migrations/app/`: a baseline that records the schema you adopted in step 4.1, and `add_user_bio` with the single operation `Add column "bio" to "User"`. `db migrate` skips the baseline, because the marker already records that state, and applies `add_user_bio`. `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
 
 Restart the app: the Prisma ORM 8 route returns users with `bio`, and the Prisma ORM 7 route keeps working untouched, because its client doesn't know about the new column. Additive changes like nullable columns are safe next to legacy Prisma ORM 7 code. Be careful with renames or drops of columns that Prisma ORM 7 routes still read.
 

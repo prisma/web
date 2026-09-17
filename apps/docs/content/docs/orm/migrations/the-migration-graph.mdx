@@ -26,7 +26,7 @@ Each migration records the contract state it starts from and the state it ends a
 
 Every time you change the contract, run `npx prisma contract emit`, which replaces `prisma generate`. Then plan a migration with `npx prisma migration plan --name <name>`, and in development apply it with `npx prisma db migrate --advance-ref db`. `npx prisma migration graph` draws the whole history, and `npx prisma migration status` tells you which contract state a database matches and what `db migrate` would run next.
 
-Keep `--advance-ref db` on that command, because it is what stops your next migration redoing work. The `db` ref is a file in `migrations/app/refs/` naming the contract state you last applied in development, and the flag points that ref at the state you just applied. `migration plan` starts from that ref, so if you leave the flag off, your next migration can repeat changes your database already has. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) shows how to fix that.
+Keep `--advance-ref db` on that command, because it is what stops your next migration redoing work. The `db` ref is a file in `migrations/app/refs/` naming the contract state you last applied in development, and the flag points that ref at the state you just applied. `db init`, `db update`, and `db sign` move it too. `migration plan` starts from that ref, so if you leave the flag off, your next migration can repeat changes your database already has. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) shows how to fix that.
 
 :::
 
@@ -166,7 +166,7 @@ The word "baseline" turns up in several different places, and which one you are 
 - **A label in command output.** `(baseline)` in `migration plan` output means the migration starts from an empty database.
 - **A Prisma ORM 7 task.** What Prisma ORM 7 called baselining, marking an existing database as already migrated, is `npx prisma db sign` in Prisma ORM 8.
 
-Reach for [`npx prisma db sign`](/cli/db-sign) when a database has no marker and its tables already match your contract. It checks the tables, then writes the marker. Signing alone is not enough to start migrating, though, because `db migrate` refuses a signed database until a migration in your history ends at the signed state, and [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) shows how to plan that one. For a database Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) instead.
+Reach for [`npx prisma db sign`](/cli/db-sign) when a database has no marker and its tables already match your contract. It checks the tables, writes the marker, and points the `db` ref at the signed contract. Signing alone is not enough to start migrating, though, because `db migrate` refuses a signed database until a migration in your history ends at the signed state. Your next `migration plan` writes that one for you, because the `db` ref now names the signed state; [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) explains what it writes. For a database Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) instead.
 
 ## Database-specific details
 

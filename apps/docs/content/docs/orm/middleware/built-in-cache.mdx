@@ -6,15 +6,17 @@ metaTitle: 'Prisma ORM built-in middleware: cache'
 metaDescription: 'Wire the Prisma ORM cache middleware, opt queries in with cacheAnnotation and a TTL, and understand cache keys, scopes, and hits.'
 ---
 
-The cache middleware serves repeated reads from an in-memory store instead of the database. Caching is strictly opt-in per query: only queries annotated with a TTL are cached, everything else passes through untouched.
+A middleware is an object you register on your client that Prisma ORM calls around every query your app runs. The cache middleware keeps the rows a read returned in memory, so when your app runs that same read again it gets the stored rows back instead of going to the database. Nothing is cached unless you ask for it: you mark a query with a TTL, meaning how long its stored rows stay usable, and every query you do not mark runs against the database exactly as it did before.
 
-Use it for hot, repeatable reads such as dashboards, lookup tables, feature flags, navigation data, or expensive search results where a short stale window is acceptable.
+Reach for it when the same read runs over and over and you can live with an answer that is a little out of date, such as a dashboard, a lookup table, feature flags, navigation data, or a search result that is expensive to run.
 
 Install the package and register the middleware:
 
 ```npm title="Terminal"
 npm install @prisma/orm-extension-middleware-cache
 ```
+
+Your contract is the Prisma ORM 8 name for your schema: `contract.prisma` in a generated project, in place of `schema.prisma`. `npx prisma contract emit` writes `contract.json` and `contract.d.ts` from it, and those are the two files `db.ts` imports.
 
 ```ts title="src/prisma/db.ts"
 import { createCacheMiddleware } from '@prisma/orm-extension-middleware-cache';
@@ -25,81 +27,189 @@ import contractJson from './contract.json' with { type: 'json' };
 export const db = postgres<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
-  middleware: [createCacheMiddleware({ maxEntries: 1_000 })],
+  middleware: [createCacheMiddleware()],
 });
 ```
 
-The cache implements three hooks, all on the row-query lifecycle: `interceptQuery`, `onRow`, and `afterQuery`. So the hooks that run around a cache hit are every middleware's `beforeQuery`, which has already run before any interceptor is consulted, and every middleware's `afterQuery`, which fires afterward with `result.source` set to `'middleware'`. When you combine the cache with other middleware that implement `interceptQuery`, register the cache first if cached rows should win.
+This is a cut-down `src/prisma/db.ts` from a generated project, with `middleware` added. A project created with `npm create prisma@latest` already has `contract.json` and `contract.d.ts` in `src/prisma/`, so you do not have to run `npx prisma contract emit` yourself to get started. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where they come from.
 
-Because it lives on that lifecycle, a read run through `runtime.execute(plan)` is neither cached nor returned as rows; `execute` is the write path and reports affected rows.
+Writes are never cached, and the `*AndCount` methods return a count rather than rows, so there is nothing to cache in their case either.
 
-The cache is family-agnostic: unlike `budgets` and `lints`, it works on MongoDB runtimes as well as PostgreSQL.
+The cache works on PostgreSQL and on MongoDB. You register it on MongoDB the same way: pass `createCacheMiddleware()` in the `middleware` option of `mongo(...)`, which comes from `@prisma/orm-mongo/runtime`.
 
 ## Opt a query in
 
-Annotate a read with `cacheAnnotation` and a `ttl` in milliseconds. On the SQL query builder, chain `.annotate(...)` onto the plan:
+You tell Prisma ORM that a read may be cached by attaching a cache annotation to it. An annotation is a note attached to a query that middleware can read, and the one the cache looks for is `cacheAnnotation({ ttl })`, where `ttl` is how long the rows stay usable, in milliseconds. There is no option that caches every read for you, so a read is cached only when it has an annotation of its own.
+
+Prisma ORM gives you two ways to write the same read, the SQL query builder and the ORM API, and both of them can be cached. Use whichever one the rest of your code already uses, because the annotation attaches differently in each.
+
+With the SQL query builder you build the query yourself, call `.build()`, and run the result with `db.runtime().query(...)` for rows or `db.runtime().execute(...)` for a count. Only rows can be cached, so nothing you run with `db.runtime().execute(...)` ever is. To cache a read, chain `.annotate(cacheAnnotation({ ttl: 60_000 }))` onto the query before you call `.build()`. `db.sql.public.user` names the `user` table in the PostgreSQL schema `public`.
 
 ```ts title="src/prisma/get-users-cached.ts"
 import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
+import { db } from './db';
 
-const plan = db.sql.public.user
-  .select('id', 'email')
-  .annotate(cacheAnnotation({ ttl: 60_000 }))
-  .limit(10)
-  .build();
+export async function getUsersCached() {
+  const plan = db.sql.public.user
+    .select('id', 'email')
+    .annotate(cacheAnnotation({ ttl: 60_000 }))
+    .limit(10)
+    .build();
 
-const users = await db.runtime().query(plan);
+  return db.runtime().query(plan);
+}
 ```
 
-On the ORM API, pass the annotation through the query's meta callback:
+The ORM API does both steps inside the one call, and `db.orm.public.User` is the `User` model in the PostgreSQL schema `public`, rather than the table it is stored in. Its reads take an optional callback after the arguments, and the `meta` object that callback receives is where annotations go:
 
 ```ts title="src/prisma/get-user-cached.ts"
 import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
 import { db } from './db';
 
-const user = await db.orm.public.User.first({ id }, (meta) =>
-  meta.annotate(cacheAnnotation({ ttl: 60_000 })),
-);
+export async function getUserCached(id: number) {
+  return db.orm.public.User.first({ id }, (meta) =>
+    meta.annotate(cacheAnnotation({ ttl: 60_000 })),
+  );
+}
 ```
 
-The first call runs against the database and stores the raw rows. A second call with the same query and parameters inside the TTL window is served from the store, and the driver is not invoked.
+The first call goes to the database as usual, and the cache keeps the rows it got back, exactly as they came. If the same query with the same parameter values runs again before the `ttl` has run out, Prisma ORM answers it from those stored rows and never calls the database driver.
 
-The annotation payload has three fields:
+You can set the following fields on the annotation:
 
 | Field | Type | What it does |
 | --- | --- | --- |
-| `ttl` | `number` | Time-to-live in milliseconds. Without a `ttl`, the annotation is inert and the query is not cached |
-| `skip` | `boolean` | When `true`, bypasses the cache for this call even though a `ttl` is set. Useful as a force-refresh knob |
-| `key` | `string` | Overrides the computed cache key with your own string, stored as-is |
+| `ttl` | `number` | How long the stored rows stay usable, in milliseconds |
+| `skip` | `boolean` | Set it to `true` to send this one call to the database, ignoring anything stored |
+| `key` | `string` | Your own string to store the rows under, instead of the one the cache works out |
 
-`cacheAnnotation` is declared read-only (`applicableTo: ['read']`). Passing it to a write such as `create`, `update`, or `delete` is both a type error and a runtime error, so a mutation cannot be cached by accident.
+Leave `ttl` out and the annotation does nothing, so the query is not cached.
 
-## How keys and hits work
+`skip` and `key` go in the same object as `ttl`, in either API. `skip: true` sends that one call to the database and leaves the stored rows untouched, so everyone else keeps getting the stored rows until the `ttl` runs out. The `ttl` in the same object is ignored on a call with `skip: true`, which is why you can leave the annotation as it is and flip `skip` on the one call that has to see current rows. With the SQL query builder it goes in the same object you pass to `.annotate(...)`:
 
-By default the cache key is a content hash of the executed query: the post-lowering statement plus its bound parameters, combined with the contract's storage hash. Two lookups with different parameter values land in different slots; the same lookup hits. Because schema migrations rotate the storage hash, entries cached before a migration cannot serve queries against the new schema.
+```ts
+const plan = db.sql.public.user
+  .select('id', 'email')
+  .annotate(cacheAnnotation({ ttl: 60_000, skip: true }))
+  .limit(10)
+  .build();
 
-Cache hits are still visible to the rest of the middleware chain: `beforeQuery` hooks have already run, the driver and `onRow` are skipped, and `afterQuery` fires on every middleware with `result.source` set to `'middleware'` instead of `'driver'`, so logging and metrics keep working for cached reads.
+return db.runtime().query(plan);
+```
 
-The cache only acts at runtime scope: queries executed inside a transaction or on an explicitly checked-out connection always go to the database, because read-after-write consistency is the caller's expectation there.
+A `key` is used exactly as you wrote it, and the cache adds nothing to it, so any two reads that pick the same `key` share one entry even when their parameter values or their models differ: the rows stored for `id: 1` come back for `id: 2` as well. Either use `key` only on a query whose parameter values never change, or put the parameter values into the string yourself, behind a prefix no other read in your app uses:
+
+```ts
+return db.orm.public.User.first({ id }, (meta) =>
+  meta.annotate(cacheAnnotation({ ttl: 60_000, key: `user:${id}` })),
+);
+```
+
+Attaching `cacheAnnotation` to a write such as `create`, `update`, or `delete` does not compile: TypeScript rejects it as you write the code, and forcing it through throws when the query runs. You cannot cache a write by accident.
+
+## When a read is served from the cache [#how-keys-and-hits-work]
+
+Unless you give it a `key`, the cache stores a read under a key built from the query, its parameter values, and a hash of your contract, and it serves a read from the cache only when all three match. The same read with a different parameter value is therefore a separate entry and does not get the first one's rows.
+
+That contract hash changes with any migration, whichever table the migration touched, so after a migration every entry the cache keyed for itself stops matching and none of them are served again. An entry you stored under your own `key` is not affected, because your `key` is used exactly as you wrote it and has nothing about your contract in it.
+
+Your own calling code cannot see the difference, because `db.runtime().query(plan)` and `db.orm.public.User.first(...)` give you the same rows whether the cache answered or the database did.
+
+A read inside `db.transaction(...)`, or on a connection you took out of the pool yourself with [`db.runtime().connection()`](/orm/reference/transactions-and-runtime#manual-connection-and-transaction-control), always goes to the database, and its rows are not stored. Code that holds a transaction or a connection expects to read back what it has just written, so the cache stays out of the way and you always see your own writes.
+
+## Check that caching is working
+
+Prisma ORM has no counter or log option that reports cache hits, so to see them, register a small middleware of your own after the cache. A read the cache answers still reaches the middleware after it, so your own logging and metrics keep recording it and a hook like the one below runs either way. That hook is `afterQuery`, and the `result` argument it gets says who answered: `result.source` is `'middleware'` when the cache answered and `'driver'` when the database did.
+
+```ts title="src/prisma/cache-watch.ts"
+import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
+
+export function cacheWatch(): SqlMiddleware {
+  return {
+    name: 'cache-watch',
+    async afterQuery(plan, result) {
+      console.log(`[cache-watch] ${result.source} · ${plan.sql}`);
+    },
+  };
+}
+```
+
+The other built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. On MongoDB the same middleware is typed `MongoMiddleware`, from `@prisma/orm-mongo/family-runtime`, and a MongoDB query has no `sql` field, so log `plan.command` there instead.
+
+Register `cacheWatch()` after the cache, by replacing the `middleware` line in `src/prisma/db.ts` and adding the import above it. Order matters for a middleware that returns rows itself instead of letting the query reach the database, because the first one to do that wins and the ones after it are never asked. `cacheWatch()` only logs, and a middleware of your own that can return rows goes after the cache as well, so that the cache is asked first.
+
+```ts title="src/prisma/db.ts (excerpt)"
+import { cacheWatch } from './cache-watch';
+
+middleware: [createCacheMiddleware(), cacheWatch()],
+```
+
+Now call the same annotated read twice. The first call prints `driver`, because it went to the database, and the second prints `middleware`, because the cache answered it. If you register other middleware of your own that can return rows itself, `result.source` is `'middleware'` for all of them, so it tells you that a middleware answered and not which one.
+
+## When entries go away
+
+There is no call that clears the cache or removes one entry. An entry stops being served when its `ttl` runs out, or when the built-in store drops its least recently used entry to stay under `maxEntries`.
+
+Writes do not clear anything either. A `create`, `update`, or `delete` leaves every stored entry exactly where it was, so a read with a `ttl` of 60 seconds can keep returning the old rows for up to a minute after you have changed them. You have two ways to live with that, and no third: pick a `ttl` you can afford to be wrong for that long, and send the calls that have to see the change straight away with `skip: true`. A read that can never be even a second out of date is a read you should not annotate at all.
 
 ## Options
 
+These are the options you pass to `createCacheMiddleware`:
+
 | Option | Type | Default | What it controls |
 | --- | --- | --- | --- |
-| `maxEntries` | `number` | `1000` | Maximum entries in the default in-memory store; least-recently-used entries are evicted first. Only consulted when `store` is omitted |
-| `store` | `CacheStore` | in-memory LRU | Bring your own store implementation, for example one backed by Redis |
-| `clock` | `() => number` | `Date.now` | Time source used to stamp `storedAt` on committed entries. TTL expiry lives in the store implementation |
+| `maxEntries` | `number` | `1000` | How many entries the built-in store holds before it drops its least recently used entry |
+| `store` | `CacheStore` | the built-in in-memory store | Where the cached rows are kept, for example in Redis |
+| `clock` | `() => number` | `Date.now` | The function the cache calls for the current time, recorded on each entry |
+
+`maxEntries` applies to the built-in store only. When you pass your own `store`, the cache ignores `maxEntries` and your store decides for itself how much it holds.
 
 ## Common gotchas
 
 :::warning
 
-The default store is in-memory and per-process, so two instances of your app do not share it, and a deploy clears it. That makes it a good fit for hot, tolerant-of-staleness reads, and a poor fit as a source of truth. For shared caching, implement `store` against your infrastructure.
+The built-in store holds the rows in the memory of one process, so if you run two instances of your app each one keeps its own copy of the rows and fills it at its own pace, and every deploy starts both of them empty again. Two requests that run the same read can therefore get different rows depending on which instance served them, so never let a decision that has to be right rest on a cached read, such as a permission check or an account balance. Send those reads with `skip: true`, or leave them unannotated.
 
 :::
+
+## Share one cache between instances
+
+To have every instance read from the same cache, pass your own `store`. A store is an object with two methods, both async, so it can talk to Redis or to anything else your instances can all reach. `get(key)` takes a string and returns the entry stored under it, or `undefined` when there is nothing for that key. `set(key, entry, ttlMs)` keeps an entry under that key for `ttlMs` milliseconds.
+
+Working out that an entry has expired is your store's job, so your `get` must not return an entry whose `ttlMs` has passed. A store backed by Redis can let Redis's own expiry do that for you, by setting it when `set` is called.
+
+An entry is an object with two fields, `{ rows, storedAt }`. `storedAt` is the time the cache recorded when it stored the rows, taken from the `clock` option. `rows` is the rows as the database driver returned them, so integers are numbers and both text and timestamps are strings. A `createdAt` column reaches your store as a string and not a `Date`, as a row from `select('id', 'email', 'createdAt')` shows:
+
+```ts
+{ id: 3, email: 'mia@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
+```
+
+Your store gets those objects as they are and has to hand back the same thing from `get`, so turning them into something Redis can hold, and back again, is yours to write. Log a row before you write the store, so you can see the values for your own columns.
+
+```ts title="src/prisma/cache-store.ts"
+import type { CacheStore } from '@prisma/orm-extension-middleware-cache';
+
+export const store: CacheStore = {
+  async get(key) {
+    // return { rows, storedAt } when you have unexpired rows for this key, otherwise undefined
+    return undefined;
+  },
+  async set(key, entry, ttlMs) {
+    // keep entry under key for ttlMs milliseconds
+  },
+};
+```
+
+Register the middleware with your store instead of `maxEntries`, again by replacing the `middleware` line in `src/prisma/db.ts`:
+
+```ts title="src/prisma/db.ts (excerpt)"
+import { store } from './cache-store';
+
+middleware: [createCacheMiddleware({ store })],
+```
 
 ## See also
 
 - [How middleware works](/orm/middleware/how-middleware-works)
-- [Authoring custom middleware](/orm/middleware/authoring-custom-middleware), including how `interceptQuery` short-circuiting works
+- [Authoring custom middleware](/orm/middleware/authoring-custom-middleware), including how a middleware answers a query itself instead of letting it reach the database
 - [Built-in: budgets](/orm/middleware/built-in-budgets)

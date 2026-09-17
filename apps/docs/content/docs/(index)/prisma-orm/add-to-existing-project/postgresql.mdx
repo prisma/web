@@ -112,6 +112,8 @@ Record that the live database matches the emitted contract:
 npx prisma@latest db sign
 ```
 
+**Expected result:** `Database signed`. The command also stores the contract snapshot under `migrations/snapshots/` and points the `db` ref at it, so a later [migration plan](/cli/migration-plan) starts from the schema you just adopted instead of from an empty database.
+
 This step matters in two common cases:
 
 - the database has never been signed by Prisma ORM before
@@ -191,3 +193,16 @@ npx prisma@latest contract emit
 ```
 
 Use [db update](/cli/db-update) for a direct development update, or [migration plan](/cli/migration-plan) when you want a checked-in migration.
+
+Put together, adopting the database and making a first schema change is this sequence:
+
+```npm
+npx prisma@latest contract infer --output ./src/prisma/contract.prisma
+npx prisma@latest contract emit
+npx prisma@latest db sign
+# edit src/prisma/contract.prisma
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name <slug>
+```
+
+The plan starts from the contract `db sign` recorded, so it contains only your change. Because `migrations/app/` is still empty, that first plan also writes a baseline package recording the schema you adopted; see [the automatic baseline](/cli/migration-plan#the-automatic-baseline).
