@@ -32,7 +32,9 @@ Words that models use far more often than people do. Each row gives the plain re
 | authored, relocated, attempted, passed away, commenced, terminated | wrote, moved, tried, died, started, stopped |
 | in order to, as a result of, the fact that, a part of, all of the | to, because, that, part of, all the |
 
-Wikipedia notes that the over-used words change with each model generation, so this table is a snapshot. When a reviewer flags a word that reads as machine-made and it is not here, add it.
+Wikipedia notes that the over-used words change with each model generation, so this table is a snapshot. When a reviewer flags a word that reads as machine-made and it is not here, add it here and to the `vocab` pattern in `scripts/check-ai-signs.sh`.
+
+**Last reconciled with the Wikipedia page: 2026-09-16.** The page's "High density of AI vocabulary" section lists which words belong to which model generation and retires words that fall out of use. Re-read that section whenever a new model generation is in wide use (roughly every six months), update this table and the checker, and bump this date. The `docs-prose` workflow runs the checker on every hand-written docs page a pull request adds or changes (the generated ORM and CLI error-reference pages are skipped, because their text is fixed upstream), so a stale list means stale enforcement.
 
 ## Sentence shapes
 
