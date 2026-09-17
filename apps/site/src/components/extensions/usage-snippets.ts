@@ -175,13 +175,15 @@ export default definePrismaConfig({
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = supabase<Contract>({
+export const db = await supabase<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
-  jwtSecret: process.env['SUPABASE_JWT_SECRET']!,
+  // Current projects sign ES256: point at your JWKS endpoint. A legacy
+  // HS256 project passes jwtSecret instead, never both.
+  jwksUrl: process.env['SUPABASE_JWKS_URL']!,
 });
 
-// Per request: db.asUser(jwt), db.asAnon(), or db.asServiceRole().`,
+// Per request: await db.asUser(jwt), db.asAnon(), or db.asServiceRole().`,
     },
   ],
   "middleware-cache": middlewareRegistration(

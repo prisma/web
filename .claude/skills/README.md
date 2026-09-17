@@ -17,6 +17,7 @@ A skill is a folder with a `SKILL.md` (the instructions) and sometimes `referenc
 | [`content-create-hero-image`](content-create-hero-image/SKILL.md) | Generate a post's hero (SVG) and social/OG image (PNG) in the Eclipse house style | "Create a cover image for my Compute post" |
 | [`docs-writer`](docs-writer/README.md) | Write or rewrite developer docs (how-to, concept, reference) | "Write a how-to for deploying to Prisma Compute" |
 | [`docs-reader-review`](docs-reader-review/SKILL.md) | Check a written page reads for an ordinary user: banned-jargon, staccato, and AI-signs checks, then a fresh reviewer reads it cold and marks what it cannot follow | "Reader review this page" |
+| [`docs-reader-review/scripts/check-ai-signs.sh`](docs-reader-review/scripts/check-ai-signs.sh) | Runs in CI (`docs-prose.yml`) on every hand-written docs page a pull request adds or changes (the generated ORM and CLI error-reference pages are skipped; their text is fixed upstream); its word list is dated in `references/ai-writing-signs.md` and needs re-checking against Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) about every six months | "Update the AI-signs word list" |
 | [`docs-agent-ready`](docs-agent-ready/SKILL.md) | Hold the docs' agent-readiness invariants (llms.txt budgets, coverage, skill/MCP endpoints) when editing them | "Add a new docs section to llms.txt" |
 
 ---
