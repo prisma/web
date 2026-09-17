@@ -1,0 +1,114 @@
+---
+title: "Prisma vs Netlify: where should you build your next TypeScript app?"
+slug: "prisma-vs-netlify"
+date: "2026-09-16"
+authors:
+  - "Shane Neubauer"
+metaTitle: "Prisma vs Netlify: comparing TypeScript application platforms"
+metaDescription: "Compare Prisma and Netlify for TypeScript apps: ORM 8, Postgres, Compute, Composer, preview databases, deployment workflows, and pricing."
+excerpt: "Prisma and Netlify both host full-stack applications. Compare how they define services, connect databases, deploy changes, and charge for usage."
+tags:
+  - "platform"
+  - "prisma-postgres"
+  - "orm"
+---
+
+Prisma and Netlify both provide application hosting and managed Postgres. The main difference is how they bring the application together. Prisma connects the data model, database, and services through TypeScript definitions. Netlify builds and publishes a site's frontend and backend functions together, with preview URLs for reviewing changes before they go live.
+
+That difference becomes more useful to understand as an application grows. A feature might need a schema change, a new API, and a frontend that calls it. With Prisma, the definitions for those parts live in the codebase, where a developer or coding agent can inspect them and the compiler can check that they agree.
+
+The Prisma platform includes **[Prisma ORM 8](https://www.prisma.io/docs/orm), [Postgres](https://www.prisma.io/docs/postgres), [Compute](https://www.prisma.io/docs/compute), and [Composer](https://www.prisma.io/docs/composer)**. Together, they cover typed data access, database hosting, application execution, and the connections between services. That is the scope of this comparison.
+
+## Choose Prisma when…
+
+- You're building a TypeScript application and want the data model, managed Postgres, and application hosting to work together from the start.
+- Your application has services that depend on each other, and you want those connections declared in code and checked by TypeScript before deployment.
+- Your team changes schemas on parallel Git branches and wants separate databases for testing, with schema changes brought together through Prisma ORM's migration graph.
+- You're building with a coding agent and want it to work from explicit definitions of your data, service APIs, and infrastructure in the same repository.
+
+## Choose Netlify when…
+
+- Your main priorities are web publishing and global delivery, with integrated caching and image optimisation.
+- Your backend fits naturally into functions that are built and versioned alongside your site.
+- You want Deploy Previews automatically connected to copies of production data through Netlify Database.
+
+## How do Prisma and Netlify compare?
+
+The practical differences show up in what you deploy, how you connect it, and what happens when you make a change:
+
+| What you need | Prisma | Netlify |
+| --- | --- | --- |
+| Application hosting | TypeScript HTTP services on Prisma Compute, running on Bun | Serverless Functions and Edge Functions alongside site deployment |
+| Managed PostgreSQL | Prisma Postgres, usable with any PostgreSQL client | Netlify Database, [built on Neon](https://www.netlify.com/blog/netlify-database/) and managed through Netlify |
+| Typed data access | Prisma ORM 8, or your preferred PostgreSQL client | Native database SDK, Drizzle integration, or another PostgreSQL-compatible client |
+| Application composition | Composer declares services, resources, and typed dependencies together | Site code and functions are built and versioned together, with database branches connected to previews |
+| Preview databases | A separate database per Git branch, with schema changes managed through Prisma ORM | A Neon-backed database branch containing a production-data copy for each Deploy Preview |
+| Deployment charges | No separate charge for deployments or preview branch creation; resource usage is billed | Production deploys consume credits; preview deployment events have no deployment charge, but usage still counts |
+
+These capabilities are described in the [Prisma Compute](https://www.prisma.io/docs/compute) and [Composer](https://www.prisma.io/docs/composer) docs, and Netlify's [platform overview](https://www.netlify.com/platform/), [database tooling](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/), and [pricing documentation](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/). The differences in preview data are explained below.
+
+## How do you define and change the application?
+
+Prisma Composer lets you describe an application's services and infrastructure in TypeScript. Prisma ORM 8 describes the data those services work with. Together, they make more of the application available to inspect and typecheck before you deploy it.
+
+That matters because a feature rarely stays inside one file. Add a checkout and you might need a new database table, an orders API, and a frontend that calls it. An agent can write each piece. You still need those pieces to agree.
+
+Take a storefront that calls a catalog service and an orders service. Orders calls the catalog to get the price, and each backend owns its database. With Composer, the storefront declares the APIs it needs, and the application's root module connects those dependencies to the services that provide them. The storefront receives typed clients for those APIs.
+
+Now change the catalog's API. If a caller no longer matches the contract, TypeScript can catch the mismatch before deployment. The relationships are in the repository, where a teammate or coding agent can read them. Our [store example](https://github.com/prisma/composer/tree/main/examples/store) shows this in practice.
+
+Composer provisions the declared resources and sets up authenticated connections between services. You build the application code first; Composer assembles that output for deployment. It also provides modules for schedules, storage, and event streams, so adding those capabilities follows the same pattern.
+
+Prisma ORM 8 applies a similar idea to data access. It's a complete TypeScript rewrite built around a data contract: a JSON description of the database structure, accompanied by TypeScript declarations. Query APIs and tooling use that contract, and extensions can add capabilities around it. The [ORM architecture](https://github.com/prisma/orm/blob/main/ARCHITECTURE.md) explains the design.
+
+The two contracts have different jobs. Prisma ORM describes the database structure and types your queries. Composer describes service APIs and dependencies. A developer or agent can work from explicit definitions at both points, with the compiler checking the changes.
+
+Netlify also supports typed database access, including a [Drizzle integration](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/). Its [functions](https://docs.netlify.com/build/functions/overview/) are built and versioned with the site. Prisma's particular advantage is how far that typed model extends through the application, from the data you query to the services you connect.
+
+You don't need several services to start. A single application can use Compute and Postgres directly, with Composer available when you want to declare more of the application together.
+
+## How do you deploy and test changes?
+
+Prisma's model is a **separate database per Git branch**, with schema changes managed in code through Prisma ORM. Each branch gets an application environment where you can test those changes. Composer can declare the database as a service dependency, keeping that relationship in the application definition.
+
+The useful part comes when the work needs to come back together. Say one developer adds a `phone` field while another adds an `avatarUrl` field. Each tests against their own database. After merging the schema changes in Git, Prisma ORM can plan migrations from each previous schema state to the combined one. The [migration graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph) records those paths, allowing databases with different starting schemas to reach the same result.
+
+The schema definitions and migration files are what you merge. Production applies the resulting migrations to its own data; test rows from a feature branch stay in that branch's database. This gives the team a reviewable path from an experiment to a production schema change.
+
+When supplying a `DATABASE_URL` yourself, give previews their own preview-scoped value: a database reached through that variable is only as isolated as the URL you set, so a preview pointed at production writes to production. Prisma's [branching documentation](https://www.prisma.io/docs/compute/branching) covers that configuration. Separate branch databases aren't automatically populated with production data.
+
+On Netlify, you can connect a Git repository and configure a build command. With continuous deployment enabled, pushing code triggers a build of the site and its functions. A pull request gets a Deploy Preview URL for the team to review; merging into the configured production branch triggers a production deployment. The functions are versioned with the site, so the preview runs the backend code belonging to that change. Netlify documents this in its [Git workflow](https://docs.netlify.com/build/git-workflows/overview/) and [Functions overview](https://docs.netlify.com/build/functions/overview/).
+
+Netlify Database extends that process to preview data. Each Deploy Preview gets a database branch containing a copy of production data from when the preview was first created. Netlify also applies migrations as part of production and preview deployments. Changes made in the preview database stay separate from production, as described in its [database documentation](https://docs.netlify.com/build/data-and-storage/netlify-database/).
+
+Copy-on-write branching, as used by Neon, makes it efficient to create an isolated copy of a database. Reconciling changes after that copy diverges is a separate problem. Production may have received new orders while a developer changed the schema and edited test records in the preview. Deciding which changes belong in production requires more than combining the two database states.
+
+Netlify also uses [migration files committed to Git](https://docs.netlify.com/build/data-and-storage/netlify-database/migrations/) to carry schema changes into production. The advantage we're building around at Prisma is the combination of separate databases for parallel work and an ORM that understands the paths between schema states. Isolation gives you somewhere to make the change; the migration graph gives you a way to bring the schema changes together.
+
+## What can you run, and what will it cost?
+
+Prisma Compute runs TypeScript HTTP application services on Bun, alongside Prisma Postgres. Your application starts a server and handles requests. It fits web applications and APIs that you want to host with their database, and you can add scheduled work through Composer's modules.
+
+Each Compute service currently runs in one region. If your application specifically requires WebSocket servers, those aren't currently supported; the [runtime documentation](https://www.prisma.io/docs/compute/limitations) covers that boundary and background execution.
+
+Netlify provides an edge network, caching, and Image CDN for web delivery. For asynchronous work, its [Background Functions](https://docs.netlify.com/build/functions/background-functions/) run for up to 15 minutes, while [Async Workloads](https://docs.netlify.com/build/async-workloads/overview/) supports retries and multi-step jobs. These are useful when they match the way your application runs.
+
+On price, the answer depends on your workload. Prisma Compute charges for requests, provisioned memory, active CPU, and outbound bandwidth. Deploying and creating preview branches carry no separate charge. A running preview still consumes resources. See [Prisma Compute pricing](https://www.prisma.io/docs/compute/pricing).
+
+Netlify uses a shared credit allowance for resources including function compute, database compute, requests, and bandwidth. Production deployments also consume credits. Deploy Previews, branch deploys, and failed deploys have no deployment charge, although their runtime usage still counts. See [Netlify's credit-based pricing](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/) for the current rates.
+
+For a team shipping frequently, Prisma's lack of a deployment charge is one useful difference. For the full bill, include database usage, storage, and traffic as well as application hosting. An app waiting on external APIs will use resources differently from one doing heavy computation, even if both serve the same number of requests.
+
+## Can you use Prisma with Netlify?
+
+Yes. Prisma ORM can be used in a Netlify-hosted application; using the ORM doesn't require Prisma Compute or Prisma Postgres. The [ORM is independent of Prisma Cloud](https://www.prisma.io/blog/is-prisma-8-ready-for-long-lived-production-apps), and Netlify Database supports [PostgreSQL-compatible clients](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/). Runtime configuration and the migration workflow still need to match your application.
+
+Prisma Postgres also works with other PostgreSQL clients, and Compute doesn't require our ORM. You can adopt the pieces you need without replacing everything at once.
+
+Using the Prisma products together extends that approach across the application. The data model describes what a service stores, Composer describes what it depends on, and Compute and Postgres run the pieces. A change to those relationships becomes something you can review alongside the application code.
+
+## Start with one real workflow
+
+Try the feature you expect to keep changing. Build it with Prisma Postgres and Compute, and use Composer if it spans multiple services. Change the data contract or a service API, run the typechecks, and deploy the result.
+
+The [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started) walks through a two-service application. It gives you a small version of the workflow we want for the whole platform: describe what the application needs, let the tools handle the connections, and keep building.

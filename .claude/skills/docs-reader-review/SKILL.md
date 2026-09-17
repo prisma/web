@@ -3,7 +3,7 @@ name: docs-reader-review
 description: Use when a docs page or section has been written or rewritten and is about to be handed over, when the operator says "reader review", "does this read like a human wrote it", "too much jargon", "plain language", or when a docs brief asks for a review before a pull request.
 metadata:
   author: Prisma
-  version: "2026.9.11"
+  version: "2026.9.16"
 ---
 
 # Docs Reader Review
@@ -21,13 +21,17 @@ Use it after `docs-writer` (or any other writing pass) and after the fact review
 
 ### 1. Run the banned-term check
 
-Run `scripts/check-plain.sh` on every changed page. It fails on the words in `references/banned-terms.md`, which lists source-code vocabulary and the plain words to use instead, and it ignores code blocks and inline code. Replace every hit before going further. Do not argue that a term is fine in context. The one exception: if the sentence itself defines the term in plain words, add `{/* plain-language:defined */}` to that line; the checker skips it and the reader review will confirm the definition landed. Terms the list marks "(unexplained)" are not checked by the script; the reviewer catches them.
+Run `.claude/skills/docs-reader-review/scripts/check-plain.sh` (path from the repository root) on every changed page. It fails on the words in `references/banned-terms.md`, which lists source-code vocabulary and the plain words to use instead, and it ignores code blocks and inline code. (Machine-writing vocabulary such as "robust" or "leverage" is a different list, checked in step 1c.) Replace every hit before going further. Do not argue that a term is fine in context. The one exception: if the sentence itself defines the term in plain words, add `{/* plain-language:defined */}` to that line; the checker skips it and the reader review will confirm the definition landed. Terms the list marks "(unexplained)" are not checked by the script; the reviewer catches them.
 
 ### 1b. Run the staccato check
 
-Run `scripts/check-staccato.py` on every changed page. It flags paragraphs with three or more consecutive sentences under nine words, the usual signature of a page whose long sentences were split without keeping the connectives. Read each flagged paragraph aloud. Rejoin sentences that are cause and effect, contrast, or condition and result with "because", "so", "but", "while", or a colon, and leave apart the ones that are separate ideas. The script only finds the worst runs; a paragraph of eleven-word sentences that all land the same way is still staccato, so read the whole page for rhythm, not only the hits. Reference entries that are fragments by design (a `Payload:` line, a one-line table note) are not prose and do not count.
+Run `.claude/skills/docs-reader-review/scripts/check-staccato.py` on every changed page. It flags paragraphs with three or more consecutive sentences under nine words, the usual signature of a page whose long sentences were split without keeping the connectives. Read each flagged paragraph aloud. Rejoin sentences that are cause and effect, contrast, or condition and result with "because", "so", "but", "while", or a colon, and leave apart the ones that are separate ideas. The script only finds the worst runs; a paragraph of eleven-word sentences that all land the same way is still staccato, so read the whole page for rhythm, not only the hits. Reference entries that are fragments by design (a `Payload:` line, a one-line table note) are not prose and do not count.
 
-### 1c. Read for explanation, not statement
+### 1c. Run the AI-signs check
+
+Run `.claude/skills/docs-reader-review/scripts/check-ai-signs.sh` on every changed page. It flags the signs of machine-written prose that a regex can catch: the over-used vocabulary (crucial, robust, seamless, leverage, showcase, "Additionally,"), "serves as" in place of "is", "not just X but Y", "it's important to note", "In summary", chat text pasted into the page ("Here's an overview of", "I hope this helps", unfilled `[placeholders]`), em dashes, curly quotes, `---` breaks between sections, and Title Case headings. `references/ai-writing-signs.md` explains each one and gives the plain replacement; it is adapted from Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing). Fix every hit. The signs a regex cannot catch (participle tails like "..., ensuring your app scales", the rule of three, bold-label lists everywhere, the same thing renamed in every paragraph, features described by their importance instead of their behavior) are in the same file; read it once before the reader round, because the reviewer reports them as "sounds like marketing" or "could not restate" without naming the pattern.
+
+### 1d. Read for explanation, not statement
 
 Read `references/explain-not-state.md` before fixing anything. It names the habit that a plain-language pass and a word budget both produce: true, short sentences that state a fact and never say what it means for the reader. The staccato check flags the mechanical signs (counting lead-ins like "Four things change it:", fragment openers like "One name is special."), but most of the work is the desk test in that file: read each paragraph aloud as if to a colleague, and add the sentence you would say out loud. A page may grow when it gains explanation. Word budgets are for repetition only.
 
@@ -55,6 +59,7 @@ For each reported sentence:
 | mechanism instead of action | delete the mechanism, keep what the reader does and what they see |
 | a reference it could not resolve ("the plan", "the ref", "spec") | show the thing, or name where it comes from |
 | a term used before the page defines it | move the definition to the first use |
+| "reads like marketing", "sounds generated" | find the pattern in `references/ai-writing-signs.md` (participle tail, puffed significance, negative parallelism, rule of three) and replace it with the specific fact |
 
 Do not add content the page's purpose does not need. Do not argue with the reviewer. If a mark seems wrong, the sentence still confused a reader; rewrite it anyway.
 
