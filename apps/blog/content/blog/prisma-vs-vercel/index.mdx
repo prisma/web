@@ -4,114 +4,253 @@ slug: "prisma-vs-vercel"
 date: "2026-09-16"
 authors:
   - "Shane Neubauer"
-metaTitle: "Prisma vs Vercel: comparing TypeScript application platforms"
-metaDescription: "Compare Prisma and Vercel for TypeScript apps: ORM 8, Postgres, Compute, Composer, service contracts, preview databases, deployment workflows, and pricing."
-excerpt: "Prisma and Vercel both host full-stack applications. Compare how they connect services, manage database changes, deploy previews, and charge for usage."
+metaTitle: "Prisma vs Vercel for TypeScript apps: which platform?"
+metaDescription: "Prisma vs Vercel compared for TypeScript apps: typed service contracts, Postgres, per-branch preview databases, migrations, limits, and what each one bills."
+excerpt: "Prisma and Vercel both host full-stack TypeScript apps and preview every branch. A Prisma Composer deploy provisions and type-checks your services and Postgres from definitions in your repo; Vercel builds your app and connects databases through its Marketplace."
+heroImagePath: "/prisma-vs-vercel/imgs/hero.svg"
+heroImageAlt: "Prisma and Vercel logos side by side under the label TypeScript app platforms"
+metaImagePath: "/prisma-vs-vercel/imgs/meta.png"
 tags:
   - "platform"
   - "prisma-postgres"
   - "orm"
 ---
 
-Prisma and Vercel both host full-stack applications and deploy Git branches as previews you can review before merging. Prisma connects the data model, managed Postgres, and application services through TypeScript definitions. Vercel builds your framework's frontend and backend code and serves the deployed application through its delivery network. Databases connect through its Marketplace.
+Prisma and Vercel both host full-stack TypeScript applications with managed Postgres, and both deploy every Git branch as a preview you can review before merging. They differ in what each platform sets up for you. On Prisma, one deploy of a [Prisma Composer](https://www.prisma.io/docs/composer) app provisions your services on [Prisma Compute](https://www.prisma.io/docs/compute), their [Prisma Postgres](https://www.prisma.io/docs/postgres) databases, and the authenticated connections between them, all from TypeScript definitions in your repository that the compiler type-checks first. Vercel builds your framework code, serves it through its delivery network, and connects a database through a Marketplace integration.
 
-That difference matters when a feature crosses several parts of the application. A new checkout flow might need a database table, an orders service, and a frontend that calls it. Prisma puts the data and service contracts in the codebase, where a developer or coding agent can inspect them and TypeScript can check that the callers match the APIs they use.
+Choose Prisma when your app is TypeScript on Bun with a Postgres database, one region per service is enough, you can build on pre-release tooling today, and especially when several services call each other. Choose Vercel when you need Next.js platform features, WebSockets, Node.js rather than Bun, a non-TypeScript backend, or preview databases pre-filled with production data.
 
-The Prisma platform includes **[Prisma ORM 8](https://www.prisma.io/docs/orm), [Postgres](https://www.prisma.io/docs/postgres), [Compute](https://www.prisma.io/docs/compute), and [Composer](https://www.prisma.io/docs/composer)**. Together, they cover typed data access, database hosting, application execution, and the connections between services.
+The Prisma platform is four products: [Prisma ORM 8](https://www.prisma.io/docs/orm), a release candidate with general availability expected in October 2026, for typed data access; Prisma Postgres for the database; Prisma Compute for running TypeScript services; and Prisma Composer, in early access, for declaring how those services connect.
 
-## Choose Prisma when…
+## Choose Prisma when
 
-- You're building a TypeScript application and want the data model, managed Postgres, and application hosting to work together from the start.
-- Your services depend on each other, and you want typed API contracts and resource dependencies declared alongside the application code.
-- You want to test the running application and its schema changes before merging, with a preview deployment and separate database for each Git branch, and schema changes brought together through Prisma ORM's migration graph.
-- You're building with a coding agent and want it to inspect the data contract, service contracts, and infrastructure definitions in the same repository.
+- Several TypeScript services call each other, and you want each call's contract in the dependency declaration so TypeScript checks the wiring. One service still deploys from a Git push, and you can add Composer later.
+- Your services run on Bun, or can be made to, and one region per service with no edge runtime is enough.
+- You want every Git branch to be an isolated environment with its own services and environment variables, and you are fine creating its database with one command or a Composer stage deploy.
+- You do not want to pay per seat or per deploy. Vercel charges $20 a month per additional team member; Prisma Compute charges a plan fee plus usage and nothing for seats or deployments.
+- You can build on pre-release tooling. Prisma ORM 8 is a release candidate and Composer is in early access; Prisma Compute and Prisma Postgres are the hosting and database underneath them.
 
-## Choose Vercel when…
+## Choose Vercel when
 
-- Your main priorities are framework integration and global web delivery, particularly for a Next.js application.
-- You want to choose a database provider through the Marketplace and use its integration to provision databases for your application and previews.
-- You're deploying a frontend and backends in different languages, such as Next.js and Python, within one Vercel project.
+- You rely on Next.js features that Vercel implements at the platform level, such as its caching layer and on-demand image optimization. Prisma Compute runs Next.js but does not provide those; the [image transformations guide](https://www.prisma.io/docs/compute/image-transformations) shows how to build the equivalent route and point `next/image` at it.
+- You need WebSocket servers, which Prisma Compute does not support and Vercel Functions serve in public beta.
+- Your app runs on Node.js and you do not want to move it to Bun, or your backend is not TypeScript at all. Vercel Services runs a Next.js frontend alongside a Python backend in one project.
+- You want preview databases that start as a copy of production. The Neon integration on Vercel creates a copy-on-write branch per preview; on Prisma you provision a branch database and seed it yourself.
+- A request needs longer than 60 seconds before it starts responding. Vercel Functions default to 300 seconds, go to 800 seconds on Pro, and reach 30 minutes in beta; Prisma Compute cancels a request that has sent nothing after 60 seconds.
 
 ## How do Prisma and Vercel compare?
 
-The practical differences show up in what the platform connects for you and what you describe in application code:
-
 | What you need | Prisma | Vercel |
 | --- | --- | --- |
-| Application hosting | TypeScript HTTP services on Prisma Compute | Framework deployments and Vercel Functions; Services can group multiple frontends and backends |
-| Managed PostgreSQL | Prisma Postgres, usable with any PostgreSQL client | Marketplace providers, including Prisma Postgres and Neon |
-| Typed data access | Prisma ORM 8, or your preferred PostgreSQL client | Your choice of ORM or database client, including Prisma ORM |
-| Application composition | Composer declares resources, service contracts, and typed dependencies | Services declares build units, routing, and private service bindings |
-| Application previews | Deploy each Git branch to an isolated environment for review before merging | Deploy Git branches to preview URLs for review before merging |
-| Preview databases | A separate database per Git branch, with schema changes managed through Prisma ORM | Provider-specific isolation; Neon's preview integration creates copy-on-write database branches |
-| Runtime billing | Requests, provisioned memory, active CPU, and outbound bandwidth | Fluid compute usage, plus applicable delivery and other platform usage |
+| Application hosting | TypeScript HTTP services on Prisma Compute, running on Bun, one region per service | Framework deployments and Vercel Functions; Services groups several frontends and backends |
+| Managed PostgreSQL | Prisma Postgres, which any PostgreSQL client can use | Marketplace providers, including Prisma Postgres and Neon |
+| Typed data access | Prisma ORM 8, or the PostgreSQL client you prefer | Your choice of ORM or database client, including Prisma ORM |
+| Service-to-service wiring | Composer declares each dependency with its typed contract and provisions the connection | Service bindings (beta) inject the target service's URL; types between services are yours to add |
+| Application previews | Each Git branch deploys to its own environment, torn down when the branch is deleted | Each Git branch deploys to a preview URL |
+| Preview databases | A separate database per Git branch, provisioned by you or by a Composer stage deploy, with no production data copied | Provider-specific; the Neon integration creates a copy-on-write branch with the parent's data |
+| Long-running work | 60 seconds to start responding, then `waitUntil` for work after the response; scheduled jobs through Composer; no WebSockets | 300 seconds default, 800 seconds on Pro, 30 minutes in beta; WebSockets in public beta |
+| Billing model | Plan fee plus requests, provisioned memory, active CPU, and outbound bandwidth; nothing for deploys or seats | Plan fee with a usage credit, plus Fluid compute, delivery, builds, and $20 per additional seat |
 
-The table draws on the [Prisma Compute](https://www.prisma.io/docs/compute) and [Composer](https://www.prisma.io/docs/composer) docs, and Vercel's [Services](https://vercel.com/docs/services), [storage integrations](https://vercel.com/docs/storage), and [Fluid compute pricing](https://vercel.com/docs/functions/usage-and-pricing) documentation. The preview and billing differences are explained below.
+![What each platform connects for you. On Prisma, the data contract, Composer service contracts, Prisma Postgres, and Prisma Compute are linked by TypeScript definitions in one repository. On Vercel, the framework build and Vercel Functions are served through the delivery network, with a database connected through a Marketplace integration.](/prisma-vs-vercel/imgs/what-each-platform-connects.svg)
 
-## How do you define and change the application?
+The table draws on the [Prisma Compute](https://www.prisma.io/docs/compute), [Composer](https://www.prisma.io/docs/composer), and [Compute limitations](https://www.prisma.io/docs/compute/limitations) docs, and on Vercel's [Services](https://vercel.com/docs/services), [storage integrations](https://vercel.com/docs/storage), [Prisma Postgres Marketplace listing](https://vercel.com/marketplace/prisma), [function duration](https://vercel.com/docs/functions/configuring-functions/duration), [WebSocket changelog](https://vercel.com/changelog/websocket-support-is-now-in-public-beta), and [Fluid compute pricing](https://vercel.com/docs/functions/usage-and-pricing) documentation.
 
-Prisma Composer lets you describe an application's services and infrastructure in TypeScript. Each service declares what it needs, and the application's root module connects those dependencies to the services or resources that provide them.
+## How do you define the application?
 
-Take a storefront that calls a catalog service and an orders service. Orders asks the catalog for a product's price before saving a purchase. With Composer, those APIs have typed contracts, and the callers receive typed clients for their dependencies.
+On Prisma you describe services and their dependencies in TypeScript, and a Composer deploy provisions what you described. On Vercel you connect a repository, Vercel detects the framework and builds on push, and `vercel.json` holds routing and Services configuration when you need it. The two approaches diverge when one service calls another.
 
-Now change the catalog's response from a single price to an amount and a currency. When callers use the updated contract, TypeScript can identify code that still expects the old shape. The service relationship and API definition are both in the repository, where a teammate or coding agent can inspect them. The [Composer store example](https://github.com/prisma/composer/tree/main/examples/store) shows this pattern.
+A few Composer terms, since the rest of this section uses them:
 
-Composer also provisions the declared resources and sets up authenticated connections between services. Its contracts describe RPC calls over HTTP. You build your code first, then Composer assembles the output for deployment.
+- A **service** is one deployable unit, such as a Next.js app or a Bun HTTP server, declared with `compute()`.
+- A **service contract** is a service's API written as schemas, using any validator that implements the Standard Schema spec, such as arktype or zod. It types both the handlers on the serving side and the client on the calling side. The service that serves a contract is its **producer**.
+- A **data contract** is Prisma ORM 8's description of your database: the `contract.prisma` file that replaces `schema.prisma`.
+- A **root module**, conventionally `module.ts`, is the file that provisions every service and resource and wires their dependencies together.
+- A **stage** is Composer's name for a Prisma Compute preview branch: a complete, isolated copy of the app with its own services and databases. This post says "branch" for the Git branch and the environment it maps to, and "stage" when the deploy command or Composer is the subject.
 
-Prisma ORM 8 is a complete TypeScript rewrite built around a separate contract for the database: a JSON description of its structure with accompanying TypeScript types. Queries and migration tooling work from that description. The ORM contract describes the data; Composer's contracts describe the APIs between services. You can review both alongside the feature code. The [ORM architecture](https://github.com/prisma/orm/blob/main/ARCHITECTURE.md) explains how the data contract works.
+Take a storefront that calls a catalog service for a product's price. The catalog publishes its API as a service contract, the storefront declares that contract as a dependency, and at runtime `service.load()` returns a typed client for it, built from the connection details the deploy injected.
 
-Vercel also supports applications with multiple services. Its [Services model](https://vercel.com/docs/services) groups frontends and backends into one deployment, with routing and private bindings declared in configuration. That includes applications combining different languages, such as a Next.js frontend and a Python backend.
+```ts tab="catalog/contract.ts"
+import { contract, rpc } from "@prisma/composer/service-rpc";
+import { type } from "arktype";
 
-A [Vercel binding](https://vercel.com/docs/services/bindings) makes another service reachable through an injected URL. Composer's RPC dependency supplies a client typed against the service contract. For our storefront, Composer includes the catalog API's input and output types in the dependency declaration. Changing that contract gives the compiler something to check in the orders service. A Vercel application can add shared types or generated clients to check those calls; Composer makes the contract part of how you connect the services.
+export const catalogContract = contract({
+  getPrice: rpc({
+    input: type({ productId: "string" }),
+    output: type({ amount: "number", currency: "string" }),
+  }),
+});
+```
 
-You can start smaller. A single service can use Prisma Compute and Postgres directly, then adopt Composer when declaring more of the application together becomes useful.
+```ts tab="storefront/service.ts"
+import nextjs from "@prisma/composer/nextjs";
+import { rpc } from "@prisma/composer/service-rpc";
+import { compute } from "@prisma/composer-prisma-cloud";
+import { catalogContract } from "../catalog/contract.ts";
 
-## How do you deploy and test changes?
+export default compute({
+  name: "storefront",
+  deps: { catalog: rpc(catalogContract) }, // [!code highlight]
+  build: nextjs({ module: import.meta.url, appDir: ".." }),
+});
+```
 
-Both platforms let you review a running application before merging. With Prisma's GitHub integration and deploy-on-push configured, each push to a feature branch deploys the application to that branch's preview environment. Each branch owns its services and deployments, so the team can test the feature in isolation from production. The [branching documentation](https://www.prisma.io/docs/compute/branching) explains how Git branches map to these environments.
+```ts tab="storefront/data.ts"
+import service from "./service.ts";
 
-Prisma pairs those application previews with a **separate database per Git branch**, with schema changes managed in code through Prisma ORM. You provision the database for the branch's application environment, directly or through Composer, and configure its database connection so you can test the application and schema changes together. When you supply a `DATABASE_URL` yourself, give the preview its own preview-scoped value: a database reached through that variable is only as isolated as the URL you set, so a preview pointed at production writes to production. The [environment variables documentation](https://www.prisma.io/docs/compute/environment-variables) covers per-branch values.
+export async function priceFor(productId: string) {
+  const { catalog } = service.load();
+  return catalog.getPrice({ productId }); // [!code highlight]
+}
+```
 
-The useful part comes when those changes need to come back together. Suppose one developer adds a `phone` field and another adds an `avatarUrl` field. Each tests against their own database. After merging the contract changes in Git, Prisma ORM can plan migrations from each previous schema state to the combined one.
+```ts tab="module.ts"
+import { module } from "@prisma/composer";
+import catalogModule from "./src/catalog/module.ts";
+import storefrontService from "./src/storefront/service.ts";
 
-Prisma ORM 8's [migration graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph) records those paths. A database that already has `phone` needs a different next migration from one that already has `avatarUrl`. Once you've resolved the contract and planned the connecting migrations, each database can reach the combined schema from its own starting point.
+export default module("store", ({ provision }) => {
+  const catalog = provision(catalogModule);
+  provision(storefrontService, { deps: { catalog: catalog.rpc } }); // [!code highlight]
+});
+```
 
-The schema definitions and migration files are what you merge. Your release process applies the resulting migrations to production's own data. Test records stay in the branch databases.
+Suppose `getPrice` used to return a plain number and the catalog team changes it to an amount plus a currency, as the contract above shows. Every caller that still treats the result as a number fails to compile, because the storefront's client is typed from the same contract the catalog serves. A shared-types package in a monorepo gives you that compile-time check on any platform. What Composer adds is the root module in the last tab. It binds each dependency to the service that produces it, TypeScript checks that wiring, and a dependency bound to a service with a different contract or a producer missing a handler is a compile error, not a failed deploy. At deploy time Composer provisions the services and the authenticated connections that wiring describes, so application code never reads a URL from `process.env`. The contract above is a simplified illustration; the [Composer store example](https://github.com/prisma/composer/tree/main/examples/store) shows the real catalog and orders services built the same way.
 
-With Vercel's Git integration configured, a push to a feature branch triggers a build and creates a preview URL. The team can review the running application before merging; a merge into the production branch triggers a production deployment. This is the build-and-review process described in Vercel's [environment documentation](https://vercel.com/docs/deployments/environments).
+The database follows the same pattern, and in the store example `catalogModule` packages the catalog service with its own database this way. A service declares `deps: { db: postgres(catalogData) }`, where `catalogData` wraps the emitted contract, and the module that owns the database provisions it with [`postgres({ name, contract: catalogData, config: "./prisma.config.ts" })`](https://www.prisma.io/docs/composer/databases). The deploy applies the database's migrations before the service starts, and because both ends share the contract value, it refuses to wire a service to a database whose schema does not match. Composer ships modules that work the same way for scheduled jobs, object storage, and event streams.
 
-The preview's database comes from the configured integration and connection string. For example, the [Neon preview integration](https://vercel.com/integrations/neon) creates a database branch for each preview deployment. That branch uses copy-on-write storage to start with the parent's data and schema, as Vercel describes in its [preview environment guide](https://vercel.com/i/ephemeral-environments). Prisma's separate branch databases aren't automatically populated with production data.
+Everything about the database derives from `contract.prisma`. You edit it, run `prisma contract emit` to regenerate `contract.json` and `contract.d.ts`, and plan migrations from the same file. If you are coming from an earlier Prisma ORM, [Coming from Prisma ORM 7](https://www.prisma.io/docs/orm/coming-from-prisma-orm-7) maps each old command to its ORM 8 name: `prisma generate` is now `prisma contract emit`, and `migrate dev` is `migration plan` followed by `db migrate`.
 
-Copy-on-write makes an isolated database copy efficient to create. Bringing changes back together still takes a migration process. Production might have received new orders while a developer changed the schema and edited test records in the preview. Combining the database states would require deciding which of those changes belong in production.
+Vercel also runs applications with several services. Its [Services model](https://vercel.com/docs/services) groups frontends and backends into one deployment, including a Next.js frontend with a Python backend. A [binding](https://vercel.com/docs/services/bindings), in beta at the time of writing, makes one service reachable from another by injecting its URL as an environment variable. For our storefront, that means the storefront gets the catalog's URL, and you add shared types or a generated client if you want the compiler to check the call.
 
-Prisma combines separate databases for parallel work with an ORM that understands how schema states connect. That gives the team a reviewable path from a branch's schema change to the production migration. The same migration graph is available when you use Prisma ORM on Vercel.
+You do not need several services to start. A single service can run on Prisma Compute with Prisma Postgres directly, deployed from a Git push without Composer, and you can adopt Composer when the app grows a second service or a scheduled job.
 
-## What can you run, and what will it cost?
+## How do preview databases and migrations work?
 
-Prisma Compute runs TypeScript HTTP services on Bun, alongside Prisma Postgres. Your application starts a server and handles requests. Composer also provides modules for scheduled jobs, storage, and event streams, so you can declare those dependencies with the rest of the application.
+Both platforms build every branch and give you a running preview. On Prisma, each branch is its own environment where you provision a database, and Prisma ORM 8 can plan a migration path for databases that are at different schema versions. On Vercel, the preview database depends on the Marketplace provider you connect, and with Neon it arrives pre-filled.
 
-Each Compute service runs in one region. If your application specifically needs WebSocket servers, those aren't currently supported; the [runtime documentation](https://www.prisma.io/docs/compute/limitations) covers that boundary and background execution.
+![Preview databases and the migration graph. On Prisma, the main branch and each feature branch own a separate database. Alice's branch adds a phone field and Bob's branch adds an avatarUrl field. After both merge, the migration graph plans a path from each database's current schema to the combined one, so every database reaches the same state.](/prisma-vs-vercel/imgs/preview-databases-and-migration-graph.svg)
 
-Vercel's [Next.js integration](https://vercel.com/docs/frameworks/full-stack/nextjs) handles framework features such as caching and on-demand image optimisation. For a storefront or content-heavy application, those are concrete parts of the delivery work the platform takes care of.
+### On Prisma
 
-Both platforms separate active CPU usage from memory allocation. An application waiting on a database or model API can use little CPU while still holding memory. Prisma Compute and Vercel's [Fluid compute billing](https://vercel.com/docs/functions/usage-and-pricing) account for those resources separately.
+With the GitHub integration and [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) configured, each push to a feature branch deploys the application to that branch's preview environment. A [branch](https://www.prisma.io/docs/compute/branching) owns its own services, deployments, and any databases created on it, and deleting the Git branch tears all of that down, databases included, so treat a branch database as disposable.
 
-Prisma Compute bills requests, provisioned memory, active CPU, and outbound bandwidth. Deployments and preview branch creation have no separate charge, but resources used by a preview still count. Include the platform plan and database usage when estimating the full bill. See [Prisma Compute pricing](https://www.prisma.io/docs/compute/pricing).
+Environment variables have three scopes, which the CLI calls roles: production values, preview values that every preview deploy gets, and branch overrides that replace a preview value for one branch. Set production's connection string once, and give previews their own:
 
-Vercel's bill includes its plan, compute and delivery usage, builds, and any additional products you use. Its [Pro plan](https://vercel.com/docs/plans/pro-plan) includes a usage credit and charges for additional deploying seats. Include your database provider's charges too, and use the current plan allowances when comparing totals.
+```bash
+npx prisma@latest project env add DATABASE_URL=<production-url> --role production
+npx prisma@latest project env add DATABASE_URL=<shared-preview-url> --role preview
+```
 
-Compare one representative month: requests that reach application code, active CPU, memory held during execution, data transfer, builds, and team seats. Apply each plan's allowances and credits before comparing totals. A cached storefront and an API that waits on external services can have very different costs at the same traffic level.
+With only those two, every preview shares one preview database. For a database per branch, run the CLI from the feature branch, which it targets automatically, create a database there, and set a branch override, where `--branch` names the branch the override belongs to:
+
+```bash
+npx prisma@latest postgres create preview-db
+npx prisma@latest project env add DATABASE_URL=<printed-url> --branch feature/search
+```
+
+For a Composer app, `npx prisma@latest deploy module.ts --stage <branch>` replaces both steps: it creates the stage's own databases, wires the services to them, and applies the migrations of any `postgres()` database typed by a data contract. Either way, a database reached through `DATABASE_URL` is only as isolated as the URL you set, and a preview pointed at production writes to production. Prisma does not copy production data into a branch database, so seed it yourself if the feature needs realistic rows. The [environment variables docs](https://www.prisma.io/docs/compute/environment-variables) cover all three scopes.
+
+Now suppose Alice adds a `phone` field on her branch and Bob adds an `avatarUrl` field on his, each testing against their own database, and both branches merge the same afternoon. Alice's laptop database has `phone`, Bob's has `avatarUrl`, staging and production have neither, and every one of them needs the merged schema. Prisma ORM 6 and 7 apply migrations in timestamp order, so a migration's place in history comes from its name. In Prisma ORM 8, each migration records the contract version it starts from and the one it ends at, so the migrations form a graph of schema versions, which the docs call the [migration graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph). After the merge, whoever merged runs `migration plan --name merge_alice --from <directory>` on `main`, where the directory is Alice's last migration as `migration graph` prints it, does the same for Bob, and commits the two merge migrations. It is the same `migration plan --name` command you use for a fresh migration, with `--from` telling it which state to start from. From then on `db migrate` takes any database, a laptop, staging, or production, from wherever it is to the merged version. Two migrations that change the same column still need a human to decide the result, as they would anywhere.
+
+The migration graph is a Prisma ORM 8 feature, so you get it on Vercel too. What the Prisma platform adds is the environment around it: a database per branch, a Composer stage that applies migrations at deploy time, and a release step you run against production's connection string:
+
+```bash
+npx prisma@latest migration check
+npx prisma@latest db migrate --show --db "$PRODUCTION_DATABASE_URL"
+npx prisma@latest db migrate --db "$PRODUCTION_DATABASE_URL"
+```
+
+The first checks that no compiled migration file or ref was edited by hand, the second prints what would run, and the third runs it.
+
+### On Vercel
+
+With Vercel's Git integration configured, a push to a feature branch triggers a build and creates a preview URL, and a merge into the production branch triggers a production deployment, as Vercel's [environments documentation](https://vercel.com/docs/deployments/environments) describes.
+
+The preview's database comes from the integration and connection string you configured. Vercel's [Ephemeral Environments guide](https://vercel.com/i/ephemeral-environments) describes how the [Neon integration](https://vercel.com/marketplace/neon) creates a copy-on-write database branch for each preview deployment, so the preview starts with the parent's data and schema and needs no seeding. That is an advantage over Prisma's empty branch databases when a feature needs production-shaped data to test. The [Prisma Postgres listing](https://vercel.com/marketplace/prisma) sets a `DATABASE_URL` for your project, and you scope previews away from that database with Vercel's per-environment variables.
+
+Schema changes travel the same way on both platforms: as migration files in Git that your deployment applies. The preview branch's data stays out of production, and what reaches production is the migration. If you run Prisma ORM 8 on Vercel, the migration graph plans those migrations there as well, and you apply them with `npx prisma@latest db migrate --db "$DATABASE_URL"` in your build command or a release step.
+
+## What can you run, and what does it cost?
+
+Prisma Compute runs TypeScript HTTP services on Bun next to Prisma Postgres, so an existing Node.js app needs to run on Bun. Push-triggered builds detect Next.js, Nuxt, Astro, Hono, NestJS, TanStack Start, and plain Bun servers. Your application starts a server and handles requests, scales to zero when idle, and has 60 seconds to start responding to each request before Compute cancels it. Work that outlives the response, such as processing a webhook after returning `202`, uses `waitUntil` to keep the instance awake, which is best-effort: it does not retry failures or survive a redeploy. Compute does not require Prisma ORM, so a Prisma ORM 6 app runs there as-is; the migration workflow above assumes ORM 8. Each service runs in one region, there is no edge runtime, and WebSocket servers are not supported. The [limitations page](https://www.prisma.io/docs/compute/limitations) lists the runtime limits.
+
+Vercel's [Next.js integration](https://vercel.com/docs/frameworks/full-stack/nextjs) handles framework features such as caching and on-demand image optimization. Vercel Functions run for 300 seconds by default and up to 800 seconds on Pro, with a 30-minute extended duration in beta, and they serve WebSocket connections in public beta.
+
+Both platforms scale to zero and bill active CPU separately from memory. On both, memory is billed while an instance is running, whether it is busy or waiting on a database, and nothing is billed once the instance has scaled to zero, so an app that mostly waits on I/O pays for memory but little CPU. Vercel's rates below are the Pro prices in its lowest-priced US regions (Washington D.C., Cleveland, and Portland), and the [Fluid compute pricing](https://vercel.com/docs/functions/usage-and-pricing) page lists the rest.
+
+| Meter | Prisma Compute | Vercel Pro (lowest-priced US regions) |
+| --- | --- | --- |
+| Plan | Free, or $10, $49, or $129 a month with 5, 20, or 100 million requests included | $20 a month, which includes a $20 monthly usage credit |
+| Requests | $1 per million after the plan's included requests | $0.60 per million |
+| Provisioned memory | $0.006 per GB-hour while an instance is running | $0.0106 per GB-hour while an instance is running |
+| Active CPU | $0.064 per vCPU-hour | $0.128 per CPU-hour |
+| Outbound bandwidth | $0.025 per GB | Regional Fast Data Transfer; Pro includes 1 TB a month through Flat Rate CDN |
+| Builds and previews | Not billed | Basic build machines at $0.007 per build minute on paid teams |
+| Seats | Not billed | $20 a month per additional seat |
+
+Prisma Postgres is metered separately, with [its own pricing](https://www.prisma.io/pricing), and so is whichever Marketplace database you attach on Vercel. Idle preview branches on Prisma cost nothing, because a preview scales to zero when it has no traffic and bills only while an instance is running. The one exception is Composer's cron scheduler, which stays awake as one warm instance per deployed app so that it can fire jobs on time, and a stage is a deployed copy, so a stage that includes the scheduler holds one too. The [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing) post prices one representative month meter by meter.
 
 ## Can you use Prisma with Vercel?
 
-Yes. Prisma ORM works in Vercel-hosted applications, and [Prisma Postgres is available in the Vercel Marketplace](https://vercel.com/marketplace/prisma). The [integration guide](https://www.prisma.io/docs/guides/postgres/vercel) covers provisioning a database and connecting it to your application.
+Yes, Prisma ORM runs in Vercel-hosted applications, and [Prisma Postgres is available in the Vercel Marketplace](https://vercel.com/marketplace/prisma). The [Vercel guide](https://www.prisma.io/docs/guides/postgres/vercel) covers provisioning a database through the Marketplace and connecting it to a Next.js, Nuxt, or SvelteKit application.
 
-That gives you another practical option: keep Vercel's application hosting and use Prisma for typed queries, managed Postgres, and schema migrations. Configure the database connection and migration workflow for each environment.
+You can also keep Vercel for application hosting and use Prisma ORM 8 and Prisma Postgres for typed queries, managed Postgres, and the migration graph. You configure the database connection per environment and run `db migrate` in your own release step.
 
-Using Prisma Compute and Composer extends Prisma's approach to the service relationships as well. The data contract describes what a service stores, the RPC contracts describe what it exposes, and the application module declares the resources and connections it needs. Those definitions become part of the same review as the feature code.
+## Frequently asked questions
 
-## Start with one real workflow
+<Accordions type="single">
+  <Accordion title="Is Prisma a replacement for Vercel?">
+For a TypeScript application, Prisma Compute can host the application and Prisma Postgres can hold its data, so the two platforms overlap on hosting, previews, and databases. Prisma does not replace Vercel's framework-level Next.js features such as its caching layer and image optimization, and Prisma Compute does not support WebSocket servers, multi-region services, or requests that take longer than 60 seconds to start responding.
+  </Accordion>
+  <Accordion title="Does Prisma give each preview its own database?">
+Each Git branch on Prisma Compute is an isolated environment that owns any databases created on it, but the database is provisioned by you, either with the CLI or by a Composer stage deploy, and it starts without production data. You set a preview-scoped or branch-scoped `DATABASE_URL` so the preview never writes to production.
+  </Accordion>
+  <Accordion title="What is the migration graph in Prisma ORM 8?">
+In Prisma ORM 8, each migration records the contract version it starts from and the version it ends at, so migrations form a graph of schema versions instead of a timestamp-ordered list. When two branches change the schema and merge, the ORM can plan a path from each database's current version to the merged schema. It is an ORM feature and works on any host, including Vercel.
+  </Accordion>
+  <Accordion title="Can I use Prisma ORM and Prisma Postgres on Vercel?">
+Yes, Prisma ORM runs in Vercel-hosted applications, and Prisma Postgres is available as a Vercel Marketplace integration that provisions a database and sets the `DATABASE_URL` environment variable in your project. You run migrations yourself as part of your deployment workflow.
+  </Accordion>
+</Accordions>
 
-Try a feature that changes both data and application behaviour. Add a field, update an API, and use it from the frontend. Run the typechecks, deploy a preview with an isolated database, then prepare the migrations that bring the change into production.
+## Try the Prisma workflow
 
-The [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started) walks through a two-service application. Get it running, change a service contract, and see what the compiler catches. Then change the schema and follow the migration into the database. That's the experience we're building across Prisma: the definitions for the application and the tools to run it, working together.
+The quickest way to judge the Prisma side is to ship one change that touches a service contract and a schema, and see what the compiler and the deploy catch. The [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started) uses a quotes service and a gateway that calls it, which play the same roles as the catalog and storefront above. Local runs need no Prisma account; you need one when you deploy in step 3.
+
+<Steps variant="vertical">
+
+<Step variant="vertical">
+
+### Run the two-service example
+
+Follow the getting-started guide to run the quotes service and the gateway locally with `npx prisma@latest dev module.ts`.
+
+</Step>
+
+<Step variant="vertical">
+
+### Change a service contract
+
+Rename or reshape a method in the quotes contract, then run your typecheck. The gateway's call site fails to compile until you update it.
+
+</Step>
+
+<Step variant="vertical">
+
+### Add a database, change its schema, and preview it
+
+The example ships without a database, so follow the [Composer databases page](https://www.prisma.io/docs/composer/databases) to give the quotes service a `postgres()` database typed by a `contract.prisma` file. Then add a field to that file, run `npx prisma@latest contract emit` and `npx prisma@latest migration plan --name <name>`, and deploy the branch as a stage with `npx prisma@latest deploy module.ts --stage <branch>`. The stage gets its own database with the migration applied.
+
+</Step>
+
+<Step variant="vertical">
+
+### Merge and migrate production
+
+Merge the branch, then run `npx prisma@latest db migrate --show --db "$PRODUCTION_DATABASE_URL"`, where the variable holds your production database's connection string, to see what would run. Drop `--show` to apply it.
+
+</Step>
+
+</Steps>
+
+If that loop fits how your team ships, start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started). If you need the Vercel-only features above, the [Vercel guide](https://www.prisma.io/docs/guides/postgres/vercel) gets Prisma ORM and Prisma Postgres running there instead.
