@@ -41,14 +41,17 @@ Annotate a read with `cacheAnnotation` and a `ttl` in milliseconds. On the SQL q
 
 ```ts title="src/prisma/get-users-cached.ts"
 import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
+import { db } from './db';
 
-const plan = db.sql.public.user
-  .select('id', 'email')
-  .annotate(cacheAnnotation({ ttl: 60_000 }))
-  .limit(10)
-  .build();
+export async function getUsersCached() {
+  const plan = db.sql.public.user
+    .select('id', 'email')
+    .annotate(cacheAnnotation({ ttl: 60_000 }))
+    .limit(10)
+    .build();
 
-const users = await db.runtime().query(plan);
+  return db.runtime().query(plan);
+}
 ```
 
 On the ORM API, pass the annotation through the query's meta callback:
@@ -57,9 +60,11 @@ On the ORM API, pass the annotation through the query's meta callback:
 import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
 import { db } from './db';
 
-const user = await db.orm.public.User.first({ id }, (meta) =>
-  meta.annotate(cacheAnnotation({ ttl: 60_000 })),
-);
+export async function getUserCached(id: number) {
+  return db.orm.public.User.first({ id }, (meta) =>
+    meta.annotate(cacheAnnotation({ ttl: 60_000 })),
+  );
+}
 ```
 
 The first call runs against the database and stores the raw rows. A second call with the same query and parameters inside the TTL window is served from the store, and the driver is not invoked.
