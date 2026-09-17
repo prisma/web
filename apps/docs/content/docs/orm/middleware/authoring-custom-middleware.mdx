@@ -163,7 +163,7 @@ Run the script again and the logger goes quiet, because both queries finish in u
 Prisma ORM calls your hooks in the order you listed the middleware in the array, and that order decides what each middleware sees and whether it runs at all:
 
 - Prisma ORM waits for each hook to finish before the query moves on, so a slow `afterQuery` delays the `await` in your own code.
-- If a middleware throws, the ones listed after it do not run. Put your logger first and it still logs the queries that a later middleware rejects.
+- If a middleware throws, the ones listed after it do not run for that hook. A query that a before-hook rejects, as `budgets` rejects a `SELECT` with no `LIMIT`, never reaches any `afterQuery`, so the logger cannot see it wherever you list it. Put the logger first and its `afterQuery` has already run when a later middleware throws from its own `afterQuery`, as the `budgets` time check does, so those queries are still logged.
 - When a middleware changes the query, the middleware listed after it sees the changed version.
 
 A built-in middleware goes into the same array, imported from the same package as `SqlMiddleware`. To run the logger ahead of [budgets](/orm/middleware/built-in-budgets), add the import to the top of `src/prisma/db.ts` and replace its `middleware:` line:
