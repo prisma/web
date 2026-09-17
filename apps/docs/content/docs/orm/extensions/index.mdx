@@ -3,16 +3,18 @@ title: Extensions
 description: 'Every package that plugs into Prisma ORM: database packages, column types, indexes, query operations, and middleware, by Prisma and the community.'
 url: /orm/extensions
 metaTitle: Prisma ORM extensions
-metaDescription: 'The catalog of Prisma ORM extensions with a one-line summary of each, how to register one, and how to publish your own.'
+metaDescription: 'The catalog of Prisma ORM extensions with a one-line summary of each, and where to go to install one or publish your own.'
 ---
 
-An extension is an npm package that adds something Prisma ORM does not do on its own. The packages that add support for a database are extensions themselves, and so are column types such as vectors and geometries, index types, query operations, and the middleware that runs around each query.
+An extension is an npm package that adds something Prisma ORM does not do on its own. The packages that add support for a database are extensions themselves, so there is no built-in list of database providers to choose from: you install `@prisma/orm-postgres` to use PostgreSQL. Column types such as vectors and geometries are extensions too, and so are index types, query operations, and middleware, which runs your own code before and after every query.
 
-Installing the package is not the whole job, because you also register the extension where it is used. You register it in `prisma.config.ts` so that `prisma contract emit` can write `contract.json` and `contract.d.ts` from your contract and the migration commands can plan your migrations, and you register it again when you create the client so that your queries can use the new types and operations. [Using extensions](/orm/extensions/using-extensions) walks through both registrations with pgvector. Middleware is the exception, because you register it on the client only, and [How middleware works](/orm/middleware/how-middleware-works) covers that.
+Your contract is the Prisma ORM 8 name for your schema: [`contract.prisma`](/orm/contract-authoring/the-data-contract) in a generated project, in place of `schema.prisma`. `npx prisma contract emit` writes `contract.json` and `contract.d.ts` from it, and those two files are what `db.ts` imports.
+
+Installing an extension package is not the whole job, because you register the extension in two places. You register it in `prisma.config.ts` first, so that the CLI can write those two files from your contract and plan your migrations. You register it again where you create the client, so that your queries can use the types and operations the extension adds. The database package is the one you build on: it provides `ormConfig(...)` for the config and `postgres(...)` for the client. Every other extension is passed to those two calls in their `extensions` array, so pgvector goes alongside your PostgreSQL package rather than replacing it. [Using extensions](/orm/extensions/using-extensions) shows both registrations, with the install command, for pgvector. Middleware is the exception, because you register it on the client only, and [How middleware works](/orm/middleware/how-middleware-works) covers that.
 
 ## Catalog
 
-Every entry below comes from the registry behind the [extension directory](https://www.prisma.io/extensions), where you will also find the install command and the registration snippets for each one.
+Every entry below comes from the registry behind the [extension directory](https://www.prisma.io/extensions), which also gives you the install command and the registration snippet for each one.
 
 {/* extensions-catalog:start */}
 | Name | What it adds | Package | Databases | By |
@@ -31,13 +33,17 @@ Every entry below comes from the registry behind the [extension directory](https
 | [zod-json](https://www.prisma.io/extensions/zod-json) | Typed JSON columns described and enforced by a zod schema. | `prisma-orm-extension-zod-json` | PostgreSQL | [Omar Dulaimi](https://github.com/omar-dulaimi) |
 {/* extensions-catalog:end */}
 
-An entry marked experimental works today, but its API can change between release candidates.
+An entry marked experimental works today, but its API can change between releases.
+
+Where a row says contract authoring, the package adds column types and other declarations that you then write in your contract yourself, such as `pgvector.Vector(1536)` for a vector column. The role-bound clients in the Supabase row are client instances pinned to a particular PostgreSQL role, so the database applies that role's row-level security policies to whatever you query through them.
 
 ## Publish your own
 
-An extension you write yourself is usually a versioned npm package with one entrypoint for each of the places it gets registered: a `control` entrypoint for the config and a `runtime` entrypoint for the client. Middleware is again the exception and ships a single entrypoint. Adding a whole database uses that same layout, so if that is what you are writing, `@prisma/orm-postgres` is the one to follow for a SQL database and `@prisma/orm-mongo` for a document database. The [call for extension authors](https://www.prisma.io/blog/prisma-next-call-for-extension-authors) describes the layout. To write middleware, follow [Authoring custom middleware](/orm/middleware/authoring-custom-middleware).
+An extension you write yourself is a versioned npm package with one entrypoint for each of the two places it gets registered. `control` is the subpath the CLI imports from `prisma.config.ts` and `runtime` is the subpath your app imports in `db.ts`. They are subpath exports of the package, so whoever installs it writes them as `@prisma/orm-extension-pgvector/control` and `@prisma/orm-extension-pgvector/runtime`. Middleware is again the exception: it ships a single entrypoint rather than a `control` and a `runtime` one, because it is only ever registered on the client. The [call for extension authors](https://www.prisma.io/blog/prisma-next-call-for-extension-authors) describes the layout in full, and to write middleware, follow [Authoring custom middleware](/orm/middleware/authoring-custom-middleware).
 
-Once your package is on npm, [submit it to the directory](https://www.prisma.io/extensions/submit). The form checks that your entry is valid and that the package really exists on npm, then opens a pull request for a maintainer to review.
+Adding a whole database uses that same layout, so if that is what you are writing, follow `@prisma/orm-postgres` for a SQL database and `@prisma/orm-mongo` for a document database.
+
+Once your package is on npm, [submit it to the directory](https://www.prisma.io/extensions/submit). A maintainer reviews your entry before it appears in the catalog.
 
 ## See also
 
