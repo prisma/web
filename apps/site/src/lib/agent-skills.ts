@@ -313,11 +313,25 @@ export function buildMcpDiscovery() {
 /**
  * MCP server card, served at /.well-known/mcp/server-card.json.
  */
-export function buildMcpServerCard() {
+export function buildMcpServerCard(baseUrl = getBaseUrl()) {
   return {
     name: "Prisma MCP",
+    title: "Prisma",
     description:
       "Manage Prisma Postgres databases using natural language. Create and list databases, connection strings, and backups; run SQL queries; introspect schemas; and search the Prisma documentation.",
+    websiteUrl: baseUrl,
+    icons: [
+      {
+        src: `${baseUrl}/icon.svg`,
+        sizes: ["any"],
+        mimeType: "image/svg+xml",
+      },
+      {
+        src: `${baseUrl}/apple-icon.png`,
+        sizes: ["180x180"],
+        mimeType: "image/png",
+      },
+    ],
     version: "1.0.0",
     serverInfo: {
       name: "prisma",
