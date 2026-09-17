@@ -10,7 +10,7 @@ Middleware lets you run your own code around every query your app sends through 
 
 For example, you can log every query with its latency, block a `DELETE` that has no `WHERE` clause before it reaches the database, or serve a repeated read from memory instead of running it again. You write the policy once, register it once, and every query follows it, with no call sites to update.
 
-A middleware is a plain object with a name and one or more hooks. Register it once, in the `middleware` option of your client setup:
+A middleware is a plain object with a name and one or more hooks, and a hook is a function that Prisma ORM calls at a fixed moment around a query. You register the whole object once, in the `middleware` option of your client setup:
 
 ```ts title="src/prisma/db.ts"
 import { createCacheMiddleware } from '@prisma/orm-extension-middleware-cache';
@@ -30,37 +30,37 @@ export const db = postgres<Contract>({
 });
 ```
 
-Every query passes through the chain, whether it comes from the ORM API or the SQL query builder, because both execute through the same runtime. On MongoDB, pass the same option to `mongo(...)` from `@prisma/orm-mongo/runtime`.
+Every query goes through that list, whether you wrote it with the ORM API or with the SQL query builder, because both kinds of query are sent by the same `db` object. If your database is MongoDB, pass the same `middleware` option to `mongo(...)` from `@prisma/orm-mongo/runtime`.
 
-The whole model fits in one picture: your app talks to the database, and middleware sits in the middle. It can let a query pass, block it, or answer it itself:
+Your app talks to the database, and your middleware is in between, so it can let a query through, block it, or answer it itself:
 
 <ConceptAnimation name="middleware-pipeline" />
 
-## The two lifecycles
+## When your hooks run [#the-two-lifecycles]
 
-A middleware implements only the hooks it needs. Which hooks run depends on how the plan is executed, and there are two paths.
+You write only the hooks you care about, and Prisma ORM skips the ones you leave out. Which hooks it calls depends on what kind of query you ran, because a query that returns rows and a statement that only reports how many rows it changed take different routes through the library.
 
-**A row query** — anything that returns rows, whether it came from the ORM API or from `runtime.query(plan)` — runs:
+**A row query** is anything that returns rows, whether you wrote it with the ORM API or ran it with `runtime.query(plan)`. Its hooks run in this order:
 
 `beforeCompile` → `beforeQuery` → `interceptQuery` → `onRow` (once per row) → `afterQuery`
 
-**A non-returning write** — a statement run through `runtime.execute(plan)`, which reports affected rows rather than returning them — runs:
+**A non-returning write** is a statement you run through `runtime.execute(plan)`, which reports how many rows it affected rather than returning them. It runs a shorter sequence:
 
 `beforeCompile` → `beforeExecute` → `interceptExecute` → `afterExecute`
 
-There is no generic `intercept` hook and no fallback: a middleware that wants to act on both paths registers the same function under both names. That is exactly what `lints` and `budgets` do.
+There is no general `intercept` hook that covers both routes, and no fallback from one to the other, so a middleware that needs to act on both registers the same function under both names. `lints` and `budgets` both do exactly that.
 
 <ConceptAnimation name="middleware-lifecycle" />
 
-The runtime calls each hook on every registered middleware, in the order they appear in the `middleware` array. What each hook is for:
+At each step Prisma ORM calls that hook on every middleware you registered, in the order you listed them in the `middleware` array.
 
 ### beforeCompile: rewrite the query
 
-Runs on both paths, before the query is turned into SQL, while it is still a typed AST. Return a modified draft to rewrite the query, for example to add a tenant filter to every `SELECT`. This hook exists on SQL databases only, because it works on the SQL query AST.
+Reach for `beforeCompile` when you want to change what a query asks for rather than only look at it. It runs on both routes, early enough that the query is still a tree of typed objects and has not been turned into SQL text yet, so you can return a changed copy and Prisma ORM will use that instead, for example to add a tenant filter to every `SELECT`. Because it works on that tree of SQL objects, the hook exists on SQL databases only.
 
 ### beforeQuery and beforeExecute: validate or block
 
-Run after the SQL is rendered and before anything reaches the database: `beforeQuery` on the row-query path, `beforeExecute` on the write path. The hook sees the full plan (`plan.sql`, `plan.ast`). Throw to block:
+These two hooks are where you inspect a query and refuse it. `beforeQuery` runs on the row-query route and `beforeExecute` on the write route, both after the SQL text has been rendered and before anything reaches the database. Your hook receives the query itself, so you can read the SQL text in `plan.sql` and the same query as objects in `plan.ast`. Throwing from the hook blocks the query:
 
 ```ts
 async beforeQuery(plan) {
@@ -72,30 +72,27 @@ This is where `lints` stops a `DELETE` without `WHERE`, and where `budgets` reje
 
 ### interceptQuery and interceptExecute: answer without the database
 
-Run last before the driver. `interceptQuery` returns `{ rows }` and `interceptExecute` returns `{ stats }`; return nothing from either and the operation continues to the driver. This is how the cache serves repeated reads. Validation from `beforeQuery` has already happened by this point.
+These hooks let you answer a query yourself, so the database never sees it. They are the last thing to run before the driver takes over: return `{ rows }` from `interceptQuery`, or `{ stats }` from `interceptExecute`, and that is what your caller gets back, but return nothing and the operation carries on to the driver as usual. This is how the cache serves repeated reads. Anything you checked in `beforeQuery` has already run by the time either hook is called.
 
 ### onRow: watch rows arrive
 
-Runs once per row on the row-query path, as rows are handed to your loop. Count rows, sample them, or throw to abort. `budgets` uses this hook to stop a query once it has returned more rows than its `maxRows` budget allows. It does not run on the write path, and it does not run for rows served from an `interceptQuery` hit.
+`onRow` lets you see each row as your own code receives it. It runs once per row on the row-query route, as rows are handed to your loop, so you can count them, sample them, or throw to abort part way through. `budgets` uses it to stop a query once it has returned more rows than its `maxRows` budget allows. It does not run on the write route, and it does not run for rows that an `interceptQuery` hook answered.
 
 ### afterQuery and afterExecute: observe the finished operation
 
-Run once at the end, success or failure.
+These two hooks are for recording what happened once the work is over. Prisma ORM calls them once at the end of the operation, whether it succeeded or failed.
 
-`afterQuery` receives `result.rowCount`, `result.completed`, `result.latencyMs`, and `result.source`, which is `'driver'` for a normal query and `'middleware'` when an `interceptQuery` answered it.
+On the row-query route, `afterQuery` receives `result.rowCount`, `result.completed`, `result.latencyMs`, and `result.source`, which is `'driver'` for a normal query and `'middleware'` when an `interceptQuery` answered it, so you can tell where the rows came from.
 
-`afterExecute` receives `result.completed`, `result.latencyMs`, and `result.source`, and on a completed run `result.stats.affectedRows`. There is no `rowCount` on this path.
+On the write route, `afterExecute` receives `result.completed`, `result.latencyMs`, and `result.source`, and on a completed run the number of rows it changed in `result.stats.affectedRows`. There is no `rowCount` here, because the statement never returned rows.
 
-Timing, logging, and latency budgets live in these two hooks.
+Timing, logging, and latency budgets all belong in these two hooks.
 
-Two ordering rules matter in practice:
-
-- Registration order is execution order at every hook. If one middleware rewrites the query in `beforeCompile`, the next middleware sees the rewritten version.
-- If several middleware implement `interceptQuery`, the first one that returns rows wins. The same holds for `interceptExecute`.
+The order you list middleware in is the order Prisma ORM calls them at every hook, so if one middleware rewrites the query in `beforeCompile`, the next middleware sees the rewritten version. That order also decides who answers a query: when several middleware implement `interceptQuery`, the first one that returns rows is the one that wins, and the same holds for `interceptExecute`.
 
 ## What ships built in
 
-Two middleware extensions are built into `@prisma/orm-postgres` and need no extra install: [lints](/orm/middleware/built-in-lints), which blocks risky query shapes, and [budgets](/orm/middleware/built-in-budgets), which caps row counts and reports slow queries. Middleware that ships as its own package is an extension like any other, so the table is generated from the [extension directory](https://www.prisma.io/extensions), which also lists community middleware:
+`@prisma/orm-postgres` already contains [lints](/orm/middleware/built-in-lints), which blocks risky query shapes, and [budgets](/orm/middleware/built-in-budgets), which caps row counts and reports slow queries, so you can register either one without installing anything else. Middleware that ships as its own package is an extension like any other, and the [extension directory](https://www.prisma.io/extensions) lists those, including middleware written by the community:
 
 {/* extensions-catalog:start tag=middleware source=official */}
 | Name | What it adds | Package | Databases | By |
@@ -103,26 +100,26 @@ Two middleware extensions are built into `@prisma/orm-postgres` and need no extr
 | [Cache middleware](https://www.prisma.io/extensions/middleware-cache) | Serve repeated reads from an in-memory or pluggable cache, opted in per query. | `@prisma/orm-extension-middleware-cache` | PostgreSQL, MongoDB | Prisma |
 {/* extensions-catalog:end */}
 
-To write your own, follow the [authoring guide](/orm/middleware/authoring-custom-middleware): it builds a working query logger step by step. When it is on npm, [submit it to the directory](https://www.prisma.io/extensions/submit) so other Prisma ORM users can find it.
+If none of them do what you need, the [authoring guide](/orm/middleware/authoring-custom-middleware) builds a working query logger step by step. Once your own middleware is on npm, [submit it to the directory](https://www.prisma.io/extensions/submit) so other Prisma ORM users can find it.
 
 ## Which databases a middleware runs on
 
-Prisma ORM groups databases into families: the SQL family (PostgreSQL and other SQL databases) and the document family (MongoDB). A middleware that inspects SQL text or the SQL query AST only makes sense on SQL databases, so it declares which family it belongs to with `familyId: 'sql'`.
+A middleware cannot always work on every database, so each one declares which kind of database it was written for. Prisma ORM sorts databases into two groups it calls families: the SQL family, which is PostgreSQL and the other SQL databases, and the document family, which is MongoDB. A middleware that inspects SQL text or the tree of SQL objects behind a query only makes sense on SQL databases, so it says so with `familyId: 'sql'`.
 
 - `budgets` and `lints` declare `familyId: 'sql'`. They register on PostgreSQL and are rejected on MongoDB.
-- The cache declares no `familyId`. It works against the family-neutral parts of a query, so it runs on both PostgreSQL and MongoDB.
+- The cache declares no `familyId`. It works only on the parts of a query that are the same on both kinds of database, so it runs on PostgreSQL and on MongoDB.
 
-The runtime checks this when it is created, which is the first time your client needs it, so a middleware that does not match the runtime fails with `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` before it ever sends a query to the database.
+Prisma ORM makes this check the first time your client needs to talk to the database, so a middleware registered against a database it was not written for fails there with an error whose `code` is `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, before it ever sends a query.
 
 ## When a middleware or the driver throws
 
-A middleware that throws from `beforeCompile`, `beforeQuery`, `beforeExecute`, `interceptQuery`, `interceptExecute`, or `onRow` fails the operation: the error goes to the caller and the database work stops.
+When your hook throws from `beforeCompile`, `beforeQuery`, `beforeExecute`, `interceptQuery`, `interceptExecute`, or `onRow`, the whole operation fails: your caller gets the error you threw, and the database work stops.
 
-When the driver itself fails, `afterQuery` (or `afterExecute`, on the write path) still runs on every middleware with `result.completed` set to `false`, so your logging sees failed queries too. Errors thrown from those hooks while handling a failure are swallowed, so they cannot mask the original error.
+When the driver is the thing that fails, Prisma ORM still calls `afterQuery` on every middleware, or `afterExecute` on the write route, with `result.completed` set to `false`, so your logging sees failed queries as well as successful ones. If one of those hooks throws while it is handling a failure, that error is discarded, so what the caller sees is still the original failure.
 
 ## Prompt your coding agent
 
-Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this page:
+Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that work for middleware:
 
 - "Register the lints and budgets middleware on our Prisma ORM client with a 10k row budget."
 - "Add the cache middleware and opt the dashboard queries in with a 60 second TTL."
@@ -133,4 +130,4 @@ Projects scaffolded with `create-prisma@latest` install [Prisma ORM skills](/ai/
 - [Authoring custom middleware](/orm/middleware/authoring-custom-middleware): build and test a query logger step by step
 - [Writing data](/orm/fundamentals/writing-data): the mutations that lints and budgets guard
 - [Built-in: budgets](/orm/middleware/built-in-budgets), [Built-in: lints](/orm/middleware/built-in-lints), [Built-in: cache](/orm/middleware/built-in-cache)
-- [Using extensions](/orm/extensions/using-extensions) for adding database capabilities rather than wrapping queries
+- [Using extensions](/orm/extensions/using-extensions) for adding database features rather than wrapping queries

@@ -6,9 +6,9 @@ metaTitle: 'Prisma ORM built-in middleware: budgets'
 metaDescription: 'Wire and configure the budgets middleware in Prisma ORM to cap row counts, report query latency, and understand the errors it raises.'
 ---
 
-The `budgets` middleware puts a cost ceiling on every query: it rejects or warns on queries that would read more rows than you allow, counts rows while they stream, and reports queries that run longer than your latency budget.
+The `budgets` middleware is there to stop one careless query from reading far more of your data, or taking far more time, than you meant to give it. You tell it how many rows a query may produce and how long a query may take, and it checks every query against those limits: a query that looks like it would read too many rows is rejected before it runs, or logged as a warning if that is what you asked for, the rows are counted again as they come back from the database in case the first check was too optimistic, and a query that ran longer than your time limit is reported once it finishes.
 
-Register it on the runtime with the row and latency limits you want to enforce:
+Register it where you create your client, with the row and time limits you want to enforce:
 
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
@@ -30,34 +30,36 @@ export const db = postgres<Contract>({
 });
 ```
 
-`budgets` is SQL-family middleware (it declares `familyId: 'sql'`), so it registers on PostgreSQL runtimes. It ships with `@prisma/orm-postgres/family-runtime`, which comes in through `@prisma/orm-postgres`; you do not install anything extra.
+`budgets` works on SQL databases only, because it declares `familyId: 'sql'`, so a PostgreSQL client is where you register it. You import it from `@prisma/orm-postgres/family-runtime`, which arrives with `@prisma/orm-postgres`, so there is nothing extra to install.
 
 ## Options
 
-All options are optional.
+Every option is optional, and the default in the table applies when you leave one out.
 
 | Option | Type | Default | What it controls |
 | --- | --- | --- | --- |
-| `maxRows` | `number` | `10_000` | The most rows a single query may produce, checked against both the pre-execution estimate and the observed row stream |
-| `defaultTableRows` | `number` | `10_000` | Assumed row count for tables not listed in `tableRows`, used by the estimator |
-| `tableRows` | `Record<string, number>` | `{}` | Per-table row-count assumptions for the estimator, keyed by table name |
-| `maxLatencyMs` | `number` | `1_000` | Latency budget for one query, checked after execution |
-| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether pre-execution row-budget violations block the query or log a warning. Strict mode always blocks |
-| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Whether an over-budget latency blocks the query or logs a warning. Strict mode always blocks |
+| `maxRows` | `number` | `10_000` | The most rows one query may produce |
+| `defaultTableRows` | `number` | `10_000` | How many rows to assume a table has when it is not listed in `tableRows` |
+| `tableRows` | `Record<string, number>` | `{}` | How many rows to assume each table has, keyed by table name |
+| `maxLatencyMs` | `number` | `1_000` | The longest one query may take, in milliseconds |
+| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether a query that is over the row budget before it runs fails or only logs a warning |
+| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Whether a query that took longer than `maxLatencyMs` fails or only logs a warning |
 
-A latency violation blocks when `severities.latency` is `'error'`, or when the runtime is in strict mode. The `postgres(...)` client is always strict: it never forwards a mode, so `BUDGET.TIME_EXCEEDED` throws there whatever you set. The `'warn'` default only takes effect on a runtime created with `mode: 'permissive'`, which `postgres(...)` does not offer. Either way the check happens after execution, so it is a visibility tool rather than a cancellation mechanism.
+`maxRows` is checked twice, once against the estimate made before the query runs and once against the rows the database actually returns. Both `severities` options are overruled by strict mode, which always fails the query.
+
+The `'warn'` default on `severities.latency` will not be what you get if you build your client with `postgres(...)`. A slow query fails when you set `severities.latency` to `'error'`, and it also fails whenever strict mode is on, and the client `postgres(...)` gives you is always strict because it never passes a mode through. So a query over your time limit throws an error whose `code` is `BUDGET.TIME_EXCEEDED` there whatever you set, and you only get the warning behavior on a runtime created with `mode: 'permissive'`, which is not something `postgres(...)` lets you ask for. Either way the timing check happens once the query has already finished, so it cannot cut a slow query short. It is there to tell you the query was slow, not to prevent it.
 
 ## How it enforces the budget
 
-The middleware checks at three points in the query lifecycle:
+`budgets` checks a query in the following places, from the moment you send it to the moment it finishes:
 
-1. **Before execution** (in `beforeQuery` for row queries, `beforeExecute` for writes), it inspects the query before it runs. A `SELECT` with no `LIMIT` (and no aggregation that collapses the result) is treated as unbounded, and a bounded query whose estimated rows exceed `maxRows` is over budget. The estimate comes from `tableRows` and `defaultTableRows`, so tune those to your data. Violations raise `BUDGET.ROWS_EXCEEDED` before the driver runs, or warn when `severities.rowCount` is `'warn'` and the runtime is not strict.
-2. **As rows arrive** (in `onRow`), it counts what the database actually returns. If the observed count passes `maxRows`, it throws `BUDGET.ROWS_EXCEEDED` and aborts the stream, which protects you when the estimate was wrong.
-3. **After execution** (in `afterQuery` and `afterExecute`), it compares the measured `latencyMs` against `maxLatencyMs` and reports `BUDGET.TIME_EXCEEDED` when the query ran too long. This check runs after the work is done, so it cannot save the slow query itself; it exists to make slow queries loud instead of invisible.
+1. **Before the query runs**, in the `beforeQuery` hook for queries that return rows and the `beforeExecute` hook for writes, `budgets` reads the query and works out how many rows it could produce. A `SELECT` with no `LIMIT`, and no aggregation that collapses the result, counts as unbounded and is over budget on its own. When the query is bounded, `budgets` estimates its row count from the table sizes in `tableRows` and `defaultTableRows`, which is why those numbers are worth keeping close to your real data, and the query is over budget when the estimate is above `maxRows`. Either way you get an error whose `code` is `BUDGET.ROWS_EXCEEDED` before the driver runs anything, or a warning instead when `severities.rowCount` is `'warn'` and strict mode is off.
+2. **While the rows come back**, in the `onRow` hook, `budgets` counts the rows the database really returns, so a query that got past the estimate is still caught. As soon as that count passes `maxRows` it throws an error whose `code` is `BUDGET.ROWS_EXCEEDED` and stops reading the rest of the rows.
+3. **After the query finishes**, in the `afterQuery` and `afterExecute` hooks, `budgets` compares how long the query took, the measured `latencyMs`, against `maxLatencyMs`, and reports `BUDGET.TIME_EXCEEDED` when it ran too long. The work is already done by the time this check runs, so it cannot save the slow query. It is there to make slow queries loud instead of invisible.
 
 ## What you see when a budget trips
 
-A blocked query rejects with a runtime error whose `code` is the budget code and whose `details` say what was measured. Left uncaught, an unbounded `SELECT` under the setup above prints:
+When `budgets` blocks a query, the call you were awaiting rejects with an error whose `code` is one of the budget codes, and whose `details` tell you what was measured. If you do not catch it, an unbounded `SELECT` with `maxRows` at `10_000` prints this:
 
 ```text title="Row budget error" no-copy
 Error [RuntimeError]: Unbounded SELECT query exceeds budget
@@ -70,7 +72,7 @@ Error [RuntimeError]: Unbounded SELECT query exceeds budget
 }
 ```
 
-The `source` field tells you whether the violation came from the pre-execution estimate (`'ast'`) or the observed rows (`'observed'`), and `estimatedRows` appears when the estimate reached `maxRows`. A blocking latency violation carries the measured and allowed values:
+The `source` field is how you tell which of the two row checks stopped the query: `'ast'` means the check before the query ran, and `'observed'` means the database really did return that many rows. `estimatedRows` is included when the estimate reached `maxRows`. When a slow query blocks, the error gives you both numbers, the time the query took and the time you allowed:
 
 ```text title="Latency budget error" no-copy
 Error [RuntimeError]: Query latency exceeds budget
@@ -83,13 +85,13 @@ Error [RuntimeError]: Query latency exceeds budget
 }
 ```
 
-When the violation only warns, the same information is emitted through the runtime logger. To fix an unbounded-select violation, add a limit to the query ([`limit(...)` on the ORM API](/orm/fundamentals/reading-data#sort-and-paginate), `.limit(...)` on the SQL query builder) or raise the budget deliberately.
+When the violation only warns, you get the same information through the logger instead, so it shows up in your logs rather than as a thrown error. The fix for an unbounded `SELECT` is to give the query a limit, with [`limit(...)` on the ORM API](/orm/fundamentals/reading-data#sort-and-paginate) or `.limit(...)` on the SQL query builder, or to decide that the budget itself is too low and raise it.
 
 ## Common gotchas
 
 :::warning
 
-The pre-execution row check estimates from `tableRows` and `defaultTableRows`, not from live table statistics. If your real tables are much larger than the configured assumptions, a query can pass the estimate and still hit the observed-row limit mid-stream. Keep `tableRows` roughly honest for the tables you query most.
+The check that runs before your query never asks the database how big your tables are. It only knows the numbers you gave it in `tableRows` and `defaultTableRows`, so when your real tables are much larger than those numbers, a query can get past that first check and then fail part way through reading rows, once the rows the database returns pass `maxRows`. Keep the numbers in `tableRows` roughly honest for the tables you query most.
 
 :::
 
