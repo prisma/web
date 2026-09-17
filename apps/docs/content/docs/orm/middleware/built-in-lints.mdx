@@ -23,40 +23,44 @@ export const db = postgres<Contract>({
 });
 ```
 
-This is the `src/prisma/db.ts` that `create-prisma` generates, with the `middleware` option added. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from. `@prisma/orm-postgres/family-runtime` is where the built-in middleware comes from. Prisma ORM sorts the databases it supports into two families, SQL and MongoDB, and this part of the package is shared by every SQL database.
+The built-in middleware is imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. There is nothing extra to install, because it is part of the `@prisma/orm-postgres` package you already have.
 
-`lints` works with any SQL database, so you register it on a client you created with `postgres(...)`. There is nothing extra to install, because `@prisma/orm-postgres/family-runtime` is part of the `@prisma/orm-postgres` package you already have. Putting `lints()` in the `middleware` array of a MongoDB client is a TypeScript error. If you register other middleware alongside it, Prisma ORM runs them in the order you list them in the array, which [How middleware works](/orm/middleware/how-middleware-works) covers.
+This is the `src/prisma/db.ts` that `create-prisma` generates, with the `middleware` option added. `contract.json` and `contract.d.ts` are the two files `npx prisma contract emit` writes from your contract, which is the Prisma ORM 8 name for your schema. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where those two files come from.
+
+You register `lints` on a client you created with `postgres(...)`. Putting `lints()` in the `middleware` array of a MongoDB client is a TypeScript error. If you register other middleware alongside it, Prisma ORM runs them in the order you list them in the array, which [How middleware works](/orm/middleware/how-middleware-works) covers.
 
 ## The rules
 
-Every query you make is checked, reads and writes alike, and a query that a rule blocks never reaches your database.
-
-The rules work on queries you build with the ORM API or the SQL query builder. Raw SQL that you wrote yourself is checked a different way, described under [Raw SQL](#raw-sql).
+Every query you make is checked, reads and writes alike, and a query that a rule blocks never reaches your database. The rules work on queries you build with the ORM API or the SQL query builder. Raw SQL that you wrote yourself is checked a different way, described under [Raw SQL](#raw-sql).
 
 Every rule has a severity, which is `warn` or `error` and nothing else. A rule set to `error` throws, and the query is blocked before it reaches the database. A rule set to `warn` logs a warning and lets the query run. There is no third value that switches a rule off, so the quietest you can make a rule is `warn`.
 
+| Rule | Code | `severities` key | Default severity | Fires when |
+| --- | --- | --- | --- | --- |
+| DELETE without WHERE | `LINT.DELETE_WITHOUT_WHERE` | `deleteWithoutWhere` | `error` | A `DELETE` has no `WHERE` clause |
+| UPDATE without WHERE | `LINT.UPDATE_WITHOUT_WHERE` | `updateWithoutWhere` | `error` | An `UPDATE` has no `WHERE` clause |
+| No LIMIT | `LINT.NO_LIMIT` | `noLimit` | `warn` | A `SELECT` has no `LIMIT` clause |
+| SELECT star | `LINT.SELECT_STAR` | `selectStar` | `warn` | A query selects all columns instead of naming them |
+
 :::note
 
-You cannot yet give the `postgres(...)` client a logger of your own, so a `warn` rule produces nothing you can see: nothing is printed, and there is no callback of yours for it to reach. The rules set to `error` are the ones you can act on today, because a blocked query is something you notice. Treat the two `warn` rules below as something to plan for rather than something you will read, until the client accepts a logger.
+You cannot yet give the `postgres(...)` client a logger of your own, so a rule set to `warn` produces nothing you can see: nothing is printed, and there is no callback of yours for it to reach. That makes `LINT.DELETE_WITHOUT_WHERE` and `LINT.UPDATE_WITHOUT_WHERE` the two rules you can act on today, because a blocked query is something you notice, and it leaves the other two as rules to plan for until the client accepts a logger.
 
 :::
 
-| Rule | Code | Default severity | Fires when |
-| --- | --- | --- | --- |
-| DELETE without WHERE | `LINT.DELETE_WITHOUT_WHERE` | `error` | A `DELETE` has no `WHERE` clause |
-| UPDATE without WHERE | `LINT.UPDATE_WITHOUT_WHERE` | `error` | An `UPDATE` has no `WHERE` clause |
-| No LIMIT | `LINT.NO_LIMIT` | `warn` | A `SELECT` has no `LIMIT` clause |
-| SELECT star | `LINT.SELECT_STAR` | `warn` | A query selects all columns instead of naming them |
-
 The rules are named after the SQL they are about, and you write your queries in the ORM API, so here is which of your own calls sets off which rule.
 
-`LINT.NO_LIMIT` fires on a `SELECT` with no `LIMIT`, which in the ORM API means every `.all()` you call without a `.limit(...)` earlier in the chain. `.first(...)` never sets it off, because it adds `LIMIT 1` for you. If your app is full of `.all()` calls, this is the rule that fires most often, though nothing prints those warnings today.
+| Your call | Rule it sets off |
+| --- | --- |
+| `.all()` with no `.limit(...)` before it | `LINT.NO_LIMIT` |
+| `.first(...)` | none, because it adds `LIMIT 1` for you |
+| a query where you never called `.select(...)` | `LINT.SELECT_STAR` |
+| `deleteAll()` or `updateAll()` | none, because TypeScript makes you write `.where(...)` first |
+| the query builder's `delete()` or `update()` with no `where()` | `LINT.DELETE_WITHOUT_WHERE` or `LINT.UPDATE_WITHOUT_WHERE` |
 
-`LINT.SELECT_STAR` fires when a query asks for all the columns rather than naming the ones it wants, which in the ORM API means any query where you never called `.select(...)`. So `await db.orm.public.User.limit(50).all()` sets it off, and `await db.orm.public.User.select('id', 'email').limit(50).all()` does not.
+So `await db.orm.public.User.limit(50).all()` sets off `LINT.SELECT_STAR`, while `await db.orm.public.User.select('id', 'email').limit(50).all()` does not. In `db.orm.public.User`, `public` is the PostgreSQL schema and `User` is your model name. The SQL query builder reaches the same table by its name in the database, as `db.sql.public.user`, which is why the two are spelled differently in the examples here.
 
-`LINT.DELETE_WITHOUT_WHERE` and `LINT.UPDATE_WITHOUT_WHERE` cannot come from the ORM API, because `deleteAll()` and `updateAll()` are typed to need a `.where(...)` before them, as in `await db.orm.public.User.where({ active: false }).deleteAll()`, and TypeScript rejects the call when the `.where(...)` is missing. Where they do fire is the [SQL query builder](/orm/reference/sql-query-builder), which lets you call `delete()` or `update()` and build the query without a `where()`. The two APIs reach a table by different names, which is why the examples here are not spelled the same way: the ORM API uses your model name, `db.orm.public.User`, and the query builder uses the table name in the database, `db.sql.public.user`.
-
-This is the record `lints` builds for a `warn` finding: the code of the rule, a message, and the table the query touched. Nothing prints it on a `postgres(...)` client today.
+This is the record `lints` builds for a `warn` finding: the code of the rule, a message, and the table the query touched.
 
 ```text title="Lint warning"
 warn {
@@ -68,7 +72,9 @@ warn {
 
 ## What a blocked query looks like
 
-A rule set to `error` throws before the database sees anything, so the call you were awaiting rejects. What it rejects with is an ordinary `Error` object that carries a `code` property, along with `category`, `severity`, and a `details` object saying what the rule found. The `isRuntimeError` type guard tells TypeScript that those properties are there, so you can read `code` off the error:
+A rule set to `error` throws before the database sees anything, so the call you were awaiting rejects. It throws an ordinary `Error` with five extra properties on it: `code`, `category`, `severity`, `message`, and `details`. Use the `isRuntimeError` type guard, exported from `@prisma/orm-postgres/components/runtime`, so that TypeScript knows those properties are there and you can read `code` off the error.
+
+The blocked `DELETE` below comes from the SQL query builder, where you build the query yourself, call `.build()`, and run the result with `db.runtime().query(...)` for rows or `db.runtime().execute(...)` for a count:
 
 ```ts
 import { isRuntimeError } from '@prisma/orm-postgres/components/runtime';
@@ -84,9 +90,7 @@ try {
 }
 ```
 
-That example uses the SQL query builder, where you build a query and run it in two steps. `.build()` returns a plan, which is the query as a plain object, not yet run. `db.runtime().query(plan)` runs it and returns rows, and `db.runtime().execute(plan)` runs it and returns how many rows it changed.
-
-Those four properties hold this for a `DELETE` with no `WHERE` on the `user` table:
+Those properties hold this for a `DELETE` with no `WHERE` on the `user` table:
 
 ```text title="Blocked DELETE" no-copy
 {
@@ -100,7 +104,7 @@ Those four properties hold this for a `DELETE` with no `WHERE` on the `user` tab
 
 ## Configure severities
 
-When a default does not suit your project, `severities` lets you make any rule stricter or gentler. You name only the rules you want to change, and every rule you leave out keeps the default from the table. In a service where every list endpoint has to paginate, for example, you can make a `SELECT` without a `LIMIT` fail rather than warn, and fail a query that names no columns as well. This is the `middleware` line of the `db.ts` above, with the bare `lints()` replaced:
+When a default does not suit your project, `severities` lets you make any rule stricter or gentler. You name only the rules you want to change, using the key from the table of rules, and every rule you leave out keeps its default. Each key takes `'warn'` or `'error'`. In a service where every list endpoint has to paginate, for example, you can make a `SELECT` without a `LIMIT` fail rather than warn, and fail a query that names no columns as well. This is the `middleware` line of the `db.ts` above, with the bare `lints()` replaced:
 
 ```ts title="src/prisma/db.ts (excerpt)"
 middleware: [
@@ -113,11 +117,11 @@ middleware: [
 ],
 ```
 
-The key for a rule is its name in camel case, so the four rules in the table are `deleteWithoutWhere`, `updateWithoutWhere`, `noLimit`, and `selectStar`. Each key takes `'warn'` or `'error'`. `severities` takes one more key, `readOnlyMutation`, which has no row in the table because that finding only ever comes from the [raw SQL](#raw-sql) checks.
-
 With `selectStar` set to `error`, a plain `.all()` in the ORM API throws, and you catch it the same way you catch a blocked `DELETE`:
 
 ```ts
+import { isRuntimeError } from '@prisma/orm-postgres/components/runtime';
+
 try {
   await db.orm.public.User.limit(50).all();
 } catch (error) {
@@ -130,9 +134,15 @@ try {
 
 ## Raw SQL
 
-A whole statement you wrote yourself with [`db.raw.sql`](/orm/reference/raw-queries) is SQL text rather than a query Prisma ORM assembled, so the four rules above are skipped for it. `lints` reads the SQL text instead, every time a raw statement runs, and it looks for a `select *`, a missing `LIMIT`, and a statement that changes data in a query marked read-only.
+A whole statement you wrote yourself with [`db.raw.sql`](/orm/reference/raw-queries) is SQL text rather than a query Prisma ORM assembled, so the four rules above are skipped for it. `lints` searches the SQL text instead, every time a raw statement runs, and it starts from its own defaults, which are not the defaults in the table of rules:
 
-Those text checks start from their own defaults, which are not the defaults in the table above. In raw SQL a `select *` is an `error` rather than a warning, so this query is blocked:
+| What it searches the text for | Code | Default severity in raw SQL |
+| --- | --- | --- |
+| a `select` statement containing `select *` | `LINT.SELECT_STAR` | `error` |
+| a `select` statement with no `limit` anywhere in it | `LINT.NO_LIMIT` | `warn` |
+| a statement that changes data in a query marked read-only | `LINT.READ_ONLY_MUTATION` | `error` |
+
+So a `select *` you wrote by hand is blocked:
 
 ```ts
 const plan = db.raw.sql`select * from "user"`
@@ -141,22 +151,21 @@ const plan = db.raw.sql`select * from "user"`
 await db.runtime().query(plan);
 ```
 
-It throws an error whose `code` is `LINT.SELECT_STAR` and whose `message` is `Raw SQL plan selects all columns via *`. A missing `LIMIT` in raw SQL is still a warning. Changing data in a query marked read-only is an `error` whose `code` is `LINT.READ_ONLY_MUTATION`, and there is no documented way to mark a query read-only, so you are unlikely to see that one.
+It throws an error whose `code` is `LINT.SELECT_STAR` and whose `message` is `Raw SQL plan selects all columns via *`. `returnsRow` tells Prisma ORM the type of each column the statement gives back, written as `pg/` plus the PostgreSQL type name plus `@1`, and [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids you can use. The `severities` key for the last rule is `readOnlyMutation`, and there is no documented way to mark a query read-only, so you are unlikely to see that one.
+
+Because these are searches through the text rather than checks on the structure of the query, they can be wrong in both directions. The word `limit` anywhere in the statement counts as a `LIMIT`, including inside a string or a column name, and a `select *` inside a subquery counts for the whole statement. So when a raw statement produces a finding, go and read the query yourself before you change anything.
 
 :::warning
 
-A severity you set in `severities` applies to a finding by its code wherever that finding came from, so it changes the raw defaults as well as the four rules. If you set `selectStar: 'warn'` to quiet the ORM-API rule, raw SQL's `select *` drops from `error` to `warn` along with it, and `select * from "user"` starts running instead of being blocked.
+A severity you set in `severities` applies to a finding by its code wherever that finding came from, so it changes the raw defaults as well as the four rules. If you set `selectStar: 'warn'` to quiet the ORM-API rule, raw SQL's `select *` drops from `error` to `warn` along with it, and `select * from "user"` starts running instead of being blocked. To keep the ORM-API rule at `error` and still run a raw `select *`, give the code that runs it a `db` client of its own, in the way [Common gotchas](#common-gotchas) does for a backfill script.
 
 :::
 
-`fallbackWhenAstMissing` decides what `lints` does with a query that reaches it without the structure the rules read. You will not need this option, because every query from the ORM API, the SQL query builder, and `db.raw.sql` carries its structure. Leave it at the default:
+You will not need `fallbackWhenAstMissing`, because every query from the ORM API, the SQL query builder, and `db.raw.sql` already has the structure the rules read. Leave it at its default of `'raw'`. The only other value it takes turns the checks off for a query that arrives without that structure:
 
 ```ts title="src/prisma/db.ts (excerpt)"
-middleware: [lints({ fallbackWhenAstMissing: 'raw' })], // the default: check the SQL text
-middleware: [lints({ fallbackWhenAstMissing: 'skip' })], // run no checks at all
+middleware: [lints({ fallbackWhenAstMissing: 'skip' })],
 ```
-
-Treat a lint finding on raw SQL as a reason to go and look at the query yourself rather than as a verdict.
 
 ## Common gotchas
 
@@ -166,7 +175,7 @@ Sometimes you do mean to change every row, in a backfill script for example. `LI
 
 :::
 
-The first way is to write a `WHERE` clause that is true for every row, which states the intent in the query itself. In a query builder callback the first argument, `f`, has one property for each column, and the second, `fns`, holds the comparison helpers. On a table whose primary key is `id`, comparing that column to `null` with `fns.ne` gives you `id IS NOT NULL`, which every row matches:
+The first way is to write a `WHERE` clause that is true for every row, which states the intent in the query itself. In a query builder callback the first argument, `f`, has one property for each column, and the second, `fns`, holds the comparison helpers. Comparing a column to `null` gives you a null check rather than a comparison, so `fns.ne(f.id, null)` gives `id IS NOT NULL` and `fns.eq(f.id, null)` gives `id IS NULL`. On a table whose primary key is `id`, `IS NOT NULL` is true for every row:
 
 ```ts
 const plan = db.sql.public.user
