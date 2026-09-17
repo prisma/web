@@ -40,7 +40,7 @@ export default definePrismaConfig({
 });
 ```
 
-`@prisma/orm-postgres` is the one package you call directly: `ormConfig(...)` in `prisma.config.ts` and `postgres(...)` in `db.ts`. Every other extension is listed in the `extensions` array passed to those two calls. The example renames `defineConfig` to `ormConfig` so it is not confused with `definePrismaConfig`, and you can keep the original name.
+`@prisma/orm-postgres` is the package you call directly: `ormConfig(...)` in `prisma.config.ts` and `postgres(...)` in `db.ts`. Other extensions are listed in the `extensions` array passed to those two calls. The example renames `defineConfig` to `ormConfig` so it is not confused with `definePrismaConfig`, and you can keep the original name.
 
 Import the paths the extension's page in the [extension directory](https://www.prisma.io/extensions) gives you. For pgvector they are `/control` in `prisma.config.ts` and `/runtime` in `db.ts`.
 
@@ -126,7 +126,7 @@ export async function similaritySearch(queryVector: number[]) {
 }
 ```
 
-`.select('distance', ...)` names the computed column `distance`, and `.build()` returns the built query as a plain object that `db.runtime().query(...)` runs. Each row that comes back has `id`, `title`, and `distance`, and `distance` is a `number`.
+`.select('distance', ...)` names the computed column `distance`, and `.build()` returns a plain object that `db.runtime().query(...)` runs. Each row that comes back has `id`, `title`, and `distance`, a `number` that is `null` when the row has no embedding.
 
 Alongside `fns.cosineDistance`, pgvector gives you `fns.cosineSimilarity`. Both take two vectors and return a PostgreSQL `float8`, which you get as a `number`. The difference is which way you sort: order ascending when you sort by distance, because the closest row has the smallest distance, and descending when you sort by similarity.
 
@@ -191,7 +191,7 @@ import { supabase } from '@prisma/orm-extension-supabase/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = supabase<Contract>({
+export const db = await supabase<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
   jwtSecret: process.env['SUPABASE_JWT_SECRET']!,
@@ -200,7 +200,7 @@ export const db = supabase<Contract>({
 
 `supabase(...)` takes the same `extensions` array as `postgres(...)`, so pgvector or another extension goes there in the same way.
 
-`db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. Each of them has the same `orm` and `sql` you use on `db`. The [runnable example](https://github.com/prisma/orm/tree/main/examples/supabase) shows the whole setup in one project.
+`await db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. `db` itself has no `orm` or `sql`: those live on the three role-bound clients. The [runnable example](https://github.com/prisma/orm/tree/main/examples/supabase) shows the whole setup in one project.
 
 :::
 
