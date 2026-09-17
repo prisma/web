@@ -5,8 +5,8 @@ date: "2026-09-16"
 authors:
   - "Shane Neubauer"
 metaTitle: "Prisma vs Netlify for TypeScript apps: which platform?"
-metaDescription: "Prisma vs Netlify compared for TypeScript apps: typed service contracts, Postgres, per-branch preview databases, migrations, limits, and what each one bills."
-excerpt: "Choose Prisma when TypeScript services on Bun call each other and share Postgres. Choose Netlify for its edge network and Image CDN, Node.js, long background jobs, or previews pre-filled with production data."
+metaDescription: "Prisma vs Netlify compared for TypeScript apps: what each platform provisions and checks for you, preview databases, migrations, runtime limits, and pricing."
+excerpt: "Prisma catches a service wired to the wrong API or the wrong database before it deploys. Netlify gives every preview a copy of production and runs background jobs for minutes. Here is how to choose."
 heroImagePath: "/prisma-vs-netlify/imgs/hero.svg"
 heroImageAlt: "Prisma and Netlify logos side by side"
 metaImagePath: "/prisma-vs-netlify/imgs/meta.png"
@@ -16,69 +16,52 @@ tags:
   - "orm"
 ---
 
-Choose Prisma when your app is TypeScript services on Bun that call each other and share a Postgres database. Choose Netlify when you need its edge network and Image CDN, Node.js, background work that runs for minutes, or previews pre-filled with production data.
+If your app is a few TypeScript services that share a Postgres database, Prisma lets you declare those services, their databases, and the calls between them in one TypeScript file. The compiler then rejects a service wired to the wrong API or the wrong database schema before you deploy, and one deploy command provisions everything the file describes. That is the most consequential difference from Netlify, where the site and its functions build and publish together but the connections between separately deployed services, and the database each one talks to, are yours to configure and keep correct.
 
-Both platforms host full-stack TypeScript apps with managed Postgres and preview every Git branch. The difference is what each one sets up for you. On Prisma, one deploy of a [Prisma Composer](https://www.prisma.io/docs/composer) app provisions your services on [Prisma Compute](https://www.prisma.io/docs/compute), their [Prisma Postgres](https://www.prisma.io/docs/postgres) databases, and the connections between them, all from TypeScript the compiler checks first. On Netlify, a push builds and publishes your site and its functions, and Netlify Database gives each Deploy Preview its own database branch.
+Netlify is the better fit when your app is mostly pages and assets served worldwide, when it runs on Node.js, when it needs background jobs that run for minutes, or when you want every preview to start with a copy of production data. Prisma's hosting runs on Bun in a single region, gives a request 60 seconds to start responding, and hands you an empty database per preview that you seed yourself.
 
-The Prisma platform is four products: [Prisma ORM 8](https://www.prisma.io/docs/orm) (release candidate, general availability expected October 2026), Prisma Postgres, Prisma Compute, and Prisma Composer (early access).
+A word on scope, because "Prisma" means more than the ORM here. [Prisma ORM 8](https://www.prisma.io/docs/orm), a release candidate with general availability expected in October 2026, is the typed data layer and runs on any host, Netlify included. [Prisma Postgres](https://www.prisma.io/docs/postgres) is the managed database. [Prisma Compute](https://www.prisma.io/docs/compute) hosts TypeScript services. [Prisma Composer](https://www.prisma.io/docs/composer), in early access, is the framework that declares how services and databases connect and deploys them to Compute and Prisma Postgres. This post compares the three hosting products with Netlify, and the last section covers running Prisma ORM and Prisma Postgres on Netlify.
 
-## Choose Prisma when
+## The decision in brief
 
-- Several TypeScript services call each other. Each call's contract sits in the dependency declaration, so TypeScript checks the wiring. One service still deploys from a Git push; add Composer later.
-- Your services run on Bun, or can, and one region with no edge runtime is enough.
-- You want every Git branch to be its own environment, and you are fine creating its database with one command or a Composer stage deploy.
-- You can build on pre-release tooling. ORM 8 is a release candidate and Composer is in early access.
+Choose Prisma if:
 
-## Choose Netlify when
+- Several TypeScript services call each other and you want a mismatched API contract or a missing handler to fail the type check rather than a deploy or a request in production.
+- You want every Git branch to be a full environment, with its own services and variables, and you are willing to create its database with one command or let a Composer deploy do it.
+- Your services run on Bun, or can, and one region is enough.
+- You accept pre-release tooling. Prisma ORM 8 is a release candidate and Composer is in early access.
 
-- You mostly serve pages and assets worldwide and want caching and an Image CDN built in. Compute serves from one region, and you build [image routes](https://www.prisma.io/docs/compute/image-transformations) yourself.
-- Your app runs on Node.js and you do not want to move to Bun.
-- You want preview databases that start as a copy of production. Netlify Database creates one per Deploy Preview; on Prisma you provision and seed a branch database yourself.
-- You have background work that runs for minutes. Netlify Background Functions run up to 15 minutes and Async Workloads add retries. A Compute request has 60 seconds to start responding, and `waitUntil` after that does not retry or survive a redeploy.
+Choose Netlify if:
 
-## How do Prisma and Netlify compare?
+- Your app is largely pages and assets and you want a global edge network, caching, and an Image CDN without building them into the app.
+- Your code runs on Node.js and you do not want to move it to Bun.
+- You have background work that runs for minutes. Netlify Background Functions run up to 15 minutes, and Async Workloads add retries and multi-step jobs.
+- You want preview databases that start as a copy of production, which Netlify Database creates for every Deploy Preview.
 
-Prisma's edge is typed service wiring and an environment per branch. Netlify's edge is web delivery, runtime choice, long background jobs, and pre-filled preview databases.
-
-| What you need | Prisma | Netlify |
+| | Prisma | Netlify |
 | --- | --- | --- |
-| Hosting | TypeScript services on Compute, running on Bun, one region each | Serverless and Edge Functions deployed with the site |
-| Managed Postgres | Prisma Postgres, any client | Netlify Database, [built on Neon](https://www.netlify.com/blog/netlify-database/) |
-| Typed data access | Prisma ORM 8, or any client | Drizzle, or any driver or ORM, including Prisma ORM |
-| Service wiring | Composer binds each dependency to its typed contract | Site and functions build together and share types by import |
-| Previews | One environment per Git branch, torn down with the branch | A Deploy Preview per pull request; branch deploys for branches |
-| Preview databases | One per branch, provisioned by you or a stage deploy, no production data | A Neon branch per Deploy Preview with a copy of production |
+| Hosting | TypeScript services on Prisma Compute, on Bun, one region each | Serverless and Edge Functions deployed with the site |
+| Managed Postgres | Prisma Postgres, usable from any client | Netlify Database, [built on Neon](https://www.netlify.com/blog/netlify-database/) |
+| Typed data access | Prisma ORM 8 or any client | Drizzle or any driver or ORM, including Prisma ORM |
+| Service-to-service calls | Composer binds each dependency to a typed contract and checks it at compile time | Site and functions share types by import; separate services are wired by hand |
+| Previews | One environment per Git branch, deleted with the branch | A Deploy Preview per pull request, plus branch deploys |
+| Preview databases | One per branch, created by you or by a Composer stage deploy, no production data | A Neon branch per Deploy Preview with a copy of production |
 | Long-running work | 60 seconds to first byte, then `waitUntil`; no WebSockets | Background Functions up to 15 minutes; Async Workloads |
-| Billing | Plan fee plus requests, memory, CPU, bandwidth | Credits for compute, requests, bandwidth, and production deploys |
+| Billing | Plan fee plus requests, memory, CPU, and bandwidth | Credits for compute, requests, bandwidth, and production deploys |
+
+Sources for the table: the [Compute limitations](https://www.prisma.io/docs/compute/limitations) page and Netlify's [database tooling](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/), [Background Functions](https://docs.netlify.com/build/functions/background-functions/), and [pricing](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/) pages.
+
+## Prisma checks the wiring; Netlify checks the build
+
+Both platforms deploy from a Git push. The difference is how much of your application's structure the platform understands.
+
+Netlify understands a site. You connect a repository and a build command, and each push builds the frontend and the functions in `netlify/functions/` together and publishes them. Because everything ships as one unit, a function and the page that calls it always come from the same commit, and they can share TypeScript types through ordinary imports. Netlify does not model calls between separately deployed services, so if your backend grows into several services, you connect them with URLs and environment variables and keep their types in sync yourself.
+
+Composer understands services. You declare each service in TypeScript, along with what it depends on: other services, a Prisma Postgres database, a cron schedule, object storage. A service's API is a contract, a set of typed request and response schemas written with arktype, zod, or any other Standard Schema validator. A service that calls another declares that contract as a dependency, and at runtime it receives a typed client for it. A root module wires every declaration together, and TypeScript checks the result: bind a dependency to a service that serves a different contract, or forget a handler the contract requires, and the file does not compile. When it does compile, `prisma deploy` provisions the services on Prisma Compute, the databases on Prisma Postgres, and the authenticated connections between them, so application code never assembles a URL from `process.env`.
 
 ![What each platform connects: on Prisma, the repository holds the data contract, the service contract, and the root module; prisma deploy provisions the storefront and catalog services on Prisma Compute and a Prisma Postgres database typed by the contract. On Netlify, the repository holds the site and its functions; a git push builds and publishes both, and Netlify Database connects a Postgres branch per preview through NETLIFY_DB_URL.](/prisma-vs-netlify/imgs/what-each-platform-connects.svg)
 
-Sources: the [Compute limitations](https://www.prisma.io/docs/compute/limitations) page and Netlify's [database tooling](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/), [Background Functions](https://docs.netlify.com/build/functions/background-functions/), and [credit-based pricing](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/) pages.
-
-## How do you define the application?
-
-On Prisma, the compiler checks how your services connect. On Netlify, a site and its functions share types by import, and anything beyond that is yours to add.
-
-You describe services and dependencies in TypeScript, and a Composer deploy provisions them. On Netlify, you connect a repo and a build command, and a push publishes the site and its functions together. Four Composer terms, used below:
-
-- A **service** is one deployable unit, declared with `compute()`.
-- A **service contract** is a service's API as schemas (arktype, zod, or any Standard Schema validator). It types the handlers and the client. The service that serves it is the **producer**.
-- A **data contract** is ORM 8's schema file, `contract.prisma`, which replaces `schema.prisma`.
-- A **root module** (`module.ts`) provisions every service and resource and wires them together. A **stage** is a preview copy of the whole app.
-
-Here is a storefront that asks a catalog service for a price. The catalog publishes a contract, the storefront declares it as a dependency, and `service.load()` returns a typed client.
-
-```ts tab="catalog/contract.ts"
-import { contract, rpc } from "@prisma/composer/service-rpc";
-import { type } from "arktype";
-
-export const catalogContract = contract({
-  getPrice: rpc({
-    input: type({ productId: "string" }),
-    output: type({ amount: "number", currency: "string" }),
-  }),
-});
-```
+The two files below show the declaration and the wiring for a storefront that asks a catalog service for a price. Notice that the storefront names the catalog's contract in its `deps`, and that the root module is the only place that decides which running service satisfies it.
 
 ```ts tab="storefront/service.ts"
 import nextjs from "@prisma/composer/nextjs";
@@ -93,15 +76,6 @@ export default compute({
 });
 ```
 
-```ts tab="storefront/data.ts"
-import service from "./service.ts";
-
-export async function priceFor(productId: string) {
-  const { catalog } = service.load();
-  return catalog.getPrice({ productId }); // [!code highlight]
-}
-```
-
 ```ts tab="module.ts"
 import { module } from "@prisma/composer";
 import catalogModule from "./src/catalog/module.ts";
@@ -113,155 +87,82 @@ export default module("store", ({ provision }) => {
 });
 ```
 
-Change `getPrice` from a plain number to an amount plus a currency, and every caller that still expects a number fails to compile. A shared-types package gives you that on any platform.
+The consequence shows up when the catalog team changes `getPrice` to return an amount and a currency instead of a single number. Every caller that still expects a number fails to compile, which a shared-types package in a monorepo would also give you. The part a monorepo does not give you is the second file: if the root module binds `storefront` to a service that serves some other contract, that is a compile error too, not a 404 discovered after the deploy. The [store example](https://github.com/prisma/composer/tree/main/examples/store) in the Composer repository is the complete version of this app.
 
-What Composer adds is the root module. It binds each dependency to its producer, and TypeScript checks the binding: a mismatched contract or a missing handler is a compile error, not a failed deploy. The deploy then provisions the services and the authenticated connections, so app code never reads a URL from `process.env`. The [store example](https://github.com/prisma/composer/tree/main/examples/store) shows the full version.
+Databases are declared the same way. A service lists a `postgres()` dependency typed by your Prisma ORM data contract, the schema file `contract.prisma` that replaced `schema.prisma` in ORM 8, and the module that owns the database provisions it. The [deploy applies the database's migrations](https://www.prisma.io/docs/composer/databases) before the service starts, and it refuses to wire a service to a database whose schema does not match the contract the service was compiled against.
 
-Databases work the same way: a service declares `deps: { db: postgres(catalogData) }`, and the module that owns the database provisions it with [`postgres({ name, contract, config })`](https://www.prisma.io/docs/composer/databases). The deploy applies migrations before the service starts and refuses to wire a service to a database whose schema does not match. Cron jobs, object storage, and event streams follow the same pattern.
+None of this is required to get started. A single service deploys to Prisma Compute from a Git push without Composer, and you can adopt Composer when a second service or a scheduled job appears.
 
-Everything about the database comes from `contract.prisma`. Edit it, run `prisma contract emit`, and plan migrations from the same file. Coming from an older Prisma ORM? [This page](https://www.prisma.io/docs/orm/coming-from-prisma-orm-7) maps each old command to its ORM 8 name.
+## Previews come with an environment on Prisma and with data on Netlify
 
-Netlify supports typed database access with [Drizzle](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/) against Netlify Database, and its [functions](https://docs.netlify.com/build/functions/overview/) build and version with the site. What Composer adds is the checked contract between separately deployed services.
+Both platforms give every branch a running preview. What sits behind that preview is where they differ, and the difference decides how much setup you do before a preview is useful.
 
-You do not need several services to start. One service runs on Compute from a Git push, without Composer.
-
-## How do preview databases and migrations work?
-
-Prisma gives every branch its own environment and plans migrations across databases at different versions. Netlify gives every Deploy Preview a copy of production.
-
-![Every Git branch is its own environment. The main branch runs the storefront and catalog services against the production database, which has id and email. The alice/phone branch runs its own copies against its own database with a phone column, and the bob/avatar branch does the same with an avatarUrl column.](/prisma-vs-netlify/imgs/branch-databases.svg)
-
-### On Prisma
-
-With [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) configured, each push deploys the branch to its own environment. A [branch](https://www.prisma.io/docs/compute/branching) owns its services and any databases created on it. Deleting the Git branch deletes all of it, databases included.
-
-Environment variables have three scopes, which the CLI calls roles:
-
-1. Production values.
-2. Preview values, shared by every preview.
-3. Branch overrides, which replace a preview value for one branch.
-
-Set the first two once:
-
-```bash
-npx prisma@latest project env add DATABASE_URL=<production-url> --role production
-npx prisma@latest project env add DATABASE_URL=<shared-preview-url> --role preview
-```
-
-For a database per branch, run the CLI from the feature branch, which it targets automatically, then add a branch override:
+On Prisma, a Git branch maps to a [platform branch](https://www.prisma.io/docs/compute/branching) that owns its own services, environment variables, and any databases created on it, and deleting the Git branch deletes all of that. The database is not created for you unless you use Composer. For a single service you create one on the branch and point the branch's `DATABASE_URL` at it, which is two commands run from the feature branch:
 
 ```bash
 npx prisma@latest postgres create preview-db
 npx prisma@latest project env add DATABASE_URL=<printed-url> --branch feature/search
 ```
 
-For a Composer app, `npx prisma@latest deploy module.ts --stage <branch>` does both and applies migrations for any `postgres()` database. Either way, a preview pointed at production writes to production, and Prisma never copies production data into a branch database. Seed it if you need realistic rows. The [environment variables docs](https://www.prisma.io/docs/compute/environment-variables) cover the scopes.
+A Composer stage deploy, `npx prisma@latest deploy module.ts --stage <branch>`, creates the databases the module declares and runs their migrations. In both cases the database starts empty. If a feature needs realistic rows, you seed them. And because a preview reaches its database through whatever `DATABASE_URL` it was given, a preview that inherits the production value writes to production, so keep production and preview values in separate scopes as the [environment variables docs](https://www.prisma.io/docs/compute/environment-variables) describe.
 
-Now suppose Alice adds `phone` on her branch, Bob adds `avatarUrl` on his, and both merge. Alice's database has one column, Bob's has the other, staging and production have neither, and all of them need the merged schema.
+![Every Git branch is its own environment. The main branch runs the storefront and catalog services against the production database, which has id and email. The alice/phone branch runs its own copies against its own database with a phone column, and the bob/avatar branch does the same with an avatarUrl column.](/prisma-vs-netlify/imgs/branch-databases.svg)
 
-ORM 6 and 7 apply migrations in timestamp order. ORM 8 records, for each migration, the schema version it starts from and the one it ends at, so migrations form a [graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph). After the merge, whoever merged runs `migration plan --name merge_alice --from <directory>` on `main`, using Alice's last migration directory as `migration graph` prints it, repeats it for Bob, and commits both. From then on `db migrate` takes any database, from wherever it is, to the merged version. Two migrations that change the same column still need a human to decide.
+Netlify Database gives each Deploy Preview a database branch that already contains a copy of production data from the moment the preview was created, and it applies [migration files committed to Git](https://docs.netlify.com/build/data-and-storage/netlify-database/migrations/) as part of both production and preview deploys. Changes made in the preview branch never reach production. For testing against production-shaped data, that is the more convenient setup by a wide margin: there is nothing to seed and nothing to point.
+
+Schema changes travel the same way on both platforms, as migration files in Git that a deploy applies. Where Prisma ORM 8 helps is when two branches change the schema at the same time. Suppose Alice adds `phone` on her branch and Bob adds `avatarUrl` on his, each testing against their own database, and both merge. Alice's database has one column, Bob's has the other, and staging and production have neither. Prisma ORM 6 and 7 applied migrations in timestamp order, so the databases had to be walked through the same list. ORM 8 records, for each migration, which schema version it starts from and which it produces, so the migrations form a [graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph). After the merge, one `migration plan` run per branch writes the two merge migrations, and `db migrate` then brings any database, from whichever version it is at, to the merged one. Two migrations that change the same column still need a person to resolve them.
 
 ![The migration graph after the merge. State A is production with id and email. Alice's migration adds phone to reach state B, and Bob's migration adds avatarUrl to reach state C. Two merge migrations, one from B and one from C, both reach the merged state D. Each arrow is one migration, recorded as the state it starts from and the state it ends at.](/prisma-vs-netlify/imgs/migration-graph.svg)
 
-The graph is an ORM 8 feature, so you get it on Netlify too. The platform adds the environment around it: a database per branch, a stage that migrates at deploy time, and a release step you run against production:
+That graph belongs to Prisma ORM 8, not to Prisma's hosting, so you get it on Netlify by running ORM 8 there. What the hosting adds is a database per branch to test against and, with Composer, a deploy that runs the migrations for you.
 
-```bash
-npx prisma@latest migration check
-npx prisma@latest db migrate --show --db "$PRODUCTION_DATABASE_URL"
-npx prisma@latest db migrate --db "$PRODUCTION_DATABASE_URL"
-```
+## Runtime limits that can decide it
 
-Check the compiled migration files, preview what would run, then run it.
+Prisma Compute runs TypeScript HTTP services on Bun. Builds detect Next.js, Nuxt, Astro, Hono, NestJS, TanStack Start, and plain Bun servers, and an existing Node.js app has to run under Bun to move. Each service runs in one region, there is no edge runtime, and WebSocket servers are not supported. A request has 60 seconds to start responding before Compute cancels it. Work that should continue after the response, such as processing a webhook after returning `202`, uses `waitUntil`, which keeps the instance alive but does not retry a failure or survive a redeploy. The [limitations page](https://www.prisma.io/docs/compute/limitations) lists these constraints together. Compute does not require Prisma ORM, so an app on ORM 6 runs unchanged; the migration behavior above assumes ORM 8.
 
-### On Netlify
+Netlify Functions run on Node.js, and Netlify's edge network, caching, and Image CDN sit in front of the site without any application code. For asynchronous work, [Background Functions](https://docs.netlify.com/build/functions/background-functions/) run for up to 15 minutes, and [Async Workloads](https://docs.netlify.com/build/async-workloads/overview/) add retries and multi-step jobs. If your app has a queue-worker shape today, Netlify supports it directly and Compute needs the work moved into short requests or a Composer cron schedule.
 
-A push builds the site and its functions, a pull request gets a Deploy Preview URL, and a merge into the production branch deploys production. The functions are versioned with the site, so a preview runs the backend that belongs to that branch.
+## What you pay for
 
-Each Deploy Preview gets a database branch with a copy of production data from when the preview was created, and Netlify applies [migration files committed to Git](https://docs.netlify.com/build/data-and-storage/netlify-database/migrations/) on production and preview deploys. Changes in the preview database stay out of production, per the [database docs](https://docs.netlify.com/build/data-and-storage/netlify-database/). That pre-filled branch beats Prisma's empty branch databases when you need production-shaped data.
-
-Schema changes travel the same way on both: migration files in Git, applied on deploy. If you run ORM 8 on Netlify, apply them with `npx prisma@latest db migrate --db "$NETLIFY_DB_URL"` in your build or release step; Netlify exposes each preview's branch through that variable.
-
-## What can you run, and what does it cost?
-
-Compute is Bun, one region, and 60 seconds to first byte, with no seat or deploy charges. Netlify runs Node.js, long background jobs, and a global edge, and meters production deploys in credits.
-
-Prisma Compute runs TypeScript HTTP services on Bun, so a Node.js app must run on Bun. Builds detect Next.js, Nuxt, Astro, Hono, NestJS, TanStack Start, and plain Bun servers. Your app starts a server, scales to zero when idle, and has 60 seconds to start responding. Work after the response uses `waitUntil`, which does not retry or survive a redeploy. No edge runtime, no WebSockets. Compute does not require Prisma ORM, so an ORM 6 app runs as-is. The [limitations page](https://www.prisma.io/docs/compute/limitations) has the full list.
-
-Netlify provides an edge network, caching, and an Image CDN. [Background Functions](https://docs.netlify.com/build/functions/background-functions/) run up to 15 minutes, and [Async Workloads](https://docs.netlify.com/build/async-workloads/overview/) add retries and multi-step jobs.
-
-Prisma bills a plan fee plus four meters; memory counts while an instance runs and nothing once it scales to zero. Netlify bills metered usage in [credits](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/) from a monthly allowance. The dollar column converts credits at the Pro rate of $20 for 3,000, the same per-credit price as the Pro add-on.
+Prisma Compute charges a plan fee plus four usage meters. Memory is billed while an instance is running and nothing is billed once it has scaled to zero, so an idle preview costs nothing. Deployments, preview branches, and seats are not billed. Netlify bills metered usage in [credits](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/) drawn from a monthly allowance, and production deploys consume credits while Deploy Previews and branch deploys do not. The dollar column below converts credits at the Pro rate of $20 for 3,000 credits, which is the same per-credit price as Netlify's Pro add-on.
 
 | Meter | Prisma Compute | Netlify (credits, in dollars at the Pro rate) |
 | --- | --- | --- |
-| Plan | Free, or $10, $49, $129 a month with 5, 20, 100 million requests | Pro from $20 a month for 3,000 credits |
+| Plan | Free, or $10, $49, or $129 a month with 5, 20, or 100 million requests included | Pro from $20 a month for 3,000 credits |
 | Requests | $1 per million after the included amount | 2 credits per 10,000, about $1.33 per million |
-| Compute | $0.006 per GB-hour memory plus $0.064 per vCPU-hour CPU | 10 credits per GB-hour, about $0.067; no separate CPU meter |
+| Compute | $0.006 per GB-hour of memory plus $0.064 per vCPU-hour of CPU | 10 credits per GB-hour, about $0.067, with no separate CPU meter |
 | Bandwidth | $0.025 per GB | 20 credits per GB, about $0.13 |
 | Database compute | Prisma Postgres, priced separately | 10 credits per GB-hour, about $0.067 |
 | Production deploys | Not billed | 15 credits each, about $0.10 |
 | Preview and branch deploys | Not billed | Not metered |
 
-Prisma Postgres is [priced separately](https://www.prisma.io/pricing); Netlify Database compute and bandwidth use the same credits as the site. Idle previews on Prisma cost nothing; the one exception is Composer's cron scheduler, which keeps one warm instance per deployed app or stage.
+Prisma Postgres has [its own pricing](https://www.prisma.io/pricing), while Netlify Database's compute and bandwidth come out of the same credit allowance as the site. One Prisma exception to scale-to-zero: Composer's cron scheduler keeps one instance awake per deployed app or stage so that it can fire on time.
 
-## Can you use Prisma with Netlify?
+## Using Prisma ORM and Prisma Postgres on Netlify
 
-Yes. Netlify Database is Postgres, so Prisma ORM connects to it like any other database; the [tooling page](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/) says any driver or ORM works. Run `db migrate` in your build or release step and leave Netlify's migrations feature unused for that database. Prisma Postgres is also available through the official Netlify extension; the [Netlify guide](https://www.prisma.io/docs/guides/postgres/netlify) covers it, written for ORM 7 today.
+Prisma ORM does not require Prisma's hosting. Netlify Database is Postgres, so the ORM connects to it like any other Postgres database, and the [tooling page](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/) confirms that any driver or ORM works. Run `npx prisma@latest db migrate --db "$NETLIFY_DB_URL"` in your build or release step, since Netlify exposes each preview's database branch through that variable, and leave Netlify's own migrations feature unused for that database.
+
+Prisma Postgres is also available to Netlify sites through the official Netlify extension. The [Netlify guide](https://www.prisma.io/docs/guides/postgres/netlify) walks through it, and is written for Prisma ORM 7 today.
 
 ## Frequently asked questions
 
 <Accordions type="single">
   <Accordion title="Is Prisma a replacement for Netlify?">
-For TypeScript apps, mostly. Prisma Compute hosts the app and Prisma Postgres holds the data. It does not replace Netlify's edge network, caching, and Image CDN, and Compute has no WebSockets, no multi-region, and a 60-second first-byte limit.
+For a TypeScript app, mostly. Prisma Compute hosts the app and Prisma Postgres holds the data. It does not replace Netlify's edge network, caching, and Image CDN, and Compute has no WebSockets, no multi-region deployment, and a 60-second limit before a request must start responding.
   </Accordion>
   <Accordion title="Does Prisma give each preview its own database?">
-Yes, if you create it. Each Git branch is an isolated environment; you provision its database with the CLI or a Composer stage deploy, and it starts without production data. A preview-scoped or branch-scoped `DATABASE_URL` keeps it off production.
+Yes, if you create it. Each Git branch is an isolated environment, but the database is provisioned by you, with the CLI or a Composer stage deploy, and it starts without production data. A preview-scoped or branch-scoped `DATABASE_URL` keeps the preview off production.
   </Accordion>
   <Accordion title="What is the migration graph in Prisma ORM 8?">
-A record of which schema version each migration starts from and ends at. After two branches merge, the ORM plans a path from each database's current version to the merged schema. It works on any host, including Netlify.
+A record of which schema version each migration starts from and produces. After two branches merge, the ORM can plan a path from each database's current version to the merged schema. It is an ORM feature and works on any host, including Netlify.
   </Accordion>
   <Accordion title="Can I use Prisma ORM with Netlify Database?">
 Yes. Netlify Database is PostgreSQL built on Neon, and Prisma ORM connects to it like any other PostgreSQL database. Run migrations in your own build or release step. Prisma Postgres is also available through the official Netlify extension.
   </Accordion>
 </Accordions>
 
-## Try the Prisma workflow
+## Which one to pick
 
-Ship one change that touches a service contract and a schema, and see what the compiler and the deploy catch. The [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started) uses a quotes service and a gateway, the same roles as catalog and storefront above. Local runs need no account.
+If your backend is, or is becoming, several TypeScript services that share Postgres, and you can live with Bun, one region, and pre-release tooling, Prisma turns the wiring between those services into something the compiler checks and the deploy provisions. Start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), which runs two services locally without an account.
 
-<Steps variant="vertical">
-
-<Step variant="vertical">
-
-### Run the two-service example
-
-Follow the guide and run both services locally with `npx prisma@latest dev module.ts`.
-
-</Step>
-
-<Step variant="vertical">
-
-### Change a service contract
-
-Rename a method in the quotes contract and run your typecheck. The gateway fails to compile until you update it.
-
-</Step>
-
-<Step variant="vertical">
-
-### Add a database and preview a schema change
-
-Give the quotes service a `postgres()` database per the [databases page](https://www.prisma.io/docs/composer/databases). Add a field to `contract.prisma`, run `npx prisma@latest contract emit` and `npx prisma@latest migration plan --name <name>`, then `npx prisma@latest deploy module.ts --stage <branch>`. The stage gets its own migrated database.
-
-</Step>
-
-<Step variant="vertical">
-
-### Merge and migrate production
-
-Run `npx prisma@latest db migrate --show --db "$PRODUCTION_DATABASE_URL"` to preview, then drop `--show` to apply.
-
-</Step>
-
-</Steps>
-
-If that loop fits your team, start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started). If you need the Netlify-only features above, the [Netlify guide](https://www.prisma.io/docs/guides/postgres/netlify) gets Prisma ORM and Prisma Postgres running there instead.
+If your app is a site with functions, needs Node.js, long background jobs, or a global edge, or you want previews that arrive with production data, stay on Netlify and bring Prisma ORM 8 and Prisma Postgres with you through the [Netlify guide](https://www.prisma.io/docs/guides/postgres/netlify).
