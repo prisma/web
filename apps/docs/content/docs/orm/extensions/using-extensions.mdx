@@ -89,7 +89,7 @@ Getting the new column from your contract into your database takes these command
 2. `npx prisma migration plan`, which writes the extension's own migration into `migrations/`, so commit it along with your other migrations. Skip this and the next command stops with an error whose `code` is `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION`.
 3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and creates the `post` table.
 
-The extension's migration is the `CREATE EXTENSION IF NOT EXISTS vector` statement, so you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. The local development server the quickstart sets up has it. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
+The extension's migration is the `CREATE EXTENSION IF NOT EXISTS vector` statement, so you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
 
 With the column in your database, write an embedding into it. A vector value is a plain `number[]` with as many entries as the column's dimension, so a column typed `Embedding1536` takes an array of 1536 numbers, which is what an embedding model gives you. Prisma ORM does not produce the numbers, and `embed` in this example stands for whichever model you call:
 
@@ -184,7 +184,7 @@ export default definePrismaConfig({
 });
 ```
 
-The client is where the real difference is, because you build it with `supabase()` from `@prisma/orm-extension-supabase/runtime` rather than with `postgres()`, and it takes the secret it needs to check JWTs:
+The client is where the real difference is, because you build it with `supabase()` from `@prisma/orm-extension-supabase/runtime` rather than with `postgres()`, and it needs a way to check the JWTs your users send:
 
 ```ts title="src/prisma/db.ts"
 import { supabase } from '@prisma/orm-extension-supabase/runtime';
@@ -194,9 +194,11 @@ import contractJson from './contract.json' with { type: 'json' };
 export const db = await supabase<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
-  jwtSecret: process.env['SUPABASE_JWT_SECRET']!,
+  jwksUrl: process.env['SUPABASE_JWKS_URL']!,
 });
 ```
+
+`jwksUrl` is your project's JWKS endpoint, `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`, and it is the right option for a current Supabase project, because those sign their JWTs with ES256 keys. An older project that still signs with the shared HS256 secret passes `jwtSecret` instead of `jwksUrl`, and never both. `supabase status` prints a `JWT_SECRET` even for an ES256 project, so its presence does not tell you which one yours uses. A token signed the other way is rejected with an error whose `code` is `SUPABASE.JWT_INVALID`, and the message names the fix.
 
 `supabase(...)` takes the same `extensions` array as `postgres(...)`, so pgvector or another extension goes there in the same way.
 
