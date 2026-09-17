@@ -83,7 +83,7 @@ export const db = postgres<Contract>({
 });
 ```
 
-The only line added here is the `middleware` option. The `src/prisma/db.ts` that `npm create prisma@latest` generates has more in it than this, including a `connectDatabase` export that the generated `seed.ts` imports, so keep that file and add the `middleware` option to the `postgres<Contract>({ ... })` calls in it rather than replacing it with the file above. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
+The only line added here is the `middleware` option. The `src/prisma/db.ts` that `npm create prisma@latest` generates has more in it than this, including a `connectDatabase` export that the generated `seed.ts` imports, so keep that file and add the `middleware` option to the `postgres<Contract>({ ... })` calls in it rather than replacing it with the file above. Those calls only run when the app is started with `DATABASE_URL` exported, as `npm run dev` does. With `npm run dev:composer`, the generated file takes its client from Composer through `service.load()` instead, and the `middleware` option in `db.ts` is never used, so run the app with `DATABASE_URL` exported while you follow this guide. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
 
 That one line is all the setup there is, and every query on this client now passes through the logger, whether you wrote it with the ORM API (`db.orm.public.User...`) or with the SQL query builder.
 
@@ -344,7 +344,7 @@ You cannot add or remove values this way, only replace the ones the query alread
 
 ### Carry state from a before-hook to an after-hook
 
-Every hook that runs for one query gets the same `ctx.planExecutionId`, so a middleware that has to remember something between two hooks keeps it in a `Map` under that ID and takes it out again on the other side. This is what replaces wrapping a query in `next()`. Copy the pattern whenever the after-hook needs something only the before-hook could work out. `afterQuery` runs after a success and after a driver failure, but not when a before-hook throws, so in that case the entry stays in the `Map`:
+Every hook that runs for one query gets the same `ctx.planExecutionId`, so a middleware that has to remember something between two hooks keeps it in a `Map` under that ID and takes it out again on the other side. This is what replaces wrapping a query in `next()`. Copy the pattern whenever the after-hook needs something only the before-hook could work out. `afterQuery` runs after a success and after a driver failure, but not when a before-hook throws, so in that case the entry stays in the `Map`. Register `timing()` after any middleware that can throw, and a query one of them rejects never reaches its `beforeQuery`, so nothing is left behind:
 
 ```ts title="src/prisma/timing.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
