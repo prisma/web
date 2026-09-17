@@ -10,11 +10,11 @@ Middleware lets you run your own code around every query your app sends through 
 
 For example, you can log every query with its latency, block a `DELETE` that has no `WHERE` clause before it reaches the database, or serve a repeated read from memory instead of running it again. You write the policy once, register it once, and every query follows it, with no call sites to update.
 
-If you used `$use` in Prisma ORM 7, the `middleware` array is its replacement. There is no `next()`: you pick the hook that runs at the moment you care about. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists every Prisma ORM 7 feature next to the Prisma ORM 8 form it takes.
+If you used `$use` in Prisma ORM 7, the `middleware` array is its replacement. There is no `next()`: you pick the hook that runs at the moment you care about. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists Prisma ORM 7 features next to the Prisma ORM 8 form each one takes.
 
 A middleware is a plain object with a name and one or more hooks, and a hook is a function that Prisma ORM calls at a fixed moment around a query. You register the whole object once, in the `middleware` option of your client setup.
 
-The setup below registers all three built-in middleware. `lints` and `budgets` are already inside `@prisma/orm-postgres`, but the cache ships as its own package, so install that one first:
+The setup below registers all three middleware Prisma ships. `lints` and `budgets` are already inside `@prisma/orm-postgres`, but the cache ships as its own package, so install that one first:
 
 ```npm title="Terminal"
 npm install @prisma/orm-extension-middleware-cache
@@ -40,7 +40,7 @@ export const db = postgres<Contract>({
 });
 ```
 
-`npm create prisma@latest` generates this `src/prisma/db.ts` for you. Everything in it except the `middleware` option is already there, and that option is what you add.
+`npm create prisma@latest` generates a `src/prisma/db.ts` that already builds this client, and the `middleware` option is what you add to it.
 
 The client itself, `postgres(...)`, comes from `@prisma/orm-postgres/runtime`. The built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. `lints()` and `budgets()` both take an options object, and [lints](/orm/middleware/built-in-lints) and [budgets](/orm/middleware/built-in-budgets) list what goes in it.
 
@@ -180,7 +180,7 @@ Every hook also receives a context object, `ctx`, which tells it about the query
 Either hook can also change the values the query sends to the database, and it does that through a third argument, `params`, which you declare as `beforeQuery(plan, ctx, params)` when you want it. `params.entries()` walks those values one at a time, and each entry has three fields:
 
 - `entry.value` is the value itself.
-- `entry.codecId` is the stored type, one of `pg/text@1`, `pg/int4@1`, `pg/int8@1`, `pg/float8@1`, `pg/bool@1`, `pg/uuid@1`, and `pg/timestamptz-temporal@1`.
+- `entry.codecId` is the stored type, an id such as `pg/text@1`, `pg/int4@1`, or `pg/timestamptz-temporal@1`.
 - `entry.ref` identifies that one value in the query, and it is what you pass to `replaceValue`.
 
 Call `params.replaceValue(entry.ref, newValue)` and the database receives your value instead of the original. `params` is typed as optional and Prisma ORM always passes it, so the guard on the first line is there to satisfy TypeScript:
@@ -208,11 +208,11 @@ The rows you return are plain objects, keyed by the column aliases in the SQL, h
 { id: 3, email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
 ```
 
-So for a query whose SQL is `SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Rows you return go through the same conversion as rows from the database, so a caller on the ORM API gets the types its contract says it should, a `Date` for a timestamp column, even though you returned a string. This is how the cache serves repeated reads. Anything you checked in `beforeQuery` has already run by the time either hook is called.
+So for a query whose SQL is `SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Rows you return go through the same conversion as rows from the database, so a caller on the ORM API gets the types its contract says it should, even though you returned a string. This is how the cache serves repeated reads. Anything you checked in a before-hook has already run by the time either hook is called.
 
 ### onRow: watch rows arrive
 
-`onRow(row, plan, ctx)` lets you see each row of a result on its way to your code, and `row` is one of those plain row objects. Prisma ORM calls it once for every row as it reads the result, before the call that runs the query (`.all()`, `.first()`) returns, so you can count rows, sample them, or throw to stop the query part way through. If you throw, your `await` rejects with that error and you get no rows at all, not the rows read so far. That is what `budgets` does when a query returns more rows than its `maxRows` budget allows. `onRow` does not run on a non-returning write, and it does not run for rows that an `interceptQuery` hook answered.
+`onRow(row, plan, ctx)` lets you see each row of a result on its way to your code, and `row` is one of those plain row objects. Prisma ORM calls it once for every row as it reads the result, before your `await` on `.all()` or `.first()` resolves, so you can count rows, sample them, or throw to stop the query part way through. If you throw, your `await` rejects with that error and you get no rows at all, not the rows read so far. That is what `budgets` does when a query returns more rows than its `maxRows` budget allows. `onRow` does not run on a non-returning write, and it does not run for rows that an `interceptQuery` hook answered.
 
 ### afterQuery and afterExecute: observe the finished operation
 

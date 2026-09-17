@@ -31,7 +31,7 @@ export const db = postgres<Contract>({
 });
 ```
 
-This is the `src/prisma/db.ts` that `create-prisma` generates, with the `middleware` option added. A project created with `npm create prisma@latest` already has `contract.json` and `contract.d.ts` in `src/prisma/`, so you do not have to run `npx prisma contract emit` yourself to get started. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where they come from.
+This is a cut-down `src/prisma/db.ts` from a generated project, with `middleware` added. A project created with `npm create prisma@latest` already has `contract.json` and `contract.d.ts` in `src/prisma/`, so you do not have to run `npx prisma contract emit` yourself to get started. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where they come from.
 
 Writes are never cached, and the `*AndCount` methods return a count rather than rows, so there is nothing to cache in their case either.
 
@@ -134,9 +134,9 @@ export function cacheWatch(): SqlMiddleware {
 }
 ```
 
-The built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. On MongoDB the same middleware is typed `MongoMiddleware`, from `@prisma/orm-mongo/family-runtime`, and a MongoDB query has no `sql` field, so log `plan.command` there instead.
+The other built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. On MongoDB the same middleware is typed `MongoMiddleware`, from `@prisma/orm-mongo/family-runtime`, and a MongoDB query has no `sql` field, so log `plan.command` there instead.
 
-Register `cacheWatch()` after the cache, by replacing the `middleware` line in `src/prisma/db.ts` and adding the import above it. Order matters only for a middleware that returns rows itself instead of letting the query reach the database, because the first one to do that wins and the ones after it are never asked. `cacheWatch()` only logs, and a middleware of your own that can return rows goes after the cache as well, so that the cache is asked first.
+Register `cacheWatch()` after the cache, by replacing the `middleware` line in `src/prisma/db.ts` and adding the import above it. Order matters for a middleware that returns rows itself instead of letting the query reach the database, because the first one to do that wins and the ones after it are never asked. `cacheWatch()` only logs, and a middleware of your own that can return rows goes after the cache as well, so that the cache is asked first.
 
 ```ts title="src/prisma/db.ts (excerpt)"
 import { cacheWatch } from './cache-watch';

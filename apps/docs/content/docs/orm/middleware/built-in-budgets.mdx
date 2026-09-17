@@ -6,7 +6,7 @@ metaTitle: 'Prisma ORM built-in middleware: budgets'
 metaDescription: 'Wire and configure the budgets middleware in Prisma ORM to cap row counts, report query latency, and understand the errors it raises.'
 ---
 
-The `budgets` middleware stops one careless query from reading far more of your data, or taking far more time, than you meant to give it. You give it a row limit and a time limit, and it checks every query you send against both. When a query goes over either limit, your call fails with an error and you get no rows back.
+The `budgets` middleware stops one careless query from reading far more of your data, or taking far more time, than you meant to give it. You give it a row limit and a time limit, and it checks the queries you send against both. When a query goes over either limit, your call fails with an error and you get no rows back.
 
 Before you register it, know that `budgets` rejects any `SELECT` that has no `LIMIT` on it, however few rows the table holds. On the [ORM API](/orm/fundamentals/reading-data), the call that runs a query and gives you every matching row is `.all()`, so that means every `.all()` call with no `.limit(...)` earlier in the chain. A `.where(...).first()` call is fine, because `.first()` asks the database for one row.
 
@@ -29,7 +29,7 @@ await db.orm.public.User.limit(20).all();
 await db.orm.public.User.aggregate((a) => ({ total: a.count() }));
 ```
 
-Register `budgets` in the `postgres(...)` call that creates your client, with the row and time limits you want to enforce. The file below is the `src/prisma/db.ts` that `create-prisma` generates, and the only line added to it is the `middleware` option. Your contract is the Prisma ORM 8 name for your schema, `contract.prisma` in place of `schema.prisma`, and `npx prisma contract emit` writes from it the `contract.json` and `contract.d.ts` that this file imports. [The data contract](/orm/contract-authoring/the-data-contract) covers them in full.
+Register `budgets` in the `postgres(...)` call that creates your client, with the row and time limits you want to enforce. The file below replaces the `src/prisma/db.ts` that `create-prisma` generates, and the `middleware` option is the only part specific to `budgets`. Your contract is the Prisma ORM 8 name for your schema, `contract.prisma` in place of `schema.prisma`, and `npx prisma contract emit` writes from it the `contract.json` and `contract.d.ts` that this file imports. [The data contract](/orm/contract-authoring/the-data-contract) covers them in full.
 
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
@@ -82,7 +82,7 @@ A query is checked before it is sent, again as its rows arrive, and once more wh
 2. **While the rows come back**, `budgets` counts the rows the database really returns, so a query that got past the estimate is still caught. As soon as that count passes `maxRows` you get an error whose `code` is `BUDGET.ROWS_EXCEEDED`, and the rows read up to that point are dropped rather than returned to you.
 3. **After the query finishes**, `budgets` compares how long the query took against `maxLatencyMs` and throws an error whose `code` is `BUDGET.TIME_EXCEEDED` when it ran too long. The database has already done the work by then, so the check cannot make the query faster, but your `await` still rejects and you get no rows.
 
-A query that joins another table is estimated from the table in its `FROM` clause alone, because that is the only name `budgets` looks up in `tableRows`, so do not count on the first check to catch a join. Writes are not estimated at all: the check before the query reads `SELECT` queries only, so a write that returns a count, such as an `updateAndCount` that reports how many rows it changed, can only ever be caught by the time check. A read with `.include(...)`, which loads related records alongside the rows you asked for, runs more than one query, and each of those queries is checked on its own.
+A query that joins another table is estimated from the table in its `FROM` clause alone, because that is the only name `budgets` looks up in `tableRows`, so do not count on the first check to catch a join. Writes are not estimated at all: the check before the query reads `SELECT` queries only, so a write that returns a count, such as an `updateAndCount` that reports how many rows it changed, can only ever be caught by the time check. A read with `.include(...)`, which loads related records alongside the rows you asked for, is one query, checked once like any other read.
 
 ## What you see when a budget trips
 
