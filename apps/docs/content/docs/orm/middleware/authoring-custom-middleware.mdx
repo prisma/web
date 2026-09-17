@@ -8,13 +8,15 @@ metaDescription: 'Write a custom Prisma ORM middleware step by step. Build a que
 
 ## Introduction
 
-A custom middleware is a plain object with a `name` and the hook functions you choose to implement, so there is no base class to extend and no registration API beyond the `middleware` array you already know from [How middleware works](/orm/middleware/how-middleware-works).
+A middleware you write yourself is a plain object: a `name`, plus the hook functions you want Prisma ORM to call around your queries. There is no base class to extend and no registration call, because you register a middleware by putting it in the `middleware` array where you create your client.
 
-The middleware you build from scratch below is a query logger that prints every query with its row count and how long it took. You create one file, register it in one place, run a query, and see the output.
+If you used `$use` in Prisma ORM 7, the `middleware` array is its replacement. There is no `next()`: you pick the hook that runs at the moment you care about. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#not-available-yet) lists what changed.
+
+The steps that follow build a query logger that prints every query with its row count and how long it took. You create one file, register it in one place, run a query, and see the output.
 
 ## Prerequisites
 
-- A Prisma ORM project with a working `src/prisma/db.ts`. The [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) sets one up in a few minutes:
+- A Prisma ORM project with a working `src/prisma/db.ts`, the file where the client is created, because that is where middleware is registered. If you already have a project, you can use the `db.ts` you have. The [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) sets a new one up in a few minutes:
 
 ```npm
 npm create prisma@latest -- --provider postgres
@@ -24,7 +26,7 @@ npm run db:init
 
 ## 1. Create the middleware
 
-Create a new file next to your database setup. The logger needs only one hook: Prisma ORM calls `afterQuery` once after every query that returns rows, and gives it the outcome of that query, which is where the row count and the timing come from:
+Create a new file next to your database setup. The logger needs one hook, `afterQuery`, which Prisma ORM calls once after every query that returns rows. Its second argument is called `result`, and that is where the numbers come from: `result.rowCount` is how many rows came back, and `result.latencyMs` is how long the query took in milliseconds.
 
 ```ts title="src/prisma/query-logger.ts"
 import type { SqlMiddleware } from "@prisma/orm-postgres/family-runtime";
@@ -43,7 +45,13 @@ export function queryLogger(): SqlMiddleware {
 }
 ```
 
-Queries that return rows are only one of the two paths a query can take through your middleware. Statements that go through `runtime.execute(plan)` report how many rows they affected instead of returning any, so they never reach `afterQuery` and end at `afterExecute` instead. To have the logger cover those as well, add a second hook that reads `result.stats.affectedRows`, which is the count that path reports:
+The first argument, `plan`, is the built query: the statement, its parameters, and some metadata, as a plain object, before it runs. `plan.sql` is the SQL text Prisma ORM sent to the database, which is what the logger prints.
+
+The `SqlMiddleware` type comes from `@prisma/orm-postgres/family-runtime`, the part of the package that holds the middleware types together with the built-in `lints` and `budgets` middleware. Typing the object you return as `SqlMiddleware` is what gives `plan` and `result` their types in your editor, so you rarely have to import the argument types yourself. The other field, `familyId: "sql"`, says this middleware is written for SQL databases, and [step 5](#5-know-which-family-to-declare) covers when you need to set it.
+
+Queries that return rows are one of the two routes a query can take through your middleware, and the other route is for calls that give you back a count instead of rows. Those calls never reach `afterQuery` and end at `afterExecute` instead. On the ORM API the counting calls are `createAndCount`, `updateAndCount`, and `deleteAndCount`, and with the SQL query builder they are whatever you hand to `db.runtime().execute(plan)`. Everything else, `create`, `update`, `delete`, `updateAll`, and `deleteAll` included, returns rows, because the SQL Prisma ORM writes for them ends in `RETURNING`.
+
+To have the logger cover the counting calls as well, add a second hook inside the same returned object, next to `afterQuery`:
 
 ```ts title="src/prisma/query-logger.ts (excerpt)"
     async afterExecute(plan, result) {
@@ -54,7 +62,7 @@ Queries that return rows are only one of the two paths a query can take through 
     },
 ```
 
-When you type the object as `SqlMiddleware`, TypeScript works out the parameter types of every hook for you, so you rarely have to import the argument types yourself. `familyId: "sql"` declares that this middleware is meant for SQL databases, and [step 5](#5-know-which-family-to-declare) covers when you need to set it.
+`result.stats.affectedRows` is how many rows that statement changed. It is there only when the statement finished, which is what `result.completed` tells you, so read the count through the check above rather than on its own.
 
 ## 2. Register it
 
@@ -73,7 +81,9 @@ export const db = postgres<Contract>({
 });
 ```
 
-That one line is all the setup there is, and every query on this client now passes through the logger, whether you wrote it with the ORM API or with the SQL query builder.
+This is the `src/prisma/db.ts` that `create-prisma` generates, with the `middleware` option added. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
+
+That one line is all the setup there is, and every query on this client now passes through the logger, whether you wrote it with the ORM API (`db.orm.public.User...`) or with the SQL query builder, the lower-level API where you build the query yourself and run it on `db.runtime()`.
 
 ## 3. Run a query and see the output
 
@@ -93,7 +103,7 @@ console.log(`fetched ${users.length} users`);
 await db.close();
 ```
 
-Run it:
+In a project from the quickstart, the `dev` script is `tsx watch src/index.ts`, so running it runs your script and then keeps watching the file:
 
 ```bash
 npm run dev
@@ -107,11 +117,13 @@ The logger reports both queries, and prints the SQL that actually ran:
 fetched 1 users
 ```
 
-The `dev` script watches `src/index.ts` and keeps running after the output appears, so stop it with Ctrl+C when you are done. If you see the query result but no `[query-logger]` lines, then the query ran on a client that does not have the middleware registered, so check that your script imports `db` from the file you edited in step 2.
+Both lines came through `afterQuery`, the `create` included: `create` is a write, but its SQL ends in `RETURNING`, so it returns the row it inserted and takes the row route like any read.
+
+The `dev` script keeps running after the output appears, so stop it with Ctrl+C when you are done. If you see the query result but no `[query-logger]` lines, then the query ran on a client that does not have the middleware registered, so check that your script imports `db` from the file you edited in step 2.
 
 ## 4. Add an option
 
-Middleware you write for real work usually takes options, so give the logger a threshold in milliseconds and it reports only the queries that took longer than that:
+Middleware you write for real work usually takes options, so give the logger a threshold in milliseconds and it reports only the queries that took longer than that. The file below shows `afterQuery` on its own to keep the change easy to see. If you added `afterExecute` in step 1, keep it where it is:
 
 ```ts title="src/prisma/query-logger.ts"
 import type { SqlMiddleware } from "@prisma/orm-postgres/family-runtime";
@@ -146,38 +158,44 @@ middleware: [queryLogger({ thresholdMs: 250 })],
 
 Run the script again and the logger goes quiet, because both queries finish in under 250ms. Drop the threshold back to see them again.
 
-Prisma ORM runs hooks in the order you registered them, and if one middleware throws, the ones after it never run. So register your logger before any middleware that can throw, such as `budgets`, and the queries you most want to see still get logged.
+Prisma ORM calls your hooks in the order you listed the middleware in the array, and it waits for each hook to finish before the query moves on, so a slow `afterQuery` delays the `await` in your own code. If one middleware throws, the ones after it never run, so register your logger before any middleware that can throw, such as [budgets](/orm/middleware/built-in-budgets), and the queries you most want to see still get logged.
 
 ## 5. Know which family to declare
 
-Prisma ORM sorts the databases it supports into two groups, which it calls families: `sql` is PostgreSQL and SQLite, and `mongo` is MongoDB. Set `familyId: 'sql'` when your middleware reads or writes something only a SQL database has, such as `plan.sql` in the logger above. If your middleware is then registered on a MongoDB client, Prisma ORM refuses it the first time that client is used, with an error whose `code` is `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`, rather than letting it fail later inside your hook.
+Prisma ORM sorts databases into two groups it calls families, SQL and MongoDB, and `familyId: 'sql'` on a middleware means it works with SQL databases only. Set it when your middleware reads or writes something only a SQL database has, such as `plan.sql` in the logger above.
 
-Leave `familyId` out only when your middleware would work against either group, which means it uses hooks that both groups have, every hook except `beforeCompile`, and reads only the result fields that PostgreSQL and MongoDB both give it. A middleware written that way runs on PostgreSQL and on MongoDB, which is how the built-in [cache](/orm/middleware/built-in-cache) works.
+If a middleware that declares `familyId: 'sql'` is registered on a MongoDB client, that client throws the first time it needs to talk to the database, before it sends any query. The error's `code` is `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` and the message names the middleware, so you find out at the first query you run rather than from a failure inside your hook much later.
+
+Leave `familyId` out when your middleware stays away from everything specific to one kind of database: use any hook except `beforeCompile`, which only SQL databases have, and read the `result` fields your hook is handed (`rowCount`, `latencyMs`, `completed`, `source`, and `stats.affectedRows`) rather than `plan.sql` or `plan.ast`, which a SQL query has and a MongoDB query does not. A middleware written that way runs on PostgreSQL and on MongoDB, which is how the built-in [cache](/orm/middleware/built-in-cache) works.
 
 You now have a working middleware that takes options. The other hooks, and the context object each of them receives, are what you reach for as your middleware grows.
 
 ## The hooks
 
-`afterQuery` is one hook among several, and it belongs to only one of the two paths a query can take: a query that returns rows runs through one set of hooks, a write that returns no rows runs through another, and `beforeCompile` is the only hook on both paths. Implement whichever of them you need:
+Which hooks Prisma ORM calls depends on what your call gives back. A call that returns rows runs one set of hooks, a call that returns only a count runs a shorter set, and `beforeCompile` is the only hook that runs on both. Implement whichever of them you need:
 
-| Hook | Path | Runs | Use it to |
+| Hook | Route | Runs | Use it to |
 | --- | --- | --- | --- |
-| `beforeCompile(draft, ctx)` | both | Before Prisma ORM turns the query into SQL | Rewrite the query, for example add a tenant filter |
-| `beforeQuery(plan, ctx, params?)` | row query | Before the database driver runs it, once `plan.sql` is written out | Validate, throw to block, or adjust parameter values |
-| `interceptQuery(plan, ctx)` | row query | Just before the database driver runs it | Return `{ rows }` to answer the query yourself |
-| `onRow(row, plan, ctx)` | row query | Once per row | Count or sample rows, or throw to stop the query |
-| `afterQuery(plan, result, ctx)` | row query | After the query finishes | Log `result.rowCount`, `result.latencyMs`, `result.completed`, `result.source` |
-| `beforeExecute(plan, ctx, params?)` | write | Before the database driver runs it, once `plan.sql` is written out | Validate, throw to block, or adjust parameter values |
-| `interceptExecute(plan, ctx)` | write | Just before the database driver runs it | Return `{ stats }` to answer the statement yourself |
-| `afterExecute(plan, result, ctx)` | write | After the statement finishes | Log `result.stats.affectedRows`, `result.latencyMs`, `result.completed`, `result.source` |
+| `beforeCompile(draft, ctx)` | both | Before Prisma ORM turns the query into SQL text | Rewrite the query, for example add a tenant filter |
+| `beforeQuery(plan, ctx, params?)` | returns rows | After the SQL text has been built, before the database driver runs it | Validate, throw to block, or change parameter values |
+| `interceptQuery(plan, ctx)` | returns rows | Just before the database driver runs it | Return `{ rows }` to answer the query yourself |
+| `onRow(row, plan, ctx)` | returns rows | Once per row | Count or sample rows, or throw to stop the query |
+| `afterQuery(plan, result, ctx)` | returns rows | After the query finishes | Log `result.rowCount`, `result.latencyMs`, `result.completed`, `result.source` |
+| `beforeExecute(plan, ctx, params?)` | returns a count | After the SQL text has been built, before the database driver runs it | Validate, throw to block, or change parameter values |
+| `interceptExecute(plan, ctx)` | returns a count | Just before the database driver runs it | Return `{ stats }` to answer the statement yourself |
+| `afterExecute(plan, result, ctx)` | returns a count | After the statement finishes | Log `result.stats.affectedRows`, `result.latencyMs`, `result.completed`, `result.source` |
 
-There is no general-purpose `intercept` hook, and nothing falls back from one path to the other, so a middleware that wants to cover both registers the same function under both names. That is how `lints` and `budgets` apply to reads and writes alike.
+`result.source` is `'driver'` when the database answered the query and `'middleware'` when a middleware answered it instead. Throwing from `onRow` fails the call with your error, and the rows still to come are not passed on to your code.
+
+A hook you implement on one route is never called for a call that took the other, so a middleware that needs to cover both implements a hook on each. `lints` and `budgets` do this by assigning the same function to `beforeQuery` and `beforeExecute`, which works because those two hooks take the same arguments and return nothing. The intercept hooks cannot be shared that way, because `interceptQuery` returns `{ rows }` and `interceptExecute` returns `{ stats }`.
 
 [How middleware works](/orm/middleware/how-middleware-works#the-two-lifecycles) walks through the order with an animation. `beforeCompile` and `interceptQuery` are worth a closer look, because they change the query instead of only watching it.
 
 ### Rewrite queries with beforeCompile
 
-`beforeCompile` is where you change a query before it runs. It receives the query as a typed syntax tree, before Prisma ORM turns that tree into SQL, so returning a new draft from it rewrites the query. The middleware below adds a condition to every `SELECT` on the `user` table:
+`beforeCompile` is where you change a query before it runs. It gives you the query as a tree of typed objects, one object per part of the statement, and it runs before Prisma ORM turns that tree into SQL text, so a changed tree changes the SQL that reaches the database. Its argument is called a draft because the SQL text does not exist yet: a draft has `ast`, the tree, and `meta`, the metadata Prisma ORM keeps about the query. You return a copy of the draft with a new `ast`, or `undefined` when there is nothing to change.
+
+The middleware below adds a condition to every `SELECT` on the `user` table:
 
 ```ts title="src/prisma/scope-user-selects.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -199,40 +217,91 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
 }
 ```
 
-When you have nothing to change, return `undefined` and the query goes through unchanged. The draft one middleware returns is what the next middleware sees, so several rewrites stack up in the order you registered them.
+The name it checks, `'user'`, is the table name in your database rather than the model name in your contract, because by this point the query is expressed in tables and columns.
+
+The condition itself is an object you build from the same classes, and you pass it in when you register the middleware:
+
+```ts title="src/prisma/db.ts"
+import postgres from '@prisma/orm-postgres/runtime';
+import { BinaryExpr, ColumnRef, ParamRef } from '@prisma/orm-postgres/relational-core/ast';
+import { scopeUserSelects } from './scope-user-selects';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+const onlyMia = BinaryExpr.eq(
+  ColumnRef.of('user', 'name'),
+  ParamRef.of('Mia', { codec: { codecId: 'pg/text@1' } }),
+);
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+  middleware: [scopeUserSelects(onlyMia)],
+});
+```
+
+Every `SELECT` on `user` now runs with `WHERE "user"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. Swap `name` for whatever column holds your tenant to get the tenant filter.
+
+Put values through `ParamRef.of` rather than `LiteralExpr.of`: a `ParamRef` becomes a bound parameter such as `$1`, while a literal is written into the SQL text itself, which is how untrusted input turns into SQL injection. A `ParamRef` you build by hand has to say how the value is stored, with `codec: { codecId: ... }`, because the query builder is not there to fill it in for you. `pg/text@1` is the id for a `text` column, and without it the query fails with an error whose `code` is `RUNTIME.PARAM_REF_MISSING_CODEC`. `BinaryExpr` has one method per comparison (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `in`, `notIn`), and `AndExpr.of` and `OrExpr.of` combine conditions. They all come from `@prisma/orm-postgres/relational-core/ast`, so your editor lists them once you import from there.
+
+The draft one middleware returns is what the next middleware sees, so several rewrites stack up in the order you registered them.
 
 ### Answer queries with interceptQuery
 
-`interceptQuery` lets your middleware answer a query itself, because when you return `{ rows }` from it, the database driver never runs. Caches, test fixtures, rate limiters, and circuit breakers all work this way. The rows you return are raw row objects, which Prisma ORM reads into values exactly as it would rows from the database, and `afterQuery` reports `source: 'middleware'`, so your logging can still tell which queries were answered without a trip to the database. For writes, `interceptExecute` does the same job and returns `{ stats }`. The [cache middleware](/orm/middleware/built-in-cache) is the implementation to copy from.
+`interceptQuery` lets your middleware answer a query itself: return `{ rows }` from it and the database driver never runs. Caches, test fixtures, and circuit breakers all work this way.
+
+The rows you return are raw row objects, keyed by the column aliases in the SQL, exactly as the driver would hand them over before Prisma ORM converts the values. That is the same shape `onRow` receives, so the way to see what a row looks like for a query of yours is to log it from `onRow` first:
+
+```ts
+async onRow(row) {
+  console.log(row);
+},
+```
+
+For the `SELECT` in step 3, whose SQL is `SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5`, a row object has an `id` key and an `email` key. Returning objects of that shape from `interceptQuery` gives your caller the same typed result it would have got from the database:
+
+```ts
+async interceptQuery(plan) {
+  if (!plan.sql.includes('FROM "public"."user"')) return undefined;
+  return { rows: [{ id: 1, email: 'mia@prisma.io' }] };
+},
+```
+
+Return `undefined` and the query carries on to the database as usual. When several middleware implement `interceptQuery`, the first one in the array that returns rows answers the query and the rest are not called at all. `afterQuery` still runs either way, with `result.source` set to `'middleware'`, so your logging can tell which queries were answered without a trip to the database. For the counting route, `interceptExecute` does the same job and returns `{ stats }`, for example `{ stats: { affectedRows: 0 } }`. The [cache middleware](/orm/middleware/built-in-cache) is the implementation to copy from.
 
 ## The context object
 
-Every hook receives a context object as its last argument, called `ctx`, which tells the hook what it needs to know about the query it is running inside:
+Every hook receives a context object called `ctx`, which tells the hook what it needs to know about the query it is running inside. It comes after the plan, and after the result in `afterQuery` and `afterExecute`. A hook may declare fewer arguments than the full signature shows, which is why `afterQuery(plan, result)` in the logger above compiles without naming `ctx` at all.
 
 | Field | What it gives you |
 | --- | --- |
-| `ctx.planExecutionId` | The same unique ID in every hook that runs for one query, so you can tie your observations together |
-| `ctx.now()` | The clock Prisma ORM itself reads. Prefer it over `Date.now()` so that tests can control time |
-| `ctx.scope` | `'runtime'`, `'connection'`, or `'transaction'`, so you can skip the work in a scope you should not touch |
-| `ctx.mode` | `'strict'` or `'permissive'`, so you can throw in strict mode and warn otherwise |
-| `ctx.contentHash(plan)` | A digest of the statement and its parameters that is the same every time for the same query, which makes it a cache key |
-| `ctx.contract` | Your contract, for when a hook needs to know what your database schema looks like |
+| `ctx.planExecutionId` | The same unique ID in every hook that runs for one query |
+| `ctx.now()` | The current time in milliseconds, from a clock your tests can control |
+| `ctx.scope` | Where the query is running: `'runtime'`, `'connection'`, or `'transaction'` |
+| `ctx.mode` | `'strict'` or `'permissive'`. On PostgreSQL it is always `'strict'`, because `postgres(...)` has no way to set it |
+| `ctx.contentHash(plan)` | A string that is the same for every query with the same statement and parameters |
+| `ctx.contract` | Your contract, for when a hook needs to know what your database looks like |
 | `ctx.log` | `info`, `warn`, and `error` functions that send what you log to Prisma ORM's own logger |
 
-On PostgreSQL, `ctx.mode` is always `'strict'`, because `postgres(...)` never passes a mode along and only `mongo(...)` takes one. The `postgres(...)` client also has no way yet to attach somewhere for logs to go, so what you send to `ctx.log` is not printed anywhere by default. For output you can see today, log directly to your own logger, the way the query logger above uses `console.log`.
+`ctx.planExecutionId` is how you match a line your `beforeQuery` logged to the line your `afterQuery` logged for the same query. `ctx.scope` is `'runtime'` for a query you sent on `db` directly, `'transaction'` inside `db.transaction(...)`, and `'connection'` on a connection you checked out yourself, which is how the cache knows to leave queries inside a transaction alone. `ctx.contentHash(plan)` returns a promise, so `await` it, and the string it gives back can be used directly as a cache key.
+
+`ctx.log` has nowhere to send anything on PostgreSQL today, because `postgres(...)` takes no option for attaching a log handler, so nothing you pass to it is printed. Use your own logger for output you can see, the way the query logger above uses `console.log`.
+
+`beforeQuery` and `beforeExecute` take one more argument after `ctx`, called `params`, which lets you read and replace the bound parameter values before they are sent to the database. Leave it out of your parameter list when you do not need it.
 
 ## Common gotchas
 
 :::warning
 
 - If you throw from `afterQuery` after a query has succeeded, the call fails even though the database has already done the work, so keep that for cases where failing loudly is the point, the way the [budgets](/orm/middleware/built-in-budgets) latency check does.
-- `afterQuery` and `afterExecute` also run when the database driver fails, and they get `result.completed` set to `false`. A failed write has no `result.stats`, so read it only when `result.completed` is true. Anything you throw while handling a failure is discarded, so that it cannot hide the error the driver reported.
+- `afterQuery` and `afterExecute` also run when the database driver fails, and they get `result.completed` set to `false`. A failed write has no `result.stats`, so read it only when `result.completed` is true.
+- If your hook throws while it is handling a failure like that, Prisma ORM discards your error and your caller still sees the failure the driver reported.
 
 :::
 
 ## Prompt your coding agent
 
-Projects created with `create-prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent, so you can ask it for the middleware built in the steps above:
+Projects created with `npm create prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent, so you can ask it for the middleware built in the steps above:
 
 - "Write a Prisma ORM middleware that logs every query slower than 250ms, and register it before budgets."
 - "Add a beforeCompile middleware that scopes every SELECT on the user table to the current tenant."
