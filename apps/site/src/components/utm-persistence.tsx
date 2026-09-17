@@ -2,11 +2,13 @@
 
 import { UtmPersistence as SharedUtmPersistence } from "@prisma-docs/ui/components/utm-persistence";
 import { UTM_ATTRIBUTION_STORAGE_KEY } from "@prisma-docs/ui/lib/utm";
-
-const PROXIED_PATHS = ["/docs", "/blog"];
+import { CROSS_ZONE_PATHS } from "@/lib/zones";
 
 export function UtmPersistence() {
   return (
-    <SharedUtmPersistence storageKey={UTM_ATTRIBUTION_STORAGE_KEY} proxiedPaths={PROXIED_PATHS} />
+    <SharedUtmPersistence
+      storageKey={UTM_ATTRIBUTION_STORAGE_KEY}
+      proxiedPaths={CROSS_ZONE_PATHS}
+    />
   );
 }

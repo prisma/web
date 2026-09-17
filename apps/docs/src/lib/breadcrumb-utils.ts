@@ -43,10 +43,7 @@ export function formatSlugDisplayName(slug: string): string {
     .filter(Boolean)
     .map((word) => {
       const key = word.toLowerCase();
-      return (
-        WORD_DISPLAY_MAP[key] ??
-        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-      );
+      return WORD_DISPLAY_MAP[key] ?? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(" ");
 }

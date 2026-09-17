@@ -1,0 +1,215 @@
+---
+title: The migration graph
+description: 'You and a teammate each changed your Prisma contract on separate branches. The migration graph is how Prisma ORM applies both changes to every database after the branches merge.'
+url: /orm/migrations/the-migration-graph
+metaTitle: The migration graph in Prisma ORM
+metaDescription: 'How Prisma ORM models migrations as a graph of contract states, why that makes branching and parallel work safe, and the commands to inspect it.'
+---
+
+Say you are Alice, and on your branch you add a `phone` field to your contract, the `contract.prisma` file that replaced `schema.prisma`. Bob adds an `avatar` field on his branch, and both branches merge the same afternoon. Your laptop, Bob's laptop, staging, and production each hold a different version of the database, and each one needs the merged version without losing work or repeating a change.
+
+Prisma ORM 7 keeps migrations as timestamped SQL directories and applies them in name order, so where a migration sits in the history is decided by its name. In Prisma ORM 8, each migration records the contract versions it starts and ends at instead, so migrations are linked to each other rather than ordered by time, and those links are the migration graph.
+
+## When this matters
+
+Most of the time you can build a whole app without thinking about the graph at all, because a single line of migrations needs no explaining. It is worth understanding when you are in one of these situations:
+
+- Two people, or two AI agents, change the contract on separate branches and merge.
+- You roll a database back to an earlier version of your contract and then forward again.
+- A database is several contract states out of date, after a fresh clone or on a long-lived staging database.
+
+## The short version
+
+Each migration records the contract state it starts from and the state it ends at, so a migration is a link between two named versions of your contract rather than a step in a numbered queue. That is why branching, merging, and rolling back are all the same act: you plan one more migration with `npx prisma migration plan` and tell it which state to start from.
+
+:::tip[You probably need only these five commands]
+
+Every time you change the contract, run `npx prisma contract emit`, which replaces `prisma generate`. Then plan a migration with `npx prisma migration plan --name <name>`, and in development apply it with `npx prisma db migrate --advance-ref db`. `npx prisma migration graph` draws the whole history, and `npx prisma migration status` tells you which contract state a database matches and what `db migrate` would run next.
+
+Keep `--advance-ref db` on that command, because it is what stops your next migration redoing work. The `db` ref is a file in `migrations/app/refs/` naming the contract state you last applied in development, and the flag points that ref at the state you just applied. `db init`, `db update`, and `db sign` move it too. `migration plan` starts from that ref, so if you leave the flag off, your next migration can repeat changes your database already has. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) shows how to fix that.
+
+:::
+
+## Terms [#terms-used-on-this-page]
+
+| Term | Meaning |
+| --- | --- |
+| **Contract** | Your `contract.prisma` file, compiled to `contract.json`. |
+| **Contract state** | One version of your contract, named by its hash. |
+| **Hash** | An identifier computed from the database layout your contract describes, not from the text of `contract.prisma`. The graph shows its first seven characters, like `789dd79`. |
+| **Node** | A contract state, drawn as a `○` row in `migration graph` output. |
+| **Edge** | A migration, drawn as a `↑`, `↓`, or `⟲` row. Applying it changes the database from one node's state to the other's. |
+| **Marker** | The record in the database of which contract state it matches. Reading it does not check the tables. |
+| **Ledger** | The database's own list of every migration applied to it, and when each ran. |
+| **Ref** | A name for a contract state, like `prod`, stored as a file in `migrations/app/refs/`. |
+| **Contract space** | A separate migration history with its own directory in `migrations/`. Your app's is `migrations/app/`. Each [Prisma ORM extension package](/orm/extensions/using-extensions) that ships migrations, such as pgvector support, has its own, and one `db migrate` run applies all of them, as [Extension spaces](/orm/migrations/applying-a-migration#extension-spaces) shows. |
+
+## How it works
+
+A migration on disk is a directory in `migrations/app/`, and what makes it part of a graph rather than an item in a list is that it names both ends of its own change. Its `ops.json` lists the operations, the steps it runs, such as adding a column, and [What a migration contains](/orm/migrations/how-migrations-work#what-a-migration-contains) lists the rest of its files. Its `migration.json` records the hash it starts `from` and the hash it ends at, `to`, so a migration that ends where another one starts is joined to it. To change what a migration does, edit its `migration.ts` and recompile with `node migrations/app/<dir>/migration.ts`, as [Editing a migration](/orm/migrations/editing-a-migration) shows.
+
+<ConceptAnimation name="migration-graph" />
+
+A database with no **marker** counts as empty, so `db migrate` starts it from the first migration. If the database already has tables but no marker, Prisma ORM still counts it as empty, which is not what you want, so read [Baselines](#baselines) before you run anything against it.
+
+## A worked example
+
+Here is the situation from the top of the page, after the two merge migrations below were added. [Name important states with refs](#name-important-states-with-refs) explains `@contract` and `(prod)`:
+
+```npm
+npx prisma migration graph
+```
+
+```text
+│  migrations:  migrations
+
+○     f9a41d7  @contract (prod)
+│─╮
+│↑│   20260303T1000_merge_alice      93be6c2 → f9a41d7  1 ops
+│ │↑  20260303T1100_merge_bob        7e3fa7f → f9a41d7  1 ops
+○ │   93be6c2
+│↑│   20260302T1000_alice_add_phone  789dd79 → 93be6c2  1 ops
+│ ○   7e3fa7f
+│ │↑  20260302T1100_bob_add_avatar   789dd79 → 7e3fa7f  1 ops
+│─╯
+○     789dd79
+│↑    20260301T1000_init                   ∅ → 789dd79  1 ops
+○     ∅
+
+1 space(s), 5 contract(s), 5 migration(s)
+```
+
+Read it from the bottom up, because the earliest state is the bottom row and every row above it is a later one. Each `↑` row shows a migration's directory name, its start and end hashes, and its operation count, and `--legend` prints a key to the other symbols.
+
+From an empty database (`∅`), `init` produces contract state `789dd79`. Alice's migration starts there and produces `93be6c2`, and Bob's starts from the same state and produces `7e3fa7f`, which is why the drawing splits in two. The two sides meet again at `f9a41d7`, making a diamond: one start, two parallel branches, one shared end. That shape is what a merge looks like in the graph.
+
+If git reports a conflict in `contract.prisma`, `contract.json`, or `contract.d.ts`, resolve it in `contract.prisma` and run `npx prisma contract emit`, which rewrites the other two from it. That settles the contract, but no migration ends at the merged version of it yet, so until you plan one, `npx prisma migration status` reports no migration path to it and `npx prisma db migrate` fails with an error whose `code` is `MIGRATION.PATH_UNREACHABLE`. What the graph needs is two merge migrations, one starting from the last migration on each branch, which you name using the directory names `migration graph` prints:
+
+```npm
+npx prisma migration plan --name merge_alice --from 20260302T1000_alice_add_phone
+npx prisma migration plan --name merge_bob --from 20260302T1100_bob_add_avatar
+```
+
+When you pass a directory name as `--from`, it means the state after that migration, and the [`migration plan` reference](/cli/migration-plan#options) lists the other forms it accepts. Both merge migrations end at `f9a41d7`, because `migration plan` always ends at whatever is in `contract.json`, which now holds the merged contract. They differ in what they do to get there: `merge_alice` adds Bob's `avatar` to a database that already has `phone`, and `merge_bob` adds `phone` to one that already has `avatar`.
+
+You need both rather than one because your databases do not all match the same contract state. Alice's development database matches `93be6c2` and Bob's matches `7e3fa7f`, so each needs a migration that starts from the state it actually matches. Alice's next `npx prisma db migrate --advance-ref db` runs `merge_alice`, and Bob's runs `merge_bob`. If a database matches a state that no merge migration starts from, `db migrate` fails with the same error.
+
+## What happens when you run db migrate
+
+`npx prisma db migrate` works out for itself which migrations your database still needs. It starts from the state in the marker and runs the migrations on the path to its target, which is `contract.json` unless `--to` names a contract state instead. If an operation fails, the run stops there, and [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) explains how to re-run while [Recovery](/orm/migrations/rollbacks-and-recovery#recovery-when-a-migration-fails-partway) explains what to do next.
+
+Once your history has branches, more than one path can lead to the target, so `db migrate` has to pick one. It takes the path with the fewest migrations, and on a tie the migration with the earlier `createdAt` in its `migration.json`. That is why a database at `789dd79` runs `alice_add_phone` and then `merge_alice`, and never `bob_add_avatar`. The choice does not change where you end up, because both paths end at the same contract state, and `db migrate` checks the tables against that state before it updates the marker. To see the path it picked before anything runs, use `npx prisma db migrate --show`.
+
+When no chain of migrations leads from the marker to the target, the run fails with that same `MIGRATION.PATH_UNREACHABLE` error, and that usually means one of two things. Either `--to` names a state you did not intend, which is worth checking first, or the migration you need has not been planned yet. In the second case, plan it from the hash the marker holds with `npx prisma migration plan --from <hash> --name <name>`, and to find that hash run `npx prisma migration status`, which prints it next to its `@db` label.
+
+## Inspecting the graph
+
+| Question you have | Command | Needs a database? |
+| --- | --- | --- |
+| What does the whole graph look like? | `npx prisma migration graph` | No |
+| Which migration directories exist on disk? | `npx prisma migration list` | No |
+| Was an `ops.json` or `migration.json` edited by hand, or does a ref name a missing state? | `npx prisma migration check` | No |
+| Which contract state does my database match, and what would `db migrate` run next? | `npx prisma migration status` | Yes |
+| What has actually been applied, and when? | `npx prisma migration log` | Yes |
+
+`migration log` reads the **ledger**, so it tells you what actually ran rather than what should have run, and a rollback appears there as one more applied migration instead of erasing anything. Run `migration check` in CI before you deploy, because it catches a hand-edited migration file or a ref naming a state that does not exist, and it needs no database connection. See [Reviewing what you planned](/orm/migrations/generating-a-migration#reviewing-what-you-planned) for its exit codes.
+
+### Try it on real fixtures
+
+The [Prisma ORM repository](https://github.com/prisma/orm) has this diamond and other histories in `examples/prisma-8-demo/fixtures/`. To draw one, build the repository and pass the example's `prisma.config.ts` to `migration graph` with `--config`.
+
+## Name important states with refs
+
+Hashes are hard to remember and hard to talk about, so Prisma ORM lets you give the states that matter a name of your own. A **ref** is that name: you create one and point it at a state with `npx prisma migration ref set`, and then you pass the name instead of a hash, for example to `db migrate --to`. The name `prod` below is only an example:
+
+```npm
+npx prisma migration ref set prod f9a41d7
+npx prisma migration ref list
+npx prisma db migrate --to prod
+```
+
+To say which state a ref should point at, `ref set` takes a hash or a prefix of one, a ref name, a migration directory name, or `<dir>^`, but none of the `@` tokens below. Once the ref exists, `db migrate --to prod` applies migrations until the database matches the state `prod` names, and the database it changes is the one `prisma.config.ts` connects to, unless you pass a connection string with `--db`.
+
+Some states you only need to refer to once, so Prisma ORM reserves a few tokens that start with `@`. Each names a contract state without creating a ref:
+
+- `@contract`: the contract in `contract.json`.
+- `@db`: the contract state in the marker of the database you are connected to. The `db` ref is a file, so it can name a different state.
+- `@empty`: the empty database, before any migration.
+
+Not every command takes every token: `npx prisma db migrate --show --from` accepts all three, while `migration plan --from` accepts only `@empty`. So if you want to see the path from the contract you have now to the state `prod` names, without changing anything, run `npx prisma db migrate --show --from @contract --to prod`.
+
+## What the graph gives you
+
+### Parallel work without ordering conflicts
+
+Two branches can plan migrations at the same time without either one knowing about the other. Both branch migrations stay in the graph, the merge migrations join them, and every database, whichever branch it followed, has its own path to the merged state.
+
+### History you can trust
+
+A migration only ever runs against a database that matches the state it starts `from`. Before any operation runs, `db migrate` checks that the marker is a state in your migration history and stops if it is not. That check reads only the marker, not the tables. `db migrate` checks the tables only after it has run operations, and never when it has nothing to run, so to compare the tables against your contract directly, run `npx prisma db verify --schema-only`.
+
+That marker check is also what you run into after using `npx prisma db update`, which, like Prisma ORM 7's `db push`, changes a database to match the contract without writing a migration. Because the contract it applied is one that no migration ends at, your next `db migrate` run stops at the check. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) explains what to do next.
+
+### Rollback as one more migration [#rollback-as-a-normal-move]
+
+Undoing a change is not a special mode you switch into, because a migration can go backwards, from a later contract state to an earlier one, and you plan and apply it like any other migration. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) shows the commands, including reverting your contract before you apply the rollback.
+
+### More than one shape of history
+
+Straight lines, branches, and branches that join again all use the same commands, so there is nothing new to learn the first time your history stops being a straight line.
+
+## Baselines
+
+The word "baseline" turns up in several different places, and which one you are looking at depends on where you saw it:
+
+- **A kind of migration.** A first migration from an empty database to a contract state, such as `init` above.
+- **A label in command output.** `(baseline)` in `migration plan` output means the migration starts from an empty database.
+- **A Prisma ORM 7 task.** What Prisma ORM 7 called baselining, marking an existing database as already migrated, is `npx prisma db sign` in Prisma ORM 8.
+
+Reach for [`npx prisma db sign`](/cli/db-sign) when a database has no marker and its tables already match your contract. It checks the tables, writes the marker, and points the `db` ref at the signed contract. Signing alone is not enough to start migrating, though, because `db migrate` refuses a signed database until a migration in your history ends at the signed state. Your next `migration plan` writes that one for you, because the `db` ref now names the signed state; [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) explains what it writes. For a database Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) instead.
+
+## Database-specific details
+
+Nothing above changes with your database, because the graph and the commands are the same on every database that [Prisma ORM 8 supports](/orm/supported-databases). What does differ is where the marker and ledger are stored, and how much of a failed `db migrate` run is left behind.
+
+- **PostgreSQL**: the marker is the `prisma_contract.marker` table and the ledger is the `prisma_contract.ledger` table. The whole run is one transaction, so a failed run changes neither the database nor its marker.
+- **MongoDB**: the marker and ledger are documents in a `_prisma_migrations` collection, which is new in Prisma ORM 8 because Prisma ORM 7 had no migrations on MongoDB. A `db migrate` run is not one transaction, so operations that finished before a failure stay in the database.
+
+## Release-candidate limitations
+
+The graph itself, the way `db migrate` chooses which migrations to run, refs, the marker, and the ledger all work today. These are not built yet:
+
+- **No squash.** You cannot yet collapse a long chain of migrations into one.
+- **No split.** You cannot yet break one large migration into smaller ones after the fact.
+- **`migration new` needs `--from` when your history has more than one end state.** `npx prisma migration new` writes an empty migration for a change you write yourself, such as a data update, and without `--from` it starts at the end state of the latest migration. An end state is a contract state that no migration starts from. With two end states, such as `93be6c2` and `7e3fa7f` before the merge migrations exist, it fails with an error whose `code` is `MIGRATION.AMBIGUOUS_TARGET` and lists both. Pass a prefix of the one you want, for example `npx prisma migration new --name backfill --from 93be6c2`.
+
+## Common tasks
+
+| Task | Command |
+| --- | --- |
+| Create a migration after you change the contract | `npx prisma migration plan --name <name>` |
+| Plan a merge migration for one branch | `npx prisma migration plan --name <name> --from <last-dir-on-branch>` |
+| Apply migrations to your development database | `npx prisma db migrate --advance-ref db` |
+| See the whole graph | `npx prisma migration graph` |
+| See which contract state a database matches | `npx prisma migration status` |
+| Apply migrations until a database matches a named state | `npx prisma db migrate --to prod` |
+| Name a contract state `prod` | `npx prisma migration ref set prod <hash>` |
+| List the refs you have named | `npx prisma migration ref list` |
+| Plan a rollback of the migration in `<dir>` | `npx prisma migration plan --from <dir> --to <dir>^ --name <name>` |
+| Apply a rollback migration you planned | `npx prisma db migrate --to <earlier-ref-or-hash>` |
+| Check migration files and refs before you deploy | `npx prisma migration check` |
+
+## Prompt your coding agent
+
+Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. Ask your agent to:
+
+- "Draw the migration graph for this project and explain the branches."
+- "Which contract state is the `prod` ref pointing at, and does the database match it?"
+- "Two feature branches both added migrations. Draw the graph and plan the merge migrations they need."
+
+## See also
+
+- [How migrations work](/orm/migrations/how-migrations-work): what a migration contains, and how you plan, review, and apply one
+- [Applying a migration](/orm/migrations/applying-a-migration): running `db migrate` in development and production
+- [Studio with Prisma ORM](/studio/prisma-next): browse the same ledger visually in Prisma Studio, one entry per migration
+- [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery): planning and applying a migration back to an earlier state

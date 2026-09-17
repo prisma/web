@@ -280,7 +280,7 @@ try {
 }
 
 // ── Check 5c: APIPage parity guard ───────────────────────────────────────────
-// The interactive OpenAPI explorer on /management-api/endpoints/* has no
+// The interactive OpenAPI explorer on /rest-api/endpoints/* has no
 // markdown equivalent (per-language code samples, auth widgets); the wrapper in
 // api-page.tsx must carry data-markdown-ignore so parity checkers compare only
 // the generated markdown API reference.
@@ -290,7 +290,7 @@ try {
   if (!apiPageSource.includes("data-markdown-ignore")) {
     fail(
       "APIPage parity guard",
-      "api-page.tsx no longer wraps the OpenAPI explorer in data-markdown-ignore; management-api endpoint pages will fail markdown/HTML parity",
+      "api-page.tsx no longer wraps the OpenAPI explorer in data-markdown-ignore; rest-api endpoint pages will fail markdown/HTML parity",
     );
   } else {
     pass("APIPage parity guard", "OpenAPI explorer is excluded from parity comparison");

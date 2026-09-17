@@ -26,7 +26,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
             position: fixed;
             inset: 0;
             color: #e5e5e5;
-            background: #131420;
+            background: #0f0f0f;
             background-size: 100% 4px;
           }
           .glitch {
@@ -45,14 +45,18 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
             width: 100%;
             overflow: hidden;
           }
+          /* Chromatic-aberration fringes on the brand primaries. global-error
+             replaces the root layout, so global.css never loads here and the
+             eclipse custom properties are unavailable — these two literals are
+             --color-prism-red-500 and --color-prism-cyan-400. */
           .glitch::before {
             left: 2px;
-            text-shadow: -2px 0 red;
+            text-shadow: -2px 0 #f34a60;
             animation: glitch-1 2s infinite linear alternate-reverse;
           }
           .glitch::after {
             left: -2px;
-            text-shadow: -2px 0 cyan;
+            text-shadow: -2px 0 #01d7e4;
             animation: glitch-2 1.5s infinite linear alternate-reverse;
           }
           @keyframes glitch-1 {

@@ -16,6 +16,8 @@ A skill is a folder with a `SKILL.md` (the instructions) and sometimes `referenc
 | [`content-write-blog`](content-write-blog/SKILL.md) | Scaffold a new Prisma blog post (frontmatter + section stubs) | "Draft a blog post about connection pooling" |
 | [`content-create-hero-image`](content-create-hero-image/SKILL.md) | Generate a post's hero (SVG) and social/OG image (PNG) in the Eclipse house style | "Create a cover image for my Compute post" |
 | [`docs-writer`](docs-writer/README.md) | Write or rewrite developer docs (how-to, concept, reference) | "Write a how-to for deploying to Prisma Compute" |
+| [`docs-reader-review`](docs-reader-review/SKILL.md) | Check a written page reads for an ordinary user: banned-jargon, staccato, and AI-signs checks, then a fresh reviewer reads it cold and marks what it cannot follow | "Reader review this page" |
+| [`docs-reader-review/scripts/check-ai-signs.sh`](docs-reader-review/scripts/check-ai-signs.sh) | Runs in CI (`docs-prose.yml`) on every hand-written docs page a pull request adds or changes (the generated ORM and CLI error-reference pages are skipped; their text is fixed upstream); its word list is dated in `references/ai-writing-signs.md` and needs re-checking against Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) about every six months | "Update the AI-signs word list" |
 | [`docs-agent-ready`](docs-agent-ready/SKILL.md) | Hold the docs' agent-readiness invariants (llms.txt budgets, coverage, skill/MCP endpoints) when editing them | "Add a new docs section to llms.txt" |
 
 ---
@@ -33,7 +35,7 @@ Produces a blog-post **skeleton** (frontmatter, section headings, short stubs), 
 5. It writes the skeleton, then adds contextual links: the first mention of Prisma Postgres, Prisma Compute, and Prisma 8 links to docs for SEO, and topic mentions cross-link to related posts (for example, a bloom-filter mention links to the bloom-index post).
 6. It hands back a link inventory and a next-step reminder. You flesh out the prose and open a draft PR.
 
-**Note:** the skill reads `content-write-blog/assets/positioning.md`, Prisma's internal positioning doc. It is **not committed to this public repo** (it's gitignored). Place it locally before drafting, or the skill will ask for it.
+**Note:** the skill reads the positioning doc from the **prisma/ignite** repository at `docs/prisma/positioning.md` (fetched at draft time from `https://raw.githubusercontent.com/prisma/ignite/main/docs/prisma/positioning.md`). There is no local vendored copy in this repo.
 
 ## content-create-hero-image
 

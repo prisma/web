@@ -1,0 +1,49 @@
+---
+title: migration ref
+description: Manage named Prisma ORM refs that point at contracts.
+url: /cli/migration-ref
+metaTitle: migration ref | Prisma ORM CLI
+metaDescription: 'Learn how to set, list, and delete named Prisma ORM contract refs.'
+---
+
+Use `migration ref` commands to manage named refs stored with your migration history. A ref maps a logical environment name, such as `staging` or `production`, to a contract hash. Other commands can then target that environment by name: [`db migrate --to production`](/cli/db-migrate), [`db update --to production`](/cli/db-update), or [`db sign production`](/cli/db-sign).
+
+Refs live on disk as `migrations/app/refs/<name>.json`, so they are versioned with your migrations. The commands are offline. The contract a ref points at must already be part of the on-disk migration graph, which is why `migration ref set` does not accept `@db`: that token stands for the live database's marker, and the offline commands never read one.
+
+## The db ref
+
+The `db` ref has a special meaning: it records the contract state you expect your local database to match. When you run [`migration plan`](/cli/migration-plan) without `--from`, Prisma ORM assumes you mean from the `db` ref, so as long as the ref is kept up to date, each plan contains only your latest change.
+
+The `db` ref is updated automatically in the following situations:
+
+- [`db init`](/cli/db-init) and [`db update`](/cli/db-update) update it when you run them without `--db`, so that the connection comes from `prisma.config.ts`. With `--db`, they leave it alone unless you also pass `--advance-ref db`.
+- [`db sign`](/cli/db-sign) updates it after a successful signature, with or without `--db`. `--no-advance-ref` turns that off.
+- [`db migrate --advance-ref db`](/cli/db-migrate) updates it after an apply. Plain `db migrate` never touches it, on purpose: a deploy or CI run should not change a file in your repository.
+
+You can also set it by hand with `migration ref set db <contract>`.
+
+## Usage
+
+```npm
+npx prisma@latest migration ref set production 4cb4256
+npx prisma@latest migration ref list
+npx prisma@latest migration ref delete production
+```
+
+## Subcommands
+
+| Subcommand | What it does |
+| --- | --- |
+| `set <name> <contract>` | Points a ref at a contract. The contract is a hash or prefix, another ref name, a migration directory name, or `<dir>^` for that migration's source contract. |
+| `list` | Lists every ref with the contract hash it points at and the invariants recorded against it. |
+| `delete <name>` | Deletes a ref. The contract it pointed at is untouched. |
+
+## Example workflow
+
+```npm
+npx prisma@latest migration ref set production 20260101T1000_add_user
+npx prisma@latest migration status --db "$DATABASE_URL" --to production
+npx prisma@latest db migrate --db "$DATABASE_URL" --to production
+```
+
+Use refs when you want to name the contract state an environment should match, instead of always applying up to the latest migration on disk. If you pass `--advance-ref <name>` to a command that changes the database, that command also points the ref at the state it applied, once it succeeds.

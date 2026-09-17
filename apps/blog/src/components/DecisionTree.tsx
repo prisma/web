@@ -344,13 +344,7 @@ function TreeBranch({
   );
 }
 
-function TextTree({
-  byId,
-  nodeId,
-}: {
-  byId: Map<string, DecisionNode>;
-  nodeId: string;
-}) {
+function TextTree({ byId, nodeId }: { byId: Map<string, DecisionNode>; nodeId: string }) {
   const node = byId.get(nodeId);
   if (!node) return null;
   if (isResult(node)) {

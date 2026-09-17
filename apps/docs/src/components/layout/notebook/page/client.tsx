@@ -15,7 +15,7 @@ import {
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "fumadocs-core/link";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { useI18n } from "@fumadocs/base-ui/contexts/i18n";
+import { useTranslations } from "@fuma-translate/react";
 import { useTreeContext, useTreePath } from "@fumadocs/base-ui/contexts/tree";
 import type * as PageTree from "fumadocs-core/page-tree";
 import { usePathname } from "fumadocs-core/framework";
@@ -26,6 +26,7 @@ import { getVersionedSidebarTree } from "@/lib/versioned-sidebar-tree";
 import { isActive } from "../../../../lib/urls";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../ui/collapsible";
 import { useTOCItems } from "../../../toc";
+import { stripTocLinks } from "@/lib/toc-title";
 import { useActiveAnchor } from "fumadocs-core/toc";
 import { LayoutContext, SidebarEnabledSetterContext } from "../client";
 import { flattenTree } from "fumadocs-core/page-tree";
@@ -100,9 +101,14 @@ export function PageTOCPopover({ className, children, ...rest }: ComponentProps<
         <header
           ref={ref}
           className={cn(
-            "border-b backdrop-blur-sm transition-colors",
+            // Hairline stays; when the panel drops open it becomes a card —
+            // brand radius on the two bottom corners only, since the strip is
+            // full-bleed and pinned under the header.
+            "border-b border-stroke-neutral backdrop-blur-sm transition-colors duration-300 motion-reduce:transition-none",
             (!isNavTransparent || open) && "bg-fd-background/80",
-            open && "shadow-lg",
+            // Open panel goes fully opaque: at 80% the page ghosts through the
+            // rows and the panel's bottom edge, hurting scanability.
+            open && "bg-fd-background rounded-b-(--radius-square-high) shadow-lg",
           )}
         >
           {children}
@@ -113,7 +119,7 @@ export function PageTOCPopover({ className, children, ...rest }: ComponentProps<
 }
 
 export function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<"button">) {
-  const { text } = useI18n();
+  const t = useTranslations({ note: "table of contents" });
   const { open } = use(TocPopoverContext)!;
   const items = useTOCItems();
   const active = useActiveAnchor();
@@ -146,7 +152,7 @@ export function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<"b
             showItem && "opacity-0 -translate-y-full pointer-events-none",
           )}
         >
-          {path?.name ?? text.toc}
+          {path?.name ?? t("On this page")}
         </span>
         <span
           className={cn(
@@ -154,7 +160,10 @@ export function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<"b
             !showItem && "opacity-0 translate-y-full pointer-events-none",
           )}
         >
-          {items[selected]?.title}
+          {/* Anchors are unwrapped: the trigger is a <button>, and a heading that
+              contains a link would otherwise nest an <a> inside it with a
+              basePath-less href. */}
+          {stripTocLinks(items[selected]?.title)}
         </span>
       </span>
       <ChevronDown className={cn("shrink-0 transition-transform mx-0.5", open && "rotate-180")} />
@@ -235,7 +244,7 @@ export function PageLastUpdate({
   date: value,
   ...props
 }: Omit<ComponentProps<"p">, "children"> & { date: Date }) {
-  const { text } = useI18n();
+  const t = useTranslations({ note: "page footer" });
   const [date, setDate] = useState("");
 
   useEffect(() => {
@@ -245,7 +254,7 @@ export function PageLastUpdate({
 
   return (
     <p {...props} className={cn("text-sm text-fd-muted-foreground", props.className)}>
-      {text.lastUpdate} {date}
+      {t("Last updated on")} {date}
     </p>
   );
 }
@@ -299,14 +308,14 @@ export function PageFooter({ items, children, className, ...props }: FooterProps
 }
 
 function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
-  const { text } = useI18n();
+  const t = useTranslations({ note: "pagination" });
   const Icon = index === 0 ? ChevronLeft : ChevronRight;
 
   return (
     <Link
       href={item.url}
       className={cn(
-        "flex flex-col gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-fd-accent/80 hover:text-fd-accent-foreground @max-lg:col-span-full",
+        "flex flex-col gap-2 rounded-square border p-4 text-sm transition-colors duration-300 hover:bg-fd-accent/80 hover:text-fd-accent-foreground motion-reduce:transition-none @max-lg:col-span-full",
         index === 1 && "text-end",
       )}
     >
@@ -320,7 +329,7 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
         <p>{item.name}</p>
       </div>
       <p className="text-fd-muted-foreground truncate">
-        {item.description ?? (index === 0 ? text.previousPage : text.nextPage)}
+        {item.description ?? (index === 0 ? t("Previous Page") : t("Next Page"))}
       </p>
     </Link>
   );

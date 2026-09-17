@@ -1,4 +1,6 @@
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
+import { absoluteCanonicalUrl, resolveCanonicalUrl } from "@/lib/canonical";
+import { getPageVersion, withVersionDescription, withVersionTitle } from "@/lib/version-metadata";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
 import { getPageTitleText } from "@/lib/page-title";
 import type { InferPageType } from "fumadocs-core/source";
@@ -61,10 +63,7 @@ function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
     return getPageTitleText(page.data.title, slugs[index] ?? "Docs");
   }
 
-  return (
-    getSectionTitle(page, slugs.slice(0, index + 1)) ??
-    formatSlugDisplayName(slugs[index])
-  );
+  return getSectionTitle(page, slugs.slice(0, index + 1)) ?? formatSlugDisplayName(slugs[index]);
 }
 
 export function TechArticleSchema({ page }: StructuredDataProps) {
@@ -72,11 +71,22 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
   const lastModified = (page.data as { lastModified?: Date | string }).lastModified;
   const datePublished = (page.data as { datePublished?: Date | string }).datePublished;
 
+  // Same version label and canonical the page metadata uses, so the structured
+  // data does not repeat a twin's headline or contradict `<link rel=canonical>`.
+  const pageVersion = getPageVersion(page.url);
+  const canonical = resolveCanonicalUrl(page.url, (page.data as { canonical?: string }).canonical);
+
   const schema = {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    headline: (page.data as any).metaTitle ?? getPageTitleText(page.data.title, page.url),
-    description: (page.data as any).metaDescription ?? page.data.description,
+    headline: withVersionTitle(
+      (page.data as any).metaTitle ?? getPageTitleText(page.data.title, page.url),
+      pageVersion,
+    ),
+    description: withVersionDescription(
+      (page.data as any).metaDescription ?? page.data.description,
+      pageVersion,
+    ),
     url: `${baseUrl}${withDocsBasePath(page.url)}`,
     datePublished: toIsoDate(datePublished) ?? toIsoDate(lastModified),
     dateModified: toIsoDate(lastModified),
@@ -96,7 +106,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `${baseUrl}${withDocsBasePath(page.url)}`,
+      "@id": absoluteCanonicalUrl(canonical, baseUrl),
     },
   };
 

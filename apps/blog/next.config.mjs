@@ -77,7 +77,9 @@ const ContentSecurityPolicy = `
     https://googleads.g.doubleclick.net
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
-    https://raw.githubusercontent.com;
+    https://raw.githubusercontent.com
+    https://*.google-analytics.com
+    https://stats.g.doubleclick.net;
 
   connect-src 'self'
     https://ingest.promptwatch.com
@@ -126,7 +128,10 @@ const ContentSecurityPolicy = `
     https://proxy.kapa.ai
     https://hcaptcha.com
     https://*.hcaptcha.com
-    https://ka-p.fontawesome.com;
+    https://ka-p.fontawesome.com
+    https://*.analytics.google.com
+    https://stats.g.doubleclick.net
+    https://*.google-analytics.com;
 
   media-src 'self'
     https://*.prisma.io
@@ -201,9 +206,7 @@ const securityHeaders = [
   },
 ];
 
-const allowedDevOrigins = (
-  process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48"
-)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -229,6 +232,20 @@ const config = {
         permanent: false,
         basePath: false,
       },
+      // Direct hits on the blog origin host (blog.prisma.io/robots.txt) get a
+      // disallow-all robots.txt so the duplicate host is not crawled. Search
+      // Console shows blog.prisma.io URLs indexed with impressions but zero
+      // clicks. Google follows robots.txt redirects and treats the target as
+      // this host's robots file. A basePath-free rewrite is not allowed for
+      // internal destinations, hence the redirect. The canonical
+      // www.prisma.io/robots.txt is served by apps/site and never reaches
+      // this app.
+      {
+        source: "/robots.txt",
+        destination: "/blog/robots-origin.txt",
+        permanent: false,
+        basePath: false,
+      },
       {
         source: "/optimize-now-generally-available",
         destination: "/",
@@ -240,6 +257,17 @@ const config = {
         permanent: true,
       },
       {
+        source: "/series/prisma-next",
+        destination: "/series/prisma-8",
+        permanent: true,
+      },
+      // Mis-cased legacy slugs (e.g. the all-lowercase copy of
+      // /nestjs-prisma-authentication-7D056s1s0k3l) are NOT handled here.
+      // Next.js matches redirect `source` case-insensitively, so a rule whose
+      // source and destination differ only in case matches its own destination
+      // and 308-redirects forever. The case-insensitive fallback lives in
+      // src/app/(blog)/[slug]/page.tsx instead.
+      {
         source: "/xeito-prisma-customer-story",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
         permanent: true,
@@ -249,9 +277,48 @@ const config = {
         destination: "/search-encrypted-data-with-prisma-8-and-cipherstash",
         permanent: true,
       },
+      {
+        source: "/series/agentic-software-development",
+        destination: "/series/agentic-engineering",
+        permanent: true,
+      },
+      // Legacy query-string listings. `/blog?page=2` and `/blog?tag=orm` were
+      // the only way to reach a page of the archive before it had real URLs;
+      // they are now static routes. `has` matches the query string, and the
+      // named groups are substituted into the destination.
+      //
+      // Order matters: Next.js applies the first rule that matches, and a rule
+      // listing only `tag` also matches a URL that carries `page`, so the
+      // combined forms come first. `?page=1` is deliberately not matched: the
+      // destination would be this very URL (Next.js forwards the source's query
+      // string to a redirect destination), which is a loop. It renders page 1
+      // and canonicalises to /blog, which is what it already did.
+      {
+        source: "/",
+        has: [
+          { type: "query", key: "tag", value: "(?<tag>[a-z0-9-]+)" },
+          { type: "query", key: "page", value: "(?<n>[2-9]|[1-9][0-9]+)" },
+        ],
+        destination: "/tag/:tag/page/:n",
+        permanent: true,
+      },
+      {
+        source: "/",
+        has: [{ type: "query", key: "tag", value: "(?<tag>[a-z0-9-]+)" }],
+        destination: "/tag/:tag",
+        permanent: true,
+      },
+      {
+        source: "/",
+        has: [{ type: "query", key: "page", value: "(?<n>[2-9]|[1-9][0-9]+)" }],
+        destination: "/page/:n",
+        permanent: true,
+      },
+      // The bare tag slugs (/blog/orm) used to chain through the query form:
+      // /orm -> /?tag=orm -> (now) /tag/orm. They point at the final URL.
       ...tagSlugs.map((tag) => ({
         source: `/${tag}`,
-        destination: `/?tag=${tag}`,
+        destination: `/tag/${tag}`,
         permanent: true,
       })),
     ];
@@ -264,6 +331,13 @@ const config = {
       },
       {
         source: "/:path*.mdx",
+        destination: "/llms.mdx/:path*",
+      },
+      // Match docs: agents request the conventional .md suffix too, and the
+      // docs Link headers advertise it. Both suffixes serve the same
+      // markdown rendition.
+      {
+        source: "/:path*.md",
         destination: "/llms.mdx/:path*",
       },
     ];

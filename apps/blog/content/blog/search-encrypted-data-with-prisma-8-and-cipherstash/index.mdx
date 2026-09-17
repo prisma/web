@@ -13,7 +13,7 @@ canonicalUrl: "https://cipherstash.com/blog/search-encrypted-data-with-prisma-ne
 tags:
   - "announcement"
   - "orm"
-series: prisma-next
+series: prisma-8
 seriesIndex: 12
 ---
 
@@ -80,7 +80,7 @@ Data keys are not stored alongside the data and never leave the application.
 
 Queries on encrypted columns are encrypted in the same way.
 Alongside the randomized ciphertext, the [Encrypt Query Language][eql] (EQL) package stores encrypted index terms that Postgres can compare without ever seeing plaintext. The terms reveal equality, ordering, and match relationships to the database, but not the values themselves.
-Standard B-tree and GIN indexes work on those terms: in our [benchmarks][benchmarks], encrypted lookups run in 0.1–0.8 ms — equality through JSON containment — on tables of up to 10 million rows.
+Standard B-tree and GIN indexes work on those terms: in our [benchmarks][benchmarks], encrypted exact-equality and JSON-containment lookups run in 0.1–0.8 ms on tables of up to 10 million rows. Those are query-only medians, measured before decryption. Pattern-match and range queries are slower, and the report breaks them out per scenario.
 
 This means encrypted fields can still support:
 
@@ -202,7 +202,7 @@ const email = await users[0].email.decrypt()
 
 This creates a clear boundary around plaintext access.
 
-Plaintext values cannot accidentally appear in a JSON response, application log, or AI prompt simply because an object was serialized: serialized results contain only ciphertext. Reaching plaintext requires an explicit decryption operation in application code.
+Plaintext values cannot accidentally appear in a JSON response, application log, or AI prompt simply because an object was serialized: encrypted values serialize as opaque placeholders that contain no plaintext. Reaching plaintext requires an explicit decryption operation in application code.
 
 ## Use cases
 
@@ -239,7 +239,7 @@ The fastest way to understand searchable encryption is to run it. You don't need
 ### 1. Create a Prisma 8 app
 
 ```sh
-npx create-prisma@next
+npx create-prisma@latest
 ```
 
 This gives you a fresh project with the contract-first workflow already wired up: a `contract.prisma` describing your models, and a migration loop that plans and applies the changes needed to match it.
@@ -372,7 +372,7 @@ Without searchable encryption, encrypted data becomes difficult to use. Without 
 Together, they make it possible to build applications where access is enforced cryptographically, not just by convention.
 
 This is only the beginning.
-In the coming months, CipherStash will introduce Access Intelligence, making those cryptographic decisions observable so that developers, security teams, and auditors can understand not only who accessed sensitive data but also why, when, and under what authority.
+CipherStash's Access Intelligence makes those cryptographic decisions observable, so that developers, security teams, and auditors can understand not only who accessed sensitive data but also why, when, and under what authority.
 
 That's where we believe data security is heading, not just encrypted databases, but data that can enforce and prove its own access controls.
 

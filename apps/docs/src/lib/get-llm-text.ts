@@ -6,6 +6,7 @@ import {
 } from "@/lib/llm-markdown";
 import { getPageTitleText } from "@/lib/page-title";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
+import { getPageVersion, withVersionTitle } from "@/lib/version-metadata";
 import type { InferPageType } from "fumadocs-core/source";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -253,7 +254,14 @@ export async function getLLMText(page: DocsPage) {
       ? `\n\n${page.data.description.trim()}`
       : "";
 
-  return `# ${getPageTitleText(page.data.title, page.url)} (${withDocsBasePath(page.url)})
+  // The markdown rendition repeats the version label an agent would otherwise
+  // only see in the URL: the v6 and v7 copies of a page share their title.
+  const title = withVersionTitle(
+    getPageTitleText(page.data.title, page.url),
+    getPageVersion(page.url),
+  );
+
+  return `# ${title} (${withDocsBasePath(page.url)})
 
 ${directive}${description}
 

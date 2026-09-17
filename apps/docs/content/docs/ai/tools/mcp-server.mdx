@@ -17,16 +17,41 @@ Prisma provides an MCP server that lets AI tools manage Prisma Postgres database
 
 [Tools](https://modelcontextprotocol.io/docs/concepts/tools) represent the _capabilities_ of an MCP server. Here's the list of tools exposed by the Prisma MCP server:
 
-- `CreateBackupTool`: Create a new managed Prisma Postgres Backup.
-- `CreateConnectionStringTool`: Create a new Connection String for a Prisma Postgres database with the given id.
-- `CreateRecoveryTool`: Restore a Prisma Postgres Database to a new database with the given Backup id.
-- `DeleteConnectionStringTool`: Delete a Connection String with the given connection string id.
-- `DeleteDatabaseTool`: Delete a Prisma Postgres database with the given id.
-- `ListBackupsTool`: Fetch a list of available Prisma Postgres Backups for the given database id and environment id.
-- `ListConnectionStringsTool`: Fetch a list of available Prisma Postgres Database Connection Strings for the given database id and environment id.
-- `ListDatabasesTool`: Fetch a list of available Prisma Postgres Databases for user's workspace.
-- `ExecuteSqlQueryTool`: Execute a SQL query on a Prisma Postgres database with the given id.
-- `IntrospectSchemaTool`: Introspect the schema of a Prisma Postgres database with the given id.
+**Workspace and databases**
+
+- `fetch_workspace_details`: Fetch the details of a Prisma Postgres workspace.
+- `list_prisma_postgres_databases`: Fetch a list of available Prisma Postgres databases for the user's workspace.
+- `create_prisma_postgres_database`: Create a new managed Prisma Postgres database.
+- `delete_prisma_postgres_database`: Delete a Prisma Postgres database with the given database id.
+
+**Connection strings**
+
+- `list_prisma_postgres_connection_strings`: Fetch a list of available connection strings for the given database id.
+- `create_prisma_postgres_connection_string`: Create a new connection string for a Prisma Postgres database with the given id.
+- `delete_prisma_postgres_connection_string`: Delete a connection string with the given connection string id.
+
+**Backups and recovery**
+
+- `list_prisma_postgres_backups`: Fetch a list of available backups for the given database id.
+- `create_prisma_postgres_backup`: Create a new managed Prisma Postgres backup.
+- `create_prisma_postgres_recovery`: Restore a Prisma Postgres database to a new database with the given backup id.
+
+**Schema and queries**
+
+- `introspect_database_schema`: Introspect the schema of a Prisma Postgres database with the given id.
+- `execute_sql_query`: Execute a SQL query on a Prisma Postgres database with the given id.
+- `execute_prisma_postgres_schema_update`: Execute a schema update on a Prisma Postgres database with the given id.
+
+**Object store**
+
+- `list_object_store_buckets`: List object-store buckets in the workspace, optionally filtered by project id.
+- `create_object_store_bucket`: Create a new object-store bucket in the given project.
+- `delete_object_store_bucket`: Permanently delete an object-store bucket, all objects stored in it, and all its access keys.
+- `create_object_store_bucket_key`: Create an S3-compatible access key for an object-store bucket.
+- `delete_object_store_bucket_key`: Delete an object-store bucket access key. The key stops working immediately.
+
+**Documentation**
+
 - `search_prisma_documentation`: Answer a natural-language question about Prisma using the official Prisma documentation, returning a cited answer with links back to the docs.
 
 Once you're connected to the Prisma MCP server, you can also always prompt your AI agent to "List the Prisma tools" to get a full overview of the latest supported tools.
@@ -35,7 +60,7 @@ Once you're connected to the Prisma MCP server, you can also always prompt your 
 
 The `search_prisma_documentation` tool lets your AI agent answer questions about Prisma ORM, Prisma Postgres, Prisma Compute, schema design, migrations, and more, grounded in the official documentation, without leaving your editor or terminal.
 
-Because it's read-only and exposed by the Prisma MCP server you're already connected to, there's no extra setup or second integration to install. When you ask your agent a Prisma question, it picks up the tool automatically and returns an answer with citations linking back to the relevant pages in the [Prisma documentation](/). This keeps the agent's answers current and accurate instead of relying on whatever it happened to learn during training.
+The tool is read-only and needs no setup beyond the Prisma MCP server connection. When you ask your agent a Prisma question, it uses the tool and returns an answer with citations linking to the relevant pages in the [Prisma documentation](/), so the answer reflects the current docs rather than the model's training data.
 
 ## Usage
 
@@ -64,11 +89,11 @@ The Prisma MCP server follows the standard JSON-based configuration for MCP serv
 
 AI tools have different ways of integrating MCP servers. In most cases, there are dedicated configuration files where you add the JSON configuration from above.
 
-Below, we're covering the config formats of the most popular AI tools.
+The sections below cover the config formats of common AI tools.
 
 ### VS Code
 
-Install the Prisma MCP server in VS Code with a single click using the link below:
+Install the Prisma MCP server in VS Code with the link below:
 
 <a
   href="vscode:mcp/install?%7B%22name%22%3A%22Prisma%22%2C%22gallery%22%3Atrue%2C%22url%22%3A%22https%3A%2F%2Fmcp.prisma.io%2Fmcp%22%7D"
@@ -199,7 +224,7 @@ To learn more about Windsurf's MCP integration, check out the [Windsurf MCP docs
 
 #### Add via Windsurf MCP Plugin Store (Recommended)
 
-Use the Prisma MCP plugin from the [Windsurf MCP Plugin Store](https://docs.windsurf.com/windsurf/cascade/mcp#adding-a-new-mcp-plugin). Follow [the steps here](/ai/tools/windsurf#add-prisma-mcp-server-via-windsurf-plugins) to add the Prisma MCP plugin in Windsurf. This is the simplest and recommended way to add the Prisma MCP server to Windsurf.
+Use the Prisma MCP plugin from the [Windsurf MCP Plugin Store](https://docs.windsurf.com/windsurf/cascade/mcp#adding-a-new-mcp-plugin). Follow [the steps here](/ai/tools/windsurf#add-prisma-mcp-server-via-windsurf-plugins) to add the Prisma MCP plugin in Windsurf. This is the recommended way to add the Prisma MCP server to Windsurf.
 
 #### Add via Windsurf Settings UI
 
@@ -257,7 +282,7 @@ Claude Code is a terminal-based AI tool where you can add MCP servers using the 
 claude mcp add --transport http prisma https://mcp.prisma.io/mcp
 ```
 
-Learn more in the [Claude Code MCP docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/tutorials#configure-mcp-servers).
+Learn more in the [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
 
 ### Claude Desktop only
 
@@ -316,9 +341,52 @@ You can also add the standard MCP configuration to your `~/.gemini/settings.json
 }
 ```
 
+### fx
+
+[fx](https://fx.sh) is a terminal coding agent by [Vercel Labs](https://github.com/vercel-labs). It reads MCP servers from a single trusted file, `~/.fx/mcp.json`, and never loads MCP configuration from a repository. Remote servers are added by editing that file directly.
+
+Install fx and sign in if you haven't already:
+
+```bash title="fx"
+curl -fsSL https://fx.sh/setup.sh | bash
+fx login
+```
+
+Then add the Prisma MCP server to `~/.fx/mcp.json`. Note that fx uses an `mcp` key rather than `mcpServers`, and remote servers need `"type": "http"`:
+
+```json title="~/.fx/mcp.json"
+{
+  "mcp": {
+    "Prisma": {
+      "type": "http",
+      "url": "https://mcp.prisma.io/mcp"
+    }
+  }
+}
+```
+
+Start `fx` (or run `/mcp reload` in an open session), then authenticate with Prisma Console:
+
+```bash title="fx session"
+/mcp auth Prisma --open
+```
+
+1. Complete the Prisma Console authorization flow in your browser.
+1. Return to fx and run:
+   ```bash title="fx session"
+   /mcp list
+   ```
+1. Confirm that the server shows `state=ready`.
+1. Ask fx to manage your database. For example:
+   - "List the Prisma tools"
+   - "Show me all databases in my workspace"
+1. fx checks its permission policy before each MCP tool call, so saved rules or its automatic review may let a call through without asking. If fx shows an approval prompt, select **Allow once** or **Allow this MCP tool for this session**.
+
+Learn more in the [fx MCP docs](https://fx.sh/docs/capabilities/mcp).
+
 ## AI Safety guardrails for destructive commands
 
-Prisma ORM includes built-in safety checks to prevent **accidental destructive commands** when run through AI coding assistants. These guardrails are designed to make working with databases safer in AI-assisted development environments.
+Prisma ORM includes built-in safety checks to prevent **accidental destructive commands** when run through AI coding assistants.
 
 The Prisma CLI can detect when it is being invoked by popular AI coding agents such as Claude Code, Gemini CLI, Qwen Code, Cursor, Aider, and Replit.
 

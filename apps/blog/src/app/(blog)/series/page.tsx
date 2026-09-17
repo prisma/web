@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { blog } from "@/lib/source";
 import { getSeriesMetadata, seriesRegistry } from "@/lib/series-registry";
 import { withBlogBasePath } from "@/lib/url";
 import { SeriesIndexGrid, type SeriesShelfItem } from "@/components/SeriesShelf";
+import { BackToBlogLink } from "@/components/BackToBlogLink";
 import { BLOG_HOME_TITLE } from "@/lib/blog-metadata";
 
 export const revalidate = false;
@@ -60,16 +60,18 @@ export default function SeriesIndexPage() {
     });
 
   return (
-    <main className="flex-1 w-full max-w-249 mx-auto px-4 py-8 z-1">
-      <Link href="/" className="text-fd-primary hover:underline text-sm">
-        ← Back to Blog
-      </Link>
-      <header className="mt-6 mb-10">
-        <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak font-semibold mb-2">
+    <main className="z-1 mx-auto w-full max-w-[87.5rem] flex-1 px-4 pt-10 pb-20 sm:px-6 lg:px-8">
+      <BackToBlogLink />
+      <header className="mt-8 mb-12 max-w-2xl">
+        <div className="type-heading-2xs mb-3 text-foreground-neutral-weak">
           {items.length} {items.length === 1 ? "series" : "series"}
         </div>
-        <h1 className="type-title-3xl md:type-title-4xl text-foreground-neutral">{PAGE_TITLE}</h1>
-        <p className="mt-3 text-foreground-neutral-weak">{PAGE_DESCRIPTION}</p>
+        <h1 className="type-title-3xl md:type-title-4xl text-foreground-neutral-strong">
+          {PAGE_TITLE}
+        </h1>
+        <p className="mt-4 text-lg leading-relaxed text-foreground-neutral-weak">
+          {PAGE_DESCRIPTION}
+        </p>
       </header>
 
       <SeriesIndexGrid series={items} />

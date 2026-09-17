@@ -3,7 +3,7 @@
 
 A cover SVG that only references the brand families by name renders with fallback
 fonts wherever they are not installed (browsers, Figma, GitHub preview). This subsets
-Mona Sans (800), Inter (400) and Geist Mono (500) to just the glyphs the SVG uses,
+Sora, Inter and Mona Sans Mono (variable fonts) to just the glyphs the SVG uses,
 then injects them as base64 @font-face rules. If fonttools/brotli are unavailable,
 it embeds the bundled WOFF2 files whole. The fallback is larger but keeps the SVG
 self-contained without a Python dependency install. The PNG export does not need
@@ -24,10 +24,14 @@ import re
 import sys
 from pathlib import Path
 
+# 2026 brand faces. All three are variable fonts, so the @font-face rule carries
+# a weight RANGE and one embed serves every weight the SVG uses (Sora 500/600,
+# Inter 400/600, Mona Sans Mono 500). The old static faces (Mona Sans 800,
+# Geist Mono) are retired but their files remain for re-rendering legacy covers.
 FACES = [
-    ("Mona Sans", 800, "MonaSans.woff2"),
-    ("Inter", 400, "Inter-Regular.woff2"),
-    ("Geist Mono", 500, "GeistMono.woff2"),
+    ("Sora", "100 800", "Sora-VF.woff2"),
+    ("Inter", "100 900", "Inter-VF.woff2"),
+    ("Mona Sans Mono", "200 900", "MonaSansMono-VF.woff2"),
 ]
 
 

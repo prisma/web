@@ -7,7 +7,7 @@ export const metadata = createPageMetadata({
   description:
     "Query data from PlanetScale with Prisma – a next-generation ORM for Node.js and TypeScript.",
   path: "/planetscale",
-  ogImage: "/og/prisma-with/planetscale.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function PlanetScalePage() {

@@ -1,0 +1,31 @@
+name: Sync Website Search
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+concurrency:
+  group: website-search-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter docs exec playwright install --with-deps chromium
+      - name: Sync published website into Mixedbread
+        run: pnpm --filter docs exec tsx scripts/sync-website-search.ts --write
+        env:
+          MIXEDBREAD_API_KEY: ${{ secrets.MIXEDBREAD_API_KEY }}

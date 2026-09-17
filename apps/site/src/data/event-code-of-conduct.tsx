@@ -18,11 +18,11 @@ export const cocSections: CocSection[] = [
         <p>
           Prisma is dedicated to providing a harassment-free experience for everyone, regardless of
           gender, gender identity and expression, age, sexual orientation, disability, physical
-          appearance, body size, race, ethnicity, nationality, immigration status, religion (or
-          lack thereof), or technology choices. We do not tolerate harassment of event participants
-          in any form. Sexual language and imagery are not appropriate for any event venue,
-          including talks, workshops, parties, and all event-related online spaces, including
-          social media and chat platforms.
+          appearance, body size, race, ethnicity, nationality, immigration status, religion (or lack
+          thereof), or technology choices. We do not tolerate harassment of event participants in
+          any form. Sexual language and imagery are not appropriate for any event venue, including
+          talks, workshops, parties, and all event-related online spaces, including social media and
+          chat platforms.
         </p>
         <p>
           Event participants violating these rules may be sanctioned or expelled from the event
@@ -90,8 +90,7 @@ export const cocSections: CocSection[] = [
           All reports are handled with discretion and kept as confidential as possible; details are
           shared only with those who need them to respond. We will not tolerate retaliation against
           anyone who reports a concern in good faith. Reports sent to{" "}
-          <a href="mailto:conduct@prisma.io">conduct@prisma.io</a> are acknowledged within 24
-          hours.
+          <a href="mailto:conduct@prisma.io">conduct@prisma.io</a> are acknowledged within 24 hours.
         </p>
         <p>
           Event staff will be happy to help participants contact hotel/venue security, local law
@@ -114,9 +113,8 @@ export const cocSections: CocSection[] = [
           anyone at their discretion.
         </p>
         <p>
-          Be mindful when photographing or recording other participants: ask before taking
-          close-up photos of individuals, and respect any request to delete a photo or stop
-          recording.
+          Be mindful when photographing or recording other participants: ask before taking close-up
+          photos of individuals, and respect any request to delete a photo or stop recording.
         </p>
       </>
     ),

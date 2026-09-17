@@ -96,7 +96,7 @@ export const metadata = createPageMetadata({
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
   path: "/graphql",
-  ogImage: "/og/prisma-with/graphql.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function GraphQlPage() {

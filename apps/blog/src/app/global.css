@@ -4,10 +4,232 @@
 @import "fumadocs-ui/css/preset.css";
 @import "@prisma-docs/ui/styles";
 
+/* Wire next/font/local preloaded fonts into the design-token variables.
+   Declared after the @import so this :root wins on cascade order (same
+   specificity, later position). The bare family name after each variable is
+   the @font-face from the package's fonts.css — it both backstops a missing
+   next/font variable and supplies the subsets next/font does not preload
+   (Sora latin-ext). */
 :root {
-  --color-fd-primary: var(--color-stroke-ppg);
+  --font-sans-display:
+    var(--font-sora, "Sora"), "Sora", "Inter", "Roboto", "Helvetica Neue", "Arial Nova",
+    "Nimbus Sans", "Arial", sans-serif;
+  --font-sans:
+    var(--font-inter, "Inter"), "Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans",
+    "Arial", sans-serif;
+  --font-mono:
+    var(--font-mona-mono, "Mona Sans Mono VF"), ui-monospace, "Cascadia Code", "Source Code Pro",
+    "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
 }
 
+/* Brand heading rule: display face, Medium weight, natural tracking on every
+   heading. Deliberately unlayered — fumadocs' `prose` typography emits into
+   @layer utilities with its own heading weights (800/700/600), and unlayered
+   declarations outrank every layer regardless of specificity. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans-display);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+/* Inter's brand body weight. `@prisma/eclipse` sets this in @layer base, but
+   `fumadocs-ui/css/preset.css` is imported after it and also writes `body` in
+   the same layer, so it is restated unlayered here to survive that. */
+body {
+  font-weight: 380;
+}
+
+/* `.stretch-display` (from `@prisma-docs/ui`, out of scope for this rebrand)
+   drives the Mona Sans VF `wdth`/`wght` axes. Sora has neither, so the axis
+   settings are cleared and the brand display weight applied instead. */
+.stretch-display {
+  font-variation-settings: normal;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------------
+   App chrome retheme — remap the shadcn/fumadocs shell variables onto prism.
+
+   `@prisma-docs/ui` (out of scope for this rebrand: apps/site, apps/blog and
+   apps/docs consume it) still ships the previous identity in these variables —
+   teal accents, a blue-navy dark surface, and cool blue-gray text. The
+   package cannot be edited, so the app remaps the same variable names here.
+   Every `--color-fd-*` alias fumadocs reads is defined by
+   `fumadocs-ui/css/shadcn.css` as `var(--<name>)` against exactly these
+   variables, so overriding the base set carries the whole shell: post prose
+   (fumadocs' typography plugin resolves every `--tw-prose-*` colour off
+   `--color-fd-foreground`/`-border`/`-muted-foreground`), TOC, popovers,
+   search dialog, buttons.
+
+   Placement and shape matter. These blocks sit after the @imports so they win
+   on source order at equal specificity, and `:root` and `.dark` are BOTH
+   declared in full: an unpaired `:root` here would also outrank the package's
+   earlier `.dark`, leaking light values into dark mode.
+
+   Values are eclipse tokens, never literals, so the shell tracks the package.
+--------------------------------------------------------------------------- */
+:root {
+  /* CF's base radius is 10px; fumadocs derives sm/md/xl/2xl.. from this. */
+  --radius: 0.625rem;
+
+  --background: var(--color-background-default); /* #ffffff */
+  --foreground: var(--color-foreground-neutral); /* #3a3b3c */
+  --card: var(--color-background-default);
+  --card-foreground: var(--color-foreground-neutral);
+  --popover: var(--color-background-default);
+  --popover-foreground: var(--color-foreground-neutral);
+
+  /* Brand accent: TOC thumb + active link, prose kbd shadow, active tab
+     underline. `bg-fd-primary/10` derives the active-item tint. */
+  --primary: var(--color-prism-cyan-600); /* #009aaa */
+  --primary-foreground: #ffffff;
+
+  --secondary: var(--color-background-neutral-weak); /* paper #f9faf5 */
+  --secondary-foreground: var(--color-foreground-neutral);
+  --muted: var(--color-background-neutral); /* #f5f5f4 */
+  --muted-foreground: var(--color-foreground-neutral-weak); /* #646567 */
+
+  /* Hover wash + hover text. cyan-100 holds the luminance the previous teal
+     tint had, so hover feedback keeps its weight and only changes hue. */
+  --accent: var(--color-prism-cyan-100); /* #dcfdff */
+  --accent-foreground: var(--color-prism-cyan-700); /* #007f8d */
+
+  --destructive: var(--color-foreground-error); /* prism red #d02344 */
+  --border: var(--color-stroke-neutral); /* #e5e5e4 */
+  --input: var(--color-stroke-neutral);
+  --ring: var(--color-prism-cyan-600);
+
+  /* Chart ramp — cyan first, the supporting prism hues after it. Nothing in
+     the blog charts today; kept in agreement so nothing can fall back to the
+     package's teal/indigo pair. */
+  --chart-1: var(--color-prism-cyan-500);
+  --chart-2: var(--color-prism-yellow-400);
+  --chart-3: var(--color-prism-red-500);
+  --chart-4: var(--color-prism-cyan-700);
+  --chart-5: var(--color-prism-yellow-600);
+
+  /* The blog has no sidebar, but fumadocs' shadcn preset aliases
+     `--color-fd-sidebar*` off these regardless; kept on-brand so no component
+     that reaches for one gets the old palette. */
+  --sidebar: var(--color-background-default);
+  --sidebar-foreground: var(--color-foreground-neutral);
+  --sidebar-primary: var(--color-prism-cyan-600);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-prism-cyan-100);
+  --sidebar-accent-foreground: var(--color-prism-cyan-700);
+  --sidebar-border: var(--color-stroke-neutral);
+  --sidebar-ring: var(--color-prism-cyan-600);
+}
+
+.dark {
+  /* The neutral dark ramp, chroma-0 off the brand ink — not the old blue-gray. */
+  --background: var(--color-background-default); /* #0f0f0f */
+  --foreground: var(--color-foreground-neutral); /* #f5f5f4 */
+  --card: var(--color-background-neutral-weak); /* #1a1a1a */
+  --card-foreground: var(--color-foreground-neutral);
+  --popover: var(--color-background-neutral-weak);
+  --popover-foreground: var(--color-foreground-neutral);
+
+  /* Cyan lifts to 400 on dark for legible accents; its foreground goes to ink,
+     because white on #01d7e4 does not carry. */
+  --primary: var(--color-prism-cyan-400); /* #01d7e4 */
+  --primary-foreground: var(--color-background-default); /* #0f0f0f */
+
+  --secondary: var(--color-background-neutral); /* #232323 */
+  --secondary-foreground: var(--color-foreground-neutral);
+  --muted: var(--color-background-neutral); /* #232323 */
+  --muted-foreground: var(--color-foreground-neutral-weak); /* #a5a5a6 */
+
+  --accent: var(--color-prism-cyan-950); /* #00353c */
+  --accent-foreground: var(--color-prism-cyan-300); /* #7be7f0 */
+
+  --destructive: var(--color-foreground-error); /* prism red #f34a60 */
+  --border: var(--color-stroke-neutral); /* #2a2a2a */
+  --input: var(--color-stroke-neutral);
+  --ring: var(--color-prism-cyan-400);
+
+  --chart-1: var(--color-prism-cyan-400);
+  --chart-2: var(--color-prism-yellow-300);
+  --chart-3: var(--color-prism-red-400);
+  --chart-4: var(--color-prism-cyan-200);
+  --chart-5: var(--color-prism-yellow-500);
+
+  --sidebar: var(--color-background-default);
+  --sidebar-foreground: var(--color-foreground-neutral);
+  --sidebar-primary: var(--color-prism-cyan-400);
+  --sidebar-primary-foreground: var(--color-background-default);
+  --sidebar-accent: var(--color-prism-cyan-950);
+  --sidebar-accent-foreground: var(--color-prism-cyan-300);
+  --sidebar-border: var(--color-stroke-neutral);
+  --sidebar-ring: var(--color-prism-cyan-400);
+}
+
+/* ---------------------------------------------------------------------------
+   Article prose — the brand reading surface on top of fumadocs' typography.
+   Colour comes from the `--color-fd-*` remap above; these rules only carry the
+   moves the plugin has no variable for.
+--------------------------------------------------------------------------- */
+
+/* Links stay ink — never a coloured label — over a quiet cyan hairline that
+   firms up on hover. This is the flat-surface reading of `.spectrum-underline`
+   (which needs a pseudo-element the prose plugin has already spent), and the
+   rule keeps a resting underline rather than a hover-only one: in body copy an
+   ink link with no persistent decoration is indistinguishable from bold text.
+   The plugin's own hover is `opacity: 80%`, i.e. the link fades as you point
+   at it; that is reversed here so it strengthens instead.
+   `[data-card]` links are whole card surfaces and opt out, as upstream. */
+.prose a:not([data-card]) {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-prism-cyan-500) 45%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3.5px;
+  transition: text-decoration-color 300ms ease;
+}
+
+.prose a:not([data-card]):hover {
+  opacity: 1;
+  text-decoration-color: var(--color-prism-cyan-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prose a:not([data-card]) {
+    transition: none;
+  }
+}
+
+/* Pull quotes: a 2px cyan rule on paper, upright rather than italic — the
+   plugin's default is a 4px border-coloured rule with no surface. */
+.prose blockquote {
+  border-inline-start-width: 2px;
+  border-inline-start-color: var(--color-prism-cyan-400);
+  background: var(--color-paper);
+  border-radius: 0 var(--radius-square) var(--radius-square) 0;
+  padding: 0.875em 1.25em;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.prose blockquote p:first-of-type::before,
+.prose blockquote p:last-of-type::after {
+  content: none;
+}
+
+.prose hr {
+  border-color: var(--color-stroke-neutral);
+}
+
+/* ---------------------------------------------------------------------------
+   Page surface. White page with a quiet paper wash resting under the top of
+   the document — prism accents are reserved for small details, so the former
+   full-width cyan bleed is gone. The footer closes on the same paper tone
+   (see chrome/Footer), so every page opens and closes one quiet step off the
+   page surface, the way the docs' paper sidebar frames its pages.
+--------------------------------------------------------------------------- */
 .bg-blog {
   background-color: var(--color-background-default);
 }
@@ -18,31 +240,36 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 5000px;
+  height: 640px;
   background: linear-gradient(
-    0deg,
-    var(--color-background-default) 95%,
-    var(--color-background-ppg) 100%
+    180deg,
+    var(--color-paper) 0%,
+    color-mix(in srgb, var(--color-paper) 45%, var(--color-background-default)) 55%,
+    var(--color-background-default) 100%
   );
   z-index: -1;
 }
 
+/* Hero display type: Sora Medium, natural tracking. The old rule ran weight
+   900 with a `wdth` 125 axis — both Mona Sans VF axes that Sora does not
+   have, so they are dropped rather than silently ignored. */
 .landing-h1 {
   color: var(--color-foreground-neutral);
   font-variant-numeric: lining-nums tabular-nums slashed-zero;
-  font-variation-settings: "wdth" 125;
-  /* title/3xl */
   font-family: var(--font-sans-display);
-  font-size: 60px;
+  font-size: clamp(2.5rem, 6vw, 3.75rem);
   font-style: normal;
-  font-weight: 900;
-  line-height: 120%; /* 120% */
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.1;
 }
 
+/* Newsletter panel: a mode-aware cyan wash (`--color-background-ppg` is
+   #eeffff light / #00353c dark) fading to the page surface. */
 .newsletter-bg {
   background: linear-gradient(
     59deg,
-    color-mix(in srgb, var(--color-foreground-ppg) 30%, transparent) 6.53%,
+    var(--color-background-ppg) 6.53%,
     var(--color-background-default) 74.71%
   );
 }
@@ -89,6 +316,14 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Codehike syntax tokens. Syntax highlighting is not brand surface — a code
+   theme is a legibility instrument with its own semantics (keyword / string /
+   comment), and recolouring it to prism would cost meaning and gain nothing.
+   These are left on the GitHub light/dark palette deliberately; the container
+   chrome around them is what carries the brand (see the demo frames below and
+   eclipse's own `CodeBlock`).
+--------------------------------------------------------------------------- */
 :root {
   --ch-1: #6e7781;
   --ch-2: #0550ae;
@@ -115,16 +350,27 @@
   --ch-16: transparent;
 }
 
+/* The demo widgets below (agent prompt, bloom filter, runner, b-tree, hash,
+   sequence diagram, vector space) all followed one off-brand green accent
+   with GitHub-dark terminal chrome. They now run on prism: cyan is
+   the working accent, yellow reads as "caution", red as "no match". Anything
+   that must stay a literal is called out where it appears. */
 .agent-prompt {
-  --agent-prompt-code-light-bg: #ffffff;
-  --agent-prompt-code-dark-bg: #24292e;
-  --agent-prompt-terminal-bg: #0c0e10;
-  --agent-prompt-terminal-fg: #e6e6e6;
-  --agent-prompt-terminal-muted: #8b949e;
-  --agent-prompt-terminal-prefix: #5fb878;
-  --agent-prompt-terminal-stroke: #1f242a;
-  --agent-prompt-mark-bg: color-mix(in srgb, #5fb878 14%, transparent);
-  --agent-prompt-mark-border: #5fb878;
+  /* Code frame sits on paper — #f9faf5 light, #1a1a1a dark — so one
+     mode-aware token replaces the old light/dark background pair. */
+  --agent-prompt-code-bg: var(--color-paper);
+  /* The terminal is always dark, in either theme, so its chrome cannot use
+     the mode-aware tokens. These four literals are the eclipse DARK ramp
+     (background-default / foreground-neutral / -weak / stroke-neutral). */
+  --agent-prompt-terminal-bg: #0f0f0f;
+  --agent-prompt-terminal-fg: #f5f5f4;
+  --agent-prompt-terminal-muted: #a5a5a6;
+  --agent-prompt-terminal-stroke: #2a2a2a;
+  /* Shell prompt on that always-dark surface: cyan-400 is the dark-mode
+     accent step and is mode-independent. */
+  --agent-prompt-terminal-prefix: var(--color-prism-cyan-400);
+  --agent-prompt-mark-bg: color-mix(in srgb, var(--color-foreground-ppg) 14%, transparent);
+  --agent-prompt-mark-border: var(--color-foreground-ppg);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -137,7 +383,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 20px 22px;
-  border-radius: 12px;
+  border-radius: var(--radius-square-high);
   border: 1px solid var(--color-stroke-neutral);
   background: var(--color-background-default);
   box-shadow:
@@ -164,7 +410,7 @@
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
 }
 
 .agent-prompt-tag::before {
@@ -219,15 +465,11 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-square, 6px);
+  border-radius: var(--radius-square);
   border: 1px solid var(--color-stroke-neutral);
-  background: var(--agent-prompt-code-light-bg);
+  background: var(--agent-prompt-code-bg);
   overflow: hidden;
   transition: box-shadow 320ms ease;
-}
-
-.dark .agent-prompt-frame {
-  background: var(--agent-prompt-code-dark-bg);
 }
 
 .agent-prompt-skill {
@@ -269,7 +511,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-size: 0.6875rem;
 }
 
@@ -290,7 +532,7 @@
   padding: 8px 14px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.75rem;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   border-bottom: 1px solid var(--color-stroke-neutral);
 }
 
@@ -306,9 +548,9 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 4px;
+  border-radius: var(--radius-square-low);
   background: transparent;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   cursor: pointer;
   transition:
     background-color 120ms ease,
@@ -425,7 +667,7 @@
 .agent-prompt-terminal {
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-square, 6px);
+  border-radius: var(--radius-square);
   border: 1px solid var(--agent-prompt-terminal-stroke);
   background: var(--agent-prompt-terminal-bg);
   color: var(--agent-prompt-terminal-fg);
@@ -450,21 +692,24 @@
   gap: 6px;
 }
 
+/* Window dots. The macOS traffic-light hues are replaced by the prism triad —
+   red, yellow, cyan — which lands in the same positions and reads as the same
+   affordance without borrowing another vendor's palette. */
 .agent-prompt-terminal-dots span {
   width: 9px;
   height: 9px;
-  border-radius: 999px;
-  background: #3a4148;
+  border-radius: var(--radius-circle);
+  background: color-mix(in srgb, var(--agent-prompt-terminal-fg) 22%, transparent);
 }
 
 .agent-prompt-terminal-dots span:nth-child(1) {
-  background: #ff5f57;
+  background: var(--color-prism-red-500);
 }
 .agent-prompt-terminal-dots span:nth-child(2) {
-  background: #febc2e;
+  background: var(--color-prism-yellow-400);
 }
 .agent-prompt-terminal-dots span:nth-child(3) {
-  background: #28c840;
+  background: var(--color-prism-cyan-400);
 }
 
 .agent-prompt-terminal-title {
@@ -520,19 +765,22 @@
 
 .bloom-demo {
   --bloom-cell-empty: var(--color-background-default);
-  --bloom-cell-empty-fg: var(--color-foreground-muted);
-  --bloom-cell-on-bg: color-mix(in srgb, #5fb878 22%, transparent);
-  --bloom-cell-on-border: #5fb878;
+  --bloom-cell-empty-fg: var(--color-foreground-neutral-weak);
+  --bloom-cell-on-bg: color-mix(in srgb, var(--color-foreground-ppg) 22%, transparent);
+  --bloom-cell-on-border: var(--color-foreground-ppg);
   --bloom-cell-on-fg: var(--color-foreground-neutral);
-  --bloom-cell-probe-present: #5fb878;
-  --bloom-cell-probe-absent: #d2a8ff;
-  --bloom-cell-probe-fp: #ffa657;
-  --bloom-cell-flipping-shadow: 0 0 0 3px color-mix(in srgb, #5fb878 35%, transparent);
+  /* The three verdicts map onto the prism triad by meaning: cyan = hit,
+     red = definitely absent, yellow = false positive (caution). */
+  --bloom-cell-probe-present: var(--color-foreground-ppg);
+  --bloom-cell-probe-absent: var(--color-prism-red-500);
+  --bloom-cell-probe-fp: var(--color-prism-yellow-400);
+  --bloom-cell-flipping-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--color-foreground-ppg) 35%, transparent);
   margin: 1.75rem 0;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--color-stroke-neutral);
-  border-radius: 10px;
+  border-radius: var(--radius-square-high);
   background: var(--color-background-default);
   overflow: hidden;
 }
@@ -554,7 +802,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-foreground-ppg) 12%, transparent);
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-size: 0.6875rem;
   letter-spacing: 0.06em;
 }
@@ -570,9 +818,9 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 5px;
+  border-radius: var(--radius-square-low);
   background: transparent;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   cursor: pointer;
 }
 
@@ -597,7 +845,7 @@
   padding: 14px 0;
   border-right: 1px solid var(--color-stroke-neutral);
   font: normal 400 0.8125rem/1.7 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  background: var(--color-background-subtle, transparent);
+  background: var(--color-paper);
   min-height: 220px;
 }
 
@@ -645,7 +893,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-square-low);
   border: 1px solid var(--color-stroke-neutral);
   background: var(--bloom-cell-empty);
   color: var(--bloom-cell-empty-fg);
@@ -710,7 +958,7 @@
 
 .bloom-demo-caption {
   font-size: 0.875rem;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   line-height: 1.5;
 }
 
@@ -719,7 +967,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-square);
   font-size: 0.8125rem;
   color: var(--color-foreground-neutral);
   background: color-mix(in srgb, var(--color-foreground-ppg) 6%, transparent);
@@ -747,7 +995,7 @@
 }
 
 .bloom-demo-verdict[data-verdict="idle"] {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
 }
 
 .bloom-demo-verdict-icon {
@@ -790,7 +1038,7 @@
   border-radius: 999px;
   background: transparent;
   border: 1px solid var(--color-stroke-neutral);
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.75rem;
   cursor: pointer;
@@ -806,8 +1054,8 @@
 }
 
 .bloom-demo-step-pill[data-active="true"] {
-  background: color-mix(in srgb, #5fb878 18%, transparent);
-  border-color: #5fb878;
+  background: color-mix(in srgb, var(--color-foreground-ppg) 18%, transparent);
+  border-color: var(--color-foreground-ppg);
   color: var(--color-foreground-neutral);
 }
 
@@ -824,18 +1072,23 @@
 }
 
 .runner {
-  --runner-terminal-bg: #0c0e10;
-  --runner-terminal-fg: #e6e6e6;
-  --runner-terminal-muted: #8b949e;
-  --runner-terminal-stroke: #1f242a;
-  --runner-mark-bg: color-mix(in srgb, #5fb878 20%, transparent);
-  --runner-mark-border: #5fb878;
+  /* Always-dark terminal pane; literals are the eclipse dark ramp, as in
+     `.agent-prompt` above. */
+  --runner-terminal-bg: #0f0f0f;
+  --runner-terminal-fg: #f5f5f4;
+  --runner-terminal-muted: #a5a5a6;
+  --runner-terminal-stroke: #2a2a2a;
+  /* Two accents: the code pane follows the theme, the terminal pane does not,
+     so it takes the mode-independent cyan-400 step. */
+  --runner-mark-bg: color-mix(in srgb, var(--color-foreground-ppg) 20%, transparent);
+  --runner-mark-border: var(--color-foreground-ppg);
+  --runner-terminal-accent: var(--color-prism-cyan-400);
   container-type: inline-size;
   margin: 1.75rem 0;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--color-stroke-neutral);
-  border-radius: 10px;
+  border-radius: var(--radius-square-high);
   background: var(--color-background-default);
   overflow: hidden;
 }
@@ -877,7 +1130,7 @@
 }
 
 .runner-step-counter-label {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-weight: 400;
 }
 
@@ -893,7 +1146,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--radius-square-low);
   background: transparent;
   border: 1px solid var(--color-stroke-neutral);
   color: var(--color-foreground-neutral);
@@ -922,7 +1175,7 @@
   border-radius: 999px;
   background: transparent;
   border: 1px solid var(--color-stroke-neutral);
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.75rem;
   cursor: pointer;
@@ -938,7 +1191,7 @@
 }
 
 .runner-step-pill[data-active="true"] {
-  background: color-mix(in srgb, #5fb878 18%, transparent);
+  background: color-mix(in srgb, var(--color-foreground-ppg) 18%, transparent);
   border-color: var(--runner-mark-border);
   color: var(--color-foreground-neutral);
 }
@@ -958,7 +1211,7 @@
 .runner-caption {
   padding: 10px 14px 12px;
   font-size: 0.875rem;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   border-bottom: 1px solid var(--color-stroke-neutral);
   background: var(--color-background-default);
 }
@@ -1009,7 +1262,7 @@
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   border-bottom: 1px solid var(--color-stroke-neutral);
   background: color-mix(in srgb, var(--color-foreground-ppg) 4%, transparent);
 }
@@ -1032,7 +1285,7 @@
   color: var(--runner-terminal-muted);
   background: transparent;
   border: 1px solid var(--runner-terminal-stroke);
-  border-radius: 4px;
+  border-radius: var(--radius-square-low);
   cursor: pointer;
   transition:
     color 160ms ease,
@@ -1047,7 +1300,7 @@
 }
 
 .runner-copy:focus-visible {
-  outline: 2px solid var(--runner-mark-border);
+  outline: 2px solid var(--runner-terminal-accent);
   outline-offset: 2px;
 }
 
@@ -1109,22 +1362,22 @@
 .runner-terminal-line[data-step-state="active"] {
   opacity: 1;
   color: var(--runner-terminal-fg);
-  background: color-mix(in srgb, var(--runner-mark-border) 14%, transparent);
-  box-shadow: inset 3px 0 0 var(--runner-mark-border);
+  background: color-mix(in srgb, var(--runner-terminal-accent) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--runner-terminal-accent);
   padding-left: 8px;
   margin-left: -14px;
 }
 
 .btree-demo,
 .hash-demo {
-  --demo-accent: #5fb878;
-  --demo-accent-bg: color-mix(in srgb, #5fb878 18%, transparent);
-  --demo-accent-soft: color-mix(in srgb, #5fb878 8%, transparent);
+  --demo-accent: var(--color-foreground-ppg);
+  --demo-accent-bg: color-mix(in srgb, var(--color-foreground-ppg) 18%, transparent);
+  --demo-accent-soft: color-mix(in srgb, var(--color-foreground-ppg) 8%, transparent);
   margin: 1.75rem 0;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--color-stroke-neutral);
-  border-radius: 10px;
+  border-radius: var(--radius-square-high);
   background: var(--color-background-default);
   overflow: hidden;
   container-type: inline-size;
@@ -1148,7 +1401,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-foreground-ppg) 12%, transparent);
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-size: 0.6875rem;
   letter-spacing: 0.06em;
 }
@@ -1174,7 +1427,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--radius-square-low);
   background: transparent;
   border: 1px solid var(--color-stroke-neutral);
   color: var(--color-foreground-neutral);
@@ -1204,7 +1457,7 @@
   border-radius: 999px;
   background: transparent;
   border: 1px solid var(--color-stroke-neutral);
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.75rem;
   cursor: pointer;
@@ -1311,7 +1564,7 @@
 }
 
 .btree-demo-query-label {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
 }
 
 .btree-demo-query-value {
@@ -1322,7 +1575,7 @@
 .btree-demo-query-placeholder {
   background: transparent;
   border-style: dashed;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-style: italic;
 }
 
@@ -1356,7 +1609,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-square);
   border: 1px solid var(--color-stroke-neutral);
   background: var(--color-background-default);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -1377,7 +1630,7 @@
   font-size: 0.625rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
 }
 
 .btree-demo-keys {
@@ -1388,7 +1641,7 @@
 
 .btree-demo-key {
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-square-low);
   background: color-mix(in srgb, var(--color-foreground-ppg) 10%, transparent);
   color: var(--color-foreground-neutral);
   font-weight: 600;
@@ -1403,7 +1656,7 @@
 
 .btree-demo-edge {
   position: relative;
-  border-left: 1px dashed color-mix(in srgb, var(--color-foreground-muted) 40%, transparent);
+  border-left: 1px dashed color-mix(in srgb, var(--color-foreground-neutral-weak) 40%, transparent);
   margin-left: 50%;
   transition: border-color 200ms ease;
 }
@@ -1428,8 +1681,8 @@
   align-items: center;
   gap: 6px;
   padding: 2px 4px;
-  border-radius: 4px;
-  color: var(--color-foreground-muted);
+  border-radius: var(--radius-square-low);
+  color: var(--color-foreground-neutral-weak);
   transition:
     background 200ms ease,
     color 200ms ease;
@@ -1452,7 +1705,7 @@
 .btree-demo-caption,
 .hash-demo-caption {
   font-size: 0.875rem;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   line-height: 1.5;
 }
 
@@ -1462,7 +1715,7 @@
   gap: 8px;
   align-self: flex-start;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-square);
   background: var(--demo-accent-bg);
   border: 1px solid var(--demo-accent);
   font-size: 0.8125rem;
@@ -1496,7 +1749,7 @@
 }
 
 .hash-demo-input-label {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.625rem;
@@ -1519,7 +1772,7 @@
   align-items: center;
   gap: 4px;
   padding: 10px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-square);
   border: 1px solid var(--color-stroke-neutral);
   background: var(--color-background-default);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -1549,19 +1802,19 @@
 }
 
 .hash-demo-pipe-arrow {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-size: 0.875rem;
   line-height: 1;
 }
 
 .hash-demo-pipe-raw {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-size: 0.625rem;
   letter-spacing: 0.04em;
 }
 
 .hash-demo-pipe-mod {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-size: 0.625rem;
 }
 
@@ -1572,7 +1825,7 @@
   min-width: 32px;
   height: 28px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-square-low);
   background: color-mix(in srgb, var(--color-foreground-ppg) 10%, transparent);
   color: var(--color-foreground-neutral);
   font-weight: 700;
@@ -1604,10 +1857,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-square-low);
   border: 1px solid var(--color-stroke-neutral);
   background: var(--color-background-default);
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.75rem;
   transition:
@@ -1643,11 +1896,11 @@
 
 /* ── Sequence diagram ───────────────────────────────────────────────── */
 .seq-diagram {
-  --seq-accent: #5fb878;
-  --seq-accent-bg: color-mix(in srgb, #5fb878 15%, transparent);
+  --seq-accent: var(--color-foreground-ppg);
+  --seq-accent-bg: color-mix(in srgb, var(--color-foreground-ppg) 15%, transparent);
   margin: 1.75rem 0;
   border: 1px solid var(--color-stroke-neutral);
-  border-radius: 10px;
+  border-radius: var(--radius-square-high);
   background: var(--color-background-default);
   padding: 12px 16px 16px;
   overflow-x: auto;
@@ -1711,12 +1964,15 @@
 /* Vector space demo (pgvector post) */
 
 .vector-demo {
-  --vector-accent: #5fb878;
-  --vector-query: #7c86ff;
+  /* Ranked points take the cyan accent; the draggable query marker takes
+     prism red so it stays the most salient thing on the plane and cannot be
+     confused with a result. (It was an off-brand indigo.) */
+  --vector-accent: var(--color-foreground-ppg);
+  --vector-query: var(--color-prism-red-500);
   container-type: inline-size;
   margin: 1.75rem 0;
   border: 1px solid var(--color-stroke-neutral);
-  border-radius: 10px;
+  border-radius: var(--radius-square-high);
   background: var(--color-background-default);
   overflow: hidden;
 }
@@ -1739,7 +1995,7 @@
 }
 
 .vector-demo-query {
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   font-size: 0.75rem;
 }
 
@@ -1776,7 +2032,7 @@
 }
 
 .vector-demo-axis-label {
-  fill: var(--color-foreground-muted);
+  fill: var(--color-foreground-neutral-weak);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 11px;
 }
@@ -1842,7 +2098,7 @@ g[data-top="true"] .vector-demo-point {
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
 }
 
 .vector-demo-ranking-list {
@@ -1861,7 +2117,7 @@ g[data-top="true"] .vector-demo-point {
   gap: 8px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 0.75rem;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
 }
 
 .vector-demo-rank[data-top="true"] {
@@ -1902,7 +2158,7 @@ g[data-top="true"] .vector-demo-point {
 
 .vector-demo-caption {
   font-size: 0.8125rem;
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground-neutral-weak);
   border-top: 1px solid var(--color-stroke-neutral);
   padding-top: 10px;
   margin-top: auto;

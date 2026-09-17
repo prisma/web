@@ -1,0 +1,67 @@
+---
+title: Caveats when deploying to AWS platforms
+description: Known caveats when deploying to an AWS platform
+url: /orm/v7/prisma-client/deployment/caveats-when-deploying-to-aws-platforms
+metaTitle: Caveats when deploying to AWS platforms
+metaDescription: Known caveats when deploying to an AWS platform
+---
+
+The following describes some caveats you might face when deploying to different AWS platforms.
+
+## AWS RDS Proxy
+
+Prisma ORM is compatible with AWS RDS Proxy. However, there is no benefit in using it for connection pooling with Prisma ORM due to the way RDS Proxy pins connections:
+
+> "Your connections to the proxy can enter a state known as pinning. When a connection is pinned, each later transaction uses the same underlying database connection until the session ends. Other client connections also can't reuse that database connection until the session ends. The session ends when Prisma Client's connection is dropped." - [AWS RDS Proxy Docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy-pinning.html)
+
+[Prepared statements (of any size) or query statements greater than 16 KB cause RDS Proxy to pin the session.](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/rds-proxy-pinning.html) Because Prisma ORM uses prepared statements for all queries, you won't see any benefit when using RDS Proxy with Prisma ORM.
+
+## AWS Elastic Beanstalk
+
+AWS Elastic Beanstalk is a PaaS-like deployment service that abstracts away infrastructure and allows you to deploy applications to AWS quickly.
+
+When deploying an app using Prisma Client to AWS Elastic Beanstalk, Prisma ORM generates the Prisma Client code into `node_modules`. This is typically done in a `postinstall` hook defined in a `package.json`.
+
+Because Beanstalk limits the ability to write to the filesystem in the `postinstall` hook, you need to create an [`.npmrc`](https://docs.npmjs.com/cli/v6/configuring-npm/npmrc/) file in the root of your project and add the following configuration:
+
+```yaml title=".npmrc" showLineNumbers
+unsafe-perm=true
+```
+
+Enabling `unsafe-perm` forces _npm_ to run as _root_, avoiding the filesystem access problem, thereby allowing the `prisma generate` command in the `postinstall` hook to generate your code.
+
+### Error: @prisma/client did not initialize yet
+
+This error happens because AWS Elastic Beanstalk doesn't install `devDependencies`, which means that it doesn't pick up the Prisma CLI. To remedy this you can either:
+
+1. Add the `prisma` CLI package to your `dependencies` instead of the `devDependencies`. (Making sure to run `npm install` afterward to update the `package-lock.json`).
+2. Or install your `devDependencies` on AWS Elastic Beanstalk instances. To do this you must set the AWS Elastic Beanstalk `NPM_USE_PRODUCTION` environment property to false.
+
+## AWS RDS Postgres
+
+When using Prisma ORM with AWS RDS Postgres, you may encounter connection issues or the following error during migration or runtime:
+
+```bash
+Error: P1010: User <username> was denied access on the database <database>
+```
+
+### Cause
+
+AWS RDS enforces SSL connections by default, and Prisma parses the database connection string with `rejectUnauthorized: true`, which requires a valid SSL certificate. If the certificate is not configured properly, Prisma cannot connect to the database.
+
+### Solution
+
+To resolve this issue, update the `DATABASE_URL` environment variable to include the `sslmode=no-verify` option. This bypasses strict SSL certificate verification and allows Prisma to connect to the database. Update your `.env` file as follows:
+
+```bash
+DATABASE_URL=postgresql://<username>:<password>@<host>/<database>?sslmode=no-verify&schema=public
+```
+
+### Why This Works
+
+The `sslmode=no-verify` setting passes `rejectUnauthorized: false` to the SSL configuration via the [pg-connection-string](https://github.com/brianc/node-postgres/blob/95d7e620ef8b51743b4cbca05dd3c3ce858ecea7/packages/pg-connection-string/README.md?plain=1#L71) package. This disables strict certificate validation, allowing Prisma to establish a connection with the RDS database.
+
+### Note
+
+While using `sslmode=no-verify` can be a quick fix, it bypasses SSL verification and might not meet security requirements for production environments. In such cases, ensure that a valid SSL certificate is properly configured.
+

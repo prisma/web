@@ -181,7 +181,7 @@ async function main() {
 
   const normalizedCollection = normalizeGeneratedCollection(collection);
 
-  const outputPath = join(cwd, "public/prisma-management-api.postman_collection.json");
+  const outputPath = join(cwd, "public/prisma-rest-api.postman_collection.json");
   await writeFile(outputPath, JSON.stringify(normalizedCollection), "utf-8");
   console.log(`Generated Postman collection: ${outputPath}`);
 }

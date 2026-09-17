@@ -1,0 +1,62 @@
+---
+title: Storage
+description: S3-compatible object-store buckets that live inside your Prisma project.
+url: /storage
+metaTitle: Storage | Prisma Object Store buckets
+metaDescription: Create S3-compatible object-store buckets in a Prisma project, mint bucket-scoped access keys, and use any S3 client or SDK to read and write objects.
+---
+
+Object Store buckets are S3-compatible file storage that lives inside a Prisma project, next to its Prisma Postgres databases and Compute apps. You manage buckets from the [Console](https://console.prisma.io), the [CLI](/cli/bucket), or the [REST API](/rest-api/endpoints/buckets/get-buckets); your app reads and writes objects with any S3 client or SDK.
+
+A bucket belongs to a project. At creation you can associate it with a branch (by branch ID or git branch name); omit both and it attaches to the project's default branch. Projects start with no buckets.
+
+## Names
+
+A bucket has two names:
+
+1. A display name you choose (1-100 characters, auto-generated when omitted). It appears in the Console, CLI, and API.
+2. A provider-assigned S3 bucket name, returned as `providerName` by the API and as `bucketName` with new access keys. This is the value S3 clients use. It is opaque and never derived from the display name.
+
+There is no rename: the API has no update endpoint for buckets.
+
+## Access keys
+
+Access is through bucket-scoped access keys. A key has a role, `read` or `read_write`; a write with a `read` key fails with `AccessDenied`. Keys are scoped to their bucket only: a leaked key cannot reach any other bucket.
+
+Creating a key returns everything an S3 client needs: `accessKeyId`, `secretAccessKey`, `endpoint`, and `bucketName`. The `secretAccessKey` is returned exactly once and never stored; copy it immediately. If you lose it, revoke the key and create a new one. Deleting a key revokes it immediately.
+
+Use the `endpoint` value returned with the key rather than hardcoding a host.
+
+## Using a bucket from your app
+
+Any S3 client or SDK works. On [Prisma Compute](/compute), Bun's built-in S3 client reads `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` from the environment, so uploads and presigned GET URLs work with no explicit client configuration. See [Object storage on Compute](/compute/object-storage) for a worked example, and [Object storage in Composer](/composer/object-storage) for the declarative `bucket()` resource with local stand-in buckets in `dev`. For using buckets during development, see [Local storage](/local-development/storage).
+
+## Managing buckets
+
+From the CLI (see the [`bucket` reference](/cli/bucket) for details):
+
+```npm
+npx prisma@latest bucket create --name my-bucket
+npx prisma@latest bucket key create <bucket-id>
+```
+
+| Command | Purpose |
+| --- | --- |
+| `bucket list` | List object-store buckets |
+| `bucket create` | Create a bucket (`--name` sets the display name) |
+| `bucket delete <bucket-id>` | Delete a bucket and all its access keys |
+| `bucket key list <bucket-id>` | List access keys for a bucket |
+| `bucket key create <bucket-id>` | Create an access key and print its one-time credentials |
+| `bucket key delete <bucket-id> <key-id>` | Revoke and delete an access key |
+
+The [REST API](/rest-api/endpoints/buckets/get-buckets) exposes the same operations: list, create, get, and delete buckets, and list, create, and delete access keys. Bucket creation is synchronous; the response comes back with `"status": "ready"`. The Prisma MCP server also carries bucket tools (`list_object_store_buckets`, `create_object_store_bucket`, `delete_object_store_bucket`, `create_object_store_bucket_key`, `delete_object_store_bucket_key`) for AI agents.
+
+In the Console, each bucket has a file browser with upload, download, and per-object delete, a keys page with a reveal-once credentials dialog, and a settings page for deletion with type-the-name confirmation.
+
+## Deleting a bucket
+
+Deleting a bucket permanently removes the bucket, all objects stored in it, and all its access keys in one call. It succeeds on a non-empty bucket and cannot be undone.
+
+## Pricing
+
+Bucket pricing and plan limits are not published yet.

@@ -3,16 +3,16 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
 const meetupWrapperClasses = [
-  "w-full rounded-lg p-8 mb-8 flex",
+  "w-full rounded-square-high border border-stroke-neutral p-8 mb-8 flex",
   "shadow-[0px_0px_2.4px_rgba(0,0,0,0.01),0px_1.51px_6.64px_rgba(0,0,0,0.02),0px_5.44px_15.98px_rgba(0,0,0,0.04),0px_22px_53px_rgba(0,0,0,0.07)]",
-  "[&>div>strong]:font-bold [&>div>strong]:text-xl [&>div>strong]:block [&>div>strong]:mb-1 [&>div>strong]:text-gray-800",
-  "[&>div>p]:text-gray-600 [&>div>p]:my-4 [&>div>p]:ml-4 [&>div>p]:list-item",
+  "[&>div>strong]:font-bold [&>div>strong]:text-xl [&>div>strong]:block [&>div>strong]:mb-1 [&>div>strong]:text-foreground-neutral-strong",
+  "[&>div>p]:text-foreground-neutral-weak [&>div>p]:my-4 [&>div>p]:ml-4 [&>div>p]:list-item",
 ].join(" ");
 
 const meetupListClasses = [
-  "w-full rounded-lg p-8 mb-8",
+  "w-full rounded-square-high border border-stroke-neutral p-8 mb-8",
   "shadow-[0px_0px_2.4px_rgba(0,0,0,0.01),0px_1.51px_6.64px_rgba(0,0,0,0.02),0px_5.44px_15.98px_rgba(0,0,0,0.04),0px_22px_53px_rgba(0,0,0,0.07)]",
-  "[&>div]:shadow-none [&>div]:border-b [&>div]:border-gray-200 [&>div]:p-0 [&>div]:mb-6 [&>div]:pb-6",
+  "[&>div]:shadow-none [&>div]:border-b [&>div]:border-stroke-neutral [&>div]:p-0 [&>div]:mb-6 [&>div]:pb-6",
   "[&>div:last-child]:mb-0 [&>div:last-child]:pb-0 [&>div:last-child]:border-b-0",
 ].join(" ");
 

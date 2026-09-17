@@ -44,7 +44,7 @@ export function AuthorAvatarGroup({
               <span key={profile.name}>
                 <Link
                   href={`/author/${slug}`}
-                  className="hover:text-fd-primary hover:underline"
+                  className="underline decoration-transparent underline-offset-4 transition-colors duration-300 hover:text-foreground-neutral-strong hover:decoration-prism-cyan-400 motion-reduce:transition-none"
                 >
                   {profile.name}
                 </Link>

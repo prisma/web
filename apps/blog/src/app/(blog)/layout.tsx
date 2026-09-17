@@ -1,6 +1,6 @@
-import { Footer } from "@prisma-docs/ui/components/footer";
 import { FooterNewsletterForm } from "@prisma-docs/ui/components/newsletter";
 import { ThemeProvider } from "@prisma-docs/ui/components/theme-provider";
+import { Footer } from "@/components/chrome/Footer";
 import { NavigationWrapper } from "@/components/navigation-wrapper";
 import { UtmPersistence } from "@/components/utm-persistence";
 import { withBlogBasePath } from "@/lib/url";
@@ -54,7 +54,7 @@ export function baseOptions() {
           },
           {
             text: "Prisma Partners",
-            url: "https://www.prisma.io/partners",
+            url: "https://www.prisma.io/programs/partners",
             icon: "fa-regular fa-lightbulb",
           },
           {
@@ -80,7 +80,7 @@ export function baseOptions() {
           },
           {
             text: "Customer stories",
-            url: "https://www.prisma.io/showcase",
+            url: "https://www.prisma.io/customers",
             icon: "fa-regular fa-users",
           },
           {
@@ -110,7 +110,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <NavigationWrapper links={baseOptions().links} />
       {children}
       <Footer
-        basePath="/blog"
         newsletterComponent={
           <FooterNewsletterForm stacked apiUrl={withBlogBasePath("/api/newsletter")} />
         }

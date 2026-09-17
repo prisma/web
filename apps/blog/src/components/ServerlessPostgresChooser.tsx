@@ -29,7 +29,8 @@ const tree: DecisionTreeData = {
       id: "free-neon",
       title: "Neon",
       why: "Each of up to 100 projects gets its own free 100 CU-hours and 0.5 GB per month, with scale-to-zero after 5 minutes idle.",
-      caveat: "First query after idle takes a few hundred milliseconds. Supabase's free tier also works if week-idle pausing is acceptable.",
+      caveat:
+        "First query after idle takes a few hundred milliseconds. Supabase's free tier also works if week-idle pausing is acceptable.",
     },
     {
       id: "backend",
@@ -43,14 +44,16 @@ const tree: DecisionTreeData = {
       id: "r-supabase",
       title: "Supabase",
       why: "The bundle is auth, storage, realtime and edge functions around Postgres, from $25/month with a Micro instance covered by credits.",
-      caveat: "The economics are instance-shaped: paid projects are always-on, and serverless behaviors are not what you are buying.",
+      caveat:
+        "The economics are instance-shaped: paid projects are always-on, and serverless behaviors are not what you are buying.",
     },
     {
       id: "ppg-platform",
       title: "Prisma Postgres + Compute",
       accent: true,
       why: "A different bundle: database, ORM, and TypeScript app hosting designed together, with one schema and one config, and the app deployed next to the database.",
-      caveat: "Prisma Compute is in public beta. Auth, storage, and realtime are not part of this bundle; that is Supabase's territory.",
+      caveat:
+        "Prisma Compute is in public beta. Auth, storage, and realtime are not part of this bundle; that is Supabase's territory.",
     },
     {
       id: "shape",
@@ -58,7 +61,10 @@ const tree: DecisionTreeData = {
       options: [
         { label: "Steady and high-throughput, rarely idle", next: "aws" },
         { label: "Real idle periods (nights, weekends, bursts)", next: "latency" },
-        { label: "A fleet of many small databases (per-tenant, per-user, per-agent)", next: ["fleet-ppg", "fleet-neon"] },
+        {
+          label: "A fleet of many small databases (per-tenant, per-user, per-agent)",
+          next: ["fleet-ppg", "fleet-neon"],
+        },
       ],
     },
     {
@@ -73,13 +79,15 @@ const tree: DecisionTreeData = {
       id: "r-aurora",
       title: "Aurora, sized for the load",
       why: "At sustained throughput you want dedicated capacity inside the ecosystem you already run: IAM, VPC peering, global databases.",
-      caveat: "Skip auto-pause for this workload shape; it is built for idle periods you do not have.",
+      caveat:
+        "Skip auto-pause for this workload shape; it is built for idle periods you do not have.",
     },
     {
       id: "r-planetscale",
       title: "PlanetScale",
       why: "Always-on dedicated clusters from $5/month (single node) or $50/month on Metal, prorated to the millisecond. At sustained load, paying for every hour beats metering.",
-      caveat: "There is no free tier and nothing scales to zero; a quiet month still bills the instance.",
+      caveat:
+        "There is no free tier and nothing scales to zero; a quiet month still bills the instance.",
     },
     {
       id: "latency",
@@ -93,7 +101,8 @@ const tree: DecisionTreeData = {
       id: "idle-neon",
       title: "Neon",
       why: "Scale-to-zero was built for exactly this: idle time costs storage only, and a few hundred milliseconds of wake-up is invisible to a cron job.",
-      caveat: "If the workload later becomes user-facing, revisit; cold starts stop being free when someone is watching.",
+      caveat:
+        "If the workload later becomes user-facing, revisit; cold starts stop being free when someone is watching.",
     },
     {
       id: "idle-aurora",
@@ -114,33 +123,38 @@ const tree: DecisionTreeData = {
       accent: true,
       title: "Prisma Postgres",
       why: "Operation-based billing fits this shape: the database is always ready (no cold starts, by our own architecture claim), idle time costs nothing extra, and up to about 10M queries a month stays inside the plan allowances ($10 covers 1M, $49 covers 10M).",
-      caveat: "Prisma publishes this guide, so hold this recommendation to the same skepticism as the rest. Past roughly 24M queries a month the guide's own worked example shows an always-on Neon compute becomes cheaper.",
+      caveat:
+        "Prisma publishes this guide, so hold this recommendation to the same skepticism as the rest. Past roughly 24M queries a month the guide's own worked example shows an always-on Neon compute becomes cheaper.",
     },
     {
       id: "x-alwayson",
       title: "An always-on instance",
       why: "Neon with auto-suspend disabled runs about $77/month per CU ($0.106 × 730 hours); PlanetScale starts at $5/month single node or $50/month Metal; paid Supabase is $25/month with a Micro covered.",
-      caveat: "No per-query component. The worked example in the pricing-models section shows the ~24M crossover against the $49 operations plan.",
+      caveat:
+        "No per-query component. The worked example in the pricing-models section shows the ~24M crossover against the $49 operations plan.",
     },
     {
       id: "x-ppg",
       title: "Prisma Postgres, higher tier",
       accent: true,
       why: "$1 per million operations at the top tier ($129/month with 50M included), always ready with no cold starts (our own claim).",
-      caveat: "Compare against the always-on options at your exact query count. Prisma publishes this guide.",
+      caveat:
+        "Compare against the always-on options at your exact query count. Prisma publishes this guide.",
     },
     {
       id: "fleet-ppg",
       accent: true,
       title: "Prisma Postgres",
       why: "Operations are metered account-wide across up to 1,000 databases on one plan, so a fleet of small databases shares one allowance.",
-      caveat: "Prisma publishes this guide; the account-wide metering claim is from our pricing page.",
+      caveat:
+        "Prisma publishes this guide; the account-wide metering claim is from our pricing page.",
     },
     {
       id: "fleet-neon",
       title: "Neon",
       why: "Per-project allowances stretch far for fleets of prototypes: each of up to 100 projects brings its own free 100 CU-hours a month.",
-      caveat: "This pattern is growing: Neon's telemetry had AI agents creating over 80% of databases on its platform as of May 2025.",
+      caveat:
+        "This pattern is growing: Neon's telemetry had AI agents creating over 80% of databases on its platform as of May 2025.",
     },
   ],
 };

@@ -1,0 +1,166 @@
+---
+title: Connection pool
+description: Prisma Client uses a connection pool (from the database driver or driver adapter) to store and manage database connections.
+url: /orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool
+metaDescription: Prisma ORM's query engine creates a connection pool to store and manage database connections.
+metaTitle: Connection pool
+---
+
+:::info[Quick summary]
+This page explains how Prisma ORM manages database connections using a connection pool, and how you can configure limits and timeouts for optimal performance.
+:::
+
+Prisma Client uses a **connection pool** of database connections (managed by the database driver when using [driver adapters](/orm/v7/core-concepts/supported-databases/database-drivers)). The pool is created when Prisma Client opens the _first_ connection to the database, which can happen in one of two ways:
+
+- By [explicitly calling `$connect()`](/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-management#connect) _or_
+- By running the first query, which calls `$connect()` under the hood
+
+Relational database connectors use Prisma ORM's own connection pool, and the MongoDB connectors uses the [MongoDB driver connection pool](https://github.com/mongodb/specifications/blob/master/source/connection-monitoring-and-pooling/connection-monitoring-and-pooling.rst).
+
+<details>
+<summary>Questions answered in this page</summary>
+
+- How do I size Prisma's connection pool?
+- How do I set pool timeouts and limits?
+- When should I use PgBouncer with Prisma?
+
+</details>
+
+## Relational databases
+
+Starting with Prisma ORM v7, relational datasources instantiate Prisma Client with [driver adapters](/orm/v7/core-concepts/supported-databases/database-drivers) by default. Driver adapters rely on the Node.js driver you supply, so connection pooling defaults (and configuration) now come from the driver itself.
+
+Use the tables below to translate Prisma ORM v6 connection URL parameters to the Prisma ORM v7 driver adapter fields alongside their defaults.
+
+### Prisma ORM v7 driver adapter defaults
+
+The following tables document the default connection pool settings for each driver adapter.
+
+:::tip[Prisma timeouts]
+
+Prisma ORM also has its own configurable timeouts that are separate from the database driver timeouts. If you see a timeout error and are unsure whether it comes from the driver or from Prisma Client, see the [Prisma Client timeouts and transaction options documentation](/orm/v7/prisma-client/queries/transactions#transaction-isolation-level).
+
+:::
+
+#### PostgreSQL (using the `pg` driver adapter)
+
+Here are the default connection pool settings for the `pg` driver adapter:
+
+| Behavior            | v6 URL parameter               | v6 default                         | v7 `pg` config field      | v7 default       |
+| ------------------- | ------------------------------ | ---------------------------------- | ------------------------- | ---------------- |
+| Pool size           | `connection_limit`             | `num_cpus::get_physical() * 2 + 1` | `max`                     | `10`             |
+| Acquire timeout     | `pool_timeout`                 | `10s`                              | `connectionTimeoutMillis` | `0` (no timeout) |
+| Connection timeout  | `connect_timeout`              | `5s`                               | `connectionTimeoutMillis` | `0` (no timeout) |
+| Idle timeout        | `max_idle_connection_lifetime` | `300s`                             | `idleTimeoutMillis`       | `10s`            |
+| Connection lifetime | `max_connection_lifetime`      | `0` (no timeout)                   | `maxLifetimeSeconds`      | `0` (no timeout) |
+
+<details>
+<summary>Example: Matching Prisma ORM v6 defaults with the `pg` driver adapter</summary>
+
+If you want to preserve the same timeout behavior you had in Prisma ORM v6, pass the following configuration when instantiating the driver adapter:
+
+```ts
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+  // Match Prisma ORM v6 defaults:
+  connectionTimeoutMillis: 5_000, // v6 connect_timeout was 5s
+  idleTimeoutMillis: 300_000, // v6 max_idle_connection_lifetime was 300s
+});
+```
+
+</details>
+
+:::tip
+See the [node-postgres pool documentation](https://node-postgres.com/apis/pool) for details on every available option.
+:::
+
+#### MySQL or MariaDB (using the `mariadb` driver)
+
+Here are the default connection pool settings for the `mariadb` driver adapter:
+
+| Behavior           | v6 URL parameter               | v6 default                         | v7 `mariadb` config field | v7 default |
+| ------------------ | ------------------------------ | ---------------------------------- | ------------------------- | ---------- |
+| Pool size          | `connection_limit`             | `num_cpus::get_physical() * 2 + 1` | `connectionLimit`         | `10`       |
+| Acquire timeout    | `pool_timeout`                 | `10s`                              | `acquireTimeout`          | `10s`      |
+| Connection timeout | `connect_timeout`              | `5s`                               | `connectTimeout`          | `1s`       |
+| Idle timeout       | `max_idle_connection_lifetime` | `300s`                             | `idleTimeout`             | `1800s`    |
+
+<details>
+<summary>Example: Matching Prisma ORM v6 defaults with the `mariadb` driver adapter</summary>
+
+If you want to preserve the same timeout behavior you had in Prisma ORM v6, pass the following configuration when instantiating the driver adapter:
+
+```ts
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+
+const adapter = new PrismaMariaDb({
+  host: "localhost",
+  port: 3306,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  // Match Prisma ORM v6 defaults:
+  connectTimeout: 5_000, // v6 connect_timeout was 5s
+  idleTimeout: 300, // v6 max_idle_connection_lifetime was 300s (note: in seconds, not ms)
+});
+```
+
+</details>
+
+:::tip
+Refer to the [MariaDB Connector/Node.js pool options](https://mariadb.com/docs/connectors/mariadb-connector-nodejs/connector-nodejs-promise-api#pool-options) for configuration and tuning guidance.
+:::
+
+#### SQL Server (using the `mssql` driver)
+
+Here are the default connection pool settings for the `mssql` driver adapter:
+
+| Behavior           | v6 URL parameter               | v6 default                         | v7 `mssql` config field  | v7 default |
+| ------------------ | ------------------------------ | ---------------------------------- | ------------------------ | ---------- |
+| Pool size          | `connection_limit`             | `num_cpus::get_physical() * 2 + 1` | `pool.max`               | `10`       |
+| Connection timeout | `connect_timeout`              | `5s`                               | `connectionTimeout`      | `15s`      |
+| Idle timeout       | `max_idle_connection_lifetime` | `300s`                             | `pool.idleTimeoutMillis` | `30s`      |
+
+<details>
+<summary>Example: Matching Prisma ORM v6 defaults with the `mssql` driver adapter</summary>
+
+If you want to preserve the same timeout behavior you had in Prisma ORM v6, pass the following configuration when instantiating the driver adapter:
+
+```ts
+import { PrismaMssql } from "@prisma/adapter-mssql";
+
+const adapter = new PrismaMssql({
+  server: "localhost",
+  port: 1433,
+  database: "mydb",
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  // Match Prisma ORM v6 defaults:
+  connectionTimeout: 5_000, // v6 connect_timeout was 5s
+  pool: {
+    idleTimeoutMillis: 300_000, // v6 max_idle_connection_lifetime was 300s
+  },
+});
+```
+
+</details>
+
+:::tip
+See the [`node-mssql` pool docs](https://tediousjs.github.io/node-mssql/#general-same-for-all-drivers) for details on these fields.
+:::
+
+## MongoDB
+
+The MongoDB connector does not use the Prisma ORM connection pool. The connection pool is managed internally by the MongoDB driver and [configured via connection string parameters](https://www.mongodb.com/docs/manual/reference/connection-string-options/#connection-pool-options).
+
+## External connection poolers
+
+The pool size cannot exceed what the underlying database can support. Configure pool size and timeouts via your [driver adapter](/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool) (see the tables above). This is a particular challenge in serverless environments, where each function manages an instance of `PrismaClient` and its own connection pool.
+
+Consider introducing [an external connection pooler like PgBouncer](/orm/v7/prisma-client/setup-and-configuration/databases-connections#pgbouncer) to prevent your application or functions from exhausting the database connection limit.
+
+## Manual database connection handling
+
+When using Prisma Client with a driver adapter, database connections are managed by the driver and its pool. They are not exposed to the developer and it is not possible to manually access individual connections.

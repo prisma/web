@@ -39,6 +39,7 @@ export const CopyChat = ({ messages }: CopyChatProps) => {
         render={(props) => (
           <button
             {...props}
+            aria-label="Copy chat"
             disabled={messages.length === 0}
             onClick={handleCopyChat}
             className={cn(

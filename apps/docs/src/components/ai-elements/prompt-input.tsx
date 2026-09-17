@@ -80,7 +80,7 @@ export const PromptInput = forwardRef<HTMLTextAreaElement, PromptInputProps>(
 
     return (
       <form onSubmit={handleSubmit} className={cn("relative", className)} {...props}>
-        <InputGroup className="bg-fd-card">
+        <InputGroup className="bg-fd-card rounded-(--radius-square-high) border-stroke-neutral">
           <InputGroupTextarea
             ref={textareaRef}
             value={value}

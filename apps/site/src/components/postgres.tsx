@@ -2,13 +2,7 @@
 
 import Image from "next/image";
 import parse from "html-react-parser";
-import {
-  CodeBlock,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@prisma/eclipse";
+import { CodeBlock, Tabs, TabsList, TabsTrigger, TabsContent } from "@prisma/eclipse";
 
 type HowSectionData = {
   tabs?: {
@@ -54,9 +48,7 @@ export function PostgresTabs({ data }: { data: HowSectionData }) {
                     <div className="bg-[linear-gradient(0deg,var(--color-background-success)_0%,var(--color-background-default)_100%)] opacity-20 absolute inset-0 z-0 pointer-events-none" />
                     <div className="flex flex-col md:flex-row justify-between items-center gap-8 md:gap-10">
                       <div className="relative z-1 flex flex-col gap-4 md:gap-6 md:max-w-120 w-full text-center md:text-left">
-                        <h2 className=" text-foreground-neutral type-heading-xl">
-                          {body.title}
-                        </h2>
+                        <h2 className=" text-foreground-neutral type-heading-xl">{body.title}</h2>
                         <p className="text-foreground-neutral-weak text-base">
                           {parse(body.content)}
                         </p>

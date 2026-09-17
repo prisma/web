@@ -98,7 +98,7 @@ export const metadata = createPageMetadata({
   description:
     "Build high-performance and type-safe Express servers with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
   path: "/express",
-  ogImage: "/og/prisma-with/express.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function ExpressPage() {

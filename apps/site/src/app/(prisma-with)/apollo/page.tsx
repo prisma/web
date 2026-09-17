@@ -109,7 +109,7 @@ export const metadata = createPageMetadata({
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases in GraphQL with Prisma – a better ORM for JavaScript and TypeScript.",
   path: "/apollo",
-  ogImage: "/og/prisma-with/apollo.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function ApolloPage() {

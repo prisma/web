@@ -13,7 +13,7 @@ type SnapshotCase = {
 const snapshots: SnapshotCase[] = [
   {
     name: "APIPage",
-    input: `<APIPage document={"management-api"} operations={[{"path":"/v1/example","method":"get"}]} />`,
+    input: `<APIPage document={"rest-api"} operations={[{"path":"/v1/example","method":"get"}]} />`,
     expected: `## API reference
 
 ### GET /v1/example

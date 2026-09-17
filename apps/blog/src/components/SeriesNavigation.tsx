@@ -8,7 +8,7 @@ export function SeriesNavigation({ series }: { series: SeriesContext }) {
     <nav aria-label="Series navigation" className="grid gap-6 sm:grid-cols-2 my-12">
       {series.prev ? (
         <div>
-          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak mb-2">
+          <div className="type-heading-2xs mb-3 text-foreground-neutral-weak">
             ← Previous in series
           </div>
           <PostCard post={series.prev} currentCategory="show-all" vertical />
@@ -18,7 +18,7 @@ export function SeriesNavigation({ series }: { series: SeriesContext }) {
       )}
       {series.next ? (
         <div>
-          <div className="text-xs uppercase tracking-wide text-foreground-neutral-weak mb-2 sm:text-right">
+          <div className="type-heading-2xs mb-3 text-foreground-neutral-weak sm:text-right">
             Next in series →
           </div>
           <PostCard post={series.next} currentCategory="show-all" vertical />
