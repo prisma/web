@@ -1,16 +1,22 @@
 ---
 title: 'Built-in: budgets'
-description: The budgets middleware caps row counts and makes over-latency queries visible.
+description: The budgets middleware caps row counts and reports queries that took too long.
 url: /orm/middleware/built-in-budgets
 metaTitle: 'Prisma ORM built-in middleware: budgets'
 metaDescription: 'Wire and configure the budgets middleware in Prisma ORM to cap row counts, report query latency, and understand the errors it raises.'
 ---
 
-The `budgets` middleware stops one careless query from reading far more of your data, or taking far more time, than you meant to give it. You give it a row limit and a time limit, and it checks every query you send against both. It checks the row limit twice, first by estimating how many rows the query could return before the query runs, and then by counting the rows as the database sends them back, because an estimate made from the query text alone can be too optimistic. It checks the time limit once the query has finished, so the time limit tells you a query was slow rather than stopping it.
+The `budgets` middleware stops one careless query from reading far more of your data, or taking far more time, than you meant to give it. You give it a row limit and a time limit, and it checks every query you send against both. The row limit is checked twice: once before the query runs, from an estimate of how many rows it could return, and once while the rows come back, from the real count. The estimate is worked out from the query alone, so it can be wrong, and the second check catches what the first one misses. The time limit is checked after the query has finished, which means it tells you a query was slow rather than stopping it.
 
-Before you register it, know that `budgets` rejects any `SELECT` that has no `LIMIT` on it, however few rows the table holds. On the ORM API that is every `.all()` call with no `.limit(...)` in front of it, so those calls start throwing the moment you add `budgets` to your client and you should expect to add limits across your app. A `.first(...)` call is fine, because it asks the database for one row.
+Before you register it, know that `budgets` rejects any `SELECT` that has no `LIMIT` on it, however few rows the table holds. If you write your queries with the ORM API (`db.orm.public.User...`, where `public` is the PostgreSQL schema your tables are in), that means every `.all()` call with no `.limit(...)` earlier in the chain. A `.first(...)` call is fine, because it asks the database for one row.
 
-Register it where you create your client, with the row and time limits you want to enforce:
+Those `.all()` calls start throwing the moment you add `budgets` to your client, and there is no warn-only setting to ease the change in, so find them and give them limits before you turn `budgets` on. Searching your source for the call is enough to get the list:
+
+```bash
+grep -rn "\.all()" src
+```
+
+Register `budgets` where you create your client, with the row and time limits you want to enforce. The `contract.json` and `contract.d.ts` files it imports come from your own project:
 
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
@@ -32,11 +38,13 @@ export const db = postgres<Contract>({
 });
 ```
 
-This is the `src/prisma/db.ts` that `create-prisma` generates, with the `middleware` option added. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
+This is the `src/prisma/db.ts` that `create-prisma` generates, with the `middleware` option added. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from. `family-runtime` is the part of the package shared by every SQL database (Prisma ORM calls the SQL databases one family and MongoDB the other), and it is where the built-in middleware comes from.
 
-`maxRows`, `defaultTableRows`, and `maxLatencyMs` are written out at their default values above, so that the example shows you where each one goes. Choose your own from what a single query in your app has any business doing, because `maxRows` and `maxLatencyMs` are the ceilings you want a mistake to hit. The numbers in `tableRows` are different: they are your own estimate of how many rows each table really holds, so a `post` table with two million rows in it is written `tableRows: { post: 2_000_000 }`.
+`maxRows`, `defaultTableRows`, and `maxLatencyMs` are written out at their default values above, so that the example shows you where each one goes. Set `maxRows` and `maxLatencyMs` to the largest number of rows and the longest time any single query in your app should ever need, because they are there to catch mistakes rather than to tune anything.
 
-`budgets` works with SQL databases only, so you register it on a PostgreSQL client and a MongoDB client refuses it. You import it from `@prisma/orm-postgres/family-runtime`, which arrives with `@prisma/orm-postgres`, so there is nothing extra to install.
+The numbers in `tableRows` are a different kind of number: they are your own estimate of how many rows each table really holds, so a `post` table with two million rows in it is written `tableRows: { post: 2_000_000 }`. Each key is a table name as it is in the database, which is the model name with a lowercase first letter unless you set `@@map` on the model, so the model `User` is keyed `user` and not `User` or `public.User`. A key that matches no table name is never looked up, so a table you spelled differently is one `budgets` falls back to `defaultTableRows` for, with nothing to tell you.
+
+`budgets` works with SQL databases only, so you register it on a PostgreSQL client. Passing it to a MongoDB client throws an error whose `code` is `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` the first time that client is used, before any query of yours runs, and there is no MongoDB version of `budgets` to use instead. You import it from `@prisma/orm-postgres/family-runtime`, which arrives with `@prisma/orm-postgres`, so there is nothing extra to install.
 
 ## Options
 
@@ -48,24 +56,26 @@ Every option is optional, and the default in the table applies when you leave on
 | `defaultTableRows` | `number` | `10_000` | How many rows to assume a table has when it is not listed in `tableRows` |
 | `tableRows` | `Record<string, number>` | `{}` | How many rows to assume each table has, keyed by table name |
 | `maxLatencyMs` | `number` | `1_000` | The longest one query may take, in milliseconds |
-| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether going over the row budget throws or only logs a warning |
-| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Whether going over the time budget throws or only logs a warning |
+| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Nothing on a client you build with `postgres(...)`, where going over the row budget always throws |
+| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Nothing on a client you build with `postgres(...)`, where going over the time budget always throws |
 
 The two `severities` entries are the one option with a nested shape, and you write them together in a single object: `budgets({ maxRows: 10_000, severities: { rowCount: 'warn', latency: 'error' } })`.
 
-Setting them changes nothing on PostgreSQL, though, because when you create your client with `postgres(...)` a budget violation always throws. The `severities` options only take effect on a client that runs in permissive mode, and `postgres(...)` does not offer that, so read both severity rows above as `'error'` and expect an error every time either budget is exceeded. That applies to the time budget too: a query that runs longer than `maxLatencyMs` throws an error whose `code` is `BUDGET.TIME_EXCEEDED`, even though the table gives `severities.latency` a default of `'warn'`.
+A severity is read only by a client running in permissive mode, which is the mode where a `'warn'` finding is logged instead of thrown, and `postgres(...)` has no option that turns it on. So on PostgreSQL, whatever you pass for `severities` is ignored and both budgets behave as `'error'`: a query over `maxRows` throws an error whose `code` is `BUDGET.ROWS_EXCEEDED`, and a query that runs longer than `maxLatencyMs` throws an error whose `code` is `BUDGET.TIME_EXCEEDED`, even though the table gives `severities.latency` a default of `'warn'`. There is no way today to run `budgets` in a mode where it only warns you.
 
 ## How it enforces the budget
 
-`budgets` looks at every query you send three times, from the moment you send it to the moment it finishes:
+A query is checked before it is sent, again as its rows arrive, and once more when it is done:
 
-1. **Before the query runs**, `budgets` reads the query and works out how many rows it could return. A `SELECT` with no `LIMIT` on it is over budget on its own, whatever `maxRows` says, unless the query can only ever produce a single row, which is the case for an aggregate such as a count with no `GROUP BY`. When the query does have a limit, `budgets` compares that limit against the size you gave for the table it reads, in `tableRows` or in `defaultTableRows` when the table is not listed, and takes the smaller of the two as its estimate. The query is over budget when that estimate is above `maxRows`. Either way you get an error whose `code` is `BUDGET.ROWS_EXCEEDED` before the database is asked to do anything.
-2. **While the rows come back**, `budgets` counts the rows the database really returns, so a query that got past the estimate is still caught. As soon as that count passes `maxRows` it throws an error whose `code` is `BUDGET.ROWS_EXCEEDED` and stops reading the rest of the rows.
-3. **After the query finishes**, `budgets` compares how long the query took against `maxLatencyMs` and reports an error whose `code` is `BUDGET.TIME_EXCEEDED` when it ran too long. The database has already done the work by the time this check runs, so it cannot save the slow query. It is there to make slow queries loud instead of invisible.
+1. **Before the query runs**, `budgets` reads the query and works out how many rows it could return. A `SELECT` with no `LIMIT` on it is over budget on its own, whatever `maxRows` says and however small the table is, unless the query can only ever produce a single row, which is the case for an aggregate such as a count with no `GROUP BY`. When the query does have a limit, `budgets` compares that limit against the size you gave for the table in the query's `FROM` clause, in `tableRows` or in `defaultTableRows` when that table is not listed, and takes the smaller of the two as its estimate. A query with a limit is over budget when that estimate is greater than `maxRows`, so an estimate of exactly `maxRows` passes. Either way you get an error whose `code` is `BUDGET.ROWS_EXCEEDED` before the database is asked to do anything.
+2. **While the rows come back**, `budgets` counts the rows the database really returns, so a query that got past the estimate is still caught. As soon as that count passes `maxRows` it throws an error whose `code` is `BUDGET.ROWS_EXCEEDED` and stops reading the rest of the rows. The rows it read before that point are dropped rather than returned to you, so a query stopped here gives you an error and no data.
+3. **After the query finishes**, `budgets` compares how long the query took against `maxLatencyMs` and reports an error whose `code` is `BUDGET.TIME_EXCEEDED` when it ran too long. The database has already done the work by the time this check runs, so it cannot save the slow query, and you do not get the rows it returned either: the `await` in your code rejects with the error and the rows are dropped. The check is there to make slow queries loud instead of invisible.
+
+Only the table in the query's `FROM` clause is looked up in `tableRows`. When a query joins another table, that joined table's size is ignored, so the estimate is based on the `FROM` table alone. An `.include(...)` read is a different case, because it runs more than one query, and each of those queries is checked on its own.
 
 ## What you see when a budget trips
 
-When `budgets` blocks a query, the call you were awaiting rejects with an ordinary `Error` that has a `code` property saying which budget was exceeded and a `details` property with the numbers it measured. If you do not catch it, a `SELECT` with no `LIMIT` and `maxRows` at `10_000` prints this, where "unbounded" in the message is the error's own word for a query with no `LIMIT`:
+When `budgets` blocks a query, the call you were awaiting rejects with an ordinary `Error` that has a `code` property saying which budget was exceeded and a `details` property with the numbers it measured. Its `name` is set to `RuntimeError`, which is why Node prints it as `Error [RuntimeError]` below, but there is no special error class behind that name. If you do not catch it, a `SELECT` with no `LIMIT` and `maxRows` at `10_000` prints this, where "unbounded" in the message is the error's own word for a query with no `LIMIT`:
 
 ```text title="Row budget error" no-copy
 Error [RuntimeError]: Unbounded SELECT query exceeds budget
@@ -77,9 +87,11 @@ Error [RuntimeError]: Unbounded SELECT query exceeds budget
 }
 ```
 
-The `source` field is how you tell which of the two row checks stopped the query: `'ast'` means the check before the query ran, and `'observed'` means the database really did return that many rows. `estimatedRows` is there only when the estimate was at or above `maxRows`, so a query with no `LIMIT` against a table you said was small is rejected with the two fields `{ source: 'ast', maxRows: 10000 }` and no `estimatedRows` at all.
+The `source` field tells you which of the two row checks stopped the query. `'ast'` is the check before the query ran, named after the AST, the abstract syntax tree, which is the query as a tree of typed objects and is what that check reads. `'observed'` means the database really did return that many rows. What you do about it is the same either way, which is to give the query a limit, but `'observed'` is also a sign that the table is much bigger than the number you gave for it in `tableRows`.
 
-When a slow query blocks, the error gives you both numbers, the time the query took and the time you allowed:
+`estimatedRows` is not always in `details`. On a query with no `LIMIT`, `budgets` adds it only when the estimate reached `maxRows`, so a query with no `LIMIT` against a table you listed as smaller than `maxRows` is rejected with only `{ source: 'ast', maxRows: 10000 }`. That query is still rejected, because a missing `LIMIT` is over budget whatever the estimate says.
+
+When a query runs longer than `maxLatencyMs`, the error gives you both numbers, the time the query took and the time you allowed:
 
 ```text title="Latency budget error" no-copy
 Error [RuntimeError]: Query latency exceeds budget
@@ -104,13 +116,30 @@ try {
 }
 ```
 
-Most of the time the fix is to give the query a limit, with [`limit(...)` on the ORM API](/orm/fundamentals/reading-data#sort-and-paginate) or `.limit(...)` on the SQL query builder. When the query is right and the budget is too low, raise `maxRows`, but that raises it for every query on that client, because `budgets` is an option of the client and no query can opt out of it. So for a job that genuinely has to read millions of rows, such as a nightly export, build a second client from the same contract with `budgets` left out of its `middleware` array and run the job against that client.
+Most of the time the fix is to give the query a limit, with [`limit(...)` on the ORM API](/orm/fundamentals/reading-data#sort-and-paginate) or `.limit(...)` on the SQL query builder, the lower-level API where you build the query yourself and run it on `db.runtime()`. When the query is right and the budget is too low, raise `maxRows`, but that raises it for every query on that client, because `budgets` is an option of the client and no query can opt out of it.
+
+So for a job that genuinely has to read millions of rows, such as a nightly export, build a second client from the same contract and leave `budgets` out of it:
+
+```ts title="scripts/export/db.ts"
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from '../../src/prisma/contract.d';
+import contractJson from '../../src/prisma/contract.json' with { type: 'json' };
+
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+});
+```
+
+Run the export against that `db` and leave the rest of your app on the client that has `budgets`. Each `postgres(...)` call opens its own connection pool, so while the job runs you have a second pool open alongside your app's.
 
 ## Common gotchas
 
 :::warning
 
-The check that runs before your query never asks the database how big your tables are. It only knows the numbers you gave it in `tableRows` and `defaultTableRows`, so when your real tables are much larger than those numbers, a query can get past that first check and then fail part way through reading rows, once the rows the database returns pass `maxRows`. What matters about each number is which side of `maxRows` it falls on, so with `maxRows` at `10_000`, a table you listed at 5,000 rows that really holds 8,000 changes nothing, while one you listed at 5,000 that really holds 5 million changes everything. Revisit `tableRows` when a table you query grows ten times larger.
+The check that runs before your query never asks the database how big your tables are. It only knows the numbers you gave it in `tableRows` and `defaultTableRows`, so when your real tables are much larger than those numbers, a query can get past that first check and then fail part way through reading rows, once the rows the database returns pass `maxRows`.
+
+Say `maxRows` is `10_000` and you listed `user` at 5,000 rows. A query with `.limit(50_000)` on it is estimated at 5,000 rows, because `budgets` takes the smaller of your limit and your table size, so it passes the first check. If the table really holds 8,000 rows, nothing goes wrong: the database returns 8,000 rows and the count stays under `maxRows`. If the table really holds 5 million rows, the database starts sending 50,000 of them and the count check throws at row 10,001, part way through your read. Revisit `tableRows` when a table you query grows ten times larger.
 
 :::
 
