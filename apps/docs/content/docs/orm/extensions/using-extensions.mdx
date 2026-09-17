@@ -6,11 +6,11 @@ metaTitle: Using extensions in Prisma ORM
 metaDescription: 'Add an extension to a Prisma ORM project, from install to first query, and browse the catalog of available extensions such as pgvector, PostGIS, and ParadeDB.'
 ---
 
-An extension is a package that teaches Prisma ORM a database feature it does not know out of the box. Installing one gives you new column types to declare, new query operations to call, and in some extensions new index types, along with the migrations that install the feature in the database itself. Vector search, geospatial data, full-text search, typed JSON, and provider-specific integrations all reach your project this way.
+An extension is a package that teaches Prisma ORM a database feature it does not know out of the box. Installing one gives you new column types to declare and new query operations to call, along with the migrations that install the feature in the database itself. Vector search, geospatial data, full-text search, typed JSON, and provider-specific integrations all reach your project this way.
 
 Reach for an extension when your application needs one of those database features and you still want everything Prisma ORM gives you for the rest of your data: typed schema declarations, generated TypeScript, migration support, and query helpers.
 
-Your contract is the Prisma ORM 8 name for your schema: `contract.prisma` in a generated project, in place of `schema.prisma`. `npx prisma contract emit` writes `contract.json` and `contract.d.ts` from it, and those two files are what `db.ts` imports. [The data contract](/orm/contract-authoring/the-data-contract) covers what goes in it.
+Your contract is the Prisma ORM 8 name for your schema: `contract.prisma` in a project made with `npm create prisma@latest`, in place of `schema.prisma`. It is the same file under a new name, and you still describe your models in it. `npx prisma contract emit` writes `contract.json` and `contract.d.ts` from it, and those two files are what `db.ts` imports. [The data contract](/orm/contract-authoring/the-data-contract) covers what goes in it.
 
 Adding an extension means installing its package and then registering it in two places, your config file and your client. These steps use pgvector, the vector search extension, as the example, and they assume a PostgreSQL project from the [quickstart](/prisma-orm/quickstart/postgresql), so `@prisma/orm-postgres` is already installed and the extension package is added next to it. Supabase is set up differently, so if that is the extension you are adding, read [the note under the catalog](#available-extensions) first.
 
@@ -22,7 +22,7 @@ npm install @prisma/orm-extension-pgvector
 
 ## 2. Register it in the config
 
-Add the extension to the `extensions` array in your config file. The `prisma` command line tools read `prisma.config.ts` on every run, so listing the extension here is what lets `npx prisma contract emit` generate types for the extension's columns, and what lets the migration commands run the SQL the extension ships.
+Add the extension to the `extensions` array in your config file.
 
 ```ts title="prisma.config.ts"
 import { definePrismaConfig } from 'prisma/config';
@@ -40,11 +40,13 @@ export default definePrismaConfig({
 });
 ```
 
-The database package is the one you build on: `@prisma/orm-postgres` is what provides `ormConfig(...)` for the config and `postgres(...)` for the client. Every other extension, pgvector here, is passed to those two calls in their `extensions` array. Extensions publish separate entry points for the two, and `control` is the one the command line tools import, which is why the config file imports `@prisma/orm-extension-pgvector/control`.
+The database package is the one you build on: `@prisma/orm-postgres` is what provides `ormConfig(...)` for the config and `postgres(...)` for the client. Every other extension, pgvector here, is passed to those two calls in their `extensions` array. `ormConfig` is a rename: `@prisma/orm-postgres` exports that function as `defineConfig`, and the import above renames it so that it is not mistaken for `definePrismaConfig` from `prisma/config`. The name is yours to choose.
+
+An extension package has two entry points, and which one you import depends on which file you are in. `control` is the entry point the `prisma` command line tools read, so that is the one `prisma.config.ts` imports. `runtime` is the entry point your application code reads, so that is the one `db.ts` imports in the next step.
 
 ## 3. Register it on the client
 
-Add the extension to the `extensions` array on the client as well, which is what gives the `db` object you write queries against the extension's query operations and value types. Your application imports the `runtime` entry point rather than `control`.
+Add the extension to the `extensions` array on the client as well, which is what gives the `db` object you write queries against the extension's query operations and value types.
 
 ```ts title="src/prisma/db.ts"
 import pgvector from '@prisma/orm-extension-pgvector/runtime';
@@ -59,7 +61,7 @@ export const db = postgres<Contract>({
 });
 ```
 
-A project made with `npm create prisma@latest` already has `contract.json` and `contract.d.ts` from the scaffold, so these two imports resolve as soon as you write them. They describe your schema as it was before you edit it, and `npx prisma contract emit` in step 5 brings them up to date.
+The `'./contract.d'` in that import is not a typo: it is how you import `contract.d.ts`, one of the two files `npx prisma contract emit` writes.
 
 ## 4. Use the new type in your schema
 
@@ -79,11 +81,13 @@ model Post {
 
 ## 5. Apply and query
 
-Run `npx prisma contract emit` first, so that `contract.json` and `contract.d.ts` pick up the new column. Then run `npx prisma db init` on a new database, or `npx prisma db update` if the database already exists. Run `contract emit` again after every later edit to `contract.prisma`, because the migration commands read `contract.json` rather than the `.prisma` file.
+Getting the new column from your contract into your database takes these commands, in this order:
 
-`db init` reports a contract-space layout violation when the extension's own migration has not been written to disk yet. Run `npx prisma migration plan` once to write it under `migrations/pgvector/`, then run `npx prisma db init` again. That directory is part of your project's migrations, so commit it with the rest of `migrations/`.
+1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. Run it again after every later change to `contract.prisma`, because the migration commands read `contract.json` rather than the `.prisma` file.
+2. `npx prisma migration plan`, which writes the extension's own migration under `migrations/pgvector/`. That directory is part of your project's migrations, so commit it with the rest of `migrations/`. Until it exists, the next command stops with an error whose `code` is `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION`.
+3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables. This runs the extension's migration, which is the `CREATE EXTENSION IF NOT EXISTS vector` statement, and creates the `post` table.
 
-The extension ships the migration that runs `CREATE EXTENSION IF NOT EXISTS vector`, so you do not write that yourself, but the PostgreSQL server has to have pgvector available for it to succeed. The local development server the quickstart sets up has it. A stock PostgreSQL image may not, and then the migration fails on that statement.
+You never write that `CREATE EXTENSION` statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. The local development server the quickstart sets up has it. A stock PostgreSQL image may not, and then the migration fails on that statement.
 
 With the column in your database, write an embedding into it. A vector value is a plain `number[]` with as many entries as the column's dimension, so a column typed `Embedding1536` takes an array of 1536 numbers, which is what an embedding model gives you. Prisma ORM does not produce the numbers, and `embed` in this example stands for whichever model you call:
 
@@ -92,7 +96,7 @@ const embedding: number[] = await embed('about cats');
 await db.orm.public.Post.create({ title: 'about cats', embedding });
 ```
 
-Searching for the rows closest to a query vector uses the operations the extension adds. The query vector is a `number[]` of the same length as the stored embeddings:
+Searching for the rows closest to a query vector uses the operations the extension adds, and you write that search with the SQL query builder rather than with `db.orm`. `db.orm.public.Post` is the model, so it uses the name from your contract, and `db.sql.public.post` is the table, so it uses the name as it is in the database. `db.orm` is the ORM API, `db.sql` is the [SQL query builder](/orm/fundamentals/advanced-queries), and `db.runtime()` is what runs a built query. The query vector is a `number[]` of the same length as the stored embeddings:
 
 ```ts title="src/prisma/similarity-search.ts"
 export async function similaritySearch(queryVector: number[]) {
@@ -107,19 +111,19 @@ export async function similaritySearch(queryVector: number[]) {
 }
 ```
 
-`db.sql.public.post` is the `post` table in the PostgreSQL schema `public`, addressed through the SQL query builder described in [Advanced queries](/orm/fundamentals/advanced-queries). `.build()` returns the query as a plain object, and `db.runtime().query(plan)` runs it and returns the rows.
+In the callback, `f` holds the row's columns and `fns` holds the functions you can call on them, including the ones pgvector adds. `.select('distance', ...)` names the computed column `distance`. `.build()` returns the query as a plain object, and `db.runtime().query(plan)` runs it and returns the rows.
 
-Alongside `fns.cosineDistance`, pgvector gives you `fns.cosineSimilarity`. Both take two vector expressions and return a `float8`, which you get as a `number`. The difference is which way you sort: order ascending when you sort by distance, because the closest row has the smallest distance, and descending when you sort by similarity.
+Alongside `fns.cosineDistance`, pgvector gives you `fns.cosineSimilarity`. Both take two vectors and return a PostgreSQL `float8`, which you get as a `number`. The difference is which way you sort: order ascending when you sort by distance, because the closest row has the smallest distance, and descending when you sort by similarity.
 
 ## How the pieces fit
 
-One installed package supplies both registrations, because `prisma.config.ts` imports its `control` entry point and `db.ts` imports its `runtime` entry point, and both describe the same database:
+One installed package supplies both registrations, the one in `prisma.config.ts` and the one in `db.ts`:
 
 <ConceptAnimation name="extension-planes" />
 
 ## When a registration is missing [#capabilities]
 
-If your contract uses an extension that `db.ts` does not register, creating the client throws an error whose `code` is `RUNTIME.MISSING_EXTENSION_PACK`, before any query runs. If the database cannot install the extension, `db init` or `db update` reports it.
+When your contract uses an extension and `db.ts` does not list it in `extensions`, `postgres(...)` throws an error whose `code` is `RUNTIME.MISSING_EXTENSION_PACK` before any query runs. Add the extension's `runtime` import to `db.ts` to fix it. If the database cannot install the extension, `db init` or `db update` reports it.
 
 ## Available extensions
 
@@ -141,13 +145,45 @@ Every extension, whether Prisma wrote it or someone in the community did, is lis
 | [zod-json](https://www.prisma.io/extensions/zod-json) | Typed JSON columns described and enforced by a zod schema. | `prisma-orm-extension-zod-json` | PostgreSQL | [Omar Dulaimi](https://github.com/omar-dulaimi) |
 {/* extensions-catalog:end */}
 
-The packages that add support for a database are extensions themselves, which is why `@prisma/orm-postgres`, `@prisma/orm-sqlite`, and `@prisma/orm-mongo` are in the table. The database package is the one you build on: it provides `ormConfig(...)` for the config and `postgres(...)` for the client. Every other extension is passed to those two calls in their `extensions` array, so a project has one database package and any number of extensions listed next to it.
+The packages that add support for a database are extensions themselves, which is why `@prisma/orm-postgres`, `@prisma/orm-sqlite`, and `@prisma/orm-mongo` are in the table. A project has one database package and any number of other extensions listed next to it in the two `extensions` arrays.
 
-The ones marked experimental work today, but their methods and options are still changing between releases. They are also incomplete in places: ParadeDB supports only the `key_field` index option so far, and SQLite is published without a quickstart to follow. Each name in the table links to that extension's directory page, and from there to the package README. Middleware wraps queries rather than adding a database feature, so it is listed on [How middleware works](/orm/middleware/how-middleware-works) instead.
+The ones marked experimental work today, but their methods and options are still changing between releases. They are also incomplete in places: ParadeDB's full-text index takes only one option so far, `key_field`, and SQLite is published without a quickstart to follow. Each name in the table links to that extension's directory page, and from there to the package README. Middleware wraps queries rather than adding a database feature, so it is listed on [How middleware works](/orm/middleware/how-middleware-works) instead.
 
 :::note[Supabase does not follow the recipe above]
 
-Supabase publishes no `/control` entry point. The bundle the command line tools need is published at `@prisma/orm-extension-supabase/pack` instead, so import that and pass it to the same `ormConfig({ extensions: [supabasePack] })` call step 2 uses. The client is where the real difference is, because you build it with the `supabase()` factory from `@prisma/orm-extension-supabase/runtime` rather than with `postgres()`. That factory is built around roles: you pick the role you want with `asUser(jwt)`, `asAnon()`, or `asServiceRole()`, and the factory is what validates the JWT and binds the client to that role for row-level security. The [runnable example](https://github.com/prisma/orm/tree/main/examples/supabase) shows the whole setup in one project.
+Supabase publishes no `control` entry point. What the command line tools read is published at `@prisma/orm-extension-supabase/pack` instead, so the config imports that and passes it to the same `ormConfig(...)` call step 2 uses:
+
+```ts title="prisma.config.ts"
+import { definePrismaConfig } from 'prisma/config';
+import supabasePack from '@prisma/orm-extension-supabase/pack';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    extensions: [supabasePack],
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
+});
+```
+
+The client is where the real difference is, because you build it with `supabase()` from `@prisma/orm-extension-supabase/runtime` rather than with `postgres()`, and it takes the secret it needs to check JWTs:
+
+```ts title="src/prisma/db.ts"
+import { supabase } from '@prisma/orm-extension-supabase/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = supabase<Contract>({
+  contractJson,
+  url: process.env['DATABASE_URL']!,
+  jwtSecret: process.env['SUPABASE_JWT_SECRET']!,
+});
+```
+
+`db.asUser(jwt)` gives you a client that runs as that user, `db.asAnon()` one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security, and each of them has the same `orm` and `sql` you use on `db`. The [runnable example](https://github.com/prisma/orm/tree/main/examples/supabase) shows the whole setup in one project.
 
 :::
 
