@@ -34,6 +34,15 @@ export const seriesRegistry = {
     featured: true,
     relatedSeries: ["agentic-engineering", "prisma-compute"],
   },
+  "prisma-postgres-connectivity": {
+    title: "Inside Prisma Postgres connectivity",
+    description:
+      "How Prisma Postgres manages secure, serverless-friendly database connectivity: the gateway every connection crosses, connection pooling, the streaming serverless API, and the shared protocol pipeline behind both paths.",
+    featured: false,
+    docsUrl: "https://www.prisma.io/docs/postgres",
+    docsLabel: "Read the Prisma Postgres docs",
+    relatedSeries: ["prisma-compute", "prisma-8"],
+  },
   "rust-to-typescript-migration-journey": {
     title: "Prisma ORM: The Complete Rust-to-TypeScript Migration Journey",
     description:
