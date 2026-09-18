@@ -1,0 +1,290 @@
+---
+title: "Declare Supabase RLS in your Prisma schema"
+slug: "prisma-8-supabase-rls-and-auth"
+date: "2026-08-28"
+authors:
+  - "Will Madden"
+  - "Ankur Datta"
+metaTitle: "Supabase RLS in your Prisma schema | Prisma 8"
+metaDescription: "Prisma 8 puts your Supabase tables, auth.users foreign keys, and Row Level Security policies in one schema file. Prisma writes the migration. Postgres enforces every rule."
+metaImagePath: "/prisma-8-supabase-rls-and-auth/imgs/meta.png"
+heroImagePath: "/prisma-8-supabase-rls-and-auth/imgs/hero.svg"
+heroImageAlt: "Supabase RLS policies and auth.users, declared in a Prisma schema"
+tags:
+  - "orm"
+  - "announcement"
+---
+
+import { RlsFlowDemo } from "./RlsFlowDemo";
+import { OneContractGraph } from "./OneContractGraph";
+
+Your Supabase authorization model can be one file.
+
+Prisma is a TypeScript ORM. You describe your tables in a schema file, and Prisma generates the migrations and a typed query client from it. [Prisma 8](https://www.prisma.io/docs/orm) adds a Supabase extension that brings the two parts an ORM on Supabase left to hand-written SQL into that same file: the foreign keys into `auth.users` and your Row Level Security policies.
+
+What you get:
+
+- **One file for the whole model.** Tables, `auth.users` relations, and RLS policies live next to each other. Prisma writes the migration, policies included, and Postgres enforces the rules.
+- **Queries with no user filter.** `db.asUser(jwt)` runs every query as the signed-in user, and the policy does the filtering. The privilege level is on the same line as the query.
+- **Your existing policies read back.** `contract infer` reads a live Supabase database, policies included, and writes the schema for you.
+
+Here is the entire authorization model for a notes app:
+
+```prisma
+namespace public {
+  model Note {
+    id     Uuid   @id @default(uuid())
+    title  String
+    userId Uuid
+    user   supabase:auth.AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@rls
+  }
+
+  policy_select note_owner_read {
+    target = Note
+    roles  = [authenticated]
+    using  = "\"userId\"::uuid = auth.uid()"
+  }
+}
+```
+
+Three lines in this file are new to Prisma:
+
+1. `user supabase:auth.AuthUser` is a real foreign key into Supabase's `auth.users` table. Prisma knows the shape of the tables Supabase owns and does not generate DDL for them.
+2. `@@rls` turns on Row Level Security, so no role sees a row unless a policy grants it.
+3. `policy_select` is one rule: the operation, the roles it applies to, and the same `USING` expression you would write in SQL.
+
+Three commands take it live:
+
+```npm
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name init
+npx prisma@latest db migrate --advance-ref db
+```
+
+The table, the foreign key into `auth.users`, RLS, and the policy are now in your database. In your server code, the query has no filter:
+
+```ts
+const db = await getDb();
+const asUser = await db.asUser(jwt);
+
+const notes = await asUser.orm.public.Note
+  .select('id', 'title')
+  .all()
+  .toArray();
+```
+
+We ran the full four-policy version of this schema against a fresh Supabase project on `prisma@latest` (8.0.0-rc.13) while writing this post. Two users, one client, no filters:
+
+```text
+alice sees only her rows: true
+cross-user update touches 0 rows: true
+forged insert rejected: true
+anon sees nothing: true
+service_role sees all: true
+forged JWT rejected: SUPABASE.JWT_INVALID
+```
+
+Row Level Security is one of the most-requested features in Prisma's history. [The issue](https://github.com/prisma/orm/issues/12735) has been open since April 2022 and has over 400 reactions. Prisma 8 is available today as a release candidate. The rest of this post shows what changes if you build on Supabase today, and how the pieces work.
+
+## If you use supabase-js today
+
+Supabase's model is right: the rules live in Postgres, and RLS enforces them. The problems below sit between your code and Postgres, in which key built the client, where the policies live, where the types come from, and what the query builder can express. Each one has a public thread, and we link the ones with the most reactions.
+
+### 1. The query does not show which key built the client
+
+This is how a server route scopes notes to the signed-in user today:
+
+```ts
+const supabase = createClient(url, key);
+
+const { data: notes } = await supabase
+  .from('notes')
+  .select('id, title')
+  .eq('user_id', user.id);
+```
+
+Whether `.eq('user_id', user.id)` matters depends on `key`: with the anon key and a good RLS policy it is redundant, and with the service role key it is the only thing between one user and everyone's notes:
+
+```ts
+const supabase = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const { data: notes } = await supabase.from('notes').select('id, title');
+// every note in the table, for every user
+```
+
+Nothing in the query tells a reviewer which key built the client, because the key is set in one file and the query lives in another. This is common enough that Supabase has an official troubleshooting thread for the reverse case, [a service role client that suddenly obeys RLS](https://github.com/orgs/supabase/discussions/30146) because a user session cookie was attached to it. A table left reachable with the anon key and no policy is what the `rls_disabled_in_public` [security advisor](https://supabase.com/docs/guides/observability/advisors?lint=0013_rls_disabled_in_public) catches after the fact, and developers have asked for [protection before the fact](https://github.com/orgs/supabase/discussions/11538) since 2023.
+
+**With Prisma 8**, the client has no query methods until you pick a role: `db.orm` does not exist and using it is a type error, while `db.asUser(jwt).orm`, `db.asAnon().orm`, and `db.asServiceRole().orm` do. The privilege level is in the call, on the same line as the query, where a reviewer can see it.
+
+### 2. Policies are SQL you write, apply, and diff by hand
+
+The policy that makes the anon-key path safe looks like this in a Supabase migration:
+
+```sql
+alter table public.notes enable row level security;
+
+create policy "notes_owner_read" on public.notes
+  for select to authenticated
+  using (user_id = auth.uid());
+
+alter table public.notes
+  add constraint notes_user_id_fkey
+  foreign key (user_id) references auth.users (id) on delete cascade;
+```
+
+That is fine on day one. Six months later the effective policy on `notes` is the sum of every migration that ever touched it, plus whatever someone changed in the dashboard. To answer "who can read `notes` right now?" you read all of them.
+
+The Supabase CLI tracker shows the drift: `db diff` and `db pull` have [missed RLS policies on views](https://github.com/supabase/cli/issues/2264) ("I always have to manually add the RLS part when pushing or pulling migrations"), [storage policies created in the dashboard](https://github.com/supabase/cli/issues/1840) did not come back with `db pull`, and developers have asked for a command that [lists the policies on a table](https://github.com/supabase/cli/issues/2803). Supabase's own [declarative schema work](https://github.com/orgs/supabase/discussions/44938) responds to the same problem, but it is still SQL in a directory separate from the code that queries the tables.
+
+**With Prisma 8**, each policy is a block next to the model it protects. Changing one is a schema diff in a pull request, and Prisma writes the DDL. A project that already has policies gets them back with `contract infer`.
+
+### 3. Types come from a separate generator, and the query is a string
+
+After every migration you run `supabase gen types typescript` and commit the output. Forget once and `notes.user_id` is a string in one file and a UUID column in another. Teams that add a CI check for stale types have hit generated output that [changes between runs](https://github.com/supabase/postgres-meta/issues/959) with no schema change.
+
+The larger cost is how those types get applied. `.select('id, title, author(*)')` is a string, and supabase-js parses it at the type level to work out the result shape. That is a lot of type-level work, and the tracker shows where it gives way:
+
+- `Json` columns raised ["type instantiation is excessively deep"](https://github.com/supabase/supabase-js/issues/808) from July 2023 until the issue, with 36 reactions and no fix, was closed for inactivity in April 2026.
+- A to-one join was [typed as an array](https://github.com/supabase/postgrest-js/issues/408) for 20 months, and six weeks after the issue closed a comment reported the same result for a table with two foreign keys into `profiles`.
+- `insert()`, `update()`, and `upsert()` accepted [values the column would reject](https://github.com/supabase/supabase-js/issues/1636), and the older [insert type-safety issue](https://github.com/supabase/supabase-js/issues/1655) stayed open from November 2023 to July 2026.
+- Ordering by a column on a related table has been [an open request](https://github.com/supabase/supabase-js/issues/971) since February 2024.
+
+**With Prisma 8**, the relation is declared in the schema, so the client already knows that `author` is one row and `posts` is many: `.include('author')` returns an object, `.create()` accepts only what the model allows, and ordering a relation is `.include('posts', (p) => p.orderBy((f) => f.createdAt.desc()))`. The types come out of `contract emit`, from the same file that produced the migration, so there is no second generator to forget and no select string to parse.
+
+### 4. There are no transactions
+
+supabase-js talks to Postgres through PostgREST, one HTTP request per query, so two inserts are two requests and if the second fails the first stays. [Client-side database transactions](https://github.com/orgs/supabase/discussions/526) has been the request since January 2021 and has 356 upvotes, and the tracker issue, [long-running transactions at the client side](https://github.com/supabase/postgrest-js/issues/219), has 95 reactions and is still open. Supabase's most recent reply there, from April 2025, points to Postgres functions called through `.rpc()`, which moves the logic into SQL, outside your TypeScript and outside the generated types.
+
+**With Prisma 8**, the role-bound client has `transaction()`, and the policies apply inside it as they do outside:
+
+```ts
+const asUser = await db.asUser(jwt);
+
+await asUser.transaction(async (tx) => {
+  await tx.orm.public.Note.create({ title: 'Part 1', body: null, userId });
+  await tx.orm.public.Note.create({ title: 'Part 2', body: null, userId });
+});
+// Both rows exist, or neither does.
+```
+
+### 5. Values come back as strings, and errors come back as values
+
+PostgREST returns JSON, so a `timestamptz` arrives as a string and an `int8` arrives as a JavaScript number that is rounded once it passes 2^53. Returning dates as `Date` was [closed as completed in 2021](https://github.com/supabase/postgrest-js/issues/201), yet a comment from September 2025 still asks for a workaround and the follow-up [request](https://github.com/supabase/supabase-js/issues/1650) was closed for inactivity in May 2026. Converting large integers to `BigInt` [has been open since 2022](https://github.com/supabase/postgrest-js/issues/319).
+
+Errors take the same path: every query resolves to `{ data, error }`, a decision from [2020](https://github.com/supabase/supabase-js/issues/32), and while `throwOnError()` exists, its result type [kept `null`](https://github.com/supabase/supabase-js/issues/801) for 20 months and a comment after the fix reports the same with `.then()`.
+
+**With Prisma 8**, a `timestamptz` column decodes to a `Date`, a `BigInt` column to a `bigint`, and an integer outside JavaScript's safe range raises `RUNTIME.DECODE_FAILED` instead of being rounded. A failed query throws a structured error with a code, and a successful one returns the rows.
+
+### Side by side
+
+|                             | supabase-js today                                       | Prisma 8 with the Supabase extension                              |
+| --------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------- |
+| Where policies live         | SQL migrations, plus the dashboard                      | `policy_*` blocks next to the model                               |
+| Who picks the privilege     | The key passed to `createClient`, often in another file | `asUser(jwt)`, `asAnon()`, or `asServiceRole()` on the query line |
+| Foreign key to `auth.users` | Hand-written `alter table`                              | `user supabase:auth.AuthUser`                                     |
+| Types                       | `supabase gen types`, then a parsed select string       | `contract emit`, from the same file as the migration              |
+| Transactions                | A Postgres function called through `.rpc()`             | `asUser(jwt).transaction()`                                       |
+| Order by a related table    | Open request since 2024                                 | `.include('posts', (p) => p.orderBy(...))`                        |
+| Dates and 64-bit integers   | Strings and rounded numbers                             | `Date` and `bigint`                                               |
+| Errors                      | `{ data, error }` on every query                        | Thrown, with a code                                               |
+| Existing project            | Keep the SQL                                            | `contract infer` reads policies back                              |
+| Runs in                     | Browser, server, Edge Functions                         | Node.js and Bun servers                                           |
+
+## How it works
+
+### The privilege level is in the call
+
+`asUser()` verifies the JWT against your project's public signing keys, then runs every query that follows as that user. The token is the access token from a Supabase Auth session, the same one `supabase-js` holds in the browser. A forged or expired token is rejected before any query runs, and once a query does run, the select policy is the filter and Postgres applies it.
+
+<RlsFlowDemo />
+
+### Writes are checked by the database
+
+```ts
+await asUser.orm.public.Note.select('id').create({ title, body: null, userId: someoneElse });
+// Error: new row violates row-level security policy for table "note"
+```
+
+Postgres raised that error before the row was written, so there is no `if` statement in the application to get wrong.
+
+The check script that produced the six lines above is 50 lines and lives in the [extension guide](https://www.prisma.io/docs/orm/extensions/supabase#10-check-that-your-policies-work). Run it against your own project.
+
+### Policy changes are migrations
+
+Say you add a `published` flag and let anyone read published notes. Two additions to the schema:
+
+```prisma
+model Note {
+  // ...
+  published Boolean @default(false)
+}
+
+policy_select note_public_read {
+  target = Note
+  roles  = [anon, authenticated]
+  using  = "published = true"
+}
+```
+
+Then the same three commands as before:
+
+```npm
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name public-notes
+npx prisma@latest db migrate --advance-ref db
+```
+
+Prisma diffs the schema against the last applied contract and writes only the delta, policies included:
+
+```sql
+ALTER TABLE "public"."note" ADD COLUMN "published" bool DEFAULT false NOT NULL;
+CREATE POLICY "note_public_read_443ba5fa" ON "public"."note"
+  AS PERMISSIVE FOR SELECT TO anon, authenticated
+  USING (published = true);
+```
+
+The policy change shows up in the pull request next to the column it depends on. Removing a policy is a migration in the same way.
+
+### It reads back, too
+
+Already have policies? `npx prisma@latest contract infer` reads the live database, including RLS policies and the foreign keys into `auth.users`, and writes the Prisma schema for you. You keep the authorization model you have and move it into one file.
+
+<OneContractGraph />
+
+## What stays in supabase-js
+
+Auth flows in the browser, Storage, Realtime, and anything that runs inside Supabase Edge Functions. Prisma talks to Postgres directly over your project's session pooler from Node.js or Bun, and runs next to `supabase-js`. Sign the user in with `supabase-js`, and pass the session's access token to `db.asUser()` on the server.
+
+Three boundaries apply today: the `auth.users` relation is a constraint you cannot `include`, the client runs on Node.js and Bun only, and policy expressions are strings that Prisma migrates and reads back but does not type-check. The [extension guide](https://www.prisma.io/docs/orm/extensions/supabase#current-limitations) has the full list.
+
+## Try it in ten minutes
+
+:::note[Release candidate]
+Prisma 8 is available today as a release candidate. The API is stable, and we are collecting feedback before general availability. [Tell us what you find in Discord](https://pris.ly/discord).
+:::
+
+Create a free Supabase project, then:
+
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+npm install @prisma/orm-extension-supabase
+```
+
+1. Add `extensions: [supabasePack]` to the ORM config in `prisma.config.ts`.
+2. Set `DATABASE_URL` to your project's session pooler connection string.
+3. Paste the schema above into `src/prisma/contract.prisma`.
+4. Run:
+
+```npm
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name init
+npx prisma@latest db migrate --advance-ref db
+```
+
+The [step-by-step guide](https://www.prisma.io/docs/orm/extensions/supabase) covers the client, querying as each role, and the check script.
+
+{/* TODO before publish: add the public example repo link */}
+
+Your authorization model is now a file in your repo, and Postgres enforces it.
