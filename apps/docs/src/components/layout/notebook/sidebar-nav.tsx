@@ -13,10 +13,10 @@ import Link from "fumadocs-core/link";
 import { usePathname } from "fumadocs-core/framework";
 import { useOnChange } from "fumadocs-core/utils/use-on-change";
 import { useTreeContext } from "@fumadocs/base-ui/contexts/tree";
-import type * as PageTree from "fumadocs-core/page-tree";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { getSidebarTabs, isTabActive, type SidebarTab } from "../sidebar/tabs";
+import { isTabActive } from "../sidebar/tabs";
+import { useCurrentSection, useSectionTabs } from "../use-current-section";
 import { sidebarSectionGroups } from "../../../lib/sidebar-sections";
 import { getVersionedNavPathname } from "../../../lib/version";
 import { useSidebar } from "../sidebar/base";
@@ -26,7 +26,7 @@ import type { SidebarPageTreeComponents } from "../sidebar/page-tree";
 type SidebarView = "top" | "section";
 
 const SidebarViewContext = createContext<{
-  override: SidebarView | null;
+  view: SidebarView;
   showTop: () => void;
   drillIn: (targetIsCurrentSection: boolean) => void;
   /** True exactly once after a back-press, so the top view knows to move focus. */
@@ -34,34 +34,56 @@ const SidebarViewContext = createContext<{
 } | null>(null);
 
 /**
- * Drill-in state for the vertical sidebar nav. The view is URL-derived (docs
- * root shows the grouped section list, any section page shows that section's
- * tree); the override lets the back button flip to the section list without
- * navigating away from the current page. Mounted once in DocsLayout so the
- * desktop aside and the mobile drawer share it.
+ * Drill-in state for the vertical sidebar nav: the grouped section list, or one
+ * section's page tree. Mounted once in DocsLayout so the desktop aside and the
+ * mobile drawer share it.
+ *
+ * The URL seeds the view but does not own it. Reading inside a section keeps
+ * the reader in that section's tree until they press "All docs" or open a page
+ * in another section — only a change of section re-derives. That distinction
+ * matters because `/` is both the docs home (grouped list) and the Getting
+ * Started index page: re-deriving on every navigation would eject the reader
+ * to the all-docs list the moment they opened "Get started with Prisma" from
+ * inside the section.
  */
 export function SidebarViewProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [override, setOverride] = useState<SidebarView | null>(null);
+  const { root, full } = useTreeContext();
+  const section = useCurrentSection();
+
+  // The docs root shows the grouped "All docs" list (its content is the Getting
+  // started page); any page inside a `root: true` section shows that section's
+  // tree. 404 (no section) falls back to top.
+  const derived: SidebarView = pathname === "/" || root === full ? "top" : "section";
+
+  const [view, setView] = useState<SidebarView>(derived);
   // Set on back-press only: the top view moves keyboard focus to its first
   // link when the pressed button unmounts, but must not steal focus on an
   // ordinary page load that happens to show the top view.
   const focusRequestRef = useRef(false);
 
-  // Any completed navigation re-derives the view from the new URL and voids
-  // a pending focus request (the drawer may have auto-closed before any
-  // visible top view consumed it; a later mount must not inherit it).
-  useOnChange(pathname, () => {
-    setOverride(null);
+  // Leaving the section re-derives, and voids a pending focus request (the
+  // drawer may have auto-closed before any visible top view consumed it; a
+  // later mount must not inherit it).
+  useOnChange(section?.url ?? null, () => {
+    setView(derived);
     focusRequestRef.current = false;
+  });
+
+  // Opening a page that only exists inside a section always shows that
+  // section's tree, however the reader got there. The reverse (a section page
+  // to `/`) deliberately does not flip back — that is the Getting Started case
+  // above.
+  useOnChange(derived, () => {
+    if (derived === "section") setView("section");
   });
 
   const value = useMemo(
     () => ({
-      override,
+      view,
       showTop: () => {
         focusRequestRef.current = true;
-        setOverride("top");
+        setView("top");
       },
       consumeFocusRequest: () => {
         const requested = focusRequestRef.current;
@@ -74,43 +96,24 @@ export function SidebarViewProvider({ children }: { children: ReactNode }) {
       // section, stay on the top list until the navigation commits — flipping
       // early would flash the previous section's title and tree.
       drillIn: (targetIsCurrentSection: boolean) => {
-        if (targetIsCurrentSection) setOverride("section");
+        if (targetIsCurrentSection) setView("section");
       },
     }),
-    [override],
+    [view],
   );
 
   return <SidebarViewContext value={value}>{children}</SidebarViewContext>;
 }
 
-function useSidebarView() {
+/**
+ * The sidebar's current view. Exported for the navbar breadcrumb, which needs
+ * it to name the section on the docs root — see NavBreadcrumb.
+ */
+export function useSidebarView() {
   const ctx = use(SidebarViewContext);
   if (!ctx) throw new Error("Missing SidebarViewContext; wrap the layout in SidebarViewProvider.");
 
-  const { root, full } = useTreeContext();
-  const pathname = usePathname();
-
-  // Derived default: the docs root shows the grouped "All docs" list (its
-  // content is the Getting started page); any page inside a `root: true`
-  // section shows that section's tree. 404 (no section) falls back to top.
-  const derived: SidebarView = pathname === "/" || root === full ? "top" : "section";
-
-  return {
-    view: ctx.override ?? derived,
-    showTop: ctx.showTop,
-    drillIn: ctx.drillIn,
-    consumeFocusRequest: ctx.consumeFocusRequest,
-  };
-}
-
-/** Top-level sections from the page tree, keyed by their index URL. */
-function useSectionTabs(): Map<string, SidebarTab> {
-  const { full } = useTreeContext();
-
-  return useMemo(() => {
-    const tabs = getSidebarTabs(full as PageTree.Root);
-    return new Map(tabs.map((tab) => [tab.url, tab]));
-  }, [full]);
+  return ctx;
 }
 
 function SidebarNavTopView() {
@@ -190,24 +193,6 @@ function SidebarNavTopView() {
       ))}
     </div>
   );
-}
-
-/** The current top-level section of `pathname`, resolved against the config.
- *  Only configured top-level sections are candidates, so nested roots
- *  (orm/v7, cli/v7) still resolve to their parent section. */
-function useCurrentSection(): SidebarTab | null {
-  const pathname = usePathname();
-  const tabsByUrl = useSectionTabs();
-
-  return useMemo(() => {
-    for (const group of sidebarSectionGroups) {
-      for (const { url } of group.sections) {
-        const tab = tabsByUrl.get(url);
-        if (tab && isTabActive(tab, pathname)) return tab;
-      }
-    }
-    return null;
-  }, [tabsByUrl, pathname]);
 }
 
 /**

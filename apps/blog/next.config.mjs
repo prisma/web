@@ -273,6 +273,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/search-encrypted-data-with-prisma-next-and-cipherstash",
+        destination: "/search-encrypted-data-with-prisma-8-and-cipherstash",
+        permanent: true,
+      },
+      {
         source: "/series/agentic-software-development",
         destination: "/series/agentic-engineering",
         permanent: true,

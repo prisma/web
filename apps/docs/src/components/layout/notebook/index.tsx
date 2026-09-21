@@ -307,25 +307,27 @@ function DocsNavbar({
     >
       <NavbarMorphContainer>
         <div data-header-body="" className="flex px-4 gap-4 h-14 md:px-6 justify-between">
-          <div className="items-center flex flex-1">
+          {/* `min-w-0` so the title can be squeezed rather than shoving the
+              controls past the right edge on a phone. */}
+          <div className="items-center flex min-w-0 flex-1">
             {renderTitleNav(nav, {
               href: nav?.url ?? "/",
-              className: cn("inline-flex items-center gap-2.5 font-semibold"),
+              className: cn("inline-flex min-w-0 items-center gap-2.5 font-semibold"),
             })}
             {nav.children}
           </div>
-          {searchToggle.enabled !== false &&
-            (searchToggle.components?.lg ? (
-              <div className={cn("w-full my-auto max-md:hidden", "rounded-full max-w-sm")}>
-                {searchToggle.components.lg}
-              </div>
-            ) : (
-              <LargeSearchToggle
-                hideIfDisabled
-                className={cn("flex-1 mx-1 my-auto max-md:hidden", "max-w-sm ps-3.5")}
-              />
-            ))}
-          <div className="flex flex-1 items-center justify-end gap-2">
+          <div className="flex shrink-0 items-center justify-end gap-2">
+            {/* The search trigger sits with the other controls rather than in a
+                centred slot of its own, collapsed to icon + shortcut so it
+                matches the Ask AI pill it sits next to. */}
+            {searchToggle.enabled !== false &&
+              (searchToggle.components?.lg ? (
+                <div className="my-auto rounded-full max-md:hidden">
+                  {searchToggle.components.lg}
+                </div>
+              ) : (
+                <LargeSearchToggle hideIfDisabled showLabel={false} className="max-md:hidden" />
+              ))}
             {/* `display: contents`, so the trigger stays a flex item of this row —
               this only reaches into a component another owner maintains to give
               its trigger the navbar's pill hit area. The chat panel itself is

@@ -27,7 +27,7 @@ test("returns null for latest and unversioned pages", () => {
   for (const url of [
     "/",
     "/orm",
-    "/orm/reference/supported-databases",
+    "/orm/supported-databases",
     "/cli/commands",
     "/guides/nextjs",
     "/getting-started",

@@ -1,0 +1,47 @@
+---
+title: Environment variables
+description: The environment variables the Prisma CLI reads, what each one does, and the release that added it.
+url: /cli/environment-variables
+metaTitle: Environment variables | Prisma CLI
+metaDescription: 'Reference for every environment variable the Prisma ORM CLI reads: telemetry opt-outs, debug output, the agent skills check, service tokens, and CI detection.'
+---
+
+The `prisma` command reads these environment variables. Set them in your shell profile or in your CI configuration. For one command, put the variable in front of it, as in this [`contract emit`](/cli/contract-emit) run:
+
+```bash title="Terminal"
+PRISMA_DISABLE_TELEMETRY=1 npx prisma@latest contract emit
+```
+
+In PowerShell, set it for the session:
+
+```powershell title="PowerShell"
+$env:PRISMA_DISABLE_TELEMETRY = "1"
+npx prisma@latest contract emit
+```
+
+The CLI does not read `.env` files or `DATABASE_URL` itself. Your `prisma.config.ts` does that, and the one [`orm init`](/cli/orm-init) writes already loads `.env`; see [Configuration](/cli/configuration#config-file).
+
+:::note[If you used the `prisma-next` preview command]
+
+The `prisma` command ignores every `PRISMA_NEXT_*` variable, including `PRISMA_NEXT_DISABLE_TELEMETRY`. Drop the `NEXT_` part in shell profiles and CI: `PRISMA_NEXT_DISABLE_TELEMETRY` becomes `PRISMA_DISABLE_TELEMETRY`.
+
+Your `prisma-next` telemetry opt-out does not carry over either, so the one-time telemetry notice prints again. Run `prisma telemetry disable` to opt out. The `prisma` command stores that choice in `~/.config/prisma/config.json` (Windows: `%APPDATA%\prisma\config.json`).
+
+:::
+
+"Since" is the first `prisma` release that reads the variable.
+
+| Variable | What it does | Since |
+| --- | --- | --- |
+| `PRISMA_DISABLE_TELEMETRY` | Set to `1` to turn off anonymous [CLI telemetry](/cli/telemetry). Empty, `0`, and `false` leave it on. | 8.0.0-rc.1 |
+| `DO_NOT_TRACK` | Set to `1` to turn off telemetry. Other values do nothing. | 8.0.0-rc.1 |
+| `PRISMA_DEBUG` | Set to `1` to print the CLI's debug output to stderr. | 8.0.0-rc.1 |
+| `PRISMA_SKILLS_CHECK` | Set to `0` to silence the notice that your project's [agent skills](/cli/skills) are out of date. | 8.0.0-rc.9 |
+| `PRISMA_SERVICE_TOKEN` | A service token for a Prisma Platform workspace, created in the [Prisma Console](https://console.prisma.io). Only the [Platform commands](/cli#platform-commands) such as `auth`, `project`, and `deploy` use it, in place of a browser login, even if you are also logged in. | 8.0.0-rc.1 |
+| `PRISMA_WORKSPACE_ID` | The ID of the workspace the service token belongs to, from the workspace's settings in the Prisma Console. Set it alongside the token. | 8.0.0-rc.1 |
+| `NO_COLOR` | Set to any value to turn off colored output. The [`--color` and `--no-color` flags](/cli/global-flags) override it. | 8.0.0-rc.1 |
+| `CI` | Set to any value except `false` to mark the run as CI: no telemetry, no skills notice, and no interactive prompts. `CI=false` forces the non-CI behavior even when a CI system set it. | 8.0.0-rc.1 |
+
+Agent skills are files in your project, in `.claude/skills` and similar folders, that teach AI coding agents about Prisma. Silencing the notice does not update them; `prisma skills sync` does.
+
+You rarely need to set `CI` yourself: the CLI also detects the variables that CI providers such as GitHub Actions and GitLab CI set.

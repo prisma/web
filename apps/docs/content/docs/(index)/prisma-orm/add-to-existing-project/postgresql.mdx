@@ -14,7 +14,7 @@ Use this path when you already have an application and database. Make sure the a
 
 Prisma ORM 8 is the current release, as a release candidate. Prisma ORM 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
 
-For what release candidate means, when the final release is expected, and how to stay on version 7, see [Release status](/prisma-orm/release-status). For the Prisma ORM 8 name of every Prisma ORM 7 API, see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7).
+For what release candidate means, when the final release is expected, and how to stay on version 7, see [Release status](/orm/release-status). For the Prisma ORM 8 name of every Prisma ORM 7 API, see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7).
 
 :::
 
@@ -102,7 +102,7 @@ After you are happy with the contract, run:
 npx prisma@latest contract emit
 ```
 
-This refreshes `src/prisma/contract.json` and `src/prisma/contract.d.ts` so the runtime and query APIs are aligned with the contract you just reviewed.
+This refreshes `src/prisma/contract.json` and `src/prisma/contract.d.ts` so the runtime and query APIs match the contract you just reviewed.
 
 ## 6. Sign the database
 
@@ -111,6 +111,8 @@ Record that the live database matches the emitted contract:
 ```npm
 npx prisma@latest db sign
 ```
+
+**Expected result:** `Database signed`. The command also stores the contract snapshot under `migrations/snapshots/` and points the `db` ref at it, so a later [migration plan](/cli/migration-plan) starts from the schema you just adopted instead of from an empty database.
 
 This step matters in two common cases:
 
@@ -191,3 +193,16 @@ npx prisma@latest contract emit
 ```
 
 Use [db update](/cli/db-update) for a direct development update, or [migration plan](/cli/migration-plan) when you want a checked-in migration.
+
+Put together, adopting the database and making a first schema change is this sequence:
+
+```npm
+npx prisma@latest contract infer --output ./src/prisma/contract.prisma
+npx prisma@latest contract emit
+npx prisma@latest db sign
+# edit src/prisma/contract.prisma
+npx prisma@latest contract emit
+npx prisma@latest migration plan --name <slug>
+```
+
+The plan starts from the contract `db sign` recorded, so it contains only your change. Because `migrations/app/` is still empty, that first plan also writes a baseline package recording the schema you adopted; see [the automatic baseline](/cli/migration-plan#the-automatic-baseline).
