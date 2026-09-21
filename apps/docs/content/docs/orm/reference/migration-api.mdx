@@ -466,9 +466,29 @@ import { Migration, MigrationCLI, placeholder, createCollection, dropCollection,
 
 The operations are plain functions rather than methods, so `operations` returns calls such as `createCollection('products')`, not `this.createCollection(...)`. `this.endContract.collection.products` is the `products` collection in the end contract, with its `validator`.
 
-A data transform's `run` callback returns a query object with three fields: the `collection`, a `command` such as `RawUpdateManyCommand` from `@prisma/orm-mongo/query-ast/execution`, and `meta`, which carries `storageHash`, the hash of the end contract. This helper, from the [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts), builds the update; `RawUpdateManyCommand` takes the collection name, a filter, and an update:
+A data transform's `run` callback returns a query object with three fields: the `collection`, a `command` such as `RawUpdateManyCommand`, and `meta`, which carries `storageHash`, the hash of the end contract. The check's `source` returns the same kind of object with an `AggregateCommand`. These two helpers are from the [retail-store example](https://github.com/prisma/orm/blob/main/examples/retail-store/migrations/app/20260513T0508_backfill_product_status/migration.ts); the first finds documents with no `status` and limits to one, and the second sets it, where `RawUpdateManyCommand` takes the collection name, a filter, and an update:
 
 ```ts
+import {
+  AggregateCommand,
+  MongoExistsExpr,
+  MongoLimitStage,
+  MongoMatchStage,
+  type MongoQueryPlan,
+  RawUpdateManyCommand,
+} from '@prisma/orm-mongo/query-ast/execution';
+
+function existingProductsWithoutStatus(storageHash: string): MongoQueryPlan {
+  return {
+    collection: 'products',
+    command: new AggregateCommand('products', [
+      new MongoMatchStage(new MongoExistsExpr('status', false)),
+      new MongoLimitStage(1),
+    ]),
+    meta: { target: 'mongo', storageHash, lane: 'mongo-pipeline' },
+  };
+}
+
 function backfillRun(storageHash: string): MongoQueryPlan {
   return {
     collection: 'products',
@@ -482,7 +502,7 @@ function backfillRun(storageHash: string): MongoQueryPlan {
 }
 ```
 
-The check's `source` returns the same kind of object with an `AggregateCommand` that finds the documents still needing the change; the example's `existingProductsWithoutStatus` matches documents with no `status` and limits to one. The migration then uses both:
+The migration's `operations` then uses both, alongside `setValidation` from `@prisma/orm-mongo/target/migration`:
 
 ```ts
 override get operations() {
