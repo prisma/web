@@ -16,7 +16,7 @@ Status as of 2026-09-21.
 
 **In review.** C13, C14, and C16 as prisma/web #8306 (one commit each; every construct run against rc.11). C15 needs no page changes: its runtime items were covered by #8260 and #8267, `createInMemoryCacheStore` is not public, and the flat `db.orm.User` accessor is not in rc.11.
 
-**Not started.** A3 (the agent prompt still precedes the framework and fundamentals sections on `/prisma-orm`), A8 (the two error references are both generated now, from prisma-cli and prisma/orm, and still do not name the split). Every remaining new page: C3, C7, C8, C10, C13, C14, C15, C16, C19, C22, C23. On the ORM side: D4, D5, D7, D8, D9, D10, D11, D12, D13, D15, D16, D17, D18.
+**Not started.** A3 (the agent prompt still precedes the framework and fundamentals sections on `/prisma-orm`), A8 (the two error references are both generated now, from prisma-cli and prisma/orm, and still do not name the split). Every remaining new page: C3, C7, C8, C10, C19, C22, C23. On the ORM side: D4, D5, D7, D8, D9, D10, D11, D12, D13, D15, D16, D17, D18.
 
 ## Recommended order for the open work
 
