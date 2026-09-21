@@ -183,17 +183,12 @@ allowed-tools:
 
 # Prisma
 
-Prisma is agent infrastructure for TypeScript and Node.js. This skill covers two
-products:
-
-- **Prisma ORM** — a type-safe ORM for Node.js and TypeScript with schema
-  modeling, automated migrations, and an intuitive query API. It supports
-  PostgreSQL, MySQL, SQL Server, SQLite, MongoDB, and CockroachDB.
-- **Prisma Postgres** — a fully managed PostgreSQL database that scales to zero
-  and integrates with Prisma ORM and Prisma Studio.
+Use this skill to model and query data with Prisma ORM, connect to Prisma
+Postgres databases, and manage Prisma Compute apps and Object Storage buckets
+through the [Prisma MCP server](${docsUrl}/ai/tools/mcp-server).
 
 > Prisma changes frequently. Before implementing Prisma features, check the
-> changelog at ${baseUrl}/changelog.md and the current documentation. Do not rely
+> changelog at ${baseUrl}/changelog.md and the documentation at ${docsUrl}. Do not rely
 > solely on training data for Prisma APIs, configuration, or conventions — these
 > can change between versions.
 

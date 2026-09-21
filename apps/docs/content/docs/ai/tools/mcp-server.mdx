@@ -9,96 +9,15 @@ metaDescription: 'Manage Prisma Postgres databases, Prisma Compute deployments, 
 
 ## Overview
 
-The [Model-Context-Protocol](https://modelcontextprotocol.io/introduction) (MCP) gives LLMs a way to call APIs and access external systems in a well-defined manner.
+The [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) lets AI tools connect to services such as Prisma.
 
 Prisma provides an MCP server that lets AI tools manage [Prisma Postgres databases](/postgres), apps deployed on [Prisma Compute](/compute), and [Object Storage](/storage) buckets and access keys. Sign in with your Prisma account and select a workspace when you connect.
 
-## Tools
-
-[Tools](https://modelcontextprotocol.io/docs/concepts/tools) are the operations your AI tool can perform through the MCP server:
-
-**Workspace and databases**
-
-- `fetch_workspace_details`: Fetch the details of a Prisma Postgres workspace.
-- `list_prisma_postgres_databases`: Fetch a list of available Prisma Postgres databases for the user's workspace.
-- `create_prisma_postgres_database`: Create a managed Prisma Postgres database and a new project.
-- `delete_prisma_postgres_database`: Permanently delete a Prisma Postgres database by ID. This tool cannot delete a project's default database.
-
-**Connection strings**
-
-- `list_prisma_postgres_connection_strings`: Fetch a list of available connection strings for the given database id.
-- `create_prisma_postgres_connection_string`: Create a new connection string for a Prisma Postgres database with the given id.
-- `delete_prisma_postgres_connection_string`: Delete a connection string with the given connection string id.
-
-**Backups and recovery**
-
-- `list_prisma_postgres_backups`: List available automated backups for a Prisma Postgres database.
-- `create_prisma_postgres_recovery`: Restore a Prisma Postgres database to a new database with the given backup id.
-
-**Schema and queries**
-
-- `introspect_database_schema`: Introspect the schema of a Prisma Postgres database with the given id.
-- `execute_sql_query`: Run SQL to read, modify, or delete data in a Prisma Postgres database, without changing its schema.
-- `execute_prisma_postgres_schema_update`: Execute a schema update on a Prisma Postgres database with the given id.
-
-**Object Storage**
-
-- `list_object_store_buckets`: List object-store buckets in the workspace, optionally filtered by project id.
-- `create_object_store_bucket`: Create a new object-store bucket in the given project.
-- `delete_object_store_bucket`: Permanently delete an object-store bucket, all objects stored in it, and all its access keys.
-- `create_object_store_bucket_key`: Create an S3-compatible access key for an object-store bucket.
-- `delete_object_store_bucket_key`: Delete an object-store bucket access key. The key stops working immediately.
-
-**Documentation**
-
-- `search_prisma_documentation`: Answer a natural-language question about Prisma using the official Prisma documentation, returning a cited answer with links back to the docs.
-
-**Compute apps and builds**
-
-- `list_prisma_compute_apps`: List Prisma Compute apps in the selected workspace, optionally filtered by project.
-- `list_prisma_compute_builds`: List builds, newest first, with optional project, branch, and state filters.
-- `list_prisma_compute_deployments`: List deployments for a Prisma Compute app, newest first.
-- `get_prisma_compute_deployment_logs`: Read runtime logs for a deployment, one page at a time.
-
-**Compute deployment management**
-
-- `promote_prisma_compute_deployment`: Make a running deployment the live version of an app.
-- `rollback_prisma_compute_app`: Make an existing deployment live, starting it first if it is stopped.
-- `start_prisma_compute_deployment`: Start an existing deployment from an already uploaded build. This tool does not build or upload the app.
-- `stop_prisma_compute_deployment`: Stop a deployment, disconnecting it from the app's public URL if it is the live version.
-- `delete_prisma_compute_deployment`: Permanently delete a deployment, stopping it first if needed.
-- `delete_prisma_compute_app`: Permanently delete an app. To stop and delete its deployments too, set `deleteDeployments` to true; otherwise, active deployments block deletion.
-
-**Compute environment variables**
-
-- `set_prisma_compute_env_var`: Set an environment variable for a project's production or preview environment, or override it for one preview branch. Values are encrypted and never returned.
-- `delete_prisma_compute_env_var`: Permanently delete an environment variable by ID.
-
-**[Composer projects](/composer)**
-
-Composer defines your application's services, databases, and other resources in TypeScript.
-
-- `get_prisma_composer_topology`: Show the saved connections between a project's Composer services and resources, with Console links and stored app URLs. The result may be out of date and does not check whether apps are running.
-
-The Compute tools manage existing apps and deployments; they do not build or upload your source code. To deploy a new app, follow the [Prisma Compute guide](/compute).
-
-:::warning
-
-Tools that change or delete resources can cause data loss or interrupt live traffic. Check the target workspace and resources before approving an operation in your AI tool.
-
-:::
-
-Once you're connected to the Prisma MCP server, you can also always prompt your AI agent to "List the Prisma tools" to get a full overview of the latest supported tools.
-
-### Searching the Prisma documentation
-
-The `search_prisma_documentation` tool lets your AI agent answer questions about Prisma ORM, Prisma Postgres, Prisma Compute, schema design, migrations, and more, grounded in the official documentation, without leaving your editor or terminal.
-
-The tool is read-only and needs no setup beyond the Prisma MCP server connection. When you ask your agent a Prisma question, it uses the tool and returns an answer with citations linking to the relevant pages in the [Prisma documentation](/), so the answer reflects the current docs rather than the model's training data.
-
 ## Usage
 
-The Prisma MCP server uses Streamable HTTP at `https://mcp.prisma.io/mcp`. Add it using your AI tool's MCP settings. For tools that accept a JSON configuration, use:
+You need a Prisma account and access to a workspace, which groups your projects. If you don't have one, sign up at [Prisma Console](https://console.prisma.io).
+
+Add `https://mcp.prisma.io/mcp` as the server URL in your AI tool's MCP settings. If it asks for a transport, select **Streamable HTTP**. Follow the [setup instructions for your AI tool](#integrating-in-ai-tools) for its configuration format. Clients that use an `mcpServers` JSON entry accept:
 
 ```json title="MCP configuration"
 {
@@ -109,6 +28,14 @@ The Prisma MCP server uses Streamable HTTP at `https://mcp.prisma.io/mcp`. Add i
   }
 }
 ```
+
+Connect and sign in with your Prisma account, then select a workspace and approve access. Ask "List my Prisma databases" to check that the connection works. See [Tools](#tools) for the full list of supported operations.
+
+:::warning
+
+Tools that change or delete resources can cause data loss or interrupt live traffic. Check the target workspace and resources before approving an operation in your AI tool.
+
+:::
 
 ## Sample prompts
 
@@ -420,6 +347,75 @@ Start `fx` (or run `/mcp reload` in an open session), then authenticate with Pri
 1. fx checks its permission policy before each MCP tool call, so saved rules or its automatic review may let a call through without asking. If fx shows an approval prompt, select **Allow once** or **Allow this MCP tool for this session**.
 
 Learn more in the [fx MCP docs](https://fx.sh/docs/capabilities/mcp).
+
+## Tools
+
+[Tools](https://modelcontextprotocol.io/docs/concepts/tools) are the operations your AI tool can perform through the MCP server:
+
+### Workspace and databases
+
+- `fetch_workspace_details`: Fetch the details of a Prisma Postgres workspace.
+- `list_prisma_postgres_databases`: Fetch a list of available Prisma Postgres databases for the user's workspace.
+- `create_prisma_postgres_database`: Create a managed Prisma Postgres database and a new project.
+- `delete_prisma_postgres_database`: Permanently delete a Prisma Postgres database by ID. This tool cannot delete a project's default database.
+
+### Connection strings
+
+- `list_prisma_postgres_connection_strings`: Fetch a list of available connection strings for the given database id.
+- `create_prisma_postgres_connection_string`: Create a new connection string for a Prisma Postgres database with the given id.
+- `delete_prisma_postgres_connection_string`: Delete a connection string with the given connection string id.
+
+### Backups and recovery
+
+- `list_prisma_postgres_backups`: List available automated backups for a Prisma Postgres database.
+- `create_prisma_postgres_recovery`: Restore a Prisma Postgres database to a new database with the given backup id.
+
+### Schema and queries
+
+- `introspect_database_schema`: Introspect the schema of a Prisma Postgres database with the given id.
+- `execute_sql_query`: Run SQL to read, modify, or delete data in a Prisma Postgres database, without changing its schema.
+- `execute_prisma_postgres_schema_update`: Execute a schema update on a Prisma Postgres database with the given id.
+
+### Object Storage
+
+- `list_object_store_buckets`: List object-store buckets in the workspace, optionally filtered by project id.
+- `create_object_store_bucket`: Create a new object-store bucket in the given project.
+- `delete_object_store_bucket`: Permanently delete an object-store bucket, all objects stored in it, and all its access keys.
+- `create_object_store_bucket_key`: Create an S3-compatible access key for an object-store bucket.
+- `delete_object_store_bucket_key`: Delete an object-store bucket access key. The key stops working immediately.
+
+### Documentation
+
+- `search_prisma_documentation`: Answer a natural-language question about Prisma using the official Prisma documentation, returning a cited answer with links back to the docs.
+
+### Compute apps and builds
+
+- `list_prisma_compute_apps`: List Prisma Compute apps in the selected workspace, optionally filtered by project.
+- `list_prisma_compute_builds`: List builds, newest first, with optional project, branch, and state filters.
+- `list_prisma_compute_deployments`: List deployments for a Prisma Compute app, newest first.
+- `get_prisma_compute_deployment_logs`: Read runtime logs for a deployment, one page at a time.
+
+### Compute deployment management
+
+- `promote_prisma_compute_deployment`: Make a running deployment the live version of an app.
+- `rollback_prisma_compute_app`: Make an existing deployment live, starting it first if it is stopped.
+- `start_prisma_compute_deployment`: Start an existing deployment from an already uploaded build. This tool does not build or upload the app.
+- `stop_prisma_compute_deployment`: Stop a deployment, disconnecting it from the app's public URL if it is the live version.
+- `delete_prisma_compute_deployment`: Permanently delete a deployment, stopping it first if needed.
+- `delete_prisma_compute_app`: Permanently delete an app. To stop and delete its deployments too, set `deleteDeployments` to true; otherwise, active deployments block deletion.
+
+### Compute environment variables
+
+- `set_prisma_compute_env_var`: Set an environment variable for a project's production or preview environment, or override it for one preview branch. Values are encrypted and never returned.
+- `delete_prisma_compute_env_var`: Permanently delete an environment variable by ID.
+
+### Composer projects
+
+[Composer](/composer) defines your application's services, databases, and other resources in TypeScript.
+
+- `get_prisma_composer_topology`: Show the saved connections between a project's Composer services and resources, with Console links and stored app URLs. The result may be out of date and does not check whether apps are running.
+
+The Compute tools manage existing apps and deployments; they do not build or upload your source code. To deploy a new app, follow the [Prisma Compute guide](/compute).
 
 ## AI Safety guardrails for destructive commands
 
