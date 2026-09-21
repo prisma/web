@@ -1,9 +1,9 @@
 ---
 title: Expand-and-contract migrations
-description: 'Replace a column without downtime using the expand and contract pattern, with the data backfill inside a Prisma 8 migration.'
+description: 'Replace a column without downtime using the expand and contract pattern, with the data backfill inside a Prisma ORM migration.'
 image: /img/guides/data-migration-cover.png
 url: /guides/database/data-migration
-metaTitle: How to migrate data with Prisma 8 using the expand and contract pattern
+metaTitle: How to migrate data with Prisma ORM using the expand and contract pattern
 metaDescription: 'Expand a contract with a new column, backfill it with a typed dataTransform step in migration.ts, apply with db migrate, then drop the old column in a second migration.'
 ---
 
@@ -11,11 +11,11 @@ metaDescription: 'Expand a contract with a new column, backfill it with a typed 
 
 When you change a production schema, you want the data to stay consistent and the app to keep running. The expand and contract pattern gets you there in two reviewable steps: first add the new column and copy the data across (expand), then remove the old column once nothing reads it (contract). In this guide you replace a `published` boolean on a `Post` model with a `status` enum.
 
-In Prisma 8 the data move is not a separate script. A migration is a TypeScript file, and the backfill is one more operation in it, a `dataTransform` that runs in the same transaction as the schema change. Every command and output below was run against a local PostgreSQL database.
+In Prisma ORM the data move is not a separate script. A migration is a TypeScript file, and the backfill is one more operation in it, a `dataTransform` that runs in the same transaction as the schema change. Every command and output below was run against a local PostgreSQL database.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/database/data-migration](/guides/v7/database/data-migration).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/database/data-migration](/guides/v7/database/data-migration).
 
 :::
 
@@ -32,9 +32,9 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Perform an expand-and-contract migration with Prisma 8, following https://www.prisma.io/docs/guides/database/data-migration.md.
+Perform an expand-and-contract migration with Prisma ORM, following https://www.prisma.io/docs/guides/database/data-migration.md.
 
-1. In a project with a `Post` model that has a `published Boolean @default(false)` field, make sure Prisma 8 is set up (`npx prisma@latest orm init --yes --target postgres --authoring psl` if it is not), `DATABASE_URL` is in `.env`, and the current contract is applied as a migration (`npx prisma@latest contract emit`, `npx prisma@latest migration plan --name init`, `npx prisma@latest db migrate --advance-ref db`). Run `npx prisma@latest init` so the Prisma 8 agent skills are installed, and use them.
+1. In a project with a `Post` model that has a `published Boolean @default(false)` field, make sure Prisma ORM is set up (`npx prisma@latest orm init --yes --target postgres --authoring psl` if it is not), `DATABASE_URL` is in `.env`, and the current contract is applied as a migration (`npx prisma@latest contract emit`, `npx prisma@latest migration plan --name init`, `npx prisma@latest db migrate --advance-ref db`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
 2. Expand: add `enum Status { @@type("pg/text@1") Draft = "Draft" InProgress = "InProgress" InReview = "InReview" Published = "Published" }` and `status Status @default(Draft)` to `Post`. Keep `published`. Run `contract emit` and `migration plan --name add_status`.
 3. Open the planned `migration.ts` and append a `this.dataTransform(endContract, 'backfill-post-status', { check, run })` operation built with the typed SQL builder against the migration's own end contract: `check` selects `id` from `post` where `published = true AND status != 'Published'` with `limit(1)`, `run` updates those rows to `status = 'Published'`. Recompile with `node <migration-dir>/migration.ts`, confirm `ops.json` contains a `data` operation, then apply with `npx prisma@latest db migrate --advance-ref db`. Verify with a query that every row with `published = true` now has `status = 'Published'`.
 4. Update application code to read and write `status` instead of `published`.
@@ -46,9 +46,9 @@ Perform an expand-and-contract migration with Prisma 8, following https://www.pr
 
 ## 1. Set up the project
 
-If you already have a Prisma 8 project whose contract is applied through migrations, skip to [step 2](#2-expand-the-contract). This step builds the starting point: a `Post` model with a `published` boolean, an `init` migration, and three rows of data.
+If you already have a Prisma ORM project whose contract is applied through migrations, skip to [step 2](#2-expand-the-contract). This step builds the starting point: a `Post` model with a `published` boolean, an `init` migration, and three rows of data.
 
-Create a project and add Prisma 8 to it:
+Create a project and add Prisma ORM to it:
 
 ```bash
 mkdir expand-contract && cd expand-contract
@@ -136,7 +136,7 @@ Create a branch for the expand step:
 git checkout -b expand-post-status
 ```
 
-Add the `Status` enum and a `status` field. Leave `published` in place; the app keeps working against it until the contract step. Prisma 8 stores an enum as `text` with a `CHECK` constraint, and the `@@type` line says so:
+Add the `Status` enum and a `status` field. Leave `published` in place; the app keeps working against it until the contract step. Prisma ORM stores an enum as `text` with a `CHECK` constraint, and the `@@type` line says so:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
@@ -496,7 +496,7 @@ The `check` query must return rows, not a count. Prisma wraps it in `EXISTS` and
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a `dataTransform` to the latest migration that backfills `status` from `published`, recompile it, and show me the compiled SQL in ops.json."
 - "Plan a migration that drops the `published` column and explain the destructive warning."

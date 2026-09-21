@@ -1,6 +1,6 @@
 # Jobs readers come to the docs to do
 
-Twelve jobs. Each names who does it, what "done" looks like, what the docs must provide for it, and where the site's structure fails it. The jobs are the design input for `ia.md` (which node serves each job) and `changes.md` (which page or ORM change supplies what is missing). Verdicts describe the structure, not the state of any one sentence: **green** a page exists for the job and carries it end to end, **amber** the job can be done but the reader has to assemble it from several places or work around a gap, **red** no page is written for the job.
+Twelve jobs. Each names who does it, what "done" looks like, what the docs must provide for it, and where the site's structure fails it. The jobs are the design input for `ia.md` (which node serves each job) and `changes.md` (which page or ORM change supplies what is missing). Verdicts describe the structure, not the state of any one sentence: **green** a page exists for the job and carries it end to end, **amber** the job can be done but the reader has to assemble it from several places or work around a gap, **red** no page is written for the job. Paths and verdicts describe the site on 2026-09-10; `changes.md` tracks what has landed since.
 
 ## J1. Add Prisma ORM to an app I already started, with an empty database
 
@@ -22,7 +22,7 @@ Done: contract matches the database, database is signed, first query works, and 
 
 What the docs must provide: the adoption sequence end to end, including what to expect from `contract infer` (removed attributes, non-`public` schemas, defaults it cannot express, Temporal-backed timestamp types), what `db sign` checks and what its exit codes mean, and whatever makes the next `migration plan` chain from the signed state.
 
-Where the structure fails: the existing-project page stops at "sign, then query". The step that makes the next migration work (today: a baseline migration and `migration ref set db`) is taught only in the incremental upgrade guide, which this reader never sees. That step exists because `db sign` does not record where migrations start from; the design in `brief-db-ref-on-adoption.md` removes it.
+Where the structure fails: the existing-project page stops at "sign, then query". At the snapshot, the step that made the next migration work (a baseline migration and `migration ref set db`) was taught only in the incremental upgrade guide, which this reader never sees, and existed because `db sign` did not record where migrations start from. D1 (`brief-db-ref-on-adoption.md`, shipped in rc.10) made `db sign` set the `db` ref, so the page has one step less to carry.
 
 Verdict: **red**. IA node: "Adopt an existing database" (C3); ORM change D1.
 
@@ -104,11 +104,11 @@ Who: Newcomer and Upgrader.
 
 Done: `type User = ...` and the type of a query result, without reading `contract.d.ts`.
 
-What the docs must provide: a types page with model, result, where, and input types, each beside its Prisma ORM 7 name. The `Models` namespace and `Shape<>` are in `prisma/orm` `main` and ship with the next tagged release; `ResultType` for SQL builder plans exists today.
+What the docs must provide: a types page with model, result, where, and input types, each beside its Prisma ORM 7 name. The `Models` namespace, `Scalars<>`, and `Shape<>` shipped in rc.10, and `ResultType` works on ORM queries since the same release.
 
 Where the structure fails: no node.
 
-Verdict: **red**. Page: C6, on the release that carries the types.
+Verdict: **red**. Page: C6.
 
 ## J10. Stop Prisma from writing agent files into my repo
 
@@ -132,7 +132,7 @@ What the docs must provide: one page in the ORM subtree that names the three way
 
 Where the structure fails: the answers exist on the site, under Local development and Composer, but those are top-level platform sections. Nothing in the ORM subtree points at them except the quickstart's "Path A", which a reader who arrived at the ORM section from a search result never sees. A reader who wants Docker Compose finds only the Docker deployment guide, which is about shipping, not developing.
 
-Verdict: **red**. IA node: "A database on your machine".
+Verdict: **red**. IA node: "A database on your machine" (C22).
 
 ## J12. Learn from a runnable example
 
@@ -144,7 +144,7 @@ What the docs must provide: one small example repository per starting state (new
 
 Where the structure fails: no page links a runnable repository. The quickstarts are copy-and-paste sequences with no way to check a broken local setup against a known-good one.
 
-Verdict: **red**. IA node: links from every starting-state page; no new node.
+Verdict: **red**. IA node: links from every starting-state page (C23); no new node.
 
 ## Summary
 
@@ -158,7 +158,7 @@ Verdict: **red**. IA node: links from every starting-state page; no new node.
 | J6 data types | amber | C1 schema section, C14, C8 |
 | J7 editor | red | Editor setup (C5) |
 | J8 advanced Postgres | red | Advanced Postgres (C7) |
-| J9 types | red | Types (C6) on the next tagged release |
+| J9 types | red | Types (C6) |
 | J10 agent files | amber / red | the line on scaffold pages; D3 |
 | J11 local database | red | A database on your machine (C22) |
 | J12 runnable example | red | example repositories linked from every starting state (C23) |

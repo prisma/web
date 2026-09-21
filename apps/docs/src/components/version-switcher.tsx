@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useTreeContext } from "@fumadocs/base-ui/contexts/tree";
 import { ChevronDownIcon } from "lucide-react";
 
 import {
@@ -34,6 +35,7 @@ export function VersionSwitcher({
 }) {
   const pathname = usePathname() as string;
   const router = useRouter();
+  const { root } = useTreeContext();
   const isGettingStartedVersion = isGettingStartedVersionPathname(pathname);
   const isCliVersion = isCliVersionPathname(pathname);
   const isGuidesVersion = isGuidesVersionPathname(pathname);
@@ -59,6 +61,14 @@ export function VersionSwitcher({
         : "ORM version";
 
   if (!currentVersion || !visibleVersions.includes(currentVersion)) {
+    return null;
+  }
+
+  // The ORM section lists the upgrade guides, whose paths are under /guides. The
+  // sidebar then shows the ORM tree while this switcher follows the path, so hide
+  // it rather than show a Guides switcher under an ORM header.
+  const rootIsOrm = root.name === "ORM";
+  if (rootIsOrm && getOrmVersionFromPathname(pathname) === null) {
     return null;
   }
 

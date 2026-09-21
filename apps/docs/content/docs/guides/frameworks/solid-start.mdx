@@ -1,23 +1,23 @@
 ---
 title: SolidStart
-description: 'Add Prisma 8 to a SolidStart app with orm init, seed a PostgreSQL database, serve users from an API route, and render them in a page.'
+description: 'Add Prisma ORM to a SolidStart app with orm init, seed a PostgreSQL database, serve users from an API route, and render them in a page.'
 image: /img/guides/prisma-solid-start-cover.png
 url: /guides/frameworks/solid-start
-metaTitle: How to use Prisma 8 with SolidStart
-metaDescription: 'Scaffold a SolidStart app, add Prisma 8 with orm init, initialize and seed PostgreSQL, expose users over an API route, and render them with loading and error states.'
+metaTitle: How to use Prisma ORM with SolidStart
+metaDescription: 'Scaffold a SolidStart app, add Prisma ORM with orm init, initialize and seed PostgreSQL, expose users over an API route, and render them with loading and error states.'
 ---
 
 ## Introduction
 
-SolidStart is a full-stack framework for building reactive web apps with SolidJS. Its API routes and server functions run on the server, which is where you call Prisma 8 to read from a PostgreSQL database.
+SolidStart is a full-stack framework for building reactive web apps with SolidJS. Its API routes and server functions run on the server, which is where you call Prisma ORM to read from a PostgreSQL database.
 
-In this guide, you scaffold a SolidStart project, add Prisma 8 to it with `orm init`, initialize and seed a PostgreSQL database, serve users from an API route, and render them in a page with loading and error states. There is no `create-prisma` template for SolidStart, so this guide follows the add-to-an-existing-project path.
+In this guide, you scaffold a SolidStart project, add Prisma ORM to it with `orm init`, initialize and seed a PostgreSQL database, serve users from an API route, and render them in a page with loading and error states. There is no `create-prisma` template for SolidStart, so this guide follows the add-to-an-existing-project path.
 
 Every command, file, and response below was run end to end against a local PostgreSQL database.
 
-:::note[Using Prisma 7?]
+:::note[Using Prisma ORM 7?]
 
-Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/frameworks/solid-start](/guides/v7/frameworks/solid-start).
+Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/frameworks/solid-start](/guides/v7/frameworks/solid-start).
 
 :::
 
@@ -33,10 +33,10 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 <AgentPrompt>
 
 ```text
-Create a new SolidStart app with Prisma 8, seed it, and serve users from an API route and a page.
+Create a new SolidStart app with Prisma ORM, seed it, and serve users from an API route and a page.
 
 1. Scaffold: `npm init solid@latest my-solid-prisma-app -- -s --v2 -t basic --ts`. Delete the `pnpm-lock.yaml` the template ships (otherwise Prisma picks pnpm), then `cd my-solid-prisma-app` and run `npm install`.
-2. Add Prisma 8: `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`.
+2. Add Prisma ORM: `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`.
 3. Run `npx prisma@latest db init` to create the tables from `src/prisma/contract.prisma`.
 4. Add `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, closes with `await db.runtime().close()`, and run it once with `node src/prisma/seed.ts`.
 5. Add `src/routes/api/users.ts` with a `GET` handler that returns `db.orm.public.User.include("posts").all()` as JSON, and replace `src/routes/index.tsx` with a page that loads the same query through a `"use server"` function wrapped in `query` and `createAsync`, with `<Suspense>` for loading and `<ErrorBoundary>` for errors, following https://www.prisma.io/docs/guides/frameworks/solid-start.md. Catch Prisma errors inside the server function and rethrow a plain `Error`.
@@ -78,7 +78,7 @@ npm install
 
 This writes `package-lock.json`, so the next step picks npm.
 
-## 2. Add Prisma 8
+## 2. Add Prisma ORM
 
 Run `orm init` from the project root. The flags preselect PostgreSQL and the Prisma Schema Language; drop `--yes` and `--authoring` to answer those questions interactively:
 
@@ -108,13 +108,13 @@ written
 ✔ Done. Open prisma-8.md to get started.
 ```
 
-The command installs the runtime, writes the Prisma 8 files into the SolidStart project, and emits `src/prisma/contract.json` and `src/prisma/contract.d.ts`, the artifacts your queries are type-checked against. Three files matter for the rest of this guide:
+The command installs the runtime, writes the Prisma ORM files into the SolidStart project, and emits `src/prisma/contract.json` and `src/prisma/contract.d.ts`, the artifacts your queries are type-checked against. Three files matter for the rest of this guide:
 
 - `src/prisma/contract.prisma`: a starter contract with `User` and `Post` models and a one-to-many relation between them
-- `src/prisma/db.ts`: the Prisma 8 client, constructed once and imported by your routes
+- `src/prisma/db.ts`: the Prisma ORM client, constructed once and imported by your routes
 - `prisma.config.ts`: tells the CLI where the contract lives and reads `DATABASE_URL` from `.env`
 
-The starter contract is the same shape the Prisma 7 guide asked you to write by hand:
+The starter contract is the same shape the Prisma ORM 7 guide asked you to write by hand:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
@@ -190,7 +190,7 @@ App space
 └─ marker 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
 ```
 
-`db init` replaces `prisma migrate dev` from Prisma 7 for the first apply: it creates what is missing and records the contract hash in the database. Later schema changes go through [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) for a checked-in migration. To confirm the database matches the contract at any time, run `npx prisma@latest db verify`.
+`db init` replaces `prisma migrate dev` from Prisma ORM 7 for the first apply: it creates what is missing and records the contract hash in the database. Later schema changes go through [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) for a checked-in migration. To confirm the database matches the contract at any time, run `npx prisma@latest db verify`.
 
 ## 4. Seed the database
 
@@ -307,11 +307,11 @@ curl http://localhost:3000/api/users
 ]
 ```
 
-The route handler is ordinary SolidStart code calling an ordinary Prisma 8 query; there is no framework adapter in between.
+The route handler is ordinary SolidStart code calling an ordinary Prisma ORM query; there is no framework adapter in between.
 
 ## 6. Render the users in a page
 
-Replace `src/routes/index.tsx` with a page that loads the same query. The Prisma 7 guide fetched the API route from the component with `fetch("http://localhost:3000/api/users")`. SolidStart renders pages on the server first, where a relative `fetch("/api/users")` fails with `Invalid URL` and an absolute one hard-codes your host, so the page calls the query through a server function instead. `query` from `@solidjs/router` caches and deduplicates it, and `createAsync` exposes the result to the component:
+Replace `src/routes/index.tsx` with a page that loads the same query. The Prisma ORM 7 guide fetched the API route from the component with `fetch("http://localhost:3000/api/users")`. SolidStart renders pages on the server first, where a relative `fetch("/api/users")` fails with `Invalid URL` and an absolute one hard-codes your host, so the page calls the query through a server function instead. `query` from `@solidjs/router` caches and deduplicates it, and `createAsync` exposes the result to the component:
 
 ```typescript title="src/routes/index.tsx"
 import { Title } from "@solidjs/meta";
@@ -356,7 +356,7 @@ export default function Home() {
 Three things to notice:
 
 - `"use server"` keeps the Prisma query and the database connection on the server. The browser only receives the rows.
-- The rows are typed by the contract: `user.name` and `user.posts` autocomplete without importing any generated types. The `User` and `Post` type imports from the Prisma 7 guide are gone because `createAsync` infers the shape from the query.
+- The rows are typed by the contract: `user.name` and `user.posts` autocomplete without importing any generated types. The `User` and `Post` type imports from the Prisma ORM 7 guide are gone because `createAsync` infers the shape from the query.
 - `<Suspense>` renders the loading state while the query runs and `<ErrorBoundary>` renders the error state if it throws. The `catch` block logs the real Prisma error on the server and throws a plain `Error` for the client; see the gotchas below for why.
 
 Open [http://localhost:3000](http://localhost:3000) or request the page from the terminal:
@@ -365,7 +365,7 @@ Open [http://localhost:3000](http://localhost:3000) or request the page from the
 curl http://localhost:3000/
 ```
 
-The server-rendered HTML contains `<h3>Alice</h3>` and `<h3>Bob</h3>` with their post titles, streamed in after the `Loading...` fallback. Your SolidStart app now reads users and their posts from PostgreSQL through Prisma 8, over both an API route and a server-rendered page.
+The server-rendered HTML contains `<h3>Alice</h3>` and `<h3>Bob</h3>` with their post titles, streamed in after the `Loading...` fallback. Your SolidStart app now reads users and their posts from PostgreSQL through Prisma ORM, over both an API route and a server-rendered page.
 
 ## Common gotchas
 
@@ -377,12 +377,12 @@ Don't call `db.runtime().close()` in API routes or server functions. The client 
 
 - **`orm init` installs with pnpm.** The SolidStart template ships a `pnpm-lock.yaml`, and `orm init` picks its package manager from the lockfile it finds. Delete that file before `npm install` (step 1), or use pnpm throughout.
 - **`fetch("/api/users")` fails during server rendering.** Node.js has no origin to resolve a relative URL against, so the render throws `TypeError: Failed to parse URL from /api/users`. Load data through a `"use server"` function as in step 6; keep the API route for HTTP clients.
-- **Rethrow a plain `Error` from server functions.** Prisma 8 throws structured errors that carry the SQL state, the failing statement, and a nested cause. When one of those crosses the server-to-browser boundary during server rendering, the page hangs on hydration instead of showing the `<ErrorBoundary>` fallback. Catching it and throwing `new Error("Could not load users")` keeps the fallback working and keeps database details out of the browser.
+- **Rethrow a plain `Error` from server functions.** Prisma ORM throws structured errors that carry the SQL state, the failing statement, and a nested cause. When one of those crosses the server-to-browser boundary during server rendering, the page hangs on hydration instead of showing the `<ErrorBoundary>` fallback. Catching it and throwing `new Error("Could not load users")` keeps the fallback working and keeps database details out of the browser.
 - **The first request after `npm run dev` can return a 503.** While Vite is still creating its server environment, a request may answer `Vite environment "ssr" is unavailable`. Wait a second and retry; every request after that succeeds.
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages:
 
 ```npm
 npx prisma@latest init
@@ -407,5 +407,5 @@ Prompts that map to this guide:
 
 - Change the schema in `src/prisma/contract.prisma`, then run `npx prisma@latest contract emit` and `npx prisma@latest db update`.
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
-- [Read the Prisma 8 overview](/orm) for the concepts behind contracts and typed queries.
+- [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
 - [SolidStart documentation](https://start.solidjs.com/) for routing, server functions, and deployment presets.

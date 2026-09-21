@@ -35,6 +35,24 @@ These words come from the source code and the release notes. Readers do not have
 
 Also banned as verbs and phrases: "unblocks", "surfaces", "carries", "wires up", "sits", "lives at" (write "is at"), "spells", "hands back", "rides on", "routes on", "keys on", "the shape" (unexplained), "story" (as in "the `DATABASE_URL` story").
 
+## Migration vocabulary
+
+Migrations invite movement metaphors: the database travels, the ref moves, the run goes forward. Readers do not picture a database moving. Say what changes, and what it ends up matching. The metaphor is fine where it carries meaning a literal sentence loses, such as a path through the migration graph, or "roll back", which is the name of the thing.
+
+| Do not write | Write | Why |
+| --- | --- | --- |
+| `db migrate` moves your database from where it is to where you want it | `db migrate` applies the migrations you planned, until your database matches your contract | `db migrate` runs migration files. Only `db update` reconciles a database against the contract with no migration |
+| moves the database to the contract state | applies migrations until the database matches the contract state | |
+| move the database back to an earlier state | the database needs an earlier version of your contract | "roll back" stays: it is the name of the operation |
+| the marker moves | `db migrate` updates the marker; the marker still records the last contract state applied | The marker is a record in the database, not a position |
+| moves the `db` ref | points the `db` ref at that state; updates the `db` ref | A ref is a name for one contract state |
+| the database is behind and has to catch up | the database is several contract states out of date | |
+| it takes the shortest path to the contract state | it runs the fewest migrations that end at that state | Keep "path" where the page is about the graph itself |
+
+`from` and `to` are field names in `migration.json`, so "starts `from`" and "ends at, `to`" are literal, not metaphors.
+
+`scripts/check-plain.sh` enforces the database, marker and ref rows. "Database schema" is the ordinary term for the tables, columns and constraints, and stays allowed. It does not enforce "path", because the graph page uses that word correctly, or "the database is behind", because sample prompts quote a user's own words. The reader review judges those two.
+
 ## Sentence shapes to avoid
 
 - A noun with three or more modifiers: "per-request cursor-enabled serverless facade".

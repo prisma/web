@@ -945,6 +945,18 @@ const config = {
       // Extends, rather than replaces, the rule above: Next.js applies every
       // matching headers() entry.
       ...agentMarkdownPaths.map(agentMarkdownHeaders),
+      {
+        source: "/console-analytics.html",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'none'; script-src 'self' https://www.googletagmanager.com; connect-src https://*.google-analytics.com https://*.analytics.google.com https://*.doubleclick.net https://www.google.com https://www.google.es; img-src https:; frame-ancestors https://console.prisma.io; base-uri 'none'; form-action 'none'",
+          },
+          { key: "Referrer-Policy", value: "origin" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
     ];
   },
 };

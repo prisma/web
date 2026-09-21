@@ -8,7 +8,7 @@ metaDescription: 'Query PostgreSQL and MongoDB with Prisma ORM. Filter with wher
 
 This page shows how to read data with Prisma ORM: fetching [many records or one](#fetch-many-records-or-one), [filtering](#filter-records), [selecting fields](#select-fields), [sorting and paginating](#sort-and-paginate), [counting](#count-records), and [iterating large results](#iterate-a-large-result).
 
-Every query chains methods on a model. The last call in the chain says what you want back and runs the query. Usually that is `.all()` or `.first()`:
+Every query chains methods on a model, and the last call in the chain says what you want back and runs the query, usually `.all()` or `.first()`:
 
 ```typescript tab="PostgreSQL"
 import { db } from "./prisma/db";
@@ -30,15 +30,15 @@ const posts = await db.orm.posts.where({ published: true }).all();
 const user = await db.orm.users.where({ email: "alice@prisma.io" }).first();
 ```
 
-`npm create prisma@latest` scaffolds a new project. `npx prisma orm init` adds Prisma ORM to a project you already have.
+`npm create prisma@latest` scaffolds a new project, while `npx prisma orm init` adds Prisma ORM to a project you already have.
 
-Your contract is the `contract.prisma` file that replaced `schema.prisma`. It is where you declare your models, and every result on this page is typed from it. See [Core concepts](/orm/core-concepts) for how the contract and the client fit together.
+Your contract is the `contract.prisma` file that replaced `schema.prisma`: it is where you declare your models, and every result on this page is typed from it. See [Core concepts](/orm/core-concepts) for how the contract and the client fit together.
 
-`db` is the client you create once in `src/prisma/db.ts`. `npx prisma orm init` writes that file for you. Commit it; unlike Prisma ORM 7's generated client, it is your code. `db.ts` reads two generated files that `npx prisma contract emit` writes next to it; you do not edit those. These examples are written from a file in `src/`, so the import is `./prisma/db`; from elsewhere, change the relative path.
+`db` is the client you create once in `src/prisma/db.ts`, and `npx prisma orm init` writes that file for you. Commit it; unlike Prisma ORM 7's generated client, it is your code. `db.ts` reads two generated files that `npx prisma contract emit` writes next to it; you do not edit those. These examples are written from a file in `src/`, so the import is `./prisma/db`; from elsewhere, change the relative path.
 
 `db.orm` holds your models. On PostgreSQL you reach a model through the database schema it is in: in `db.orm.public.User`, `User` is the model name and `public` is the PostgreSQL schema. It is `public` unless the model sits in a `namespace` block in your contract; see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#schema). On MongoDB there is no schema segment, and the name is the collection: `db.orm.users`.
 
-You can write `.where`, `.select`, `.orderBy`, `.limit`, and `.offset` in any order. `.cursor(...)` must come after `.orderBy(...)`.
+You can write `.where`, `.select`, `.orderBy`, `.limit`, and `.offset` in any order, but `.cursor(...)` must come after `.orderBy(...)`.
 
 For Prisma ORM 7 users, `findMany` and `findFirst` / `findUnique` map directly onto `.all()` and `.first()` ([Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) maps the rest of the API):
 
@@ -126,9 +126,9 @@ const users = await db.orm.public.User.all();
 ]
 ```
 
-`.all()` takes no filter of its own. Put the filter in `.where(...)` before it. `.all()` also applies no limit, so combine it with [`limit`](#sort-and-paginate) on tables that can grow.
+`.all()` takes no filter of its own, so put the filter in `.where(...)` before it. `.all()` also applies no limit, so combine it with [`limit`](#sort-and-paginate) on tables that can grow.
 
-Use `.first()` when you want a single record. It returns the record, or `null` when nothing matches. On both databases it asks for at most one row:
+Use `.first()` when you want a single record. It returns the record, or `null` when nothing matches, and on both databases it asks for at most one row:
 
 ```typescript
 const user = await db.orm.public.User.where({ email: "alice@prisma.io" }).first();
@@ -138,7 +138,7 @@ const user = await db.orm.public.User.where({ email: "alice@prisma.io" }).first(
 { id: 'cuid20000000000000000001', email: 'alice@prisma.io', name: 'Alice', createdAt: 2026-07-06T09:03:13.808Z }
 ```
 
-On PostgreSQL you can skip `.where(...)` and pass the filter straight to `.first(...)`. It takes anything `.where(...)` takes, not just the primary key. On MongoDB, `.first()` takes no argument, so filter with `.where(...)`:
+On PostgreSQL you can skip `.where(...)` and pass the filter straight to `.first(...)`, which takes anything `.where(...)` takes, not just the primary key. On MongoDB, `.first()` takes no argument, so filter with `.where(...)`:
 
 ```typescript tab="PostgreSQL"
 const user = await db.orm.public.User.first({ id: userId });
@@ -148,23 +148,23 @@ const user = await db.orm.public.User.first({ id: userId });
 const user = await db.orm.users.where({ _id: userId }).first();
 ```
 
-If you want an error instead of `null` when nothing matches, call `.firstOrThrow()`. This is what replaces `findUniqueOrThrow` and `findFirstOrThrow`:
+If you want an error instead of `null` when nothing matches, call `.firstOrThrow()`, the replacement for `findUniqueOrThrow` and `findFirstOrThrow`:
 
 ```typescript
 const user = await db.orm.public.User.where({ email }).limit(1).all().firstOrThrow();
 ```
 
-`.limit(1)` keeps it to one row. `.firstOrThrow()` throws an error with code `RUNTIME.NO_ROWS` when nothing matches. There is no `.firstOrThrow()` on `.first()`. The error is an `Error` with a `code` property, so check `"code" in error` before you read it. The same form works on MongoDB, with `db.orm.users`.
+`.limit(1)` keeps it to one row, and `.firstOrThrow()` throws an error with code `RUNTIME.NO_ROWS` when nothing matches. There is no `.firstOrThrow()` on `.first()`. The error is an `Error` with a `code` property, so check `"code" in error` before you read it. The same form works on MongoDB, with `db.orm.users`.
 
 ## Filter records
 
-Use `.where(...)` to narrow a query. Pass an object to match fields by equality:
+Use `.where(...)` to narrow a query, and pass an object to match fields by equality:
 
 ```typescript
 const drafts = await db.orm.public.Post.where({ published: false }).all();
 ```
 
-Chain several `.where(...)` calls to combine conditions with AND. This is also how you express a range:
+Chain several `.where(...)` calls to combine conditions with AND, which is also how you express a range:
 
 ```typescript
 const recentPosts = await db.orm.public.Post
@@ -209,13 +209,13 @@ const notHello = await db.orm.public.Post
 
 ### Filter operators on MongoDB
 
-On MongoDB, `.where(...)` does not take a callback. The object form covers equality:
+On MongoDB, `.where(...)` does not take a callback, but the object form covers equality:
 
 ```typescript
 const drafts = await db.orm.posts.where({ published: false }).all();
 ```
 
-For anything else, pass `.where(...)` a filter built with `MongoFieldFilter`, imported from `@prisma/orm-mongo/query-ast/execution`. `@prisma/orm-mongo` is the package `db.ts` imports from. `MongoFieldFilter` has one static method per operator: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `nin` (not in), `isNull`, and `isNotNull`. Each one takes the field name first:
+For anything else, pass `.where(...)` a filter built with `MongoFieldFilter`, imported from `@prisma/orm-mongo/query-ast/execution`. `@prisma/orm-mongo` is the package `db.ts` imports from. `MongoFieldFilter` has one static method per operator: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `nin` (not in), `isNull`, and `isNotNull`, and each one takes the field name first:
 
 ```typescript
 import { MongoFieldFilter } from "@prisma/orm-mongo/query-ast/execution";
@@ -251,7 +251,7 @@ The full operator list is in [Filter conditions and operators](/orm/reference/or
 
 ## Select fields
 
-Use `.select(...)` to fetch only the fields you need. On PostgreSQL the result type narrows to match. On MongoDB only the fetched document narrows; the type keeps every field, so a field you left out is `undefined` at runtime. On both, you can filter on fields you did not select:
+Use `.select(...)` to fetch only the fields you need. On PostgreSQL the result type narrows to match, while on MongoDB only the fetched document narrows; the type keeps every field, so a field you left out is `undefined` at runtime. On both, you can filter on fields you did not select:
 
 ```typescript tab="PostgreSQL"
 const users = await db.orm.public.User.select("id", "email").all();
@@ -272,7 +272,7 @@ const users = await db.orm.users.select("_id", "email").all();
 
 Use `.orderBy(...)` to sort, `.limit(n)` to limit, and `.offset(n)` to offset.
 
-On PostgreSQL, sort with a callback that calls `.asc()` or `.desc()` on a field. On MongoDB, sort with MongoDB's own direction numbers: `1` for ascending and `-1` for descending.
+On PostgreSQL, sort with a callback that calls `.asc()` or `.desc()` on a field, and on MongoDB, sort with MongoDB's own direction numbers: `1` for ascending and `-1` for descending.
 
 ```typescript tab="PostgreSQL"
 // Second page of posts, newest first
@@ -292,7 +292,7 @@ const page = await db.orm.posts
   .all();
 ```
 
-For a composite sort on PostgreSQL, pass an array of callbacks. Records are sorted by the first field, with the second as tiebreaker:
+For a composite sort on PostgreSQL, pass an array of callbacks, and records are sorted by the first field, with the second as tiebreaker:
 
 ```typescript
 const posts = await db.orm.public.Post
@@ -302,11 +302,11 @@ const posts = await db.orm.public.Post
 
 ### Cursor pagination
 
-Offset gets slower on deep pages. For stable pagination over a large table, follow `.orderBy(...)` with `.cursor(...)` and resume from the last record you returned. `.cursor(...)` is PostgreSQL only.
+Offset gets slower on deep pages, so for stable pagination over a large table, follow `.orderBy(...)` with `.cursor(...)` and resume from the last record you returned. `.cursor(...)` is PostgreSQL only.
 
-The cursor record is excluded from the next page. Pages pick up strictly after it.
+The cursor record is excluded from the next page, so pages pick up strictly after it.
 
-Pass `.cursor(...)` a value for every field you sorted by, as in the example below. Keep the `id` tiebreaker in both the sort and the cursor. `createdAt` is not unique, and a cursor on a non-unique field alone can skip or repeat records that share the boundary value. With `id` in the cursor, pages never overlap even when timestamps tie:
+Pass `.cursor(...)` a value for every field you sorted by, as in the example below. Keep the `id` tiebreaker in both the sort and the cursor, because `createdAt` is not unique, and a cursor on a non-unique field alone can skip or repeat records that share the boundary value. With `id` in the cursor, pages never overlap even when timestamps tie:
 
 ```typescript
 const page1 = await db.orm.public.Post
@@ -370,7 +370,7 @@ const [result] = await (await db.runtime()).query(built);
 
 You can `await` a read for an array, or loop over it with `for await`. Pick one; once you iterate a result with `for await` it is used up (see below).
 
-`await` runs the query and gives you an array. This is the right default. You get the whole result in memory and can read the array as often as you like.
+`await` runs the query and gives you an array, which is the right default: you get the whole result in memory and can read the array as often as you like.
 
 ```typescript
 const posts = await db.orm.public.Post.all();
@@ -434,7 +434,7 @@ const users = await db.orm.public.User.where({ email }).all();
 const user = users[0];
 ```
 
-This fetches every matching record and throws away the rest. Use `.first()` instead. It returns one record or `null`, and it asks the database for at most one row:
+This fetches every matching record and throws away the rest. Use `.first()` instead: it returns one record or `null`, and it asks the database for at most one row:
 
 ```typescript
 const user = await db.orm.public.User.where({ email }).first();
@@ -442,7 +442,7 @@ const user = await db.orm.public.User.where({ email }).first();
 
 ### Forgetting that .all() has no limit
 
-`.all()` returns every match. On a table that grows, yesterday's fast query becomes today's slow one. Add `.limit(n)` when you don't genuinely need every record. When you do need every record, page through the table: `.cursor(...)` on PostgreSQL, `.offset(n)` on MongoDB.
+`.all()` returns every match, so on a table that grows, yesterday's fast query becomes today's slow one. Add `.limit(n)` when you don't genuinely need every record, and when you do need every record, page through the table: `.cursor(...)` on PostgreSQL, `.offset(n)` on MongoDB.
 
 ### Reusing an iterated result
 
@@ -455,7 +455,7 @@ const posts = await db.orm.public.Post.all();
 
 ## Prompt your coding agent
 
-Projects created with `npm create prisma@latest` include the Prisma ORM skills for your coding agent; in an existing project, run `npx prisma skills sync`. Skills are instruction files a coding agent reads, and the [`prisma-8` skill](/ai/tools/skills#available-skills-for-prisma-8) covers everything on this page. Prompts that map to each section:
+Projects created with `npm create prisma@latest` include the Prisma ORM skills for your coding agent, and in an existing project you run `npx prisma skills sync` to add them. Skills are instruction files a coding agent reads, and the [`prisma-8` skill](/ai/tools/skills#available-skills-for-prisma-8) covers everything on this page, so try prompts that map to each section:
 
 - "Using the prisma-8 skill, write a query that returns the 20 newest published posts."
 - "Add a case-insensitive title search to the posts query, using the .ilike operator."

@@ -17,8 +17,8 @@ const getStarParts = (starCount: number) => {
 };
 
 export const StarCount = ({ className }: StarCountProps) => {
-  const { starCount, isLoading, error } = useStarCount();
-  const isHidden = !isLoading && !error && starCount <= 0;
+  const { starCount, isLoading } = useStarCount();
+  const isHidden = !isLoading && (!Number.isFinite(starCount) || starCount <= 0);
   const { integer, decimal } = getStarParts(starCount);
   const formattedValue = `${String(integer).padStart(2, "0")}.${decimal}K`;
 
