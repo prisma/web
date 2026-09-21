@@ -1,28 +1,34 @@
 #!/usr/bin/env npx tsx
 
 /**
- * Every pinned Prisma ORM 8 version in the current docs must be the package's
- * `latest` dist-tag on npm. A version mentioned as history ("since 8.0.0-rc.10",
- * an "Added in" column) is allowed to be older, and so is a pin to an older
- * major line, such as a `prisma@6.x` install step for readers staying on 6.
+ * Every pinned Prisma ORM 8 version in the current docs must be what a reader
+ * installs today: the package's `latest` dist-tag on npm, except
+ * `@prisma/cli-engine`, which `prisma orm init` installs at the exact version
+ * `prisma@latest` declares as its dependency (its own `latest` tag can lag).
+ * A version mentioned as history ("since 8.0.0-rc.10", an "Added in" column)
+ * is allowed to be older, and so is a pin to an older major line, such as a
+ * `prisma@6.x` install step for readers staying on 6.
  *
  * Usage: npx tsx scripts/lint-versions.ts
  */
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = path.join(__dirname, "../content/docs");
 
-const TRACKED_PACKAGES = [
+/** Packages whose `latest` dist-tag is the version the docs must pin. */
+const REGISTRY_PACKAGES = [
   "prisma",
   "@prisma/orm-postgres",
   "@prisma/orm-mongo",
-  "@prisma/cli-engine",
   "@prisma/prisma7",
 ];
+
+/** Installed by `orm init` at the version the `prisma` manifest names, not at `latest`. */
+const CLI_ENGINE = "@prisma/cli-engine";
 
 /** Older releases keep their own content trees and pin their own versions. */
 const VERSIONED_TREES = ["(index)/v7", "cli/v7", "guides/v7", "orm/v6", "orm/v7"];
@@ -48,20 +54,35 @@ const HISTORY_COLUMNS = new Set(["added in", "since", "removed in", "changed in"
 const PACKAGE_PIN_REGEX = /(@?[\w./-]+)@(\d+\.\d+\.\d+(?:-[\w.]+)?)/g;
 const PRERELEASE_REGEX = /(?<![\w.@-])(\d+\.\d+\.\d+-rc\.\d+)(?![\w.-])/g;
 
-type Violation = {
+export type Violation = {
   file: string;
   line: number;
   found: string;
   expected: string;
 };
 
-async function fetchLatest(pkg: string): Promise<string> {
+export type Manifest = { version: string; dependencies?: Record<string, string> };
+
+async function fetchLatestManifest(pkg: string): Promise<Manifest> {
   const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
   if (!response.ok) {
     throw new Error(`npm registry returned ${response.status} for ${pkg}`);
   }
-  const { version } = (await response.json()) as { version: string };
-  return version;
+  return (await response.json()) as Manifest;
+}
+
+/**
+ * The version each tracked package must be pinned at, from the `latest`
+ * manifests of `REGISTRY_PACKAGES`. `@prisma/cli-engine` comes from the
+ * `prisma` manifest's dependencies, which is where `orm init` reads it.
+ */
+export function expectedVersions(manifests: Map<string, Manifest>): Map<string, string> {
+  const expected = new Map<string, string>();
+  for (const [pkg, manifest] of manifests) expected.set(pkg, manifest.version);
+  const engine = manifests.get("prisma")?.dependencies?.[CLI_ENGINE];
+  if (!engine) throw new Error(`prisma@latest does not declare ${CLI_ENGINE} as a dependency`);
+  expected.set(CLI_ENGINE, engine);
+  return expected;
 }
 
 function findMdxFiles(dir: string, fileList: string[] = []): string[] {
@@ -90,7 +111,7 @@ function isHistoryPhrase(line: string, index: number): boolean {
 function historyColumns(lines: string[]): Map<number, Set<number>> {
   const columns = new Map<number, Set<number>>();
   for (let i = 0; i + 1 < lines.length; i++) {
-    if (!lines[i].startsWith("|") || !/^\|\s*-/.test(lines[i + 1])) continue;
+    if (!lines[i].startsWith("|") || !/^\|\s*:?-/.test(lines[i + 1])) continue;
     const headers = lines[i]
       .split("|")
       .slice(1, -1)
@@ -114,7 +135,7 @@ function cellIndex(line: string, index: number): number {
   return line.slice(0, index).split("|").length - 2;
 }
 
-function lintFile(file: string, latest: Map<string, string>): Violation[] {
+export function lintFile(file: string, latest: Map<string, string>): Violation[] {
   const lines = fs.readFileSync(file, "utf8").split("\n");
   const tables = historyColumns(lines);
   const relativeFile = path.relative(path.join(__dirname, ".."), file);
@@ -151,9 +172,12 @@ function lintFile(file: string, latest: Map<string, string>): Violation[] {
 }
 
 async function main() {
-  const latest = new Map(
-    await Promise.all(TRACKED_PACKAGES.map(async (pkg) => [pkg, await fetchLatest(pkg)] as const)),
+  const manifests = new Map(
+    await Promise.all(
+      REGISTRY_PACKAGES.map(async (pkg) => [pkg, await fetchLatestManifest(pkg)] as const),
+    ),
   );
+  const latest = expectedVersions(manifests);
   for (const [pkg, version] of latest) console.log(`${pkg}@${version}`);
 
   const files = findMdxFiles(DOCS_DIR).filter((file) => !isVersionedTree(file));
@@ -174,7 +198,9 @@ async function main() {
   process.exit(1);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
