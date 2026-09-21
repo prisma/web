@@ -150,7 +150,7 @@ Prisma provides a remote MCP server for managing Prisma Postgres databases, Pris
 
 Database tools create databases, manage connection strings, list and restore automated backups, run SQL queries, and inspect schemas. Compute tools manage existing deployments, read runtime logs, and set environment variables. The Composer topology tool shows how services connect and returns Console links; it does not check live app health. The MCP server does not build or upload source code.
 
-Full tool list: https://www.prisma.io/docs/ai/tools/mcp-server.md
+Full tool list: https://www.prisma.io/docs/ai/mcp-tools.md
 
 Add it with the standard MCP configuration:
 

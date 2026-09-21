@@ -17,7 +17,7 @@ const SKILL_DESCRIPTION =
 
 /**
  * Tools exposed by the remote Prisma MCP server, as documented in
- * apps/docs/content/docs/ai/tools/mcp-server.mdx. Names and one-line
+ * apps/docs/content/docs/ai/mcp-tools.mdx. Names and one-line
  * descriptions are copied from the docs; input schemas are not documented.
  */
 export const MCP_TOOLS: { name: string; description: string }[] = [
@@ -60,7 +60,7 @@ export const MCP_TOOLS: { name: string; description: string }[] = [
   },
   {
     name: "introspect_database_schema",
-    description: "Introspect the schema of a Prisma Postgres database with the given id.",
+    description: "Read the schema of a Prisma Postgres database to show its structure.",
   },
   {
     name: "execute_sql_query",
@@ -305,7 +305,7 @@ and returns Console links; it does not check live app health. The MCP server doe
 not build or upload source code.
 
 The \`search_prisma_documentation\` tool answers Prisma questions with citations
-from the official docs. Full tool list: ${docsUrl}/ai/tools/mcp-server.md
+from the official docs. Full tool list: ${docsUrl}/ai/mcp-tools.md
 
 ## Installable agent skills
 

@@ -26,7 +26,7 @@ test("server card has a display title distinct from its technical name", () => {
 });
 
 test("server card tools match the names and descriptions in the MCP docs", () => {
-  const docs = readFileSync(join(siteRoot, "../docs/content/docs/ai/tools/mcp-server.mdx"), "utf8");
+  const docs = readFileSync(join(siteRoot, "../docs/content/docs/ai/mcp-tools.mdx"), "utf8");
   const documentedTools = Array.from(
     docs.matchAll(/^- `([a-z_]+)`: (.+)$/gm),
     ([, name, description]) => ({
