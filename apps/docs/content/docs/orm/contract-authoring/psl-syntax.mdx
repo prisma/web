@@ -428,6 +428,7 @@ model Post {
   @@index([expiresAt], expireAfterSeconds: 3600, sparse: true)
   @@index([title], filter: "{ \"kind\": \"article\" }")
   @@index([location], type: "2dsphere")
+  @@index([wildcard(meta)], exclude: ["meta.internal"])
   @@textIndex([title, body], weights: { "title": 10, "body": 1 }, language: "english")
 }
 
@@ -436,7 +437,9 @@ model User {
 }
 ```
 
-`sort: Asc` or `sort: Desc` on a field sets its direction; this form is MongoDB only. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options. There is no `name:` on MongoDB; MongoDB names the index from its keys.
+`sort: Asc` or `sort: Desc` on a field sets its direction; this form is MongoDB only. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), `default_language` and `languageOverride` for a `type: "text"` index, `include` or `exclude` for a wildcard index, and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options. There is no `name:` on MongoDB; MongoDB names the index from its keys.
+
+A wildcard index covers every field under a path, which is how you index documents whose keys you do not know in advance. Write `wildcard()` in the field list to cover the whole document, or `wildcard(meta)` to cover the fields under `meta`; the key becomes `$**` or `meta.$**`. `include` and `exclude` are lists of field names, quoted, that narrow what the index covers; give one or the other, and only with `wildcard()`. An index can hold one `wildcard()`, and it cannot be an `@@unique`, take `expireAfterSeconds`, or set a `type:` such as `"hashed"`.
 
 ## Base models and variants
 
