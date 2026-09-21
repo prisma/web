@@ -41,11 +41,11 @@ export function McpHeroSection({
               Prisma MCP server
             </RoleKicker>
             <h1 className="isolate mt-4 max-w-[22ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
-              Your database workflow, powered by AI
+              Manage databases and apps from your AI tools
             </h1>
             <p className="mt-6 max-w-[56ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-              Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp,
-              ChatGPT, and other AI agents. Works great with Prisma Postgres.
+              Connect your AI tools to Prisma Postgres, Prisma Compute, and Object Storage. Query
+              databases, inspect app logs, and manage deployments through conversation.
             </p>
             <div className="mt-8">
               <PrismButton href={docsHref}>Add MCP server</PrismButton>

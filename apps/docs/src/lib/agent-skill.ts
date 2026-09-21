@@ -6,7 +6,7 @@
  */
 export const agentSkillMarkdown = `---
 name: prisma
-description: Set up and use Prisma ORM with Prisma Postgres — define a schema, run migrations, generate Prisma Client, and query a PostgreSQL database in TypeScript. Includes the remote Prisma MCP server for managing Prisma Postgres databases.
+description: Set up and use Prisma ORM with Prisma Postgres — define a schema, run migrations, generate Prisma Client, and query a PostgreSQL database in TypeScript. Includes the remote Prisma MCP server for managing databases, Compute deployments, and Object Storage.
 license: Apache-2.0
 compatibility: Node.js and TypeScript projects using Prisma ORM (Prisma Client) and Prisma Postgres.
 metadata:
@@ -146,7 +146,11 @@ Prisma ORM detects when it is invoked by AI coding agents and blocks destructive
 
 ## Prisma MCP server
 
-Prisma provides a remote MCP server that lets AI tools manage Prisma Postgres databases (create databases, connection strings, and backups; run and introspect SQL) and search the Prisma documentation. It authenticates with Prisma Console via OAuth on first use.
+Prisma provides a remote MCP server for managing Prisma Postgres databases, Prisma Compute deployments, and Object Storage. It authenticates with Prisma Console via OAuth so your AI tool can access the workspace you choose.
+
+Database tools create databases, manage connection strings, list and restore automated backups, run SQL queries, and inspect schemas. Compute tools manage existing deployments, read runtime logs, and set environment variables. The Composer topology tool shows how services connect and returns Console links; it does not check live app health. The MCP server does not build or upload source code.
+
+Full tool list: https://www.prisma.io/docs/ai/tools/mcp-server.md
 
 Add it with the standard MCP configuration:
 

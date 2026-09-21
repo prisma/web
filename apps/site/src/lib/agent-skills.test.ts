@@ -25,6 +25,22 @@ test("server card has a display title distinct from its technical name", () => {
   assert.equal(card.name, "Prisma MCP");
 });
 
+test("server card tools match the names and descriptions in the MCP docs", () => {
+  const docs = readFileSync(join(siteRoot, "../docs/content/docs/ai/tools/mcp-server.mdx"), "utf8");
+  const documentedTools = Array.from(
+    docs.matchAll(/^- `([a-z_]+)`: (.+)$/gm),
+    ([, name, description]) => ({
+      name,
+      description,
+    }),
+  );
+  const card = buildMcpServerCard();
+  assert.ok(documentedTools.length > 0);
+  assert.equal(new Set(card.tools.map((tool) => tool.name)).size, card.tools.length);
+  assert.deepEqual(card.tools, documentedTools);
+  assert.deepEqual(card.serverInfo, { name: "Prisma", version: "2.0.0" });
+});
+
 test("every server card icon is an existing app metadata file", () => {
   const card = buildMcpServerCard("https://example.com");
   assert.ok(card.icons.length > 0, "the card should advertise at least one icon");
