@@ -22,7 +22,12 @@ import Link from "next/link";
 export const logo = (
   <>
     <Image alt="Prisma" src={logoLight} aria-hidden className="h-7 w-auto shrink-0 dark:hidden" />
-    <Image alt="Prisma" src={logoDark} aria-hidden className="hidden h-7 w-auto shrink-0 dark:block" />
+    <Image
+      alt="Prisma"
+      src={logoDark}
+      aria-hidden
+      className="hidden h-7 w-auto shrink-0 dark:block"
+    />
   </>
 );
 
@@ -70,7 +75,12 @@ export function baseOptions(): BaseLayoutProps {
             className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
           >
             <span className="max-lg:hidden lg:contents">{logo}</span>
-            <Image alt="Prisma" src={logoMark} aria-hidden className="h-7 w-auto shrink-0 lg:hidden" />
+            <Image
+              alt="Prisma"
+              src={logoMark}
+              aria-hidden
+              className="h-7 w-auto shrink-0 lg:hidden"
+            />
             <span className="sr-only">Prisma home</span>
           </Link>
           <span className="text-fd-muted-foreground" aria-hidden="true">
