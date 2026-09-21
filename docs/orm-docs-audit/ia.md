@@ -18,7 +18,7 @@ Prisma ORM
   + Add to an app you already have                  empty or no database: orm init, contract, emit, db init, first query, db.ts shown
       PostgreSQL
       MongoDB
-  ~ Adopt an existing database                      was "Add to Existing Project"; adds baseline, ref, second migration
+  ~ Adopt an existing database                      was "Add to Existing Project"; adds what infer produces, what sign checks, the second migration
       PostgreSQL
       MongoDB
   + Coming from Prisma 7                            link to the ORM page below, so the Upgrader finds it from here
@@ -30,6 +30,8 @@ Prisma ORM
 Four starting states, one group each. "Coming from Prisma 7" is a link node here because the page itself belongs with the API it maps.
 
 "A database on your machine" answers the question every starting state runs into on the first page: where does `DATABASE_URL` come from when I have no hosted database. The site already has the answers, `prisma dev` under Local development and the Composer local stack, but a reader inside the ORM subtree never meets them; the quickstart's "Path A" is the only mention. The node names the three options in order of effort (`prisma dev`, Composer, a Postgres you run yourself with Docker Compose), links to the pages that already exist for the first two, gives the Docker Compose file and connection string for the third, and ends with how to look at the data (Studio against the local instance, or any Postgres client).
+
+Every starting-state page also links the runnable example repository for its state (C23), so a reader can check a broken local setup against a known-good one.
 
 ### ORM > Introduction
 
@@ -84,6 +86,7 @@ The ORM line becomes a short row with the four starting states, linking into the
 | Adopt an existing database (rewritten) | J2 |
 | Coming from Prisma 7 | J3, J5 (links to the incremental guide), J6 (attribute map) |
 | A database on your machine | J1, J11 |
+| Example repository links on every starting-state page | J12 |
 | Editor setup | J7 |
 | Guides labels and overview line | J5 |
 | Core concepts rewritten | the "written for AI" complaint, by giving the Newcomer a why-first page |
@@ -108,6 +111,8 @@ No change to the top-level section list, to Data Modeling, Contract Authoring, F
 | J8 advanced Postgres | none | no node; needs product answers |
 | J9 types | none | no node; API in PRs |
 | J10 opt out of agent files | CLI > configuration | right node, unreachable from Getting Started |
+| J11 local database | Local development, Composer (platform sections) | the answers exist; nothing in the ORM subtree points at them |
+| J12 runnable example | none | no page links a runnable repository |
 
 Two observations follow from the table.
 

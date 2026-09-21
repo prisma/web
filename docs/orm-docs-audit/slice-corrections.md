@@ -6,7 +6,7 @@ Before any restructure, every factual error on the published Prisma ORM 8 pages 
 |---|---|---|
 | #8236 | Names, flags, paths, codes, and printed output that no longer exist at rc.9, replaced by the form that does | 40 files, merged 2026-09-10 |
 | #8237 | Pages whose explanations were wrong (the `db` ref, middleware, raw SQL, relations, aggregates, the existing-project pages) | 31 files, merged 2026-09-11 |
-| #8238 | Facts on the getting-started pages and guides (Node floor, MongoDB replica set, create-prisma flags and scripts, the skills page, the tutorial, streaming, `npm create prisma@latest`) | 32 files, open as of 2026-09-11 |
+| #8238 | Facts on the getting-started pages and guides (Node floor, MongoDB replica set, create-prisma flags and scripts, the skills page, the tutorial, streaming, `npm create prisma@latest`) | 32 files, merged 2026-09-11 |
 
 Out of scope by design: the sixteen Prisma 7 guides under Prisma ORM 8 paths (A7, since landed as #8242), new content (C), the agent skill (D14), the monorepo docs (D17), and the "Prisma 8" to "Prisma ORM" rename.
 

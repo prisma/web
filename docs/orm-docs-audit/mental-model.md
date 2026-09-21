@@ -59,11 +59,11 @@ Why `db.orm.public.User` and not `prisma.user`: Postgres tables live in schemas,
 
 A migration is a step from one contract hash to another. Together they form a graph, not a timestamped list. Every migration records the hash it starts from and the hash it produces.
 
-`migration plan` diffs two contracts and writes a migration package. The target is always your emitted contract. The origin is `--from` if you pass it, otherwise the `db` ref. With neither, the command refuses (`MIGRATION.PLAN_ORIGIN_UNKNOWN`) when migrations already exist on disk, and plans from an empty database only when the migrations directory is empty.
+`migration plan` diffs two contracts and writes a migration package. The target is always your emitted contract. The origin is `--from` if you pass it, otherwise the `db` ref. With neither, the command refuses (`MIGRATION.PLAN_ORIGIN_UNKNOWN`) when migrations already exist on disk, and plans from an empty database, printing a notice that it did so, only when the migrations directory is empty.
 
-The `db` **ref** is a named pointer to a contract hash, kept in the repo, meaning "the state I consider the database to be at". `db init` and `db update` move it when the connection comes from `prisma.config.ts`; with an explicit `--db` they move it only if `--advance-ref db` is also passed. `db migrate --advance-ref db` moves it. `db sign` does not today; the design in `brief-db-ref-on-adoption.md` makes it do so, so that adopting a database is one step.
+The `db` **ref** is a named pointer to a contract hash, kept in the repo, meaning "the state I consider the database to be at". `db init` and `db update` move it when the connection comes from `prisma.config.ts`; with an explicit `--db` they move it only if `--advance-ref db` is also passed. `db migrate --advance-ref db` moves it. `db sign` moves it too, with or without `--db`, and stores the snapshot the ref points at, so adopting a database is one step; `--no-advance-ref` skips that. This is the change `brief-db-ref-on-adoption.md` asked for; it shipped in rc.10.
 
-Why this matters more than it seems: a project with no `db` ref and no migrations on disk plans its first migration from empty, which proposes recreating every table. This is the trap for anyone who adopts an existing database with `db sign` and then runs `migration plan`. The fix today is a baseline migration plus `migration ref set db <hash>` once, then `--advance-ref db` on each migrate. When the graph is empty and the `db` ref names a stored snapshot, `migration plan` writes the baseline for you.
+Why this matters more than it seems: a project with no `db` ref and no migrations on disk plans its first migration from empty, which proposes recreating every table. Before rc.10 this was the trap for anyone who adopted an existing database with `db sign` and then ran `migration plan`; the fix was a baseline migration plus `migration ref set db <hash>` once. Now `db sign` sets the ref, and when the graph is empty and the `db` ref names a stored snapshot, `migration plan` writes the baseline for you. What remains on the reader is `--advance-ref db` on each `db migrate`.
 
 Why a graph and not a list: two branches can each add a migration, and the graph resolves the merge by hashes instead of by timestamp order. Partial failures are safe to retry because each edge has a verifiable precondition.
 
@@ -75,7 +75,7 @@ Why a graph and not a list: two branches can each add a migration, and the graph
 | --- | --- | --- | --- |
 | `contract emit` | contract source | `contract.json`, `contract.d.ts` | after every contract change, before anything else |
 | `db init` | emitted contract | tables, signature, `db` ref | empty database, first time |
-| `db sign` | emitted contract, live schema | signature | adopting a database that already matches |
+| `db sign` | emitted contract, live schema | signature, `db` ref | adopting a database that already matches |
 | `db verify` | emitted contract, live schema | nothing | check for drift |
 | `db update` | emitted contract, live schema | schema diff, signature, `db` ref | development iteration |
 | `migration plan` | origin contract, emitted contract | a migration package | change you want checked in |
@@ -100,7 +100,7 @@ Why a graph and not a list: two branches can each add a migration, and the graph
 | `createMany` | `createAll` (rows back) or `createAndCount` (count back) | the return shape is in the name |
 | `$transaction([...])` | `db.transaction(async tx => ...)` | callback form only |
 | `@db.Text`, `@db.VarChar(n)` | `Text`, `VarChar(n)` in type position | native types are types, not attributes |
-| `Prisma.UserGetPayload<...>` | `Shape<...>`, with the `Models` namespace | in `prisma/orm` `main`; ships with the next tagged release |
+| `Prisma.UserGetPayload<...>` | `Shape<Models.public_User, ...>`; `Scalars<...>` for the plain row | one type per model, derived from `contract.d.ts`; since rc.10 |
 | `skipDuplicates`, `increment`, `findUniqueOrThrow`, `mode: "insensitive"`, JSON path filters | no equivalent yet (`.all().firstOrThrow()` covers the throw case) | say so plainly |
 
 ## The eight words
