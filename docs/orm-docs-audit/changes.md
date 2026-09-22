@@ -27,16 +27,13 @@ Status as of 2026-09-21.
 
 ## Decisions needed, and from whom
 
+The five migrations questions from the C21 handover were decided on 2026-09-22: commit `refs/db.json`; an environment ref names the state the pipeline will migrate to; diverged branches plan one migration from `prod` (prisma/web #8307 applies all three); the `--advance-ref db` default is prisma/orm#30370; and the migrations section gets a cutting round after #8307 lands.
+
 | Item | Decision | Who |
 |---|---|---|
 | D4 | For each missing client API: build it, or document the workaround and say it is not planned | ORM product |
 | C7 | Whether RLS, expression indexes, and `@@control` are documented as supported or as preview | ORM product |
 | C18 | The Bun, Deno, PostgreSQL, and MongoDB floors to publish beside the Node floor already on `release-status` | ORM product |
-| migrations | Whether `migrations/app/refs/db.json` (and a `prod` ref) should be committed | Will |
-| migrations | Why `--advance-ref db` is not the default in development, so the pages can say so | ORM product |
-| migrations | What the `prod` ref means: what is deployed, or what should be, and whether deploys move it | ORM product |
-| migrations | Merge migrations (the graph page) or rebase and replan (`migration-review.md`) for diverged histories | ORM product |
-| migrations | Whether the migrations section gets a cutting round: about 10,000 words before C21, about 13,800 after | Will |
 
 ## A. Restructure
 
@@ -115,7 +112,7 @@ Places where the docs are hard because the tool is. Grouped by who owns the fix.
 
 - **D1. Make adoption one step.** Today: `contract infer`, edit, `contract emit`, `db sign`, `migration plan`, `migration ref set db <hash>`. Either `db sign` sets the `db` ref when none exists, or a `db adopt` command does sign plus ref. Removes the recreate-everything trap in J2 and halves C3. Landed as prisma/orm#30251: `db sign` sets the `db` ref, with or without `--db`; `--advance-ref <name>` redirects and `--no-advance-ref` skips. Documented in #8291. Brief in `brief-db-ref-on-adoption.md`.
 - **D2. `migration plan` with no origin and no migrations on disk plans from empty silently.** With migrations on disk it refuses (`MIGRATION.PLAN_ORIGIN_UNKNOWN`). For a signed database with no ref the silent case is the wrong default; it should warn or refuse the same way. Landed with D1: the plan prints a notice and `--json` carries `fromDefaulted: true`.
-- **D9. `--db` suppresses `db` ref advancement.** `db init` and `db update` advance the ref only when the URL comes from config; with `--db` they do not unless `--advance-ref` is also passed. Surprising, and every example passes `--db`. Advance regardless, or warn when `--db` is used without `--advance-ref` and no ref exists. Source: `cli/src/control-api/operations/ref-advancement.ts:19-28`.
+- **D9. `--db` suppresses `db` ref advancement.** `db init` and `db update` advance the ref only when the URL comes from config; with `--db` they do not unless `--advance-ref` is also passed. Surprising, and every example passes `--db`. Advance regardless, or warn when `--db` is used without `--advance-ref` and no ref exists. Source: `cli/src/control-api/operations/ref-advancement.ts:19-28`. Decided 2026-09-22 and filed as prisma/orm#30370: `db migrate` should advance `db` when the connection comes from `prisma.config.ts` and `CI` is unset, never with `--db`, with `--no-advance-ref` to opt out and a failed ref write downgraded to a warning.
 - **D13. `migration ref set … @db` fails** with `MIGRATION.HASH_NOT_IN_GRAPH` instead of reading the marker. Support it when a connection is available, or reject it with a message that says why. Source: `cli/src/control-api/operations/ref.ts:104-118`.
 - **D15. `db update` never plans data operations.** A change that needs a backfill fails and the user must switch to `migration plan`; nothing says so. Allow it, or print the hint. Source: `cli/src/control-api/operations/db-update.ts:17`.
 - **D16. `migration status` exits 0 on warnings.** CI has to parse `--json`. A `--strict` flag or a non-zero exit on warn-level findings makes C11 one line. Source: `cli/src/orm/migration/status-findings.ts`.
