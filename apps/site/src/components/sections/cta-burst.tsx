@@ -31,7 +31,7 @@ type CtaBurstProps = {
   /** Override the body measure (default max-w-[52ch]). */
   bodyMaxWidth?: string;
   body?: string;
-  checks?: readonly { label: string; color: string }[];
+  checks?: readonly { label: string; color: string; ownLine?: boolean }[];
   primaryCta?: Cta;
   secondaryCta?: Cta;
 };
@@ -135,10 +135,15 @@ export function CtaBurst({
 
               <Reveal delay={0.16}>
                 <ul className="mt-7 flex flex-wrap items-center justify-start gap-x-7 gap-y-3 sm:justify-center">
-                  {checks.map(({ label, color }, i) => (
+                  {checks.map(({ label, color, ownLine }, i) => (
                     <li
                       key={i}
-                      className="flex items-start gap-2 text-left text-[15px] font-semibold text-foreground"
+                      className={cn(
+                        "flex items-start gap-2 text-left text-[15px] font-semibold text-foreground",
+                        // a long check reads better on its own line under the
+                        // shorter two, rather than stretching the single row
+                        ownLine && "sm:basis-full sm:justify-center",
+                      )}
                     >
                       <CheckBold className={cn("mt-0.5 size-4 shrink-0", color)} aria-hidden />
                       {label}

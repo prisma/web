@@ -163,7 +163,13 @@ function LoopDiagram() {
   );
 }
 
-export function AgentLoop() {
+// `heading` lets /stack re-point the same section at its own narrative while
+// the homepage keeps the default.
+export function AgentLoop({
+  heading = "What changes when your stack is built to work together",
+}: {
+  heading?: string;
+} = {}) {
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-site">
@@ -171,7 +177,7 @@ export function AgentLoop() {
           <div>
             <Reveal>
               <h2 className="max-w-[20ch] text-balance text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
-                What changes when your stack is built to work together
+                {heading}
               </h2>
             </Reveal>
 

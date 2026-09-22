@@ -54,8 +54,11 @@ export type ProductPageContent = {
      * two — the second sentence pushed the primary CTA to ~700px, below the
      * fold on a 1440x800 laptop, and every page's second sentence was already
      * restated by the section under the hero.
+     *
+     * An array renders as stacked paragraphs, for use-case pages whose approved
+     * copy leads with two.
      */
-    subheadline: string;
+    subheadline: string | string[];
     /** Exactly three specific benefits. Sit under the CTA, not above it. */
     benefits: [string, string, string];
     primaryCta: Cta;

@@ -5,7 +5,7 @@ import { PrismRay } from "@/components/brand/prism-ray";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { cn } from "@/lib/utils";
-import { PLATFORM_PRODUCT_ACCENTS } from "./icons";
+import { PLATFORM_PRODUCT_ACCENTS, type ProductAccentName } from "./icons";
 import { PRODUCT_ILLUSTRATIONS } from "./illustrations";
 import { ProductTour } from "./product-tour";
 import type { ProductPageContent } from "./types";
@@ -43,8 +43,61 @@ export function ProductHero({
   name,
   accent,
   hero,
-}: Pick<ProductPageContent, "name" | "accent" | "hero">) {
+  visual,
+  placeholderLabel = "[Product abstraction]",
+  benefitsPlacement = "below-cta",
+}: Pick<ProductPageContent, "name" | "hero"> & {
+  /**
+   * A Platform product's canonical accent, or a raw `bg-*` class for pages
+   * that aren't a product — use-case pages carry the same hero but must not
+   * claim a product identity in the kicker dot.
+   */
+  accent: ProductAccentName | `bg-${string}`;
+  /**
+   * A ready-made visual for the right column, rendered ahead of the tour /
+   * illustration / placeholder fallbacks. Use-case pages carry no product
+   * tour, so they pass an existing site abstraction here (e.g. the Console
+   * illustration) rather than reserving a labelled slot.
+   */
+  visual?: React.ReactNode;
+  /** What the reserved illustration slot is waiting for, when there isn't one yet. */
+  placeholderLabel?: string;
+  /**
+   * Where the three benefits sit relative to the CTA. Product pages keep
+   * `below-cta` — the 2026-08-06 review moved them there because they were
+   * pushing the CTA below the fold on /orm. Use-case pages ask for
+   * `above-cta`, which is the order their approved copy is written in
+   * (André, 2026-08-13); their copy is short enough to carry it.
+   */
+  benefitsPlacement?: "above-cta" | "below-cta";
+}) {
   const Illustration = hero.illustration ? PRODUCT_ILLUSTRATIONS[hero.illustration] : null;
+  const dotColor = accent.startsWith("bg-")
+    ? accent
+    : PLATFORM_PRODUCT_ACCENTS[accent as ProductAccentName];
+  const benefitsAbove = benefitsPlacement === "above-cta";
+
+  // Above the CTA the list is part of the pitch, so it runs straight on from
+  // the subheadline. Below it, it's supporting detail after the ask, and the
+  // rule separates the two.
+  const benefits = (
+    <ul
+      className={cn(
+        "flex flex-col gap-2.5",
+        benefitsAbove ? "mt-7" : "mt-8 border-t border-black/[0.07] pt-7",
+      )}
+    >
+      {hero.benefits.map((label, i) => (
+        <li
+          key={i}
+          className="flex items-start gap-2 text-[0.9375rem] font-semibold text-foreground"
+        >
+          <CheckBold className={cn("mt-0.5 size-4 shrink-0", CHECK_COLORS[i % 3])} aria-hidden />
+          {label}
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
@@ -83,7 +136,7 @@ export function ProductHero({
               {/* the site's standard tagline: sentence case, ink at 70%, colour
                   carried by the dot — never uppercase, letter-spaced or grey
                   (documented on /brand) */}
-              <RoleKicker color={PLATFORM_PRODUCT_ACCENTS[accent]}>{name}</RoleKicker>
+              <RoleKicker color={dotColor}>{name}</RoleKicker>
               {/* 16ch is the intended measure, but at the top of the clamp it
                   resolves wider than this column, so the column has to be the
                   hard limit — otherwise a headline with a long nowrap emphasis
@@ -91,9 +144,26 @@ export function ProductHero({
               <h1 className="isolate mt-4 max-w-[min(16ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
                 <Headline headline={hero.headline} emphasis={hero.headlineEmphasis} />
               </h1>
-              <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                {hero.subheadline}
-              </p>
+              {/* One paragraph on product pages; use-case copy leads with two,
+                  so an array renders a stacked pair at the same measure. */}
+              {(Array.isArray(hero.subheadline) ? hero.subheadline : [hero.subheadline]).map(
+                (para, i) => (
+                  <p
+                    key={i}
+                    className={cn(
+                      "max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground",
+                      i === 0 ? "mt-6" : "mt-4",
+                    )}
+                  >
+                    {para}
+                  </p>
+                ),
+              )}
+              {/* Benefits support the CTA rather than delaying it — on product
+                  pages they sit below it, so they carry their original weight
+                  without competing. It was the position that pushed the CTA
+                  down, not the type. */}
+              {benefitsAbove ? benefits : null}
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <PrismButton href={hero.primaryCta.href} size="lg">
                   {hero.primaryCta.label}
@@ -105,24 +175,7 @@ export function ProductHero({
               {hero.microline ? (
                 <p className="mt-3.5 text-sm text-muted-foreground">{hero.microline}</p>
               ) : null}
-              {/* Benefits support the CTA rather than delaying it. They sit
-                  below it now, so they can carry their original weight without
-                  competing — it's the position that was pushing the CTA down,
-                  not the type. */}
-              <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
-                {hero.benefits.map((label, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-2 text-[0.9375rem] font-semibold text-foreground"
-                  >
-                    <CheckBold
-                      className={cn("mt-0.5 size-4 shrink-0", CHECK_COLORS[i % 3])}
-                      aria-hidden
-                    />
-                    {label}
-                  </li>
-                ))}
-              </ul>
+              {benefitsAbove ? null : benefits}
             </div>
 
             {/* the demo: the ray crosses the panel behind it — light passing
@@ -139,7 +192,11 @@ export function ProductHero({
                     intermediate state while editing content, and it is truthy —
                     it would render a tour whose `% stops.length` is NaN, giving
                     an empty card with no tabs instead of falling through here */}
-                {hero.tour?.length ? (
+                {visual ? (
+                  <div className="max-md:aspect-[4/3] md:flex md:h-full md:items-center">
+                    {visual}
+                  </div>
+                ) : hero.tour?.length ? (
                   <ProductTour stops={hero.tour} />
                 ) : Illustration ? (
                   <div className="max-md:aspect-[4/3] md:h-full">
@@ -147,8 +204,8 @@ export function ProductHero({
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-black/20 bg-white/70 backdrop-blur-sm max-md:aspect-[4/3]">
-                    <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      [Product abstraction]
+                    <p className="max-w-[24ch] text-center text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      {placeholderLabel}
                     </p>
                   </div>
                 )}
