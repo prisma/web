@@ -79,9 +79,9 @@ npx prisma migration graph
 
 Read it from the bottom up, because the earliest state is the bottom row and every row above it is a later one. Each `↑` row shows a migration's directory name, its start and end hashes, and its operation count, and `--legend` prints a key to the other symbols.
 
-From an empty database (`∅`), `init` produces contract state `4437973`. Alice's migration starts there and produces `5e1f082`, and Bob's starts from the same state and produces `1a76a3c`, which is why the drawing splits in two. Bob merged first, so `main` now points the `prod` ref at `1a76a3c`, and production will be migrated there. Alice's branch still holds a migration whose start is the old head.
+From an empty database (`∅`), `init` produces contract state `4437973`. Alice's migration starts there and produces `5e1f082`, and Bob's starts from the same state and produces `1a76a3c`, which is why the drawing splits in two. Bob merged first, so `main` now points the `prod` ref at `1a76a3c`, and production will be migrated there. Alice's branch still holds a migration that starts from `4437973`, which is no longer the head.
 
-The rule for Alice is that her contract is the combination of what `main` needs and what her branch needs, and the migration production needs is the one from where `prod` points to that contract. So she rebases onto `main` and, if git reports a conflict in `contract.prisma`, `contract.json`, or `contract.d.ts`, resolves it in `contract.prisma` and runs `npx prisma contract emit`, which rewrites the other two. She accepts `main`'s `refs/prod.json` as it is, and if `refs/db.json` conflicts too, she keeps the state her own database is at, `5e1f082`, as [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) explains. Then she plans one migration from `prod`:
+After Alice rebases onto `main`, her `contract.prisma` holds both fields, `phone` and `avatar`, and production is at `1a76a3c`, where `prod` points. So the migration production needs is one from `prod` to that merged contract. If git reports a conflict in `contract.prisma`, `contract.json`, or `contract.d.ts`, she resolves it in `contract.prisma` and runs `npx prisma contract emit`, which rewrites the other two. She accepts `main`'s `refs/prod.json` as it is, and if `refs/db.json` conflicts too, she can take either side, because the `db update` in the last step below points it at the merged state. Then she plans one migration from `prod`:
 
 ```npm
 npx prisma migration plan --name alice_merge --from prod
@@ -89,7 +89,7 @@ npx prisma migration plan --name alice_merge --from prod
 
 That is `alice_merge` in the drawing, from `1a76a3c` to the merged contract `e377d00`, and it adds `phone` to a database that already has `avatar`. `migration plan` always ends at whatever is in `contract.json`, which now holds the merged contract. If her old `migration.ts` had operations she wrote by hand, such as a `dataTransform`, she copies them into the new file and recompiles it, because the planner derives the schema changes from the contract but cannot carry over what she wrote.
 
-Her old migration, `alice_add_phone`, can stay on disk or be deleted. It is never applied in both cases, because `db migrate` follows the path from the database's marker to its target, and `5e1f082` is not on the path from `prod` to `@contract`, so it cannot run out of order. Her own development database is the one database that is at `5e1f082`, and the quickest way to bring it to the merged contract is `npx prisma db update`, which changes a development database directly and points the `db` ref at the new state, so her next plan starts from the right place.
+Her old migration, `alice_add_phone`, can stay on disk or be deleted. Either way it never runs, because `db migrate` follows the path from the database's marker to its target, and `5e1f082` is not on the path from `prod` to `@contract`, so it cannot run out of order. Her own development database is the one database that is at `5e1f082`, and the quickest way to bring it to the merged contract is `npx prisma db update`, which changes a development database directly and points the `db` ref at the new state, so her next plan starts from the right place.
 
 ## What happens when you run db migrate
 
@@ -97,7 +97,7 @@ Her old migration, `alice_add_phone`, can stay on disk or be deleted. It is neve
 
 Once your history has branches, more than one path can lead to the target, so `db migrate` has to pick one. It takes the path with the fewest migrations, and on a tie the migration with the earlier `createdAt` in its `migration.json`. That is also why a migration whose end state leads nowhere is never run: a database at `4437973` runs `bob_add_avatar` and then `alice_merge`, and never `alice_add_phone`, because no path through it reaches the target. The choice does not change where you end up, because both paths end at the same contract state, and `db migrate` checks the tables against that state before it updates the marker. To see the path it picked before anything runs, use `npx prisma db migrate --show`.
 
-When no chain of migrations leads from the marker to the target, the run fails with that same `MIGRATION.PATH_UNREACHABLE` error, and that usually means one of two things. Either `--to` names a state you did not intend, which is worth checking first, or the migration you need has not been planned yet. In the second case, plan it from the hash the marker holds with `npx prisma migration plan --from <hash> --name <name>`, and to find that hash run `npx prisma migration status`, which prints it next to its `@db` label.
+When no chain of migrations leads from the marker to the target, the run fails with an error whose `code` is `MIGRATION.PATH_UNREACHABLE`, and that usually means one of two things. Either `--to` names a state you did not intend, which is worth checking first, or the migration you need has not been planned yet. In the second case, plan it from the hash the marker holds with `npx prisma migration plan --from <hash> --name <name>`, and to find that hash run `npx prisma migration status`, which prints it next to its `@db` label.
 
 ## Inspecting the graph
 
@@ -135,7 +135,7 @@ Some states you only need to refer to once, so Prisma ORM reserves a few tokens 
 - `@db`: the contract state in the marker of the database you are connected to. The `db` ref is a file, so it can name a different state.
 - `@empty`: the empty database, before any migration.
 
-Not every command takes every token: `npx prisma db migrate --show --from` accepts all three, while `migration plan --from` accepts only `@empty`. So if you want to see the path from the contract you have now to the state `prod` names, without changing anything, run `npx prisma db migrate --show --from @contract --to prod`.
+Not every command takes every token: `npx prisma db migrate --show --from` accepts all three, while `migration plan --from` accepts only `@empty` of the three, since it is offline and cannot read a database. So if you want to see the path from the contract you have now to the state `prod` names, without changing anything, run `npx prisma db migrate --show --from @contract --to prod`.
 
 ## What the graph gives you
 
