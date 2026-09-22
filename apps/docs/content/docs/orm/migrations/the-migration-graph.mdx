@@ -26,7 +26,7 @@ Each migration records the contract state it starts from and the state it ends a
 
 Every time you change the contract, run `npx prisma contract emit`, which replaces `prisma generate`. Then plan a migration with `npx prisma migration plan --name <name>`, and in development apply it with `npx prisma db migrate --advance-ref db`. `npx prisma migration graph` draws the whole history, and `npx prisma migration status` tells you which contract state a database matches and what `db migrate` would run next.
 
-Keep `--advance-ref db` on that command, because it is what stops your next migration redoing work. The `db` ref is a file in `migrations/app/refs/` naming the contract state you last applied in development, and the flag points that ref at the state you just applied. `db init`, `db update`, and `db sign` move it too. `migration plan` starts from that ref, so if you leave the flag off, your next migration can repeat changes your database already has. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) shows how to fix that.
+Keep `--advance-ref db` on that command in development, so that your next `migration plan` starts from what you just applied instead of planning it again, as [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) explains.
 
 :::
 
@@ -141,7 +141,7 @@ Not every command takes every token: `npx prisma db migrate --show --from` accep
 
 ### Parallel work without ordering conflicts
 
-Two branches can plan migrations at the same time without either one knowing about the other. After the merge, one migration planned from `prod` ends at the merged contract, a branch migration that no longer leads to it stays in the graph without ever running, and a development database that applied that one gets the merged contract from `npx prisma db update`, as [A worked example](#a-worked-example) shows.
+Two branches can plan migrations at the same time without either one knowing about the other, because nothing about a migration depends on when it was planned. Cleaning up afterwards is one `migration plan --from prod`, as [A worked example](#a-worked-example) shows.
 
 ### History you can trust
 
@@ -169,10 +169,10 @@ Reach for [`npx prisma db sign`](/cli/db-sign) when a database has no marker and
 
 ## Database-specific details
 
-Nothing above changes with your database, because the graph and the commands are the same on every database that [Prisma ORM 8 supports](/orm/supported-databases). What does differ is where the marker and ledger are stored, and how much of a failed `db migrate` run is left behind.
+Nothing above changes with your database, because the graph and the commands are the same on every database that [Prisma ORM 8 supports](/orm/supported-databases). What does differ is where the marker and ledger are stored, and how much of a failed `db migrate` run is left behind, which [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) covers.
 
-- **PostgreSQL**: the marker is the `prisma_contract.marker` table and the ledger is the `prisma_contract.ledger` table. The whole run is one transaction, so a failed run changes neither the database nor its marker.
-- **MongoDB**: the marker and ledger are documents in a `_prisma_migrations` collection, which is new in Prisma ORM 8 because Prisma ORM 7 had no migrations on MongoDB. A `db migrate` run is not one transaction, so operations that finished before a failure stay in the database.
+- **PostgreSQL**: the marker is the `prisma_contract.marker` table and the ledger is the `prisma_contract.ledger` table.
+- **MongoDB**: the marker and ledger are documents in a `_prisma_migrations` collection, which is new in Prisma ORM 8 because Prisma ORM 7 had no migrations on MongoDB.
 
 ## Release-candidate limitations
 
