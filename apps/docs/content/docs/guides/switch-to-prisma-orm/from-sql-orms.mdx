@@ -319,7 +319,7 @@ console.log("deleted", deleted);
 
 const totals = await db.orm.public.User.aggregate((a) => ({ users: a.count() }));
 console.log("totals", totals);
-await db.runtime().close();
+await db.close();
 ```
 
 Run it with Node.js 24, which executes TypeScript directly:
@@ -356,7 +356,7 @@ What changed, in the order the script runs:
 - `.include("posts")` replaces `relations: { posts: true }`. The row Prisma ORM returned for Bob carries the post TypeORM wrote, because both ORMs read the same table.
 - `.update()` and `.delete()` act on one row and return it. For many rows use `updateAll()` and `deleteAll()`, or `updateAndCount()` and `deleteAndCount()` when you only need the number.
 - A total count is an aggregate: `.aggregate((a) => ({ users: a.count() }))`.
-- The script closes the pool with `db.runtime().close()` because it is a one-off process. A server keeps the client open for its lifetime.
+- The script closes the pool with `db.close()` because it is a one-off process. A server keeps the client open for its lifetime.
 
 TypeORM still reads everything Prisma ORM wrote; a `find({ relations: { posts: true } })` after the script returned Dave and his post alongside Bob. Keep TypeORM for the queries you have not rewritten yet, and remove it when the last one is gone.
 
@@ -402,7 +402,7 @@ Turn off schema synchronization in the ORM you are leaving once the database is 
 - `contract infer` writes `Timestamptz` for `timestamptz` columns. Change them to `TimestamptzString` before you emit, as in step 3, or every query that reads the column fails with `RUNTIME.TEMPORAL_UNAVAILABLE` on Node.js.
 - If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Set `"type": "module"`; the generated `db.ts` and `prisma.config.ts` are ES modules.
 - Do not run `db init` or `db update` on the existing database. `db sign` is the step for a database that already has the tables; `db update` and `migration plan` come later, when you change the contract yourself.
-- Do not call `db.runtime().close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.
+- Do not call `db.close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.
 
 ## Prompt your coding agent
 
