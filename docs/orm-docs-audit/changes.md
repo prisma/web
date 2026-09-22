@@ -27,7 +27,7 @@ Status as of 2026-09-21.
 
 ## Decisions needed, and from whom
 
-The five migrations questions from the C21 handover were decided on 2026-09-22: commit `refs/db.json`; an environment ref names the state the pipeline will migrate to; diverged branches plan one migration from `prod` (prisma/web #8307 applies all three); the `--advance-ref db` default is prisma/orm#30370; and the migrations section gets a cutting round after #8307 lands.
+The five migrations questions from the C21 handover were decided on 2026-09-22: commit `refs/db.json`; an environment ref names the state the pipeline will migrate to; diverged branches plan one migration from `prod` (prisma/web #8307 applies all three); the `--advance-ref db` default is prisma/orm#30370; and the migrations section had its cutting round as #8309 (merged 2026-09-22): one home per rule, no word ceilings, about 550 words of restatement removed. The reader round after it listed six older gaps on The migration graph and How migrations work, recorded in a comment on #8309: the graph drawing's column symbols, `<dir>^`, the `--from` token lists, a `migrate reset` replacement command, `db verify --schema-only`, and the two hashes both called "the hash".
 
 | Item | Decision | Who |
 |---|---|---|
