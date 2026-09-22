@@ -33,6 +33,36 @@ The command emits:
 
 Do not edit these files by hand. Re-run `contract emit` after changing the contract source or extension pack list.
 
+## Run it automatically
+
+In development, a Vite plugin runs `contract emit` for you: once when the dev server starts, and again whenever the contract source or `prisma.config.ts` changes. It needs Vite 7 or 8, and comes with your database package, so there is nothing to install:
+
+```typescript title="vite.config.ts"
+import { defineConfig } from "vite";
+import { prismaVitePlugin } from "@prisma/orm-postgres/vite-plugin-contract-emit";
+
+export default defineConfig({
+  plugins: [prismaVitePlugin()],
+});
+```
+
+On MongoDB, import it from `@prisma/orm-mongo/vite-plugin-contract-emit`. The plugin reads `prisma.config.ts` from the Vite root; pass another path as the first argument, `prismaVitePlugin("config/prisma.config.ts")`. A second argument takes `debounceMs` (how long to wait after a change before emitting, 150 by default) and `logLevel` (`"silent"`, `"info"`, or `"debug"`). The dev server prints one line per emit:
+
+```text
+[prisma-vite-plugin-contract-emit] Emitted contract (storageHash: ab5014a0...)
+```
+
+An emit that fails shows in Vite's error overlay. The plugin does nothing in a production build, so builds and CI still run the command themselves. With any other bundler, or for a build, add the command as a `prebuild` script, which npm, pnpm, and yarn run before `build`:
+
+```json title="package.json (excerpt)"
+{
+  "scripts": {
+    "prebuild": "prisma contract emit",
+    "build": "next build"
+  }
+}
+```
+
 ## Examples
 
 ```npm
