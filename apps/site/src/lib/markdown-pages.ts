@@ -13,6 +13,10 @@ import {
 } from "./markdown/enterprise";
 import { HOME_H1, HOME_SUBHEADLINE, renderHomeMarkdown } from "./markdown/home";
 import { MCP_H1, MCP_SUBHEADLINE, renderMcpMarkdown } from "./markdown/mcp";
+import {
+  PAGE_DESCRIPTION as MCP_PAGE_DESCRIPTION,
+  PAGE_TITLE as MCP_PAGE_TITLE,
+} from "@/app/mcp/mcp-content";
 import { PRICING_H1, PRICING_SUBHEADLINE, renderPricingMarkdown } from "./markdown/pricing";
 import { productH1, productSubheadline, renderProductMarkdown } from "./markdown/product";
 import { STACK_H1, STACK_SUBHEADLINE, renderStackMarkdown } from "./markdown/stack";
@@ -136,9 +140,8 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   },
   "/mcp": {
     path: "/mcp",
-    title: "Prisma MCP Server — AI-Powered Database Management",
-    description:
-      "Manage Prisma Postgres databases with natural language in AI tools like Cursor, Claude Code, ChatGPT, and VS Code.",
+    title: MCP_PAGE_TITLE,
+    description: MCP_PAGE_DESCRIPTION,
     h1: MCP_H1,
     subheadline: MCP_SUBHEADLINE,
     renderBody: renderMcpMarkdown,

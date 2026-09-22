@@ -265,8 +265,8 @@ export const llmsSections: LLMsSection[] = [
   {
     slug: "mcp",
     title: "Prisma MCP",
-    description: "MCP server setup for Prisma Postgres and Prisma CLI workflows.",
-    prefixes: ["/ai/tools/mcp-server", "/cli/mcp"],
+    description: "MCP setup and tools for Prisma Postgres, Compute, Object Storage, and Composer.",
+    prefixes: ["/ai/tools/mcp-server", "/ai/mcp-tools", "/cli/mcp"],
   },
 ];
 

@@ -1,70 +1,23 @@
 ---
 title: MCP server
-description: Manage Prisma Postgres databases using LLMs with the Prisma Model-Context-Protocol (MCP) Server
+description: Manage Prisma Postgres databases, Prisma Compute deployments, and Object Storage with the Prisma MCP server.
 url: /ai/tools/mcp-server
 metaTitle: 'Prisma MCP Server'
-metaDescription: 'Manage Prisma Postgres databases using LLMs with the Prisma Model-Context-Protocol (MCP) Server'
+metaDescription: 'Manage Prisma Postgres databases, Prisma Compute deployments, and Object Storage with the Prisma MCP server.'
 
 ---
 
 ## Overview
 
-The [Model-Context-Protocol](https://modelcontextprotocol.io/introduction) (MCP) gives LLMs a way to call APIs and access external systems in a well-defined manner.
+The [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) lets AI tools connect to services such as Prisma.
 
-Prisma provides an MCP server that lets AI tools manage Prisma Postgres databases through the standard HTTP transport. The server authenticates with Prisma Console on first use so your AI tool can access the workspace you choose.
-
-## Tools
-
-[Tools](https://modelcontextprotocol.io/docs/concepts/tools) represent the _capabilities_ of an MCP server. Here's the list of tools exposed by the Prisma MCP server:
-
-**Workspace and databases**
-
-- `fetch_workspace_details`: Fetch the details of a Prisma Postgres workspace.
-- `list_prisma_postgres_databases`: Fetch a list of available Prisma Postgres databases for the user's workspace.
-- `create_prisma_postgres_database`: Create a new managed Prisma Postgres database.
-- `delete_prisma_postgres_database`: Delete a Prisma Postgres database with the given database id.
-
-**Connection strings**
-
-- `list_prisma_postgres_connection_strings`: Fetch a list of available connection strings for the given database id.
-- `create_prisma_postgres_connection_string`: Create a new connection string for a Prisma Postgres database with the given id.
-- `delete_prisma_postgres_connection_string`: Delete a connection string with the given connection string id.
-
-**Backups and recovery**
-
-- `list_prisma_postgres_backups`: Fetch a list of available backups for the given database id.
-- `create_prisma_postgres_backup`: Create a new managed Prisma Postgres backup.
-- `create_prisma_postgres_recovery`: Restore a Prisma Postgres database to a new database with the given backup id.
-
-**Schema and queries**
-
-- `introspect_database_schema`: Introspect the schema of a Prisma Postgres database with the given id.
-- `execute_sql_query`: Execute a SQL query on a Prisma Postgres database with the given id.
-- `execute_prisma_postgres_schema_update`: Execute a schema update on a Prisma Postgres database with the given id.
-
-**Object store**
-
-- `list_object_store_buckets`: List object-store buckets in the workspace, optionally filtered by project id.
-- `create_object_store_bucket`: Create a new object-store bucket in the given project.
-- `delete_object_store_bucket`: Permanently delete an object-store bucket, all objects stored in it, and all its access keys.
-- `create_object_store_bucket_key`: Create an S3-compatible access key for an object-store bucket.
-- `delete_object_store_bucket_key`: Delete an object-store bucket access key. The key stops working immediately.
-
-**Documentation**
-
-- `search_prisma_documentation`: Answer a natural-language question about Prisma using the official Prisma documentation, returning a cited answer with links back to the docs.
-
-Once you're connected to the Prisma MCP server, you can also always prompt your AI agent to "List the Prisma tools" to get a full overview of the latest supported tools.
-
-### Searching the Prisma documentation
-
-The `search_prisma_documentation` tool lets your AI agent answer questions about Prisma ORM, Prisma Postgres, Prisma Compute, schema design, migrations, and more, grounded in the official documentation, without leaving your editor or terminal.
-
-The tool is read-only and needs no setup beyond the Prisma MCP server connection. When you ask your agent a Prisma question, it uses the tool and returns an answer with citations linking to the relevant pages in the [Prisma documentation](/), so the answer reflects the current docs rather than the model's training data.
+Prisma provides an MCP server that lets AI tools manage [Prisma Postgres databases](/postgres), apps deployed on [Prisma Compute](/compute), and [Object Storage](/storage) buckets and access keys. Sign in with your Prisma account and select a workspace when you connect.
 
 ## Usage
 
-The Prisma MCP server follows the standard JSON-based configuration for MCP servers. Here's what it looks like:
+You need a Prisma account and access to a workspace, which groups your projects. If you don't have one, sign up at [Prisma Console](https://console.prisma.io).
+
+Add `https://mcp.prisma.io/mcp` as the server URL in your AI tool's MCP settings. If it asks for a transport, select **Streamable HTTP**. Follow the [setup instructions for your AI tool](#integrating-in-ai-tools) for its configuration format. Clients that use an `mcpServers` JSON entry accept:
 
 ```json title="MCP configuration"
 {
@@ -76,13 +29,24 @@ The Prisma MCP server follows the standard JSON-based configuration for MCP serv
 }
 ```
 
+Connect and sign in with your Prisma account, then select a workspace and approve access. Ask "List my Prisma databases" to check that the connection works. See [Tools](#tools) for the full list of supported operations.
+
+:::warning
+
+Tools that change or delete resources can cause data loss or interrupt live traffic. Check the target workspace and resources before approving an operation in your AI tool.
+
+:::
+
 ## Sample prompts
 
-- "Show me a list of all the databases in my account."
+- "Show me a list of all the databases in this workspace."
 - "Create a new database in the US region for me."
-- "Seed my database with real-looking data but create a backup beforehand."
 - "Show me all available backups of my database."
 - "Show me all customers and run an analysis over their orders."
+- "List my Compute apps and show the latest failed builds."
+- "Show the runtime logs for this deployment."
+- "Show how this project's Composer services connect, and give me the Console links."
+- "Set LOG_LEVEL to debug for this project's preview environment."
 - "Search the Prisma docs and explain how to deploy a project to Prisma Compute."
 
 ## Integrating in AI tools
@@ -153,7 +117,7 @@ Add the Prisma plugin marketplace to Codex:
 codex plugin marketplace add prisma/codex-plugin
 ```
 
-Restart Codex, open the plugin directory, select the Prisma marketplace, and install the `Prisma` plugin. The plugin configures the remote Prisma MCP server at `https://mcp.prisma.io/mcp`; on first use, Codex will authenticate with Prisma Console so it can access the workspace you choose.
+Restart Codex, open its plugin directory in the app, select the Prisma marketplace, and install the `Prisma` plugin. The plugin configures the remote Prisma MCP server at `https://mcp.prisma.io/mcp`; on first use, Codex will authenticate with Prisma Console so it can access the workspace you choose.
 
 Learn more in the [Codex integration guide](/ai/tools/codex).
 
@@ -312,14 +276,14 @@ Alternatively, you can add the Prisma MCP server as an [integration](https://www
 1. Click **+ Add integration**
 1. Enter the following:
 
-- **Integration name**: `Prisma Postgres`
+- **Integration name**: `Prisma`
 - **Integration URL**: `https://mcp.prisma.io/mcp`
 
 1. Click **Add**
 
 ### ChatGPT
 
-You can add the Prisma MCP server to ChatGPT to manage your Prisma Postgres databases using natural language. Learn more about setting it up in our [ChatGPT integration guide](/ai/tools/chatgpt).
+You can add the Prisma MCP server to ChatGPT to manage your databases and Compute deployments using natural language. Learn more about setting it up in our [ChatGPT integration guide](/ai/tools/chatgpt).
 
 ### Gemini CLI
 
@@ -384,7 +348,15 @@ Start `fx` (or run `/mcp reload` in an open session), then authenticate with Pri
 
 Learn more in the [fx MCP docs](https://fx.sh/docs/capabilities/mcp).
 
+## Tools
+
+The server can manage databases, run SQL, restore automated backups, manage Object Storage, and search Prisma documentation. Compute tools manage existing deployments, read logs, and set environment variables; Composer tools show how project resources connect.
+
+See the [MCP tools reference](/ai/mcp-tools) for the full catalog and each tool's limits. To deploy new source code, follow the [Prisma Compute guide](/compute).
+
 ## AI Safety guardrails for destructive commands
+
+These safeguards apply to Prisma CLI commands, not MCP tool calls. For MCP operations, review approvals in your AI tool.
 
 Prisma ORM includes built-in safety checks to prevent **accidental destructive commands** when run through AI coding assistants.
 
