@@ -37,7 +37,7 @@ Create a Bun workspaces monorepo with a shared Prisma ORM database package and a
 1. Create `my-monorepo` with a root `package.json` that sets `"workspaces": ["apps/*", "packages/*"]`, then create `apps/` and `packages/database/`. Give `packages/database` a `package.json` with `"name": "database"`, `"private": true`, `"type": "module"` and `"main": "index.ts"`.
 2. In `packages/database`, run `bunx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `bunx prisma@latest init` there so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db@latest` and show me the claim URL it prints. Write it as `DATABASE_URL` into `packages/database/.env`.
 3. Add package scripts to `packages/database`: `db:init` (`prisma db init`), `db:update` (`prisma db update`), `db:seed` (`bun src/prisma/seed.ts`). Run `bun run db:init` there.
-4. Create `packages/database/index.ts` that re-exports `db` from `./src/prisma/db`, and `packages/database/src/prisma/seed.ts` that upserts three users with `db.orm.public.User.upsert({ create, update: {}, conflictOn: { email } })` and ends with `await db.runtime().close()`, following https://www.prisma.io/docs/guides/deployment/bun-workspaces.md. Run `bun run db:seed`.
+4. Create `packages/database/index.ts` that re-exports `db` from `./src/prisma/db`, and `packages/database/src/prisma/seed.ts` that upserts three users with `db.orm.public.User.upsert({ create, update: {}, conflictOn: { email } })` and ends with `await db.close()`, following https://www.prisma.io/docs/guides/deployment/bun-workspaces.md. Run `bun run db:seed`.
 5. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update` and `seed` that use `bun run --filter <package> <script>`.
 6. In `apps/`, run `bun create next-app@latest web --yes`, delete `apps/web/.git`, add `"database": "workspace:*"` to its dependencies, copy `packages/database/.env` to `apps/web/.env`, and run `bun install` from the root.
 7. Replace `apps/web/app/page.tsx` with a server component that exports `dynamic = "force-dynamic"` and lists users from `db.orm.public.User.select("id", "name", "email").all()`.
@@ -172,7 +172,7 @@ export type { Contract } from "./src/prisma/contract.d";
 
 ### 2.5. Seed the database
 
-Create the seed script. `upsert` with `conflictOn` makes it safe to run more than once, and `await db.runtime().close()` at the end lets the process exit instead of waiting on the connection pool:
+Create the seed script. `upsert` with `conflictOn` makes it safe to run more than once, and `await db.close()` at the end lets the process exit instead of waiting on the connection pool:
 
 ```ts title="packages/database/src/prisma/seed.ts"
 import { db } from "./db";
@@ -192,7 +192,7 @@ for (const user of users) {
 }
 
 console.log(`Seeded ${users.length} users.`);
-await db.runtime().close();
+await db.close();
 ```
 
 Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`, where `public` is the default schema.
@@ -446,7 +446,7 @@ Without `export const dynamic = "force-dynamic"`, Next.js prerenders the page at
 
 :::
 
-Do not call `db.runtime().close()` in a server component or route handler. The client in `packages/database` is a module-level singleton whose connection pool is shared across requests; close it only in short-lived scripts such as the seed.
+Do not call `db.close()` in a server component or route handler. The client in `packages/database` is a module-level singleton whose connection pool is shared across requests; close it only in short-lived scripts such as the seed.
 
 ## Prompt your coding agent
 
