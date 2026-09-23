@@ -17,7 +17,7 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
     .map((line) => {
       // `pnpm dlx` and `yarn dlx` always download a package, but `tsc` and an
       // unpinned `prisma` are binaries from locally installed packages.
-      if ((pm === "pnpm" || pm === "yarn") && /^npx (tsc|prisma)\b/.test(line)) {
+      if ((pm === "pnpm" || pm === "yarn") && /^npx (tsc|prisma)(?=\s|$)/.test(line)) {
         return line.replace(/^npx/, pm);
       }
 
