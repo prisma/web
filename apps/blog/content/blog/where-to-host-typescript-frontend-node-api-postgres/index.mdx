@@ -5,7 +5,7 @@ date: "2026-09-22"
 authors:
   - "Gregory Boch"
 metaTitle: "Where to host a TypeScript frontend, API and Postgres"
-metaDescription: "Compare Prisma, Railway, Render and Fly for hosting a TypeScript frontend, a Node API and Postgres from one GitHub repo, with deploy on push and preview environments."
+metaDescription: "Compare Prisma, Railway, Render and Fly for hosting a TypeScript frontend, a Node API and Postgres from one GitHub repo, with deploy on push and previews."
 heroImagePath: "/where-to-host-typescript-frontend-node-api-postgres/imgs/hero.svg"
 heroImageAlt: "A GitHub repository containing a frontend and an API, deploying to one project that also holds a Postgres database."
 metaImagePath: "/where-to-host-typescript-frontend-node-api-postgres/imgs/meta.png"
@@ -22,7 +22,8 @@ You can host all three from one GitHub repository, and the practical shortlist i
 | What you have | Pick |
 | --- | --- |
 | A Next.js frontend and a Node API in one repo, and you want one project for both plus Postgres | Prisma, Railway, or Render |
-| An API that streams model responses or holds websockets open | Prisma, Render, or Fly |
+| An API that streams model responses | Prisma, Render, or Fly |
+| An API that holds WebSocket connections open | Render or Fly |
 | A frontend that needs a global CDN above everything else | Vercel for the frontend, with the API and database elsewhere |
 | A preference for declarative config committed to the repo | Render, with a `render.yaml` blueprint |
 | The lowest possible bill, and you are willing to run servers | A DigitalOcean or Hetzner VPS |
@@ -118,14 +119,13 @@ Push to the default branch and the workflow deploys production.
 
 ## Connect the database through Prisma ORM
 
-```prisma title="prisma/schema.prisma"
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+With [Prisma ORM 8](https://www.prisma.io/docs/orm), the models live in a contract file and `prisma.config.ts` holds the connection. Install `prisma` and `@prisma/orm-postgres`, and `npx prisma orm init --write-env` writes the config, a starter contract, `src/prisma/db.ts`, and `.env`:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
 
 model Inspection {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid(2))
   orgId     String
   siteName  String
   createdAt DateTime @default(now())
@@ -134,32 +134,60 @@ model Inspection {
 }
 ```
 
-Create the migration locally, then apply it in the release step before the new version takes traffic:
+```ts title="prisma.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: { connection: process.env.DATABASE_URL! },
+  }),
+});
+```
+
+Emit the contract after every change to it, plan the migration locally, and apply it in the release step before the new version takes traffic:
 
 ```bash
-npx prisma migrate dev --name init      # local
-npx prisma migrate deploy               # production
+npx prisma contract emit                # writes contract.json and contract.d.ts
+npx prisma migration plan --name init   # writes migrations/app/<timestamp>_init
+npx prisma db migrate                   # applies the migration files, in CI and production
 ```
 
-Use `migrate deploy` against production, because `migrate dev` is allowed to reset the database when it finds state it does not expect, which is fine on your machine and destructive under real users.
+`migration plan` never connects to a database, so the migration is a directory you read and commit. `db migrate` applies the committed migrations to the database named in `prisma.config.ts`, which makes it the production command. On a development database you can skip the file and run `npx prisma db update`, which changes the tables to match the contract and asks you to type the database name before a change that could lose data. Keep `db update` off production.
 
-The deploy workflow above does not run migrations, and Compute does not run them for you, so a deploy that adds a table can take traffic before that table exists. Run `migrate deploy` against the production database before the new version goes live, from a step that has the connection string available to it.
+The deploy workflow above does not run migrations, and Compute does not run them for you, so a deploy that adds a table can take traffic before that table exists. Run `db migrate` against the production database before the new version goes live, from a step that has the connection string available to it.
 
-In the API, create one client for the process:
+In the API, create the client once, in a module every handler imports:
 
-```ts title="src/db.ts"
-import { PrismaClient } from "./generated/prisma/client";
+```ts title="src/prisma/db.ts"
+import "dotenv/config";
+// DateTime values are Temporal.Instant. Node.js 22 and 24 need the polyfill; Node.js 26 does not.
+import "temporal-polyfill/full/global";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
 
-export const prisma = new PrismaClient();
+export const db = postgres<Contract>({
+  contractJson,
+  url: process.env.DATABASE_URL!,
+});
 ```
 
-A `new PrismaClient()` inside a request handler is the most common cause of connection exhaustion in production, because Postgres allocates memory per connection and each handler opens another one. Prisma Postgres includes connection pooling, so the connection string already points at a pooler and there is no PgBouncer to run. On Railway, Render, Neon, or Supabase, use the pooled connection string the provider gives you rather than the direct one.
+A client created inside a request handler is the most common cause of connection exhaustion in production, because Postgres allocates memory per connection and each handler opens another one. Prisma Postgres includes connection pooling, so the connection string already points at a pooler and there is no PgBouncer to run. On Railway, Render, Neon, or Supabase, use the pooled connection string the provider gives you rather than the direct one.
 
 Put the database in the same region as the app. Compute services run in one region, chosen at creation with `service create --region`, from `us-east-1`, `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1`, and `ap-southeast-1`. A project created without a region is in `us-east-1`. There are no multi-region deployments, so a cross-region database costs you a round trip on every query, multiplied by the number of queries a request makes.
 
 ## Environment variables
 
-`DATABASE_URL` is wired in for you when you use the project's default database, because Prisma injects that database's system-managed `DATABASE_URL` and `DATABASE_URL_POOLED` and you add neither key yourself. A database you configure explicitly, even one that lives in the same project, is not wired in, so you set its connection string by hand along with the rest: API keys, auth secrets, the frontend's API base URL.
+You set `DATABASE_URL` yourself, once per scope. `postgres create` prints the database's connection string once, and `project env add` stores it for production and, pointed at a second database, for previews. The rest goes in the same way: API keys, auth secrets, the frontend's API base URL.
+
+```bash
+npx prisma@latest postgres create my-db
+npx prisma@latest project env add DATABASE_URL=postgresql://... --role production
+npx prisma@latest project env add DATABASE_URL=postgresql://... --role preview
+```
 
 Compute environment variables behave differently from a plain `.env` file in ways that change how you work with them:
 
@@ -202,6 +230,7 @@ The bill that surprises people is rarely storage. It is a query inside a render 
 
 - **You want the platform to own the build.** Builds run in your GitHub Actions, so build failures are yours to debug and build minutes are yours to pay for. Railway and Render absorb both.
 - **You are not writing TypeScript.** Compute is TypeScript-first. A Python or Go API belongs on Fly, Render, or a VPS.
+- **Your API is a WebSocket server.** Compute does not support WebSocket servers. A streamed HTTP response that starts within 60 seconds is fine; a socket held open is not.
 - **You need auth, storage, realtime, and edge functions from one vendor.** That is the Supabase shape.
 - **You need more than one region, or a provider other than GitHub.** Each service runs in one region, and GitHub is the only Git provider.
 - **Your frontend's main requirement is a global CDN.** Put it on Vercel and keep the API and database together elsewhere.
@@ -221,7 +250,7 @@ Prisma Compute needs no deploy token in your repository secrets, because the job
 Yes, if it starts responding within 60 seconds. The deadline covers the wait for the first bytes, not the total length of the response, so a streamed response that begins in two seconds and runs for five minutes completes. A service that sends nothing for 60 seconds gets `504 Gateway Time-out` and the request is cancelled from outside the service, so nothing is raised in your code.
   </Accordion>
   <Accordion title="Do I need a connection pooler for a Node API on Postgres?">
-Prisma Postgres includes pooling, so the connection string already points at a pooler. On other providers, use the pooled connection string rather than the direct one. Create one `PrismaClient` for the process rather than one per request, because Postgres allocates memory per connection.
+Prisma Postgres includes pooling, so the connection string already points at a pooler. On other providers, use the pooled connection string rather than the direct one. Create the ORM client once per process, in a module every handler imports, rather than once per request, because Postgres allocates memory per connection.
   </Accordion>
 </Accordions>
 
