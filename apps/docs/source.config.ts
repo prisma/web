@@ -15,9 +15,9 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
   return cmd
     .split("\n")
     .map((line) => {
-      // `pnpm dlx` and `yarn dlx` always download a package, but `tsc` is a
-      // binary from the locally installed `typescript` package.
-      if ((pm === "pnpm" || pm === "yarn") && /^npx tsc\b/.test(line)) {
+      // `pnpm dlx` and `yarn dlx` always download a package, but `tsc` and an
+      // unpinned `prisma` are binaries from locally installed packages.
+      if ((pm === "pnpm" || pm === "yarn") && /^npx (tsc|prisma)\b/.test(line)) {
         return line.replace(/^npx/, pm);
       }
 

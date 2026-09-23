@@ -37,8 +37,8 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 Migrate this Drizzle project to Prisma ORM without changing the database.
 
 1. Run `npx prisma@latest orm init --target postgres` in the project root, choose PSL and the default schema path. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Keep the existing `DATABASE_URL` in `.env`; Drizzle and Prisma ORM use the same connection string format.
-2. Run `npx prisma@latest contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), replace every `Timestamptz` field type with `TimestamptzString`, and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
-3. Run `npx prisma@latest contract emit`, then `npx prisma@latest db sign`, then `npx prisma@latest db verify`. All three must succeed before you touch application code.
+2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), replace every `Timestamptz` field type with `TimestamptzString`, and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
+3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. All three must succeed before you touch application code.
 4. Replace the Drizzle queries one route at a time following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-drizzle.md: import `db` from `src/prisma/db.ts`, use `db.orm.public.<Model>` with `.include(...)`, `.create(...)`, `.where(...).update(...)` and `.where(...).delete(...)`. Run each route with curl before and after, and show me the responses.
 5. When no file imports `drizzle-orm` any more, remove `src/db/`, `drizzle.config.ts` and the Drizzle packages, and confirm `next build` passes.
 ```
@@ -236,7 +236,7 @@ export const db = postgres<Contract>({
 Read the schema that Drizzle pushed into a PSL contract. `--output` points at the file `orm init` created, and the command overwrites the placeholder:
 
 ```npm
-npx prisma@latest contract infer --output ./src/prisma/contract.prisma
+npx prisma contract infer --output ./src/prisma/contract.prisma
 ```
 
 ```text no-copy
@@ -422,7 +422,7 @@ namespace public {
 Emit the contract to refresh `contract.json` and `contract.d.ts`, the two files the runtime and the CLI read:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ```text no-copy
@@ -434,7 +434,7 @@ profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 Then sign the database. This records that the live schema matches the emitted contract, and it is the Prisma ORM 8 replacement for the baseline migration you would have created with Prisma ORM 7:
 
 ```npm
-npx prisma@latest db sign
+npx prisma db sign
 ```
 
 ```text no-copy
@@ -450,7 +450,7 @@ to:    7cbfecc26820132f373d82c4e3ba43ce2ec6d4a4c3f6da73a58e5a31d461d09c
 `db sign` verifies the schema before it writes the signature; if a table or column in the contract does not match the database, it exits with code 4 and signs nothing. Confirm the result with `db verify`:
 
 ```npm
-npx prisma@latest db verify
+npx prisma db verify
 ```
 
 ```text no-copy
