@@ -6,7 +6,7 @@ metaTitle: migration status | Prisma ORM CLI
 metaDescription: Learn how to inspect the Prisma ORM migration path and pending migrations.
 ---
 
-`migration status` shows which migrations are pending between the database marker and the target contract.
+The database stores a marker, a row that says which version of your contract it currently matches. `migration status` compares that marker with a target version and lists the migrations in between. The target is the contract you last ran `contract emit` on, unless `--to` names another.
 
 Use it before and after [`db migrate`](/cli/db-migrate), and when debugging why an environment is not at the expected contract state.
 
@@ -40,8 +40,16 @@ npx prisma@latest migration status --ascii
 
 ## Reading the result
 
-With `--db`, status compares the on-disk migration packages to what has been applied in the database. With `--from`, it computes the path offline instead, without a database.
+With `--db`, status reads the marker from the database and compares it with the target. With `--from`, it starts from the state you name instead and needs no database.
 
-The `migration` group has three more read-only views: `migration graph` for topology, `migration log` for executed history, and `migration list` for on-disk enumeration. Run each with `--help` for details.
+With `--json`, the command prints one `"kind": "result"` line. Inside its `envelope`:
+
+- `result.summary` is the sentence the human output ends with, such as `Up to date` or a count of pending migrations.
+- `result.spaces[].migrations[]` lists each migration on disk with a `status`: `pending` (on the way to the target, not yet applied), `applied` (on the way to the target, already applied), or `null` (not on the way to the target).
+- `diagnostics[]`, beside `result` rather than inside it, lists each problem found. Each entry has a `code`, for example `MIGRATION.MARKER_NOT_IN_HISTORY`, a `summary`, and a `severity`, which this command always sets to `warn`.
+
+The exit code is 0 even when `diagnostics` is not empty. A non-zero exit code means the command itself failed, for example with `MIGRATION.REF_NOT_FOUND` when `--to` names a ref that does not exist.
+
+The `migration` group has three more read-only views: `migration graph` draws the chain of migrations, `migration log` lists what has run, and `migration list` lists the migrations on disk. Run each with `--help` for details.
 
 Use [`db verify`](/cli/db-verify) after applying migrations to check the final database shape against the emitted contract.

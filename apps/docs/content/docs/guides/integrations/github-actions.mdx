@@ -680,6 +680,50 @@ You can test the setup in two ways. The workflow run itself was not executed whi
 2. Click **Run workflow**, choose `provision`, and optionally enter a database name.
 3. Run it again with `cleanup` and the same name to delete the database.
 
+## 8. Migrate a shared database from a workflow [#migrate-a-shared-database]
+
+The preview job creates a new database per pull request. A database other people share, such as staging, is migrated by a job that runs on every push to `main`, and that job is one command: `db migrate`. It is safe to run unattended. Before any operation runs, it reads the database's marker and refuses with `MIGRATION.MARKER_MISMATCH` if that marker names a state that no migration in your files ends at, which is what a `db update` run against the database, or a migration from a branch that never merged, leaves behind. Each operation then checks that the database is in the state it expects before it runs, and a successful run writes the new marker.
+
+Three terms come up in this section, so here is what they mean. `contract emit` prints a `storageHash`, and that hash identifies one version of your contract. Prisma ORM calls that version a contract state. The database records which state it matches in a marker, a row Prisma ORM keeps in the database. A ref is a name you give a state, like a Git tag. The job applies migrations only up to the state a ref called `staging` points at, so a migration merged after that point waits until you point the ref at it. [Name important states with refs](/orm/migrations/the-migration-graph#name-important-states-with-refs) has the details.
+
+Create the `staging` ref in the pull request that adds the migration. `migration ref set` takes the migration directory's bare name, `20260910T1549_init` from the path `migration plan` printed in step 2.4. It points the ref at the state after that migration and writes `migrations/app/refs/staging.json`. Commit that file with the migration:
+
+```npm
+npx prisma migration ref set staging 20260910T1549_init
+```
+
+Do this again in every pull request that adds a migration: run `migration ref set staging <new directory name>` and commit the updated `staging.json`. The job applies migrations only up to the state the ref names, so if you forget, the new migration never runs. On a repository that already has migrations, point the ref at the newest one staging should have. If `staging.json` does not exist at all, the job fails with `MIGRATION.REF_NOT_FOUND`.
+
+Add the connection string of your staging database, whether you created it with `postgres create` as in step 3 or host it elsewhere, as a repository secret named `STAGING_DATABASE_URL`, as in step 6.3. Then add the workflow. It needs no platform secrets, because it runs no `postgres` commands, and no `contract emit`, because the emitted contract is committed with the migrations:
+
+```yaml title=".github/workflows/migrate-staging.yml"
+name: Migrate staging
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma db migrate --to staging --db "$DATABASE_URL"
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+```
+
+When the job fails with `MIGRATION.MARKER_MISMATCH`, [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) says what to do. To see what the job would apply before you push, run `npx prisma migration status --to staging --db "$STAGING_DATABASE_URL"` from your machine; it changes nothing.
+
+The workflow has no `db verify` step. `db verify` compares the database with the contract you last emitted, so if you point the `staging` ref at an earlier state on purpose, `db verify` would fail even though nothing is wrong.
+
+As in step 7, this workflow was not run on GitHub while validating the guide; its command was run against a local database, including one that had been changed outside the migration system, which failed with `MIGRATION.MARKER_MISMATCH`.
+
 ## Common gotchas
 
 :::warning
@@ -707,6 +751,7 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills
 - "Using the prisma-8 skill, add a `Comment` model to the contract, plan a migration for it, and update the seed script."
 - "Add a test job to the preview workflow that runs `npm test` against the provisioned database after the seed step."
 - "Change the workflow to create the preview database in `eu-central-1` and to skip the seed when the pull request is a draft."
+- "Add a `migrate-production.yml` workflow like the staging one in step 8 that runs on a published release, with a `production` ref and a `PRODUCTION_DATABASE_URL` secret."
 
 ## Next steps
 
