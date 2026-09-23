@@ -157,7 +157,7 @@ npx prisma db migrate                   # applies the migration files, in CI and
 
 `migration plan` never connects to a database, so the migration is a directory you read and commit. `db migrate` applies the committed migrations to the database named in `prisma.config.ts`, which makes it the production command. On a development database you can skip the file and run `npx prisma db update`, which changes the tables to match the contract and asks you to type the database name before a change that could lose data. Keep `db update` off production.
 
-The deploy workflow above does not run migrations, and Compute does not run them for you, so a deploy that adds a table can take traffic before that table exists. Run `db migrate` against the production database before the new version goes live, from a step that has the connection string available to it.
+The deploy workflow above does not run migrations, and Compute does not run them for you, so a deploy that adds a table can take traffic before that table exists. Run `db migrate` against the production database before the new version goes live. Compute's own environment values are write-only and never reach the runner, so that step reads its connection string from a GitHub Actions secret rather than from the project.
 
 In the API, create the client once, in a module every handler imports:
 
@@ -184,7 +184,10 @@ Put the database in the same region as the app. Compute services run in one regi
 You set `DATABASE_URL` yourself, once per scope. `postgres create` prints the database's connection string once, and `project env add` stores it for production and, pointed at a second database, for previews. The rest goes in the same way: API keys, auth secrets, the frontend's API base URL.
 
 ```bash
-npx prisma@latest postgres create my-db
+npx prisma@latest postgres create my-db          # production
+npx prisma@latest postgres create my-db-preview  # previews
+
+# each create prints its own connection string once, so pass the matching one
 npx prisma@latest project env add DATABASE_URL=postgresql://... --role production
 npx prisma@latest project env add DATABASE_URL=postgresql://... --role preview
 ```
