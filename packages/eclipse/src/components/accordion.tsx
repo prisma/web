@@ -48,6 +48,8 @@ export function Accordions({
   ref,
   className,
   defaultValue,
+  value: controlledValue,
+  onValueChange,
   ...props
 }: ComponentProps<typeof Root>) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -68,9 +70,27 @@ export function Accordions({
     if (value) setValue((prev) => (typeof prev === "string" ? value : [value, ...prev]));
   }, []);
 
+  // A caller may drive this controlled. Its value has to win for both the root
+  // and the inert context, or a panel can render open while its content is
+  // still inert.
+  const effectiveValue = controlledValue ?? value;
+
+  const handleValueChange = useCallback(
+    (next: string | string[]) => {
+      setValue(next);
+      (onValueChange as ((next: string | string[]) => void) | undefined)?.(next);
+    },
+    [onValueChange],
+  );
+
   const openValues = useMemo(
-    () => (typeof value === "string" ? (value ? [value] : []) : value),
-    [value],
+    () =>
+      typeof effectiveValue === "string"
+        ? effectiveValue
+          ? [effectiveValue]
+          : []
+        : effectiveValue,
+    [effectiveValue],
   );
 
   const root = (
@@ -78,8 +98,8 @@ export function Accordions({
     <Root
       type={type}
       ref={composedRef}
-      value={value}
-      onValueChange={setValue}
+      value={effectiveValue}
+      onValueChange={handleValueChange}
       collapsible={type === "single" ? true : undefined}
       className={cn(
         "divide-y divide-fd-border overflow-hidden rounded-square border bg-background-default",
