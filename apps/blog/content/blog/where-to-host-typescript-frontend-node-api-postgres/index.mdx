@@ -1,0 +1,228 @@
+---
+title: "Where to host a TypeScript frontend, a Node API, and Postgres"
+slug: "where-to-host-typescript-frontend-node-api-postgres"
+date: "2026-09-22"
+authors:
+  - "Gregory Boch"
+metaTitle: "Where to host a TypeScript frontend, API and Postgres"
+metaDescription: "Compare Prisma, Railway, Render and Fly for hosting a TypeScript frontend, a Node API and Postgres from one GitHub repo, with deploy on push and preview environments."
+heroImagePath: "/where-to-host-typescript-frontend-node-api-postgres/imgs/hero.svg"
+heroImageAlt: "A GitHub repository containing a frontend and an API, deploying to one project that also holds a Postgres database."
+metaImagePath: "/where-to-host-typescript-frontend-node-api-postgres/imgs/meta.png"
+excerpt: "One repository with a frontend and a Node API needs a host for both plus Postgres. Here is what Railway, Render, Fly and Prisma each give you, and the repo-to-deploy path on Prisma."
+tags:
+  - "platform"
+  - "prisma-postgres"
+---
+
+You can host all three from one GitHub repository, and the practical shortlist is Railway, Render, Fly.io, and Prisma. [Prisma Compute](https://www.prisma.io/docs/compute) runs a frontend and an API as long-lived TypeScript services next to [Prisma Postgres](https://www.prisma.io/docs/postgres), so one project holds the app and the database, and a push to your default branch deploys both. This post covers the repo-to-deploy path, how `DATABASE_URL` reaches your code through Prisma ORM, environment variables, a preview environment per branch, and where each platform fits.
+
+## The short answer by workload
+
+| What you have | Pick |
+| --- | --- |
+| A Next.js frontend and a Node API in one repo, and you want one project for both plus Postgres | Prisma, Railway, or Render |
+| An API that streams model responses or holds websockets open | Prisma, Render, or Fly |
+| A frontend that needs a global CDN above everything else | Vercel for the frontend, with the API and database elsewhere |
+| A preference for declarative config committed to the repo | Render, with a `render.yaml` blueprint |
+| The lowest possible bill, and you are willing to run servers | A DigitalOcean or Hetzner VPS |
+
+## What the platforms do differently
+
+Every platform here runs three things. They differ in where the build happens, what you store to authenticate it, and how the database reaches your code.
+
+| | Prisma | Railway | Render | Fly.io |
+| --- | --- | --- | --- | --- |
+| App and Postgres in one project | Yes | Yes | Yes | Postgres is self-managed or external |
+| Deploy on push from GitHub | Yes | Yes | Yes | Through a GitHub Action |
+| Where the build runs | Your GitHub Actions | Their build service | Their build service | Their builder or your CI |
+| Deploy credentials in your repo | None, the job exchanges a GitHub OIDC token | API token | API key | API token |
+| Runtime | Long-lived service, scales to zero | Long-lived container | Long-lived container | Long-lived VM |
+| Preview per branch | Yes, with teardown on branch delete | Yes | Yes, on paid plans | Manual |
+| Connection pooling | Included in Prisma Postgres | You add it | You add it | You add it |
+
+The Prisma column is verified against the docs linked throughout this post. Check the other three against each vendor's current pricing and documentation before you rely on a row, because they change often.
+
+Two of those rows decide most of the outcome.
+
+**Where the build runs.** On Prisma the build happens in your own GitHub Actions, so the build environment is the one you already control: private registries, a custom toolchain, whatever your monorepo needs. Railway and Render build on their infrastructure, which means you think about builds less but configure them less too. The cost of the Prisma model is that build minutes come out of your GitHub quota and a failed build is debugged in your Actions logs.
+
+**What you store to authenticate.** A job on Prisma requests the OIDC token GitHub mints for that run and exchanges it for a Prisma workspace token that expires after 30 minutes. There is no deploy key in your repository secrets. The other three need a token you create, paste, and rotate.
+
+## Deploy the repo
+
+Prisma Compute detects `nextjs`, `nuxt`, `astro`, `hono`, `nestjs`, `tanstack-start`, and `bun` from the repository, so a Next.js frontend with a Hono or NestJS API is a case the build already understands. Next.js apps need `output: "standalone"` in `next.config.ts`.
+
+Run the CLI with `npx prisma@latest` on Node.js 22.18 or newer. `bunx` and `pnpm dlx` work too.
+
+### 1. Sign in
+
+```bash
+npx prisma@latest auth login
+```
+
+This opens a browser and stores a session every later command inherits. CI uses a service token instead, because the browser step needs a person.
+
+### 2. Link the directory to a project
+
+```bash
+npx prisma@latest project link my-app
+```
+
+Run this in the project root. If a later command fails with `PROJECT.SETUP_REQUIRED`, run `project link` again from the root.
+
+### 3. Connect the repository
+
+```bash
+npx prisma@latest git connect https://github.com/you/my-app
+```
+
+The command installs the Prisma GitHub App if it is not installed, then registers the repository against the project. It needs an interactive terminal; with `--no-interactive` it fails with `CLI.INTERACTION_REQUIRED`, and you connect through the Console instead. GitHub is the only supported provider, and a project connects to one repository.
+
+**Connecting does not deploy anything.** The connection only lets a workflow run authenticate. If you connect and wait for a build, nothing arrives, because the deploy comes from step 4. Connecting through the Console avoids this by opening a pull request that adds the workflow file for you.
+
+### 4. Add the deploy workflow
+
+```yaml title=".github/workflows/prisma-deploy.yml"
+name: prisma-deploy
+
+on:
+  push:
+
+concurrency:
+  group: prisma-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+      - uses: prisma/cloud-deploy-action@v1
+        with:
+          build-command: npm run build
+```
+
+`id-token: write` is what lets the job request the OIDC token. Without it the exchange cannot happen and the action skips: it prints a notice, sets its `outcome` output to `skipped-no-credential`, and exits successfully, so a missing credential leaves the run green rather than failing it. That is worth knowing the first time a deploy appears to succeed without deploying.
+
+Push to the default branch and the workflow deploys production.
+
+## Connect the database through Prisma ORM
+
+```prisma title="prisma/schema.prisma"
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Inspection {
+  id        String   @id @default(cuid())
+  orgId     String
+  siteName  String
+  createdAt DateTime @default(now())
+
+  @@index([orgId, createdAt])
+}
+```
+
+Create the migration locally, then apply it in the release step before the new version takes traffic:
+
+```bash
+npx prisma migrate dev --name init      # local
+npx prisma migrate deploy               # production
+```
+
+Use `migrate deploy` against production, because `migrate dev` is allowed to reset the database when it finds state it does not expect, which is fine on your machine and destructive under real users.
+
+In the API, create one client for the process:
+
+```ts title="src/db.ts"
+import { PrismaClient } from "./generated/prisma/client";
+
+export const prisma = new PrismaClient();
+```
+
+A `new PrismaClient()` inside a request handler is the most common cause of connection exhaustion in production, because Postgres allocates memory per connection and each handler opens another one. Prisma Postgres includes connection pooling, so the connection string already points at a pooler and there is no PgBouncer to run. On Railway, Render, Neon, or Supabase, use the pooled connection string the provider gives you rather than the direct one.
+
+Put the database in the same region as the app. Compute services run in one region, chosen at creation with `service create --region`, from `us-east-1`, `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1`, and `ap-southeast-1`. A project created without a region is in `us-east-1`. There are no multi-region deployments, so a cross-region database costs you a round trip on every query, multiplied by the number of queries a request makes.
+
+## Environment variables
+
+`DATABASE_URL` is wired in for you when the database belongs to the same project. What you set by hand is the rest: API keys, auth secrets, the frontend's API base URL.
+
+Compute environment variables behave differently from a plain `.env` file in ways that change how you work with them:
+
+- Values are write-only. Once saved, no surface returns them, and there is no command that pulls them into a local `.env`. `project env list` returns keys and metadata.
+- Values resolve at deploy time. Changing one does not alter existing versions and does not trigger a redeploy, so a new value needs a new deploy.
+- Production variables cannot be branch-scoped.
+- Keys must match `[A-Z_][A-Z0-9_]*`, and values are non-empty and up to 8 KB.
+
+Because the build runs in your GitHub Actions, a value your build needs at build time belongs in GitHub Actions secrets, and a value your app reads when it starts belongs in Prisma. A frontend variable compiled into the bundle, anything prefixed `NEXT_PUBLIC_` or `VITE_`, is a build-time value and is readable by anyone who opens devtools, so no secret goes behind one.
+
+## A preview environment per branch
+
+The first branch in a project is production and the rest are previews by default. With the workflow in place, a push to any other branch deploys to a stage named after that branch, and deleting the branch on GitHub tears the matching preview down. Production and default branches are left alone by that teardown.
+
+The preview needs its own database. A preview pointed at production data is a deployment of unreleased code against real customer records, which is the opposite of what a preview is for.
+
+## What it costs
+
+Compute pricing is usage-based, and an idle app scales to zero and costs nothing.
+
+| Meter | Price |
+| --- | --- |
+| Requests | $1 per million |
+| Provisioned memory | $0.006 per GB-hour |
+| Active CPU | $0.064 per vCPU-hour |
+| Outbound bandwidth | $0.025 per GB |
+
+| Plan | Monthly | Requests included |
+| --- | --- | --- |
+| Free | $0 | 1M, plus 360 GB-hours memory, 4 vCPU-hours CPU, 10 GB bandwidth, and no usage billing |
+| Starter | $10 | 5M |
+| Pro | $49 | 20M |
+| Business | $129 | 100M |
+
+Rates and allowances are from the [Compute pricing docs](https://www.prisma.io/docs/compute/pricing), September 2026.
+
+The bill that surprises people is rarely storage. It is a query inside a render or a polling loop that runs all night. One of those does more requests in a week than your users will in a year, so set a spend alert before you launch.
+
+## Where Prisma is the wrong choice
+
+- **You want the platform to own the build.** Builds run in your GitHub Actions, so build failures are yours to debug and build minutes are yours to pay for. Railway and Render absorb both.
+- **You are not writing TypeScript.** Compute is TypeScript-first. A Python or Go API belongs on Fly, Render, or a VPS.
+- **You need auth, storage, realtime, and edge functions from one vendor.** That is the Supabase shape.
+- **You need more than one region, or a provider other than GitHub.** Each service runs in one region, and GitHub is the only Git provider.
+- **Your frontend's main requirement is a global CDN.** Put it on Vercel and keep the API and database together elsewhere.
+
+Prisma fits when the database is the centre of the app: type-safe access from schema to query, the app and Postgres in one project, and a runtime that handles a request that stays open instead of fighting a function timeout.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Does connecting a GitHub repository deploy it?">
+Connecting a repository does not deploy it. `git connect` registers the repository and lets workflow runs authenticate, while the deploy itself comes from the `prisma/cloud-deploy-action` workflow. Connecting through the Console opens a pull request that adds that workflow file, so the Console path sets up both parts at once.
+  </Accordion>
+  <Accordion title="Do I need to store a deploy token in my repository secrets?">
+Prisma Compute needs no deploy token in your repository secrets, because the job exchanges the GitHub OIDC token minted for that run for a Prisma workspace token that expires after 30 minutes. The job needs `id-token: write` permission. Without that permission the action sets its `outcome` to `skipped-no-credential` and the run stays green.
+  </Accordion>
+  <Accordion title="Can a Prisma Compute service handle a request that runs longer than 60 seconds?">
+Yes, if it starts responding within 60 seconds. The deadline covers the wait for the first bytes, not the total length of the response, so a streamed response that begins in two seconds and runs for five minutes completes. A service that sends nothing for 60 seconds gets `504 Gateway Time-out` and the request is cancelled from outside the service, so nothing is raised in your code.
+  </Accordion>
+  <Accordion title="Do I need a connection pooler for a Node API on Postgres?">
+Prisma Postgres includes pooling, so the connection string already points at a pooler. On other providers, use the pooled connection string rather than the direct one. Create one `PrismaClient` for the process rather than one per request, because Postgres allocates memory per connection.
+  </Accordion>
+</Accordions>
+
+## Which one to pick
+
+If your API is ordinary CRUD and you want the fewest decisions, Railway is a good default and has been for years. If the database is the centre of the app and you want the app next to it, one project for both, and a deploy that needs no stored credential, that is the case Prisma Compute and Prisma Postgres are built for. Start with the [Compute getting started guide](https://www.prisma.io/docs/compute/getting-started), and read [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) when you want the workflow.
