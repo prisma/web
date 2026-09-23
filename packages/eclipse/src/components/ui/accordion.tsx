@@ -73,8 +73,15 @@ export function AccordionContent({
 }: ComponentProps<typeof Primitive.Content>) {
   return (
     <Primitive.Content
+      // Keep the panel mounted so its text is present in the server-rendered
+      // HTML. Radix unmounts closed content by default, which leaves FAQ
+      // answers out of the markup entirely: crawlers that do not execute
+      // JavaScript see the questions and none of the answers. A closed panel
+      // collapses to height 0 and stays clipped by overflow-hidden, so this
+      // changes what is in the DOM, not what a reader sees.
+      forceMount
       className={cn(
-        "overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down text-foreground-neutral-weak",
+        "overflow-hidden data-[state=closed]:h-0 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down text-foreground-neutral-weak",
         className,
       )}
       {...props}
