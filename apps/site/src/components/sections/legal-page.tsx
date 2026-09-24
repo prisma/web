@@ -10,6 +10,12 @@ export type LegalSection = {
   content: ReactNode;
 };
 
+// Keeps the old accordion's anchor format ("14.-acceptable-use") so existing
+// deep links into the legal pages still land on the right section.
+function sectionId(title: string) {
+  return title.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
 export function LegalPage({
   title,
   lastUpdated,
@@ -43,7 +49,8 @@ export function LegalPage({
           {sections.map((section) => (
             <section
               key={section.title}
-              className="border-b border-black/[0.05] py-8 last:border-b-0"
+              id={sectionId(section.title)}
+              className="scroll-mt-28 border-b border-black/[0.05] py-8 last:border-b-0"
             >
               <h2 className="text-xl leading-snug sm:text-2xl">{section.title}</h2>
               <div className="prose mt-4 max-w-none text-[0.9375rem] prose-a:text-prism-cyan-700 prose-p:leading-relaxed">

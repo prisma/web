@@ -94,8 +94,7 @@ export const slaSections: SlaSection[] = [
         </ul>
         <p>
           Free Tier users receive no uptime guarantees. Starter Plan users lack SLA coverage. Early
-          Access or Preview feature users are excluded from SLA protections. Beta Services,
-          including Prisma Compute while in Public Beta, are excluded from all SLA commitments.
+          Access or Preview feature users are excluded from SLA protections.
         </p>
       </>
     ),

@@ -68,6 +68,7 @@ export const siteConfig = {
       { label: "Terms", href: "/legal/terms" },
       { label: "SLA", href: "/legal/sla" },
       { label: "Security & Compliance", href: "/legal/security-and-compliance" },
+      { label: "Report Abuse", href: "mailto:abuse@prisma.io" },
     ],
   },
   social: {
