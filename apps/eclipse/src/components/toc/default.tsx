@@ -1,5 +1,5 @@
 "use client";
-import { useI18n } from "@fumadocs/base-ui/contexts/i18n";
+import { useTranslations } from "@fuma-translate/react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { type ComponentProps, useRef } from "react";
 import { mergeRefs } from "../../lib/merge-refs";
@@ -9,12 +9,12 @@ import * as Primitive from "fumadocs-core/toc";
 export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
   const containerRef = useRef<HTMLDivElement>(null);
   const items = useTOCItems();
-  const { text } = useI18n();
+  const t = useTranslations({ note: "table of contents" });
 
   if (items.length === 0)
     return (
       <div className="rounded-lg border bg-fd-card p-3 text-xs text-fd-muted-foreground">
-        {text.tocNoHeadings}
+        {t("No Headings")}
       </div>
     );
 

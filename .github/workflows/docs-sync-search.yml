@@ -1,14 +1,20 @@
-name: Sync Docs Search
+name: Sync Search
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: Sync content or inspect the existing search stores
+        type: choice
+        default: sync-docs
+        options: [sync-docs, sync-website, inspect, verify]
   push:
     branches: [main]
     paths: [apps/docs/content/docs/**/*.mdx]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ inputs.operation == 'sync-website' && 'website-search-sync' || format('{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: false
 
 permissions: {}
 
@@ -28,11 +34,29 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "pnpm"
 
+      - name: Inspect search stores
+        if: ${{ inputs.operation == 'inspect' || inputs.operation == 'verify' }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter docs exec tsx ../../packages/ui/scripts/inspect-mixedbread.ts ${{ inputs.operation == 'verify' && '--verify' || '' }}
+        env:
+          MIXEDBREAD_API_KEY: ${{ secrets.MIXEDBREAD_API_KEY }}
+
       - name: Upload Docs
+        if: ${{ inputs.operation == 'sync-docs' || github.event_name == 'push' }}
         run: pnpm dlx @mixedbread/cli store sync "${MIXEDBREAD_VECTOR_STORE_ID}" "apps/docs/content/docs/**/*.mdx" --yes --strategy fast
         env:
           MXBAI_API_KEY: ${{ secrets.MIXEDBREAD_API_KEY }}
           MIXEDBREAD_VECTOR_STORE_ID: ${{ secrets.MIXEDBREAD_VECTOR_STORE_ID }}
+
+      - name: Sync published website
+        if: ${{ inputs.operation == 'sync-website' }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter docs exec playwright install --with-deps chromium
+          pnpm --filter docs exec tsx scripts/sync-website-search.ts --write
+        env:
+          MIXEDBREAD_API_KEY: ${{ secrets.MIXEDBREAD_API_KEY }}

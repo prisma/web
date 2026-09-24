@@ -173,7 +173,7 @@ Element sizing tokens:
 
 ### Font Families
 
-- `font-sans-display` - Mona Sans (for display text)
+- `font-sans-display` - Sora (for display text)
 - `font-sans` - Inter (body text)
 - `font-mono` - Mona Sans Mono (code)
 
@@ -205,9 +205,9 @@ All font sizes include corresponding line heights:
 ## Border Radius Tokens
 
 - `rounded-circle` - 999px (fully rounded)
-- `rounded-square-low` - 3px
-- `rounded-square` - 6px
-- `rounded-square-high` - 12px
+- `rounded-square-low` - 6px
+- `rounded-square` - 10px
+- `rounded-square-high` - 14px
 
 ---
 

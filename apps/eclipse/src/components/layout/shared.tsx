@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, FC, ReactNode } from "react";
 import type { I18nConfig } from "fumadocs-core/i18n";
 import type { LinkItemType } from "./link-item";
 import Link from "fumadocs-core/link";
@@ -7,7 +7,7 @@ export interface NavOptions {
   enabled: boolean;
   component: ReactNode;
 
-  title?: ReactNode | ((props: ComponentProps<"a">) => ReactNode);
+  title?: ReactNode | FC<ComponentProps<"a">>;
 
   /**
    * Redirect url of title
@@ -91,7 +91,10 @@ export function renderTitleNav(
   { title, url = "/" }: Partial<NavOptions>,
   props: ComponentProps<"a">,
 ) {
-  if (typeof title === "function") return title({ href: url, ...props });
+  if (typeof title === "function") {
+    const Title = title;
+    return <Title href={url} {...props} />;
+  }
   return (
     <Link href={url} {...props}>
       {title}

@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
 const buttonVariants = cva(
-  "flex flex-row justify-center items-center rounded-square transition-all duration-50 cursor-pointer no-underline disabled:bg-background-neutral-weak! disabled:border-none! disabled:text-foreground-neutral-weaker! disabled:cursor-not-allowed disabled:shadow-none [&>svg]:pointer-events-none [&>svg]:shrink-0 [&>i]:pointer-events-none [&>i]:shrink-0",
+  "flex flex-row justify-center items-center rounded-circle transition-all duration-50 cursor-pointer no-underline disabled:bg-background-neutral-weak! disabled:border-none! disabled:text-foreground-neutral-weaker! disabled:cursor-not-allowed disabled:shadow-none [&>svg]:pointer-events-none [&>svg]:shrink-0 [&>i]:pointer-events-none [&>i]:shrink-0",
   {
     variants: {
       variant: {
@@ -13,13 +13,14 @@ const buttonVariants = cva(
         "default-strong":
           "bg-background-neutral text-foreground-neutral hover:bg-background-neutral-strong",
         default:
-          "bg-background-default hover:bg-background-neutral border border-stroke-neutral hover:border-stroke-neutral-strong text-foreground-neutral shadow-box-low",
+          "bg-background-default hover:bg-background-neutral border border-stroke-neutral hover:border-transparent text-foreground-neutral shadow-box-low spectrum-border duration-500",
         "default-weak": "bg-transparent hover:bg-background-neutral text-foreground-neutral",
+        ink: "bg-background-neutral-reverse-strong text-foreground-neutral-reverse hover:scale-[1.04] motion-reduce:hover:scale-100 shadow-box-low",
         error:
           "bg-background-error-reverse text-foreground-error-reverse hover:bg-background-error-reverse-strong shadow-box-low",
         success:
           "bg-background-success-reverse text-foreground-success-reverse hover:bg-background-success-reverse-strong shadow-box-low",
-        link: "text-foreground-neutral underline-offset-4 hover:underline focus-visible:ring-foreground-neutral",
+        link: "text-foreground-neutral underline-offset-4 hover:underline focus-visible:ring-foreground-neutral spectrum-underline",
       },
       size: {
         lg: "px-2 h-element-lg gap-2 type-text-sm-strong [&>svg]:size-element-2xs [&>svg:first-child]:-ml-0.5 [&>svg:last-child]:-mr-0.5 [&>i]:size-element-2xs [&>i:first-child]:-ml-0.5 [&>i:last-child]:-mr-0.5",

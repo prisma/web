@@ -44,7 +44,7 @@ export const metadata = createPageMetadata({
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases with Prisma – a type-safe TypeScript ORM for Node.js",
   path: "/typescript",
-  ogImage: "/og/prisma-with/typescript.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function TypeScriptPage() {

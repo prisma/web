@@ -18,7 +18,7 @@ const PopoverContent = React.forwardRef<
         ref={ref}
         className={(s) =>
           cn(
-            "z-50 origin-(--transform-origin) overflow-y-auto max-h-(--available-height) min-w-60 max-w-[98vw] rounded-xl border bg-fd-popover/60 backdrop-blur-lg p-2 text-sm text-fd-popover-foreground shadow-lg focus-visible:outline-none data-closed:animate-fd-popover-out data-open:animate-fd-popover-in",
+            "z-50 origin-(--transform-origin) overflow-y-auto max-h-(--available-height) min-w-60 max-w-[98vw] rounded-square-high border border-stroke-neutral bg-fd-popover/60 backdrop-blur-lg p-2 text-sm text-fd-popover-foreground shadow-lg focus-visible:outline-none data-closed:animate-fd-popover-out data-open:animate-fd-popover-in",
             typeof className === "function" ? className(s) : className,
           )
         }

@@ -1,17 +1,17 @@
-const W = 750
-const BOX_W = 124
-const BOX_H = 34
-const BOX_R = 7
-const BOX_Y = 12
-const LIFE_Y0 = BOX_Y + BOX_H + 2
-const STEP_Y0 = LIFE_Y0 + 38
-const STEP_DY = 52
-const LOOP_W = 44
+const W = 750;
+const BOX_W = 124;
+const BOX_H = 34;
+const BOX_R = 7;
+const BOX_Y = 12;
+const LIFE_Y0 = BOX_Y + BOX_H + 2;
+const STEP_Y0 = LIFE_Y0 + 38;
+const STEP_DY = 52;
+const LOOP_W = 44;
 
-const PARTICIPANTS = ["User", "DNS provider", "Prisma Compute", "Certificate authority"]
-const PX = [76, 249, 430, 618]
+const PARTICIPANTS = ["User", "DNS provider", "Prisma Compute", "Certificate authority"];
+const PX = [76, 249, 430, 618];
 
-type Step = { from: number; to: number; label: string; dashed?: boolean }
+type Step = { from: number; to: number; label: string; dashed?: boolean };
 
 const STEPS: Step[] = [
   { from: 0, to: 2, label: "Add custom domain" },
@@ -23,9 +23,9 @@ const STEPS: Step[] = [
   { from: 2, to: 3, label: "Serve challenge response", dashed: true },
   { from: 3, to: 2, label: "Issue TLS certificate", dashed: true },
   { from: 2, to: 2, label: "Encrypt and store certificate material" },
-]
+];
 
-const H = STEP_Y0 + STEPS.length * STEP_DY + 24
+const H = STEP_Y0 + STEPS.length * STEP_DY + 24;
 
 export function SequenceDiagram() {
   return (
@@ -99,13 +99,11 @@ export function SequenceDiagram() {
 
         {/* steps */}
         {STEPS.map((step, idx) => {
-          const y = STEP_Y0 + idx * STEP_DY
-          const isSelf = step.from === step.to
-          const mid = isSelf
-            ? PX[step.from] + LOOP_W + 8
-            : (PX[step.from] + PX[step.to]) / 2
-          const markerId = `url(#seq-arr${step.dashed ? "-d" : ""})`
-          const arrowClass = `seq-arrow${step.dashed ? " seq-arrow-dashed" : ""}`
+          const y = STEP_Y0 + idx * STEP_DY;
+          const isSelf = step.from === step.to;
+          const mid = isSelf ? PX[step.from] + LOOP_W + 8 : (PX[step.from] + PX[step.to]) / 2;
+          const markerId = `url(#seq-arr${step.dashed ? "-d" : ""})`;
+          const arrowClass = `seq-arrow${step.dashed ? " seq-arrow-dashed" : ""}`;
 
           return (
             <g key={idx}>
@@ -147,9 +145,9 @@ export function SequenceDiagram() {
                 {step.label}
               </text>
             </g>
-          )
+          );
         })}
       </svg>
     </figure>
-  )
+  );
 }

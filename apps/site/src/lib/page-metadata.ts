@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { getBaseUrl } from "@/lib/url";
 import { SITE_NAME } from "@/lib/site-metadata";
+import { getOgCardUrl } from "@/lib/og-card";
+import type { OgAccent } from "@prisma-docs/ui/components/og-image";
 
 type PageMetadataOptions = {
   title: string;
   description: string;
   path: string;
-  ogImage?: string;
+  /** Eyebrow on the generated card, e.g. "Prisma ORM". Defaults to the site name. */
+  ogKicker?: string;
+  /** Product accent on the generated card. Defaults to cyan. */
+  ogAccent?: OgAccent;
 };
 
 /**
@@ -25,22 +30,49 @@ function withSiteName(title: string): string {
   return SITE_NAME_PATTERN.test(title) ? title : `${title} | ${SITE_NAME}`;
 }
 
+/**
+ * The generated card already prints the kicker as its eyebrow, so a descriptive
+ * title that opens with the same product name would print it twice: "Prisma ORM"
+ * over "Prisma ORM | Type-Safe ORM for TypeScript and Node.js". When the leading
+ * segment is exactly what the eyebrow already says, the card headline carries the
+ * descriptive half alone. Titles that don't repeat the kicker are untouched, and
+ * the `<title>`, `og:title`, and `twitter:title` always keep the full string.
+ */
+function ogCardHeadline(rawTitle: string, kicker: string): string {
+  const separator = rawTitle.indexOf(" | ");
+  if (separator === -1) return rawTitle;
+
+  const lead = rawTitle.slice(0, separator);
+  const rest = rawTitle.slice(separator + 3);
+  const duplicatesKicker = lead === kicker || lead === `${SITE_NAME} ${kicker}`;
+
+  return duplicatesKicker ? rest : rawTitle;
+}
+
 export function createPageMetadata({
   title: rawTitle,
   description,
   path,
-  ogImage = "/og/og-index.png",
+  ogKicker,
+  ogAccent,
 }: PageMetadataOptions): Metadata {
   const title = withSiteName(rawTitle);
+  const ogImagePath = getOgCardUrl({
+    title: ogCardHeadline(rawTitle, ogKicker ?? SITE_NAME),
+    description,
+    kicker: ogKicker,
+    accent: ogAccent,
+  });
   const pathname = path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const baseUrl = getBaseUrl();
   const url = new URL(pathname, baseUrl).toString();
-  const ogImageUrl = ogImage
-    ? new URL(ogImage.startsWith("/") ? ogImage : `/${ogImage}`, baseUrl).toString()
-    : undefined;
+  const ogImageUrl = new URL(ogImagePath, baseUrl).toString();
 
   return {
-    title,
+    // Absolute: this helper already brands the title itself (word-boundary
+    // logic above), so the root layout's "%s | Prisma" template must not
+    // stack a second suffix on top.
+    title: { absolute: title },
     description,
     alternates: {
       canonical: url,
@@ -52,15 +84,15 @@ export function createPageMetadata({
       siteName: "Prisma",
       locale: "en_US",
       type: "website",
-      images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
+      images: [{ url: ogImageUrl }],
     },
     twitter: {
-      card: ogImageUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       site: "@prisma",
       creator: "@prisma",
       title,
       description,
-      images: ogImageUrl ? [ogImageUrl] : undefined,
+      images: [ogImageUrl],
     },
   };
 }

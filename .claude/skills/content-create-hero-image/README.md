@@ -104,5 +104,5 @@ Mono for code/data. No stock imagery, generic AI visuals, logo wallpaper, random
 off-system colors, or on-canvas taglines. One cover, one idea.
 
 Open items the team is still validating: the Eclipse cover direction on new product posts; Compute
-and Prisma Next have no dedicated color tokens yet (they inherit platform teal); and the skill
+and Prisma 8 have no dedicated color tokens yet (they inherit platform teal); and the skill
 depends on extracted Figma resources rather than a live source in every environment.

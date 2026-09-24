@@ -6,7 +6,7 @@ export interface RSSConfig {
    */
   title: string;
   /**
-   * The base URL of the site (e.g., 'https://prisma.io/docs')
+   * The base URL of the site (e.g., 'https://www.prisma.io/docs')
    */
   baseUrl: string;
   /**

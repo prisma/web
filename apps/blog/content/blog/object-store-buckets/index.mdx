@@ -14,7 +14,7 @@ tags:
   - "ai"
 ---
 
-Every Prisma project can now store files. Object Store buckets are S3-compatible storage that lives alongside your [Prisma Postgres](https://www.prisma.io/docs/postgres) databases, managed from the Prisma Console or the [Management API](https://www.prisma.io/docs/management-api). Two API calls take you from nothing to reading and writing objects, which means a coding agent, handed a service token once, can provision storage the same way it already provisions databases: mid-task, without waiting for a human to click through a dashboard.
+Every Prisma project can now store files. Object Store buckets are S3-compatible storage that lives alongside your [Prisma Postgres](https://www.prisma.io/docs/postgres) databases, managed from the Prisma Console or the [Management API](https://www.prisma.io/docs/rest-api). Two API calls take you from nothing to reading and writing objects, which means a coding agent, handed a service token once, can provision storage the same way it already provisions databases: mid-task, without waiting for a human to click through a dashboard.
 
 This post covers what shipped, then walks the exact path an agent takes: create a bucket, mint a key, write a file, serve it, and tear everything down, every step an API call, output included.
 
@@ -29,7 +29,7 @@ Object Store buckets remove that stop: storage is now a resource inside a Prisma
 Object Store buckets, [announced July 24](https://www.prisma.io/changelog/2026-07-24) and available in every Prisma project:
 
 - **S3-compatible.** Buckets speak the S3 API, so any S3 client or SDK works; this post uses Bun's built-in S3 client. There is no proprietary client to learn.
-- **Managed from the Console and the API.** The Prisma Console for humans, and the `/v1/buckets` [Management API endpoints](https://www.prisma.io/docs/management-api/endpoints/buckets/get-buckets) for scripts and agents.
+- **Managed from the Console and the API.** The Prisma Console for humans, and the `/v1/buckets` [Management API endpoints](https://www.prisma.io/docs/rest-api/endpoints/buckets/get-buckets) for scripts and agents.
 - **Access keys with roles.** Keys are minted per bucket with a `read` or `read_write` role. The `secretAccessKey` is returned exactly once and is not retrievable afterward; capturing it into your environment at mint time is your half of the handshake.
 - **Branch-aware.** A bucket belongs to a project and can be associated with a branch at creation, via `branchId` or `branchGitName` (the list endpoint also accepts `branchId=unassigned`, so buckets without a branch exist in the model). Omit both fields and the bucket attaches to the project's default branch.
 - **One-step teardown.** Deleting a bucket removes its contents in the same call, even when it is not empty. No empty-the-bucket-first ritual.
@@ -52,7 +52,7 @@ Object Store pricing and plan limits are not published yet; keep that in mind be
 
 Here is the whole lifecycle as one Bun script: create a bucket, mint a read-write key, write an object, read it back, serve it over a presigned URL, prove what a read-only key can and cannot do, and tear everything down with the object still inside. Every step is a plain HTTP call or an S3 operation, which is the point: an agent with a service token can run this without a human in the loop.
 
-Authentication is a [service token](https://www.prisma.io/docs/management-api/authentication), created once in the Console (your workspace, then **Settings → Service Tokens**) and handed to the agent as an environment variable. Set `PRISMA_SERVICE_TOKEN` and `PRISMA_PROJECT_ID` in a `.env` file; the project id sits in the project's Console URL, or one `GET /v1/projects` call away. (An agent starting from an empty workspace can create the project too, with `POST /v1/projects`; this walkthrough uses an existing project.)
+Authentication is a [service token](https://www.prisma.io/docs/rest-api/authentication), created once in the Console (your workspace, then **Settings → Service Tokens**) and handed to the agent as an environment variable. Set `PRISMA_SERVICE_TOKEN` and `PRISMA_PROJECT_ID` in a `.env` file; the project id sits in the project's Console URL, or one `GET /v1/projects` call away. (An agent starting from an empty workspace can create the project too, with `POST /v1/projects`; this walkthrough uses an existing project.)
 
 ```typescript
 import { S3Client } from "bun";
@@ -225,4 +225,4 @@ Object Store buckets put S3-compatible file storage inside every Prisma project:
 
 For agents, the shape matters more than the feature. Storage used to be the step where an agent stopped and waited for a human to open an account. Now it is `POST /v1/buckets`, `POST /v1/buckets/{id}/keys`, and four fields into an S3 client, the whole path walked above, serving included.
 
-Give your agent the service token and the rules, and the next time a task needs somewhere to put files, it will not need to stop and wait for you. (Until Object Store pricing is published, keep an eye on what it provisions.) Create a bucket from the [Console](https://console.prisma.io) if you prefer clicking; point your agent at the [Management API docs](https://www.prisma.io/docs/management-api) if you do not.
+Give your agent the service token and the rules, and the next time a task needs somewhere to put files, it will not need to stop and wait for you. (Until Object Store pricing is published, keep an eye on what it provisions.) Create a bucket from the [Console](https://console.prisma.io) if you prefer clicking; point your agent at the [Management API docs](https://www.prisma.io/docs/rest-api) if you do not.

@@ -1,37 +1,29 @@
 import { blog } from "./source";
-import { getPostTime, toBlogCardItem, type BlogPage } from "./post-card-item";
+import { toBlogCardItem, type BlogPage } from "./post-card-item";
+import { rankRelated, type RelatedCandidate } from "./related-posts-ranking";
 import type { BlogCardItem } from "@/components/BlogGrid";
 
-function getSlug(page: BlogPage): string {
-  return page.slugs[0] ?? "";
-}
-
-function getTags(page: BlogPage): string[] {
-  const tags = (page.data as { tags?: unknown }).tags;
-  return Array.isArray(tags) ? tags.filter((t): t is string => typeof t === "string") : [];
+function toCandidate(page: BlogPage): RelatedCandidate & { page: BlogPage } {
+  const data = page.data as { tags?: unknown; series?: unknown };
+  return {
+    page,
+    slug: page.slugs[0] ?? "",
+    tags: Array.isArray(data.tags)
+      ? data.tags.filter((t): t is string => typeof t === "string")
+      : [],
+    series: typeof data.series === "string" ? data.series : undefined,
+  };
 }
 
 /**
- * Returns up to `limit` posts to recommend after the given post.
+ * Returns up to `limit` posts to recommend after the given post, as cards.
  *
- * Ranking: most shared tags with the current post first, then most recent.
- * The current post is excluded; any other post is eligible (including posts
- * that belong to other series). Returns an empty array when no other posts
- * exist.
+ * The current post and anything in its series are excluded; every other post is
+ * eligible. Returns an empty array when no other posts exist.
  */
 export function getRelatedPosts(current: BlogPage, limit = 2): BlogCardItem[] {
-  const currentSlug = getSlug(current);
-  const currentTags = new Set(getTags(current));
-
-  return blog
-    .getPages()
-    .filter((page) => getSlug(page) !== currentSlug)
-    .map((page) => ({
-      page,
-      sharedTags: getTags(page).filter((tag) => currentTags.has(tag)).length,
-      time: getPostTime(page),
-    }))
-    .sort((a, b) => b.sharedTags - a.sharedTags || b.time - a.time)
-    .slice(0, limit)
-    .map((candidate) => toBlogCardItem(candidate.page));
+  const candidates = blog.getPages().map(toCandidate);
+  return rankRelated(toCandidate(current), candidates, limit).map((entry) =>
+    toBlogCardItem(entry.page),
+  );
 }

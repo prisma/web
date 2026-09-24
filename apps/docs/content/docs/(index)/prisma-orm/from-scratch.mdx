@@ -1,0 +1,282 @@
+---
+title: From scratch
+description: Set up Prisma ORM with PostgreSQL by hand, with one config file, one contract, and one index.ts.
+url: /prisma-orm/from-scratch
+metaTitle: Set up Prisma ORM from scratch
+metaDescription: 'Add Prisma ORM 8 to an empty Node.js project without a template: install two packages, write prisma.config.ts and a contract, create the table, query it from one index.ts, and apply a migration.'
+---
+
+By the end of this page you have a project with a `prisma.config.ts`, a `prisma/contract.prisma` holding one `User` model, and a single `index.ts` that writes, updates, and reads rows in PostgreSQL through Prisma ORM 8, plus a migration you planned and applied. No template generates anything: you create every file yourself and see what each one is for.
+
+Use this path when you want to see every file Prisma ORM needs, or when you are adding Prisma ORM to a repository that already has its own layout. If you would rather have the files written for you, run `npm create prisma@latest` and follow the [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql).
+
+:::note[Using Prisma ORM 7?]
+
+Prisma ORM 8 is the current release, as a release candidate. Prisma ORM 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
+
+For what release candidate means, when the final release is expected, and how to stay on version 7, see [Release status](/orm/release-status). For the Prisma ORM 8 name of every Prisma ORM 7 API, see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7).
+
+:::
+
+Two commands have new names in Prisma ORM 8. `contract emit` does what `prisma generate` did, and `migration plan` followed by `db migrate` does what `migrate dev` did. There is no `@prisma/client` package and no `db push`.
+
+## Prerequisites
+
+- Node.js 22.18 or newer (on the 24 line, 24.11 or newer); Node.js 24 is recommended.
+- A connection string for an empty PostgreSQL database. Step 4 creates the tables and step 5 clears the `User` table on every run, so do not point this page at a database that holds data you need. Any PostgreSQL URL works. If you don't have one, `npx create-db@latest` creates a temporary Prisma Postgres database and prints its connection string, plus a claim URL if you want to keep it.
+
+## 1. Create the project
+
+Create an empty directory with a `package.json`, and switch it to ES modules, because the Prisma ORM packages and the `index.ts` below use `import` syntax. `npm init -y` writes `"type": "commonjs"`, and the second npm command changes it:
+
+```bash
+mkdir hello-prisma
+cd hello-prisma
+npm init -y
+npm pkg set type=module
+```
+
+Install the runtime library, the command-line tool, and the tooling to run a TypeScript file:
+
+```npm
+npm install @prisma/orm-postgres dotenv
+npm install --save-dev prisma tsx typescript
+```
+
+`@prisma/orm-postgres` is the library your code imports, and `prisma` is the command-line tool. `dotenv` loads `.env`, `tsx` runs `index.ts` without a build step, and `typescript` 5.9 or newer is a peer dependency of `@prisma/orm-postgres`. The two Prisma packages have different version numbers (this page was tested with `prisma` 8.0.0-rc.15 and `@prisma/orm-postgres` 8.0.0-rc.11); that is normal, and any two `latest` versions work together.
+
+## 2. Create the config file and `.env`
+
+The command-line tool reads `prisma.config.ts` from the project root to find your contract and your database:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+    db: {
+      connection: process.env["DATABASE_URL"]!,
+    },
+  }),
+  skills: {
+    check: false,
+  },
+});
+```
+
+`contract` is the path to the model file you write in the next step, and `db.connection` is the connection string the database commands use. The `skills` block turns off the notice that every command otherwise prints about installing agent skill files; remove it if you want those files. Every setting is documented on [Configuration](/cli/configuration).
+
+Put the connection string in `.env`, which the first line of the config file loads:
+
+```bash title=".env"
+DATABASE_URL="postgresql://username:password@host:5432/database?sslmode=require"
+```
+
+Add `.env` to `.gitignore` so the credentials stay out of version control.
+
+## 3. Create the contract
+
+The contract is Prisma ORM 8's name for the schema file. It replaces `schema.prisma`, and it has no `datasource` or `generator` blocks because the connection string lives in `prisma.config.ts`. Declare one model:
+
+```prisma title="prisma/contract.prisma"
+// use prisma-8
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+}
+```
+
+[Data modeling](/orm/data-modeling) covers field types, primary keys, and relations.
+
+## 4. Generate the contract and create the table
+
+`contract emit` reads `contract.prisma` and writes `prisma/contract.json` (read at run time) and `prisma/contract.d.ts` (read by TypeScript) next to it. This is the step that was `prisma generate`; run it again after every change to the contract.
+
+```npm
+npx prisma contract emit
+```
+
+```text
+✔ Resolving contract source...
+✔ Emitting contract...
+│  contract:  prisma/contract.json
+│  types:     prisma/contract.d.ts
+✔ Emitted contract.json and contract.d.ts
+```
+
+`db init` creates the tables the contract declares in your database, then signs the database, which records which version of the contract it matches so later migrations know where to start from:
+
+```npm
+npx prisma db init
+```
+
+```text
+✔ Introspecting database schema
+✔ Planning migration
+✔ Initialising database across spaces
+│  contract:  prisma/contract.json
+│  database:  postgres://****:****@db.prisma.io:5432/postgres?sslmode=require
+✔ Applied 2 operation(s) across 1 contract space
+App space
+├─ Create table "user"
+├─ Add unique constraint on "user" (email)
+└─ marker f4e1954fd8bed87828d13c3f1a02164dc9796ef1af76ed6f98184c01263169c5
+✔ Advanced ref "db" → f4e1954fd8bed87828d13c3f1a02164dc9796ef1af76ed6f98184c01263169c5
+```
+
+It also writes `migrations/app/refs/db.json` and a snapshot of the contract under `migrations/snapshots/`; commit both. If the command fails with `DRIVER.CONNECTION_FAILED`, `DATABASE_URL` in `.env` is wrong or the database is not reachable. A `SECURITY WARNING` about SSL modes comes from the `pg` driver and does not stop the command; change `sslmode=require` to `sslmode=verify-full` in `.env` to silence it.
+
+## 5. Write and read data
+
+Create `index.ts`, which builds the client from the two emitted files and then deletes, creates, updates, and reads rows on the `User` model:
+
+```typescript title="index.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "./prisma/contract.d";
+import contractJson from "./prisma/contract.json" with { type: "json" };
+
+const db = postgres<Contract>({
+  contractJson,
+  url: process.env["DATABASE_URL"]!,
+});
+
+async function main() {
+  // Start from an empty table so you can run this file more than once.
+  await db.orm.public.User.where({}).deleteAll();
+
+  // Write: insert one row.
+  const alice = await db.orm.public.User.create({
+    email: "alice@prisma.io",
+    name: "Alice",
+  });
+  console.log("Created:", alice);
+
+  // Update: change one row, picked by its primary key.
+  const renamed = await db.orm.public.User
+    .where({ id: alice.id })
+    .update({ name: "Alice Smith" });
+  console.log("Updated:", renamed);
+
+  // Read: fetch every row.
+  const users = await db.orm.public.User.all();
+  console.log("All users:", users);
+
+  await db.close();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+```
+
+`db.orm.public.User` is the model: `public` is the PostgreSQL schema, and every model in your contract appears under it. `.update()` and `.delete()` need a `.where()` first, and `.where({})` matches every row. [Reading data](/orm/fundamentals/reading-data) and [Writing data](/orm/fundamentals/writing-data) show the rest of the query API.
+
+Run it:
+
+```npm
+npx tsx index.ts
+```
+
+```text
+Created: { email: 'alice@prisma.io', id: 1, name: 'Alice' }
+Updated: { email: 'alice@prisma.io', id: 1, name: 'Alice Smith' }
+All users: [ { email: 'alice@prisma.io', id: 1, name: 'Alice Smith' } ]
+```
+
+The `id` goes up by one each time you run the file, because the table is cleared but the sequence is not. If the run fails with `Cannot find module '.../prisma/contract.json'`, you skipped `contract emit` in step 4.
+
+## 6. Change the schema and migrate
+
+Add an optional field to the model:
+
+```prisma title="prisma/contract.prisma"
+// use prisma-8
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  phone String?
+}
+```
+
+Emit the contract again, then plan a migration. `migration plan` compares the emitted contract with the version the database was signed with and writes the difference as a migration directory, without connecting to the database:
+
+```npm
+npx prisma contract emit
+npx prisma migration plan --name add_user_phone
+```
+
+```text
+✔ Planned baseline + 1 operation(s)
+migrations/app/20260917T1457_add_user_phone
+└─ Add column "phone" to "user"
+from:       f4e1954fd8bed87828d13c3f1a02164dc9796ef1af76ed6f98184c01263169c5
+to:         a8a6806fd2d219065fd4449b295c80626e9123c18bd40847ec3588aa9d565bc9
+baseline:   migrations/app/20260917T1456_baseline
+app space:  migrations/app/20260917T1457_add_user_phone
+ℹ DDL preview
+ALTER TABLE "public"."user" ADD COLUMN "phone" text;
+```
+
+Two directories appear under `migrations/app/`: a baseline that records the table `db init` created, and your change. The baseline is never applied to this database, because the database is already signed at that state. Each migration directory holds a `migration.ts` you can read and edit; [Generating a migration](/orm/migrations/generating-a-migration) explains the files.
+
+Apply the migration with `--advance-ref db`, which records that your development database is now at the new contract so the next `migration plan` starts from there:
+
+```npm
+npx prisma db migrate --advance-ref db
+```
+
+```text
+✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
+App space
+├─ Add column "phone" to "user"
+└─ marker a8a6806fd2d219065fd4449b295c80626e9123c18bd40847ec3588aa9d565bc9
+✔ Advanced ref "db" → a8a6806fd2d219065fd4449b295c80626e9123c18bd40847ec3588aa9d565bc9
+```
+
+If you do not want migration files for a throwaway database, [`db update`](/cli/db-update) applies the contract change directly instead of `migration plan` and `db migrate`.
+
+Run `index.ts` again without changing it. The new column shows up in every row:
+
+```npm
+npx tsx index.ts
+```
+
+```text
+Created: { email: 'alice@prisma.io', id: 2, name: 'Alice', phone: null }
+Updated: { email: 'alice@prisma.io', id: 2, name: 'Alice Smith', phone: null }
+All users: [
+  { email: 'alice@prisma.io', id: 2, name: 'Alice Smith', phone: null }
+]
+```
+
+## Verify
+
+Check that the migration files on disk and the database agree:
+
+```npm
+npx prisma migration status
+```
+
+```text
+○   a8a6806  @contract @db (db)
+│↑  20260917T1457_add_user_phone  f4e1954 → a8a6806  1 ops  ✓ applied
+○   f4e1954
+│↑  20260917T1456_baseline              ∅ → f4e1954  3 ops
+○   ∅
+✔ Up to date
+```
+
+From here, every schema change follows the same routine: edit `prisma/contract.prisma`, run `npx prisma contract emit`, run `npx prisma migration plan --name <name>`, and apply with `npx prisma db migrate --advance-ref db`.
+
+## Next steps
+
+- [Data modeling](/orm/data-modeling) for relations, more field types, and indexes.
+- [Generating a migration](/orm/migrations/generating-a-migration) for what is in a migration directory and how to edit one.
+- [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) if you want the same setup generated for you with a starter app.

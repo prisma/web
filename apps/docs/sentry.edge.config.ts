@@ -8,8 +8,12 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: "https://e83ce4699e59051fdeaa330bf4a0dfb9@o4510879743737856.ingest.us.sentry.io/4510879744000000",
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
+  // Sample 10% of server/edge transactions. Tracing every docs request added
+  // measurable per-request work to a zone that serves prerendered HTML, and the
+  // September 2026 SEO audit flagged 660 URLs over the crawler's TTFB
+  // threshold. 0.1 keeps the volume statistically useful; raise it temporarily
+  // (or switch to `tracesSampler`) when chasing a specific regression.
+  tracesSampleRate: 0.1,
 
   // Enable logs to be sent to Sentry
   enableLogs: true,

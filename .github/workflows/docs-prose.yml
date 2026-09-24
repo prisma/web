@@ -1,0 +1,37 @@
+name: Docs Prose
+
+# Runs the AI-signs prose checker from .claude/skills/docs-reader-review over
+# every docs page a pull request adds or changes. The generated error-reference
+# pages are skipped: their text comes from prisma/prisma and prisma/prisma-cli,
+# so the fix for a hit there is upstream.
+
+on:
+  pull_request:
+    paths:
+      - "apps/docs/content/docs/**/*.mdx"
+      - ".claude/skills/docs-reader-review/**"
+      - ".github/workflows/docs-prose.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  prose:
+    name: Check docs prose for signs of AI writing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run the checker on changed pages
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mapfile -t pages < <(git diff --name-only --diff-filter=AMR "$BASE"...HEAD -- 'apps/docs/content/docs/**/*.mdx' \
+            | grep -v -E '^apps/docs/content/docs/(orm/reference|cli)/error-reference\.mdx$' || true)
+          if [[ ${#pages[@]} -eq 0 ]]; then echo "No docs pages changed"; exit 0; fi
+          printf '%s\n' "${pages[@]}"
+          .claude/skills/docs-reader-review/scripts/check-ai-signs.sh "${pages[@]}"

@@ -43,7 +43,7 @@ export function AuthorSocialLinks({
             rel="me noopener noreferrer"
             aria-label={`${name} on ${meta.label}`}
             title={meta.label}
-            className="text-lg transition-colors hover:[&>div]:bg-background-ppg-strong"
+            className="text-lg transition-colors hover:[&>div]:bg-background-neutral hover:[&_i]:text-foreground-neutral"
           >
             <Action color="neutral" size="lg">
               <i
@@ -82,9 +82,9 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
   return (
     <section
       aria-label={profiles.length === 1 ? "About the author" : "About the authors"}
-      className="mt-8 rounded-xl border border-stroke-neutral-strong p-5 sm:p-6"
+      className="mt-12 rounded-square-high border border-stroke-neutral bg-paper p-6 sm:p-8"
     >
-      <h2 className="text-xs uppercase tracking-wide font-semibold text-foreground-neutral-weak mb-5">
+      <h2 className="type-heading-2xs mb-6 text-foreground-neutral-weak">
         {profiles.length === 1 ? "About the author" : "About the authors"}
       </h2>
       <div className="flex flex-col gap-6">
@@ -105,11 +105,13 @@ export function AuthorBio({ authors = [] }: { authors?: string[] }) {
               <div className="min-w-0">
                 <Link
                   href={`/author/${slug}`}
-                  className="type-title-md text-foreground-neutral hover:text-fd-primary hover:underline"
+                  className="type-title-md text-foreground-neutral-strong underline decoration-prism-cyan-400/50 underline-offset-4 transition-colors duration-300 hover:decoration-prism-cyan-500 motion-reduce:transition-none"
                 >
                   {name}
                 </Link>
-                <p className="mt-1 mb-2 text-sm text-foreground-neutral-weak">{bio?.bio}</p>
+                <p className="mt-2 mb-3 text-sm leading-relaxed text-foreground-neutral-weak">
+                  {bio?.bio}
+                </p>
                 <AuthorSocialLinks socials={bio?.socials ?? []} name={name} />
               </div>
             </div>

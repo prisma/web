@@ -1,0 +1,258 @@
+---
+title: Connect to Prisma Postgres without Accelerate
+description: Replace a hosted Prisma Postgres Accelerate connection without moving your database or data
+url: /postgres/database/switch-from-accelerate
+metaTitle: Connect to Prisma Postgres without Accelerate
+metaDescription: Replace a hosted Prisma Postgres Accelerate connection with pooled TCP or the Prisma Postgres serverless driver.
+---
+
+This guide is for existing Prisma Postgres applications that connect through a hosted `prisma+postgres://accelerate.prisma-data.net` URL. It changes only how your application connects: your database, data, workspace, and plan remain unchanged.
+
+The hosted Accelerate connection will be retired on December 1, 2026. This guide does not apply to [Local Postgres](/local-development/postgres) URLs such as `prisma+postgres://localhost:51213`.
+
+:::warning[Query caching is not replaced]
+
+Both replacement paths retain Prisma Postgres connection pooling. Neither path retains Accelerate query caching. Prisma Postgres does not currently provide replacement query caching, so remove every Accelerate caching API before you switch.
+
+:::
+
+## 1. Identify your current setup
+
+Confirm that the deployed application receives a hosted Accelerate URL:
+
+```text title="Hosted Accelerate URL"
+prisma+postgres://accelerate.prisma-data.net/?api_key=__API_KEY__
+```
+
+Search your application source, build scripts, and deployment configuration for:
+
+```text title="Search terms"
+prisma+postgres://accelerate.prisma-data.net
+withAccelerate
+accelerateUrl
+@prisma/extension-accelerate
+@prisma/client/edge
+cacheStrategy
+withAccelerateInfo
+$accelerate
+--no-engine
+--accelerate
+--data-proxy
+```
+
+Record every match before making changes. This makes it easier to confirm that the old integration has been removed later.
+
+## 2. Choose the replacement connection
+
+| Runtime | Recommended connection | Prisma ORM adapter |
+| --- | --- | --- |
+| Conventional Node.js or Bun runtime with PostgreSQL TCP support | [Pooled TCP](/postgres/database/connection-pooling) | `@prisma/adapter-pg` for Prisma ORM 7 |
+| Edge or TCP-constrained runtime | [Prisma Postgres serverless driver](/postgres/database/serverless-driver) | `@prisma/adapter-ppg` |
+| Migrations, introspection, Prisma Studio, and administrative commands | Direct TCP | Not applicable |
+
+Use the pooled connection for application traffic when the runtime supports PostgreSQL over TCP. Use the serverless driver when the runtime provides `fetch` and `WebSocket` APIs but cannot use a conventional PostgreSQL TCP driver.
+
+Keep a separate direct connection string for Prisma CLI commands. The serverless driver also accepts this direct connection-string format as its credential, but it communicates with Prisma Postgres over HTTP and WebSockets rather than opening a TCP connection.
+
+## 3. Generate replacement credentials
+
+In the [Prisma Console](https://console.prisma.io):
+
+1. Select the Prisma Postgres database used by your application.
+2. Choose **Connect to your database**.
+3. Generate a connection string.
+4. Copy the pooled and direct values required for the path you chose.
+
+The generated values look like these placeholders:
+
+```bash title=".env"
+# Application traffic over pooled TCP
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+
+# Prisma CLI commands, or application traffic through the serverless driver
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+Do not edit the hostname or credentials in an existing connection string. Generate the connection strings in Console so that each value has the correct permissions and routing.
+
+:::warning[Keep credentials server-side]
+
+Store database connection strings in server-side runtime secrets. Never commit them to source control or include them in code delivered to a browser.
+
+:::
+
+## 4. Update Prisma ORM
+
+Follow the tab for your Prisma ORM version and the connection path you selected. If you use a Prisma 6 release older than 6.19, update `prisma` and `@prisma/client` to 6.19 first.
+
+### Pooled TCP
+
+```npm title="Terminal" tab="Prisma ORM 7"
+npm uninstall @prisma/extension-accelerate
+npm install @prisma/adapter-pg pg
+```
+
+```npm title="Terminal" tab="Prisma ORM 6.19"
+npm uninstall @prisma/extension-accelerate
+npm install prisma@6.19.3 @prisma/client@6.19.3
+```
+
+For Prisma ORM 7, point `prisma.config.ts` at the direct URL so that Prisma CLI commands stop using the Accelerate URL, then configure Prisma Client with the pooled URL and the `pg` driver adapter. Adjust the Prisma Client import path to match the `output` directory in your generator block:
+
+```ts title="prisma.config.ts" tab="Prisma ORM 7"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DIRECT_URL"),
+  },
+});
+```
+
+```ts title="src/lib/prisma.ts" tab="Prisma ORM 7"
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../../generated/prisma/client";
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+For Prisma 6.19, restore the normal engine-backed client. Remove `engineType = "client"` if it was added for Accelerate, along with `--no-engine`, `--accelerate`, or `--data-proxy` from the generate command. Then use the pooled URL as the datasource URL:
+
+```prisma title="prisma/schema.prisma" tab="Prisma ORM 6.19"
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+```
+
+```ts title="src/lib/prisma.ts" tab="Prisma ORM 6.19"
+import { PrismaClient } from "@prisma/client";
+
+export const prisma = new PrismaClient();
+```
+
+### Serverless driver
+
+```npm title="Terminal" tab="Prisma ORM 7"
+npm uninstall @prisma/extension-accelerate
+npm install @prisma/adapter-ppg @prisma/ppg
+```
+
+```npm title="Terminal" tab="Prisma ORM 6.19"
+npm uninstall @prisma/extension-accelerate
+npm install prisma@6.19.3 @prisma/client@6.19.3 @prisma/adapter-ppg @prisma/ppg
+```
+
+Use the direct connection string as the serverless driver's credential:
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+For Prisma ORM 7, point `prisma.config.ts` at the same direct URL so that Prisma CLI commands stop using the Accelerate URL, then instantiate Prisma Client with `PrismaPostgresAdapter`:
+
+```ts title="prisma.config.ts" tab="Prisma ORM 7"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DATABASE_URL"),
+  },
+});
+```
+
+```ts title="src/lib/prisma.ts" tab="Prisma ORM 7"
+import { PrismaPostgresAdapter } from "@prisma/adapter-ppg";
+import { PrismaClient } from "../../generated/prisma/client";
+
+const adapter = new PrismaPostgresAdapter({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+For Prisma 6.19, keep an engine-less client and replace the Accelerate extension with the serverless driver adapter:
+
+```prisma title="prisma/schema.prisma" tab="Prisma ORM 6.19"
+generator client {
+  provider   = "prisma-client"
+  output     = "../generated/prisma"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+
+```ts title="src/lib/prisma.ts" tab="Prisma ORM 6.19"
+import { PrismaPostgresAdapter } from "@prisma/adapter-ppg";
+import { PrismaClient } from "../../generated/prisma/client";
+
+const adapter = new PrismaPostgresAdapter({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+For an edge deployment, also set the generator's [`runtime`](/orm/v6/prisma-schema/overview/generators#field-reference) to the target environment, such as `workerd`, `vercel-edge`, or `deno`. Adjust the Prisma Client import path if your generator uses a different `output` directory.
+
+Generate Prisma Client after changing the configuration:
+
+```npm title="Terminal"
+npx prisma generate
+```
+
+Prisma ORM 8 does not use this hosted Accelerate integration. If your project is already on Prisma ORM 8, this guide does not apply.
+
+## 5. Remove Accelerate behavior
+
+Remove all of the following from the application:
+
+- the `@prisma/extension-accelerate` dependency and import
+- `withAccelerate()` and the `accelerateUrl` constructor option
+- `@prisma/client/edge` imports; import Prisma Client from `@prisma/client` (Prisma 6.19 with the bundled engine) or from your generator's `output` directory instead
+- a `prisma.config.ts` datasource `url` that still resolves to the Accelerate URL
+- `cacheStrategy` query arguments
+- `.withAccelerateInfo()` calls
+- `$accelerate.invalidate()` and `$accelerate.invalidateAll()` calls
+- legacy `--no-engine`, `--accelerate`, and `--data-proxy` generation flags that are not required by the replacement configuration
+
+Cached queries become ordinary database queries. This can change database load and response latency, so validate the affected application paths under representative traffic before completing the cutover.
+
+Typed projects should report removed Accelerate APIs during type checking. Untyped code, skipped checks, or casts can defer the error until Prisma Client validates the query at runtime, so perform the source search even if the build succeeds.
+
+## 6. Deploy and validate
+
+1. Update the connection secrets in local, preview, production, and CI environments.
+2. Run Prisma validation and generation:
+
+   ```npm title="Terminal"
+   npx prisma validate
+   npx prisma generate
+   ```
+
+3. Run type checking and your automated test suite.
+4. Deploy to a preview environment and verify reads, writes, and transactions.
+5. Run the project's normal migration or introspection command using the direct connection.
+6. Repeat the source search from step 1 and confirm that no hosted Accelerate URL, extension, caching API, or obsolete generation flag remains.
+7. Test representative concurrency while monitoring database connections, timeouts, latency, and errors.
+8. Deploy the replacement connection to production and confirm that the runtime no longer receives `prisma+postgres://accelerate.prisma-data.net`.
+
+Keep the old Accelerate credential available temporarily as a rollback path. After the replacement connection is stable in production, revoke the old credential and remove the remaining Accelerate configuration.

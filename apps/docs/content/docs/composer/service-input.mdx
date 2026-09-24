@@ -1,0 +1,107 @@
+---
+title: Service input
+description: Declare a service's configuration and credentials as one schema, bind values at provision time, and read them back typed.
+url: /composer/service-input
+metaTitle: Service input | Prisma Composer
+metaDescription: Declare Prisma Composer service configuration and secrets as one Standard Schema, bind literals, envParam, and envSecret at provision time, and read a validated typed object at runtime.
+---
+
+Everything a running service receives arrives through one of two channels, and choosing the channel is most of the decision:
+
+| The value is... | Declare it as | Provide it | Read it |
+| --- | --- | --- | --- |
+| Produced by another node (a database, another service) | a dependency: `deps: { db: postgres() }` | wire it at `provision()` | `service.load()` |
+| Anything else (a region, a flag, a job list, a credential) | one field of the service's `input` schema | bind it at `provision()`: a literal, `envParam()`, or `envSecret()` | `service.input()` |
+
+Dependencies are covered in [Services and contracts](/composer/services-and-contracts) and [Databases](/composer/databases). This page is the second row.
+
+## Declare the input schema
+
+A service declares its whole incoming configuration, plain values and credentials together, as one [Standard Schema](https://standardschema.dev). The schema gives you the TypeScript type and validates the assembled input at deploy and again at boot, so garbage config is a loud failure, not a runtime surprise. A credential is a field typed as the redacting `SecretString` box:
+
+```ts title="src/scheduler/service.ts"
+import { secretString } from '@prisma/composer/arktype';
+import { type } from 'arktype';
+
+const schedulerInput = type({
+  jobs: type({ jobId: 'string', every: 'string' }).array(),
+  'region?': 'string',
+  apiKey: secretString(),
+});
+
+export default compute({ name: 'scheduler', input: schedulerInput /* ... */ });
+```
+
+Because the input is a real schema, legality can be conditional. "No Stripe key unless billing is on" is an ordinary union, not a framework feature, and `service.input()` narrows it like any other TypeScript union:
+
+```ts
+const chatInput = type({ stripeEnabled: 'false' }).or(
+  type({ stripeEnabled: 'true', stripeSecretKey: secretString() }),
+);
+```
+
+## Bind values at provision
+
+The service declares what shapes are legal; the place that provisions it decides where each value comes from. The binding is a plain object mirroring the schema's shape, whose leaves are literals, `envParam(...)`, or `envSecret(...)`:
+
+```ts title="module.ts"
+import { envParam, envSecret } from '@prisma/composer-prisma-cloud';
+
+provision(scheduler, {
+  input: {
+    jobs: [{ jobId: 'tick', every: '60s' }],  // a literal
+    region: envParam('REGION'),               // a per-stage platform variable
+    apiKey: envSecret('SCHEDULER_API_KEY'),   // a credential: name only, never the value
+  },
+});
+```
+
+Secretness is enforced by validation, not annotation: binding a plain literal where the schema expects a `SecretString` fails the deploy (a credential almost landed in plain config), and binding `envSecret` where the schema expects a plain string fails the same way. Neither side can silently misclassify a credential.
+
+### `envParam`: plain values the code cannot know
+
+An app origin is the canonical case: it differs between production and every preview stage, and a stage's public URL does not exist until that stage first deploys. Each stage keeps its own copy of the variable, so one topology serves them all.
+
+How the value travels: **the stage's platform variable is the store; the deploying shell only seeds it.** At deploy, preflight checks the name exists for the target stage, and a name the stage is missing is copied up from the deploying shell's environment. Once the stage has it, your shell no longer matters. To change the value later, set it on the platform and redeploy; a running instance's environment is frozen when the instance is created.
+
+`envParam` values arrive as raw strings, so bind them to string fields.
+
+### `envSecret`: credentials
+
+Seeded exactly the same way, with one rule: **the value never enters framework config**. The framework carries only the variable's name; the platform injects the value straight into the running instance. What your code gets is a `SecretString` box that redacts on logging, rendering, and JSON serialization. Leaking it takes a deliberate `.expose()`:
+
+```ts
+const input = service.input();
+if (input.stripeEnabled) stripe(input.stripeSecretKey.expose());
+```
+
+A reusable Module forwards a secret need to its parent without ever learning the platform name (see [Apps and Modules](/composer/apps-and-modules#reusable-modules)), which is what lets a Module require credentials without dictating your naming.
+
+## Absence is the schema's call
+
+An env-bound field whose variable is unset (or empty) resolves to *key omitted*. Whether that is legal is the schema's call: an optional field, a union arm, or a validation error that fails the deploy. A credential for an off-by-default feature is an ordinary optional `SecretString` field, not a framework flag. Because an omitted key can also be a typo'd variable name, the deploy report prints every key that resolved absent; check it when a value goes missing.
+
+## The reserved port
+
+Every service also gets a `port` (default 3000), outside the input schema and read through its own typed accessor:
+
+```ts
+Bun.serve({ port: service.port(), hostname: '0.0.0.0', fetch: handler });
+```
+
+`service.port()` is a sibling of `service.origin()`. Never read `process.env.PORT` yourself; the framework exports `PORT` only for a server it does not write and cannot call, Next.js's standalone `server.js`, which binds it itself.
+
+## What travels
+
+The deploy validates the resolved binding, applies the schema's defaults, and serializes the result into one document, with each secret as a pointer naming the platform variable that holds the value, never the value itself:
+
+```json no-copy
+{ "stripeEnabled": true, "stripeSecretKey": { "$secret": "STRIPE_SECRET_KEY" } }
+```
+
+At boot the framework swaps each pointer for a redacting box over the named variable, validates against the schema again, and `service.input()` returns the typed object. The document is secret-free by construction, which is why the deploy report can print it verbatim.
+
+## Next steps
+
+- [Deploying](/composer/deploying): how a fresh stage gets its variables in CI.
+- [Testing](/composer/testing): supply an input double under the reserved `input` key.

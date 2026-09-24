@@ -1,0 +1,74 @@
+---
+title: Request timeout
+description: Compute cancels a request when your service takes more than 60 seconds to start responding. How to recognize the 504 and how to structure work that runs longer.
+url: /compute/request-timeout
+metaTitle: Request timeout | Prisma Compute
+metaDescription: Prisma Compute cancels a request when your service takes more than 60 seconds to start responding and returns 504 Gateway Time-out. How to recognize it and move longer work out of the request.
+---
+
+Your service has **60 seconds** to start responding. Compute's ingress starts that clock when it forwards the request to your service. If nothing has come back by then, the client receives `504 Gateway Time-out` and Compute cancels the request.
+
+The deadline covers the wait for your first bytes, not the time your response takes to finish. A response that has started is not cut off when it passes 60 seconds, which is how [streaming responses](#streaming-responses) work.
+
+## What your service sees
+
+Compute cancels the request from outside your service, so no timeout error is raised in your code and none is written to your logs. Your handler keeps running, but the response it eventually produces has nowhere to go.
+
+Three consequences follow:
+
+- **The request's abort signal is how you notice.** Cancelling the request aborts the signal on it. Check `req.signal` if you want your handler to stop work it no longer needs to finish.
+- **Your own timeout handling cannot rescue the response.** A guard longer than the limit, such as `AbortSignal.timeout(90_000)`, still fires, but the client got the 504 half a minute earlier. Keep in-request timeouts under 60 seconds, for example 50, so your handler fails first and returns an error the caller can read.
+- **The instance can sleep with your handler mid-execution.** Once the request is cancelled, Compute stops counting it as in flight, even though your handler is still working. If the work has to finish, hold the instance with [`waitUntil`](/compute/keeping-instances-awake).
+
+## How to recognize it
+
+- The client gets `504 Gateway Time-out` with a short HTML body that mentions `openresty`, about 60 seconds after the request was sent.
+- The Console reports a 504 for that request, in your service's metrics.
+- Your own logs show whatever your handler logged, with no timeout error, because the cancellation happens outside your service.
+- The same route succeeds whenever it starts responding in under 60 seconds.
+
+A 504 like this is not a crash or a sign of an unhealthy platform. Your service took more than 60 seconds to send anything back.
+
+## Work that takes longer than 60 seconds
+
+Do not tie long-running work to the lifetime of a single inbound request. Respond first, then do the work.
+
+### Respond, then continue in the background
+
+Validate the request, start the work, and return immediately. For a webhook, that means a `200` or `202` before any processing. Wrap the work in `waitUntil` from `@prisma/compute` so the instance stays awake until it finishes. Without it, the instance can scale to zero as soon as the response is sent.
+
+```ts title="src/index.ts"
+import { waitUntil } from "@prisma/compute";
+
+export default {
+  async fetch(req: Request) {
+    const job = await parseWebhook(req);
+
+    waitUntil(processJob(job), {
+      // Optional. Prevents a hanging promise from keeping the instance awake indefinitely.
+      signal: AbortSignal.timeout(10 * 60_000),
+    });
+
+    return new Response(null, { status: 202 });
+  },
+};
+```
+
+`waitUntil` is best-effort. It keeps the current instance awake, but it does not make the work durable, retry failures, or continue through a restart or a new deployment. Use it for work you can afford to lose occasionally, or combine it with the next pattern.
+
+### Persist, then process in steps
+
+For work that must not be lost, have the inbound request store the job, as a database row or a queue message, and process it from a separate trigger. Compute does not run scheduled jobs for you, so the trigger is a request from an external scheduler or a worker you run elsewhere. See [Known limitations](/compute/limitations).
+
+Size each step to finish inside one request, and record progress as you go. A later run resumes from the last step you recorded. The step that was interrupted runs again from its start, so make every step safe to repeat rather than assuming it ran once.
+
+## Streaming responses
+
+Because the 60 seconds covers only the wait for your first bytes, a response that has started is not cut off when it runs past them. Server-sent events and other streaming responses work on that basis: send the first bytes promptly, then keep streaming.
+
+Send something early even when the real payload is not ready, and keep data flowing rather than letting a started stream sit idle for long stretches. For anything long-lived, have the client reconnect rather than holding one connection open indefinitely. WebSocket connections are not supported; see [Known limitations](/compute/limitations).
+
+## Next steps
+
+- [Keeping instances awake](/compute/keeping-instances-awake): `waitUntil` and `KeepAwakeGuard` for background work.
+- [Known limitations](/compute/limitations): what Compute can and can't do.

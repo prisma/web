@@ -66,7 +66,7 @@ const SourcesDisplay = ({ sources }: { sources: (Source | StoredSource)[] }) => 
             href={source.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-fd-muted hover:bg-fd-accent transition-colors max-w-[200px] group"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-fd-muted hover:bg-fd-accent transition-colors duration-300 motion-reduce:transition-none max-w-[200px] group"
           >
             <FileTextIcon className="size-3 shrink-0 text-fd-muted-foreground" />
             <span className="truncate">{source.title || source.subtitle}</span>
@@ -76,7 +76,7 @@ const SourcesDisplay = ({ sources }: { sources: (Source | StoredSource)[] }) => 
         {hasMore && !showAll && (
           <button
             onClick={() => setShowAll(true)}
-            className="px-2 py-1 text-xs rounded-md bg-fd-muted hover:bg-fd-accent transition-colors text-fd-muted-foreground"
+            className="px-2.5 py-1 text-xs rounded-full bg-fd-muted hover:bg-fd-accent transition-colors duration-300 motion-reduce:transition-none text-fd-muted-foreground"
           >
             +{sources.length - 3} more
           </button>
@@ -105,13 +105,15 @@ const FeedbackButtons = ({
             <button
               {...props}
               type="button"
+              aria-label="Mark answer as helpful"
               onClick={() => onFeedback(qaId, "upvote")}
               disabled={disabled || currentReaction === "upvote"}
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon-sm" }),
-                "h-7 w-7",
-                currentReaction === "upvote" &&
-                  "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950",
+                "h-7 w-7 rounded-full",
+                // Semantic triads, not raw Tailwind hues; both already flip for
+                // dark mode. In this brand `success` mirrors prism cyan.
+                currentReaction === "upvote" && "text-foreground-success bg-background-success",
                 disabled && "opacity-50 cursor-not-allowed",
               )}
             >
@@ -129,13 +131,13 @@ const FeedbackButtons = ({
             <button
               {...props}
               type="button"
+              aria-label="Mark answer as not helpful"
               onClick={() => onFeedback(qaId, "downvote")}
               disabled={disabled || currentReaction === "downvote"}
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon-sm" }),
-                "h-7 w-7",
-                currentReaction === "downvote" &&
-                  "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950",
+                "h-7 w-7 rounded-full",
+                currentReaction === "downvote" && "text-foreground-error bg-background-error",
                 disabled && "opacity-50 cursor-not-allowed",
               )}
             >
@@ -250,7 +252,9 @@ const ChatInner = ({
   return (
     <div className="flex size-full w-full flex-col overflow-hidden bg-fd-background">
       <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0">
-        <h2 className="font-semibold text-sm">Chat</h2>
+        {/* `font-medium`: the unlayered global heading rule pins h1..h6 to Sora
+            500, so `font-semibold` here rendered as a lie. */}
+        <h2 className="font-medium text-sm">Chat</h2>
         <div className="flex items-center gap-1">
           <CopyChat messages={hasActiveConversation ? messagesForCopy : initialMessages} />
           <Tooltip>
@@ -258,6 +262,7 @@ const ChatInner = ({
               render={(props) => (
                 <button
                   {...props}
+                  aria-label="Clear chat"
                   onClick={handleClearChat}
                   disabled={(!hasActiveConversation && !hasPersistedMessages) || isGeneratingAnswer}
                   className={cn(
@@ -276,6 +281,7 @@ const ChatInner = ({
               render={(props) => (
                 <button
                   {...props}
+                  aria-label="Close chat"
                   onClick={onClose}
                   className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
                 >
@@ -293,11 +299,11 @@ const ChatInner = ({
           {showEmptyState ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
               <div className="flex flex-col items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-fd-primary/10">
+                <div className="flex size-12 items-center justify-center rounded-square-high bg-fd-primary/10">
                   <MessagesSquareIcon className="size-6 text-fd-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-fd-foreground">How can I help?</h3>
+                  <h3 className="font-medium text-fd-foreground">How can I help?</h3>
                   <p className="text-sm text-fd-muted-foreground mt-1">
                     Ask me anything about Prisma
                   </p>
@@ -309,7 +315,7 @@ const ChatInner = ({
                   <button
                     key={question}
                     onClick={() => handleSuggestionClick(question)}
-                    className="text-left px-4 py-3 rounded-xl border border-fd-border bg-fd-card hover:bg-fd-accent hover:border-fd-accent transition-colors text-sm text-fd-foreground"
+                    className="text-left px-4 py-3 rounded-square-high border border-stroke-neutral bg-fd-card hover:bg-fd-accent hover:border-fd-accent transition-colors duration-300 motion-reduce:transition-none text-sm text-fd-foreground"
                   >
                     {question}
                   </button>
@@ -318,10 +324,10 @@ const ChatInner = ({
 
               <p className="text-fd-muted-foreground text-xs">
                 Press{" "}
-                <kbd className="px-1.5 py-0.5 rounded bg-fd-muted text-fd-muted-foreground font-mono text-xs">
+                <kbd className="px-1.5 py-0.5 rounded-square-low bg-fd-muted text-fd-muted-foreground font-mono text-xs">
                   ⌘
                 </kbd>
-                <kbd className="px-1.5 py-0.5 rounded bg-fd-muted text-fd-muted-foreground font-mono text-xs ml-0.5">
+                <kbd className="px-1.5 py-0.5 rounded-square-low bg-fd-muted text-fd-muted-foreground font-mono text-xs ml-0.5">
                   I
                 </kbd>{" "}
                 to toggle
@@ -385,7 +391,7 @@ const ChatInner = ({
               {error && (
                 <Message from="assistant">
                   <MessageContent>
-                    <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
+                    <div className="flex items-start gap-2 text-foreground-error">
                       <AlertCircleIcon className="size-4 mt-0.5 shrink-0" />
                       <div className="flex flex-col gap-1">
                         <span className="font-medium">Something went wrong</span>
@@ -466,6 +472,11 @@ export const AIChatSidebar = ({
         event.preventDefault();
         setIsOpen((prev) => !prev);
       }
+      // Escape closes the drawer — previously only the chevron or the
+      // shortcut could, and the open drawer persisted across navigations.
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -479,6 +490,8 @@ export const AIChatSidebar = ({
         className={cn(
           buttonVariants({ variant: "outline" }),
           "hidden shrink-0 shadow-none md:inline-flex items-center gap-2 h-8 group cursor-pointer",
+          // Pill hit area, matching the header's other controls.
+          "rounded-full border-stroke-neutral px-3",
         )}
       >
         <MessagesSquareIcon className="size-4 text-fd-muted-foreground group-hover:text-fd-accent-foreground" />
@@ -516,7 +529,7 @@ export const AIChatSidebar = ({
             <button
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "shadow-none inline-flex items-center gap-1.5",
+                "shadow-none inline-flex items-center gap-1.5 rounded-full border-stroke-neutral px-3",
               )}
             >
               <MessagesSquareIcon className="size-3.5 text-fd-muted-foreground" />

@@ -113,7 +113,7 @@ export const metadata = createPageMetadata({
   description:
     "Bring your developer experience to the next level. Prisma makes it easier than ever to work with your MongoDB database and enables you to query data with confidence.",
   path: "/mongodb",
-  ogImage: "/og/prisma-with/mongodb.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function MongoDbPage() {

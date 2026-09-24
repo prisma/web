@@ -40,7 +40,7 @@ function Spinner({ className, error, ...props }: SpinnerProps) {
           </g>
         </mask>
         <g mask="url(#mask0_1201_5196)">
-          <path d="M0 0H16V16H0V0Z" fill="#9CA3AF" />
+          <path d="M0 0H16V16H0V0Z" className="fill-foreground-neutral-weaker" />
         </g>
       </g>
       <defs>
@@ -92,7 +92,7 @@ function Spinner({ className, error, ...props }: SpinnerProps) {
           </g>
         </mask>
         <g mask="url(#mask0_1183_849)">
-          <path d="M0 0H16V16H0V0Z" fill="#9CA3AF" />
+          <path d="M0 0H16V16H0V0Z" className="fill-foreground-neutral-weaker" />
         </g>
       </g>
       <defs>

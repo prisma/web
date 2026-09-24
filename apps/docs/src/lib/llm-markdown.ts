@@ -327,32 +327,20 @@ function formatButton(_attrs: string, content: string) {
   return stripJsxTags(trimComponentContent(content));
 }
 
-function formatStackLayer(attrs: string, content: string) {
-  const title = getAttribute(attrs, "title") ?? "Step";
+function formatWorkflowLink(attrs: string, content: string) {
+  const title = getAttribute(attrs, "title") ?? "Link";
   const href = getAttribute(attrs, "href");
+  const badge = getAttribute(attrs, "badge");
   const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
   const label = href ? `[${title}](${href})` : title;
-  return `- **${label}**${text ? `: ${text}` : ""}`;
+  return `- **${label}**${badge ? ` (${badge})` : ""}${text ? `: ${text}` : ""}`;
 }
 
-function formatHeroPitch(attrs: string, content: string) {
-  const text = stripJsxTags(trimComponentContent(content));
-  const links: string[] = [];
-  const primaryHref = getAttribute(attrs, "primaryHref");
-  const primaryLabel = getAttribute(attrs, "primaryLabel");
-  if (primaryHref && primaryLabel) links.push(`- [${primaryLabel}](${primaryHref})`);
-  const secondaryHref = getAttribute(attrs, "secondaryHref");
-  const secondaryLabel = getAttribute(attrs, "secondaryLabel");
-  if (secondaryHref && secondaryLabel) links.push(`- [${secondaryLabel}](${secondaryHref})`);
-  return [text, links.join("\n")].filter(Boolean).join("\n\n");
-}
-
-function formatGetStartedTabs(attrs: string, content: string) {
-  // cli may be a quoted string or a multiline template literal.
-  const cli = getAttribute(attrs, "cli") ?? attrs.match(/cli=\{\s*`([\s\S]*?)`\s*\}/)?.[1];
-  const text = trimComponentContent(content);
-  const cliBlock = cli ? `\`\`\`bash\n${cli}\n\`\`\`` : "";
-  return [cliBlock, text].filter(Boolean).join("\n\n");
+function formatCliCallout(attrs: string, content: string) {
+  const href = getAttribute(attrs, "href");
+  const linkLabel = getAttribute(attrs, "linkLabel") ?? "CLI reference";
+  const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
+  return [text, href ? `See the [${linkLabel}](${href}).` : ""].filter(Boolean).join(" ");
 }
 
 function formatIconLink(attrs: string, _content: string) {
@@ -653,12 +641,21 @@ export function normalizeProcessedMarkdown(
       },
     )
     .replace(/<\/?IconGrid[^>]*>/g, "")
-    .replace(/<\/?StackDiagram[^>]*>/g, "")
+    .replace(/<\/?WorkflowHero[^>]*>/g, "")
+    .replace(/<\/?WorkflowGrid[^>]*>/g, "")
     .replace(
-      /<HeroPitch\b([^>]*)>([\s\S]*?)<\/HeroPitch>/g,
-      (_match, attrs: string, content: string) => formatHeroPitch(attrs, content),
+      /<WorkflowStage\b([^>]*)>([\s\S]*?)<\/WorkflowStage>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title") ?? "Stage";
+        const description = getAttribute(attrs, "description");
+        const text = trimComponentContent(content);
+        return ["## " + title, description, text].filter(Boolean).join("\n\n");
+      },
     )
-    .replace(/<\/?HeroGrid[^>]*>/g, "")
+    .replace(
+      /<CliCallout\b([^>]*)>([\s\S]*?)<\/CliCallout>/g,
+      (_match, attrs: string, content: string) => formatCliCallout(attrs, content),
+    )
     .replace(
       // Same brace-tolerant attrs matcher as AgentPrompt: ModalRow takes
       // JSX-element props like icon={<FolderPlus />}. The row's modal content
@@ -678,19 +675,12 @@ export function normalizeProcessedMarkdown(
   const withoutJsxComponents = replaceComponentBlocks(
     replaceComponentBlocks(
       replaceComponentBlocks(
-        replaceComponentBlocks(
-          // GetStartedTabs goes through the brace-aware parser because its
-          // `cli` prop is a template literal that can contain ">" (e.g. shell
-          // redirections), which would end a naive [^>]* attrs match early.
-          replaceComponentBlocks(componentMarkdown, "GetStartedTabs", formatGetStartedTabs),
-          "Card",
-          formatCard,
-        )
+        replaceComponentBlocks(componentMarkdown, "Card", formatCard)
           .replace(/<\/?Cards[^>]*>/g, "")
           .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
           .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
-        "StackLayer",
-        formatStackLayer,
+        "WorkflowLink",
+        formatWorkflowLink,
       ),
       "IconLink",
       formatIconLink,
@@ -712,7 +702,7 @@ export function normalizeProcessedMarkdown(
 
   return protectedCode
     .restore(unescaped)
-    .replace(/^[ \t]+(#{3,4} )/gm, "$1")
+    .replace(/^[ \t]+(#{2,4} )/gm, "$1")
     .replace(/^[ \t]+(- \[)/gm, "$1")
     .replace(/^[ \t]+(- \*\*\[)/gm, "$1")
     .replace(/^[ \t]+(\d+\. \*\*\[)/gm, "$1")

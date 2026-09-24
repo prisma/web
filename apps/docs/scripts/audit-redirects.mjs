@@ -4,11 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const cwd = path.dirname(fileURLToPath(import.meta.url));
 const docsRoot = path.resolve(cwd, "..");
-const broadDestinations = new Set([
-  "/docs",
-  "/docs/orm",
-  "/docs/orm/reference/supported-databases",
-]);
+const broadDestinations = new Set(["/docs", "/docs/orm", "/docs/orm/supported-databases"]);
 const acceptableBroadRedirects = new Set([
   "/docs/orm/more/upgrade-guides/upgrading-versions/codemods -> /docs/guides/upgrade-prisma-orm/v7",
   "/docs/orm/accelerate/getting-started/connection-pooler/client-extensions -> /docs/postgres/database/connection-pooling",
@@ -110,7 +106,10 @@ function extractFrontmatterUrl(raw) {
 
   const value = match[1].trim();
 
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 
@@ -151,9 +150,7 @@ async function collectDocsRoutes() {
 async function main() {
   const strict = process.argv.includes("--strict");
   const routes = await collectDocsRoutes();
-  const vercelConfig = JSON.parse(
-    await readFile(path.join(docsRoot, "vercel.json"), "utf8"),
-  );
+  const vercelConfig = JSON.parse(await readFile(path.join(docsRoot, "vercel.json"), "utf8"));
 
   const missing = [];
   const broad = [];
@@ -174,7 +171,9 @@ async function main() {
     }
   }
 
-  console.log(`Checked ${vercelConfig.redirects.length} redirects against ${routes.size} docs routes.`);
+  console.log(
+    `Checked ${vercelConfig.redirects.length} redirects against ${routes.size} docs routes.`,
+  );
 
   if (missing.length > 0) {
     console.log("\nMissing redirect destinations:");

@@ -29,7 +29,10 @@ export const MessageContent = ({ children, className, ...props }: MessageContent
   <div
     className={cn(
       "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:w-fit group-[.is-user]:rounded-lg group-[.is-user]:bg-fd-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-fd-foreground",
+      // `bg-fd-secondary` already resolves to the brand `paper` surface
+      // (#f9faf5 / #232323) through the app's shadcn remap — only the geometry
+      // needed changing.
+      "group-[.is-user]:ml-auto group-[.is-user]:w-fit group-[.is-user]:rounded-square-high group-[.is-user]:bg-fd-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-fd-foreground",
       "group-[.is-assistant]:text-fd-foreground",
       className,
     )}

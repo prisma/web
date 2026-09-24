@@ -145,7 +145,7 @@ export const metadata = createPageMetadata({
   description:
     "Build high-performance and type-safe React apps with Prisma's developer-friendly database tools: The world's most popular TypeScript ORM and the first serverless database without cold starts.",
   path: "/react",
-  ogImage: "/og/prisma-with/react.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function ReactPage() {

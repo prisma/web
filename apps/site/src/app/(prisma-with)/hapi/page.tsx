@@ -78,7 +78,7 @@ export const metadata = createPageMetadata({
   description:
     "Query data from MySQL, PostgreSQL & SQL Server databases in hapi apps with Prisma – a better ORM for JavaScript and TypeScript.",
   path: "/hapi",
-  ogImage: "/og/prisma-with/hapi.png",
+  ogKicker: "Prisma ORM",
 });
 
 export default async function HapiPage() {

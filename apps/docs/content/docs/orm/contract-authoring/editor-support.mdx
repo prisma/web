@@ -1,0 +1,51 @@
+---
+title: Editor support
+description: What the Prisma VS Code extension does for a Prisma ORM contract, and what to do when it stops accepting the file.
+url: /orm/contract-authoring/editor-support
+metaTitle: Editor support for Prisma ORM contracts
+metaDescription: 'How the Prisma VS Code extension detects a Prisma ORM contract, what it checks and completes, and how to fix false errors after an upgrade.'
+---
+
+Install the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) to get error checking, formatting, and completion in your `.prisma` file.
+
+In Prisma ORM 8 that file is the [data contract](/orm/contract-authoring/the-data-contract): the description of your models that Prisma ORM 7 called the schema. Its path is the `contract` setting in your `prisma.config.ts`, which is `prisma/contract.prisma` in the config [`orm init`](/cli/orm-init) writes; see [Configuration](/cli/configuration#config-file).
+
+Coming from Prisma ORM 7? Start with [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7). This page covers VS Code only.
+
+## The file header
+
+The extension only works on `.prisma` files whose first non-blank line is:
+
+```prisma title="prisma/contract.prisma"
+// use prisma-8
+```
+
+A file without that line gets no error checking, no completion, and no formatting. [`orm init`](/cli/orm-init) and [`contract infer`](/cli/contract-infer) write the line for you. Add it yourself when you create a contract by hand.
+
+Contracts from before `8.0.0-rc.10` start with `// use prisma-next`, the preview's name. The extension still accepts that line, and nothing breaks if you leave it. When you format the file, the extension rewrites that line to `// use prisma-8`.
+
+## What the editor does
+
+- **Errors** appear inline as you type. They are the same errors you would get from [`prisma contract emit`](/cli/contract-emit), the command that checks the contract and writes `contract.json` and `contract.d.ts`.
+- **Formatting** reformats the whole file. In VS Code, run **Format Document**.
+- **Completion** starts when you type `@` or `@@`. The editor lists attribute names such as `@id`, `@default`, and `@@index`. Inside an attribute, it lists the names of the arguments you have not filled in yet. When an attribute has required arguments, VS Code inserts them as placeholders you tab through.
+
+The list of attributes comes from your `prisma.config.ts`: the database it declares and the Prisma extension packs listed under `extensions`; see [Extension packs](/cli/configuration#extension-packs) for that config. Extension packs are add-on packages for database features such as [pgvector](/orm/extensions/using-extensions). If your config lists the pgvector pack, the editor also suggests pgvector's attributes. No database connection is needed.
+
+The editor does not yet suggest argument values. Type `@default(` and it does not offer `autoincrement()` or the other values you could put there.
+
+## False errors after an upgrade
+
+If the editor marks attributes as errors in a contract that `prisma contract emit` accepts, the likely cause is an old ORM package. That is the `@prisma/orm-postgres`, `@prisma/orm-mongo`, or `@prisma/orm-sqlite` package your project installs for its database. Check the installed version:
+
+```bash title="Terminal"
+npm ls @prisma/orm-postgres
+```
+
+If it prints a version below `8.0.0-rc.9`, update it to the current release:
+
+```npm title="Terminal"
+npm install @prisma/orm-postgres@latest
+```
+
+Replace `orm-postgres` with `orm-mongo` or `orm-sqlite` to match your database. Then reload the editor window. In VS Code, run **Developer: Reload Window** from the Command Palette.

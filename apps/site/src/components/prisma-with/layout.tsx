@@ -96,7 +96,7 @@ export async function PrismaWithLayout({
   codeExamples: Record<string, string>;
 }) {
   return (
-    <main className="w-screen overflow-hidden">
+    <main className="overflow-hidden bg-white">
       <Hero data={data.hero} />
       <WhySection data={data.why} />
       <HowSection data={data.how} codeExamples={codeExamples} />

@@ -1,0 +1,78 @@
+---
+title: Supported databases
+description: 'Which databases Prisma ORM 8 supports today, what each one gets, which hosted providers work, and which databases are coming.'
+url: /orm/supported-databases
+metaTitle: Databases supported by Prisma ORM 8
+metaDescription: 'PostgreSQL is a release candidate, MongoDB is in early access, and SQLite is an experimental package. What each database gets (query APIs, transactions, migrations, extensions, middleware), which managed providers work, and which databases are coming, with MySQL planned next.'
+---
+
+Prisma ORM 8 ships one library per database, and installing the one that matches yours brings the config, the client, contract authoring, and migrations with it. Today there are two you can build on, and an experimental third.
+
+| Database | Status | Library | Install |
+| --- | --- | --- | --- |
+| PostgreSQL, including Prisma Postgres | Release candidate | `@prisma/orm-postgres` | `npm install @prisma/orm-postgres` |
+| MongoDB | Early access | `@prisma/orm-mongo` | `npm install @prisma/orm-mongo` |
+| MySQL | Coming soon, planned next | | |
+| MariaDB | Coming soon | | |
+| SQLite | Experimental | `@prisma/orm-sqlite` | `npm install @prisma/orm-sqlite` |
+| Microsoft SQL Server | Coming soon | | |
+| CockroachDB | Coming soon | | |
+
+`npm create prisma@latest -- my-app` asks which database you use and installs the right library for you. See the [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) or the [MongoDB quickstart](/prisma-orm/quickstart/mongodb).
+
+## What the labels mean
+
+**Release candidate.** Install it and build with it today. Until the final release, some details of the API may still change, so code you write now may need small edits later. Each release candidate fixes bugs found in the last one. [Release status](/orm/release-status) has the dates and what `npm install` gives you.
+
+**Early access.** The library works and you can build with it, but some of what the PostgreSQL library does is not there yet. The table below and the reference pages say what works on MongoDB, and [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet) lists the gaps. Report what you hit on [GitHub](https://github.com/prisma/orm/issues).
+
+**Experimental.** SQLite is published as an experimental package, [`@prisma/orm-sqlite`](https://www.prisma.io/extensions/sqlite), without a quickstart yet. `db.transaction(...)` works the same way as on PostgreSQL.
+
+**Coming soon.** There is no Prisma ORM 8 library for the database yet. Prisma ORM 7 supports it, and Prisma ORM 7 keeps receiving bug fixes and security updates for 18 months after Prisma ORM 8 reaches general availability. [How to stay on Prisma ORM 7](/orm/release-status#how-to-stay-on-prisma-orm-7) shows how to lock the version.
+
+## What each database supports
+
+The ORM client works the same on both databases. The lower-level query APIs follow the database's own query model.
+
+| Feature | PostgreSQL | MongoDB |
+| --- | --- | --- |
+| [ORM client](/orm/reference/orm-client) | Yes | Yes |
+| [SQL query builder](/orm/reference/sql-query-builder) | Yes | No |
+| [Pipeline builder](/orm/reference/pipeline-builder) | No | Yes |
+| [Raw queries](/orm/reference/raw-queries) | Raw SQL | Raw commands |
+| [Transactions](/orm/fundamentals/transactions) | Yes | Not yet |
+| [Migrations](/orm/migrations/how-migrations-work) | Yes | Yes |
+| [Extensions](/orm/extensions) (pgvector, PostGIS, ParadeDB, and more) | Yes | Not yet |
+| [Middleware](/orm/middleware/how-middleware-works) | Yes | Yes, except `beforeCompile` |
+
+`db.transaction()` exists on the PostgreSQL client only, because Prisma ORM does not support MongoDB transactions yet. For multi-document writes on MongoDB, [use the MongoDB driver's session API](/orm/fundamentals/transactions#transactions-on-mongodb) alongside the client.
+
+Middleware hooks are the same on both databases apart from `beforeCompile`, which rewrites the SQL query before it runs and so exists only on PostgreSQL. The built-in `lints` and `budgets` middleware inspect SQL and run on PostgreSQL. The `cache` middleware runs on both. See [which databases a middleware runs on](/orm/middleware/how-middleware-works#which-databases-a-middleware-runs-on).
+
+Every extension in the [directory](https://www.prisma.io/extensions) lists the databases it targets. Today every extension that adds column types, operators, or index types targets PostgreSQL, and the only entries that list MongoDB are the database libraries and the `cache` middleware.
+
+## Managed and hosted databases
+
+Prisma ORM connects with a standard connection string, so any host that gives you one works.
+
+| Provider | Database | Notes |
+| --- | --- | --- |
+| [Prisma Postgres](/postgres) | PostgreSQL | The default in `npm create prisma@latest`. Provisioned from the CLI, with connection pooling built in. |
+| Supabase | PostgreSQL | The [Supabase extension](https://www.prisma.io/extensions/supabase) adds the auth and storage tables and role-bound clients. |
+| Neon, Railway, Render, AWS RDS, Cloud SQL, self-hosted | PostgreSQL | Any PostgreSQL server. Extensions such as pgvector and PostGIS need the server-side extension to be installable, which most managed providers include. |
+| MongoDB Atlas, self-hosted MongoDB | MongoDB | Any MongoDB deployment reachable with a `mongodb://` or `mongodb+srv://` URL. |
+
+## Databases that are coming
+
+MySQL is planned next and is not part of the Prisma ORM release candidate. MariaDB, Microsoft SQL Server, and CockroachDB have no Prisma ORM 8 library yet either. To stay on a supported path for those databases today, use [Prisma ORM 7](/orm/v7/reference/supported-databases), which supports all of them.
+
+Add a 👍 to the GitHub issue for the database you need, or open one if there is none, because the number of reactions is one of the inputs to what gets built next. Organizations that need a database sooner can talk to [Prisma enterprise support](https://www.prisma.io/enterprise).
+
+Because a database library is an extension, a community package can add a database Prisma does not ship. If you publish one, [submit it to the directory](https://www.prisma.io/extensions/submit) and name the database it adds in the submission.
+
+## Next steps
+
+- The quickstart sets up a project on [PostgreSQL](/prisma-orm/quickstart/postgresql) or [MongoDB](/prisma-orm/quickstart/mongodb).
+- [Release status](/orm/release-status) covers versions, dates, and staying on Prisma ORM 7.
+- [Prisma ORM 7 supported databases](/orm/v7/reference/supported-databases) has the full matrix for the current generally available release.
+- [Extensions](/orm/extensions) lists what you can add to PostgreSQL.

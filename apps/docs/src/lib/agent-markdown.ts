@@ -1,13 +1,23 @@
 const DOCS_BASE_PATH = "/docs";
 
-const AGENT_USER_AGENT_PATTERNS = [
-  /chatgpt-user/i,
-  /gptbot/i,
-  /claudebot/i,
-  /claude-user/i,
-  /perplexitybot/i,
-  /cursor/i,
-];
+/**
+ * User-agent substrings that identify an agent asking for a docs page.
+ *
+ * Source of truth for both the runtime check below and the `user-agent`
+ * matcher in `src/proxy.ts` — `proxy-matcher.test.ts` asserts the two agree,
+ * because Next.js requires the middleware `config` export to be a literal and
+ * so the matcher cannot import from here.
+ */
+export const AGENT_USER_AGENT_TOKENS = [
+  "chatgpt-user",
+  "gptbot",
+  "claudebot",
+  "claude-user",
+  "perplexitybot",
+  "cursor",
+] as const;
+
+const AGENT_USER_AGENT_PATTERNS = AGENT_USER_AGENT_TOKENS.map((token) => new RegExp(token, "i"));
 
 const SKIPPED_DOCS_PREFIXES = ["/api", "/llms", "/llms.mdx", "/og"];
 const SKIPPED_DOCS_PATHS = new Set(["/favicon.ico", "/rss.xml", "/sitemap", "/sitemap.xml"]);

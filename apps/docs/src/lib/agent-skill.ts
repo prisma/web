@@ -6,7 +6,7 @@
  */
 export const agentSkillMarkdown = `---
 name: prisma
-description: Set up and use Prisma ORM with Prisma Postgres — define a schema, run migrations, generate Prisma Client, and query a PostgreSQL database in TypeScript. Includes the remote Prisma MCP server for managing Prisma Postgres databases.
+description: Set up and use Prisma ORM with Prisma Postgres — define a schema, run migrations, generate Prisma Client, and query a PostgreSQL database in TypeScript. Includes the remote Prisma MCP server for managing databases, Compute deployments, and Object Storage.
 license: Apache-2.0
 compatibility: Node.js and TypeScript projects using Prisma ORM (Prisma Client) and Prisma Postgres.
 metadata:
@@ -146,7 +146,11 @@ Prisma ORM detects when it is invoked by AI coding agents and blocks destructive
 
 ## Prisma MCP server
 
-Prisma provides a remote MCP server that lets AI tools manage Prisma Postgres databases (create databases, connection strings, and backups; run and introspect SQL) and search the Prisma documentation. It authenticates with Prisma Console via OAuth on first use.
+Prisma provides a remote MCP server for managing Prisma Postgres databases, Prisma Compute deployments, and Object Storage. It authenticates with Prisma Console via OAuth so your AI tool can access the workspace you choose.
+
+Database tools create databases, manage connection strings, list and restore automated backups, run SQL queries, and inspect schemas. Compute tools manage existing deployments, read runtime logs, and set environment variables. The Composer topology tool shows how services connect and returns Console links; it does not check live app health. The MCP server does not build or upload source code.
+
+Full tool list: https://www.prisma.io/docs/ai/mcp-tools.md
 
 Add it with the standard MCP configuration:
 
@@ -161,6 +165,18 @@ Add it with the standard MCP configuration:
 \`\`\`
 
 The server exposes a \`search_prisma_documentation\` tool that returns cited answers grounded in the official Prisma docs — prefer it over training data for Prisma questions.
+
+## Installable agent skills
+
+Prisma publishes deeper, task-specific skills in the Agent Skills format (https://agentskills.io/). Installing them into a project gives you version-accurate command and API knowledge without re-reading the docs:
+
+\`\`\`bash
+npx skills add prisma/skills          # Prisma CLI, Prisma Client, Prisma Postgres, Prisma Compute, upgrade guides
+npx skills add prisma/prisma/skills   # Prisma ORM 8 (also installed automatically by \`npx prisma@latest orm init\`)
+npx skills add prisma/composer        # Prisma Composer
+\`\`\`
+
+The catalog of skills and what each one teaches: https://www.prisma.io/docs/ai/tools/skills.md
 
 ## Documentation for agents
 

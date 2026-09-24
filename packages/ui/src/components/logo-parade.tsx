@@ -131,33 +131,33 @@ export default function LogoParade() {
             const duplicateSet = i < logoParade.length ? "primary" : "clone";
 
             return (
-            <a
-              key={`${item.label}-${duplicateSet}`}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
-            >
-              <img
-                src={item.imageUrl}
-                width={item.width}
-                height={item.height}
-                alt={item.label}
-                className={cn(
-                  "w-full h-full object-contain object-center",
-                  item.imageUrlLight && "hidden dark:block",
-                )}
-              />
-              {item.imageUrlLight && (
+              <a
+                key={`${item.label}-${duplicateSet}`}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative shrink-0 rounded-lg overflow-hidden cursor-pointer transition-transform duration-200 invert-100 dark:brightness-150 dark:hover:filter-none contrast-75 grayscale hover:filter-none"
+              >
                 <img
-                  src={item.imageUrlLight}
+                  src={item.imageUrl}
                   width={item.width}
                   height={item.height}
                   alt={item.label}
-                  className="w-full h-full object-contain object-center block dark:hidden"
+                  className={cn(
+                    "w-full h-full object-contain object-center",
+                    item.imageUrlLight && "hidden dark:block",
+                  )}
                 />
-              )}
-            </a>
+                {item.imageUrlLight && (
+                  <img
+                    src={item.imageUrlLight}
+                    width={item.width}
+                    height={item.height}
+                    alt={item.label}
+                    className="w-full h-full object-contain object-center block dark:hidden"
+                  />
+                )}
+              </a>
             );
           })}
         </div>
