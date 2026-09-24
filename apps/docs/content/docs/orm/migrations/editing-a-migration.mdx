@@ -40,7 +40,7 @@ to:         e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
-In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. `migration plan` writes the change as three steps rather than one, because the column is required and the table already has rows: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required. The table is called `user` because the table name is the model name with a lowercase first letter, unless the model sets `@@map`:
+In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. `migration plan` writes the change as three steps rather than one, because the column is required and the table already has rows: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required. The table is called `user` because the contract from [Generating a migration](/orm/migrations/generating-a-migration#your-first-migration) maps `User` to it with `@@map("user")`. Without `@@map`, the table name is the model name exactly as written:
 
 ```ts title="migration.ts (as planned)"
 override get operations() {
@@ -156,28 +156,32 @@ Sooner or later a backfill has to read a column that the same migration takes aw
 What you need instead is a contract that describes the database as it is while the backfill runs, and you write that one yourself. Copy your whole contract into the migration directory as `intermediate.prisma`, then in its `User` model add `isAdmin` back and make `role` optional, because at that point no row has a `role` yet.
 
 ```prisma title="intermediate.prisma (User, other fields left out)"
+// use prisma-8
+
 model User {
   id          Int     @id
   displayName String
   isAdmin     Boolean
   role        String?
+
+  @@map("user")
 }
 ```
 
-In the same migration directory, add `intermediate.config.ts`, a second config file that names `intermediate.prisma` as the contract and needs no database connection:
+Keep `// use prisma-8` as the first line of the copy, because `contract emit` reads only files that start with it.
+
+In the same migration directory, add `intermediate.config.ts`, a second config file that names `intermediate.prisma` as the contract and needs no database connection. `parent: false` stops the CLI from also reading your project's `prisma.config.ts`, which it would otherwise find in a parent directory and merge in:
 
 ```ts title="intermediate.config.ts"
 import { definePrismaConfig } from 'prisma/config';
 import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
-export default definePrismaConfig({ orm: ormConfig({ contract: './intermediate.prisma' }) });
+export default definePrismaConfig({ parent: false, orm: ormConfig({ contract: './intermediate.prisma' }) });
 ```
 
-Emit the intermediate contract from inside the migration directory, because `intermediate.config.ts` reads its paths from the directory you run the command in. Commit all four `intermediate.*` files along with the migration, since the migration no longer recompiles without them.
+Emit the intermediate contract with `--config` pointing at that file. A relative path in a config file resolves from the directory of that file, so `./intermediate.prisma` is found wherever you run the command from. Commit all four `intermediate.*` files along with the migration, since the migration no longer recompiles without them.
 
 ```bash
-cd migrations/app/20260708T0900_replace_is_admin
-npx prisma contract emit --config intermediate.config.ts
-cd ../../..
+npx prisma contract emit --config migrations/app/20260708T0900_replace_is_admin/intermediate.config.ts
 ```
 
 ```text title="migrations/app/20260708T0900_replace_is_admin/"
@@ -288,7 +292,7 @@ override get operations() {
 
 Not every migration comes from a contract change. When you want a data-only migration, which changes rows and leaves your contract state as it is, or a migration you intend to write entirely by hand, run `npx prisma migration new`. It writes an empty `ops.json`, a `migration.json`, and a `migration.ts` that already has the snapshot imports, the class, and an empty `operations` array. Nothing was planned for you, so there is no `placeholder` import to remove, but you do have to add the `@prisma/orm-postgres` imports and the `endContract`, `stack`, and `db` statements from the filled-in `displayName` listing.
 
-Because a data-only migration starts and ends at the contract state your database already matches, you have to tell the command which state that is, by passing `--from` with your contract's hash. `npx prisma migration graph` marks that hash `@contract`. The [`migration new` reference](/cli/migration-new) lists the rest of the options:
+A data-only migration starts and ends at the contract state your database already matches. Without `--from`, `migration new` starts from the `db` ref, which is that state when you apply migrations with `--advance-ref db`. To start from another state, pass `--from` with the hash of the migration that ends there. `npx prisma migration graph` marks your contract's hash `@contract`. The [`migration new` reference](/cli/migration-new) lists the rest of the options:
 
 ```npm
 npx prisma migration new --name backfill_scores --from <hash>

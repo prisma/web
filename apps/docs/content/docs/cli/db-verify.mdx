@@ -60,3 +60,7 @@ npx prisma db verify --db "$DATABASE_URL" --json
 | Extension mismatch | The contract requires an extension that is not wired in the config. |
 
 Fix the database or contract, emit again if needed, then verify again.
+
+## How PostgreSQL defaults are compared
+
+`db verify` compares a column default by its value, not by how PostgreSQL prints it, so `'-1'::integer`, `(5)::smallint`, an enum value cast to a type in another schema, a `timestamp` value without a time zone, and an `ARRAY[...]` list all compare equal to the default in your contract. It reads the database with `TimeZone = UTC` and ISO dates, whatever the server or role sets. A contract inferred from a server outside UTC before `8.0.0-rc.12` can therefore show one difference in a `timestamptz` value inside a check constraint or an index predicate. Emit the contract and run `db sign` once to clear it.

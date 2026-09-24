@@ -51,7 +51,7 @@ The `name` is the label Prisma ORM uses when it talks about your middleware, so 
 
 If a call gives you back a count instead of rows, `afterQuery` is not called for it and `afterExecute` is called instead. On the ORM API the calls that return a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`. Every other call returns rows and reaches `afterQuery`, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`.
 
-The SQL query builder is the other way to write a query on the same client, `db.sql.public.user...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps, and the step you run it with decides which hook you get. Calling `.build()` gives you the plan, and `db.runtime()` is the method on your client that runs one. `db.runtime().query(plan)` returns rows and reaches `afterQuery`, while `db.runtime().execute(plan)` reports how many rows the statement changed and reaches `afterExecute`.
+The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps, and the step you run it with decides which hook you get. Calling `.build()` gives you the plan, and `db.runtime()` is the method on your client that runs one. `db.runtime().query(plan)` returns rows and reaches `afterQuery`, while `db.runtime().execute(plan)` reports how many rows the statement changed and reaches `afterExecute`.
 
 To have the logger cover the counting calls as well, add a second hook to the object `queryLogger()` returns in `src/prisma/query-logger.ts`, next to `afterQuery`:
 
@@ -114,8 +114,8 @@ npm run dev
 The logger reports both queries, and prints the SQL that actually ran:
 
 ```text no-copy
-[query-logger] 1 rows in 18ms · INSERT INTO "public"."user" ("email", "name", "updatedAt") VALUES ($1, $2, $3) RETURNING "user"."createdAt", "user"."email", "user"."id", "user"."name", "user"."updatedAt", "user"."username"
-[query-logger] 1 rows in 17ms · SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5
+[query-logger] 1 rows in 18ms · INSERT INTO "public"."User" ("email", "name", "updatedAt") VALUES ($1, $2, $3) RETURNING "User"."createdAt", "User"."email", "User"."id", "User"."name", "User"."updatedAt", "User"."username"
+[query-logger] 1 rows in 17ms · SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5
 fetched 1 users
 ```
 
@@ -222,7 +222,7 @@ A hook you implement for one kind of call is never called for the other kind, so
 
 Its argument is called a draft because the SQL text does not exist yet. A draft has `ast`, the tree you change, and `meta`, which records where the query came from and which you pass through unchanged. You return a copy of the draft with a new `ast`, or `undefined` when there is nothing to change.
 
-The middleware below adds a condition to every `SELECT` on the `user` table:
+The middleware below adds a condition to every `SELECT` on the `User` table:
 
 ```ts title="src/prisma/scope-user-selects.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -236,7 +236,7 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
     async beforeCompile(draft) {
       if (draft.ast.kind !== 'select') return undefined;
       if (draft.ast.from?.kind !== 'table-source') return undefined;
-      if (draft.ast.from.name !== 'user') return undefined;
+      if (draft.ast.from.name !== 'User') return undefined;
       const where = draft.ast.where ? AndExpr.of([draft.ast.where, predicate]) : predicate;
       return { ...draft, ast: draft.ast.withWhere(where) };
     },
@@ -244,7 +244,7 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
 }
 ```
 
-The `kind` check on `from` keeps the middleware to plain tables: a `SELECT` that reads from a subquery has a `from` whose `kind` is `'derived-table-source'`, and one that reads from a function has `'function-source'`. The name it checks, `'user'`, is the table name in your database rather than the model name in your contract, because by this point the query is expressed in tables and columns. `draft.ast.withWhere(where)` gives back a new tree with that `WHERE` and leaves the original alone.
+The `kind` check on `from` keeps the middleware to plain tables: a `SELECT` that reads from a subquery has a `from` whose `kind` is `'derived-table-source'`, and one that reads from a function has `'function-source'`. The name it checks, `'User'`, is the table name in your database rather than the model name in your contract, because by this point the query is expressed in tables and columns. The two are the same unless the model sets `@@map`. `draft.ast.withWhere(where)` gives back a new tree with that `WHERE` and leaves the original alone.
 
 The condition itself is an object you build from the same classes, and you pass it in when you register the middleware. Put values through `ParamRef.of` rather than `LiteralExpr.of`, because a `ParamRef` becomes a bound parameter such as `$1` while a literal is pasted into the SQL text itself, so a value that came from one of your users could inject SQL of its own. A `ParamRef` you build by hand has to name the PostgreSQL type of the value with `codec: { codecId: ... }`, and the ids start with `pg/` and end with `@1`, so the `text` column `name` takes `pg/text@1`. Leave that out and the query fails with an error whose `code` is `RUNTIME.PARAM_REF_MISSING_CODEC`.
 
@@ -256,7 +256,7 @@ import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 const onlyMia = BinaryExpr.eq(
-  ColumnRef.of('user', 'name'),
+  ColumnRef.of('User', 'name'),
   ParamRef.of('Mia', { codec: { codecId: 'pg/text@1' } }),
 );
 
@@ -267,11 +267,11 @@ export const db = postgres<Contract>({
 });
 ```
 
-Every `SELECT` on `user` now runs with `WHERE "user"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. Swap `name` for whatever column holds your tenant to get the tenant filter.
+Every `SELECT` on `User` now runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. Swap `name` for whatever column holds your tenant to get the tenant filter.
 
 Copy each import as it is written, including the one that says `type` and the one that does not.
 
-A `uuid` column takes `pg/uuid@1`, and the other common ids are `pg/int4@1`, `pg/int8@1`, `pg/float8@1`, `pg/bool@1`, and `pg/timestamptz-temporal@1` for a `timestamptz` column. For a column whose type is not in that list, read the id off your own client: `db.sql.public.user.columns.name.codecId` is the id for the `name` column of the `user` table, so print it from any script that imports `db`. [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids in one place.
+A `uuid` column takes `pg/uuid@1`, and the other common ids are `pg/int4@1`, `pg/int8@1`, `pg/float8@1`, `pg/bool@1`, and `pg/timestamptz-temporal@1` for a `timestamptz` column. For a column whose type is not in that list, read the id off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids in one place.
 
 `BinaryExpr` has one method per comparison (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `in`, `notIn`), and `AndExpr.of` and `OrExpr.of` combine conditions. They all come from `@prisma/orm-postgres/relational-core/ast`, so your editor lists them once you import from there.
 
@@ -287,7 +287,7 @@ async onRow(row) {
 },
 ```
 
-For the `SELECT` in step 3, whose SQL is `SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5`, a row object has an `id` key holding a number and an `email` key holding a string. The fixture below returns one row of that shape, and you register it the same way as the logger, with `middleware: [userFixture()]`:
+For the `SELECT` in step 3, whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, a row object has an `id` key holding a number and an `email` key holding a string. The fixture below returns one row of that shape, and you register it the same way as the logger, with `middleware: [userFixture()]`:
 
 ```ts title="src/prisma/user-fixture.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -298,7 +298,7 @@ export function userFixture(): SqlMiddleware {
     familyId: 'sql',
 
     async interceptQuery(plan) {
-      if (!plan.sql.includes('FROM "public"."user"')) return undefined;
+      if (!plan.sql.includes('FROM "public"."User"')) return undefined;
       return { rows: [{ id: 1, email: 'mia@prisma.io' }] };
     },
   };
@@ -386,7 +386,7 @@ Timing itself does not need any of this, because `result.latencyMs` already tell
 Projects created with `npm create prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent, so you can ask it for the middleware built in the steps above:
 
 - "Write a Prisma ORM middleware that logs every query slower than 250ms, and register it before budgets."
-- "Add a beforeCompile middleware that scopes every SELECT on the user table to the current tenant."
+- "Add a beforeCompile middleware that scopes every SELECT on the User table to the current tenant."
 - "Write an interceptQuery middleware that returns fixture rows for the products table in tests."
 
 ## Next steps

@@ -25,7 +25,7 @@ model Post {
 }
 ```
 
-`npx prisma orm init` writes the first line, `// use prisma-8`, into every `.prisma` contract. It marks the file as a Prisma ORM 8 contract rather than a Prisma ORM 7 schema. The CLI does not need this line, but the editor extension looks for it before it checks, completes, or formats the file, so keep it. A `contract.ts` file needs no header line. See [Editor support](/orm/contract-authoring/editor-support).
+`npx prisma orm init` writes the first line, `// use prisma-8`, into every `.prisma` contract. It marks the file as a Prisma ORM 8 contract rather than a Prisma ORM 7 schema, and every `.prisma` contract file needs it. `contract emit` reads only the files that start with this line and leaves any other file out of the contract without a warning. When no file has it, `contract emit` fails with `PSL_NO_OPTED_IN_SCHEMA_FILES`. The editor extension also looks for the line before it checks, completes, or formats the file. A `contract.ts` file needs no header line. See [Editor support](/orm/contract-authoring/editor-support).
 
 `npx prisma contract emit` turns this file into two files that the CLI and your application read: `contract.json` and `contract.d.ts`. Your queries are type-checked against the contract, migrations are planned as changes to it, and `npx prisma db verify` checks a live database against it.
 
@@ -64,7 +64,7 @@ export default definePrismaConfig({
 
 To start a new project, run `npm create prisma@latest -- my-app`. To add Prisma ORM 8 to a project that has no Prisma ORM at all, run `npx prisma orm init`. If you already have a Prisma ORM 7 `schema.prisma`, follow the [PostgreSQL upgrade guide](/guides/upgrade-prisma-orm/postgresql) instead, and [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists what changed. Both `npm create prisma@latest` and `npx prisma orm init` write `prisma.config.ts`, the contract file, and `src/prisma/db.ts`, and install the database package.
 
-The contract file is either a PSL file (`contract.prisma`) or a TypeScript file (`contract.ts`). The file extension selects the authoring mode, so to author in TypeScript you point `contract` at `./src/prisma/contract.ts`. Both modes describe the same things: models with fields and relations, the tables and columns they map to, named types, enums, and any types that [extension packages](/orm/contract-authoring/psl-syntax#extension-types) add. Extension packages are npm packages that add field types and database features, such as pgvector, a PostgreSQL extension for vector columns.
+The contract file is either a PSL file (`contract.prisma`) or a TypeScript file (`contract.ts`). The file extension selects the authoring mode, so to author in TypeScript you point `contract` at `./src/prisma/contract.ts`. A PSL contract can also span several files, when `contract` is a glob such as `./src/prisma/**/*.prisma`; see [Split the schema across several files](/cli/configuration#split-the-schema-across-several-files). Both modes describe the same things: models with fields and relations, the tables and columns they map to, named types, enums, and any types that [extension packages](/orm/contract-authoring/psl-syntax#extension-types) add. Extension packages are npm packages that add field types and database features, such as pgvector, a PostgreSQL extension for vector columns.
 
 After every change to the contract, run these three commands:
 
@@ -84,7 +84,7 @@ npx prisma db migrate
 
 Define models with the **[TypeScript builder](/orm/contract-authoring/typescript-schema-builder)** instead when you want to build them with code: reach for it when model definitions must be composed, generated, or shared as ordinary TypeScript modules. That page shows what a `contract.ts` file looks like.
 
-Both modes produce the same contract, so migrations, database checks, and `db` behave the same no matter which mode you write. A project has exactly one contract file, so do not keep both a `contract.prisma` and a `contract.ts`: the config names one file and Prisma ORM reads only that one, so edits to the other file do nothing. To switch modes, change the path in `contract` and delete the old file.
+Both modes produce the same contract, so migrations, database checks, and `db` behave the same no matter which mode you write. A project has exactly one contract source, so do not keep both a `contract.prisma` and a `contract.ts`: the config names one source and Prisma ORM reads only that one, so edits to the other file do nothing. To switch modes, change the path in `contract` and delete the old file.
 
 ## What the contract contains
 

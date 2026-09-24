@@ -34,7 +34,7 @@ npx prisma db migrate --advance-ref db
 ✔ Planned 1 operation(s)
 
 migrations/app/20260707T1006_add_user_phone
-└─ Add column "phone" to "user"
+└─ Add column "phone" to "User"
 
 from:       705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
 to:         925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72
@@ -42,10 +42,10 @@ app space:  migrations/app/20260707T1006_add_user_phone
 
 ℹ DDL preview
 
-ALTER TABLE "public"."user" ADD COLUMN "phone" text;
+ALTER TABLE "public"."User" ADD COLUMN "phone" text;
 ```
 
-A table name is the model name with a lowercase first letter unless the model sets `@@map`, so `User` becomes `"user"` and `UserProfile` becomes `"userProfile"`. If your database was created by Prisma ORM 7, it has a `"User"` table instead, so [the upgrade guide](/guides/upgrade-prisma-orm/postgresql#24-edit-the-inferred-contract) maps the old names with `@@map` before you plan a migration for it.
+A table name is the model name exactly as written unless the model sets `@@map`, so `User` is the table `"User"` and `UserProfile` is `"UserProfile"`, the same names Prisma ORM 7 used. Before `8.0.0-rc.12`, a model without `@@map` named its table with a lowercase first letter, `"userProfile"`. If your tables were created with those names, run the `add-model-map` script from the [upgrade recipe](https://github.com/prisma/orm/blob/v8.0.0-rc.12/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.11-to-8.0.0-rc.12/) over every `.prisma` file, including the `contract.prisma` copies under `migrations/`, before you plan. It adds `@@map("<current table name>")` to each model that has none. Without it, `migration plan` stops with [`MIGRATION.TABLE_NAME_CASE_CHANGED`](/orm/reference/error-reference#MIGRATION.TABLE_NAME_CASE_CHANGED) rather than drop the table and create an empty one.
 
 The `app space:` line tells you which migration history the new directory was written into. A contract space is a separate migration history, so your own migrations stay in `migrations/app/` while each [Prisma ORM extension package](/orm/migrations/applying-a-migration#extension-spaces) that ships migrations, such as pgvector, keeps its migrations in its own directory under `migrations/`.
 
@@ -103,11 +103,11 @@ Because that `from` hash is what ties one migration to another, your [migration 
 
 Inside `ops.json`, an operation is not only the change itself: it also carries the checks that decide whether the change needs to run and whether it worked. Here are the parts of the operation that adds the `phone` column:
 
-- **Precheck**: confirms the database is in the state the change expects, here that `"user"` has no `phone` column.
-- **Execute**: the statements that make the change, here `ALTER TABLE "public"."user" ADD COLUMN "phone" text`.
+- **Precheck**: confirms the database is in the state the change expects, here that `"User"` has no `phone` column.
+- **Execute**: the statements that make the change, here `ALTER TABLE "public"."User" ADD COLUMN "phone" text`.
 - **Postcheck**: confirms the change is in the database, here that the `phone` column exists. Some operations have no postcheck. `db migrate` skips an operation only when its postcheck already passes, so an operation with no postcheck always runs.
 
-When `db migrate` reaches an operation, it runs the postcheck before the change as well as after, because if the postcheck already passes then the change is in the database and there is nothing to do, so the operation is skipped. If the postcheck does not pass, `db migrate` runs the precheck, then the statements, then the postcheck, and it stops the run if either check fails. Once the operations are done, it checks the database against the contract before it updates the marker, which catches a database that satisfied every individual operation but still doesn't match what you declared. Say `"user"` already has a `phone` column of another type: the postcheck only asks whether a `phone` column exists, so it passes, the operation is skipped, and that final contract check then fails the run.
+When `db migrate` reaches an operation, it runs the postcheck before the change as well as after, because if the postcheck already passes then the change is in the database and there is nothing to do, so the operation is skipped. If the postcheck does not pass, `db migrate` runs the precheck, then the statements, then the postcheck, and it stops the run if either check fails. Once the operations are done, it checks the database against the contract before it updates the marker, which catches a database that satisfied every individual operation but still doesn't match what you declared. Say `"User"` already has a `phone` column of another type: the postcheck only asks whether a `phone` column exists, so it passes, the operation is skipped, and that final contract check then fails the run.
 
 Each operation also has an `operationClass`, which says what kind of change the operation makes to the database and which you choose yourself when you write a raw SQL operation:
 

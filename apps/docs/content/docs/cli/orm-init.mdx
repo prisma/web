@@ -31,6 +31,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 | `--target <db>` | Sets the database target. Use `postgres` or `mongodb`. |
 | `--authoring <style>` | Sets the contract authoring style. Use `psl` or `typescript`. |
 | `--schema-path <path>` | Sets where the starter contract is written. |
+| `--from-prisma7-schema <path>` | Uses the Prisma ORM 7 schema at `<path>` as the contract source instead of writing a starter contract. PostgreSQL only. See [On a Prisma ORM 7 project](#on-a-prisma-orm-7-project). |
 | `--write-env` | Writes `.env` from `.env.example` (gitignored). |
 | `--probe-db` | Connects to `DATABASE_URL` once and checks the server version. |
 | `--strict-probe` | Treats a failed database probe as fatal. |
@@ -42,7 +43,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 The exact files depend on the target and authoring style, but a Postgres PSL setup normally includes:
 
 - `prisma.config.ts`
-- a starter contract file such as `src/prisma/contract.prisma`
+- a starter contract file such as `src/prisma/contract.prisma`, whose first line is `// use prisma-8`
 - emitted contract artifacts after installation runs
 - a runtime client file (`src/prisma/db.ts`) that imports `contract.json`
 - `.env.example`, `tsconfig.json`, and updated `package.json`
@@ -53,6 +54,25 @@ The install step adds the target package to `dependencies`, and `prisma@latest` 
 The runtime files are ES modules. If your `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Set `"type": "module"` so the scaffolded `db.ts` loads.
 
 The generated `prisma.config.ts` imports `definePrismaConfig` from `@prisma/cli-engine`, while projects created by `create-prisma` (and the examples in [Configuration](/cli/configuration)) import it from `prisma/config`. Both work; keep the import your project already has when you copy a config example.
+
+## On a Prisma ORM 7 project
+
+`orm init` can set up Prisma ORM 8 beside Prisma ORM 7 on PostgreSQL, with Prisma ORM 8 reading your existing `schema.prisma` as its contract source. Pass the schema path:
+
+```npm title="Terminal"
+npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
+```
+
+A plain `orm init` offers the same setup when it finds a Prisma ORM 7 config, or a `prisma/schema.prisma` with a `datasource` block. The database target comes from the schema's `datasource` provider, and a `--target` that disagrees with it fails with `CLI.INIT_PRISMA7_TARGET_MISMATCH`.
+
+Before it changes any file, `orm init` installs `@prisma/orm-postgres` and checks that Prisma ORM 8 can read the schema. A schema it cannot read, for example one with a `view` block, stops the command with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`, which lists each problem with its line and the Prisma ORM 7 edit that removes it. Then it asks for consent, which `--confirm <directory>` gives in a script, and:
+
+- renames the Prisma ORM 7 config to `prisma7.config.ts` and points its import at `@prisma/prisma7/config`
+- changes every `package.json` script that runs `prisma` to run `prisma7`
+- installs Prisma ORM 7 as `@prisma/prisma7`, next to `prisma@latest`
+- writes `prisma.config.ts` with `contract: prisma7Schema("<schema path>")`, plus `src/prisma/db.ts` and `prisma-8.md`
+
+It does not write a starter contract, and it does not change `prisma/` or the database. Prisma ORM 7 keeps owning the schema and its migrations. Set `DATABASE_URL` and run `npx prisma db sign` once. After each `prisma7 migrate dev`, run `npx prisma contract emit` and then `npx prisma db sign`. [Configuration](/cli/configuration#use-a-prisma-orm-7-schema) explains `prisma7Schema`, and [the upgrade guide](/guides/upgrade-prisma-orm/postgresql) covers the rest of the move.
 
 ## Examples
 

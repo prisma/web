@@ -21,9 +21,20 @@ npx prisma migration new --name split-name
 | Option | What it does |
 | --- | --- |
 | `--name <slug>` | Sets the migration directory name suffix. |
-| `--from <hash>` | Sets the starting contract hash. Defaults to the latest migration target. |
+| `--from <hash>` | Sets the starting contract: the target hash of an existing migration, or a unique prefix of one. Defaults to the `db` ref, as on [`migration plan`](/cli/migration-plan). A hash on an empty migrations directory, or a prefix that matches more than one migration, is refused. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
+
+## Where it starts
+
+Without `--from`, `migration new` picks its starting point the way `migration plan` does:
+
+- When the `db` ref exists and `migrations/app/` has migrations, it starts from the `db` ref.
+- When there are no migrations and no `db` ref, it starts from an empty database.
+- When migrations exist but there is no `db` ref, it refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. Pass `--from` with the hash of the migration to build on, or set the ref with [`migration ref`](/cli/migration-ref). `npx prisma migration list` shows the hashes.
+- When the `db` ref exists but there are no migrations, it refuses and points you to `migration plan`, which writes the baseline first.
+
+Before `8.0.0-rc.12`, `migration new` started from the newest migration. Scripts that relied on that should pass `--from`.
 
 ## Examples
 

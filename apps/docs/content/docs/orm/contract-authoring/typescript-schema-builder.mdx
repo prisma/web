@@ -199,14 +199,14 @@ The examples below use the PostgreSQL builder.
 
 There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1", nativeType: "date" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
 
-For a primary key whose value your app generates, use `field.id.uuidv4String()`, `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, or `field.id.ksuid()`. They all generate the ID in your app, and `uuidv4String` is the common choice. Each marks the field as the primary key for you, and `field.id.uuidv4Native()` and `field.id.uuidv7Native()` do the same in a `uuid` column. There is no auto-increment helper, so use one of those `field.id.*` helpers. For a key the database generates instead, write `field.uuidNative().defaultSql("gen_random_uuid()").id()`.
+For a primary key whose value your app generates, use `field.id.uuidv4String()`, `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, or `field.id.ksuid()`. They all generate the ID in your app, and `uuidv4String` is the common choice. Each marks the field as the primary key for you, and `field.id.uuidv4Native()` and `field.id.uuidv7Native()` do the same in a `uuid` column. There is no auto-increment helper, so use one of those `field.id.*` helpers. For a key the database generates instead, write ``field.uuidNative().default(sql`gen_random_uuid()`).id()``, with `sql` imported from `@prisma/orm-postgres/contract-builder`.
 
-`field.temporal.createdAt()` fills the column with `now()` when the row is created, while `field.temporal.updatedAt()` fills it on every create and every update, and Prisma ORM sets it in the client, not with a database trigger. `field.namedType(x)` takes an enum or a type from an extension pack.
+`field.temporal.createdAt()` sets the column to the current time when the row is created, while `field.temporal.updatedAt()` sets it on every create and every update. Prisma ORM sets both in the client, from your application's clock, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `field.dateTime().default(now())` instead. `field.temporal.timestamptzJsDate()` is a `timestamptz` column that reads and writes a JavaScript `Date`, with no `Temporal` polyfill, and `field.temporal.createdAtJsDate()` and `field.temporal.updatedAtJsDate()` are the matching presets. `field.namedType(x)` takes an enum or a type from an extension pack.
 
 Every field builder supports chained modifiers:
 
 - `.optional()` makes the field nullable.
-- `.default(value)` sets a literal default. `.defaultSql(expression)` sets a default the database computes, and the argument is a SQL expression as a string: `.defaultSql("now()")`.
+- `.default(value)` sets a literal default. It also takes a default the database computes: `.default(now())`, `.default(autoincrement())`, or any other SQL expression as a `sql` template, such as ``.default(sql`gen_random_uuid()`)``. Import `now`, `autoincrement`, and `sql` from `@prisma/orm-postgres/contract-builder`. `` sql`now()` `` and `` sql`autoincrement()` `` are refused; use the named helpers. `.defaultSql(expression)` still works but is deprecated, and it will be removed in `8.0.0`.
 - `.unique()` adds a unique constraint. `.id()` marks the primary key, for a key that is not generated, such as an integer you set yourself.
 - `.column("column_name")` sets the column name in the database when it differs from the field name.
 - `.many()` makes the field a list, stored as a PostgreSQL array column such as `text[]`. A list column gets a check constraint that rejects `NULL` elements.
@@ -265,7 +265,7 @@ Prisma ORM does not check that the column types on the two sides of a relation m
 
 ## Storage mapping
 
-`.sql(...)` maps a model to its table, and the object form covers the common case: `User.sql({ table: "user" })`.
+`.sql(...)` maps a model to its table, and the object form covers the common case: `User.sql({ table: "user" })`. Without a `table`, and without the `naming` option, the table has the model's name exactly as written, so `User` is the table `"User"`.
 
 You can chain `.relations(...)`, `.attributes(...)`, and `.sql(...)` in any order, and you can skip any of them, so a model with no relations calls `.sql({ table })` straight after `model(...)`.
 
@@ -292,6 +292,21 @@ indexes: [
 ```
 
 The `where` and `expression` strings go into the SQL as written, so they use column names, and you quote them yourself.
+
+The ids, unique constraints, indexes, and foreign keys of one model must all have different names. A name used twice is a type error at `defineContract`.
+
+For PostgreSQL [full-text search](/orm/reference/orm-client#full-text-search), `fullTextIndex` from `@prisma/orm-postgres/contract-builder` creates the GIN index the search operations use. It takes one text column and a `name` or `map`, plus optional `language` and `where`:
+
+```typescript title="src/prisma/contract.ts (excerpt)"
+import { fullTextIndex } from "@prisma/orm-postgres/contract-builder";
+
+Post.sql(({ cols }) => ({
+  table: "post",
+  indexes: [fullTextIndex(cols.title, { name: "post_title_search" })],
+}));
+```
+
+Give the index and the search operations the same `language`, which defaults to `english`; otherwise PostgreSQL does not use the index.
 
 Two more keys go in the same object, in either the object form or the callback form: `checks`, a list of check constraints you write yourself, built with `check` from the package, and `control`, the model's [control policy](#control-policy):
 

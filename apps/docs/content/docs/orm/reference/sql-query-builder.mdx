@@ -130,7 +130,7 @@ model Feature {
 
 In Prisma ORM 8 your `schema.prisma` is called `contract.prisma`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) gets you from a Prisma ORM 7 project to that file, and has the rest of the setup steps. Install the client with `npm install @prisma/orm-postgres`. Run `npx prisma contract emit` to write `contract.json` and `contract.d.ts` beside `contract.prisma`. The examples below assume your own file is in `src/prisma/`, next to those two files, and they write the type import path as `./contract.d`, exactly like that.
 
-You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. `public` is the PostgreSQL schema your tables are in, and a model goes in `public` unless your contract puts it in a `namespace` block. Table accessors are keyed by table name, not model name. A table name is the model name with a lowercase first letter unless the model sets `@@map`, so the `User` model mapped to `user` is reached as `db.sql.public.user`, and the model for the `Post`/`Tag` join table, mapped to `post_tag`, is reached as `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`.
+You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. `public` is the PostgreSQL schema your tables are in, and a model goes in `public` unless your contract puts it in a `namespace` block. Table accessors are keyed by table name, not model name. A table name is the model's `@@map` value, or the model name exactly as written when the model has no `@@map`, so the `User` model mapped to `user` is reached as `db.sql.public.user`, and the model for the `Post`/`Tag` join table, mapped to `post_tag`, is reached as `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`.
 
 ### The `db.sql` builder [#the-dbsql-facet]
 
@@ -923,7 +923,25 @@ Which aggregate functions exist depends on your database, and PostgreSQL gives y
 | `min(field)` | The input column's own type. A `VarChar` column gives a `String` (`text`) |
 | `max(field)` | The input column's own type. A `VarChar` column gives a `String` (`text`) |
 
-On PostgreSQL you also get `ilike(expr, pattern)` for text columns, as in `fns.ilike(f.displayName, '%alice%')`. `cosineDistance(a, b)` compares two vector values and returns a `number`. It comes with pgvector, the PostgreSQL extension for vector columns, so it is there only if your contract composes pgvector. See [Extension types](/orm/contract-authoring/psl-syntax#extension-types).
+On PostgreSQL you also get `ilike(expr, pattern)` for text columns, as in `fns.ilike(f.displayName, '%alice%')`, but not for a native enum column (`pg.enum(...)`), which has no text operations.
+
+Full-text search on PostgreSQL uses `fns.fullTextMatches(column, query)` to filter, `fns.fullTextRank(column, query)` to score, and `fns.fullTextHeadline(column, query, options?)` to return the matching text with each match marked. `query` is a `tsquery`: build it with `fns.websearchToTsquery(text)`, `fns.plaintoTsquery(text)`, `fns.phrasetoTsquery(text)`, or `fns.toTsquery(text)`, or with the `tsquery` tag from `@prisma/orm-postgres/target/full-text`. `fullTextHeadline` takes `startSel`, `stopSel`, `maxWords`, `minWords`, and `highlightAll`, and all three take `language`. [Full-text search](/orm/reference/orm-client#full-text-search) on the ORM client reference covers the parsers, the options, and the index:
+
+```ts title="src/search-posts.ts"
+const q = 'prisma orm';
+const plan = db.sql.public.post
+  .select('id', 'title')
+  .select('rank', (f, fns) => fns.fullTextRank(f.title, fns.websearchToTsquery(q)))
+  .select('headline', (f, fns) =>
+    fns.fullTextHeadline(f.title, fns.websearchToTsquery(q), { startSel: '<mark>', stopSel: '</mark>' }),
+  )
+  .where((f, fns) => fns.fullTextMatches(f.title, fns.websearchToTsquery(q)))
+  .orderBy((f, fns) => fns.fullTextRank(f.title, fns.websearchToTsquery(q)), { direction: 'desc' })
+  .limit(10)
+  .build();
+```
+
+`cosineDistance(a, b)` compares two vector values and returns a `number`. It comes with pgvector, the PostgreSQL extension for vector columns, so it is there only if your contract composes pgvector. See [Extension types](/orm/contract-authoring/psl-syntax#extension-types).
 
 ### `fns.raw` and `.returns()`
 
