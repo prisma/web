@@ -36,7 +36,7 @@ The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) rep
 
 - **Node.js 22.18 or newer (on the 24 line, 24.11 or newer)**; Node.js 24 recommended
 - A working **Prisma ORM 7** application on PostgreSQL: `prisma.config.ts`, the `prisma-client` generator, and a driver adapter
-- **TypeScript 5.9 or newer** with `"strict": true` and a `module` setting that supports import attributes; [step 2.6](#26-include-the-generated-types) gives the setting for each kind of project
+- **TypeScript 5.9 or newer** with `"strict": true`. [Step 2.6](#26-include-the-generated-types) tells you whether to change the `module` setting in `tsconfig.json`
 
 ## 1. Prepare Prisma ORM 7 for side-by-side operation
 
@@ -309,14 +309,19 @@ npx prisma contract emit
 
 ### 2.6. Include the generated types
 
-The Prisma ORM 8 client imports `contract.json` with the `with { type: "json" }` import attribute. TypeScript accepts that attribute only when `module` is `esnext`, `node18`, `node20`, `nodenext`, or `preserve`. Prisma ORM 8 does not need `nodenext` in particular. Start from your current setup:
+Your `tsconfig.json` must allow the JSON import you will write in step 3.1: `import contractJson from "../generated/prisma8/contract.json" with { type: "json" }`. TypeScript accepts the `with { type: "json" }` part only when `module` is `esnext`, `node18`, `node20`, `nodenext`, or `preserve`, and only in a file it treats as an ES module. Any other value, such as `commonjs`, `es2022`, or `node16`, rejects it, and leaving `module` unset fails too. Take the first case below that matches how your app runs:
 
-- **Your `module` setting already supports import attributes.** Keep it. Add `"resolveJsonModule": true` and the generated declarations to `include`, as shown below. Nothing else changes.
-- **A CommonJS project that stays CommonJS.** Use `"module": "nodenext"` with `"resolveJsonModule": true`, leave `"type": "module"` out of `package.json`, and import `contract.json` in `db.ts` without the `with { type: "json" }` attribute. This works because `nodenext` compiles the file as CommonJS there; a file compiled as an ES module needs the attribute.
-- **A project run through `tsx`, `vite`, `next`, `esbuild`, or another bundler.** Use `"module": "preserve"` and `"moduleResolution": "bundler"` with `"resolveJsonModule": true`. This accepts imports without extensions. It is also what `prisma orm init` writes.
-- **A project compiled with `tsc` and run with plain `node` as ES modules.** Use `"module": "nodenext"` and give every relative import its `.js` extension, because Node's ES module loader requires the extension at runtime; see [the TypeScript module reference](https://www.typescriptlang.org/docs/handbook/modules/reference.html#node16-node18-nodenext). The example project takes this path, which is why its imports end in `.js`.
+- **`module` is already one of the five values and your build works with it, and either `package.json` has `"type": "module"` or `module` is `esnext` or `preserve`.** Keep it. Set `moduleResolution` to `bundler` if `module` is `esnext` or `preserve`, to `nodenext` if `module` is `nodenext`, and remove it if `module` is `node18` or `node20`. A `moduleResolution` of `node` or `node10` cannot resolve the `@prisma/orm-*` packages, so do not leave that in place.
+- **You compile with `tsc`, run the output with `node`, and `package.json` has no `"type": "module"` (or has `"type": "commonjs"`).** Your app runs as CommonJS, and it can stay that way. Set `"module": "nodenext"` and `"moduleResolution": "nodenext"`, and do not add `"type": "module"`. Prisma ORM 8 works from CommonJS code, and your relative imports stay as they are, without extensions. TypeScript treats `db.ts` as CommonJS here, so in step 3.1 write the JSON import without the `with` part and copy the other import lines as shown.
 
-In every case, enable `resolveJsonModule` so TypeScript types the imported JSON, and include the generated declarations in the program:
+  ```typescript title="src/db.ts (CommonJS excerpt)"
+  import contractJson from "../generated/prisma8/contract.json";
+  ```
+
+- **The app runs through `tsx`, or a bundler such as `vite`, `next`, or `esbuild` builds it, and you never run `tsc` output with plain `node`.** Set `"module": "preserve"` and `"moduleResolution": "bundler"`. You do not need file extensions on relative imports, and the import lines in step 3.1 work as shown.
+- **You compile with `tsc`, run the output with `node`, and `package.json` has `"type": "module"`, even if you use `tsx` in development.** Set `"module": "nodenext"` and `"moduleResolution": "nodenext"`. Node requires a file extension on every relative import when it runs ES modules, so every import that starts with `./` or `../` must end in `.js`, even though the source file is `.ts`: `import { postsRoutes } from "./routes/posts.js"`, and a directory import such as `./routes` becomes `./routes/index.js`. Until every relative import has its extension, `npx tsc --noEmit` fails and names each one that still needs it. The [example project](https://github.com/prisma/prisma8-and-7-example) is set up this way; [the TypeScript module reference](https://www.typescriptlang.org/docs/handbook/modules/reference.html#node16-node18-nodenext) has the details.
+
+Whichever case applies, add `"resolveJsonModule": true` so TypeScript can type the JSON import, and add `generated/prisma8/**/*.d.ts` to `include` so it sees the emitted `contract.d.ts`. If your `tsconfig.json` has no `include`, TypeScript already picks up every file under the project, so skip that part:
 
 ```json title="tsconfig.json (excerpt)"
 {
@@ -331,7 +336,7 @@ In every case, enable `resolveJsonModule` so TypeScript types the imported JSON,
 }
 ```
 
-**Check:** `npx tsc --noEmit` passes. Prisma ORM 8 is now installed and configured, but no application code uses it yet.
+**Check:** `npx tsc --noEmit` passes. If you followed the last case, it fails until every relative import has its `.js` extension. Prisma ORM 8 is now installed and configured, but no application code uses it yet. This check does not test your `module` choice, because nothing imports `contract.json` until step 3.1. If TypeScript reports error TS2823 there, the `module` value rejects the `with` part; come back to this step and pick again.
 
 ## 3. Migrate one route
 
