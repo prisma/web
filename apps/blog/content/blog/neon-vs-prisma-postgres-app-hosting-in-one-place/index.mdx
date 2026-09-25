@@ -1,0 +1,180 @@
+---
+title: "Neon vs Prisma Postgres when you want hosting and the database in one place"
+slug: "neon-vs-prisma-postgres-app-hosting-in-one-place"
+date: "2026-09-24"
+authors:
+  - "Gregory Boch"
+metaTitle: "Neon vs Prisma Postgres: app and database in one place"
+metaDescription: "What to compare when you want app hosting and Postgres from one vendor: branching, billing shape, pooling, previews, and when Neon is still the better pick."
+heroImagePath: "/neon-vs-prisma-postgres-app-hosting-in-one-place/imgs/hero.svg"
+heroImageAlt: "Two stacks side by side: Neon as a database next to a separate host, and Prisma with the app and database inside one project."
+metaImagePath: "/neon-vs-prisma-postgres-app-hosting-in-one-place/imgs/meta.png"
+excerpt: "If you want the app and the database from one vendor, the comparison is not really Neon against Prisma Postgres. It is Neon plus a host against one stack. Here is what to compare."
+tags:
+  - "platform"
+  - "prisma-postgres"
+---
+
+If you want app hosting and Postgres from one vendor, you are not comparing two databases. You are
+comparing Neon plus a separate host against one stack, so the things to compare are the seams
+between them: whether the connection string is injected for you, whether a preview environment gets
+its own database, how each bill behaves when the app is idle, and what you give up. This post walks
+those, and says plainly where Neon is the better answer.
+[Prisma Postgres](https://www.prisma.io/docs/postgres) runs on the same infrastructure as
+[Prisma Compute](https://www.prisma.io/docs/compute), so a Compute branch can have its own database.
+Neon pairs with whatever host you choose, which is more freedom and more wiring.
+
+## What to compare
+
+Five questions decide this, and only one of them is about the database itself.
+
+1. **Where does `DATABASE_URL` come from?** One vendor means it is injected at deploy time, while two
+   vendors means you copy it between dashboards, so it then exists in both, plus your `.env`, plus
+   wherever your agent cached it.
+2. **Does a preview environment get its own database?** A preview pointed at production data is not a
+   preview, and Neon answers this with branching while Prisma gives each Compute branch its own
+   database. Both work, and they cost differently.
+3. **What does idle cost?** Neon bills compute by the hour and autosuspends after five minutes of
+   inactivity by default, whereas Prisma Postgres bills per operation, so an idle database accrues
+   nothing beyond the plan's base fee.
+4. **Where does pooling come from?** Every Prisma Postgres database runs a dedicated PgBouncer
+   instance, while on Neon you use the pooled connection string it provides.
+5. **What do you lose by consolidating?** This is the question vendor comparisons skip. For Prisma the
+   honest answer is branching and region spread, covered below.
+
+## At a glance
+
+| | Prisma Postgres | Neon |
+| --- | --- | --- |
+| Billing unit | Operations, one per Prisma ORM query | Compute-hours (CU-hours) plus storage |
+| Idle cost | Plan base fee only | Autosuspends after 5 minutes by default |
+| Database branching | No branching feature; separate databases, no per-branch fee | Yes, $1.50 per branch-month |
+| Point-in-time recovery | Included, 7 to 30 days by plan | History window billed at $0.20/GB-month |
+| Connection pooling | Dedicated PgBouncer per database | Pooled connection string |
+| Egress | Free on every plan | 500 GB included, then $0.10/GB |
+| App hosting from the same vendor | Yes, Prisma Compute | No, pair it with a host |
+| Free plan | 200,000 operations, 500 MB | 100 CU-hours per project, 0.5 GB |
+
+Figures are from the [Prisma Postgres and Neon pricing comparison](/prisma-postgres-vs-neon-pricing-2026),
+which has the full per-plan tables and five worked examples. Check both vendors' current pages
+before you commit, because these move.
+
+## What Neon does well
+
+**Branching is the real feature.** A Neon branch is a copy-on-write copy of your database, so a pull
+request can get a branch with production-shaped data in seconds. Prisma Postgres has no equivalent:
+you create a separate database and seed it. If your workflow depends on every PR having realistic
+data, Neon does something we do not, and that is a good reason to choose it.
+
+**Scale-to-zero suits bursty and business-hours workloads.** Compute autosuspends after five minutes
+idle, so a database that is genuinely quiet most of the day costs very little. For an always-on
+production API this advantage disappears, because the compute never suspends.
+
+**Usage-based with no floor.** Neon's Launch and Scale plans have no fixed monthly base, so a very
+quiet month can cost a few dollars. Prisma Postgres charges the plan fee whether you use it or not.
+
+**You keep your choice of host.** Pairing Neon with Vercel, Railway, Fly or your own servers is a
+legitimate architecture, and plenty of good teams run exactly that.
+
+## What Prisma Postgres does well
+
+**The app and the database are one project.** With Compute, the connection string is injected rather
+than copied, and each branch can have its own database, so a preview environment is isolated by
+construction instead of by discipline.
+
+**Billing tracks queries rather than uptime.** Because an operation is one ORM query, the bill maps
+to something you can see in your code. It also means an idle database costs nothing beyond the base
+fee, with no cold start when traffic returns.
+
+**Pooling and caching need no extra service.** A dedicated PgBouncer runs beside each database, and
+adding a `cacheStrategy` to any Prisma ORM query caches the result with a TTL or
+stale-while-revalidate. Neither is a separate thing to provision.
+
+**Spend is capped rather than estimated.** Operation quotas are account-level across your databases,
+and spend limits are set in the console, so a runaway loop becomes a notification.
+
+**Egress is free**, which matters more than it sounds for a media-heavy or API-heavy app.
+
+## How the two bills behave
+
+Prisma Postgres bills per operation: one Prisma ORM query is one operation, whatever it costs to
+run. Neon bills CU-hours: compute size multiplied by hours awake, plus storage.
+
+The practical difference is which variable your bill follows. On Prisma it follows how many queries
+your code issues, so a chatty page is expensive and an idle app is cheap. On Neon it follows how long
+the database stays awake, so a quiet app is cheap and a high-volume one on always-on compute is
+predictable. A query-heavy app with a small dataset running a few hours a day looks completely
+different on each.
+
+Two line items people miss on Neon: extra branches at $1.50 per branch-month, which twenty live
+preview branches turn into $30 a month before compute, and the instant-restore history window at
+$0.20/GB-month, billed separately from your live data.
+
+The [full pricing comparison](/prisma-postgres-vs-neon-pricing-2026) runs five worked examples with
+the arithmetic shown, including two where Neon is cheaper.
+
+## When to choose which
+
+**Choose Neon** if per-PR database branching is central to how you work, if your traffic is genuinely
+bursty or business-hours-only, if you want no monthly floor, or if you have already chosen a host you
+are happy with and only need a database.
+
+**Choose Prisma Postgres with Compute** if you want one vendor for the app and the data, if your app
+is a long-lived TypeScript service rather than a set of short functions, if you would rather cap
+spend than model it, or if you want pooling and caching without provisioning anything.
+
+**It does not matter much** if you are below the free tiers on both and building a prototype. Pick
+either, and revisit when you have real traffic.
+
+## Migrating from Neon
+
+It is standard Postgres on both sides, so there is no proprietary format to convert, and the
+official [switch from Neon guide](https://www.prisma.io/docs/guides/switch-to-prisma-postgres/from-neon)
+covers the whole path. In outline:
+
+1. Pick the Neon branch and database you are moving, and check extensions and policies come across.
+2. Create the Prisma Postgres destination.
+3. Stop writes at the source and take the final snapshot, which is the only step needing a window.
+4. Restore, verify row counts against the source, then point the application at the new connection
+   string and switch.
+
+Budget the downtime for step three and rehearse the whole thing once against a copy. The part that
+surprises people is not the data, it is an extension or a policy that did not come across, which is
+why step two exists.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Does Prisma Postgres support database branching like Neon?">
+Prisma Postgres has no branching feature. You create separate databases instead, and there is no
+per-branch fee, whereas Neon charges $1.50 per branch-month. When you deploy on Prisma Compute, a
+branch of a Compute project can have its own Prisma Postgres database, which covers the preview
+environment case. It does not give you a copy-on-write clone of production data the way a Neon branch
+does.
+  </Accordion>
+  <Accordion title="Which is cheaper, Neon or Prisma Postgres?">
+It depends on whether your bill should follow queries or uptime, because the two bill on different
+units. Prisma Postgres charges per operation, so an idle app costs only the plan fee. Neon charges
+CU-hours, so a bursty or business-hours app costs little and an always-on one is billed for the full
+month. The Prisma Postgres and Neon pricing comparison works through five scenarios with the
+arithmetic shown, and Neon is cheaper in two of them.
+  </Accordion>
+  <Accordion title="Can I use Prisma ORM with Neon?">
+Prisma ORM works with any PostgreSQL database, including Neon, and it is free. Using Prisma ORM does
+not require Prisma Postgres, and choosing Neon for the database does not stop you using the ORM.
+  </Accordion>
+  <Accordion title="Is migrating from Neon to Prisma Postgres difficult?">
+Both are standard PostgreSQL, so the data itself moves with an ordinary dump and restore and there is
+no proprietary format involved. The official switch-from-Neon guide covers it in eight steps. The
+only step needing a maintenance window is stopping writes at the source to take the final snapshot,
+and the usual complication is an extension or policy that needs recreating rather than the data.
+  </Accordion>
+</Accordions>
+
+## The short answer
+
+If the reason you are asking is that you want fewer moving parts, the honest version is that
+consolidating costs you branching and buys you wiring you no longer do by hand. Whether that trade is
+worth it comes down to one question: does a pull request in your team need a database with real data
+in it? If yes, stay with Neon. If no, one project holding the app and the database removes a whole
+category of configuration, and that is the case Prisma Compute and Prisma Postgres are built for.
