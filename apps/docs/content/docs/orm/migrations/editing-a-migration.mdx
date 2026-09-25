@@ -172,12 +172,12 @@ model User {
 
 Keep `// use prisma-8` as the first line of the copy. `contract emit` skips any `.prisma` file that does not start with it, and because `intermediate.prisma` is the only file in the intermediate contract, emitting it without that line fails with an error whose `code` is `CONTRACT.SOURCE_LOAD_FAILED`.
 
-In the same migration directory, add `intermediate.config.ts`, a second config file. Its `contract` is `intermediate.prisma`, and it has no `db.connection`, because emitting a contract never connects to a database. `parent: false` keeps this config apart from your project's config. Without it, the CLI also reads your project's `prisma.config.ts`, because that file is in a directory above this one, and takes from it every `orm` setting this file leaves out, such as `db.connection`:
+In the same migration directory, add `intermediate.config.ts`, a second config file whose `contract` is `intermediate.prisma`. It needs no `db.connection`, because emitting a contract never connects to a database. If your contract uses an extension pack, such as pgvector, list the same `extensions` here as in your project's `prisma.config.ts`, because this file does not take them from it:
 
 ```ts title="intermediate.config.ts"
 import { definePrismaConfig } from 'prisma/config';
 import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
-export default definePrismaConfig({ parent: false, orm: ormConfig({ contract: './intermediate.prisma' }) });
+export default definePrismaConfig({ orm: ormConfig({ contract: './intermediate.prisma' }) });
 ```
 
 Emit the intermediate contract with `--config` pointing at that file. Run this from your project root, because the `--config` path starts there. The `./intermediate.prisma` path inside the config resolves from the directory the config file is in, so it names the copy in the migration directory:

@@ -228,7 +228,7 @@ The middleware below adds a condition to every `SELECT` whose own `FROM` clause 
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
 import { AndExpr, type BinaryExpr } from '@prisma/orm-postgres/relational-core/ast';
 
-export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
+export function scopeUserSelects(condition: () => BinaryExpr | undefined): SqlMiddleware {
   return {
     name: 'scope-user-selects',
     familyId: 'sql',
@@ -237,6 +237,8 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
       if (draft.ast.kind !== 'select') return undefined;
       if (draft.ast.from?.kind !== 'table-source') return undefined;
       if (draft.ast.from.name !== 'User') return undefined;
+      const predicate = condition();
+      if (predicate === undefined) return undefined;
       const where = draft.ast.where ? AndExpr.of([draft.ast.where, predicate]) : predicate;
       return { ...draft, ast: draft.ast.withWhere(where) };
     },
@@ -248,28 +250,45 @@ The `kind` check on `from` keeps the middleware to plain tables: a `SELECT` that
 
 These checks read only the table in the query's own `FROM` clause, so `User` rows that a query reaches any other way do not get the condition. When you load related users with `.include(...)` from another model, such as the author of each post, the ORM API reads them inside that other model's query, whose `FROM` is the other table. A SQL query builder query that joins `User` onto another table is not filtered either, for the same reason.
 
-The condition itself is an object you build from the same classes, and you pass it in when you register the middleware. Put values through `ParamRef.of` rather than `LiteralExpr.of`, because a `ParamRef` becomes a bound parameter such as `$1` while a literal is pasted into the SQL text itself, so a value that came from one of your users could inject SQL of its own. A `ParamRef` you build by hand has to name the PostgreSQL type of the value with `codec: { codecId: ... }`, and the ids start with `pg/` and end with `@1`, so the `text` column `name` takes `pg/text@1`. Leave that out and the query fails with an error whose `code` is `RUNTIME.PARAM_REF_MISSING_CODEC`.
+The middleware calls `condition` for every query, so the condition can change from one request to the next. You build it from the same classes. Put values through `ParamRef.of` rather than `LiteralExpr.of`, because a `ParamRef` becomes a bound parameter such as `$1` while a literal is pasted into the SQL text itself, so a value that came from one of your users could inject SQL of its own. A `ParamRef` you build by hand has to name the PostgreSQL type of the value with `codec: { codecId: ... }`, and the ids start with `pg/` and end with `@1`, so the `text` column `name` takes `pg/text@1`. Leave that out and the query fails with an error whose `code` is `RUNTIME.PARAM_REF_MISSING_CODEC`.
+
+A request has no tenant of its own, so the middleware reads the value from something in its own scope. The example below keeps it in an `AsyncLocalStorage` from Node.js, which holds one value per request while that request's code runs:
 
 ```ts title="src/prisma/db.ts"
+import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres from '@prisma/orm-postgres/runtime';
 import { BinaryExpr, ColumnRef, ParamRef } from '@prisma/orm-postgres/relational-core/ast';
 import { scopeUserSelects } from './scope-user-selects';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-const onlyMia = BinaryExpr.eq(
-  ColumnRef.of('User', 'name'),
-  ParamRef.of('Mia', { codec: { codecId: 'pg/text@1' } }),
-);
+export const currentName = new AsyncLocalStorage<string>();
 
 export const db = postgres<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
-  middleware: [scopeUserSelects(onlyMia)],
+  middleware: [
+    scopeUserSelects(() => {
+      const name = currentName.getStore();
+      if (name === undefined) return undefined;
+      return BinaryExpr.eq(
+        ColumnRef.of('User', 'name'),
+        ParamRef.of(name, { codec: { codecId: 'pg/text@1' } }),
+      );
+    }),
+  ],
 });
 ```
 
-Every `SELECT` whose `FROM` clause names `User` now runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. The condition is built once, when you create the client, so every query on this client is filtered to the same value.
+Run each request's queries inside `currentName.run(...)`:
+
+```ts title="src/routes/users.ts"
+import { currentName, db } from '../prisma/db';
+
+const users = await currentName.run('Mia', () => db.orm.public.User.select('id', 'name').all());
+```
+
+Every `SELECT` whose `FROM` clause names `User` then runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. A query that runs outside `currentName.run(...)` gets no condition, because `getStore()` returns `undefined` there. If every query must have one, throw in the function instead of returning `undefined`.
 
 :::warning
 
@@ -413,7 +432,7 @@ Timing itself does not need any of this, because `result.latencyMs` already tell
 Projects created with `npm create prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent, so you can ask it for the middleware built in the steps above:
 
 - "Write a Prisma ORM middleware that logs every query slower than 250ms, and register it before budgets."
-- "Add a beforeCompile middleware that adds a fixed `orgId` condition to every SELECT that reads the User table in its FROM clause."
+- "Add a beforeCompile middleware that adds an `orgId` condition, read per request from an AsyncLocalStorage, to every SELECT that reads the User table in its FROM clause."
 - "Write an interceptQuery middleware that returns fixture rows for the products table in tests."
 
 ## Next steps
