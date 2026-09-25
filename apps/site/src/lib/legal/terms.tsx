@@ -119,6 +119,14 @@ export const termsSections: TermsSection[] = [
           data in accordance with Prisma&apos;s privacy policies.
         </p>
         <p>
+          To the extent that Prisma processes personal data on your behalf in providing the Prisma
+          Services, Prisma acts as your processor (or service provider, as applicable), and that
+          processing is governed by Prisma&apos;s Data Processing Agreement (the &quot;DPA&quot;),
+          which forms part of these Terms. The DPA is available for download from the Compliance
+          section of the Prisma Console. In the event of any conflict between these Terms and the
+          DPA concerning the processing of personal data, the DPA shall prevail.
+        </p>
+        <p>
           You agree to protect the privacy and legal rights of the end users of your application.
           You must obtain necessary consents under applicable data protection laws, and provide
           adequate privacy notices disclosing information about end-user data visibility to your
@@ -747,8 +755,10 @@ export const termsSections: TermsSection[] = [
           Prisma Postgres provides managed database services. You control, and are solely
           responsible for, the Customer Content stored in your databases, including any personal
           data of your end users and any consents or notices required to collect and process it.
-          Backup features, where included in your plan, are operational features of the service and
-          do not guarantee data durability; Sections 10 and 11 apply.
+          Prisma processes personal data contained in Customer Content on your behalf in
+          accordance with the DPA described in Section 3. Backup features, where included in your
+          plan, are operational features of the service and do not guarantee data durability;
+          Sections 10 and 11 apply.
         </p>
         <p>
           Object Storage buckets store the files you upload. You are responsible for the objects you
@@ -875,10 +885,18 @@ export const termsSections: TermsSection[] = [
           OF EXPORTABLE DATA AND EXCLUSIONS TO BE CONFIRMED BY LEGAL AND ENGINEERING]
         </p>
         <p>
-          Prisma does not charge switching charges, including data egress charges, for data
-          exported as part of a switching process. [TO BE CONFIRMED BY LEGAL AND FINANCE — until
-          12 January 2027 the EU Data Act allows cost-based switching charges; from that date it
-          prohibits them]
+          Prisma does not impose any termination fee, exit fee, or other charge for terminating
+          these Terms or for switching to another provider or to on-premises infrastructure.
+          Throughout any switching process, standard service fees continue to apply to your actual
+          use of the Prisma Services, including metered usage such as outbound bandwidth, at the
+          rates set out on the pricing page. Fees prepaid for a subscription term remain subject to
+          Section 4.
+        </p>
+        <p>
+          Notwithstanding the foregoing, where the EU Data Act applies to your use of the Prisma
+          Services, any data egress charges for data exported as part of a switching process shall
+          not exceed the costs directly incurred by Prisma in connection with that switching process
+          until 12 January 2027, and from 12 January 2027 Prisma shall not impose such charges.
         </p>
       </>
     ),
