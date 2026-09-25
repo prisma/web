@@ -123,15 +123,15 @@ Prisma ORM calls your middleware in the order you listed them in the `middleware
 
 ### beforeCompile: rewrite the query
 
-Reach for `beforeCompile` when you want to change what a query asks for rather than only look at it. It runs on both kinds of query, and it hands you a draft with two fields: `meta`, the metadata Prisma ORM keeps about the query, and `ast`, the query as a tree of typed objects. The tree is the part you can change, because the SQL text has not been written yet. Return a copy of the draft with a changed `ast` and Prisma ORM runs your version instead, which is how you add a tenant filter to every `SELECT` without editing a single call site. Return `undefined` and the query goes through as written.
+Reach for `beforeCompile` when you want to change what a query asks for rather than only look at it. It runs on both kinds of query, and it hands you a draft with two fields: `meta`, the metadata Prisma ORM keeps about the query, and `ast`, the query as a tree of typed objects. The tree is the part you can change, because the SQL text has not been written yet. Return a copy of the draft with a changed `ast` and Prisma ORM runs your version instead, which is how you add a condition to queries without editing a single call site. Return `undefined` and the query goes through as written.
 
-The middleware below adds a condition to every `SELECT` that reads the `user` table:
+The middleware below adds a condition to every `SELECT` whose own `FROM` clause names the `User` table:
 
 ```ts title="src/prisma/scope-user-selects.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
 import { AndExpr, type BinaryExpr } from '@prisma/orm-postgres/relational-core/ast';
 
-export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
+export function scopeUserSelects(condition: () => BinaryExpr | undefined): SqlMiddleware {
   return {
     name: 'scope-user-selects',
     familyId: 'sql',
@@ -139,7 +139,9 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
     async beforeCompile(draft) {
       if (draft.ast.kind !== 'select') return undefined;
       if (draft.ast.from?.kind !== 'table-source') return undefined;
-      if (draft.ast.from.name !== 'user') return undefined;
+      if (draft.ast.from.name !== 'User') return undefined;
+      const predicate = condition();
+      if (predicate === undefined) return undefined;
       const where = draft.ast.where ? AndExpr.of([draft.ast.where, predicate]) : predicate;
       return { ...draft, ast: draft.ast.withWhere(where) };
     },
@@ -147,21 +149,23 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
 }
 ```
 
-The three checks above are how you say "only `SELECT`s, and only ones over the `user` table". `draft.ast.kind` is `'select'`, `'insert'`, `'update'`, `'delete'`, or `'raw-query'`, and `draft.ast.from.kind` is `'table-source'` when a `SELECT` reads a plain table rather than a subquery or a function. Use the table name as it is in your database, `user`, rather than the model name in your contract, `User`: a model called `User` is the `user` table unless you renamed it with `@@map`. `withWhere` returns a new `SELECT` with that `WHERE` on it and leaves the original alone, which is why the hook returns a copy of the draft.
+The three checks above are how you say "only `SELECT`s, and only ones over the `User` table". `draft.ast.kind` is `'select'`, `'insert'`, `'update'`, `'delete'`, or `'raw-query'`, and `draft.ast.from.kind` is `'table-source'` when a `SELECT` reads a plain table rather than a subquery or a function. Use the table name as it is in your database rather than the model name in your contract. They are the same, `User`, unless the model sets `@@map`, in which case use the name it maps to. `withWhere` returns a new `SELECT` with that `WHERE` on it and leaves the original alone, which is why the hook returns a copy of the draft.
 
-The `predicate` you pass in is a comparison you build yourself, and the types for building one come from `@prisma/orm-postgres/relational-core/ast`. A value you compare against needs its `codecId`, which says how the value is stored: `pg/` plus the PostgreSQL type name plus `@1`, so text is `pg/text@1` and a 32-bit integer is `pg/int4@1`:
+These checks read only the table in the query's own `FROM` clause, so `User` rows that a query loads with `.include(...)` or through a join are not filtered. Do not rely on a middleware like this alone to keep one tenant's rows away from another.
+
+The function you pass in returns the comparison to add, or `undefined` to add none, and the middleware calls it for each `SELECT` whose `FROM` clause names `User`, after the three checks. You build the comparison yourself, and the types for building one come from `@prisma/orm-postgres/relational-core/ast`. A value you compare against needs its `codecId`, which says how the value is stored: `pg/` plus the PostgreSQL type name plus `@1`, so text is `pg/text@1` and a 32-bit integer is `pg/int4@1`:
 
 ```ts title="src/prisma/db.ts (excerpt)"
 import { BinaryExpr, ColumnRef, ParamRef } from '@prisma/orm-postgres/relational-core/ast';
 import { scopeUserSelects } from './scope-user-selects';
 
 const onlyMia = BinaryExpr.eq(
-  ColumnRef.of('user', 'name'),
+  ColumnRef.of('User', 'name'),
   ParamRef.of('Mia', { codec: { codecId: 'pg/text@1' } }),
 );
 ```
 
-Then `scopeUserSelects(onlyMia)` goes in the `middleware` array of your `postgres(...)` client, like any other entry. [Rewrite queries with beforeCompile](/orm/middleware/authoring-custom-middleware#rewrite-queries-with-beforecompile) covers the other comparisons and why a value has to go through `ParamRef.of`. `beforeCompile` is not available on MongoDB, because the tree it works on is made of SQL objects.
+Then `scopeUserSelects(() => onlyMia)` goes in the `middleware` array of your `postgres(...)` client, like any other entry. [Rewrite queries with beforeCompile](/orm/middleware/authoring-custom-middleware#rewrite-queries-with-beforecompile) shows how the function can return a different value for each request, and covers the other comparisons and why a value has to go through `ParamRef.of`. `beforeCompile` is not available on MongoDB, because the tree it works on is made of SQL objects.
 
 ### beforeQuery and beforeExecute: validate or block
 
@@ -208,7 +212,9 @@ The rows you return are plain objects, keyed by the column aliases in the SQL, h
 { id: 3, email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
 ```
 
-So for a query whose SQL is `SELECT "user"."id" AS "id", "user"."email" AS "email" FROM "public"."user" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Rows you return go through the same conversion as rows from the database, so a caller on the ORM API gets the types its contract says it should, even though you returned a string. This is how the cache serves repeated reads. Anything you checked in a before-hook has already run by the time either hook is called.
+So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database, so a `createdAt` you return as a string reaches a caller on the ORM API as a `Temporal.Instant`, the type a `DateTime` field has, not as a string. This is how the cache serves repeated reads.
+
+Before-hooks still run on a query that an intercept hook answers, because every middleware's before-hooks run before any intercept hook, whatever order you list the middleware in. So in the setup at the top of this page, where the cache comes first in the array, `lints` still checks every query before the cache answers it.
 
 ### onRow: watch rows arrive
 

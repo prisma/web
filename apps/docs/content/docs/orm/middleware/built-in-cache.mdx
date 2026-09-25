@@ -43,14 +43,14 @@ You tell Prisma ORM that a read may be cached by attaching a cache annotation to
 
 Prisma ORM gives you two ways to write the same read, the SQL query builder and the ORM API, and both of them can be cached. Use whichever one the rest of your code already uses, because the annotation attaches differently in each.
 
-With the SQL query builder you build the query yourself, call `.build()`, and run the result with `db.runtime().query(...)` for rows or `db.runtime().execute(...)` for a count. Only rows can be cached, so nothing you run with `db.runtime().execute(...)` ever is. To cache a read, chain `.annotate(cacheAnnotation({ ttl: 60_000 }))` onto the query before you call `.build()`. `db.sql.public.user` names the `user` table in the PostgreSQL schema `public`.
+With the SQL query builder you build the query yourself, call `.build()`, and run the result with `db.runtime().query(...)` for rows or `db.runtime().execute(...)` for a count. Only rows can be cached, so nothing you run with `db.runtime().execute(...)` ever is. To cache a read, chain `.annotate(cacheAnnotation({ ttl: 60_000 }))` onto the query before you call `.build()`. `db.sql.public.User` names the `User` table in the PostgreSQL schema `public`.
 
 ```ts title="src/prisma/get-users-cached.ts"
 import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
 import { db } from './db';
 
 export async function getUsersCached() {
-  const plan = db.sql.public.user
+  const plan = db.sql.public.User
     .select('id', 'email')
     .annotate(cacheAnnotation({ ttl: 60_000 }))
     .limit(10)
@@ -88,7 +88,7 @@ Leave `ttl` out and the annotation does nothing, so the query is not cached.
 `skip` and `key` go in the same object as `ttl`, in either API. `skip: true` sends that one call to the database and leaves the stored rows untouched, so everyone else keeps getting the stored rows until the `ttl` runs out. The `ttl` in the same object is ignored on a call with `skip: true`, which is why you can leave the annotation as it is and flip `skip` on the one call that has to see current rows. With the SQL query builder it goes in the same object you pass to `.annotate(...)`:
 
 ```ts
-const plan = db.sql.public.user
+const plan = db.sql.public.User
   .select('id', 'email')
   .annotate(cacheAnnotation({ ttl: 60_000, skip: true }))
   .limit(10)

@@ -14,7 +14,7 @@ The guide covers **PostgreSQL only**. Guidance for other databases will follow. 
 
 :::info
 
-This guide targets `prisma@latest`, `@prisma/orm-postgres@8.0.0-rc.12`, `@prisma/cli-engine@0.6.1`, and `@prisma/prisma7@7.10.0`, with a Prisma ORM 7 baseline on `7.9.1`. `prisma@latest` is the Prisma ORM 8 CLI, `8.0.0-rc.17` at the time of writing. It is versioned and released separately from the ORM packages, so its version number will not match theirs.
+Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` at `8.0.0-rc.17` and `@prisma/orm-postgres` at `8.0.0-rc.12`. The CLI is released separately from the ORM packages, so its version number will not match theirs. Prisma ORM 7 stays at `7.10.0`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.0`.
 
 :::
 
@@ -228,7 +228,7 @@ After this install, `npx prisma <command>` runs the Prisma ORM 8 CLI and `npx pr
 npx prisma --version
 ```
 
-**Expected result:** `8.0.0-rc.17` (or newer). The CLI's version line is separate from `@prisma/orm-postgres`'s.
+**Expected result:** the command prints `8.0.0-rc.17` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
 
 ### 2.2. Create the Prisma ORM 8 config
 
@@ -259,24 +259,61 @@ Both configs point at the **same** `DATABASE_URL`. Everything else is separate:
 
 Because the config carries the connection, the Prisma ORM 8 CLI commands below don't need a `--db` flag.
 
+:::tip[Read the Prisma ORM 7 schema instead]
+
+Instead of generating a contract file in steps 2.3 and 2.4, Prisma ORM 8 can read `prisma/schema.prisma` directly as its contract, so you keep one schema file while Prisma ORM 7 owns migrations. `schema.prisma` does not need the `// use prisma-8` first line that a contract file written for Prisma ORM 8 starts with (step 2.4 shows one). Skip steps 2.3 and 2.4, and change two lines in the `prisma.config.ts` you just wrote:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config"; // [!code --]
+import { defineConfig as definePostgresConfig, prisma7Schema } from "@prisma/orm-postgres/config"; // [!code ++]
+
+export default definePrismaConfig({
+  orm: definePostgresConfig({
+    contract: "prisma8/contract.prisma", // [!code --]
+    contract: prisma7Schema("prisma/schema.prisma"), // [!code ++]
+    output: "generated/prisma8",
+    db: {
+      connection: process.env["DATABASE_URL"],
+    },
+  }),
+});
+```
+
+After step 2.5, run `npx prisma db sign`. [`db sign`](/cli/db-sign) checks that the database matches the contract Prisma ORM 8 read from `schema.prisma` and records in the database that it does. On this path it does not hand migrations to Prisma ORM 8: Prisma ORM 7 keeps planning and applying them, so after each `prisma7 migrate dev`, run `npx prisma contract emit` and then `npx prisma db sign` again. If you emit without signing, the Prisma ORM 8 client still runs queries, but `npx prisma db verify` reports that the contract no longer matches the one recorded in the database. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read.
+
+If you have not started phase 1 yet, one command does phase 1 and this setup for you:
+
+```npm title="Terminal"
+npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
+```
+
+Write `prisma@latest`, because in a Prisma ORM 7 project `npx prisma` runs version 7. The command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with phase 3, using the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
+
+Prisma ORM 7 keeps owning migrations on this path until you are ready for [phase 4](#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 works from a Prisma ORM 8 contract file, so switch to one first: run steps 2.3 to 2.5, and change `contract:` in `prisma.config.ts` back to `"prisma8/contract.prisma"`. Then follow phase 4 as written. Its first step, `db sign`, checks the new contract against the database before Prisma ORM 8 takes over.
+
+:::
+
 ### 2.3. Infer the contract from the live database
 
 Prisma ORM 8 describes your schema as a [contract](/orm/contract-authoring/the-data-contract). Generate it from the database Prisma ORM 7 built:
 
-```npm
+```npm title="Terminal"
 npx prisma contract infer --output prisma8/contract.prisma
 ```
 
 ### 2.4. Edit the inferred contract
 
-The inferred contract needs two edits before it is correct:
+`contract infer` reads every table in the database, so it also writes a `PrismaMigrations` model for `_prisma_migrations`, the table where Prisma ORM 7 records which migrations it has applied. Delete that model from the contract, because Prisma ORM 8 must not manage the table. The table itself stays in the database, and an extra table that the contract does not describe is fine.
 
-1. **Delete the `PrismaMigrations` model.** `contract infer` picks up Prisma ORM 7's `_prisma_migrations` ledger table. Prisma ORM 8 must not manage it, and extra tables in the database are fine. Remove the whole model.
-2. **Add `@@map` to every model.** Prisma ORM 8 addresses tables by storage name and lowercases unmapped model names, so without `@@map("User")` it would query `public.user`. The table Prisma ORM 7 created is `"User"`, so queries fail with `relation "public.user" does not exist`.
+You do not need to add `@@map` to the other models: a model without `@@map` uses its name, exactly as written, as its table name, so `User` reads and writes the `"User"` table that Prisma ORM 7 created.
 
-The finished contract:
+After that edit, the contract looks like this:
 
 ```prisma title="prisma8/contract.prisma"
+// use prisma-8
+
 model User {
   id    Int     @id(map: "User_pkey") @default(autoincrement())
   email String
@@ -284,7 +321,6 @@ model User {
   posts Post[]
 
   @@index([email], map: "User_email_key", unique: true)
-  @@map("User")
 }
 
 model Post {
@@ -295,9 +331,10 @@ model Post {
   author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Post_authorId_fkey")
 
   @@index([authorId], map: "Post_authorId_idx")
-  @@map("Post")
 }
 ```
+
+Keep `// use prisma-8` as the first line of `prisma8/contract.prisma`. `contract emit` reads only `.prisma` files that start with this line, and this is the only file in your contract, so without it `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`. A `schema.prisma` that Prisma ORM 8 reads through `prisma7Schema(...)`, as in the tip at the end of step 2.2, does not need the line.
 
 ### 2.5. Emit the contract artifacts
 

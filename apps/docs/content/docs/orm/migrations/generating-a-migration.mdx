@@ -15,6 +15,8 @@ Two commands do the work, and you run them in this order every time you change y
 Say your contract has a single model:
 
 ```prisma title="contract.prisma"
+// use prisma-8
+
 model User {
   id    Int     @id
   email String
@@ -23,6 +25,8 @@ model User {
   @@map("user")
 }
 ```
+
+Keep `// use prisma-8` as the first line of `contract.prisma`, and of every other `.prisma` file if you [split your contract across several files](/orm/contract-authoring/psl-syntax#split-the-contract-across-several-files). `contract emit` and the Prisma editor extension read only the `.prisma` files that start with it and skip the others without a warning, and when no file starts with it, `contract emit` fails with an error whose `code` is `CONTRACT.SOURCE_LOAD_FAILED`.
 
 Run both commands, passing `--name init` so that the new migration directory is named `<timestamp>_init`:
 
@@ -44,7 +48,7 @@ migrations/app/20260707T1005_init
 └─ Create table "user"
 
 from:       (baseline)
-to:         705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
+to:         2d2cec8641643159cfc94e499e5eacbd75218e0389d938139b278f68618d6b13
 app space:  migrations/app/20260707T1005_init
 
 ℹ DDL preview
@@ -77,8 +81,8 @@ A migration is a directory, and there is no SQL file in it. `migration.ts` is th
 
 ```ts title="migrations/app/20260707T1005_init/migration.ts"
 #!/usr/bin/env -S node
-import type { Contract as End } from '../../snapshots/705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5/contract';
-import endContract from '../../snapshots/705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5/contract.json' with { type: 'json' };
+import type { Contract as End } from '../../snapshots/2d2cec8641643159cfc94e499e5eacbd75218e0389d938139b278f68618d6b13/contract';
+import endContract from '../../snapshots/2d2cec8641643159cfc94e499e5eacbd75218e0389d938139b278f68618d6b13/contract.json' with { type: 'json' };
 import { Migration, MigrationCLI, col, primaryKey } from '@prisma/orm-postgres/migration';
 
 export default class M extends Migration<never, End> {
@@ -127,8 +131,8 @@ npx prisma migration plan --name add_user_phone
 migrations/app/20260707T1006_add_user_phone
 └─ Add column "phone" to "user"
 
-from:       705b1a62f26f0913caa4bfe3f8b7cb491a1b94bd47fc43471d8711bc480bcbb5
-to:         925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72
+from:       2d2cec8641643159cfc94e499e5eacbd75218e0389d938139b278f68618d6b13
+to:         967cb9f63587c1d90f64716780f04eec22b263424e89f07139233fc2c3d710c4
 app space:  migrations/app/20260707T1006_add_user_phone
 
 ℹ DDL preview
@@ -196,8 +200,8 @@ npx prisma migration plan --name add_display_name
 
 ⚠ Planned migration with placeholder(s) — edit migration.ts then run `node migration.ts` to self-emit
 
-from:       925198f3cc272c5fd19c24ac02f251661775ddac21cdac4e634bbc0dda8b2d72
-to:         e6b5c2849eca8d24ff1e8e88ab2a4234db8e74c497c035cb7ce42e814f31cd63
+from:       967cb9f63587c1d90f64716780f04eec22b263424e89f07139233fc2c3d710c4
+to:         866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
@@ -216,7 +220,7 @@ npx prisma migration graph
 npx prisma migration check
 ```
 
-`migration check` is the one to run in CI, where you read its exit code rather than its output. `0` means every check passed, `4` means an integrity failure such as a missing file or an `ops.json` that someone edited by hand, and `2` means it could not find a migration you named. The one thing it cannot tell you is whether you remembered to [recompile](/orm/migrations/editing-a-migration) after your last edit. You can check that yourself by staging the migration with `git add` and then recompiling it, because if `git status` afterwards shows no unstaged change to `ops.json` or `migration.json`, they were already up to date. This does not work for a backfill on a model with an [`updatedAt` column](/orm/migrations/editing-a-migration#worked-example-making-a-column-required).
+`migration check` also tells you the result in its exit code, if you run it from a script. `0` means every check passed, `4` means an integrity failure such as a missing file or an `ops.json` that someone edited by hand, and `2` means it could not find a migration you named. The one thing it cannot tell you is whether you remembered to [recompile](/orm/migrations/editing-a-migration) after your last edit. You can check that yourself by staging the migration with `git add` and then recompiling it, because if `git status` afterwards shows no unstaged change to `ops.json` or `migration.json`, they were already up to date. This does not work for a backfill on a model with an [`updatedAt` column](/orm/migrations/editing-a-migration#worked-example-making-a-column-required).
 
 :::note[What's early]
 

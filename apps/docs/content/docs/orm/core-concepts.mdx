@@ -16,6 +16,8 @@ This idea relies upon a small vocabulary which repeats throughout: in the CLI, i
 The contract is your description of the data your application needs: the models, their fields, how they relate, and how they map to database tables or collections. You author it in PSL (the Prisma schema language) in a `.prisma` file, or in TypeScript:
 
 ```prisma title="prisma/contract.prisma"
+// use prisma-8
+
 model User {
   id    Int    @id @default(autoincrement())
   email String @unique
@@ -82,7 +84,7 @@ With the SQL query builder, the two steps are visible in your code:
 ```typescript
 import { db } from "./prisma/db";
 
-const plan = db.sql.public.post
+const plan = db.sql.public.Post
   .select("id", "title", "userId")
   .where((f, fns) => fns.eq(f.published, true))
   .limit(10)
@@ -211,13 +213,13 @@ npx prisma contract emit
 npx prisma db init --db "$DATABASE_URL"
 ```
 
-**Checking in CI, deploying in CD.** [`migration check`](/cli#other-commands) verifies the migration files and graph offline, so it runs in CI with no database. [`db verify`](/cli/db-verify) is its live counterpart: a read-only check that a database satisfies the contract. A deploy pipeline pins environments with refs and migrates to them by name:
+**Deploying.** A deploy pipeline pins each environment with a ref and migrates to it by name, and that one command is all it needs. `db migrate` refuses to run a migration whose files no longer match its hash, so the pipeline needs no separate check:
 
 ```npm
-npx prisma migration check
-npx prisma db verify --db "$DATABASE_URL"
 npx prisma db migrate --db "$DATABASE_URL" --to production
 ```
+
+[`migration check`](/cli#other-commands) runs the same file checks offline, which is useful before you commit a migration you edited by hand, and [`db verify`](/cli/db-verify) checks, without changing anything, whether a database satisfies the contract.
 
 ## Prompt your coding agent
 

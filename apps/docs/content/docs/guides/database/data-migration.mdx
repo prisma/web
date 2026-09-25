@@ -39,7 +39,7 @@ Perform an expand-and-contract migration with Prisma ORM, following https://www.
 3. Open the planned `migration.ts` and append a `this.dataTransform(endContract, 'backfill-post-status', { check, run })` operation built with the typed SQL builder against the migration's own end contract: `check` selects `id` from `post` where `published = true AND status != 'Published'` with `limit(1)`, `run` updates those rows to `status = 'Published'`. Recompile with `node <migration-dir>/migration.ts`, confirm `ops.json` contains a `data` operation, then apply with `npx prisma db migrate --advance-ref db`. Verify with a query that every row with `published = true` now has `status = 'Published'`.
 4. Update application code to read and write `status` instead of `published`.
 5. Contract: remove `published` from the contract, run `contract emit`, `migration plan --name drop_published`, review the destructive warning, and apply with `npx prisma db migrate --advance-ref db`.
-6. For the production database, run `npx prisma migration check`, `npx prisma db migrate --show --db "$PRODUCTION_DATABASE_URL"`, then `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"`. Do not use `db update` against production.
+6. For the production database, run `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"`, adding `--show` first if you want to preview the route. Do not use `db update` against production.
 ```
 
 </AgentPrompt>
@@ -292,7 +292,7 @@ npx prisma migration show 20260910T1552_add_status
 }
 ```
 
-Commit `migration.ts`, `ops.json`, and `migration.json` together. `npx prisma migration check` fails in CI if they drift apart.
+Commit `migration.ts`, `ops.json`, and `migration.json` together. If `ops.json` or `migration.json` no longer matches the hash stored for the migration, `db migrate` refuses to run it, and `npx prisma migration check` reports the same problem before you commit.
 
 ## 4. Apply the expand migration
 
@@ -438,15 +438,13 @@ Applied at                  Migration                     Change             Ops
 
 ## 6. Deploy to production
 
-Production runs the same migrations from the same files; only the connection string changes. `db migrate` reads the database's marker, finds the path through the [migration graph](/orm/migrations/the-migration-graph), and applies whatever is pending, backfill included. Put three commands in your deploy pipeline:
+Production runs the same migrations from the same files; only the connection string changes. `db migrate` reads the database's marker, finds the path through the [migration graph](/orm/migrations/the-migration-graph), and applies whatever is pending, backfill included. Your deploy pipeline needs one command:
 
 ```npm
-npx prisma migration check
-npx prisma db migrate --show --db "$PRODUCTION_DATABASE_URL"
 npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
 ```
 
-`migration check` is offline and fails if any `ops.json` no longer matches its `migration.ts`. `--show` is a read-only preview of the route. Here is that preview against a production database that shipped the `init` migration and holds live rows, followed by the apply:
+It refuses to run a migration whose files no longer match the hash stored for it. To see the route before it runs, add `--show`, which previews it without changing anything. Here is that preview against a production database that shipped the `init` migration and holds live rows, followed by the apply:
 
 ```text no-copy
 ℹ The following 2 migrations will run:

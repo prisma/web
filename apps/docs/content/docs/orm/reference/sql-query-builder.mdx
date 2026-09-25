@@ -130,7 +130,9 @@ model Feature {
 
 In Prisma ORM 8 your `schema.prisma` is called `contract.prisma`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) gets you from a Prisma ORM 7 project to that file, and has the rest of the setup steps. Install the client with `npm install @prisma/orm-postgres`. Run `npx prisma contract emit` to write `contract.json` and `contract.d.ts` beside `contract.prisma`. The examples below assume your own file is in `src/prisma/`, next to those two files, and they write the type import path as `./contract.d`, exactly like that.
 
-You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. `public` is the PostgreSQL schema your tables are in, and a model goes in `public` unless your contract puts it in a `namespace` block. Table accessors are keyed by table name, not model name. A table name is the model name with a lowercase first letter unless the model sets `@@map`, so the `User` model mapped to `user` is reached as `db.sql.public.user`, and the model for the `Post`/`Tag` join table, mapped to `post_tag`, is reached as `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`.
+You build queries from the client's `sql` property. Create a Postgres client with `postgres(...)`, then reach tables through `db.sql.public`. `public` is the PostgreSQL schema your tables are in. To put a model's table in another PostgreSQL schema, such as `auth`, wrap the model in a `namespace auth { ... }` block in your contract, and you then reach its table through `db.sql.auth` instead. See [Namespaces](/orm/contract-authoring/psl-syntax#namespaces).
+
+Table accessors are keyed by table name, not model name. A table name is the model's `@@map` value, or the model name exactly as written when the model has no `@@map`. In the example schema, the `User` model is mapped to `user`, so you write `db.sql.public.user`. The `PostTag` model for the join table is mapped to `post_tag`, so you write `db.sql.public.post_tag`. Column names are the field names unless a field sets `@map`, and for a field that does, you write the `@map` name everywhere in the builder. A field declared `userId Uuid @map("user_id")` is `select('user_id')` and `f.user_id`, and each row you get back has a `user_id` key.
 
 ### The `db.sql` builder [#the-dbsql-facet]
 
@@ -149,6 +151,8 @@ const runtime = db.runtime();
 const plan = db.sql.public.user.select('id', 'email').build();
 const users = await runtime.query(plan);
 ```
+
+The example schema's `Embedding1536` column is a pgvector type, so a client for that schema also needs pgvector in `extensions`, as [Built-in functions](#built-in-functions) shows.
 
 SQLite works the same way: create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite, but every other one is. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
 
@@ -923,7 +927,59 @@ Which aggregate functions exist depends on your database, and PostgreSQL gives y
 | `min(field)` | The input column's own type. A `VarChar` column gives a `String` (`text`) |
 | `max(field)` | The input column's own type. A `VarChar` column gives a `String` (`text`) |
 
-On PostgreSQL you also get `ilike(expr, pattern)` for text columns, as in `fns.ilike(f.displayName, '%alice%')`. `cosineDistance(a, b)` compares two vector values and returns a `number`. It comes with pgvector, the PostgreSQL extension for vector columns, so it is there only if your contract composes pgvector. See [Extension types](/orm/contract-authoring/psl-syntax#extension-types).
+On PostgreSQL, `fns` also has `ilike(expr, pattern)`, a case-insensitive SQL `LIKE` match for text columns, as in `fns.ilike(f.displayName, '%alice%')`. There is no `fns.like`, so write a case-sensitive `LIKE` in a [`fns.raw`](#fnsraw-and-returns) fragment that returns a boolean:
+
+```ts title="src/find-users.ts"
+const plan = db.sql.public.user
+  .select('id', 'displayName')
+  .where((f, fns) => fns.raw`${f.displayName} LIKE ${'%Alice%'}`.returns('pg/bool@1'))
+  .build();
+```
+
+`ilike` does not work on a `native_enum` column, typed `pg.enum(...)`, because PostgreSQL cannot pattern-match an enum type. Passing one is a type error. See [Enums](/orm/contract-authoring/psl-syntax#enums).
+
+Full-text search on PostgreSQL uses `fns.fullTextMatches(column, query)` to filter, `fns.fullTextRank(column, query)` to score, and `fns.fullTextHeadline(column, query)` to return the matching text with each match marked. Build `query` from the search text with `fns.websearchToTsquery(text)`, `fns.plaintoTsquery(text)`, `fns.phrasetoTsquery(text)`, or `fns.toTsquery(text)`, or with the `tsquery` template tag from `@prisma/orm-postgres/target/full-text`. Never pass user input to `fns.toTsquery()`, because text that breaks PostgreSQL's search syntax makes the query fail when it runs; use `fns.websearchToTsquery()` or the `tsquery` tag for user input. [Full-text search](/orm/reference/orm-client#full-text-search) on the ORM client reference explains what each of these does, and the index that lets PostgreSQL search without reading every row.
+
+Each of the three full-text functions takes an options object as its last argument, and each accepts `language`. Pass the same `language` to the function that builds `query`, as in `fns.fullTextMatches(f.title, fns.websearchToTsquery(q, { language: 'german' }), { language: 'german' })`. `fullTextRank` also takes `normalization` and `coverDensity`, which the ORM client reference describes. `fullTextHeadline` also takes these options:
+
+- `startSel` and `stopSel`: the text put before and after each match. PostgreSQL uses `<b>` and `</b>` when you leave them out.
+- `maxWords` and `minWords`: the longest and shortest headline, in words. `minWords` must be lower than `maxWords`.
+- `highlightAll: true`: return the whole text with every match marked, instead of a short excerpt around the matches.
+
+This query returns each matching post with its rank and a headline that marks the matches with `<mark>`:
+
+```ts title="src/search-posts.ts"
+const q = 'prisma orm';
+const plan = db.sql.public.post
+  .select('id', 'title')
+  .select('rank', (f, fns) => fns.fullTextRank(f.title, fns.websearchToTsquery(q)))
+  .select('headline', (f, fns) =>
+    fns.fullTextHeadline(f.title, fns.websearchToTsquery(q), { startSel: '<mark>', stopSel: '</mark>' }),
+  )
+  .where((f, fns) => fns.fullTextMatches(f.title, fns.websearchToTsquery(q)))
+  .orderBy((f, fns) => fns.fullTextRank(f.title, fns.websearchToTsquery(q)), { direction: 'desc' })
+  .limit(10)
+  .build();
+
+const results = await runtime.query(plan);
+// { id: string; title: string; rank: number; headline: string }[]
+```
+
+`rank` is a `number`, and a higher rank is a better match. `headline` is a `string`: the title with each match between `<mark>` and `</mark>`.
+
+pgvector is the PostgreSQL extension for vector columns. If your contract uses a pgvector type, such as `Embedding1536` in the example schema, pass pgvector in `extensions` when you create the client, because without it `postgres(...)` throws an error whose `code` is `RUNTIME.MISSING_EXTENSION_PACK`:
+
+```ts title="src/prisma/db.ts"
+import pgvector from '@prisma/orm-extension-pgvector/runtime';
+
+const db = postgres<Contract>({
+  contractJson,
+  url: process.env.DATABASE_URL,
+  extensions: [pgvector],
+});
+```
+
+`fns` then also has `fns.cosineDistance(a, b)`, which returns the cosine distance between two vectors as a `number`. Each argument is a vector column or an array of numbers, as in `fns.cosineDistance(f.embedding, queryEmbedding)`. See [Extension types](/orm/contract-authoring/psl-syntax#extension-types).
 
 ### `fns.raw` and `.returns()`
 

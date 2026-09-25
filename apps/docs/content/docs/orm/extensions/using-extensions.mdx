@@ -69,7 +69,11 @@ Now that pgvector is in `prisma.config.ts`, `npx prisma contract emit` accepts `
 
 The `pgvector` in `pgvector.Vector(1536)` is the name the extension registers its types under, and its page in the extension directory lists them. PostGIS, for example, gives you `postgis.Geometry(4326)`.
 
+The first line of the file, `// use prisma-8`, is required. `npx prisma contract emit` reads only `.prisma` files whose first line is `// use prisma-8` and skips any other file without a warning, so keep that line at the top when you add the `types` block.
+
 ```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
 types {
   Embedding1536 = pgvector.Vector(1536)
 }
@@ -87,7 +91,7 @@ Getting the new column from your contract into your database takes these command
 
 1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. Run it again after every later change to `contract.prisma`.
 2. `npx prisma migration plan`, which writes the extension's own migration into `migrations/`, so commit it along with your other migrations. Skip this and the next command stops with an error whose `code` is `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION`.
-3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and creates the `post` table.
+3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and makes the database match your contract: it creates the `Post` table, or adds the `embedding` column when the `Post` table already exists.
 
 The extension's migration is the `CREATE EXTENSION IF NOT EXISTS vector` statement, so you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
 
@@ -105,7 +109,7 @@ In Prisma ORM 8 `create` takes the fields directly, with no `data` wrapper. [Cre
 Searching for the rows closest to a query vector uses the operations the extension adds, and you write that search with the SQL query builder rather than with `db.orm`. In that block:
 
 - `db.orm` is the ORM API, and under it you address a model by the name in your contract, so the model `Post` is `db.orm.public.Post`.
-- `db.sql` is the [SQL query builder](/orm/fundamentals/advanced-queries), and under it you address a table by the name it has in the database, so the same data is `db.sql.public.post`.
+- `db.sql` is the [SQL query builder](/orm/fundamentals/advanced-queries), and under it you address a table by the name it has in the database, so the same data is `db.sql.public.Post`. The two names are the same because the model sets no `@@map`.
 - `db.runtime()` is what runs a built query.
 - `f`, in the callback of each builder method, holds the row's columns.
 - `fns` holds the functions you can call on those columns, including the ones pgvector adds.
@@ -115,7 +119,7 @@ Searching for the rows closest to a query vector uses the operations the extensi
 import { db } from './db';
 
 export async function similaritySearch(queryVector: number[]) {
-  const plan = db.sql.public.post
+  const plan = db.sql.public.Post
     .select('id', 'title')
     .select('distance', (f, fns) => fns.cosineDistance(f.embedding, queryVector))
     .orderBy((f, fns) => fns.cosineDistance(f.embedding, queryVector), { direction: 'asc' })
@@ -203,6 +207,10 @@ export const db = await supabase<Contract>({
 `supabase(...)` takes the same `extensions` array as `postgres(...)`, so pgvector or another extension goes there in the same way.
 
 `await db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. `db` itself has no `orm` or `sql`: those live on the three role-bound clients. The [runnable example](https://github.com/prisma/orm/tree/main/examples/supabase) shows the whole setup in one project.
+
+`@prisma/orm-extension-supabase` has a contract of its own, which describes Supabase's `auth` and `storage` tables, check constraints included. Prisma read those tables from one Supabase version, supabase/postgres 17.6.1.106, and a Supabase project on another version can have a different set of check constraints. [`npx prisma db verify`](/cli/db-verify) compares your database with the extension's contract as well as with yours, and when a check constraint the extension describes is missing from your database, `db verify` lists it and fails. You cannot fix that with a migration, because Prisma ORM never changes Supabase's own tables. Instead, [open an issue on prisma/orm](https://github.com/prisma/orm/issues) with the output of `db verify` and your Supabase version, so the extension can be updated to match.
+
+[`npx prisma db sign`](/cli/db-sign) checks that a database matches your contract and then records in the database which contract it matches, and it records the extension's contract the same way. When an update to `@prisma/orm-extension-supabase` changes the extension's contract, that record no longer matches, and `npx prisma db verify` fails with `MIGRATION.CONTRACT_SPACE_VIOLATION` until you run `npx prisma db sign` again against every database you signed with the earlier version. The Prisma ORM release notes say when an update changes the extension's contract, as the notes for 8.0.0-rc.12 do. If you are also re-emitting your own contract with `npx prisma contract emit`, run that before `db sign`.
 
 :::
 

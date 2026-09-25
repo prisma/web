@@ -109,7 +109,7 @@ When no chain of migrations leads from the marker to the target, the run fails w
 | Which contract state does my database match, and what would `db migrate` run next? | `npx prisma migration status` | Yes |
 | What has actually been applied, and when? | `npx prisma migration log` | Yes |
 
-`migration log` reads the **ledger**, so it tells you what actually ran rather than what should have run, and a rollback appears there as one more applied migration instead of erasing anything. Run `migration check` in CI before you deploy, because it catches a hand-edited migration file or a ref naming a state that does not exist, and it needs no database connection. See [Reviewing what you planned](/orm/migrations/generating-a-migration#reviewing-what-you-planned) for its exit codes.
+`migration log` reads the **ledger**, so it tells you what actually ran rather than what should have run, and a rollback appears there as one more applied migration instead of erasing anything. Run `migration check` after you edit a migration by hand or move a ref, because it catches a hand-edited migration file or a ref naming a state that does not exist, and it needs no database connection. A deploy pipeline does not need it: `db migrate --to <ref>` refuses a hand-edited migration file on its own. See [Reviewing what you planned](/orm/migrations/generating-a-migration#reviewing-what-you-planned) for its exit codes.
 
 ### Try it on real fixtures
 
@@ -174,13 +174,16 @@ Nothing above changes with your database, because the graph and the commands are
 - **PostgreSQL**: the marker is the `prisma_contract.marker` table and the ledger is the `prisma_contract.ledger` table.
 - **MongoDB**: the marker and ledger are documents in a `_prisma_migrations` collection, which is new in Prisma ORM 8 because Prisma ORM 7 had no migrations on MongoDB.
 
+## Adding a migration you write yourself
+
+`npx prisma migration new` writes an empty migration for a change you write yourself, such as a data update. It always ends at the contract state in your current `contract.json`, and without `--from` it starts where `migration plan` would: at the `db` ref, or from an empty database when there are no migrations and no `db` ref yet. When there are migrations but no `db` ref, it refuses and asks for `--from`. [`migration new`](/cli/migration-new) lists every case. Its `--from` accepts less than the one on `migration plan`: it takes only the contract hash in the `to` field of an existing migration's `migration.json`, or any start of that hash that matches only one migration's `to` hash, such as the 7 characters `migration graph` shows. It does not take a ref name, a migration directory name, or one of the `@` tokens. So to start from `e377d00` in the drawing above, run `npx prisma migration new --name backfill --from e377d00`. Because `e377d00` is also the `@contract` state, that migration starts and ends at the same state, which is what a data-only migration does.
+
 ## Release-candidate limitations
 
 The graph itself, the way `db migrate` chooses which migrations to run, refs, the marker, and the ledger all work today. These are not built yet:
 
 - **No squash.** You cannot yet collapse a long chain of migrations into one.
 - **No split.** You cannot yet break one large migration into smaller ones after the fact.
-- **`migration new` needs `--from` when your history has more than one end state.** `npx prisma migration new` writes an empty migration for a change you write yourself, such as a data update, and without `--from` it starts at the end state of the latest migration. An end state is a contract state that no migration starts from. With two end states, such as `5e1f082` and `e377d00` in the drawing above, it fails with an error whose `code` is `MIGRATION.AMBIGUOUS_TARGET` and lists both. Pass a prefix of the one you want, for example `npx prisma migration new --name backfill --from e377d00`.
 
 ## Common tasks
 
@@ -196,7 +199,7 @@ The graph itself, the way `db migrate` chooses which migrations to run, refs, th
 | List the refs you have named | `npx prisma migration ref list` |
 | Plan a rollback of the migration in `<dir>` | `npx prisma migration plan --from <dir> --to <dir>^ --name <name>` |
 | Apply a rollback migration you planned | `npx prisma db migrate --to <earlier-ref-or-hash>` |
-| Check migration files and refs before you deploy | `npx prisma migration check` |
+| Check migration files and refs offline | `npx prisma migration check` |
 
 ## Prompt your coding agent
 
