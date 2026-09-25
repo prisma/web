@@ -1,0 +1,177 @@
+---
+title: "Choosing hosting and Postgres after your first 100 paying users"
+slug: "choosing-hosting-and-postgres-after-your-first-100-users"
+date: "2026-09-24"
+authors:
+  - "Gregory Boch"
+metaTitle: "Hosting and Postgres after your first 100 users"
+metaDescription: "A scaling checklist, what the database actually costs at 100, 1,000 and 10,000 users with the arithmetic shown, and the signals that mean you have outgrown your setup."
+heroImagePath: "/choosing-hosting-and-postgres-after-your-first-100-users/imgs/hero.svg"
+heroImageAlt: "A cost curve for a Postgres database from 100 to 10,000 monthly active users, with the point marked where the Starter plan stops being the cheaper option."
+metaImagePath: "/choosing-hosting-and-postgres-after-your-first-100-users/imgs/meta.png"
+excerpt: "Your prototype has paying users. Here is what to check before the next thousand arrive, what it costs with the arithmetic shown, and the specific signals that mean it is time to move."
+tags:
+  - "platform"
+  - "prisma-postgres"
+---
+
+At 100 paying users almost nothing needs to change, and the useful question is which decisions are
+expensive to reverse later. Three are: whether your database pools connections, whether your app
+runs in one place as a long-lived process or as short-lived functions, and whether your pricing
+model tracks usage or instance hours. Everything else can wait. This post covers the checklist, what
+[Prisma Postgres](https://www.prisma.io/docs/postgres) costs at 100, 1,000 and 10,000 users with the
+arithmetic shown, and the signals that mean you have genuinely outgrown a setup rather than just
+worried about it.
+
+## The short version
+
+Your database bill for the first 1,000 users is $10 a month, and it stays there until you cross
+about 6 million operations. You do not need a bigger plan, a read replica, a queue, or a second
+region yet. What you do need is connection pooling, a backup you have actually restored once, and a
+spend alert.
+
+## The checklist
+
+Four things to confirm now, while the cost of fixing them is an afternoon.
+
+**Connection pooling.** Postgres allocates memory per connection, so a connection limit is reached
+long before a CPU limit. If your app runs as serverless functions, concurrency becomes connections
+and this arrives sooner than you expect. Every Prisma Postgres database runs a dedicated PgBouncer
+instance beside it, so there is nothing to set up. On other providers, use the pooled connection
+string rather than the direct one, and create one client per process rather than one per request.
+
+**A restore you have tested.** Prisma Postgres takes daily backups with point-in-time recovery.
+Knowing that is not the same as knowing you can use it. Restore into a throwaway database once,
+while nothing is wrong, and write down how long it took. The first time you read recovery
+documentation should not be during an incident.
+
+**A spend limit.** Set one in the console at a number that would annoy you. The bill that surprises
+people is almost never storage growth, it is a query inside a render or a job that polls every
+second. A limit turns that into a notification rather than an invoice.
+
+**Where your app runs relative to your data.** Cross-region latency is paid on every query, so an
+endpoint making six queries pays it six times. Put them in the same region now, because moving a
+live database later is the one migration nobody enjoys.
+
+Caching is the fifth thing, and it can wait until a page is slow. When it does, Prisma ORM takes a
+`cacheStrategy` on any query with a TTL or stale-while-revalidate, so caching a hot query is an
+argument to an existing call rather than a Redis instance.
+
+## What it actually costs
+
+Prisma Postgres bills on operations plus storage rather than instance hours. One operation is one
+query. The formula from the docs:
+
+```
+total_ops = MAUs x actions_per_user_per_day x 30
+```
+
+Plan rates, from the [Prisma Postgres pricing FAQ](https://www.prisma.io/docs/postgres/faq), September 2026:
+
+| Plan | Base | Operations included | Rate beyond | Storage included |
+| --- | --- | --- | --- | --- |
+| Starter | $10/mo | 1M | $8 per million | 10 GB, then $2/GB |
+| Pro | $49/mo | 10M | $2 per million | 50 GB, then $1.50/GB |
+| Business | $129/mo | 50M | $1 per million | 100 GB, then $1/GB |
+
+The Free plan exists but is for evaluation, not production.
+
+Assume 20 actions per user per day, which is active but not extreme. Substitute your own number if
+you know it.
+
+| Users | Operations per month | Plan | Monthly cost |
+| --- | --- | --- | --- |
+| 100 | 60,000 | Starter | $10 |
+| 1,000 | 600,000 | Starter | $10 |
+| 10,000 | 6,000,000 | Pro | $49 |
+
+At 100 and 1,000 users you are inside the Starter plan's included operations, so the bill is the
+base fee and nothing else. The interesting number is where the plans cross. On Starter, 6 million
+operations costs $10 plus $8 for each of the 5 million beyond the first, which is $50. Pro is $49
+flat, because 6 million is inside its 10 million allowance. **The switch pays for itself just under
+6 million operations a month**, which at 20 actions per user per day is roughly 9,800 users.
+
+Two things that change the arithmetic. A cached response still counts as an operation, because the
+rate is flat per operation and there is no egress charge, so caching buys latency rather than a
+smaller bill. And if you also host the app on [Prisma Compute](https://www.prisma.io/docs/compute),
+requests are metered separately from database operations: one page view is one request but often
+several operations. Do not add the two columns together as though they measure the same thing.
+
+## The signals that mean you have outgrown it
+
+This is the part the price comparisons leave out. None of these is about user count.
+
+**Connection errors under normal load.** `remaining connection slots are reserved` means you are out
+of connections, not out of capacity. Check for a client created per request before you conclude
+anything about scale, because that is the cause far more often than traffic is.
+
+**Operations growing faster than users.** Track operations per active user month over month. If
+users grow 20% and operations grow 300%, you have added a loop, not a customer base. Find it before
+you upgrade a plan, because a plan change makes the symptom affordable and leaves the cause.
+
+**One page that is slow, repeatedly.** A single endpoint degrading while the rest stays fast is a
+missing index or a query inside a loop. Neither is fixed by more infrastructure. Query Insights
+names the query group; add the index.
+
+**Users concentrated in a region you are not in.** Each Compute service runs in one region and there
+are no multi-region deployments, so once a large share of your traffic is far from your database,
+that is a real constraint rather than a tuning problem. This is the signal that genuinely justifies
+a move.
+
+**Storage crossing an included tier.** Predictable and easy to see coming. Watch it monthly and it
+never surprises you.
+
+**A compliance requirement with a named jurisdiction.** Data residency is the other reason to move
+that has nothing to do with performance. It arrives through a customer contract rather than a
+metric.
+
+If none of these is true, the honest recommendation is to change nothing. Growth-stage infrastructure
+work is usually paid for out of feature work, and the return is often zero.
+
+## Where this stack fits
+
+Prisma Postgres and Prisma Compute suit this stage when the database is the centre of the app and you
+want fewer decisions: pooling is already on, backups and point-in-time recovery are already on,
+caching is an argument rather than a service, and an idle app scales to zero so the overnight hours
+cost nothing.
+
+They are the wrong choice if you need more than one region, if you are not writing TypeScript, or if
+you want auth, storage and realtime from the same vendor, which is Supabase's shape rather than
+ours. Railway and Render are both reasonable at this stage too, and if your app is already running
+happily on one of them, "it works and I understand the bill" is a better reason to stay than any
+feature comparison is to move.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="When should I move off the Starter plan?">
+At roughly 6 million operations a month. Below that, Starter at $10 plus $8 per million beyond the
+first million is cheaper than Pro at $49 flat. Above it, Pro wins, because 6 million operations cost
+$50 on Starter and $49 on Pro. At 20 actions per user per day that crossover is about 9,800 monthly
+active users.
+  </Accordion>
+  <Accordion title="Does caching reduce my database bill?">
+Caching reduces latency rather than cost on Prisma Postgres. Every request counts as one operation
+whether it hits the database or is served from cache, because the price is flat per operation and
+egress is not charged. Cache a query because a page is slow, not because you want a smaller invoice.
+  </Accordion>
+  <Accordion title="Do I need a read replica at 10,000 users?">
+A read replica is almost certainly not what you need at 10,000 users. A single slow endpoint at that
+size is usually a missing index or a query running inside a loop, and a read replica makes that
+cheaper to run without making it correct.
+Read replicas answer a different problem, which is read volume that a correctly indexed primary
+cannot serve.
+  </Accordion>
+  <Accordion title="How do I estimate my own bill?">
+Multiply monthly active users by actions per user per day by 30 to get operations, subtract the
+operations your plan includes, divide the remainder by a million and multiply by the plan rate, then
+add storage beyond the included amount and the base fee. The worked examples are in the Prisma
+Postgres FAQ.
+  </Accordion>
+</Accordions>
+
+## What to do this week
+
+Confirm pooling is on, restore a backup into a throwaway database and time it, set a spend limit, and
+write down your current operations per active user so next month's number means something. That is
+the whole list. Come back to it when one of the signals above is actually true.
