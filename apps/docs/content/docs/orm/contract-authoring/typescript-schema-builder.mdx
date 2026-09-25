@@ -199,9 +199,15 @@ The examples below use the PostgreSQL builder.
 
 There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1", nativeType: "date" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
 
-For a primary key whose value your app generates, use `field.id.uuidv4String()`, `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, or `field.id.ksuid()`. They all generate the ID in your app, and `uuidv4String` is the common choice. Each marks the field as the primary key for you, and `field.id.uuidv4Native()` and `field.id.uuidv7Native()` do the same in a `uuid` column. There is no auto-increment helper, so use one of those `field.id.*` helpers. For a key the database generates instead, write ``field.uuidNative().default(sql`gen_random_uuid()`).id()``, with `sql` imported from `@prisma/orm-postgres/contract-builder`.
+For a primary key your app generates, use a `field.id.*` helper. Each one marks the field as the primary key and generates the ID in your app when you create a row. `field.id.uuidv4String()` is the common choice, and the others are `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, and `field.id.ksuid()`. To store a UUID in a `uuid` column instead of a text column, use `field.id.uuidv4Native()` or `field.id.uuidv7Native()`.
 
-`field.temporal.createdAt()` sets the column to the current time when the row is created, while `field.temporal.updatedAt()` sets it on every create and every update. Prisma ORM sets both in the client, from your application's clock, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `field.dateTime().default(now())` instead. `field.temporal.timestamptzJsDate()` is a `timestamptz` column that reads and writes a JavaScript `Date`, with no `Temporal` polyfill, and `field.temporal.createdAtJsDate()` and `field.temporal.updatedAtJsDate()` are the matching presets. `field.namedType(x)` takes an enum or a type from an extension pack.
+For a key the database generates, chain `.default(...)` and `.id()` on a field. An integer that counts up is `field.int().default(autoincrement()).id()`, and a UUID is ``field.uuidNative().default(sql`gen_random_uuid()`).id()``. Import `autoincrement` and `sql` from `@prisma/orm-postgres/contract-builder`.
+
+`field.temporal.createdAt()` sets the column to the current time when the row is created, and `field.temporal.updatedAt()` sets it on every create and every update. Prisma ORM sets both in the client, from your application's clock, so the column has no database default. If you insert a row with raw SQL, you must supply the value yourself. For a time the database sets instead, use `field.dateTime().default(now())`.
+
+`field.temporal.timestamptzJsDate()` is a `timestamptz` column that your code reads and writes as a JavaScript `Date`, so it needs no `Temporal` polyfill. For creation and update times as a `Date`, use `field.temporal.createdAtJsDate()` and `field.temporal.updatedAtJsDate()`.
+
+`field.namedType(x)` takes an enum or a type from an extension pack.
 
 Every field builder supports chained modifiers:
 

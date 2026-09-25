@@ -18,7 +18,7 @@ The `datasource` and `generator` blocks are gone: the connection URL and the fil
 
 ## A complete contract
 
-Every contract file starts with `// use prisma-8`. `contract emit` reads only the files that start with this line, so keep it at the top. A file without it is left out of the contract without a warning, and when no file has it, `contract emit` fails with `PSL_NO_OPTED_IN_SCHEMA_FILES`. `// use prisma-next`, from earlier release candidates, still counts.
+Every contract file starts with `// use prisma-8`. `contract emit` reads only the files that start with this line, so keep it at the top. A file without it is left out of the contract without a warning, and when no file has it, `contract emit` fails with `PSL_NO_OPTED_IN_SCHEMA_FILES`.
 
 ```prisma title="src/prisma/contract.prisma" tab="PostgreSQL"
 // use prisma-8
@@ -172,7 +172,7 @@ On PostgreSQL the primary key is an ordinary column, so pick its type and defaul
 
 ### Default values
 
-A value you write in `@default(...)` has a data type, and how you write it decides which one. A column takes the value only if its own data type accepts that type; otherwise `contract emit` fails with `PSL_DEFAULT_TYPE_INCOMPATIBLE` and names the types the column accepts. A quoted string is text, so it does not work as a default for a JSON, decimal, or floating-point column:
+Write each default in a form its column can hold. A quoted string is text, for example, so it cannot be the default of a JSON, decimal, or floating-point column. When a default does not fit its column, `contract emit` fails with `PSL_DEFAULT_TYPE_INCOMPATIBLE` and names the types the column accepts. The examples below show the form for each kind of column:
 
 ```prisma title="src/prisma/contract.prisma (excerpt)"
 model Account {
@@ -322,8 +322,6 @@ model User {
 ```
 
 Each member needs a value. `pg` comes with `@prisma/orm-postgres`, so there is nothing to import. You do not create the PostgreSQL type yourself: `npx prisma migration plan` includes the `CREATE TYPE`.
-
-PostgreSQL has no `LIKE`, `ILIKE`, or text search for an `enum` type, so a `pg.enum(...)` column has no text operations: `like`, `ilike`, and the full-text operations are type errors on it. Compare it with `eq` or `in` instead. An `enum` block stored as text, such as `Priority` above, keeps every text operation.
 
 ## Value objects
 

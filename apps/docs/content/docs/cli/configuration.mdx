@@ -61,7 +61,7 @@ A relative path in a config file, such as `contract`, `output`, or `migrations.d
 
 ## Split the schema across several files
 
-`contract` accepts a glob, so one schema can span several `.prisma` files:
+`contract` accepts a glob, a path pattern where `*` matches any file name and `**` matches any number of folders, so one schema can span several `.prisma` files:
 
 ```typescript title="prisma.config.ts"
 import { definePrismaConfig } from "prisma/config";
@@ -74,7 +74,9 @@ export default definePrismaConfig({
 });
 ```
 
-Every file the glob matches that starts with `// use prisma-8` becomes part of one schema, and `contract emit` builds one contract from them. `// use prisma-next`, from earlier release candidates, still counts. A file with neither first line is left out without a warning, and if no matched file has one, `contract emit` fails with `PSL_NO_OPTED_IN_SCHEMA_FILES`. A new file joins the schema on the next emit, with no change to the config. The emitted files go in the fixed part of the glob, here `./prisma/contract.json` and `./prisma/contract.d.ts`.
+`contract emit` builds one contract from every matched file whose first line is `// use prisma-8`. It skips a matched file without that line and does not warn, so the line is what makes a file part of the schema. The Prisma editor extension uses the same rule, so the editor and `contract emit` agree on which files make up the schema. If no matched file starts with the line, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`, and the error's finding is `PSL_NO_OPTED_IN_SCHEMA_FILES`.
+
+A new file joins the schema the next time you run `contract emit`, with no change to the config. The emitted files go in the folder before the first wildcard, here `./prisma/contract.json` and `./prisma/contract.d.ts`.
 
 ## Use a Prisma ORM 7 schema
 
