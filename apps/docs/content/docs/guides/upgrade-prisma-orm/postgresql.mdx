@@ -318,7 +318,7 @@ Your `tsconfig.json` must allow the JSON import you will write in step 3.1: `imp
   import contractJson from "../generated/prisma8/contract.json";
   ```
 
-- **The app runs through `tsx`, or a bundler such as `vite`, `next`, or `esbuild` builds it, and you never run `tsc` output with plain `node`.** Set `"module": "preserve"` and `"moduleResolution": "bundler"`. You do not need file extensions on relative imports, and the import lines in step 3.1 work as shown.
+- **The app runs through `tsx`, or a bundler such as `vite`, `next`, or `esbuild` builds it, and you never run `tsc` output with plain `node`.** Set `"module": "preserve"` and `"moduleResolution": "bundler"`. You do not need file extensions on relative imports, and the import lines in step 3.1 work as shown. If you run the `.ts` files directly with `node` instead, its type stripping needs the `.ts` extension on every relative import, so add `"allowImportingTsExtensions": true` as well.
 - **You compile with `tsc`, run the output with `node`, and `package.json` has `"type": "module"`, even if you use `tsx` in development.** Set `"module": "nodenext"` and `"moduleResolution": "nodenext"`. Node requires a file extension on every relative import when it runs ES modules, so every import that starts with `./` or `../` and points at a `.ts` or `.d.ts` file must end in `.js`, the extension of the compiled output: `import { postsRoutes } from "./routes/posts.js"`, and a directory import such as `./routes` becomes `./routes/index.js`. The `contract.json` import in step 3.1 keeps its `.json` extension and its `with { type: "json" }` part. Until every relative import has its extension, `npx tsc --noEmit` fails and names each one that still needs it. The [example project](https://github.com/prisma/prisma8-and-7-example) is set up this way; [the TypeScript module reference](https://www.typescriptlang.org/docs/handbook/modules/reference.html#node16-node18-nodenext) has the details.
 
 Whichever case applies, add `"resolveJsonModule": true` so TypeScript can type the JSON import, and add `generated/prisma8/**/*.d.ts` to `include` so it sees the emitted `contract.d.ts`. If your `tsconfig.json` has no `include`, TypeScript already picks up every file under the project, so skip that part:
@@ -336,7 +336,7 @@ Whichever case applies, add `"resolveJsonModule": true` so TypeScript can type t
 }
 ```
 
-**Check:** `npx tsc --noEmit` passes. If you followed the last case, it fails until every relative import of a `.ts` or `.d.ts` file has its `.js` extension. Prisma ORM 8 is now installed and configured, but no application code uses it yet. This check does not test your `module` choice, because nothing imports `contract.json` until step 3.1. If TypeScript reports error TS2823 there, the `module` value rejects the `with` part; come back to this step and pick again.
+**Check:** `npx tsc --noEmit` passes. If you followed the last case, it fails until every relative import of a `.ts` or `.d.ts` file has its `.js` extension. Prisma ORM 8 is now installed and configured, but no application code uses it yet. This check does not test your `module` choice, because nothing imports `contract.json` until step 3.1. If TypeScript reports error TS2823 there, the `module` value rejects the `with` part; come back to this step and pick again. If it reports TS2856, TypeScript compiles `db.ts` as CommonJS, so remove the `with` part as the CommonJS case shows.
 
 ## 3. Migrate one route
 
