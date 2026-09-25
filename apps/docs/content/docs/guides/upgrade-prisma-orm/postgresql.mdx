@@ -36,7 +36,7 @@ The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) rep
 
 - **Node.js 22.18 or newer (on the 24 line, 24.11 or newer)**; Node.js 24 recommended
 - A working **Prisma ORM 7** application on PostgreSQL: `prisma.config.ts`, the `prisma-client` generator, and a driver adapter
-- **TypeScript 5.3+** with `"strict": true` and a `module` setting that supports import attributes, such as `"nodenext"`
+- **TypeScript 5.3 or later** (5.4 or later for `"module": "preserve"`) with `"strict": true` and a `module` setting that supports import attributes; [step 2.6](#26-include-the-generated-types) gives the setting for each kind of project
 
 ## 1. Prepare Prisma ORM 7 for side-by-side operation
 
@@ -309,14 +309,18 @@ npx prisma contract emit
 
 ### 2.6. Include the generated types
 
-The Prisma ORM 8 client imports `contract.json` with the `with { type: "json" }` import attribute. This syntax requires TypeScript 5.3 or later and a `module` setting that supports import attributes. The example project uses `"module": "nodenext"`, which supports them. `"esnext"` with `"moduleResolution": "bundler"` also works.
+The Prisma ORM 8 client imports `contract.json` with the `with { type: "json" }` import attribute. TypeScript accepts that attribute from version 5.3, and only when `module` is `esnext`, `node18`, `node20`, `nodenext`, or `preserve`. Prisma ORM 8 does not need `nodenext` in particular. Start from your current setup:
 
-Enable `resolveJsonModule` so TypeScript types the imported JSON, and include the generated declarations in the program:
+- **Your `module` setting already supports import attributes.** Keep it. Add `"resolveJsonModule": true` and the generated declarations to `include`, as shown below. Nothing else changes.
+- **A CommonJS project that stays CommonJS.** Use `"module": "nodenext"` with `"resolveJsonModule": true`, leave `"type": "module"` out of `package.json`, and import `contract.json` in `db.ts` without the `with { type: "json" }` attribute. This works because `nodenext` compiles the file as CommonJS there; a file compiled as an ES module needs the attribute.
+- **A project run through `tsx`, `vite`, `next`, `esbuild`, or another bundler.** Use `"module": "preserve"` and `"moduleResolution": "bundler"` with `"resolveJsonModule": true`. This accepts imports without extensions and needs TypeScript 5.4 or later. It is also what `prisma orm init` writes.
+- **A project compiled with `tsc` and run with plain `node` as ES modules.** Use `"module": "nodenext"` and give every relative import its `.js` extension, because Node's ES module loader requires the extension at runtime; see [the TypeScript module reference](https://www.typescriptlang.org/docs/handbook/modules/reference.html#node16-node18-nodenext). The example project takes this path, which is why its imports end in `.js`.
+
+In every case, enable `resolveJsonModule` so TypeScript types the imported JSON, and include the generated declarations in the program:
 
 ```json title="tsconfig.json (excerpt)"
 {
   "compilerOptions": {
-    "module": "nodenext",
     "resolveJsonModule": true // [!code ++]
   },
   "include": [
