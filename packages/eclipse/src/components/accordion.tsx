@@ -1,7 +1,17 @@
 "use client";
 
 import { Check, Link as LinkIcon } from "lucide-react";
-import { ComponentProps, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  ComponentProps,
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "../lib/cn";
 import { buttonVariants } from "./ui/button";
 import { mergeRefs } from "../lib/merge-refs";
@@ -12,6 +22,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "./ui/accordion";
+
+// Which items are open, so a closed panel can be marked inert. Its content stays
+// mounted for crawlers (see AccordionContent), and inert keeps any links or
+// buttons inside it out of the tab order and the accessibility tree while the
+// panel is collapsed.
+const OpenValuesContext = createContext<readonly string[]>([]);
 
 function useCopyButton(copy: () => void | Promise<void>, timeout = 2000) {
   const [checked, setChecked] = useState(false);
@@ -32,6 +48,8 @@ export function Accordions({
   ref,
   className,
   defaultValue,
+  value: controlledValue,
+  onValueChange,
   ...props
 }: ComponentProps<typeof Root>) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -52,13 +70,36 @@ export function Accordions({
     if (value) setValue((prev) => (typeof prev === "string" ? value : [value, ...prev]));
   }, []);
 
-  return (
+  // A caller may drive this controlled. Its value has to win for both the root
+  // and the inert context, or a panel can render open while its content is
+  // still inert.
+  const effectiveValue = controlledValue ?? value;
+
+  const handleValueChange = useCallback(
+    (next: string | string[]) => {
+      setValue(next);
+      (onValueChange as ((next: string | string[]) => void) | undefined)?.(next);
+    },
+    [onValueChange],
+  );
+
+  const openValues = useMemo(
+    () =>
+      typeof effectiveValue === "string"
+        ? effectiveValue
+          ? [effectiveValue]
+          : []
+        : effectiveValue,
+    [effectiveValue],
+  );
+
+  const root = (
     // @ts-expect-error -- Multiple types
     <Root
       type={type}
       ref={composedRef}
-      value={value}
-      onValueChange={setValue}
+      value={effectiveValue}
+      onValueChange={handleValueChange}
       collapsible={type === "single" ? true : undefined}
       className={cn(
         "divide-y divide-fd-border overflow-hidden rounded-square border bg-background-default",
@@ -67,6 +108,8 @@ export function Accordions({
       {...props}
     />
   );
+
+  return <OpenValuesContext.Provider value={openValues}>{root}</OpenValuesContext.Provider>;
 }
 
 export function Accordion({
@@ -79,13 +122,15 @@ export function Accordion({
   title: string | ReactNode;
   value?: string;
 }) {
+  const isOpen = useContext(OpenValuesContext).includes(value);
+
   return (
     <AccordionItem value={value} {...props}>
       <AccordionHeader id={id} data-accordion-value={value}>
         <AccordionTrigger>{title}</AccordionTrigger>
         {id ? <CopyButton id={id} /> : null}
       </AccordionHeader>
-      <AccordionContent>
+      <AccordionContent inert={!isOpen}>
         <div className="ps-9 pr-4 pb-2 text-[0.9375rem] prose-no-margin">{children}</div>
       </AccordionContent>
     </AccordionItem>
