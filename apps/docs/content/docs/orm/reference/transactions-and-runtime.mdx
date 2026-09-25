@@ -55,7 +55,7 @@ Pass exactly one of `url`, `pg`, and `binding`.
 | `PostgresClient` | `postgres<Contract>({ contractJson, url })` | A client that has not connected yet. Its members are listed below. |
 
 - `.orm` holds your models by model name. See the [ORM client reference](/orm/reference/orm-client).
-- `.sql` is the SQL query builder, keyed by schema, then table name: `db.sql.public.tag`. The table name is the model's `@@map` value, or the model name exactly as written when the model sets no `@@map`. See the [SQL query builder reference](/orm/reference/sql-query-builder). `.raw` writes raw SQL as a template string. See the [raw queries reference](/orm/reference/raw-queries).
+- `.sql` is the SQL query builder, keyed by PostgreSQL schema, then by table name: `db.sql.public.tag`. The table name is the model's `@@map` value, or the model name exactly as written when the model sets no `@@map`. See the [SQL query builder reference](/orm/reference/sql-query-builder). Write raw SQL with ``db.raw.sql`...` ``, as the [raw queries reference](/orm/reference/raw-queries) shows.
 - `.enums` holds the enum values from your contract, by PostgreSQL schema: `db.enums.public.Role`. `.nativeEnums` holds the values of enum types that exist in PostgreSQL itself, created with `CREATE TYPE`, also by schema. Look the type up by name in brackets: `db.nativeEnums.auth['AalLevel'].values` is `['aal1', 'aal2', 'aal3']`.
 - `.contract` is the contract as an object. [`connect()`](#connect), [`runtime()`](#runtime), [`transaction()`](#dbtransactioncallback), [`prepare()`](#dbpreparedeclaration-callback), and [`close()`](#close) are documented on this page.
 
@@ -211,7 +211,7 @@ Pass exactly one of `url`, `uri`, `mongoClient`, and `binding`. `dbName` is sepa
 |---|---|---|
 | `MongoClient` | `mongo<Contract>({ contractJson, url, dbName })` | A client that has not connected yet. This is Prisma ORM's own type. The `mongodb` driver has a class of the same name, so when you import both, name this one `db`. |
 
-- `.orm` holds your models by collection name, with no schema segment: `db.orm.users`. The collection name is the model's `@@map` value, or the model name exactly as written when the model sets no `@@map`. The [example schema](/orm/reference/orm-client#example-schema) sets `@@map("users")` on `User`, which is why the key here is `users`. See the [ORM client reference](/orm/reference/orm-client).
+- `.orm` holds your models by collection name, with no `.public` in the path: `db.orm.users`. The collection name is the model's `@@map` value, or the model name exactly as written when the model sets no `@@map`. The [example schema](/orm/reference/orm-client#example-schema) sets `@@map("users")` on `User`, which is why the key here is `users`. See the [ORM client reference](/orm/reference/orm-client).
 - `.query` is the pipeline builder, which builds MongoDB aggregation pipelines. See the [pipeline builder reference](/orm/reference/pipeline-builder). `.raw` sends raw MongoDB commands. See the [raw queries reference](/orm/reference/raw-queries).
 - `.enums` holds the enum values from your contract, and `.contract` is the contract as an object. [MongoDB `connect()`](#connect-1), [MongoDB `runtime()`](#runtime-1), and [MongoDB `close()`](#close-1) are documented below.
 
@@ -621,13 +621,13 @@ Prepare a statement on the client itself.
 
 #### Remarks
 
-- The callback takes one argument, the declared `params`, as it does on `runtime.prepare(...)`. Build the query with the client's own `db.sql` or `db.orm`. Before `8.0.0-rc.12` the callback received a SQL builder as its first argument, `(sql, params)`; change such a callback to `(params)` and write `db.sql` where it wrote `sql`.
+- The callback takes one argument, the declared `params`, as it does on `runtime.prepare(...)`. Build the query with the client's own `db.sql` or `db.orm`.
 - The callback can return a built SQL query, or an ORM query that ends in `.prepared.all()`, `.prepared.first()`, or `.prepared.aggregate(...)`. `.prepared` always goes right before that last call, so a grouped aggregate is written `db.orm.public.Post.groupBy('userId').prepared.aggregate((agg) => ({ posts: agg.count() }))`.
-- The ORM query is built once. Each `query(target, params)` call runs it with the new values and returns what the same call without `.prepared` returns:
-  - `all()` returns the rows.
-  - `first()` returns a row, or `null`.
-  - `aggregate(...)` returns the aggregate object.
-  - `groupBy(...)` followed by `aggregate(...)` returns an array with one object per group.
+- The ORM query is built once. `db.prepare(...)` resolves to a prepared query, here called `ps`, and you run it with `ps.query(db.runtime(), values)`, where `values` holds a value for each declared parameter. A connection or a transaction also works in place of `db.runtime()`. Each run uses the new values and returns what the same call without `.prepared` returns:
+  - `all()` returns the rows, as an [`AsyncIterableResult`](#asynciterableresult) that you `await` for an array.
+  - `first()` returns a promise of one row, or of `null` when no row matches.
+  - `aggregate(...)` returns a promise of the aggregate object.
+  - `groupBy(...)` followed by `aggregate(...)` returns a promise of an array with one object per group.
 - `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` would throw an error whose `code` is `DRIVER.ALREADY_CONNECTED`, because `prepare()` already connected.
 
 #### Options
@@ -670,7 +670,7 @@ const countTags = await db.prepare({}, () =>
 const { total } = await countTags.query(db.runtime(), {});
 ```
 
-In an ORM query, a prepared parameter works in `where(...)` filters, in the callback you pass to `include(...)`, and in `.limit(...)` and `.offset(...)`, so the same statement can page through results. Declare a page size or offset with a number type id that is not nullable, such as `{ take: 'pg/int4@1' }`, and pass `params.take` to `.limit(...)`. A nullable or text type id there is a type error.
+In an ORM query, a prepared parameter works in `where(...)` filters, in the callback you pass to `include(...)`, and in `.limit(...)` and `.offset(...)`, so the same statement can page through results. Declare a page size or offset as `'pg/int4@1'`, as in `{ take: 'pg/int4@1' }`, and pass `params.take` to `.limit(...)`. A text type id such as `'pg/text@1'`, or a nullable one such as `{ codecId: 'pg/int4@1', nullable: true }`, is a type error there.
 
 ### `PreparedStatement.query(target, params)`
 
@@ -703,6 +703,8 @@ Run a prepared statement against a target, with the parameter values.
 | Return type | Example | Description |
 |---|---|---|
 | `AsyncIterableResult<Row>` | `await ps.query(runtime, { label })` | The statement's rows. `await` the result for an array. |
+
+A prepared ORM query from [`db.prepare(...)`](#dbpreparedeclaration-callback) is different: its `query(...)` returns what the same ORM call returns, so a prepared `first()` gives a promise of one row or `null`.
 
 #### Examples
 

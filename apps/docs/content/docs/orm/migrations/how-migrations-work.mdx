@@ -19,7 +19,7 @@ You run this loop many times a day:
 3. **Review it**: before anything touches the database, run `npx prisma migration show <dir>` to see the operations and SQL that `db migrate` will run. If you want the migration to change rows as well, [edit `migration.ts` and recompile it](/orm/migrations/editing-a-migration) by running `node migrations/app/<dir>/migration.ts` from your project root, which rewrites `ops.json`. Nothing extra is needed to run that file, because the Prisma ORM CLI already requires Node.js 22.18 or later, which runs `migration.ts` directly.
 4. **Apply it**: `db migrate` starts by reading the database's marker, the record in the database of which contract state it matches, so it knows how much of your history the database has already seen, and then runs the migrations from that state to your current contract. In development, add [`--advance-ref db`](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) so the next `migration plan` starts from what you just applied.
 
-Say your contract is the one in [Generating a migration](/orm/migrations/generating-a-migration#your-first-migration), whose `User` model is stored in the table `user` because it sets `@@map("user")`, and its first migration is applied. With a database connection set up, as in the [quickstart](/prisma-orm/quickstart/postgresql), add an optional `phone String?` field to `User`, then run:
+Say your contract is the one in [Generating a migration](/orm/migrations/generating-a-migration#your-first-migration), whose `User` model is stored in the table `user` because it sets `@@map("user")`, and you applied its first migration with `npx prisma db migrate --advance-ref db`. With a database connection set up, as in the [quickstart](/prisma-orm/quickstart/postgresql), add an optional `phone String?` field to `User`, then run:
 
 ```npm
 npx prisma contract emit
@@ -47,14 +47,6 @@ ALTER TABLE "public"."user" ADD COLUMN "phone" text;
 
 A table name is the model name exactly as written unless the model sets `@@map`, so without `@@map("user")` this `User` model would be the table `"User"`, and a `UserProfile` model is the table `"UserProfile"`. These are the same names Prisma ORM 7 used.
 
-If you used a Prisma ORM 8 release before 8.0.0-rc.12, you have one more thing to do before you plan, because in those releases a model without `@@map` named its table with a lowercase first letter, such as `"userProfile"`. If your tables were created with those names, download the [`add-model-map` script](https://github.com/prisma/orm/blob/v8.0.0-rc.12/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.11-to-8.0.0-rc.12/scripts/psl-verbatim-table-names/add-model-map.mjs) and run it from your project root before you plan:
-
-```bash
-node <path to add-model-map.mjs> '**/*.prisma'
-```
-
-The script adds `@@map("<current table name>")` to each model that has none, in every `.prisma` file in your project, including any you keep in a migration directory. If you plan without running it, `migration plan` stops with [`MIGRATION.TABLE_NAME_CASE_CHANGED`](/orm/reference/error-reference#MIGRATION.TABLE_NAME_CASE_CHANGED) instead of dropping the table and creating an empty one.
-
 The `app space:` line tells you which migration history the new directory was written into. A contract space is a separate migration history, so your own migrations stay in `migrations/app/` while each [Prisma ORM extension package](/orm/migrations/applying-a-migration#extension-spaces) that ships migrations, such as pgvector, keeps its migrations in its own directory under `migrations/`.
 
 `db migrate` applies the migration and confirms what it applied:
@@ -66,6 +58,19 @@ The `app space:` line tells you which migration history the new directory was wr
 The first time you run `migration plan`, there are no migrations and no `db` ref on disk yet, so there is no earlier state to compare against and Prisma ORM plans as if the database were empty. If you want it to start somewhere else, pass `--from`, such as `--from 20260707T1006_add_user_phone` for the state after that migration. The [`migration plan` reference](/cli/migration-plan#options) lists the other forms `--from` accepts, and [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) covers what `migration plan` starts from when you leave `--from` off.
 
 `db migrate` needs a database to talk to, and it takes that from `db.connection` in [`prisma.config.ts`](/orm/contract-authoring/the-data-contract), such as `db: { connection: process.env["DATABASE_URL"]! }`, unless you pass a URL with the `--db` flag. In CI and production, run plain `npx prisma db migrate`.
+
+:::note[If you used Prisma ORM 8 before 8.0.0-rc.12]
+
+In Prisma ORM 8 releases before 8.0.0-rc.12, a model without `@@map` named its table with a lowercase first letter, such as `"userProfile"` for a `UserProfile` model. If your tables were created with those names, download the [`add-model-map` script](https://github.com/prisma/orm/blob/v8.0.0-rc.12/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.11-to-8.0.0-rc.12/scripts/psl-verbatim-table-names/add-model-map.mjs) into your project root and run it there before you plan your next migration:
+
+```bash
+curl -O https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.12/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.11-to-8.0.0-rc.12/scripts/psl-verbatim-table-names/add-model-map.mjs
+node add-model-map.mjs '**/*.prisma'
+```
+
+The script adds `@@map` with the name the table has now, such as `@@map("userProfile")`, to each model that has no `@@map`, in every `.prisma` file in your project, including any you keep in a migration directory. If you plan without running it, `migration plan` stops with [`MIGRATION.TABLE_NAME_CASE_CHANGED`](/orm/reference/error-reference#MIGRATION.TABLE_NAME_CASE_CHANGED) instead of dropping the table and creating an empty one.
+
+:::
 
 ## What a migration contains
 
@@ -117,7 +122,7 @@ Inside `ops.json`, an operation is not only the change itself: it also carries t
 
 When `db migrate` reaches an operation, it runs the postcheck first. If the postcheck passes, the change is already in the database, so `db migrate` skips the operation. If it does not pass, `db migrate` runs the precheck, then the statements, then the postcheck again, and it stops the run if either check fails. Once the operations are done, it checks the database against the contract before it updates the marker, which catches a database that satisfied every individual operation but still doesn't match what you declared.
 
-Say `"user"` already has a `phone` column of another type. The postcheck only asks whether a `phone` column exists, so it passes and the operation is skipped. The check against the contract then finds the wrong type, and the run fails with an error whose `code` is `MIGRATION.RUNNER_FAILED` and whose explanation says the database schema does not satisfy the contract. To see which columns differ, run `npx prisma db verify --schema-only`. Change the `phone` column in the database to the type your contract declares, and run `db migrate` again.
+Say `"user"` already has a `phone` column of another type. The postcheck only asks whether a `phone` column exists, so it passes and the operation is skipped. The check against the contract then finds the wrong type, and the run fails with an error whose `code` is `MIGRATION.RUNNER_FAILED` and whose `why:` line reads `The resulting database schema does not satisfy the destination contract.` To see which columns differ, run `npx prisma db verify --schema-only`. Then change the column by hand to the type your contract declares, here `text`, with `ALTER TABLE "public"."user" ALTER COLUMN "phone" TYPE text;`, and run `db migrate` again. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) covers other changes made outside a migration.
 
 Each operation also has an `operationClass`, which says what kind of change the operation makes to the database and which you choose yourself when you write a raw SQL operation:
 

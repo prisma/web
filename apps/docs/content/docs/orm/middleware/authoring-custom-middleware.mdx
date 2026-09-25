@@ -51,7 +51,7 @@ The `name` is the label Prisma ORM uses when it talks about your middleware, so 
 
 If a call gives you back a count instead of rows, `afterQuery` is not called for it and `afterExecute` is called instead. On the ORM API the calls that return a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`. Every other call returns rows and reaches `afterQuery`, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`.
 
-The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db.runtime()` runs it. Which of the two methods you call decides which hook you get. `db.runtime().query(plan)` returns rows and reaches `afterQuery`, while `db.runtime().execute(plan)` reports how many rows the statement changed and reaches `afterExecute`.
+The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db.runtime()` runs it. `db.runtime().query(plan)` returns rows and calls `afterQuery`, while `db.runtime().execute(plan)` reports how many rows the statement changed and calls `afterExecute`.
 
 To have the logger cover the counting calls as well, add a second hook to the object `queryLogger()` returns in `src/prisma/query-logger.ts`, next to `afterQuery`:
 
@@ -220,9 +220,9 @@ A hook you implement for one kind of call is never called for the other kind, so
 
 `beforeCompile` is where you change a query before it runs. It gives you the query as an AST, the abstract syntax tree, which is the query as a tree of typed objects rather than as text. A `SELECT` is one object whose `kind` is `'select'`, whose `from` is the table it reads, and whose `where` is its condition. The hook runs before Prisma ORM turns that tree into SQL text, so a changed tree changes the SQL that reaches the database.
 
-Its argument is called a draft because the SQL text does not exist yet. A draft has `ast`, the tree you change, and `meta`, which records where the query came from and which you pass through unchanged. You return a copy of the draft with a new `ast`, or `undefined` when there is nothing to change.
+Its argument is called a draft because the SQL text does not exist yet. A draft has `ast`, the tree you change, and `meta`, which you pass through unchanged. `meta.lane` says which API built the query: `'orm-client'` for the ORM API and `'dsl'` for the SQL query builder. You return a copy of the draft with a new `ast`, or `undefined` when there is nothing to change.
 
-The middleware below adds a condition to every `SELECT` on the `User` table:
+The middleware below adds a condition to every `SELECT` whose own `FROM` clause names the `User` table:
 
 ```ts title="src/prisma/scope-user-selects.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -269,13 +269,19 @@ export const db = postgres<Contract>({
 });
 ```
 
-Every `SELECT` on `User` now runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. The condition is built once, when you create the client, so every query on this client is filtered to the same value. Swap `name` for the column that holds your tenant and `'Mia'` for a tenant ID, and every `SELECT` on `User` through this client returns only that one tenant's rows.
+Every `SELECT` whose `FROM` clause names `User` now runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. The condition is built once, when you create the client, so every query on this client is filtered to the same value.
+
+:::warning
+
+Do not rely on this middleware alone to keep one tenant's rows away from another. If you swap `name` for a tenant column, a query that reads `User` in its own `FROM` clause returns only that tenant's rows, but `User` rows loaded with `.include(...)` or joined onto another table are not filtered, so they can belong to any tenant.
+
+:::
 
 Copy each import as it is written, including the one that says `type` and the one that does not.
 
-The id depends on the field's type in your contract:
+The `codecId` depends on the field's type in your contract:
 
-| Type in your contract | Id |
+| Type in your contract | `codecId` |
 | --- | --- |
 | `String` | `pg/text@1` |
 | `Int` | `pg/int4@1` |
@@ -285,7 +291,9 @@ The id depends on the field's type in your contract:
 | `DateTime` | `pg/timestamptz-temporal@1` |
 | `Uuid` | `pg/uuid@1` |
 
-For a field whose type is not in the table, read the id off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids in one place.
+The `temporal` in the `DateTime` id means the value reaches your code as a JavaScript `Temporal.Instant` rather than a `Date`.
+
+For a field whose type is not in the table, read the `codecId` off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids in one place.
 
 `BinaryExpr` has one method per comparison (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `in`, `notIn`), and `AndExpr.of` and `OrExpr.of` combine conditions. They all come from `@prisma/orm-postgres/relational-core/ast`, so your editor lists them once you import from there.
 
@@ -301,7 +309,7 @@ async onRow(row) {
 },
 ```
 
-For the `SELECT` in step 3, whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, a row object has an `id` key holding a number and an `email` key holding a string. The fixture below returns one row of that shape, and you register it the same way as the logger, with `middleware: [userFixture()]`:
+For the `SELECT` in step 3, whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, a row object has an `id` key holding a number and an `email` key holding a string. The middleware below is a test fixture: it returns one made-up row of that shape in place of the database's answer, so a test can run that query without data in the table. Add it to the same `middleware` array as the logger, either on its own as `middleware: [userFixture()]` or next to the logger as `middleware: [queryLogger(), userFixture()]`:
 
 ```ts title="src/prisma/user-fixture.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -324,9 +332,9 @@ export function userFixture(): SqlMiddleware {
 
 Prisma ORM decodes the rows you return the same way it decodes rows that came from the database, so your caller gets the types the contract gives those columns, even though you handed back plain driver values.
 
-The last three checks answer only a `SELECT` that reads the `User` table directly, in the same way the `beforeCompile` example picks its queries. Matching on the SQL text instead, such as `plan.sql.includes('FROM "public"."User"')`, also catches `DELETE FROM "public"."User"`, so an ORM `.delete()` would get a made-up row back and delete nothing. On an `UPDATE` or a `DELETE` the table name is at `plan.ast.table.name`. A hook cannot tell which model or which ORM call a query came from, so the table name in the tree is the only thing you have to match on.
+The last three checks make the fixture answer only a `SELECT` that reads the `User` table directly, in the same way the `beforeCompile` example picks its queries. Matching on the SQL text instead, such as `plan.sql.includes('FROM "public"."User"')`, also catches `DELETE FROM "public"."User"`, so an ORM `.delete()` would get a made-up row back and delete nothing. On an `UPDATE` or a `DELETE` the table name is at `plan.ast.table.name`. `plan.meta.lane` tells you which API built a query, but nothing on the plan says which model or which ORM call it came from, so the table name in the tree is the only thing you have to match on.
 
-The first check, on `ctx.scope`, leaves queries inside a transaction to the database, as the cache does. An ORM `.update()` or `.delete()` first reads the row it is about to change, inside a transaction, and if the fixture answered that read, the write would go to the row whose `id` is `1` rather than the row you asked for. [The context object](#the-context-object) covers `ctx.scope`.
+The first check, on `ctx.scope`, lets every query inside a transaction, or on a connection you took from the pool, go on to the database, so the fixture answers only queries sent on `db` directly. Keep it, because an ORM `.update()` or `.delete()` reads its row inside a transaction before it writes, and a made-up row there would send the write to the wrong row.
 
 Return `undefined` and the query carries on to the database as usual. When several middleware implement `interceptQuery`, the first one in the array that returns rows answers the query and the rest are not called at all. `afterQuery` still runs either way, with `result.source` set to `'middleware'`, so your logging can tell which queries were answered without a trip to the database. For a call that returns a count, `interceptExecute` does the same job and returns `{ stats }`, which only ever holds `affectedRows`, as in `{ stats: { affectedRows: 0 } }`. The [cache middleware](/orm/middleware/built-in-cache) is the implementation to copy from.
 
@@ -405,7 +413,7 @@ Timing itself does not need any of this, because `result.latencyMs` already tell
 Projects created with `npm create prisma@latest` install [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent, so you can ask it for the middleware built in the steps above:
 
 - "Write a Prisma ORM middleware that logs every query slower than 250ms, and register it before budgets."
-- "Add a beforeCompile middleware that scopes every SELECT on the User table to the current tenant."
+- "Add a beforeCompile middleware that adds a fixed `orgId` condition to every SELECT that reads the User table in its FROM clause."
 - "Write an interceptQuery middleware that returns fixture rows for the products table in tests."
 
 ## Next steps

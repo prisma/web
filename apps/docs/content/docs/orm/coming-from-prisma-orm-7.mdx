@@ -16,13 +16,13 @@ All examples use PostgreSQL.
 
 If you are adding Prisma ORM 8 to an application that runs Prisma ORM 7, do not run the new-project commands further down in that project, because `npm install prisma` installs version 8 in place of the version 7 command-line tool. Follow [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql) instead. It runs both versions side by side against your existing database without changing its data, and ends with Prisma ORM 8 managing its migrations.
 
-On PostgreSQL, the following command does the guide's first phase for you, and sets up Prisma ORM 8 to read your `schema.prisma` as its contract. `schema.prisma` does not need a `// use prisma-8` line for this.
+On PostgreSQL, the following command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, and sets up Prisma ORM 8 to read your `schema.prisma` as its contract:
 
 ```npm
 npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 ```
 
-It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes, and the guide covers the rest of the move.
+It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with [phase 3 of the guide](/guides/upgrade-prisma-orm/postgresql#3-migrate-one-route), moving routes one at a time to the client in `src/prisma/db.ts`. The guide's phase 4, where Prisma ORM 8 takes over migrations, does not yet cover this setup, so Prisma ORM 7 keeps owning your migrations.
 
 In a new project, three commands set up Prisma ORM 8:
 
@@ -45,7 +45,7 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 | Prisma ORM 7 | Prisma ORM 8 | Notes |
 | --- | --- | --- |
 | `schema.prisma` | `contract.prisma` | |
-| (nothing) | `// use prisma-8` as the first line | required in every contract file; see the note below the table |
+| (nothing) | `// use prisma-8` as the first line | required in every Prisma ORM 8 `.prisma` contract file; see the note below the table |
 | `generator client { ... }` | removed | `emit` is the new word for `generate`. `prisma contract emit` writes two files next to your contract, `contract.json` and `contract.d.ts`. Commit both |
 | `datasource db { ... }` | the `orm` section of `prisma.config.ts` | the connection string and file paths live in the config file, not the schema. Example below |
 | `String @db.Text` | `String` | `String` is already stored as `text`. A known bug in one error message suggests `Text`; there is no such type |
@@ -70,7 +70,7 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 
 :::note[The first line of a contract file]
 
-Every contract file must start with `// use prisma-8`. `prisma orm init` writes the line for you, so you add it yourself only when you create a contract file by hand. `prisma contract emit` reads only the `.prisma` files that start with this line and skips the others without a warning, and the [Prisma editor extension](/orm/contract-authoring/editor-support) does not recognize a file without it.
+Every Prisma ORM 8 `.prisma` contract file must start with `// use prisma-8`. `prisma orm init` writes the line for you, so you add it yourself only when you create a contract file by hand. `prisma contract emit` reads only the `.prisma` files that start with this line and skips the others without a warning, and the [Prisma editor extension](/orm/contract-authoring/editor-support) does not recognize a file without it.
 
 :::
 
@@ -90,7 +90,7 @@ model User {
 }
 ```
 
-Filter a `pg.enum(...)` field with `eq` or `in`, because it has no `like` or `ilike`. You can switch to a plain `enum` later, but that changes the column type, so it needs a migration.
+A `pg.enum(...)` field supports the `eq` and `in` filters, not `like` or `ilike`. You can switch to a plain `enum` later, but that changes the column type, so it needs a migration.
 
 :::
 
@@ -156,7 +156,7 @@ export default definePrismaConfig({
 
 The `orm` section takes these keys:
 
-- `contract`: the path to your contract file, or a glob for a [contract in several files](/orm/contract-authoring/psl-syntax#split-the-contract-across-several-files). On PostgreSQL it can also be `prisma7Schema("prisma/schema.prisma")`, with `prisma7Schema` imported from `@prisma/orm-postgres/config` next to `defineConfig`. It reads your Prisma ORM 7 schema as it is, with no `// use prisma-8` line; see [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema).
+- `contract`: the path to your contract file, or a glob for a [contract in several files](/orm/contract-authoring/psl-syntax#split-the-contract-across-several-files). On PostgreSQL it can also be `prisma7Schema("prisma/schema.prisma")`, with `prisma7Schema` imported from `@prisma/orm-postgres/config` next to `defineConfig`. The schema stays in Prisma ORM 7 syntax, so the changes in the table above do not apply to it, and it needs no `// use prisma-8` line. `contract emit` fails on any part of it that Prisma ORM 8 cannot read, such as a `view` block, and the error names the line and the Prisma ORM 7 edit that removes it; see [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema).
 - `db`: the connection.
 - `output` (optional): where `contract.json` and `contract.d.ts` are written. Default: next to the contract.
 - `extensions` (optional): database extensions, for example `extensions: [pgvector]` with `import pgvector from "@prisma/orm-extension-pgvector/control"`. See [Using extensions](/orm/extensions/using-extensions).
@@ -216,8 +216,8 @@ export const db = postgres<Contract>({
 `db` has these parts:
 
 - `db.orm`: your models, by model name (`db.orm.public.User`).
-- `db.sql`: the [SQL query builder](/orm/reference/sql-query-builder), with your tables by table name (`db.sql.public.User`; the table name is the model name, unless you set `@@map`). On this page it appears only in the raw SQL examples, which take the type of each returned column from it.
-- `db.raw.sql`: writes a raw SQL query as text.
+- `db.sql`: the [SQL query builder](/orm/reference/sql-query-builder). It holds your tables by table name, as in `db.sql.public.User`, and a table's name is its model's name unless you set `@@map`. On this page, the raw SQL examples use it only to give each column's type.
+- `db.raw.sql`: lets you write a SQL query as text.
 - `db.runtime()`: the connection. It runs raw queries.
 - `db.transaction`: runs several queries in one transaction.
 
@@ -319,7 +319,7 @@ const update = db.raw.sql`UPDATE "User" SET active = false WHERE id = ${id}`
 await db.runtime().execute(update);
 ```
 
-The table is `User`, as in Prisma ORM 7: a model without `@@map` names its table after the model. A value you put in the SQL with `${...}`, such as `${id}`, is sent to the database as a query parameter, not pasted into the SQL text, as with Prisma ORM 7's `$executeRaw`.
+The table is `User`, because a model without `@@map` names its table after the model. As in Prisma ORM 7, a value you put in the SQL with `${...}`, such as `${id}`, is sent to the database as a query parameter.
 
 Every raw query that returns rows needs `.returnsRow(...)` with a type per column, and you take the type from the table, as above. A computed column has no table column to take it from, so write the type name as a string instead: for `SELECT count(*) AS total FROM "User"`, write `.returnsRow({ total: "pg/int8@1" })`. [Raw queries](/orm/reference/raw-queries) lists the type names. Finish the query with `.build()` and pass it to `db.runtime().query()` for rows or `db.runtime().execute()` for a count. On PostgreSQL, `db.runtime()` returns the connection directly, so it needs no `await`; the MongoDB client's `db.runtime()` is the one you `await`.
 
@@ -386,7 +386,7 @@ const created = await db.orm.public.User.createAll(rows, {
 });
 ```
 
-Here `conflictOn` is a list of field names. In `upsert` it is an object of fields and values instead. If you emitted your contract before `8.0.0-rc.12`, run `prisma contract emit` again before you use `onConflict`; otherwise the call fails with `ORM.CAPABILITY_MISSING`.
+Here `conflictOn` is a list of field names. In `upsert` it is an object of fields and values instead. A contract emitted by an earlier release than `8.0.0-rc.12` makes the call fail with `ORM.CAPABILITY_MISSING`, so if your project used Prisma ORM 8 before that release, run `prisma contract emit` again before you use `onConflict`.
 
 :::
 

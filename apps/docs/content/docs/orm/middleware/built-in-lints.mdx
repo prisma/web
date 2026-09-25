@@ -55,13 +55,13 @@ The rules are named after the SQL they are about, and you write your queries in 
 | `.all()` with no `.limit(...)` before it | `LINT.NO_LIMIT` |
 | `.first(...)` | none, because it adds `LIMIT 1` for you |
 | a query where you never called `.select(...)` | `LINT.SELECT_STAR` |
-| `deleteAll()` or `updateAll()` after a `.where(...)` with a condition in it | none |
-| `deleteAll()` or `updateAll()` after `.where({})` | `LINT.DELETE_WITHOUT_WHERE` or `LINT.UPDATE_WITHOUT_WHERE` |
+| `deleteAll()`, `deleteAndCount()`, `updateAll()`, or `updateAndCount()` after a `.where(...)` with a condition in it | none |
+| `deleteAll()`, `deleteAndCount()`, `updateAll()`, or `updateAndCount()` after `.where({})` | `LINT.DELETE_WITHOUT_WHERE` or `LINT.UPDATE_WITHOUT_WHERE` |
 | the query builder's `delete()` or `update()` with no `where()` | `LINT.DELETE_WITHOUT_WHERE` or `LINT.UPDATE_WITHOUT_WHERE` |
 
-So `await db.orm.public.User.limit(50).all()` sets off `LINT.SELECT_STAR`, while `await db.orm.public.User.select('id', 'email').limit(50).all()` does not. In `db.orm.public.User`, `public` is the PostgreSQL schema and `User` is your model name. The SQL query builder reaches the same table by its name in the database, as `db.sql.public.User`. The model and the table have the same name here because the model sets no `@@map`.
+So `await db.orm.public.User.limit(50).all()` sets off `LINT.SELECT_STAR`, while `await db.orm.public.User.select('id', 'email').limit(50).all()` does not. In `db.orm.public.User`, `public` is the PostgreSQL schema and `User` is your model name. The SQL query builder reaches the same table by its name in the database, as `db.sql.public.User`. These examples assume a `User` model with no `@@map`, so the table has the same name as the model.
 
-For a `warn` finding, `lints` builds the record below, with the code of the rule, a message, and the table the query touched, and passes it to the client's logger. The `postgres(...)` client has no logger you can set yet, as the note above says, so today the record is thrown away and you cannot see it anywhere.
+Today a `warn` rule has no visible effect. `lints` builds a record like the one below, with the code of the rule, a message, and the table the query touched, and passes it to the client's logger, but the `postgres(...)` client has no logger you can set yet, as the note above says, so the record is thrown away.
 
 ```text title="Lint warning"
 warn {
@@ -154,11 +154,11 @@ await db.runtime().query(plan);
 
 It throws an error whose `code` is `LINT.SELECT_STAR` and whose `message` is `Raw SQL plan selects all columns via *`. `returnsRow` tells Prisma ORM the type of each column the statement gives back, written as `pg/` plus the PostgreSQL type name plus `@1`, and [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids you can use. The `severities` key for the last rule is `readOnlyMutation`, and there is no documented way to mark a query read-only, so you are unlikely to see that one.
 
-Because these are searches through the text rather than checks on the structure of the query, they can be wrong in both directions. The word `limit` anywhere in the statement counts as a `LIMIT`, including inside a string or a column name, and a `select *` inside a subquery counts for the whole statement. So when a raw statement produces a finding, go and read the query yourself before you change anything.
+Because these are searches through the text rather than checks on the structure of the query, they can be wrong in both directions. The word `limit` anywhere in the statement counts as a `LIMIT`, including inside a string or a column name, and a `select *` inside a subquery counts for the whole statement. So when a raw statement sets off one of these checks, go and read the query yourself before you change anything.
 
 :::warning
 
-A severity you set in `severities` applies to a finding by its code wherever that finding came from, so it changes the raw defaults as well as the four rules. `selectStar` is `warn` by default for the ORM API and the SQL query builder, but `error` for raw SQL. So setting `selectStar: 'warn'` changes nothing for the ORM API, which is already at `warn`: its only effect is that raw SQL's `select *` drops from `error` to `warn`, and `select * from "User"` starts running instead of being blocked. Setting `selectStar: 'error'`, as under [Configure severities](#configure-severities), keeps a raw `select *` blocked. No setting makes the ORM-API rule `error` and lets a raw `select *` run, so if you need both, give the code that runs the raw `select *` a `db` client of its own, in the way [Common gotchas](#common-gotchas) does for a backfill script.
+One `severities` key sets both the rule for the ORM API and the SQL query builder and the raw SQL check that has the same code, so it changes the raw defaults as well. `selectStar` is `warn` by default for the ORM API and the SQL query builder, but `error` for raw SQL. So setting `selectStar: 'warn'` changes nothing for the ORM API, which is already at `warn`: its only effect is that raw SQL's `select *` drops from `error` to `warn`, and `select * from "User"` starts running instead of being blocked. Setting `selectStar: 'error'`, as under [Configure severities](#configure-severities), keeps a raw `select *` blocked. No setting makes the ORM-API rule `error` and lets a raw `select *` run, so if you need both, give the code that runs the raw `select *` a `db` client of its own, in the way [Common gotchas](#common-gotchas) does for a backfill script.
 
 :::
 

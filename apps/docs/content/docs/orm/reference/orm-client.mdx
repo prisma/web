@@ -182,7 +182,7 @@ Some parts of the schema the examples rely on:
 - On MongoDB, `id ObjectId @id @map("_id")` renames the field to `_id` everywhere: you filter on `_id`, and the returned document has an `_id` key. That is why the MongoDB examples never say `id`.
 - `Uuid` is a built-in type for a PostgreSQL `uuid` column. You do not import it. `@default(uuid())` fills the id in when you insert a row.
 - `@@type("pg/text@1")` on an `enum` block stores the enum as a text column. The `@1` is the version of that storage format, and only version 1 exists today, so write it exactly like that. The MongoDB form of the same attribute is `@@type("mongo/string@1")`. This page calls an enum written this way a text-backed enum.
-- A `native_enum` block stores the same members as a real PostgreSQL enum type instead. Give every member a value. A member with no value is rejected. A field that uses it is typed `pg.enum(Priority)`. This page calls an enum written this way a native enum. The two sort differently; see [`orderBy()`](#orderby).
+- A `native_enum` block stores the members as a PostgreSQL enum type, created with `CREATE TYPE`. Prisma ORM 7 stored every `enum` this way, so a database that Prisma ORM 7 created already has these types, and you keep them by declaring each one with `native_enum`, as [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) shows. A plain `enum` block in Prisma ORM 8 is stored as text. Give every `native_enum` member a value, because a member with no value is rejected. A field that uses it is typed `pg.enum(Priority)`. This page calls an enum written this way a native enum. The two sort differently; see [`orderBy()`](#orderby).
 
   ```prisma
   native_enum Priority {
@@ -919,7 +919,7 @@ const features = await tasks.Task.features().all();
 
 A write method changes the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases, and the differences between the two are listed under each method.
 
-For Prisma ORM 7 users: `createMany` is `createAll()` or `createAndCount()`, `updateMany` is `updateAll()` or `updateAndCount()`, `deleteMany` is `deleteAll()` or `deleteAndCount()`, and `count` is [`aggregate()`](#grouped-aggregates) on PostgreSQL, or the two steps shown under [Read methods](#read-terminals) on MongoDB. `skipDuplicates: true` is now `{ onConflict: 'skip' }`, which you pass to [`createAll()`](#createall) or [`createAndCount()`](#createandcount) on PostgreSQL as a second argument.
+For Prisma ORM 7 users: `createMany` is `createAndCount()`, which returns the count as a number instead of `{ count }`, and `createManyAndReturn` is `createAll()`. In the same way, `updateMany` is `updateAndCount()` and `updateManyAndReturn` is `updateAll()`. `deleteMany` is `deleteAndCount()`, and `deleteAll()` returns the deleted rows, which no Prisma ORM 7 method did. `count` is [`aggregate()`](#grouped-aggregates) on PostgreSQL, or the two steps shown under [Read methods](#read-terminals) on MongoDB. `skipDuplicates: true` is now `{ onConflict: 'skip' }`, which you pass to [`createAll()`](#createall) or [`createAndCount()`](#createandcount) on PostgreSQL as a second argument.
 
 To catch one of the errors named below, wrap the call in `try` and `catch`, then compare `error.code` with the string given here. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data). On MongoDB, a write method rejects a chain that already has `orderBy()`, `limit()`, or `offset()` on it, and every write except `updateAll()` and `deleteAll()` also rejects `include()`. Both throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. For grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
 
@@ -1013,8 +1013,8 @@ Insert multiple rows and return them.
 - On PostgreSQL every row is inserted by one statement before the first row reaches you. Stopping the loop early does not undo an insert.
 - To skip each row that would break a unique constraint, instead of failing the whole insert, pass `{ onConflict: 'skip' }` as the second argument. The result then holds only the rows the database wrote. This replaces `skipDuplicates: true` from Prisma ORM 7.
 - `onConflict` works on PostgreSQL, and on SQLite through the experimental `@prisma/orm-sqlite` package. On MongoDB, `createAll()` takes only the rows, so a second argument is a type error.
-- By default, a row is skipped when it breaks any unique constraint. To check only one constraint, list its fields in `conflictOn`. In the example schema, `Tag.label` is unique, so `conflictOn: ['label']` skips a tag whose label already exists.
-- `onConflict` does not work on a variant stored in its own table, such as `Bug`, which maps to `bug` while its base model `Task` maps to `task`. Passing it there throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`.
+- By default, a row is skipped when it breaks any unique constraint. To check only one constraint, list its fields in `conflictOn`. In the example schema, `Tag.label` is unique, so `conflictOn: ['label']` skips a tag whose label already exists. A row that breaks a different unique constraint is then not skipped: the database rejects it, and the whole insert fails, so no row is written.
+- `onConflict` does not work on a variant stored in its own table, such as `Bug`, which maps to `bug` while its base model `Task` maps to `task`. Passing it there throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. For such a variant, call `createAll()` with only the rows. A row that breaks a unique constraint then makes the call fail instead of being skipped.
 - If your contract was emitted before `8.0.0-rc.12`, run `npx prisma contract emit` again before you use `onConflict`. Otherwise the call throws an error whose `code` is `ORM.CAPABILITY_MISSING`.
 
 #### Options
@@ -1694,7 +1694,7 @@ Comparison methods on a field.
 - `eq`, `neq`, `in`, and `notIn` are on a field whose values can be compared for equality.
 - `gt`, `lt`, `gte`, and `lte` are on a field whose values can be ordered.
 - `like` and `ilike` are on a text field.
-- `String` fields and enums stored as text have all of them. A [native enum](#example-schema) field, typed `pg.enum(...)` in the contract, has all but `like` and `ilike`, because PostgreSQL has no pattern match for an `enum` type. `Uuid` and `DateTime` have all but `like` and `ilike`. A `Boolean` field has only the equality methods, `isNull()`, and `isNotNull()`. A `Json` field has only `isNull()` and `isNotNull()`.
+- `String` fields and text-backed enums have all of them. A [native enum](#example-schema) field, typed `pg.enum(...)` in the contract, has all but `like` and `ilike`, because PostgreSQL has no pattern match for an `enum` type. `Int`, `BigInt`, `Float`, `Decimal`, `Uuid`, and `DateTime` fields also have all but `like` and `ilike`. A `Boolean` field has only the equality methods, `isNull()`, and `isNotNull()`. A `Json` field has only `isNull()` and `isNotNull()`.
 - `like()` matches a SQL pattern case-sensitively. `ilike()` matches the same pattern case-insensitively.
 - `in([])` matches no rows. `notIn([])` matches every row.
 
@@ -1749,17 +1749,29 @@ PostgreSQL full-text search on a text field.
 
 - PostgreSQL. A text field has `fullTextMatches(query, options?)` to filter and `fullTextRank(query, options?)` to sort by relevance.
 - The [SQL query builder](/orm/reference/sql-query-builder) has both, as `fns.fullTextMatches(column, query)` and `fns.fullTextRank(column, query)`. It also has `fns.fullTextHeadline(column, query)`, which returns the matching text with each match marked. Use the SQL query builder when you want that text in your results, because the ORM's `select()` takes only field names.
-- The `query` argument is a parsed search query, which PostgreSQL calls a `tsquery`. Passing a plain string is a type error. Build the query with one of these functions from `@prisma/orm-postgres/target/full-text`: `websearchToTsquery(text)` reads text the way a web search box does, with quotes around a phrase, `or`, and `-` before a word to leave it out. `plaintoTsquery(text)` requires every word, and `phrasetoTsquery(text)` requires the words in order.
+- The `query` argument is a parsed search query, which PostgreSQL calls a `tsquery`. Passing a plain string is a type error. Build the query with one of these functions from `@prisma/orm-postgres/target/full-text`: `websearchToTsquery(text)` reads text the way a web search box does: the user puts a phrase in quotes, writes `or` between choices, and puts `-` before a word to leave it out. `plaintoTsquery(text)` requires every word, and `phrasetoTsquery(text)` requires the words in order.
 - `toTsquery(text)` reads PostgreSQL's own search syntax, in which `&` means and, `|` means or, `!` means not, and `:*` after a word matches any word that starts with it. Text that breaks this syntax makes the query fail when it runs, so never pass user input to `toTsquery()`.
-- To add an operator to user text, such as `:*` for a prefix match while the user types, use the `tsquery` template tag from the same package: `` tsquery`${term}:*` ``. The tag puts each interpolated value in quotes as one search term, so the user's text cannot add operators of its own. Do not put quotes around the interpolation yourself.
-- `language` is the language whose rules PostgreSQL uses to match words, so that in `english` a search for `run` also finds `running`. It defaults to `english`. The method and the parser each take `language`, so pass the same value to both. The tag takes it as `` tsquery({ language: 'german' })`${input}:*` ``.
+- To add an operator to user text, such as `:*` for a prefix match while the user types, use the `tsquery` template tag from the same package: `` tsquery`${term}:*` ``. Text inside `${}` is searched as plain words, so the user's text cannot add operators of its own. When it holds several words, they must appear next to each other and in that order, and `:*` applies to each word, so `` tsquery`${'new y'}:*` `` finds `new` followed by a word that starts with `y`. Do not put quotes around the `${}` yourself.
+- `language` is the language whose rules PostgreSQL uses to match words, so that in `english` a search for `run` also finds `running`. It defaults to `english`. Pass the same `language` to `fullTextMatches()` or `fullTextRank()` and to the function that builds the query, as in the example below. The tag takes it as `` tsquery({ language: 'german' })`${input}:*` ``.
 
   ```typescript
   const q = websearchToTsquery(input, { language: 'german' });
   const posts = await db.orm.public.Post.where((p) => p.title.fullTextMatches(q, { language: 'german' })).all();
   ```
 
-- Add [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) to the model, with the same `language`, so PostgreSQL can use an index for the search. Without it the query still works, but PostgreSQL reads every row.
+- Add [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) to the model, with the same `language`, so PostgreSQL can use an index for the search. Without it the query still works, but PostgreSQL reads every row. The attribute takes the one field to index and a `name:` for the index:
+
+  ```prisma title="src/prisma/contract.prisma (excerpt)"
+  model Post {
+    id    Uuid   @id @default(uuid())
+    title String
+
+    @@fullTextIndex([title], name: "post_title_search", language: "german")
+    @@map("post")
+  }
+  ```
+
+  Then run `npx prisma contract emit` and create the index the way you apply any other contract change: `npx prisma db update` while you are iterating, or `npx prisma migration plan` followed by `npx prisma db migrate`. See [How migrations work](/orm/migrations/how-migrations-work).
 - A native enum field, typed `pg.enum(...)` in the contract, has no full-text operations.
 
 #### Options

@@ -25,7 +25,7 @@ npx prisma migration new --name split-name
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
-`migration new` refuses `--from` when `migrations/app/` has no migrations, and refuses a prefix that matches more than one migration. Run `npx prisma migration list` to see the hashes of your migrations.
+`migration new --from` takes only a hash or a unique prefix of one. Unlike [`migration plan --from`](/cli/migration-plan#options), it does not accept a migration directory name or a ref name. It refuses `--from` when `migrations/app/` has no migrations, and refuses a prefix that matches more than one migration. Run `npx prisma migration list` to see the hashes of your migrations.
 
 ## Where it starts
 
@@ -33,8 +33,8 @@ Without `--from`, `migration new` picks its starting point the way [`migration p
 
 - When the `db` ref exists and `migrations/app/` has migrations, it starts from the `db` ref.
 - When there are no migrations and no `db` ref, it starts from an empty database.
-- When migrations exist but there is no `db` ref, it refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. Pass `--from` with the `to` hash of the migration to build on, or point the `db` ref at the state your database is on with `npx prisma migration ref set db <contract>`, where `<contract>` is a hash or a migration directory name.
-- When the `db` ref exists but there are no migrations, it refuses with `MIGRATION.HASH_NOT_IN_GRAPH`. Run `migration plan` first: it writes a [baseline migration](/orm/migrations/the-migration-graph#baselines), a first migration from an empty database to the contract state the `db` ref names, and after that `migration new` can build on it.
+- When migrations exist but there is no `db` ref, it refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. Pass `--from` with the `to` hash of the migration to build on, or point the `db` ref at the state your database is on. To find that state, run `npx prisma migration status --db "$DATABASE_URL" --json`: the `currentContract` of the `app` entry in `result.spaces` is the hash of the contract state your database matches. Then run `npx prisma migration ref set db <contract>`, where `<contract>` is that hash or the directory name of the migration that ends at it.
+- When the `db` ref exists but there are no migrations, it refuses with `MIGRATION.HASH_NOT_IN_GRAPH`, because there is no migration yet that ends at the state the `db` ref names. Run `migration plan` first. It writes a [baseline migration](/orm/migrations/the-migration-graph#baselines), a migration from an empty database to that state, and then `migration new` can start from it. `migration plan` reads that state from the copy saved under `migrations/snapshots/` by the command that set the `db` ref, and if the copy is missing, it fails and asks you to restore `migrations/snapshots/` from version control.
 
 Before `8.0.0-rc.12`, `migration new` started from the newest migration. Scripts that relied on that should pass `--from` with the newest migration's `to` hash.
 

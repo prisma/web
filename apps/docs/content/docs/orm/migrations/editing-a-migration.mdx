@@ -40,7 +40,7 @@ to:         866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
-In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. `migration plan` writes the change as three steps rather than one, because the column is required and the table already has rows: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
+In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. `migration plan` writes the change as three steps rather than one, because rows that already exist need a value for the new required column: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
 
 ```ts title="migration.ts (as planned)"
 override get operations() {
@@ -153,7 +153,7 @@ The way out is to write the backfill against a contract of your own rather than 
 
 ## When a backfill reads a column the migration removes
 
-Sooner or later a backfill has to read a column that the same migration takes away. Suppose the next migration replaces the boolean `isAdmin` on `User` with a required text column, `role`. Change your contract, run `npx prisma contract emit`, and plan the migration as in the `displayName` example. The backfill reads `isAdmin` to decide each row's `role`, and that is where the trouble starts, because the end contract has no `isAdmin` and the start contract has no `role`. If you build `db` from the end contract, TypeScript rejects `f.isAdmin`, and recompiling fails with an error that does not name the column, so the cause is hard to spot.
+Sooner or later a backfill has to read a column that the same migration takes away. Suppose the next migration replaces the boolean `isAdmin` on `User` with a required text column, `role`. Change your contract, run `npx prisma contract emit`, and plan the migration with `npx prisma migration plan --name replace_is_admin`. The examples below use the directory that command printed, `migrations/app/20260708T0900_replace_is_admin`, and yours has a different timestamp. The backfill reads `isAdmin` to decide each row's `role`, and that is where the trouble starts, because the end contract has no `isAdmin` and the start contract has no `role`. If you build `db` from the end contract, TypeScript rejects `f.isAdmin`, and recompiling fails with an error that does not name the column, so the cause is hard to spot.
 
 What you need instead is a contract that describes the database as it is while the backfill runs, and you write that one yourself. Copy your whole contract into the migration directory as `intermediate.prisma`, then in its `User` model add `isAdmin` back and make `role` optional, because at that point no row has a `role` yet.
 
@@ -172,7 +172,7 @@ model User {
 
 Keep `// use prisma-8` as the first line of the copy. `contract emit` skips any `.prisma` file that does not start with it, and because `intermediate.prisma` is the only file in the intermediate contract, emitting it without that line fails with an error whose `code` is `CONTRACT.SOURCE_LOAD_FAILED`.
 
-In the same migration directory, add `intermediate.config.ts`, a second config file. Its `contract` is `intermediate.prisma`, and it has no `db` setting, because emitting a contract never connects to a database. `parent: false` makes the CLI use this file on its own. Without it, the CLI also loads your project's `prisma.config.ts` and adds that file's `orm` settings, such as `db`, to the ones written here:
+In the same migration directory, add `intermediate.config.ts`, a second config file. Its `contract` is `intermediate.prisma`, and it has no `db.connection`, because emitting a contract never connects to a database. `parent: false` keeps this config apart from your project's config. Without it, the CLI also reads your project's `prisma.config.ts`, because that file is in a directory above this one, and takes from it every `orm` setting this file leaves out, such as `db.connection`:
 
 ```ts title="intermediate.config.ts"
 import { definePrismaConfig } from 'prisma/config';
@@ -180,7 +180,7 @@ import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 export default definePrismaConfig({ parent: false, orm: ormConfig({ contract: './intermediate.prisma' }) });
 ```
 
-Emit the intermediate contract with `--config` pointing at that file. A relative path in a config file resolves from the directory of that file, so `./intermediate.prisma` is found wherever you run the command from:
+Emit the intermediate contract with `--config` pointing at that file. Run this from your project root, because the `--config` path starts there. The `./intermediate.prisma` path inside the config resolves from the directory the config file is in, so it names the copy in the migration directory:
 
 ```bash
 npx prisma contract emit --config migrations/app/20260708T0900_replace_is_admin/intermediate.config.ts
@@ -198,14 +198,14 @@ The command writes `intermediate.json` and `intermediate.d.ts` next to `intermed
 └── ops.json
 ```
 
-Now fill in this migration's own planned `migration.ts`, rather than copying the `displayName` file, whose snapshot imports point at other contracts. The listing below builds `db` from the intermediate contract and passes that same contract to `dataTransform`, and those two have to be the same contract: if you pass a different one, `node migration.ts` fails with an error whose `code` is `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`. The listing also moves the planned `dropColumn` for `isAdmin` to after the backfill, so `isAdmin` is still there when the backfill reads it, and its two `run` callbacks run in the order you list them, so the second one sets `member` only on the rows the first one left empty.
+Now fill in this migration's own planned `migration.ts`, rather than copying the `displayName` file, whose snapshot imports point at other contracts. In the listing, `<start hash>` and `<end hash>` stand for the hashes your planned file already imports, so keep those imports as they are. The listing below builds `db` from the intermediate contract and passes that same contract to `dataTransform`, and those two have to be the same contract: if you pass a different one, `node migration.ts` fails with an error whose `code` is `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`. The listing also moves the planned `dropColumn` for `isAdmin` to after the backfill, so `isAdmin` is still there when the backfill reads it, and its two `run` callbacks run in the order you list them, so the second one sets `member` only on the rows the first one left empty.
 
 ```ts title="migration.ts (filled in)"
 #!/usr/bin/env -S node
 import type { Contract as End } from '../../snapshots/<end hash>/contract';
 import endContractJson from '../../snapshots/<end hash>/contract.json' with { type: 'json' };
-import type { Contract as Start } from '../../snapshots/866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484/contract';
-import startContractJson from '../../snapshots/866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484/contract.json' with { type: 'json' };
+import type { Contract as Start } from '../../snapshots/<start hash>/contract';
+import startContractJson from '../../snapshots/<start hash>/contract.json' with { type: 'json' };
 import type { Contract as Mid } from './intermediate';
 import midContractJson from './intermediate.json' with { type: 'json' };
 import { Migration, MigrationCLI, col } from '@prisma/orm-postgres/migration';
@@ -296,11 +296,15 @@ override get operations() {
 
 Not every migration comes from a contract change. When you want a data-only migration, which changes rows and leaves your contract state as it is, or a migration you intend to write entirely by hand, run `npx prisma migration new`. It writes an empty `ops.json`, a `migration.json`, and a `migration.ts` that already has the snapshot imports, the class, and an empty `operations` array. Nothing was planned for you, so there is no `placeholder` import to remove, but you do have to add the `@prisma/orm-postgres` imports and the `endContract`, `stack`, and `db` statements from the filled-in `displayName` listing.
 
-`migration new` always ends at the contract state in your `contract.json`, and a data-only migration starts there too, so you pass that state's hash with `--from`. If you leave `--from` off, `migration new` starts from the `db` ref, and when the ref already names your current contract, as it does after `npx prisma db migrate --advance-ref db`, the command stops with an error whose `code` is `MIGRATION.NO_CHANGES`. `--from` takes the contract hash in the `to` field of an existing migration's `migration.json`, or the first few characters of it. To find your current contract's hash, run `npx prisma migration graph` and look for the row labelled `@contract`. It shows the first 7 characters of the hash, and you can pass those to `--from`. The [`migration new` reference](/cli/migration-new) lists the rest of the options:
+`migration new` always ends at the contract state in your `contract.json`, and a data-only migration starts there too, so you pass that state's hash with `--from`. `--from` takes the contract hash in the `to` field of an existing migration's `migration.json`, or any start of that hash that matches only one migration's `to` hash.
+
+To find your current contract's hash, run `npx prisma migration graph` and look for the row labelled `@contract`. It shows the first 7 characters of the hash, and you can pass those 7 characters to `--from`. The [`migration new` reference](/cli/migration-new) lists the rest of the options:
 
 ```npm
 npx prisma migration new --name backfill_scores --from <hash>
 ```
+
+If you leave `--from` off, `migration new` starts from the `db` ref, and after `npx prisma db migrate --advance-ref db` that ref names your current contract, so the migration would start and end at the same state. `migration new` refuses that case only when you leave `--from` off: it stops with an error whose `code` is `MIGRATION.NO_CHANGES`, which tells you to change your contract first, or to pass `--from` if you want a data-only migration. Passing the same hash with `--from` is how you tell it that starting and ending at the same state is what you want.
 
 Write your operations in the new `migration.ts` and recompile it. Until you do, the migration is still the empty one the command wrote, so `npx prisma migration check` and `npx prisma migration plan` both fail.
 

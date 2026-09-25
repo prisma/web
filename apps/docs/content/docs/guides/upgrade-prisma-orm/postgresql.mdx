@@ -14,7 +14,7 @@ The guide covers **PostgreSQL only**. Guidance for other databases will follow. 
 
 :::info
 
-This guide targets `prisma@latest`, `@prisma/orm-postgres@8.0.0-rc.12`, and `@prisma/prisma7@7.10.0`, and the example app in step 1.1 starts on Prisma ORM 7.10.0. `prisma@latest` is the Prisma ORM 8 CLI, `8.0.0-rc.17` at the time of writing. It is versioned and released separately from the ORM packages, so its version number will not match theirs. It installs `@prisma/cli-engine@0.6.1` as its own dependency, so you do not install that package yourself.
+Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` at `8.0.0-rc.17` and `@prisma/orm-postgres` at `8.0.0-rc.12`. The CLI is released separately from the ORM packages, so its version number will not match theirs. Prisma ORM 7 stays at `7.10.0`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.0`.
 
 :::
 
@@ -259,17 +259,9 @@ Both configs point at the **same** `DATABASE_URL`. Everything else is separate:
 
 Because the config carries the connection, the Prisma ORM 8 CLI commands below don't need a `--db` flag.
 
-### 2.3. Infer the contract from the live database
-
-Prisma ORM 8 describes your schema as a [contract](/orm/contract-authoring/the-data-contract). Generate it from the database Prisma ORM 7 built:
-
-```npm
-npx prisma contract infer --output prisma8/contract.prisma
-```
-
 :::tip[Read the Prisma ORM 7 schema instead]
 
-Prisma ORM 8 can also read `prisma/schema.prisma` directly as its contract, so you keep one schema file while Prisma ORM 7 owns migrations. On this path `schema.prisma` does not need a `// use prisma-8` line. Skip steps 2.3 and 2.4, and change two lines in `prisma.config.ts`:
+Instead of generating a contract file in steps 2.3 and 2.4, Prisma ORM 8 can read `prisma/schema.prisma` directly as its contract, so you keep one schema file while Prisma ORM 7 owns migrations. `schema.prisma` does not need the `// use prisma-8` first line that a contract file written for Prisma ORM 8 starts with (step 2.4 shows one). Skip steps 2.3 and 2.4, and change two lines in the `prisma.config.ts` you just wrote:
 
 ```typescript title="prisma.config.ts"
 import "dotenv/config";
@@ -289,13 +281,27 @@ export default definePrismaConfig({
 });
 ```
 
-After step 2.5, run `npx prisma db sign`, which checks that the database matches the contract Prisma ORM 8 read from `schema.prisma` and records in the database that it does. Step 4.1 describes `db sign` in full. Because Prisma ORM 7 keeps changing the database on this path, run `npx prisma contract emit` and then `npx prisma db sign` again after each `prisma7 migrate dev`. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read.
+After step 2.5, run `npx prisma db sign`. [`db sign`](/cli/db-sign) checks that the database matches the contract Prisma ORM 8 read from `schema.prisma` and records in the database that it does. On this path it does not hand migrations to Prisma ORM 8: Prisma ORM 7 keeps planning and applying them, so after each `prisma7 migrate dev`, run `npx prisma contract emit` and then `npx prisma db sign` again. If you emit without signing, the Prisma ORM 8 client still runs queries, but `npx prisma db verify` reports that the contract no longer matches the one recorded in the database. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read.
 
-If you have not started phase 1 yet, [`prisma orm init --from-prisma7-schema prisma/schema.prisma`](/cli/orm-init#on-a-prisma-orm-7-project) does phase 1 and this setup in one command.
+If you have not started phase 1 yet, one command does phase 1 and this setup for you:
 
-Phase 4 is written for the inferred `prisma8/contract.prisma`, and does not yet cover a project that reads `schema.prisma` through `prisma7Schema(...)`.
+```npm
+npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
+```
+
+Write `prisma@latest`, because in a Prisma ORM 7 project `npx prisma` runs version 7. The command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with phase 3, using the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
+
+On this path, stop after phase 3: you can move every route to Prisma ORM 8, but Prisma ORM 7 keeps owning migrations, because phase 4 is written for the inferred `prisma8/contract.prisma` and does not yet cover a project that reads `schema.prisma` through `prisma7Schema(...)`.
 
 :::
+
+### 2.3. Infer the contract from the live database
+
+Prisma ORM 8 describes your schema as a [contract](/orm/contract-authoring/the-data-contract). Generate it from the database Prisma ORM 7 built:
+
+```npm
+npx prisma contract infer --output prisma8/contract.prisma
+```
 
 ### 2.4. Edit the inferred contract
 
@@ -328,7 +334,7 @@ model Post {
 }
 ```
 
-Keep `// use prisma-8` as the first line of `prisma8/contract.prisma`, because `contract emit` reads only the `.prisma` files that start with it. A `schema.prisma` that Prisma ORM 8 reads through `prisma7Schema(...)`, as in the tip under step 2.3, does not need the line.
+Keep `// use prisma-8` as the first line of `prisma8/contract.prisma`. `contract emit` reads only `.prisma` files that start with this line, and this is the only file in your contract, so without it `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`. A `schema.prisma` that Prisma ORM 8 reads through `prisma7Schema(...)`, as in the tip at the end of step 2.2, does not need the line.
 
 ### 2.5. Emit the contract artifacts
 
@@ -340,7 +346,7 @@ npx prisma contract emit
 
 ### 2.6. Include the generated types
 
-The Prisma ORM 8 client imports `contract.json` with the `with { type: "json" }` import attribute. This syntax requires TypeScript 5.3 or later and a `module` setting that supports import attributes. The example project uses `"module": "nodenext"`, which supports them. `"esnext"` with `"moduleResolution": "bundler"` also works.
+The Prisma ORM 8 client imports `contract.json` with the `with { type: "json" }` import attribute, so besides TypeScript 5.9 from the prerequisites, you need a `module` setting that supports import attributes. The example project uses `"module": "nodenext"`, which supports them. `"esnext"` with `"moduleResolution": "bundler"` also works.
 
 Enable `resolveJsonModule` so TypeScript types the imported JSON, and include the generated declarations in the program:
 

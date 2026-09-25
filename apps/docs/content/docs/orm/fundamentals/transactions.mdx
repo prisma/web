@@ -119,8 +119,22 @@ await db.transaction(async (tx) => {
 });
 ```
 
-Under `tx.sql.public`, unlike under `tx.orm.public`, the property name is the table name: the model's `@@map` value, or the model name exactly as written when the model has no `@@map`. So the model `Post` is `tx.sql.public.Post`, and a model with `@@map("post")` is `tx.sql.public.post`.
+`tx.orm` takes the model name and `tx.sql` takes the table name, which is the model's `@@map` value, or the model name exactly as written when the model has no `@@map`. So the model `Post` is `tx.sql.public.Post`, and a model with `@@map("post")` is `tx.sql.public.post`.
+
 The other difference from `tx.orm` is that you chain clauses and then call `.build()` to finish the query: `.build()` returns the query without running it, and `tx.execute(...)` runs it and returns `{ affectedRows }`, the number of rows it changed. The `.where(...)` callback receives two arguments: `f` holds the columns, and `fns` holds the operators (`lt` is less-than). [Advanced queries](/orm/fundamentals/advanced-queries#build-a-query-and-run-it) covers both.
+
+To read rows, build a `SELECT` on `tx.sql` the same way and run it with `tx.query(...)`, which resolves to an array of rows:
+
+```typescript
+await db.transaction(async (tx) => {
+  const query = tx.sql.public.Post
+    .select("id", "title")
+    .where((f, fns) => fns.eq(f.published, false))
+    .limit(10)
+    .build();
+  const drafts = await tx.query(query);
+});
+```
 
 ## Transactions on MongoDB
 
@@ -182,6 +196,8 @@ model User {
   @@map("users")
 }
 ```
+
+The `id` field has no `@default` because you never pass it: when you insert a document without an `_id`, MongoDB assigns one, and `insertOne` returns it as `insertedId`, which the example uses as the post's `authorId`.
 
 Writes you make through the driver skip the type-checking that Prisma ORM queries get, so put each driver transaction in its own small function, and write everything around it as Prisma ORM queries.
 
