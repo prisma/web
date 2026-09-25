@@ -69,7 +69,11 @@ const IN_VIEW = { margin: "0px 0px -20% 0px" } as const;
 // Prisma Compute — versioned deployments, the newest live; the compute as a 3D
 // chip that glows and sparkles, the brand ray masking in through it, the code
 // lines loading and a caret blinking on `git push`.
-export function ComputeIllustration() {
+//
+// `compact` fits the illustration into a narrow column (the /platform product
+// cards) instead of the homepage's half-page cell: a fixed frame height rather
+// than stretching to the row, tighter padding, and a smaller chip.
+export function ComputeIllustration({ compact = false }: { compact?: boolean } = {}) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, IN_VIEW);
@@ -79,7 +83,10 @@ export function ComputeIllustration() {
     <div
       ref={ref}
       aria-hidden
-      className="relative flex min-h-[22rem] select-none items-stretch justify-center overflow-hidden p-8 lg:min-h-full"
+      className={cn(
+        "relative flex select-none items-stretch justify-center overflow-hidden",
+        compact ? "h-[20rem] p-5" : "min-h-[22rem] p-8 lg:min-h-full",
+      )}
     >
       {/* ray backdrop — saturation boosted (bold pass) on its own layer so the
           filter doesn't touch the card content */}
@@ -163,7 +170,12 @@ export function ComputeIllustration() {
         </div>
 
         {/* the compute chip — glows and sparkles */}
-        <div className="absolute left-[70%] top-[53%] w-40 -translate-x-1/2 -translate-y-1/2 max-md:hidden">
+        <div
+          className={cn(
+            "absolute left-[70%] top-[53%] -translate-x-1/2 -translate-y-1/2 max-md:hidden",
+            compact ? "w-28" : "w-40",
+          )}
+        >
           <motion.div
             aria-hidden
             className="pointer-events-none absolute inset-[-18%] rounded-full"

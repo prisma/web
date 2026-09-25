@@ -60,9 +60,9 @@ export function productH1(content: ProductPageContent): string {
   return content.hero.headline;
 }
 
-/** The paragraph directly under the h1. */
+/** The paragraph(s) directly under the h1. Use-case pages carry two, stacked. */
 export function productSubheadline(content: ProductPageContent): string {
-  return content.hero.subheadline;
+  return [content.hero.subheadline].flat().join("\n\n");
 }
 
 export function renderProductMarkdown({

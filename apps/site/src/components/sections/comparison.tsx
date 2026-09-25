@@ -2,6 +2,7 @@ import { CheckBold, X } from "@/components/icons/forma";
 import { Pattern } from "@/components/brand/pattern";
 import { Reveal } from "@/components/motion/reveal";
 import { BrokenCard, LiveCard } from "@/components/sections/comparison-cards";
+import { cn } from "@/lib/utils";
 
 const BEFORE = [
   "A database from Neon, an ORM from Drizzle, hosting from Vercel",
@@ -19,16 +20,42 @@ const AFTER = [
   "Spend limits on every paid tier, so your bill stops where you tell it to",
 ];
 
+type ComparisonProps = {
+  heading?: React.ReactNode;
+  before?: readonly string[];
+  after?: readonly string[];
+  /**
+   * The two mini deploy cards. On by default — they are the section's whole
+   * point on the homepage. Use-case pages turn them off: the cards illustrate
+   * *the platform's* broken/live moment, and repeating them on every use case
+   * would show the same abstraction three or four times across the site
+   * (André, 2026-08-13).
+   */
+  cards?: boolean;
+};
+
 // Before/after: two columns, each led by a mini deploy card — the same
 // moment, broken on the left, alive on the right. Card microcopy is
 // decorative UI illustration (same idiom as ConsoleIllustration).
-export function Comparison() {
+//
+// Defaults are the homepage set; pass copy to reuse the layout elsewhere
+// (see use-case/use-case-page.tsx), the same way Faq and CtaBurst are reused.
+export function Comparison({
+  heading = "The stack your agent has been waiting for",
+  before = BEFORE,
+  after = AFTER,
+  cards = true,
+}: ComparisonProps = {}) {
+  // Without the cards the lists start directly under the column heading, so
+  // they take the heading's own rhythm instead of the card's clearance.
+  const listSpacing = cards ? "mt-10" : "mt-8";
+
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-site">
         <Reveal>
           <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
-            The stack your agent has been waiting for
+            {heading}
           </h2>
         </Reveal>
 
@@ -38,10 +65,10 @@ export function Comparison() {
             <h3 className="text-2xl text-muted-foreground sm:text-3xl">Before</h3>
 
             {/* broken deploy card — glass shatters into its current state */}
-            <BrokenCard />
+            {cards ? <BrokenCard /> : null}
 
-            <ul className="mt-10 flex flex-col gap-3">
-              {BEFORE.map((item) => (
+            <ul className={cn(listSpacing, "flex flex-col gap-3")}>
+              {before.map((item) => (
                 <li
                   key={item}
                   className="flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground"
@@ -71,10 +98,10 @@ export function Comparison() {
             <h3 className="text-2xl text-foreground sm:text-3xl">After</h3>
 
             {/* live deploy card — a cursor glides in and clicks Deploy preview */}
-            <LiveCard />
+            {cards ? <LiveCard /> : null}
 
-            <ul className="mt-10 flex flex-col gap-3">
-              {AFTER.map((item) => (
+            <ul className={cn(listSpacing, "flex flex-col gap-3")}>
+              {after.map((item) => (
                 <li
                   key={item}
                   className="flex items-start gap-3 text-pretty text-[0.9375rem] font-semibold leading-relaxed text-foreground"
