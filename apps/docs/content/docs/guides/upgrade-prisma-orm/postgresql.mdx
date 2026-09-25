@@ -14,7 +14,7 @@ The guide covers **PostgreSQL only**. Guidance for other databases will follow. 
 
 :::info
 
-This guide targets `prisma@latest`, `@prisma/orm-postgres@8.0.0-rc.12`, `@prisma/cli-engine@0.6.1`, and `@prisma/prisma7@7.10.0`, with a Prisma ORM 7 baseline on `7.9.1`. `prisma@latest` is the Prisma ORM 8 CLI, `8.0.0-rc.17` at the time of writing. It is versioned and released separately from the ORM packages, so its version number will not match theirs.
+This guide targets `prisma@latest`, `@prisma/orm-postgres@8.0.0-rc.12`, and `@prisma/prisma7@7.10.0`, and the example app in step 1.1 starts on Prisma ORM 7.10.0. `prisma@latest` is the Prisma ORM 8 CLI, `8.0.0-rc.17` at the time of writing. It is versioned and released separately from the ORM packages, so its version number will not match theirs. It installs `@prisma/cli-engine@0.6.1` as its own dependency, so you do not install that package yourself.
 
 :::
 
@@ -36,7 +36,7 @@ The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) rep
 
 - **Node.js 22.18 or newer (on the 24 line, 24.11 or newer)**; Node.js 24 recommended
 - A working **Prisma ORM 7** application on PostgreSQL: `prisma.config.ts`, the `prisma-client` generator, and a driver adapter
-- **TypeScript 5.3+** with `"strict": true` and a `module` setting that supports import attributes, such as `"nodenext"`
+- **TypeScript 5.9+** with `"strict": true` and a `module` setting that supports import attributes, such as `"nodenext"`
 
 ## 1. Prepare Prisma ORM 7 for side-by-side operation
 
@@ -228,7 +228,7 @@ After this install, `npx prisma <command>` runs the Prisma ORM 8 CLI and `npx pr
 npx prisma --version
 ```
 
-**Expected result:** `8.0.0-rc.17` (or newer). The CLI's version line is separate from `@prisma/orm-postgres`'s.
+**Expected result:** the command prints `8.0.0-rc.17` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
 
 ### 2.2. Create the Prisma ORM 8 config
 
@@ -269,17 +269,41 @@ npx prisma contract infer --output prisma8/contract.prisma
 
 :::tip[Read the Prisma ORM 7 schema instead]
 
-Prisma ORM 8 can also read `prisma/schema.prisma` directly, so you keep one schema file while Prisma ORM 7 owns migrations. Set `contract: prisma7Schema("prisma/schema.prisma")` in `prisma.config.ts`, with `prisma7Schema` imported from `@prisma/orm-postgres/config`, and skip steps 2.3 and 2.4. After each `prisma7 migrate dev`, run `npx prisma contract emit` and then `npx prisma db sign`. [`prisma orm init --from-prisma7-schema prisma/schema.prisma`](/cli/orm-init#on-a-prisma-orm-7-project) sets this up, and does phase 1 as well. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists what Prisma ORM 8 cannot read. The steps in phase 4 are written for the inferred `prisma8/contract.prisma`.
+Prisma ORM 8 can also read `prisma/schema.prisma` directly as its contract, so you keep one schema file while Prisma ORM 7 owns migrations. On this path `schema.prisma` does not need a `// use prisma-8` line. Skip steps 2.3 and 2.4, and change two lines in `prisma.config.ts`:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config"; // [!code --]
+import { defineConfig as definePostgresConfig, prisma7Schema } from "@prisma/orm-postgres/config"; // [!code ++]
+
+export default definePrismaConfig({
+  orm: definePostgresConfig({
+    contract: "prisma8/contract.prisma", // [!code --]
+    contract: prisma7Schema("prisma/schema.prisma"), // [!code ++]
+    output: "generated/prisma8",
+    db: {
+      connection: process.env["DATABASE_URL"],
+    },
+  }),
+});
+```
+
+After step 2.5, run `npx prisma db sign`, which checks that the database matches the contract Prisma ORM 8 read from `schema.prisma` and records in the database that it does. Step 4.1 describes `db sign` in full. Because Prisma ORM 7 keeps changing the database on this path, run `npx prisma contract emit` and then `npx prisma db sign` again after each `prisma7 migrate dev`. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read.
+
+If you have not started phase 1 yet, [`prisma orm init --from-prisma7-schema prisma/schema.prisma`](/cli/orm-init#on-a-prisma-orm-7-project) does phase 1 and this setup in one command.
+
+Phase 4 is written for the inferred `prisma8/contract.prisma`, and does not yet cover a project that reads `schema.prisma` through `prisma7Schema(...)`.
 
 :::
 
 ### 2.4. Edit the inferred contract
 
-Delete the `PrismaMigrations` model. `contract infer` picks up Prisma ORM 7's `_prisma_migrations` ledger table. Prisma ORM 8 must not manage it, and extra tables in the database are fine. Remove the whole model.
+`contract infer` reads every table in the database, so it also writes a `PrismaMigrations` model for `_prisma_migrations`, the table where Prisma ORM 7 records which migrations it has applied. Delete that model from the contract, because Prisma ORM 8 must not manage the table. The table itself stays in the database, and an extra table that the contract does not describe is fine.
 
-The models need no `@@map`. A model without `@@map` names its table exactly as written, so `User` reads and writes the `"User"` table that Prisma ORM 7 created.
+You do not need to add `@@map` to the other models: a model without `@@map` uses its name, exactly as written, as its table name, so `User` reads and writes the `"User"` table that Prisma ORM 7 created.
 
-The finished contract:
+After that edit, the contract looks like this:
 
 ```prisma title="prisma8/contract.prisma"
 // use prisma-8
@@ -304,7 +328,7 @@ model Post {
 }
 ```
 
-Keep `// use prisma-8` as the first line: `contract emit` reads only files that start with it.
+Keep `// use prisma-8` as the first line of `prisma8/contract.prisma`, because `contract emit` reads only the `.prisma` files that start with it. A `schema.prisma` that Prisma ORM 8 reads through `prisma7Schema(...)`, as in the tip under step 2.3, does not need the line.
 
 ### 2.5. Emit the contract artifacts
 

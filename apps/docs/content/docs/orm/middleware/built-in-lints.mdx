@@ -55,12 +55,13 @@ The rules are named after the SQL they are about, and you write your queries in 
 | `.all()` with no `.limit(...)` before it | `LINT.NO_LIMIT` |
 | `.first(...)` | none, because it adds `LIMIT 1` for you |
 | a query where you never called `.select(...)` | `LINT.SELECT_STAR` |
-| `deleteAll()` or `updateAll()` | none, because TypeScript makes you write `.where(...)` first |
+| `deleteAll()` or `updateAll()` after a `.where(...)` with a condition in it | none |
+| `deleteAll()` or `updateAll()` after `.where({})` | `LINT.DELETE_WITHOUT_WHERE` or `LINT.UPDATE_WITHOUT_WHERE` |
 | the query builder's `delete()` or `update()` with no `where()` | `LINT.DELETE_WITHOUT_WHERE` or `LINT.UPDATE_WITHOUT_WHERE` |
 
 So `await db.orm.public.User.limit(50).all()` sets off `LINT.SELECT_STAR`, while `await db.orm.public.User.select('id', 'email').limit(50).all()` does not. In `db.orm.public.User`, `public` is the PostgreSQL schema and `User` is your model name. The SQL query builder reaches the same table by its name in the database, as `db.sql.public.User`. The model and the table have the same name here because the model sets no `@@map`.
 
-This is the record `lints` builds for a `warn` finding: the code of the rule, a message, and the table the query touched.
+For a `warn` finding, `lints` builds the record below, with the code of the rule, a message, and the table the query touched, and passes it to the client's logger. The `postgres(...)` client has no logger you can set yet, as the note above says, so today the record is thrown away and you cannot see it anywhere.
 
 ```text title="Lint warning"
 warn {
@@ -157,7 +158,7 @@ Because these are searches through the text rather than checks on the structure 
 
 :::warning
 
-A severity you set in `severities` applies to a finding by its code wherever that finding came from, so it changes the raw defaults as well as the four rules. If you set `selectStar: 'warn'` to quiet the ORM-API rule, raw SQL's `select *` drops from `error` to `warn` along with it, and `select * from "User"` starts running instead of being blocked. To keep the ORM-API rule at `error` and still run a raw `select *`, give the code that runs it a `db` client of its own, in the way [Common gotchas](#common-gotchas) does for a backfill script.
+A severity you set in `severities` applies to a finding by its code wherever that finding came from, so it changes the raw defaults as well as the four rules. `selectStar` is `warn` by default for the ORM API and the SQL query builder, but `error` for raw SQL. So setting `selectStar: 'warn'` changes nothing for the ORM API, which is already at `warn`: its only effect is that raw SQL's `select *` drops from `error` to `warn`, and `select * from "User"` starts running instead of being blocked. Setting `selectStar: 'error'`, as under [Configure severities](#configure-severities), keeps a raw `select *` blocked. No setting makes the ORM-API rule `error` and lets a raw `select *` run, so if you need both, give the code that runs the raw `select *` a `db` client of its own, in the way [Common gotchas](#common-gotchas) does for a backfill script.
 
 :::
 
@@ -175,7 +176,15 @@ Sometimes you do mean to change every row, in a backfill script for example. `LI
 
 :::
 
-The first way is to write a `WHERE` clause that is true for every row, which states the intent in the query itself. In a query builder callback the first argument, `f`, has one property for each column, and the second, `fns`, holds the comparison helpers. Comparing a column to `null` gives you a null check rather than a comparison, so `fns.ne(f.id, null)` gives `id IS NOT NULL` and `fns.eq(f.id, null)` gives `id IS NULL`. On a table whose primary key is `id`, `IS NOT NULL` is true for every row:
+The first way is to write a `WHERE` clause that is true for every row, which states the intent in the query itself. On a table whose primary key is `id`, `id IS NOT NULL` is true for every row, and in the ORM API you write it with `isNotNull()`:
+
+```ts
+await db.orm.public.User.where((u) => u.id.isNotNull()).deleteAndCount();
+```
+
+An empty filter does not work for this. `.where({})` adds no condition, so `db.orm.public.User.where({}).deleteAll()` sends a `DELETE` with no `WHERE`, and `lints` blocks it with `LINT.DELETE_WITHOUT_WHERE`.
+
+With the SQL query builder, the callback's first argument, `f`, has one property for each column, and the second, `fns`, holds the comparison helpers. Comparing a column to `null` gives you a null check rather than a comparison, so `fns.ne(f.id, null)` gives `id IS NOT NULL` and `fns.eq(f.id, null)` gives `id IS NULL`:
 
 ```ts
 const plan = db.sql.public.User
@@ -185,7 +194,7 @@ const plan = db.sql.public.User
 await db.runtime().execute(plan);
 ```
 
-That delete passes the rule and runs, because the query has a `WHERE` clause and that is all `LINT.DELETE_WITHOUT_WHERE` looks for, so you can leave `lints` on its defaults in the script that runs it. An `UPDATE` takes the same shape, as in `db.sql.public.User.update({ name: 'x' }).where((f, fns) => fns.ne(f.id, null)).build()`.
+Both deletes pass the rule and run, because each query has a `WHERE` clause and that is all `LINT.DELETE_WITHOUT_WHERE` looks for, so you can leave `lints` on its defaults in the script that runs them. An `UPDATE` takes the same shape, as in `db.orm.public.User.where((u) => u.id.isNotNull()).updateAndCount({ name: 'x' })` or `db.sql.public.User.update({ name: 'x' }).where((f, fns) => fns.ne(f.id, null)).build()`.
 
 The second way is to build that script its own `db` client with the rule set to `warn`:
 

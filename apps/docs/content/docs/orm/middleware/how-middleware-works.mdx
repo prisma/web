@@ -208,7 +208,9 @@ The rows you return are plain objects, keyed by the column aliases in the SQL, h
 { id: 3, email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
 ```
 
-So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Rows you return go through the same conversion as rows from the database, so a caller on the ORM API gets the types its contract says it should, even though you returned a string. This is how the cache serves repeated reads. Anything you checked in a before-hook has already run by the time either hook is called.
+So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database, so a `createdAt` you return as a string reaches a caller on the ORM API as the type its contract gives `createdAt`, not as a string. This is how the cache serves repeated reads.
+
+Before-hooks still run on a query that an intercept hook answers, because every middleware's before-hooks run before any intercept hook, whatever order you list the middleware in. So in the setup at the top of this page, where the cache comes first in the array, `lints` still checks every query before the cache answers it.
 
 ### onRow: watch rows arrive
 

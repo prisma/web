@@ -6,7 +6,7 @@ metaTitle: Prisma ORM CLI configuration
 metaDescription: 'Learn how Prisma ORM CLI commands find config, read database URLs, and format output.'
 ---
 
-Prisma ORM CLI commands read `prisma.config.ts`, starting in the directory you run them from. The file has one section per part of the CLI. The Prisma ORM data commands read the `orm` section; the [agent skills commands](/cli/skills) read the `skills` section.
+Prisma ORM CLI commands read `prisma.config.ts`, starting in the directory you run them from. The file has one section per part of the CLI. The `contract`, `db`, and `migration` commands read the `orm` section, and the [agent skills commands](/cli/skills) read the `skills` section.
 
 ## Config file
 
@@ -27,9 +27,9 @@ export default definePrismaConfig({
 });
 ```
 
-For MongoDB projects, import the section helper from `@prisma/orm-mongo/config` instead. The `defineConfig` you import from `@prisma/orm-postgres/config` or `@prisma/orm-mongo/config` keeps its name.
+For MongoDB projects, import the section helper from `@prisma/orm-mongo/config` instead. Both packages export this helper as `defineConfig`, and the examples on this page rename it to `ormConfig` when they import it.
 
-`defineConfig` from `@prisma/cli-engine` was the former name of `definePrismaConfig`, and `@prisma/cli-engine` 0.6.1 removed it. A config scaffolded by an earlier release candidate that imports it fails to load. Import `definePrismaConfig` instead, and call it in place of `defineConfig`.
+If you set up Prisma ORM 8 with a release candidate before `8.0.0-rc.12`, your config may import `defineConfig` from `@prisma/cli-engine`, the package the `prisma` CLI is built on. That was the old name of `definePrismaConfig`, and `@prisma/cli-engine` 0.6.1, which `8.0.0-rc.12` requires, no longer exports it, so the config fails to load. Import `definePrismaConfig` in its place and call it where you called `defineConfig`. You can import it from `prisma/config` or from `@prisma/cli-engine`, because `prisma/config` re-exports the same function.
 
 [`orm init`](/cli/orm-init) writes this file for you. Pass `--config` when your config file is not in the directory you run the command from:
 
@@ -39,7 +39,9 @@ npx prisma contract emit --config ./config/prisma.config.ts
 
 ## How the CLI finds the config
 
-The CLI looks for `prisma.config.ts` in the current directory, or starts from the file you pass to `--config`. It then looks in each parent directory, up to the root of the repository, which is the first directory that has a `.git` entry. It merges every `prisma.config.ts` it finds key by key, and where two files set the same key, the one nearest to the starting point wins.
+The CLI looks for `prisma.config.ts` in the current directory, or starts from the file you pass to `--config`. It then looks in each parent directory, up to the root of the repository, which is the first directory that has a `.git` entry. If neither the starting directory nor any directory above it has a `.git` entry, the CLI reads only the first file.
+
+The CLI combines the files it finds one section at a time. Inside a section such as `orm`, each top-level key, such as `contract`, `db`, or `migrations`, comes whole from the nearest file that sets it, and the keys nested inside it are not combined. So if a config higher up sets `db.connection` and your project's config sets only `contract`, the CLI uses your `contract` and the other file's `db`. `ormConfig` always sets `extensions`, to an empty list when you leave it out, so a project's `ormConfig` replaces any extension list set higher up.
 
 A project inside a larger repository therefore inherits any setting its own config leaves out from a `prisma.config.ts` higher up. To stop that, add `parent: false` to the project's config. The search then ends at that file:
 
@@ -55,7 +57,19 @@ export default definePrismaConfig({
 });
 ```
 
-`parent` also takes a path, which names the next config file to read instead of the one in the parent directory.
+`parent` can also be a path to another config file, which the CLI reads next in place of the one in the parent directory. The path is relative to the directory of the config file that sets it, and it may point outside the repository. After reading that file, the CLI goes on to search the directories above it in the usual way, unless that file sets `parent` too:
+
+```typescript title="prisma.config.ts"
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+
+export default definePrismaConfig({
+  parent: "../shared/prisma.config.ts",
+  orm: ormConfig({
+    contract: "./prisma/contract.prisma",
+  }),
+});
+```
 
 A relative path in a config file, such as `contract`, `output`, or `migrations.dir`, resolves from the directory of the config file that sets it, not from the directory you run the command in. So `--config ./config/prisma.config.ts` with `contract: "./prisma/contract.prisma"` reads `./config/prisma/contract.prisma`.
 
@@ -97,9 +111,9 @@ export default definePrismaConfig({
 });
 ```
 
-`prisma7Schema` takes one schema file, or a directory of `.prisma` files as Prisma ORM 7 reads it. `contract emit` writes `contract.json` and `contract.d.ts` into the directory that holds the schema, here `prisma/`, unless you set `output`. Prisma ORM 7 keeps owning the database and its migrations: after each `prisma7 migrate dev` or `prisma7 migrate deploy`, run `npx prisma contract emit` and then `npx prisma db sign`.
+`prisma7Schema` takes one schema file, or a directory of `.prisma` files as Prisma ORM 7 reads it. `contract emit` writes `contract.json` and `contract.d.ts` into the directory that holds the schema, here `prisma/`, unless you set `output`. Prisma ORM 7 keeps owning the database and its migrations, and you run its commands as `prisma7`, the Prisma ORM 7 CLI that [`orm init --from-prisma7-schema`](/cli/orm-init#on-a-prisma-orm-7-project) installs next to Prisma ORM 8. After each Prisma ORM 7 migration, whether you ran `npx prisma7 migrate dev` or `npx prisma7 migrate deploy`, run `npx prisma contract emit` and then [`npx prisma db sign`](/cli/db-sign). `db sign` checks that the database matches the contract and then records that in the database, without changing your tables.
 
-Prisma ORM 8 describes each part of the schema exactly or refuses it. A part it cannot describe, such as a `view` block, `Unsupported(...)`, or `relationMode = "prisma"`, fails `contract emit` with an error that names the file, the line, and a Prisma ORM 7 edit that removes it. [`orm init --from-prisma7-schema`](/cli/orm-init#on-a-prisma-orm-7-project) writes this config for you.
+`contract emit` fails on any part of the schema that Prisma ORM 8 cannot represent exactly, such as a `view` block, `Unsupported(...)`, or `relationMode = "prisma"`. The error names the file and the line, and says how to change the Prisma ORM 7 schema so that the part is gone. Prisma ORM 8 has no views, so for a `view` block the error suggests removing the view or replacing it with a model over the table the view reads. `orm init --from-prisma7-schema` writes this config for you.
 
 ## Emit-only config
 

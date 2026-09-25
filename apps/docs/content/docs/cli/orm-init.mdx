@@ -43,7 +43,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 The exact files depend on the target and authoring style, but a Postgres PSL setup normally includes:
 
 - `prisma.config.ts`
-- a starter contract file such as `src/prisma/contract.prisma`, whose first line is `// use prisma-8`
+- a starter contract file such as `src/prisma/contract.prisma`, whose first line is `// use prisma-8`. Keep that line, because `contract emit` reads only `.prisma` files that start with it.
 - emitted contract artifacts after installation runs
 - a runtime client file (`src/prisma/db.ts`) that imports `contract.json`
 - `.env.example`, `tsconfig.json`, and updated `package.json`
@@ -65,14 +65,18 @@ npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 
 A plain `orm init` offers the same setup when it finds a Prisma ORM 7 config, or a `prisma/schema.prisma` with a `datasource` block. The database target comes from the schema's `datasource` provider, and a `--target` that disagrees with it fails with `CLI.INIT_PRISMA7_TARGET_MISMATCH`.
 
-Before it changes any file, `orm init` installs `@prisma/orm-postgres` and checks that Prisma ORM 8 can read the schema. A schema it cannot read, for example one with a `view` block, stops the command with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`, which lists each problem with its line and the Prisma ORM 7 edit that removes it. Then it asks for consent, which `--confirm <directory>` gives in a script, and:
+First, `orm init` installs `@prisma/orm-postgres` and `dotenv`, adding them to `package.json` if they are not there yet, and uses the installed package to check that Prisma ORM 8 can read the schema. Apart from that install, it changes nothing until the check passes. A schema it cannot read, for example one with a `view` block, stops the command with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`, which lists each problem with its line and the Prisma ORM 7 edit that removes it, and gives the command that removes the packages it just added.
+
+When the check passes, `orm init` asks you to confirm by typing the name of the directory you run it in. In a script, pass that name instead, for example `--confirm my-app`. Then it:
 
 - renames the Prisma ORM 7 config to `prisma7.config.ts` and points its import at `@prisma/prisma7/config`
 - changes every `package.json` script that runs `prisma` to run `prisma7`
-- installs Prisma ORM 7 as `@prisma/prisma7`, next to `prisma@latest`
+- installs the latest Prisma ORM 7 release as `@prisma/prisma7`, next to `prisma@latest`
 - writes `prisma.config.ts` with `contract: prisma7Schema("<schema path>")`, plus `src/prisma/db.ts` and `prisma-8.md`
 
-It does not write a starter contract, and it does not change `prisma/` or the database. Prisma ORM 7 keeps owning the schema and its migrations. Set `DATABASE_URL` and run `npx prisma db sign` once. After each `prisma7 migrate dev`, run `npx prisma contract emit` and then `npx prisma db sign`. [Configuration](/cli/configuration#use-a-prisma-orm-7-schema) explains `prisma7Schema`, and [the upgrade guide](/guides/upgrade-prisma-orm/postgresql) covers the rest of the move.
+It does not write a starter contract, and it changes nothing in `prisma/` or in the database. Prisma ORM 7 keeps owning the schema and its migrations. From now on, `prisma` runs Prisma ORM 8 and `prisma7` runs Prisma ORM 7, so a Prisma ORM 7 command such as `migrate dev` becomes `npx prisma7 migrate dev`. Your application keeps using the Prisma ORM 7 client until you move its routes, one at a time, to the Prisma ORM 8 client in `src/prisma/db.ts`. If your `package.json` listed `@prisma/client` below version 7, `orm init` also installs `@prisma/client@7` to match `@prisma/prisma7`, so run `npx prisma7 generate` afterwards.
+
+To finish, set `DATABASE_URL` and run `npx prisma db sign` once. [`db sign`](/cli/db-sign) checks that the database matches the contract and then writes the marker, a record in the database of which contract it matches, without changing your tables. After each Prisma ORM 7 migration, whether you ran `npx prisma7 migrate dev` or `npx prisma7 migrate deploy`, run `npx prisma contract emit` and then `npx prisma db sign` again. [Configuration](/cli/configuration#use-a-prisma-orm-7-schema) explains `prisma7Schema`, and [the upgrade guide](/guides/upgrade-prisma-orm/postgresql) covers the rest of the move.
 
 ## Examples
 

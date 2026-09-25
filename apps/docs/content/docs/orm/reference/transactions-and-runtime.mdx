@@ -622,7 +622,12 @@ Prepare a statement on the client itself.
 #### Remarks
 
 - The callback takes one argument, the declared `params`, as it does on `runtime.prepare(...)`. Build the query with the client's own `db.sql` or `db.orm`. Before `8.0.0-rc.12` the callback received a SQL builder as its first argument, `(sql, params)`; change such a callback to `(params)` and write `db.sql` where it wrote `sql`.
-- The callback can return a built SQL query, or an ORM query that ends in `.prepared.all()`, `.prepared.first()`, or `.prepared.aggregate(...)`. The ORM query is built once, and each `query(target, params)` call runs it with the new values and returns the same result shape as the ordinary call: rows for `all()`, a row or `null` for `first()`, and the aggregate object for `aggregate(...)`, or an array of groups after `groupBy(...)`.
+- The callback can return a built SQL query, or an ORM query that ends in `.prepared.all()`, `.prepared.first()`, or `.prepared.aggregate(...)`. `.prepared` always goes right before that last call, so a grouped aggregate is written `db.orm.public.Post.groupBy('userId').prepared.aggregate((agg) => ({ posts: agg.count() }))`.
+- The ORM query is built once. Each `query(target, params)` call runs it with the new values and returns what the same call without `.prepared` returns:
+  - `all()` returns the rows.
+  - `first()` returns a row, or `null`.
+  - `aggregate(...)` returns the aggregate object.
+  - `groupBy(...)` followed by `aggregate(...)` returns an array with one object per group.
 - `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` would throw an error whose `code` is `DRIVER.ALREADY_CONNECTED`, because `prepare()` already connected.
 
 #### Options
@@ -665,7 +670,7 @@ const countTags = await db.prepare({}, () =>
 const { total } = await countTags.query(db.runtime(), {});
 ```
 
-A prepared parameter works in `where(...)` filters, in `include(...)` refinements, and in `.limit(...)` and `.offset(...)`, so the same statement can page through results.
+In an ORM query, a prepared parameter works in `where(...)` filters, in the callback you pass to `include(...)`, and in `.limit(...)` and `.offset(...)`, so the same statement can page through results. Declare a page size or offset with a number type id that is not nullable, such as `{ take: 'pg/int4@1' }`, and pass `params.take` to `.limit(...)`. A nullable or text type id there is a type error.
 
 ### `PreparedStatement.query(target, params)`
 

@@ -12,7 +12,7 @@ Every example imports `db`. In a new project run `npm create prisma@latest -- my
 
 This page uses `db.orm`, which holds your models. The rest of `db` is `db.sql` for the SQL query builder, `db.raw.sql` for raw SQL, and `db.transaction` for running several writes together.
 
-On PostgreSQL the path to a model is `db.orm.<schema>.<ModelName>`, so the `User` model is `db.orm.public.User`. `public` is the PostgreSQL schema; you type it. It is `public` unless the model sits in a `namespace` block (shown under [Example schema](#example-schema)). On MongoDB there is no schema segment, and the path is `db.orm.<collectionName>`, so the model below is `db.orm.users`. The collection name is the model's `@@map(...)`, or the model name exactly as written.
+On PostgreSQL the path to a model is `db.orm.<schema>.<ModelName>`, so the `User` model is `db.orm.public.User`. `public` is the PostgreSQL schema that holds the model's table, and the path always includes the schema name. The schema is `public` unless you put the model inside a `namespace` block, as [Example schema](#example-schema) shows. On MongoDB there is no schema segment, and the path is `db.orm.<collectionName>`, so the model below is `db.orm.users`. The collection name is the model's `@@map(...)`, or the model name exactly as written.
 
 ## Example schema
 
@@ -296,7 +296,7 @@ const deletedCount = await db.orm.public.Post.where((p) => p.title.ilike("draft%
 
 The `AndCount` methods return a plain number, so if three posts match, `updatedCount` is `3`, not an object.
 
-To insert many records and skip the ones that would break a unique constraint, pass `{ onConflict: "skip" }` as the second argument to `createAll` or `createAndCount`, and optionally `conflictOn: ["email"]` to name the constraint. This replaces Prisma ORM 7's `skipDuplicates`, and it works on PostgreSQL and SQLite. `createAll` returns only the records the database wrote, and `createAndCount` counts only those. [`createAll()`](/orm/reference/orm-client#createall) in the reference covers the details.
+To insert many records and skip the ones that would break a unique constraint, pass `{ onConflict: "skip" }` as the second argument to `createAll` or `createAndCount`. That skips a record that breaks any unique constraint on the table. To skip only the records that clash on one constraint, add `conflictOn` to the same object with the names of that constraint's fields, as in `createAll(users, { onConflict: "skip", conflictOn: ["email"] })`. Here `conflictOn` takes field names, while in [`.upsert(...)`](#upsert-a-record) it takes the fields and their values. This replaces Prisma ORM 7's `skipDuplicates`, and it works on PostgreSQL and SQLite. `createAll` returns only the records the database wrote, and `createAndCount` counts only those. [`createAll()`](/orm/reference/orm-client#createall) in the reference covers the details.
 
 `.where((p) => p.title.ilike("draft%"))` is the callback form of a filter, for conditions an object cannot express. Its argument gives you one entry per field, and each field carries the comparisons you can apply to it. [Reading data](/orm/fundamentals/reading-data) covers the filters you can write.
 

@@ -119,8 +119,8 @@ await db.transaction(async (tx) => {
 });
 ```
 
-Two things differ from `tx.orm`. Under `tx.sql.public` the property name is the table name, not the model name. The table name is the model name exactly as written, so the model `Post` has the table `Post` and it is `tx.sql.public.Post`, unless the model sets `@@map`: a model with `@@map("post")` is `tx.sql.public.post`.
-The second difference is that you chain clauses and then call `.build()` to finish the query: `.build()` returns the query without running it, and `tx.execute(...)` runs it and returns `{ affectedRows }`, the number of rows it changed. The `.where(...)` callback receives two arguments: `f` holds the columns, and `fns` holds the operators (`lt` is less-than). [Advanced queries](/orm/fundamentals/advanced-queries#build-a-query-and-run-it) covers both.
+Under `tx.sql.public`, unlike under `tx.orm.public`, the property name is the table name: the model's `@@map` value, or the model name exactly as written when the model has no `@@map`. So the model `Post` is `tx.sql.public.Post`, and a model with `@@map("post")` is `tx.sql.public.post`.
+The other difference from `tx.orm` is that you chain clauses and then call `.build()` to finish the query: `.build()` returns the query without running it, and `tx.execute(...)` runs it and returns `{ affectedRows }`, the number of rows it changed. The `.where(...)` callback receives two arguments: `f` holds the columns, and `fns` holds the operators (`lt` is less-than). [Advanced queries](/orm/fundamentals/advanced-queries#build-a-query-and-run-it) covers both.
 
 ## Transactions on MongoDB
 
@@ -172,7 +172,17 @@ try {
 const jane = await db.orm.users.where({ email: "jane@prisma.io" }).first();
 ```
 
-On MongoDB there is no schema segment in the path, and the property name is the collection name. The collection name is the model name exactly as written, so a model `User` is `db.orm.User`, unless the model sets `@@map`. `db.orm.users` above is the collection name; the model is `User` with `@@map("users")`.
+On MongoDB there is no schema segment in the path, and the property name is the collection name: the model's `@@map` value, or the model name exactly as written when the model has no `@@map`. The example above assumes a `User` model mapped to the `users` collection, like the one below, so Prisma ORM reads it as `db.orm.users` and the driver code as `database.collection("users")`. Without the `@@map` line it would be `db.orm.User`.
+
+```prisma
+model User {
+  id    ObjectId @id @map("_id")
+  email String   @unique
+  name  String?
+  @@map("users")
+}
+```
+
 Writes you make through the driver skip the type-checking that Prisma ORM queries get, so put each driver transaction in its own small function, and write everything around it as Prisma ORM queries.
 
 ## Coming from Prisma ORM 7

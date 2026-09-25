@@ -69,6 +69,8 @@ Now that pgvector is in `prisma.config.ts`, `npx prisma contract emit` accepts `
 
 The `pgvector` in `pgvector.Vector(1536)` is the name the extension registers its types under, and its page in the extension directory lists them. PostGIS, for example, gives you `postgis.Geometry(4326)`.
 
+The first line of the file, `// use prisma-8`, is required. `npx prisma contract emit` reads only `.prisma` files whose first line is `// use prisma-8` and skips any other file without a warning, so keep that line at the top when you add the `types` block.
+
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
 
@@ -89,7 +91,7 @@ Getting the new column from your contract into your database takes these command
 
 1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. Run it again after every later change to `contract.prisma`.
 2. `npx prisma migration plan`, which writes the extension's own migration into `migrations/`, so commit it along with your other migrations. Skip this and the next command stops with an error whose `code` is `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION`.
-3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and creates the `Post` table.
+3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and makes the database match your contract: it creates the `Post` table, or adds the `embedding` column when the `Post` table already exists.
 
 The extension's migration is the `CREATE EXTENSION IF NOT EXISTS vector` statement, so you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
 
@@ -206,7 +208,9 @@ export const db = await supabase<Contract>({
 
 `await db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. `db` itself has no `orm` or `sql`: those live on the three role-bound clients. The [runnable example](https://github.com/prisma/orm/tree/main/examples/supabase) shows the whole setup in one project.
 
-The extension's contract describes Supabase's `auth` and `storage` tables as they are in a reference Supabase build, supabase/postgres 17.6.1.106, check constraints included. If your build differs, `db verify` reports the difference. When an update to `@prisma/orm-extension-supabase` changes that contract, run `npx prisma db sign` again against every database signed with the earlier version. If you also re-emit your own contract, do that first.
+The extension's contract describes Supabase's `auth` and `storage` tables as they are in one reference Supabase build, supabase/postgres 17.6.1.106, check constraints included. Run [`npx prisma db verify`](/cli/db-verify) to compare your database with it: if your Supabase build has a different set of check constraints, `db verify` lists the ones it cannot find. You cannot fix that with a migration, because Prisma ORM never changes Supabase's own tables. Report the difference to Prisma instead, so the reference build can be updated.
+
+[`npx prisma db sign`](/cli/db-sign) checks that a database matches your contract and then records in the database which contract it matches. When an update to `@prisma/orm-extension-supabase` changes the extension's contract, that record no longer matches, so run `npx prisma db sign` again against every database you signed with the earlier version. If you are also re-emitting your own contract with `npx prisma contract emit`, run that before `db sign`.
 
 :::
 

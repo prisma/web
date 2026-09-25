@@ -51,7 +51,7 @@ The `name` is the label Prisma ORM uses when it talks about your middleware, so 
 
 If a call gives you back a count instead of rows, `afterQuery` is not called for it and `afterExecute` is called instead. On the ORM API the calls that return a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`. Every other call returns rows and reaches `afterQuery`, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`.
 
-The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps, and the step you run it with decides which hook you get. Calling `.build()` gives you the plan, and `db.runtime()` is the method on your client that runs one. `db.runtime().query(plan)` returns rows and reaches `afterQuery`, while `db.runtime().execute(plan)` reports how many rows the statement changed and reaches `afterExecute`.
+The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db.runtime()` runs it. Which of the two methods you call decides which hook you get. `db.runtime().query(plan)` returns rows and reaches `afterQuery`, while `db.runtime().execute(plan)` reports how many rows the statement changed and reaches `afterExecute`.
 
 To have the logger cover the counting calls as well, add a second hook to the object `queryLogger()` returns in `src/prisma/query-logger.ts`, next to `afterQuery`:
 
@@ -246,6 +246,8 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
 
 The `kind` check on `from` keeps the middleware to plain tables: a `SELECT` that reads from a subquery has a `from` whose `kind` is `'derived-table-source'`, and one that reads from a function has `'function-source'`. The name it checks, `'User'`, is the table name in your database rather than the model name in your contract, because by this point the query is expressed in tables and columns. The two are the same unless the model sets `@@map`. `draft.ast.withWhere(where)` gives back a new tree with that `WHERE` and leaves the original alone.
 
+These checks read only the table in the query's own `FROM` clause, so `User` rows that a query reaches any other way do not get the condition. When you load related users with `.include(...)` from another model, such as the author of each post, the ORM API reads them inside that other model's query, whose `FROM` is the other table. A SQL query builder query that joins `User` onto another table is not filtered either, for the same reason.
+
 The condition itself is an object you build from the same classes, and you pass it in when you register the middleware. Put values through `ParamRef.of` rather than `LiteralExpr.of`, because a `ParamRef` becomes a bound parameter such as `$1` while a literal is pasted into the SQL text itself, so a value that came from one of your users could inject SQL of its own. A `ParamRef` you build by hand has to name the PostgreSQL type of the value with `codec: { codecId: ... }`, and the ids start with `pg/` and end with `@1`, so the `text` column `name` takes `pg/text@1`. Leave that out and the query fails with an error whose `code` is `RUNTIME.PARAM_REF_MISSING_CODEC`.
 
 ```ts title="src/prisma/db.ts"
@@ -267,11 +269,23 @@ export const db = postgres<Contract>({
 });
 ```
 
-Every `SELECT` on `User` now runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. Swap `name` for whatever column holds your tenant to get the tenant filter.
+Every `SELECT` on `User` now runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. The condition is built once, when you create the client, so every query on this client is filtered to the same value. Swap `name` for the column that holds your tenant and `'Mia'` for a tenant ID, and every `SELECT` on `User` through this client returns only that one tenant's rows.
 
 Copy each import as it is written, including the one that says `type` and the one that does not.
 
-A `uuid` column takes `pg/uuid@1`, and the other common ids are `pg/int4@1`, `pg/int8@1`, `pg/float8@1`, `pg/bool@1`, and `pg/timestamptz-temporal@1` for a `timestamptz` column. For a column whose type is not in that list, read the id off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids in one place.
+The id depends on the field's type in your contract:
+
+| Type in your contract | Id |
+| --- | --- |
+| `String` | `pg/text@1` |
+| `Int` | `pg/int4@1` |
+| `BigInt` | `pg/int8@1` |
+| `Float` | `pg/float8@1` |
+| `Boolean` | `pg/bool@1` |
+| `DateTime` | `pg/timestamptz-temporal@1` |
+| `Uuid` | `pg/uuid@1` |
+
+For a field whose type is not in the table, read the id off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids in one place.
 
 `BinaryExpr` has one method per comparison (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `in`, `notIn`), and `AndExpr.of` and `OrExpr.of` combine conditions. They all come from `@prisma/orm-postgres/relational-core/ast`, so your editor lists them once you import from there.
 
@@ -297,8 +311,11 @@ export function userFixture(): SqlMiddleware {
     name: 'user-fixture',
     familyId: 'sql',
 
-    async interceptQuery(plan) {
-      if (!plan.sql.includes('FROM "public"."User"')) return undefined;
+    async interceptQuery(plan, ctx) {
+      if (ctx.scope !== 'runtime') return undefined;
+      if (plan.ast.kind !== 'select') return undefined;
+      if (plan.ast.from?.kind !== 'table-source') return undefined;
+      if (plan.ast.from.name !== 'User') return undefined;
       return { rows: [{ id: 1, email: 'mia@prisma.io' }] };
     },
   };
@@ -307,7 +324,9 @@ export function userFixture(): SqlMiddleware {
 
 Prisma ORM decodes the rows you return the same way it decodes rows that came from the database, so your caller gets the types the contract gives those columns, even though you handed back plain driver values.
 
-Matching on `plan.sql` is the quick way to pick out one table, and it is enough for a fixture in a test. The reliable way is to read the table name out of the tree, which is `plan.ast.from.name` on a `SELECT` and `plan.ast.table.name` on an `UPDATE` or a `DELETE`. A hook cannot tell which model or which ORM call a query came from, so the table name in the tree is the only thing you have to match on.
+The last three checks answer only a `SELECT` that reads the `User` table directly, in the same way the `beforeCompile` example picks its queries. Matching on the SQL text instead, such as `plan.sql.includes('FROM "public"."User"')`, also catches `DELETE FROM "public"."User"`, so an ORM `.delete()` would get a made-up row back and delete nothing. On an `UPDATE` or a `DELETE` the table name is at `plan.ast.table.name`. A hook cannot tell which model or which ORM call a query came from, so the table name in the tree is the only thing you have to match on.
+
+The first check, on `ctx.scope`, leaves queries inside a transaction to the database, as the cache does. An ORM `.update()` or `.delete()` first reads the row it is about to change, inside a transaction, and if the fixture answered that read, the write would go to the row whose `id` is `1` rather than the row you asked for. [The context object](#the-context-object) covers `ctx.scope`.
 
 Return `undefined` and the query carries on to the database as usual. When several middleware implement `interceptQuery`, the first one in the array that returns rows answers the query and the rest are not called at all. `afterQuery` still runs either way, with `result.source` set to `'middleware'`, so your logging can tell which queries were answered without a trip to the database. For a call that returns a count, `interceptExecute` does the same job and returns `{ stats }`, which only ever holds `affectedRows`, as in `{ stats: { affectedRows: 0 } }`. The [cache middleware](/orm/middleware/built-in-cache) is the implementation to copy from.
 

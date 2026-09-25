@@ -182,13 +182,18 @@ Some parts of the schema the examples rely on:
 - On MongoDB, `id ObjectId @id @map("_id")` renames the field to `_id` everywhere: you filter on `_id`, and the returned document has an `_id` key. That is why the MongoDB examples never say `id`.
 - `Uuid` is a built-in type for a PostgreSQL `uuid` column. You do not import it. `@default(uuid())` fills the id in when you insert a row.
 - `@@type("pg/text@1")` on an `enum` block stores the enum as a text column. The `@1` is the version of that storage format, and only version 1 exists today, so write it exactly like that. The MongoDB form of the same attribute is `@@type("mongo/string@1")`. This page calls an enum written this way a text-backed enum.
-- A `native_enum` block stores the same members as a real PostgreSQL enum type instead. Give every member a value. A member with no value is rejected. This page calls an enum written this way a native enum. The two sort differently; see [`orderBy()`](#orderby).
+- A `native_enum` block stores the same members as a real PostgreSQL enum type instead. Give every member a value. A member with no value is rejected. A field that uses it is typed `pg.enum(Priority)`. This page calls an enum written this way a native enum. The two sort differently; see [`orderBy()`](#orderby).
 
   ```prisma
   native_enum Priority {
     Low    = "low"
     High   = "high"
     Urgent = "urgent"
+  }
+
+  model Post {
+    id       Uuid              @id @default(uuid())
+    priority pg.enum(Priority)
   }
   ```
 
@@ -231,7 +236,7 @@ To give a model your own methods on top of the built-in ones, import `Collection
 
 ### MongoDB
 
-Create a MongoDB client with `mongo(...)`. `db.orm` holds your models by collection name, with no schema in between: `db.orm.users`, `db.orm.posts`, not `db.orm.User`. The collection name is the one you set with `@@map`, or the model name exactly as written when you did not set one. `dbName` is the MongoDB database name.
+Create a MongoDB client with `mongo(...)`. `db.orm` holds your models by collection name, with no schema in between. The collection name is the one you set with `@@map`, or the model name exactly as written when you did not set one. The example schema maps `User` to `users`, so it is `db.orm.users`, and `Post` is `db.orm.posts`. `dbName` is the MongoDB database name.
 
 ```typescript
 import mongo from '@prisma/orm-mongo/runtime';
@@ -914,7 +919,7 @@ const features = await tasks.Task.features().all();
 
 A write method changes the database. `create`, `createAll`, `createAndCount`, `update`, `updateAll`, `updateAndCount`, `delete`, `deleteAll`, `deleteAndCount`, and `upsert` are available on both databases, and the differences between the two are listed under each method.
 
-For Prisma ORM 7 users: `createMany` is `createAll()` or `createAndCount()`, `updateMany` is `updateAll()` or `updateAndCount()`, `deleteMany` is `deleteAll()` or `deleteAndCount()`, and `count` is [`aggregate()`](#grouped-aggregates) on PostgreSQL, or the two steps shown under [Read methods](#read-terminals) on MongoDB. There is no `skipDuplicates` option.
+For Prisma ORM 7 users: `createMany` is `createAll()` or `createAndCount()`, `updateMany` is `updateAll()` or `updateAndCount()`, `deleteMany` is `deleteAll()` or `deleteAndCount()`, and `count` is [`aggregate()`](#grouped-aggregates) on PostgreSQL, or the two steps shown under [Read methods](#read-terminals) on MongoDB. `skipDuplicates: true` is now `{ onConflict: 'skip' }`, which you pass to [`createAll()`](#createall) or [`createAndCount()`](#createandcount) on PostgreSQL as a second argument.
 
 To catch one of the errors named below, wrap the call in `try` and `catch`, then compare `error.code` with the string given here. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data). On MongoDB, a write method rejects a chain that already has `orderBy()`, `limit()`, or `offset()` on it, and every write except `updateAll()` and `deleteAll()` also rejects `include()`. Both throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. For grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
 
@@ -1006,15 +1011,20 @@ Insert multiple rows and return them.
 - Available for PostgreSQL and MongoDB.
 - Returns an [`AsyncIterableResult`](#asynciterableresult): `await` for an array, or `for await` to stream inserted rows.
 - On PostgreSQL every row is inserted by one statement before the first row reaches you. Stopping the loop early does not undo an insert.
-- On PostgreSQL and SQLite, `{ onConflict: 'skip' }` as the second argument skips each row that collides with a unique constraint, and the result holds only the rows the database wrote. `conflictOn: ['email']` names the unique constraint by its columns; without it, a collision on any unique constraint skips the row. A variant stored in its own table refuses the option with `ORM.OPERATION_UNSUPPORTED`. The option needs capabilities that a contract emitted before `8.0.0-rc.12` does not list, so run `npx prisma contract emit` once first; otherwise it fails with `ORM.CAPABILITY_MISSING`.
+- To skip each row that would break a unique constraint, instead of failing the whole insert, pass `{ onConflict: 'skip' }` as the second argument. The result then holds only the rows the database wrote. This replaces `skipDuplicates: true` from Prisma ORM 7.
+- `onConflict` works on PostgreSQL, and on SQLite through the experimental `@prisma/orm-sqlite` package. On MongoDB, `createAll()` takes only the rows, so a second argument is a type error.
+- By default, a row is skipped when it breaks any unique constraint. To check only one constraint, list its fields in `conflictOn`. In the example schema, `Tag.label` is unique, so `conflictOn: ['label']` skips a tag whose label already exists.
+- `onConflict` does not work on a variant stored in its own table, such as `Bug`, which maps to `bug` while its base model `Task` maps to `task`. Passing it there throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`.
+- If your contract was emitted before `8.0.0-rc.12`, run `npx prisma contract emit` again before you use `onConflict`. Otherwise the call throws an error whose `code` is `ORM.CAPABILITY_MISSING`.
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| The rows | Array of field objects | Yes | The rows to insert, passed as the first argument. There is no `data` wrapper. |
-| `onConflict` | `'skip'` | No | Skip rows that collide with a unique constraint. PostgreSQL and SQLite. |
-| `conflictOn` | Array of field names | No | With `onConflict`, the columns of the unique constraint to check. |
+| First argument | Array of row objects | Yes | The rows to insert. There is no `data` wrapper. |
+| Second argument | `{ onConflict: 'skip', conflictOn? }` | No | Skip rows that break a unique constraint. Not available on MongoDB. |
+
+`conflictOn` is an array of field names, such as `['label']`. [`upsert()`](#upsert) also takes a `conflictOn`, but there it is an object of field values, such as `{ label: 'typescript' }`.
 
 #### Return type
 
@@ -1060,9 +1070,10 @@ Insert rows and return how many were inserted, without reading them back.
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| The rows | Array of field objects | Yes | The rows to insert, passed as the first argument. There is no `data` wrapper. |
-| `onConflict` | `'skip'` | No | Skip rows that collide with a unique constraint. PostgreSQL and SQLite. |
-| `conflictOn` | Array of field names | No | With `onConflict`, the columns of the unique constraint to check. |
+| First argument | Array of row objects | Yes | The rows to insert. There is no `data` wrapper. |
+| Second argument | `{ onConflict: 'skip', conflictOn? }` | No | Skip rows that break a unique constraint. Not available on MongoDB. |
+
+`conflictOn` is an array of field names, as on [`createAll()`](#createall).
 
 #### Return type
 
@@ -1683,7 +1694,7 @@ Comparison methods on a field.
 - `eq`, `neq`, `in`, and `notIn` are on a field whose values can be compared for equality.
 - `gt`, `lt`, `gte`, and `lte` are on a field whose values can be ordered.
 - `like` and `ilike` are on a text field.
-- `String` fields and enums stored as text have all of them. A native enum field (`pg.enum(...)`) has all but `like` and `ilike`, because PostgreSQL has no pattern match for an `enum` type. `Uuid` and `DateTime` have all but `like` and `ilike`. A `Boolean` field has only the equality methods, `isNull()`, and `isNotNull()`. A `Json` field has only `isNull()` and `isNotNull()`.
+- `String` fields and enums stored as text have all of them. A [native enum](#example-schema) field, typed `pg.enum(...)` in the contract, has all but `like` and `ilike`, because PostgreSQL has no pattern match for an `enum` type. `Uuid` and `DateTime` have all but `like` and `ilike`. A `Boolean` field has only the equality methods, `isNull()`, and `isNotNull()`. A `Json` field has only `isNull()` and `isNotNull()`.
 - `like()` matches a SQL pattern case-sensitively. `ilike()` matches the same pattern case-insensitively.
 - `in([])` matches no rows. `notIn([])` matches every row.
 
@@ -1736,19 +1747,30 @@ PostgreSQL full-text search on a text field.
 
 #### Remarks
 
-- PostgreSQL. A text field has `fullTextMatches(query, options?)` to filter and `fullTextRank(query, options?)` to sort by relevance. The [SQL query builder](/orm/reference/sql-query-builder) has the same operations as `fns.fullTextMatches(column, query)`, `fns.fullTextRank(column, query)`, and `fns.fullTextHeadline(column, query)`, which returns the matching text with each match marked.
-- `query` is a `tsquery`, not a string, and a bare string is a type error. Build it with a parser from `@prisma/orm-postgres/target/full-text`: `websearchToTsquery(text)` reads search-box text, `plaintoTsquery(text)` requires every word, and `phrasetoTsquery(text)` requires the words in order. `toTsquery(text)` takes PostgreSQL's operator syntax as written, so never pass user input to it.
-- For user input inside operator syntax, such as a prefix match while the user types, use the `tsquery` template tag from the same package: `` tsquery`${term}:*` ``. It turns each interpolated value into one quoted term, so the input cannot add operators. Do not put quotes around the interpolation yourself.
-- `language` sets the text-search configuration and defaults to `english`. The operation's `language` applies to the field, and each parser, and the tag as `` tsquery({ language })`...` ``, takes its own `language` for the query. Pass the same value to both.
-- Add [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) to the model, with the same `language`, so PostgreSQL can use an index for the search. Without it the query still works, with a sequential scan.
-- A native enum field (`pg.enum(...)`) has no full-text operations.
+- PostgreSQL. A text field has `fullTextMatches(query, options?)` to filter and `fullTextRank(query, options?)` to sort by relevance.
+- The [SQL query builder](/orm/reference/sql-query-builder) has both, as `fns.fullTextMatches(column, query)` and `fns.fullTextRank(column, query)`. It also has `fns.fullTextHeadline(column, query)`, which returns the matching text with each match marked. Use the SQL query builder when you want that text in your results, because the ORM's `select()` takes only field names.
+- The `query` argument is a parsed search query, which PostgreSQL calls a `tsquery`. Passing a plain string is a type error. Build the query with one of these functions from `@prisma/orm-postgres/target/full-text`: `websearchToTsquery(text)` reads text the way a web search box does, with quotes around a phrase, `or`, and `-` before a word to leave it out. `plaintoTsquery(text)` requires every word, and `phrasetoTsquery(text)` requires the words in order.
+- `toTsquery(text)` reads PostgreSQL's own search syntax, in which `&` means and, `|` means or, `!` means not, and `:*` after a word matches any word that starts with it. Text that breaks this syntax makes the query fail when it runs, so never pass user input to `toTsquery()`.
+- To add an operator to user text, such as `:*` for a prefix match while the user types, use the `tsquery` template tag from the same package: `` tsquery`${term}:*` ``. The tag puts each interpolated value in quotes as one search term, so the user's text cannot add operators of its own. Do not put quotes around the interpolation yourself.
+- `language` is the language whose rules PostgreSQL uses to match words, so that in `english` a search for `run` also finds `running`. It defaults to `english`. The method and the parser each take `language`, so pass the same value to both. The tag takes it as `` tsquery({ language: 'german' })`${input}:*` ``.
+
+  ```typescript
+  const q = websearchToTsquery(input, { language: 'german' });
+  const posts = await db.orm.public.Post.where((p) => p.title.fullTextMatches(q, { language: 'german' })).all();
+  ```
+
+- Add [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) to the model, with the same `language`, so PostgreSQL can use an index for the search. Without it the query still works, but PostgreSQL reads every row.
+- A native enum field, typed `pg.enum(...)` in the contract, has no full-text operations.
 
 #### Options
 
 | Method | Options | Description |
 |---|---|---|
 | `fullTextMatches(query, options?)` | `language` | Matches rows whose field matches `query`. |
-| `fullTextRank(query, options?)` | `language`, `normalization` (0 to 63), `coverDensity` | The relevance of the match, for `orderBy()`. `coverDensity: true` uses `ts_rank_cd` in place of `ts_rank`. |
+| `fullTextRank(query, options?)` | `language`, `normalization`, `coverDensity` | The relevance of the match, for `orderBy()`. |
+
+- `normalization` sets how the length of the text changes the rank. It is a whole number from 0 to 63, made by adding PostgreSQL's flags together. The default, 0, ignores length. `2` divides the rank by the length of the text, so of two titles with the same matches, the shorter one ranks higher. The PostgreSQL manual lists every flag under [Ranking search results](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING).
+- `coverDensity: true` also counts how close together the matching words are, so a row where they appear near each other ranks higher.
 
 #### Examples
 
