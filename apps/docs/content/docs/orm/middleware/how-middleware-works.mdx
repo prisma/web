@@ -131,7 +131,7 @@ The middleware below adds a condition to every `SELECT` whose own `FROM` clause 
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
 import { AndExpr, type BinaryExpr } from '@prisma/orm-postgres/relational-core/ast';
 
-export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
+export function scopeUserSelects(condition: () => BinaryExpr | undefined): SqlMiddleware {
   return {
     name: 'scope-user-selects',
     familyId: 'sql',
@@ -140,6 +140,8 @@ export function scopeUserSelects(predicate: BinaryExpr): SqlMiddleware {
       if (draft.ast.kind !== 'select') return undefined;
       if (draft.ast.from?.kind !== 'table-source') return undefined;
       if (draft.ast.from.name !== 'User') return undefined;
+      const predicate = condition();
+      if (predicate === undefined) return undefined;
       const where = draft.ast.where ? AndExpr.of([draft.ast.where, predicate]) : predicate;
       return { ...draft, ast: draft.ast.withWhere(where) };
     },
@@ -151,7 +153,7 @@ The three checks above are how you say "only `SELECT`s, and only ones over the `
 
 These checks read only the table in the query's own `FROM` clause, so `User` rows that a query loads with `.include(...)` or through a join are not filtered. Do not rely on a middleware like this alone to keep one tenant's rows away from another.
 
-The `predicate` you pass in is a comparison you build yourself, and the types for building one come from `@prisma/orm-postgres/relational-core/ast`. A value you compare against needs its `codecId`, which says how the value is stored: `pg/` plus the PostgreSQL type name plus `@1`, so text is `pg/text@1` and a 32-bit integer is `pg/int4@1`:
+The function you pass in returns the comparison to add, or `undefined` to add none, and the middleware calls it for every query. You build the comparison yourself, and the types for building one come from `@prisma/orm-postgres/relational-core/ast`. A value you compare against needs its `codecId`, which says how the value is stored: `pg/` plus the PostgreSQL type name plus `@1`, so text is `pg/text@1` and a 32-bit integer is `pg/int4@1`:
 
 ```ts title="src/prisma/db.ts (excerpt)"
 import { BinaryExpr, ColumnRef, ParamRef } from '@prisma/orm-postgres/relational-core/ast';
@@ -163,7 +165,7 @@ const onlyMia = BinaryExpr.eq(
 );
 ```
 
-Then `scopeUserSelects(onlyMia)` goes in the `middleware` array of your `postgres(...)` client, like any other entry. [Rewrite queries with beforeCompile](/orm/middleware/authoring-custom-middleware#rewrite-queries-with-beforecompile) covers the other comparisons and why a value has to go through `ParamRef.of`. `beforeCompile` is not available on MongoDB, because the tree it works on is made of SQL objects.
+Then `scopeUserSelects(() => onlyMia)` goes in the `middleware` array of your `postgres(...)` client, like any other entry. [Rewrite queries with beforeCompile](/orm/middleware/authoring-custom-middleware#rewrite-queries-with-beforecompile) shows how the function can return a different value for each request, and covers the other comparisons and why a value has to go through `ParamRef.of`. `beforeCompile` is not available on MongoDB, because the tree it works on is made of SQL objects.
 
 ### beforeQuery and beforeExecute: validate or block
 
