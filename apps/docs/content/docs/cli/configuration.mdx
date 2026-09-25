@@ -43,7 +43,15 @@ The CLI looks for `prisma.config.ts` in the current directory, or starts from th
 
 The CLI combines the files it finds one section at a time. Inside a section such as `orm`, each top-level key, such as `contract`, `db`, or `migrations`, comes whole from the nearest file that sets it, and the keys nested inside it are not combined. So if a config higher up sets `db.connection` and your project's config sets only `contract`, the CLI uses your `contract` and the other file's `db`. Extensions are the exception: a project config that calls `ormConfig` does not inherit them from a config higher up, even when it leaves `extensions` out. List the extensions your contract uses in each project's own config.
 
-A project inside a larger repository therefore inherits any setting its own config leaves out from a `prisma.config.ts` higher up. To stop that, add `parent: false` to the project's config. The search then ends at that file:
+A project inside a larger repository therefore inherits any setting its own config leaves out from a `prisma.config.ts` higher up.
+
+:::warning[More than one project in a repository]
+
+If a `prisma.config.ts` higher up sets `db` or `migrations`, a project config that leaves them out uses that file's database and migrations folder. `db update`, `db migrate` and `db verify` then connect to the other project's database, and `migration plan` writes into the other project's migrations folder, without a warning. Set `db` and `migrations` in every project's own config, or add `parent: false` to it.
+
+:::
+
+To stop a project's config from inheriting anything, add `parent: false` to it. The search then ends at that file:
 
 ```typescript title="prisma.config.ts"
 import { definePrismaConfig } from "prisma/config";
