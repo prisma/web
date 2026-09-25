@@ -280,15 +280,17 @@ export const db = postgres<Contract>({
 });
 ```
 
-Run each request's queries inside `currentName.run(...)`:
+Run each request's queries inside `currentName.run(...)`, and `await` them inside its callback:
 
 ```ts title="src/routes/users.ts"
 import { currentName, db } from '../prisma/db';
 
-const users = await currentName.run('Mia', () => db.orm.public.User.select('id', 'name').all());
+const users = await currentName.run('Mia', async () => {
+  return await db.orm.public.User.select('id', 'name').all();
+});
 ```
 
-Every `SELECT` whose `FROM` clause names `User` then runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. A query that runs outside `currentName.run(...)` gets no condition, because `getStore()` returns `undefined` there. If every query must have one, throw in the function instead of returning `undefined`.
+Every `SELECT` whose `FROM` clause names `User` then runs with `WHERE "User"."name" = $1` added, and a query that already had a `WHERE` clause keeps it, joined to yours with `AND`. The `await` inside the callback matters: `.all()` returns the query without running it, and the query runs when you `await` it. With `currentName.run('Mia', () => db.orm.public.User.select('id', 'name').all())`, the `await` is outside the callback, so the query runs after `run(...)` has returned, `getStore()` gives `undefined`, and the query gets no condition. The same goes for any query that runs outside `currentName.run(...)`. If every query must have one, throw in the function instead of returning `undefined`.
 
 :::warning
 
