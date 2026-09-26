@@ -91,6 +91,8 @@ export function LayoutContextProvider({
  */
 const HeaderFloatingContext = createContext(false);
 
+const SCROLL_THRESHOLD = { enter: 24, exit: 12 };
+
 /**
  * The header strip.
  *
@@ -99,12 +101,11 @@ const HeaderFloatingContext = createContext(false);
  * `--fd-docs-row-1`) and its height is what `--fd-header-height` describes for
  * the sidebar/TOC sticky math (`--fd-docs-row-2/3`). So the strip stays put and
  * keeps a constant height, and the dock -> float morph happens to the container
- * inside it. Threshold (`scrollY > 24`), 500ms `cubic-bezier(0.22,1,0.36,1)`
- * easing and the reduced-motion guard are the blog's, verbatim
- * (`apps/blog/src/components/chrome/Header.tsx`).
+ * inside it. Threshold (float from 24px, dock again at 12px, so trackpad
+ * jitter around the boundary cannot flutter the state), 500ms
+ * `cubic-bezier(0.22,1,0.36,1)` easing and the reduced-motion guard are the
+ * blog's, verbatim (`apps/blog/src/components/chrome/Header.tsx`).
  */
-const SCROLL_THRESHOLD = { enter: 24, exit: 12 };
-
 export function LayoutHeader(props: ComponentProps<"header">) {
   const { open } = useSidebar();
   const { isNavTransparent } = use(LayoutContext)!;

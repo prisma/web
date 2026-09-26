@@ -92,7 +92,8 @@ const createStore = (threshold: ScrollThresholdOptions): ScrollStore => {
   return { subscribe, getSnapshot };
 };
 
-const getOrCreateStore = (threshold: ScrollThresholdOptions): ScrollStore => {
+// Exported for tests; apps should use the hook.
+export const getScrollThresholdStore = (threshold: ScrollThresholdOptions): ScrollStore => {
   const { key } = getThresholdConfig(threshold);
   const existingStore = thresholdStores.get(key);
 
@@ -106,6 +107,6 @@ const getOrCreateStore = (threshold: ScrollThresholdOptions): ScrollStore => {
 };
 
 export const useScrollThreshold = (threshold: ScrollThresholdOptions = 64) => {
-  const store = getOrCreateStore(threshold);
+  const store = getScrollThresholdStore(threshold);
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => false);
 };
