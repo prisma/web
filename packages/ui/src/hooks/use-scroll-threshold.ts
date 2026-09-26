@@ -34,7 +34,11 @@ const createStore = (threshold: ScrollThresholdOptions): ScrollStore => {
 
   const update = () => {
     rafId = null;
-    const next = isScrolled ? window.scrollY > exit : window.scrollY >= enter;
+    // Float once scrollY reaches `enter`; stay floating until it drops below
+    // `exit`. Both bounds are inclusive on the floating side, so a plain
+    // numeric threshold (enter === exit) is exactly `scrollY >= threshold`
+    // and cannot oscillate when repeated scroll events land on the boundary.
+    const next = isScrolled ? window.scrollY >= exit : window.scrollY >= enter;
 
     if (next === isScrolled) {
       return;

@@ -81,7 +81,25 @@ test("numeric threshold floats at the threshold and docks straight below it", ()
   unsubscribe();
 });
 
-test("hysteresis: floats at enter and stays floating until scrollY is at or below exit", () => {
+test("numeric threshold is stable when repeated scroll events land exactly on it", () => {
+  const store = getScrollThresholdStore(64);
+  let notifications = 0;
+  const unsubscribe = store.subscribe(() => {
+    notifications += 1;
+  });
+
+  fake.scrollTo(64);
+  assert.equal(store.getSnapshot(), true);
+  assert.equal(notifications, 1);
+  fake.scrollTo(64);
+  fake.scrollTo(64);
+  assert.equal(store.getSnapshot(), true, "still floating on the boundary");
+  assert.equal(notifications, 1, "no flip while scrollY sits on the threshold");
+
+  unsubscribe();
+});
+
+test("hysteresis: floats at enter and stays floating until scrollY drops below exit", () => {
   const store = getScrollThresholdStore({ enter: 24, exit: 12 });
   const unsubscribe = store.subscribe(() => {});
 
@@ -91,10 +109,10 @@ test("hysteresis: floats at enter and stays floating until scrollY is at or belo
   assert.equal(store.getSnapshot(), true, "reaches enter");
   fake.scrollTo(18);
   assert.equal(store.getSnapshot(), true, "inside the deadband while floating");
-  fake.scrollTo(13);
-  assert.equal(store.getSnapshot(), true, "just above exit while floating");
   fake.scrollTo(12);
-  assert.equal(store.getSnapshot(), false, "reaches exit");
+  assert.equal(store.getSnapshot(), true, "exactly at exit while floating");
+  fake.scrollTo(11);
+  assert.equal(store.getSnapshot(), false, "drops below exit");
   fake.scrollTo(18);
   assert.equal(store.getSnapshot(), false, "inside the deadband while docked");
   fake.scrollTo(24);
