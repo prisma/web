@@ -39,10 +39,10 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Set up per-pull-request Prisma Postgres databases for this project with GitHub Actions and Prisma ORM.
 
-1. Add Prisma ORM to the project with `npx prisma@latest orm init --yes --target postgres --authoring psl` (run it after a lockfile exists), then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Define User and Post models in `src/prisma/contract.prisma`, run `npx prisma@latest contract emit`, then `npx prisma@latest migration plan --name init` and `npx prisma@latest db migrate` against the DATABASE_URL I give you (or one from `npx create-db@latest`).
+1. Add Prisma ORM to the project with `npx prisma@latest orm init --yes --target postgres --authoring psl` (run it after a lockfile exists), then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Define User and Post models in `src/prisma/contract.prisma`, run `npx prisma contract emit`, then `npx prisma migration plan --name init` and `npx prisma db migrate` against the DATABASE_URL I give you (or one from `npx create-db@latest`).
 2. Write `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, skips when users already exist (use `.aggregate((a) => ({ total: a.count() }))`, not `.count()`), and ends with `await db.close()`. Add a `seed` script and verify `npm run seed` works twice.
-3. Check `npx prisma@latest auth whoami`; if I am not signed in, stop and ask me to run `npx prisma@latest auth login`. Create a dedicated platform project with `npx prisma@latest project create <name>` and show me the project id.
-4. Write `.github/workflows/prisma-postgres-preview.yml` following https://www.prisma.io/docs/guides/integrations/github-actions.md: a provision job that finds or creates a database named after the pull request with `npx prisma@latest postgres list|create --project "$PRISMA_PROJECT_ID" --json`, reads `.envelope.result.connectionString` with jq, runs `db migrate --db`, `db verify --db`, and `npm run seed`, then comments on the pull request; and a cleanup job that deletes the database with `postgres delete <id> --confirm <id>` when the pull request closes. Always pass `--project`; the CLI does not read PRISMA_PROJECT_ID from the environment for these commands.
+3. Check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Create a dedicated platform project with `npx prisma project create <name>` and show me the project id.
+4. Write `.github/workflows/prisma-postgres-preview.yml` following https://www.prisma.io/docs/guides/integrations/github-actions.md: a provision job that finds or creates a database named after the pull request with `npx prisma postgres list|create --project "$PRISMA_PROJECT_ID" --json`, reads `.envelope.result.connectionString` with jq, runs `db migrate --db`, `db verify --db`, and `npm run seed`, then comments on the pull request; and a cleanup job that deletes the database with `postgres delete <id> --confirm <id>` when the pull request closes. Always pass `--project`; the CLI does not read PRISMA_PROJECT_ID from the environment for these commands.
 5. Tell me which GitHub secrets to add: PRISMA_SERVICE_TOKEN, PRISMA_WORKSPACE_ID, PRISMA_PROJECT_ID.
 ```
 
@@ -119,7 +119,7 @@ model Post {
 Emit the contract again so `contract.json` and the types match:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ```text no-copy
@@ -145,7 +145,7 @@ DATABASE_URL="postgres://user:password@localhost:5432/prisma_gha_demo"
 The workflow applies migrations that are committed to the repository, so create the first one now:
 
 ```npm
-npx prisma@latest migration plan --name init
+npx prisma migration plan --name init
 ```
 
 ```text no-copy
@@ -167,7 +167,7 @@ app space:  migrations/app/20260910T1549_init
 `migration plan` is offline. It writes a migration directory under `migrations/app/` and prints a DDL preview; it does not touch the database. Apply it to your development database:
 
 ```npm
-npx prisma@latest db migrate
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -301,19 +301,19 @@ The Prisma CLI manages Prisma Postgres databases with the [`postgres`](/cli/post
 Sign in once (it opens a browser):
 
 ```npm
-npx prisma@latest auth login
+npx prisma auth login
 ```
 
 Create the project from your project directory:
 
 ```npm
-npx prisma@latest project create prisma-gha-preview
+npx prisma project create prisma-gha-preview
 ```
 
 This creates the project in your workspace and links the directory to it by writing `.prisma/local.json`, which it also adds to `.gitignore`. Show the link to get the project id:
 
 ```npm
-npx prisma@latest project show
+npx prisma project show
 ```
 
 ```text no-copy
@@ -329,7 +329,7 @@ The `proj_...` segment at the end of the URL is the project id. Keep it; you sto
 Now try the exact commands the workflow runs. Create a database and ask for JSON output:
 
 ```npm
-npx prisma@latest postgres create pr-test --project proj_abc123def456 --json
+npx prisma postgres create pr-test --project proj_abc123def456 --json
 ```
 
 ```json no-copy
@@ -358,8 +358,8 @@ The connection string is shown once, in this result, and never again. In `--json
 
 ```bash
 export PREVIEW_URL="<the connectionString from above>"
-npx prisma@latest db migrate --db "$PREVIEW_URL"
-npx prisma@latest db verify --db "$PREVIEW_URL"
+npx prisma db migrate --db "$PREVIEW_URL"
+npx prisma db verify --db "$PREVIEW_URL"
 DATABASE_URL="$PREVIEW_URL" npm run seed
 ```
 
@@ -375,7 +375,7 @@ Seeded bob@prisma.io with 1 posts
 List the project's databases to see it:
 
 ```npm
-npx prisma@latest postgres list --project proj_abc123def456
+npx prisma postgres list --project proj_abc123def456
 ```
 
 ```text no-copy
@@ -388,7 +388,7 @@ pr-test  br_abc123def456  us-east-1  ready   db_abc123def456
 Deleting a database is destructive, so `postgres delete` asks you to type the database id. In a script there is nobody to type it, so pass it with `--confirm`:
 
 ```npm
-npx prisma@latest postgres delete db_abc123def456 --project proj_abc123def456 --confirm db_abc123def456
+npx prisma postgres delete db_abc123def456 --project proj_abc123def456 --confirm db_abc123def456
 ```
 
 Without `--confirm`, a non-interactive run stops with `CLI.CONSENT_REQUIRED` and tells you the exact token to pass. The delete itself did not complete while validating this guide (the platform returned a server error for every delete that day), so no success output is shown.
@@ -501,7 +501,7 @@ jobs:
       - name: Find existing database
         id: find-db
         run: |
-          DB_ID="$(npx prisma@latest postgres list --project "$PRISMA_PROJECT_ID" --json \
+          DB_ID="$(npx prisma postgres list --project "$PRISMA_PROJECT_ID" --json \
             | jq -r --arg name "$DB_NAME" 'select(.kind == "result") | .envelope.result.items[] | select(.name == $name) | .id')"
           if [ -n "$DB_ID" ]; then
             echo "Database $DB_NAME exists with id $DB_ID"
@@ -514,7 +514,7 @@ jobs:
         id: create-db
         if: steps.find-db.outputs.db-id == ''
         run: |
-          RESULT="$(npx prisma@latest postgres create "$DB_NAME" --project "$PRISMA_PROJECT_ID" --region "$PRISMA_POSTGRES_REGION" --json \
+          RESULT="$(npx prisma postgres create "$DB_NAME" --project "$PRISMA_PROJECT_ID" --region "$PRISMA_POSTGRES_REGION" --json \
             | jq -c 'select(.kind == "result") | .envelope')"
           if [ "$(echo "$RESULT" | jq -r '.ok')" != "true" ]; then
             echo "Failed to create database:"
@@ -529,7 +529,7 @@ jobs:
       - name: Create a connection for the existing database
         if: steps.find-db.outputs.db-id != ''
         run: |
-          RESULT="$(npx prisma@latest postgres connection create "${{ steps.find-db.outputs.db-id }}" --project "$PRISMA_PROJECT_ID" --json \
+          RESULT="$(npx prisma postgres connection create "${{ steps.find-db.outputs.db-id }}" --project "$PRISMA_PROJECT_ID" --json \
             | jq -c 'select(.kind == "result") | .envelope')"
           if [ "$(echo "$RESULT" | jq -r '.ok')" != "true" ]; then
             echo "Failed to create a connection:"
@@ -542,8 +542,8 @@ jobs:
 
       - name: Apply migrations
         run: |
-          npx prisma@latest db migrate --db "$DATABASE_URL"
-          npx prisma@latest db verify --db "$DATABASE_URL"
+          npx prisma db migrate --db "$DATABASE_URL"
+          npx prisma db verify --db "$DATABASE_URL"
 
       - name: Seed database
         run: npm run seed
@@ -579,10 +579,17 @@ Append the cleanup job after `provision-database`, at the same indentation. It l
       contents: read
     timeout-minutes: 5
     steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Validate secrets
         run: |
@@ -600,17 +607,17 @@ Append the cleanup job after `provision-database`, at the same indentation. It l
 
       - name: Delete database
         run: |
-          DB_ID="$(npx prisma@latest postgres list --project "$PRISMA_PROJECT_ID" --json \
+          DB_ID="$(npx prisma postgres list --project "$PRISMA_PROJECT_ID" --json \
             | jq -r --arg name "$DB_NAME" 'select(.kind == "result") | .envelope.result.items[] | select(.name == $name) | .id')"
           if [ -z "$DB_ID" ]; then
             echo "No database named $DB_NAME, nothing to delete"
             exit 0
           fi
           echo "Deleting $DB_NAME ($DB_ID)"
-          npx prisma@latest postgres delete "$DB_ID" --project "$PRISMA_PROJECT_ID" --confirm "$DB_ID"
+          npx prisma postgres delete "$DB_ID" --project "$PRISMA_PROJECT_ID" --confirm "$DB_ID"
 ```
 
-The cleanup job does not check out the repository or install dependencies; it only needs Node.js to run `npx prisma@latest`.
+The cleanup job checks out the repository and installs dependencies too, so `npx prisma` runs the same CLI version as the provision job.
 
 ## 5. Store the code in GitHub
 
@@ -646,8 +653,8 @@ Service tokens do not expire; revoke it from the same page when you no longer ne
 The CLI needs the workspace the token belongs to and the project to create databases in. Print both from your project directory:
 
 ```npm
-npx prisma@latest auth whoami --json
-npx prisma@latest project show --json
+npx prisma auth whoami --json
+npx prisma project show --json
 ```
 
 Copy `workspace.id` from the first result and `project.id` (the `proj_...` value) from the second.
@@ -680,6 +687,50 @@ You can test the setup in two ways. The workflow run itself was not executed whi
 2. Click **Run workflow**, choose `provision`, and optionally enter a database name.
 3. Run it again with `cleanup` and the same name to delete the database.
 
+## 8. Migrate a shared database from a workflow [#migrate-a-shared-database]
+
+The preview job creates a new database per pull request. A database other people share, such as staging, is migrated by a job that runs on every push to `main`, and that job is one command: `db migrate`. It is safe to run unattended. Before any operation runs, it reads the database's marker and refuses with `MIGRATION.MARKER_MISMATCH` if that marker names a state that no migration in your files ends at, which is what a `db update` run against the database, or a migration from a branch that never merged, leaves behind. Each operation then checks that the database is in the state it expects before it runs, and a successful run writes the new marker.
+
+Three terms come up in this section, so here is what they mean. `contract emit` prints a `storageHash`, and that hash identifies one version of your contract. Prisma ORM calls that version a contract state. The database records which state it matches in a marker, a row Prisma ORM keeps in the database. A ref is a name you give a state, like a Git tag. The job applies migrations only up to the state a ref called `staging` points at, so a migration merged after that point waits until you point the ref at it. [Name important states with refs](/orm/migrations/the-migration-graph#name-important-states-with-refs) has the details.
+
+Create the `staging` ref in the pull request that adds the migration. `migration ref set` takes the migration directory's bare name, `20260910T1549_init` from the path `migration plan` printed in step 2.4. It points the ref at the state after that migration and writes `migrations/app/refs/staging.json`. Commit that file with the migration:
+
+```npm
+npx prisma migration ref set staging 20260910T1549_init
+```
+
+Do this again in every pull request that adds a migration: run `migration ref set staging <new directory name>` and commit the updated `staging.json`. The job applies migrations only up to the state the ref names, so if you forget, the new migration never runs. On a repository that already has migrations, point the ref at the newest one staging should have. If `staging.json` does not exist at all, the job fails with `MIGRATION.REF_NOT_FOUND`.
+
+Add the connection string of your staging database, whether you created it with `postgres create` as in step 3 or host it elsewhere, as a repository secret named `STAGING_DATABASE_URL`, as in step 6.3. Then add the workflow. It needs no platform secrets, because it runs no `postgres` commands, and no `contract emit`, because the emitted contract is committed with the migrations:
+
+```yaml title=".github/workflows/migrate-staging.yml"
+name: Migrate staging
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx prisma db migrate --to staging --db "$DATABASE_URL"
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+```
+
+When the job fails with `MIGRATION.MARKER_MISMATCH`, [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) says what to do. To see what the job would apply before you push, run `npx prisma migration status --to staging --db "$STAGING_DATABASE_URL"` from your machine; it changes nothing.
+
+The workflow has no `db verify` step. `db verify` compares the database with the contract you last emitted, so if you point the `staging` ref at an earlier state on purpose, `db verify` would fail even though nothing is wrong.
+
+As in step 7, this workflow was not run on GitHub while validating the guide; its command was run against a local database, including one that had been changed outside the migration system, which failed with `MIGRATION.MARKER_MISMATCH`.
+
 ## Common gotchas
 
 :::warning
@@ -707,6 +758,7 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills
 - "Using the prisma-8 skill, add a `Comment` model to the contract, plan a migration for it, and update the seed script."
 - "Add a test job to the preview workflow that runs `npm test` against the provisioned database after the seed step."
 - "Change the workflow to create the preview database in `eu-central-1` and to skip the seed when the pull request is a draft."
+- "Add a `migrate-production.yml` workflow like the staging one in step 8 that runs on a published release, with a `production` ref and a `PRODUCTION_DATABASE_URL` secret."
 
 ## Next steps
 

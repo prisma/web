@@ -37,8 +37,8 @@ Create a new SolidStart app with Prisma ORM, seed it, and serve users from an AP
 
 1. Scaffold: `npm init solid@latest my-solid-prisma-app -- -s --v2 -t basic --ts`. Delete the `pnpm-lock.yaml` the template ships (otherwise Prisma picks pnpm), then `cd my-solid-prisma-app` and run `npm install`.
 2. Add Prisma ORM: `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`.
-3. Run `npx prisma@latest db init` to create the tables from `src/prisma/contract.prisma`.
-4. Add `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, closes with `await db.runtime().close()`, and run it once with `node src/prisma/seed.ts`.
+3. Run `npx prisma db init` to create the tables from `src/prisma/contract.prisma`.
+4. Add `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, closes with `await db.close()`, and run it once with `node src/prisma/seed.ts`.
 5. Add `src/routes/api/users.ts` with a `GET` handler that returns `db.orm.public.User.include("posts").all()` as JSON, and replace `src/routes/index.tsx` with a page that loads the same query through a `"use server"` function wrapped in `query` and `createAsync`, with `<Suspense>` for loading and `<ErrorBoundary>` for errors, following https://www.prisma.io/docs/guides/frameworks/solid-start.md. Catch Prisma errors inside the server function and rethrow a plain `Error`.
 6. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/api/users` returns the seeded users and `curl http://localhost:3000/` includes their names, then stop the dev server.
 ```
@@ -90,7 +90,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 Updated tsconfig.json with required compiler options.
 ✔ npm add @prisma/orm-postgres dotenv
 ✔ npm add -D prisma@latest @types/node
-✔ npm add -D @prisma/cli-engine@0.3.0
+✔ npm add -D @prisma/cli-engine@0.6.1
 ✔ Emit the contract
 │  target:     postgres
 │  authoring:  psl
@@ -169,7 +169,7 @@ Both `prisma.config.ts` and `db.ts` import `dotenv/config`, so the CLI and the d
 Create the tables the contract declares and sign the database:
 
 ```npm
-npx prisma@latest db init
+npx prisma db init
 ```
 
 ```text no-copy
@@ -190,7 +190,7 @@ App space
 └─ marker 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
 ```
 
-`db init` replaces `prisma migrate dev` from Prisma ORM 7 for the first apply: it creates what is missing and records the contract hash in the database. Later schema changes go through [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) for a checked-in migration. To confirm the database matches the contract at any time, run `npx prisma@latest db verify`.
+`db init` replaces `prisma migrate dev` from Prisma ORM 7 for the first apply: it creates what is missing and records the contract hash in the database. Later schema changes go through [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) for a checked-in migration. To confirm the database matches the contract at any time, run `npx prisma db verify`.
 
 ## 4. Seed the database
 
@@ -223,7 +223,7 @@ async function main() {
     }
     console.log(`Seeded ${created.email} with ${posts.length} post(s)`);
   }
-  await db.runtime().close();
+  await db.close();
 }
 
 main().catch((error) => {
@@ -371,7 +371,7 @@ The server-rendered HTML contains `<h3>Alice</h3>` and `<h3>Bob</h3>` with their
 
 :::warning
 
-Don't call `db.runtime().close()` in API routes or server functions. The client in `src/prisma/db.ts` is constructed once and its connection pool is shared across requests; close it only in one-off scripts like the seed.
+Don't call `db.close()` in API routes or server functions. The client in `src/prisma/db.ts` is constructed once and its connection pool is shared across requests; close it only in one-off scripts like the seed.
 
 :::
 
@@ -405,7 +405,7 @@ Prompts that map to this guide:
 
 ## Next steps
 
-- Change the schema in `src/prisma/contract.prisma`, then run `npx prisma@latest contract emit` and `npx prisma@latest db update`. SolidStart builds on Vite, so the [Vite plugin](/cli/contract-emit#run-it-automatically) can run `contract emit` for you whenever the contract changes while the dev server runs.
+- Change the schema in `src/prisma/contract.prisma`, then run `npx prisma contract emit` and `npx prisma db update`. SolidStart builds on Vite, so the [Vite plugin](/cli/contract-emit#run-it-automatically) can run `contract emit` for you whenever the contract changes while the dev server runs.
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
 - [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
 - [SolidStart documentation](https://start.solidjs.com/) for routing, server functions, and deployment presets.

@@ -52,8 +52,8 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 Containerize a new Express app on Prisma ORM with Docker Compose, following https://www.prisma.io/docs/guides/deployment/docker.md.
 
 1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
-2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma@latest contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
-3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma@latest migration plan --name init` then `npx prisma@latest db migrate`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
+2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
+3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma migration plan --name init` then `npx prisma db migrate`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
 4. Regenerate the lockfile with `rm -rf node_modules package-lock.json && npm install` so `npm ci` succeeds on Linux. Write a `.dockerignore` (node_modules, .env, .env.prod), a `Dockerfile` based on `node:24-alpine` that runs `npm ci`, copies the project, and uses `CMD ["sh", "-c", "npm run db:migrate && npm start"]`, a `docker-compose.yml` with a `postgres_db` service and a `server` service that builds the Dockerfile, publishes port 3000, waits for the database healthcheck, and loads `.env.prod`, and `.env.prod` with `DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres"`.
 5. Run `docker compose up --build -d`, verify `curl http://localhost:3000` returns "No users have been added yet.", show me the `server` logs, then run `docker compose down -v`.
 ```
@@ -90,7 +90,7 @@ package.json declares "type": "commonjs" ... the scaffolded prisma/db.ts uses an
 If you want the default, set "type": "module" in package.json.
 ✔ npm add @prisma/orm-postgres dotenv
 ✔ npm add -D prisma@latest @types/node
-✔ npm add -D @prisma/cli-engine@0.3.0
+✔ npm add -D @prisma/cli-engine@0.6.1
 ✔ Emit the contract
 │  target:     postgres
 │  authoring:  psl
@@ -162,7 +162,7 @@ model User {
 Emit the contract again so `contract.json` and `contract.d.ts` match the new model:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ```text no-copy
@@ -258,7 +258,7 @@ DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres" # [!code hig
 Plan the first migration from the emitted contract. This is offline and writes a migration package under `migrations/app/`:
 
 ```npm
-npx prisma@latest migration plan --name init
+npx prisma migration plan --name init
 ```
 
 ```text no-copy
@@ -276,7 +276,7 @@ to:         3bb5103a83e513d042e9a53dec29c899f92b5209b3b88944fee251cbe86c0e9b
 Apply it to the running database:
 
 ```npm
-npx prisma@latest db migrate
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -295,7 +295,7 @@ App space
 Confirm the database and the contract agree:
 
 ```npm
-npx prisma@latest migration status
+npx prisma migration status
 ```
 
 ```text no-copy
@@ -525,7 +525,7 @@ Running Studio as a Compose service, as the Prisma ORM 7 guide did, does not wor
 
 :::warning
 
-Do not call `db.runtime().close()` in a route handler. The client's connection pool is shared across requests; close it only on process shutdown.
+Do not call `db.close()` in a route handler. The client's connection pool is shared across requests; close it only on process shutdown.
 
 :::
 
@@ -545,6 +545,6 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills
 
 ## Next steps
 
-- Change the schema in `src/prisma/contract.prisma`, run `npm run contract:emit`, then `npx prisma@latest migration plan --name <change>`; the next `docker compose up --build` applies it. See [Generating a migration](/orm/migrations/generating-a-migration) and [Applying a migration](/orm/migrations/applying-a-migration).
+- Change the schema in `src/prisma/contract.prisma`, run `npm run contract:emit`, then `npx prisma migration plan --name <change>`; the next `docker compose up --build` applies it. See [Generating a migration](/orm/migrations/generating-a-migration) and [Applying a migration](/orm/migrations/applying-a-migration).
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
 - [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.

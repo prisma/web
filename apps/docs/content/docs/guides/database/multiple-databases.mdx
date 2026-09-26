@@ -282,7 +282,7 @@ npm run db:verify
 The marker is also what protects you from crossing the wires. Verifying the users contract against the posts database stops immediately:
 
 ```npm
-npx prisma@latest db verify --config ./prisma.users.config.ts --db "$POSTS_DATABASE_URL"
+npx prisma db verify --config ./prisma.users.config.ts --db "$POSTS_DATABASE_URL"
 ```
 
 ```text no-copy
@@ -322,8 +322,8 @@ async function main() {
   });
 
   console.log("Seeded", alice.email, "and", bob.email, "with one post each.");
-  await usersDb.runtime().close();
-  await postsDb.runtime().close();
+  await usersDb.close();
+  await postsDb.close();
 }
 
 main().catch((error) => {
@@ -461,13 +461,13 @@ Open the live URL. The page renders the same two lists from the same two databas
 
 :::warning
 
-Commands without `--config` fail once the default config is gone. Running `npx prisma@latest contract emit` with no `./prisma.config.ts` (or with one that has no `orm` section) stops with `[CONFIG.FILE_NOT_FOUND]` and a hint that the `orm` config section is absent. Use the package scripts from step 4, or pass `--config` explicitly.
+Commands without `--config` fail once the default config is gone. Running `npx prisma contract emit` with no `./prisma.config.ts` (or with one that has no `orm` section) stops with `[CONFIG.FILE_NOT_FOUND]` and a hint that the `orm` config section is absent. Use the package scripts from step 4, or pass `--config` explicitly.
 
 :::
 
 - **No relations across databases.** A contract covers one database. Keep a plain id column such as `authorId` on the side that references the other database, and join in application code.
 - **`npx prisma@latest init` writes a third config.** It creates a `prisma.config.ts` that holds only the `skills` section for agent skills. That is expected; the database commands keep using `--config` with the two database configs.
-- **Do not close a client per request.** In `page.tsx` and route handlers, never call `usersDb.runtime().close()`. The pools are shared across requests and close when the process exits. Only scripts such as `prisma/seed.ts` close them.
+- **Do not close a client per request.** In `page.tsx` and route handlers, never call `usersDb.close()`. The pools are shared across requests and close when the process exits. Only scripts such as `prisma/seed.ts` close them.
 - **`orm init` picks the package manager from your lockfile.** Run it after `create-next-app` has written `package-lock.json`, `pnpm-lock.yaml`, or `bun.lock`, or it may install with a different package manager than the one you use.
 
 ## Prompt your coding agent

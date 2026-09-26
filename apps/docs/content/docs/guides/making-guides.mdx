@@ -101,13 +101,16 @@ metaDescription: '[One sentence for search results]'
 
 ### Versions in commands
 
-Guides use floating tags, never pinned versions:
+Commands that run before the project has Prisma installed use the `@latest` tag, never a pinned version:
 
 ```npm
 npx create-prisma@latest my-app --template hono --provider postgres
 npx prisma@latest orm init --target postgres
+npx prisma@latest init
 npx create-db@latest
 ```
+
+Every other command is `npx prisma <command>`, which runs the version the project has installed. In CI that is the version from the lockfile, and a reader never sees a guide behave differently from their own checkout. The docs' command tabs render `npx prisma` as `pnpm prisma` and `yarn prisma` for the same reason.
 
 Package installs happen inside `create-prisma` and `orm init`; show their output rather than hand-written `npm install` lines with version numbers.
 
@@ -129,7 +132,7 @@ Add Prisma ORM to an app that already exists:
 npx prisma@latest orm init --target postgres
 ```
 
-For a database that already has tables, follow with `npx prisma@latest contract infer --output ./src/prisma/contract.prisma`, review the contract, then `contract emit` and `db sign`. Two things to check in the review: `orm init` keeps `"type": "commonjs"` if your `package.json` declares it (set `"type": "module"`), and `contract infer` writes `Timestamptz` for timestamp columns while the runtime on Node.js needs `TimestamptzString`.
+For a database that already has tables, follow with `npx prisma contract infer --output ./src/prisma/contract.prisma`, review the contract, then `contract emit` and `db sign`. Two things to check in the review: `orm init` keeps `"type": "commonjs"` if your `package.json` declares it (set `"type": "module"`), and `contract infer` writes `Timestamptz` for timestamp columns while the runtime on Node.js needs `TimestamptzString`.
 
 ### Runtime instantiation
 
@@ -147,17 +150,17 @@ export const db = postgres<Contract>({
 });
 ```
 
-Queries are namespace-qualified (`db.orm.public.User.select("id", "email").all()`). Close the runtime once on process shutdown with `await db.runtime().close()`, never per request; in a per-request environment such as Cloudflare Workers, create the client inside the handler instead (see [Cloudflare Workers](/guides/deployment/cloudflare-workers)).
+Queries name the PostgreSQL schema (`db.orm.public.User.select("id", "email").all()`). Close the client once on process shutdown with `await db.close()`, never per request; in a per-request environment such as Cloudflare Workers, create the client inside the handler instead (see [Cloudflare Workers](/guides/deployment/cloudflare-workers)).
 
 ### Database lifecycle
 
 | Task | Command |
 | --- | --- |
-| First apply and sign | `npx prisma@latest db init` |
-| Check the database matches the contract | `npx prisma@latest db verify` |
-| Apply a contract change during development | `npx prisma@latest db update` |
-| Plan a checked-in migration | `npx prisma@latest migration plan --name <name>` |
-| Apply checked-in migrations | `npx prisma@latest db migrate` |
+| First apply and sign | `npx prisma db init` |
+| Check the database matches the contract | `npx prisma db verify` |
+| Apply a contract change during development | `npx prisma db update` |
+| Plan a checked-in migration | `npx prisma migration plan --name <name>` |
+| Apply checked-in migrations | `npx prisma db migrate` |
 
 ### Environment variables
 
@@ -271,13 +274,13 @@ DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
 ```
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ## 4. Initialize the database
 
 ```npm
-npx prisma@latest db init
+npx prisma db init
 ```
 
 ```text no-copy
