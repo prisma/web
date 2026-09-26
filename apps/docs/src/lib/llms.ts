@@ -171,7 +171,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm-v7",
     title: "Prisma ORM v7",
     description:
-      "Prisma ORM 7 documentation: the schema.prisma workflow, Prisma Client, Prisma Migrate, the classic Prisma CLI, and the Prisma ORM 7 quickstarts and framework guides. Prisma ORM 7 remains fully supported; pin prisma and @prisma/client to 7.10.0.",
+      "Prisma ORM 7 documentation: the schema.prisma workflow, Prisma Client, Prisma Migrate, the classic Prisma CLI, and the Prisma ORM 7 quickstarts and framework guides. Prisma ORM 7 remains fully supported; install the CLI as prisma@prev and the client as @prisma/client@7.",
     prefixes: ["/orm/v7", "/v7", "/guides/v7", "/cli/v7"],
   },
   {
@@ -265,8 +265,8 @@ export const llmsSections: LLMsSection[] = [
   {
     slug: "mcp",
     title: "Prisma MCP",
-    description: "MCP server setup for Prisma Postgres and Prisma CLI workflows.",
-    prefixes: ["/ai/tools/mcp-server", "/cli/mcp"],
+    description: "MCP setup and tools for Prisma Postgres, Compute, Object Storage, and Composer.",
+    prefixes: ["/ai/tools/mcp-server", "/ai/mcp-tools", "/cli/mcp"],
   },
 ];
 

@@ -37,7 +37,7 @@ Set up a pnpm workspaces monorepo with a shared Prisma 8 database package and a 
 1. Create `my-monorepo` with `pnpm init`, a `pnpm-workspace.yaml` listing `apps/*` and `packages/*` with `allowBuilds` for `esbuild`, `msgpackr-extract`, and `workerd`, and the directories `apps` and `packages/database`.
 2. In `packages/database`, run `pnpm init`, then `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `pnpm prisma init` in the same directory so the Prisma agent skills are installed, and use them.
 3. Write `packages/database/.env` with `DATABASE_URL` (use the connection string I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints). Run `pnpm prisma db init` in `packages/database`.
-4. Add `src/index.ts` exporting `db` from `./prisma/db`, set `"exports": { ".": "./src/index.ts" }` in the package's package.json, add a `src/seed.ts` that upserts two users with `db.orm.public.User.upsert(...)` and closes with `await db.runtime().close()`, and run it with `node src/seed.ts`.
+4. Add `src/index.ts` exporting `db` from `./prisma/db`, set `"exports": { ".": "./src/index.ts" }` in the package's package.json, add a `src/seed.ts` that upserts two users with `db.orm.public.User.upsert(...)` and closes with `await db.close()`, and run it with `node src/seed.ts`.
 5. In `apps`, run `pnpm create next-app@latest web --yes --skip-install`, delete `apps/web/.git` and `apps/web/pnpm-workspace.yaml`, add `"database": "workspace:*"` to `apps/web/package.json`, copy `packages/database/.env` to `apps/web/.env`, and run `pnpm install` from the workspace root.
 6. Replace `apps/web/app/page.tsx` with a server component that imports `{ db } from "database"`, exports `dynamic = "force-dynamic"`, queries `db.orm.public.User.select("id", "email", "name").all()`, and renders the list.
 7. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update`, and `seed` that filter to the right package, start `pnpm dev` in the background, verify http://localhost:3000 renders the seeded users, then stop it. Finally run `pnpm build` and confirm it completes.
@@ -95,8 +95,8 @@ Answer the prompts: choose `PSL` for the authoring style and keep the default sc
 ✔ pnpm add @prisma/orm-postgres dotenv
 ▸ pnpm add -D prisma@latest @types/node
 ✔ pnpm add -D prisma@latest @types/node
-▸ pnpm add -D @prisma/cli-engine@0.4.0
-✔ pnpm add -D @prisma/cli-engine@0.4.0
+▸ pnpm add -D @prisma/cli-engine@0.6.1
+✔ pnpm add -D @prisma/cli-engine@0.6.1
 ▸ Emit the contract
 ✔ Emit the contract
 │  target:     postgres
@@ -195,7 +195,7 @@ for (const user of users) {
 
 console.log(await db.orm.public.User.select("id", "email", "name").all());
 
-await db.runtime().close();
+await db.close();
 ```
 
 Point the package at the entry point and add scripts for the database steps. Replace the `main` field `pnpm init` wrote with an `exports` map, and drop the placeholder `test` script:
@@ -377,7 +377,7 @@ The page renders the same users from the production server.
 [Prisma Studio](/studio) ships with the Prisma 7 CLI and connects to a Prisma 8 database through `--url`. Run it from the workspace root, which has no `prisma.config.ts` for the Prisma 7 CLI to trip over:
 
 ```bash
-pnpm dlx prisma@7.10.0 studio --url "postgres://user:password@localhost:5432/mydb"
+pnpm dlx prisma@prev studio --url "postgres://user:password@localhost:5432/mydb"
 ```
 
 ```text no-copy
@@ -396,7 +396,7 @@ Open the URL Studio prints. The `user` and `post` tables appear under **Tables**
 
 - If `pnpm prisma contract emit` reports `CLI.CONFIG_UNREADABLE` with `Cannot find module '@prisma/cli-engine'` or `No "exports" main defined`, the `@prisma/cli-engine` link in `packages/database/node_modules` is dangling. `pnpm install --force` does not repair it; `pnpm add -D prisma@latest @prisma/cli-engine@latest` does.
 - Every Prisma command reads `DATABASE_URL` from `packages/database/.env` through `prisma.config.ts`, and the app reads `apps/web/.env`. Keep the two files in sync, or export the variable in your shell and drop both files.
-- Do not call `db.runtime().close()` in a page or route handler. The client is a module-level singleton whose connection pool is shared across requests; close it only in scripts that exit, like `seed.ts`.
+- Do not call `db.close()` in a page or route handler. The client is a module-level singleton whose connection pool is shared across requests; close it only in scripts that exit, like `seed.ts`.
 - After you change `src/prisma/contract.prisma`, run `pnpm --filter database contract:emit` so the app sees the new types, then `pnpm db:update` to apply the change. The root `build` script emits for you before every build.
 
 ## Prompt your coding agent

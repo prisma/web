@@ -36,9 +36,9 @@ To delegate the pull-and-apply part of this guide to your coding agent, copy the
 ```text
 Bring my local database up to date with the migrations on this branch using Prisma ORM, following https://www.prisma.io/docs/guides/database/schema-changes.md.
 
-1. Run `npx prisma@latest migration status` and tell me what is pending. If it reports "Up to date", stop.
-2. If it warns that there is no migration path from the database state to the contract, the graph has two branch tips. Run `npx prisma@latest migration graph`, then plan one merge migration from each tip with `npx prisma@latest migration plan --from <migration-dir> --name merge_<other-change>`, and show me both DDL previews before continuing.
-3. Apply with `npx prisma@latest db migrate --advance-ref db`, then run `npx prisma@latest migration check` and `npx prisma@latest db verify`.
+1. Run `npx prisma migration status` and tell me what is pending. If it reports "Up to date", stop.
+2. If it warns that there is no migration path from the database state to the contract, the graph has two branch tips. Run `npx prisma migration graph`, then plan one merge migration from each tip with `npx prisma migration plan --from <migration-dir> --name merge_<other-change>`, and show me both DDL previews before continuing.
+3. Apply with `npx prisma db migrate --advance-ref db`, then run `npx prisma migration check` and `npx prisma db verify`.
 4. If `migration plan` fails with MIGRATION.AMBIGUOUS_TARGET or MIGRATION.PLAN_ORIGIN_UNKNOWN, do not delete any migration directory. Pass `--from` explicitly as in step 2 and show me the error text.
 ```
 
@@ -54,9 +54,9 @@ Three commands answer the questions a team asks most:
 
 | Question | Command | Needs a database? |
 | --- | --- | --- |
-| What does the history look like? | `npx prisma@latest migration graph` | No |
-| Where is my database, and what is pending? | `npx prisma@latest migration status` | Yes |
-| Do the migration files on this branch hold together? | `npx prisma@latest migration check` | No |
+| What does the history look like? | `npx prisma migration graph` | No |
+| Where is my database, and what is pending? | `npx prisma migration status` | Yes |
+| Do the migration files on this branch hold together? | `npx prisma migration check` | No |
 
 ### 1.2. Commit these files
 
@@ -76,7 +76,7 @@ Do not commit `.env`. `orm init` already lists it in `.gitignore`.
 `migration plan` is offline. It never asks the database which contract state it matches, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`, otherwise the empty database. Keep the `db` ref pointing at the state your local database matches by applying with `--advance-ref db`:
 
 ```npm
-npx prisma@latest db migrate --advance-ref db
+npx prisma db migrate --advance-ref db
 ```
 
 Do that every time you apply, and every plan chains from the right place without flags. Section 3 shows what happens when it cannot.
@@ -112,8 +112,8 @@ model Post {
 Its first migration was planned and applied on `main` with:
 
 ```npm
-npx prisma@latest migration plan --name init
-npx prisma@latest db migrate --advance-ref db
+npx prisma migration plan --name init
+npx prisma db migrate --advance-ref db
 ```
 
 ```text no-copy
@@ -132,7 +132,7 @@ App space
 → Check every space against the database: {bin} migration status
 ```
 
-The `{bin}` in the hint is the CLI's placeholder for however you invoked it. Read it as `npx prisma@latest migration status`. Every developer clones this repository, points `DATABASE_URL` in their `.env` at their own database, and runs `npx prisma@latest db migrate` once to bring it to the same state.
+The `{bin}` in the hint is the CLI's placeholder for however you invoked it. Read it as `npx prisma migration status`. Every developer clones this repository, points `DATABASE_URL` in their `.env` at their own database, and runs `npx prisma db migrate` once to bring it to the same state.
 
 ## 2. Incorporate team changes
 
@@ -145,7 +145,7 @@ git pull
 ```
 
 ```npm
-npx prisma@latest migration status
+npx prisma migration status
 ```
 
 If nothing changed, you see the whole history marked applied:
@@ -161,7 +161,7 @@ If nothing changed, you see the whole history marked applied:
 `@db` marks the contract state your database matches, `@contract` the emitted contract, and `(db)` the state the `db` ref names. When migrations are pending, the tree flags each one with `⧗ pending` and a summary line tells you how many. Apply them and update the `db` ref in one step:
 
 ```npm
-npx prisma@latest db migrate --advance-ref db
+npx prisma db migrate --advance-ref db
 ```
 
 There is no generate step after applying: your typed client reads `contract.json`, which you just pulled.
@@ -220,8 +220,8 @@ model User {
 Then she emits, plans, and applies to her own database:
 
 ```npm
-npx prisma@latest contract emit
-npx prisma@latest migration plan --name add_favorite_color
+npx prisma contract emit
+npx prisma migration plan --name add_favorite_color
 ```
 
 ```text no-copy
@@ -242,7 +242,7 @@ ALTER TABLE "public"."user" ADD COLUMN "favoriteColor" text;
 The `from:` line is the `init` state, taken from the `db` ref. She applies and commits:
 
 ```npm
-npx prisma@latest db migrate --advance-ref db
+npx prisma db migrate --advance-ref db
 ```
 
 ```text no-copy
@@ -272,8 +272,8 @@ model Tag {
 ```
 
 ```npm
-npx prisma@latest contract emit
-npx prisma@latest migration plan --name add_tag_model
+npx prisma contract emit
+npx prisma migration plan --name add_tag_model
 ```
 
 ```text no-copy
@@ -321,7 +321,7 @@ Read the list carefully. `contract.prisma`, the file you author, merged cleanly:
 - `contract.json` and `contract.d.ts` are emitted from `contract.prisma`. Re-emit and they are regenerated from the merged source, conflict markers and all:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ```text no-copy
@@ -343,7 +343,7 @@ Do not commit yet. The graph is not finished.
 Draw the graph:
 
 ```npm
-npx prisma@latest migration graph
+npx prisma migration graph
 ```
 
 ```text no-copy
@@ -364,7 +364,7 @@ npx prisma@latest migration graph
 Read it bottom-up. From `init` (`1e8412e`) two branches leave: Ania's ends at `9bba644`, Javier's at `6210aa4`. The merged contract you just emitted, `cb575cf`, sits at the top with no edge arriving at it. No database can reach it yet. `migration status` says the same against your database, which is still on `init`:
 
 ```npm
-npx prisma@latest migration status
+npx prisma migration status
 ```
 
 ```text no-copy
@@ -378,7 +378,7 @@ npx prisma@latest migration status
 Follow that hint without an origin and the planner refuses, because it cannot decide which branch tip to continue from:
 
 ```npm
-npx prisma@latest migration plan --name merge_schema
+npx prisma migration plan --name merge_schema
 ```
 
 ```text no-copy
@@ -398,7 +398,7 @@ This is the error the graph exists to give you. It names the divergence point an
 Plan one merge migration from each tip. Each one carries the change its branch is missing, and both arrive at the merged contract:
 
 ```npm
-npx prisma@latest migration plan --from 20260910T1546_add_favorite_color --name merge_add_tag_model
+npx prisma migration plan --from 20260910T1546_add_favorite_color --name merge_add_tag_model
 ```
 
 ```text no-copy
@@ -412,7 +412,7 @@ to:         cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
 ```
 
 ```npm
-npx prisma@latest migration plan --from 20260910T1547_add_tag_model --name merge_add_favorite_color
+npx prisma migration plan --from 20260910T1547_add_tag_model --name merge_add_favorite_color
 ```
 
 ```text no-copy
@@ -428,7 +428,7 @@ to:         cb575cf009f55f442986c9f51655d0b48d40a8157f05427d525fe114e5f90b52
 `--from` accepts a migration directory name, as here, or a hash from the error message. The planner diffs the two contract snapshots and writes exactly the operations that are missing on that side. Review both DDL previews the way you would review any migration. The graph is now a diamond, and every database on either branch has a path to the top:
 
 ```npm
-npx prisma@latest migration graph
+npx prisma migration graph
 ```
 
 ```text no-copy
@@ -451,7 +451,7 @@ npx prisma@latest migration graph
 Your own database is still on `init`, so two migrations are pending for it. Apply them and let `--advance-ref db` set the `db` ref to where the database actually ends up, which also settles the `db.json` conflict from section 3.3:
 
 ```npm
-npx prisma@latest db migrate --advance-ref db
+npx prisma db migrate --advance-ref db
 ```
 
 ```text no-copy
@@ -477,7 +477,7 @@ git commit -m "Merge javier/tag-model and plan merge migrations"
 Ania pulls `main`. Her database matches `9bba644`, so only the migration that adds Javier's table is pending for her:
 
 ```npm
-npx prisma@latest migration status
+npx prisma migration status
 ```
 
 ```text no-copy
@@ -498,7 +498,7 @@ npx prisma@latest migration status
 ```
 
 ```npm
-npx prisma@latest db migrate --advance-ref db
+npx prisma db migrate --advance-ref db
 ```
 
 ```text no-copy
@@ -512,7 +512,7 @@ App space
 Javier does the same, and for him the pending migration is `merge_add_favorite_color`, which adds Ania's column. Nobody re-created anything, and the database's own ledger shows the route each one took:
 
 ```npm
-npx prisma@latest migration log
+npx prisma migration log
 ```
 
 ```text no-copy
@@ -533,7 +533,7 @@ git pull
 ```
 
 ```npm
-npx prisma@latest migration status
+npx prisma migration status
 ```
 
 ### 4.2. Edit, emit, plan
@@ -547,8 +547,8 @@ model User {
 ```
 
 ```npm
-npx prisma@latest contract emit
-npx prisma@latest migration plan --name add_best_pacman_score
+npx prisma contract emit
+npx prisma migration plan --name add_best_pacman_score
 ```
 
 ```text no-copy
@@ -571,8 +571,8 @@ No `--from` was needed: the `db` ref points at the merged state because the last
 ### 4.3. Apply and check
 
 ```npm
-npx prisma@latest db migrate --advance-ref db
-npx prisma@latest migration check
+npx prisma db migrate --advance-ref db
+npx prisma migration check
 ```
 
 ```text no-copy
@@ -590,6 +590,8 @@ App space
 ```
 
 `migration check` is offline and verifies every migration's hash and the graph's integrity. Run it in CI on every pull request so a `migration.ts` edited without a recompile, or a `migration.json` edited by hand, fails before it reaches a shared database.
+
+`migration check` reads only the files, so it cannot tell you whether a database matches them. `db verify` does. Run `npx prisma db verify --db "$DATABASE_URL"` after `db migrate`, and it fails if the database's marker or its tables differ from the contract you emitted. A pipeline that migrates a shared database runs `db migrate` alone; it refuses a database whose marker is outside your history with `MIGRATION.MARKER_MISMATCH` before it runs anything. [Migrate a shared database from a workflow](/guides/integrations/github-actions#migrate-a-shared-database) shows the job.
 
 ### 4.4. Commit
 

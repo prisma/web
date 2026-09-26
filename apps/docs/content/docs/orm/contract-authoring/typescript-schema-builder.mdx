@@ -21,7 +21,7 @@ If neither applies, write PSL, which is more compact and is what [`contract infe
 
 For a new project, run [`npx prisma orm init`](/cli/orm-init), which asks how you want to write your schema, and choosing TypeScript creates the contract file and the config together.
 
-The config's `contract` path names the one file Prisma ORM reads, and a `.ts` extension selects TypeScript authoring:
+The config's `contract` path names the one file Prisma ORM reads, and a `.ts` extension selects TypeScript authoring. An optional `output` names a directory for `contract.json` and `contract.d.ts`, which otherwise land next to the contract file; `npm create prisma@latest` sets it to `./src/prisma/generated` for TypeScript projects:
 
 ```typescript title="prisma.config.ts" tab="PostgreSQL"
 import { definePrismaConfig } from "prisma/config";
@@ -30,6 +30,7 @@ import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
 export default definePrismaConfig({
   orm: ormConfig({
     contract: "./src/prisma/contract.ts",
+    output: "./src/prisma/generated",
   }),
 });
 ```
@@ -124,7 +125,16 @@ export const contract = defineContract({ models: { User, Post } });
 
 ## How `defineContract` works
 
-On PostgreSQL, `defineContract` takes an options object and then a function. You do not set a `provider` anywhere: importing `@prisma/orm-postgres/contract-builder` is what selects PostgreSQL. The options object lists the extension packs you use, and you write `{}` when you use none. The function returns the contract's content: `models`, plus `enums` and `types` if you have them.
+On PostgreSQL, `defineContract` takes an options object and then a function. You do not set a `provider` anywhere: importing `@prisma/orm-postgres/contract-builder` is what selects PostgreSQL. The options object lists the extension packs you use, and you write `{}` when you use none. The function returns the contract's content: `models`, plus `enums`, `types`, and `entities` if you have them.
+
+The options object takes four more keys, all optional:
+
+| Option | What it does |
+| --- | --- |
+| `naming: { tables: "snake_case", columns: "snake_case" }` | Derives table and column names from model and field names, so `createdAt` becomes `created_at` without a `.column(...)` call on every field. Set either key or both. |
+| `foreignKeyDefaults: { constraint: true, index: true }` | Gives every `rel.belongsTo` a foreign key constraint and an index in the database. Without this option a relation gets neither unless its own `.sql({ fk })` asks; see [Relations](#relations). |
+| `defaultControlPolicy: "managed"` | The [control policy](#control-policy) for every model that does not set its own. |
+| `namespaces: ["audit"]` | The PostgreSQL schemas other than `public` that models may use; see [Namespaces](#namespaces). |
 
 Take `field`, `model`, `rel`, and `type` from the function's one argument, and import `defineContract`, `enumType`, and `member` from the package. The package also exports `model` and `rel` for use outside the function, plus a `field` that has only `column`, `generated`, and `namedType`.
 
@@ -137,6 +147,35 @@ On MongoDB, `defineContract` also accepts a single object holding `models`, as a
 - Indexes are an `indexes` option on the model, built with the `index` helper the same package exports, as in `indexes: [index({ email: 1 }, { unique: true })]`. The `1` is ascending, MongoDB's own index syntax.
 
 Enums and extension packs work on MongoDB too: `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`. Pass the enums in the same object as the models, as `defineContract({ models, enums })`, and extension packs go in the same `extensions` option.
+
+The MongoDB builder also has, on the model object:
+
+- `indexes`, a list of `index(keys, options?)` calls. `keys` maps each field to `1`, `-1`, `"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`, and `options` takes MongoDB's own index options: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, and `wildcardProjection`. For example, `index({ expiresAt: 1 }, { expireAfterSeconds: 3600, sparse: true })`.
+- `collectionOptions`, for options on the collection itself, such as `{ collation: { locale: "en", strength: 2 } }`.
+- `discriminator` and `base`, for one collection that holds more than one kind of document. The base model declares `discriminator: { field: "kind", variants: { Article: { value: "article" } } }`, and each variant model declares `base: Post` and the same `collection` as its base, plus its own fields. [MongoDB data modeling](/orm/data-modeling/mongodb#polymorphic-collections) covers when to use it.
+
+And two more field helpers: `field.vector()` for a vector, which takes no dimension count, and `field.valueObject(Address)` for an embedded document, where `Address` is declared with `valueObject("Address", { fields: { ... } })` from the package and returned in `defineContract`'s `valueObjects` map:
+
+```typescript
+import { defineContract, field, index, model, valueObject } from "@prisma/orm-mongo/contract-builder";
+
+const Address = valueObject("Address", {
+  fields: { street: field.string(), zip: field.string().optional() },
+});
+
+const User = model("User", {
+  collection: "users",
+  fields: {
+    _id: field.objectId(),
+    email: field.string(),
+    address: field.valueObject(Address).optional(),
+    embedding: field.vector().optional(),
+  },
+  indexes: [index({ email: 1 }, { unique: true, collation: { locale: "en", strength: 2 } })],
+});
+
+export const contract = defineContract({ models: { User }, valueObjects: { Address } });
+```
 
 The examples below use the PostgreSQL builder.
 
@@ -170,6 +209,8 @@ Every field builder supports chained modifiers:
 - `.default(value)` sets a literal default. `.defaultSql(expression)` sets a default the database computes, and the argument is a SQL expression as a string: `.defaultSql("now()")`.
 - `.unique()` adds a unique constraint. `.id()` marks the primary key, for a key that is not generated, such as an integer you set yourself.
 - `.column("column_name")` sets the column name in the database when it differs from the field name.
+- `.many()` makes the field a list, stored as a PostgreSQL array column such as `text[]`. A list column gets a check constraint that rejects `NULL` elements.
+- `.noCheck()` leaves out the check constraints Prisma ORM generates for the column: the one that keeps an enum column to the enum's values, and the one that keeps `NULL` out of a list. `.noCheck("membership")` and `.noCheck("elementNotNull")` leave out one or the other. The field's TypeScript type does not change.
 
 ## Enums
 
@@ -240,7 +281,30 @@ Post.relations({ ... }).sql(({ cols, constraints }) => ({
 }));
 ```
 
-`constraints.index` always takes a list of columns, even when the list has one entry. Add `{ unique: true }` to make it a unique index.
+`constraints.index` takes a list of columns, even when the list has one entry, or an object with `expression`, the whole index expression as SQL. The options are `unique`, `where` (a partial-index condition as SQL, without the `WHERE` keyword), `type` with `options` (the index method and its parameters; `options: {}` when there are none), and `name` or `map`. `name: "user_handle_active"` creates an index called `user_handle_active_2a0c4277`, with a hash on the end; `map` sets the exact name, which is what you want when the index already exists. An `expression` index needs one of the two:
+
+```typescript
+indexes: [
+  constraints.index([cols.handle], { where: "(handle IS NOT NULL)", name: "user_handle_active" }),
+  constraints.index({ expression: "lower(handle)", unique: true, name: "user_handle_lower" }),
+  constraints.index([cols.tags], { type: "gin", options: {}, name: "user_tags_gin" }),
+],
+```
+
+The `where` and `expression` strings go into the SQL as written, so they use column names, and you quote them yourself.
+
+Two more keys go in the same object, in either the object form or the callback form: `checks`, a list of check constraints you write yourself, built with `check` from the package, and `control`, the model's [control policy](#control-policy):
+
+```typescript
+import { check } from "@prisma/orm-postgres/contract-builder";
+
+Order.sql({
+  table: "order",
+  checks: [check({ expression: "total >= 0", name: "order_total_positive" })],
+});
+```
+
+`expression` is the condition as SQL, using column names, and `name` and `map` work as they do on an index.
 
 `Model.refs` provides typed references to another model's fields, for the constraint builders inside `.sql(...)`. Write `constraints.foreignKey(cols.userId, User.refs.id)` and TypeScript checks `id` against the actual `User` definition.
 
@@ -253,6 +317,64 @@ PostTag.attributes(({ fields, constraints }) => ({
 ```
 
 That object accepts exactly two keys, `id` and `uniques`. `id` takes one constraint, and `uniques` takes a list, so `uniques: [constraints.unique([fields.postId, fields.tagId])]` makes a unique constraint across two fields. For a key made of one field, `.id()` on the field is enough, and the `field.id.*` helpers already do it.
+
+## Namespaces
+
+A model can go in a PostgreSQL schema other than `public`: declare the schema in `defineContract`'s `namespaces` option, then name it on the model. Without the declaration, `npx prisma contract emit` fails and names the missing entry.
+
+```typescript
+export const contract = defineContract({ namespaces: ["audit"] }, ({ field, model }) => {
+  const AuditLog = model("AuditLog", {
+    namespace: "audit",
+    fields: { id: field.id.uuidv4String(), message: field.text() },
+  });
+  return { models: { AuditLog: AuditLog.sql({ table: "audit_log" }) } };
+});
+```
+
+## Control policy
+
+`control` on `.sql(...)` says how far Prisma ORM manages the table, with one of four values:
+
+| Value | `db verify` | Migrations |
+| --- | --- | --- |
+| `"managed"` (the default) | The table must exist and match the model exactly. | Create, alter, and drop it. |
+| `"tolerated"` | Declared columns must match; extra columns are accepted. | Create it if missing; never alter or drop it. |
+| `"external"` | Declared columns must match; extra columns and constraints are ignored. | Never touch it. |
+| `"observed"` | Anything goes; a mismatch is a warning, not a failure. | Never touch it. |
+
+Put it on a model whose table something else owns:
+
+```typescript
+AuditLog.sql({ table: "audit_log", control: "observed" })
+```
+
+`defaultControlPolicy` in `defineContract`'s options sets the policy for every model that does not set its own.
+
+## Row-level security
+
+The package exports the pieces of PostgreSQL row-level security, and [`migration plan`](/cli/migration-plan) turns them into `ENABLE ROW LEVEL SECURITY` and `CREATE POLICY` statements. `rlsEnabled(Model)` turns row-level security on for the model's table. `policySelect`, `policyInsert`, `policyUpdate`, `policyDelete`, and `policyAll` each declare one policy for one operation, and `role("name")` declares a database role a policy names. Return them all in the `entities` list:
+
+```typescript
+import { defineContract, policySelect, policyUpdate, rlsEnabled, role } from "@prisma/orm-postgres/contract-builder";
+
+export const contract = defineContract({}, ({ field, model }) => {
+  const User = model("User", { fields: { id: field.id.uuidv4String() } });
+  const authenticated = role("authenticated");
+
+  return {
+    models: { User: User.sql({ table: "user" }) },
+    entities: [
+      authenticated,
+      rlsEnabled(User),
+      policySelect(User, { name: "user_self_read", roles: [authenticated], using: "id = current_setting('app.user_id')::uuid" }),
+      policyUpdate(User, { name: "user_self_write", roles: [authenticated], using: "id = current_setting('app.user_id')::uuid", withCheck: "id = current_setting('app.user_id')::uuid" }),
+    ],
+  };
+});
+```
+
+`roles` lists role handles, and a role Prisma ORM should create goes in `entities` as well, as `authenticated` does above, while a role that already exists in the database, such as `public`, is `role("public")` in `roles` and left out of `entities`. `using` and `withCheck` are the two conditions as SQL, using column names: `policySelect` and `policyDelete` take `using`, `policyInsert` takes `withCheck`, and `policyUpdate` and `policyAll` take either or both. The policy `name` gets an eight-character hash on the end in the database.
 
 ## Extension types
 
