@@ -50,8 +50,11 @@ long before a CPU limit. If your app runs as serverless functions, each function
 own connections, and the limit arrives sooner than you expect. Prisma Postgres includes a PgBouncer
 pooler, but only connections to the pooled connection string (host `pooled.db.prisma.io`) go
 through it. The `db.prisma.io` string that `npx create-db` prints is the
-direct one, meant for migrations and admin tools, and app traffic on it works at low concurrency and
-then exhausts connections under production load. On other providers, check whether pooling exists
+direct one, meant for migrations and admin tools, and app traffic over TCP on it works at low
+concurrency and then exhausts connections under production load. The exception is the
+[serverless driver](https://www.prisma.io/docs/postgres/database/serverless-driver) (`@prisma/ppg`),
+meant for short-lived or globally distributed runtimes: it takes the direct string but talks HTTP and
+WebSockets rather than opening a TCP connection. On other providers, check whether pooling exists
 and is switched on: Railway and Render make you add PgBouncer first, and Render offers it only on
 paid databases. Supabase recommends its transaction pooler for serverless functions and a direct
 connection for long-running servers. Whichever you use, create one client per process and reuse it
@@ -292,7 +295,7 @@ meters.
 
 ## What to do this week
 
-Confirm your app uses the pooled connection string, check that the app and the database are in the
+Confirm your app uses the pooled connection string, or the direct one if it runs on the serverless driver, check that the app and the database are in the
 same region, restore a backup into a throwaway database and time it, check where your spend limit is
 set, and write down your current operations per active user so next month's number means something.
 That is the whole list. Come back to it when one of the signals above is actually true.
