@@ -17,9 +17,10 @@
 import { Button } from "@prisma/eclipse";
 import { useSearchContext } from "@fumadocs/base-ui/contexts/search";
 import { ThemeToggle } from "@prisma-docs/ui/components/theme-toggle";
+import { useScrollThreshold } from "@prisma-docs/ui/hooks/use-scroll-threshold";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { Menu, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Logo } from "./logo";
 import {
   NavMenu,
@@ -92,16 +93,11 @@ function SearchButton({ className }: { className?: string }) {
   );
 }
 
+const SCROLL_THRESHOLD = { enter: 24, exit: 12 };
+
 export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) {
   const [open, setOpen] = useState(false);
-  const [floating, setFloating] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setFloating(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const floating = useScrollThreshold(SCROLL_THRESHOLD);
 
   return (
     <>
@@ -111,10 +107,10 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
             is transitioned so the change is smooth in both directions. */}
         <div
           className={cn(
-            "mx-auto flex items-center justify-between gap-3 rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            "mx-auto flex items-center justify-between gap-3 rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none [transform:translateZ(0)] will-change-[max-width,height,margin,padding]",
             floating
               ? "border-stroke-neutral bg-background-default-075 mt-3 h-14 max-w-[calc(100%-1.5rem)] px-4 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-5xl sm:px-5 dark:shadow-[0_1px_2px_rgba(0,0,0,0.5),0_8px_24px_-8px_rgba(0,0,0,0.8)]"
-              : "bg-background-default/0 mt-4 h-16 max-w-[87.5rem] border-transparent px-4 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-6 sm:h-18 sm:px-10 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
+              : "bg-background-default/0 mt-4 h-16 max-w-[87.5rem] border-transparent px-4 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-none sm:mt-6 sm:h-18 sm:px-10 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
           )}
         >
           <Logo href={logoHref} />
