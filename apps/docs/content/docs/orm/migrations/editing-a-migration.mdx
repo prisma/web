@@ -40,7 +40,7 @@ to:         866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
-In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. `migration plan` writes the change as three steps rather than one, because rows that already exist need a value for the new required column: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
+In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. The output says `node migration.ts`, but run the file from your project root, as `node migrations/app/<dir>/migration.ts`, for the reason given above. `migration plan` writes the change as three steps rather than one, because rows that already exist need a value for the new required column: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
 
 ```ts title="migration.ts (as planned)"
 override get operations() {
@@ -172,7 +172,7 @@ model User {
 
 Keep `// use prisma-8` as the first line of the copy. `contract emit` skips any `.prisma` file that does not start with it, and because `intermediate.prisma` is the only file in the intermediate contract, emitting it without that line fails with an error whose `code` is `CONTRACT.SOURCE_LOAD_FAILED`.
 
-In the same migration directory, add `intermediate.config.ts`, a second config file whose `contract` is `intermediate.prisma`. It needs no `db.connection`, because emitting a contract never connects to a database. If your contract uses an extension pack, such as pgvector, list the same `extensions` here as in your project's `prisma.config.ts`, because this file does not take them from it:
+In the same migration directory, add `intermediate.config.ts`, a second config file whose `contract` is `intermediate.prisma`. It needs no `db.connection`, because emitting a contract never connects to a database. If your contract uses an extension package, such as pgvector, add the same `extensions` array here as in your project's `prisma.config.ts`, such as `extensions: [pgvector]` inside `ormConfig({ ... })`, because this file does not take it from there:
 
 ```ts title="intermediate.config.ts"
 import { definePrismaConfig } from 'prisma/config';
@@ -198,7 +198,11 @@ The command writes `intermediate.json` and `intermediate.d.ts` next to `intermed
 └── ops.json
 ```
 
-Now fill in this migration's own planned `migration.ts`, rather than copying the `displayName` file, whose snapshot imports point at other contracts. In the listing, `<start hash>` and `<end hash>` stand for the hashes your planned file already imports, so keep those imports as they are. The listing below builds `db` from the intermediate contract and passes that same contract to `dataTransform`, and those two have to be the same contract: if you pass a different one, `node migration.ts` fails with an error whose `code` is `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`. The listing also moves the planned `dropColumn` for `isAdmin` to after the backfill, so `isAdmin` is still there when the backfill reads it, and its two `run` callbacks run in the order you list them, so the second one sets `member` only on the rows the first one left empty.
+Now fill in this migration's own planned `migration.ts`, rather than copying the `displayName` file, whose snapshot imports point at other contracts. In the listing, `<start hash>` and `<end hash>` stand for the hashes your planned file already imports, so keep those imports as they are.
+
+The listing builds `db` from the intermediate contract and passes that same contract to `dataTransform`. Those two have to be the same contract: if you pass a different one, `node migration.ts` fails with an error whose `code` is `MIGRATION.DATA_TRANSFORM_CONTRACT_MISMATCH`.
+
+The listing also moves the planned `dropColumn` for `isAdmin` to after the backfill, so `isAdmin` is still there when the backfill reads it. The backfill's `dataTransform` has two `run` callbacks, which run in the order you list them, so the second one sets `member` only on the rows the first one left empty.
 
 ```ts title="migration.ts (filled in)"
 #!/usr/bin/env -S node
@@ -304,7 +308,7 @@ To find your current contract's hash, run `npx prisma migration graph` and look 
 npx prisma migration new --name backfill_scores --from <hash>
 ```
 
-If you leave `--from` off, `migration new` starts from the `db` ref, and after `npx prisma db migrate --advance-ref db` that ref names your current contract, so the migration would start and end at the same state. `migration new` refuses that case only when you leave `--from` off: it stops with an error whose `code` is `MIGRATION.NO_CHANGES`, which tells you to change your contract first, or to pass `--from` if you want a data-only migration. Passing the same hash with `--from` is how you tell it that starting and ending at the same state is what you want.
+For a data-only migration, always pass `--from`. Without it, `migration new` starts from the `db` ref, which names your current contract after `db migrate --advance-ref db`, so the migration would start and end at the same state. Without `--from`, `migration new` takes that as a mistake and stops with an error whose `code` is `MIGRATION.NO_CHANGES`, which tells you to change your contract first, or to pass `--from` if you want a data-only migration.
 
 Write your operations in the new `migration.ts` and recompile it. Until you do, the migration is still the empty one the command wrote, so `npx prisma migration check` and `npx prisma migration plan` both fail.
 

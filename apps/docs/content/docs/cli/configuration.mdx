@@ -6,7 +6,7 @@ metaTitle: Prisma ORM CLI configuration
 metaDescription: 'Learn how Prisma ORM CLI commands find config, read database URLs, and format output.'
 ---
 
-Prisma ORM CLI commands read `prisma.config.ts`, starting in the directory you run them from. The file has one section per part of the CLI. The `contract`, `db`, and `migration` commands read the `orm` section, and the [agent skills commands](/cli/skills) read the `skills` section.
+Prisma ORM CLI commands read `prisma.config.ts`, starting in the directory you run them from. The file has one section per part of the CLI. The `orm` section holds your schema, database, and migration settings, which the `contract`, `db`, and `migration` commands read. The `skills` section holds the settings for the [agent skills commands](/cli/skills), which copy Prisma's instructions for AI coding agents into your project.
 
 ## Config file
 
@@ -29,7 +29,7 @@ export default definePrismaConfig({
 
 For MongoDB projects, import the section helper from `@prisma/orm-mongo/config` instead. Both packages export this helper as `defineConfig`, and the examples on this page rename it to `ormConfig` when they import it.
 
-If you set up Prisma ORM 8 with a release candidate before `8.0.0-rc.12`, your config may import `defineConfig` from `@prisma/cli-engine`, the package the `prisma` CLI is built on. `8.0.0-rc.12` requires `@prisma/cli-engine` 0.6.1, which removed that export, so the config fails to load. Rename that import and its call to `definePrismaConfig`, which is the same function under its new name. You can import it from `prisma/config` or from `@prisma/cli-engine`, because `prisma/config` re-exports it. Leave the `defineConfig` import from `@prisma/orm-postgres/config` or `@prisma/orm-mongo/config` as it is: that is the helper for the `orm` section, and its name has not changed.
+This paragraph is only for a config written for a Prisma ORM 8 release candidate before `8.0.0-rc.12`. Such a config may import `defineConfig` from `@prisma/cli-engine`. That import no longer exists, so the config fails to load. Replace it with `definePrismaConfig` from `prisma/config`, and rename the call to match: it is the same function under its new name. Leave the `defineConfig` import from `@prisma/orm-postgres/config` or `@prisma/orm-mongo/config` as it is. That one is the helper for the `orm` section, and its name has not changed.
 
 [`orm init`](/cli/orm-init) writes this file for you. Without `--config`, the CLI looks for `prisma.config.ts` in the directory you run the command from and in the directories above it, as [How the CLI finds the config](#how-the-cli-finds-the-config) explains. Pass `--config` to use a config file in another place, such as a subdirectory:
 
@@ -39,15 +39,15 @@ npx prisma contract emit --config ./config/prisma.config.ts
 
 ## How the CLI finds the config
 
-The CLI looks for `prisma.config.ts` in the current directory, or starts from the file you pass to `--config`. It then looks in each parent directory, up to the root of the repository, which is the first directory that has a `.git` entry. If neither the starting directory nor any directory above it has a `.git` entry, the CLI reads only the first file.
+The CLI starts with `prisma.config.ts` in the current directory, or with the file you pass to `--config`. It then also reads the `prisma.config.ts` in each parent directory that has one, up to the root of the repository, which is the first directory that has a `.git` entry. If neither the starting directory nor any directory above it has a `.git` entry, the CLI reads only the file it started with.
 
-The CLI combines the files it finds one section at a time. Inside a section such as `orm`, each top-level key, such as `contract`, `db`, or `migrations`, comes whole from the nearest file that sets it, and the keys nested inside it are not combined. So if a config higher up sets `db.connection` and your project's config sets only `contract`, the CLI uses your `contract` and the other file's `db`. Extensions are the exception: a project config that calls `ormConfig` does not inherit them from a config higher up, even when it leaves `extensions` out. List the extensions your contract uses in each project's own config.
+The CLI combines the files it finds one section at a time. Inside a section such as `orm`, it takes each top-level key, such as `contract`, `db`, or `migrations`, from the nearest file that sets it, and it takes the whole value of that key from that one file. So if a config higher up sets `db.connection` and your project's config sets only `contract`, the CLI uses your `contract` and the other file's `db`.
 
-A project inside a larger repository therefore inherits any setting its own config leaves out from a `prisma.config.ts` higher up.
+Extensions are the exception: if your project config has its own `orm` section, it never inherits `extensions` from a config higher up, even when it lists none. List the extensions your contract uses, as [Extension packs](#extension-packs) shows, in each project's own config.
 
 :::warning[More than one project in a repository]
 
-If a `prisma.config.ts` higher up sets `db` or `migrations`, a project config that leaves them out uses that file's database and migrations folder. `db update`, `db migrate` and `db verify` then connect to the other project's database, and `migration plan` writes into the other project's migrations folder, without a warning. Set `db` and `migrations` in every project's own config, or add `parent: false` to it.
+If a `prisma.config.ts` higher up sets `db` or `migrations`, a project config that leaves them out uses that file's database and migrations folder. `db update`, `db migrate` and `db verify` then connect to the other project's database, and `migration plan` writes into the other project's migrations folder, without a warning. Set `db` and `migrations`, such as `migrations: { dir: "./migrations" }`, in every project's own config, or add `parent: false` to it.
 
 :::
 
@@ -65,7 +65,7 @@ export default definePrismaConfig({
 });
 ```
 
-`parent` can also be a path to another config file, which the CLI reads next in place of the one in the parent directory. The path is relative to the directory of the config file that sets it, and it may point outside the repository. After reading that file, the CLI goes on to search the directories above it in the usual way, unless that file sets `parent` too:
+`parent` can also be a path to another config file, which the CLI reads next in place of the one in the parent directory. The path is relative to the directory of the config file that sets it, and it may point outside the repository. After reading that file, the CLI goes on to search the directories above that file in the usual way, unless that file sets `parent` too:
 
 ```typescript title="prisma.config.ts"
 import { definePrismaConfig } from "prisma/config";
@@ -96,7 +96,9 @@ export default definePrismaConfig({
 });
 ```
 
-`contract emit` builds one contract from every matched file whose first line is `// use prisma-8`. It skips a matched file without that line and does not warn, so the line is what makes a file part of the schema. The Prisma editor extension uses the same rule, so the editor and `contract emit` agree on which files make up the schema. If the glob matches files but none of them starts with the line, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`, and the error's finding is `PSL_NO_OPTED_IN_SCHEMA_FILES`. If the glob matches no file at all, for example because of a typo in the pattern, the finding is `PSL_NO_SCHEMA_FILES_MATCHED` instead.
+`contract emit` builds one contract from every matched file whose first line is `// use prisma-8`. The same rule applies when `contract` names a single file: that file must start with the line too. `contract emit` skips a matched file without that line and does not warn, so the line is what makes a file part of the schema. The Prisma editor extension uses the same rule, so the editor and `contract emit` agree on which files make up the schema.
+
+If the glob matches files but none of them starts with the line, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`, and the error's details name the problem `PSL_NO_OPTED_IN_SCHEMA_FILES`. If the glob matches no file at all, for example because of a typo in the pattern, they name it `PSL_NO_SCHEMA_FILES_MATCHED` instead. [What `contract emit` creates](/cli/contract-emit#what-it-creates) says where these details appear in the output.
 
 A new file joins the schema the next time you run `contract emit`, with no change to the config. The emitted files go in the folder before the first wildcard, here `./prisma/contract.json` and `./prisma/contract.d.ts`.
 

@@ -292,7 +292,7 @@ npx prisma migration show 20260910T1552_add_status
 }
 ```
 
-Commit `migration.ts`, `ops.json`, and `migration.json` together. If `ops.json` or `migration.json` no longer matches the hash stored for the migration, `db migrate` refuses to run it, and `npx prisma migration check` reports the same problem before you commit.
+Commit `migration.ts`, `ops.json`, and `migration.json` together. Recompiling stores a hash of `ops.json` and `migration.json` inside `migration.json`. If either file changes after that, `db migrate` refuses to run the migration, and `npx prisma migration check` reports the same problem before you commit.
 
 ## 4. Apply the expand migration
 
@@ -444,7 +444,7 @@ Production runs the same migrations from the same files; only the connection str
 npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
 ```
 
-It refuses to run a migration whose files no longer match the hash stored for it. To see the route before it runs, add `--show`, which previews it without changing anything. Here is that preview against a production database that shipped the `init` migration and holds live rows, followed by the apply:
+It refuses to run a migration whose `ops.json` or `migration.json` changed after it was compiled. If your pipeline deploys each environment to a ref, as [Applying a migration](/orm/migrations/applying-a-migration) shows, add `--to <ref>` to that command. To see the route before it runs, add `--show`, which previews it without changing anything. Here is that preview against a production database that shipped the `init` migration and holds live rows, followed by the apply:
 
 ```text no-copy
 ℹ The following 2 migrations will run:
@@ -482,7 +482,7 @@ If `migration plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`, the `db` ref is 
 
 :::note
 
-If `db migrate` reports `MIGRATION.HASH_MISMATCH`, you edited `migration.ts` without recompiling. Run `node <migration-dir>/migration.ts` and apply again. Never edit `ops.json` by hand.
+If `db migrate` reports `MIGRATION.HASH_MISMATCH`, the migration's `ops.json` or `migration.json` changed after it was compiled, for example by a hand edit. Restore both files from Git, or move the edit into `migration.ts` and recompile with `node <migration-dir>/migration.ts`, then apply again. Never edit `ops.json` by hand.
 
 :::
 

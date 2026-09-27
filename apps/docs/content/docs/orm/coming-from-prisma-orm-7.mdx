@@ -22,9 +22,9 @@ On PostgreSQL, the following command moves Prisma ORM 7 to the `prisma7` command
 npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 ```
 
-It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with [phase 3 of the guide](/guides/upgrade-prisma-orm/postgresql#3-migrate-one-route), moving routes one at a time to the client in `src/prisma/db.ts`. Prisma ORM 7 keeps owning your migrations until the guide's [phase 4](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 works from a Prisma ORM 8 contract file, so before it, generate one with the guide's steps 2.3 to 2.5 and point `contract:` at it.
+It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with [phase 3 of the guide](/guides/upgrade-prisma-orm/postgresql#3-migrate-one-route), moving routes one at a time to the client in `src/prisma/db.ts`. Prisma ORM 7 keeps owning your migrations until the guide's [phase 4](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 needs a contract file written for Prisma ORM 8. Before you start it, create one with the guide's steps 2.3 to 2.5, and set `contract` in `prisma.config.ts` to that file's path.
 
-In a new project, three commands set up Prisma ORM 8:
+To set up Prisma ORM 8 in a new project, install `prisma` and `@prisma/orm-postgres`, then run `orm init`:
 
 ```npm title="Terminal"
 npm install --save-dev prisma
@@ -156,7 +156,7 @@ export default definePrismaConfig({
 
 The `orm` section takes these keys:
 
-- `contract`: the path to your contract file, or a glob for a [contract in several files](/orm/contract-authoring/psl-syntax#split-the-contract-across-several-files). On PostgreSQL it can also be `prisma7Schema("prisma/schema.prisma")`, with `prisma7Schema` imported from `@prisma/orm-postgres/config` next to `defineConfig`. The schema stays in Prisma ORM 7 syntax, so the changes in the table above do not apply to it, and it needs no `// use prisma-8` line. `contract emit` fails on any part of it that Prisma ORM 8 cannot read, such as a `view` block, and the error names the line and the Prisma ORM 7 edit that removes it; see [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema).
+- `contract`: the path to your contract file, or a glob for a [contract in several files](/orm/contract-authoring/psl-syntax#split-the-contract-across-several-files). On PostgreSQL it can also be `prisma7Schema("prisma/schema.prisma")`, with `prisma7Schema` imported from `@prisma/orm-postgres/config` next to `defineConfig`. The schema stays in Prisma ORM 7 syntax, so the changes in the table above do not apply to it, and it needs no `// use prisma-8` line. `contract emit` fails on any part of it that Prisma ORM 8 cannot read, such as a `view` block, and the error names the line and suggests a change to the Prisma ORM 7 schema; see [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema).
 - `db`: the connection.
 - `output` (optional): where `contract.json` and `contract.d.ts` are written. Default: next to the contract.
 - `extensions` (optional): database extensions, for example `extensions: [pgvector]` with `import pgvector from "@prisma/orm-extension-pgvector/control"`. See [Using extensions](/orm/extensions/using-extensions).
@@ -321,7 +321,7 @@ await db.runtime().execute(update);
 
 The table is `User`, because a model without `@@map` names its table after the model. As in Prisma ORM 7, a value you put in the SQL with `${...}`, such as `${id}`, is sent to the database as a query parameter.
 
-Every raw query that returns rows needs `.returnsRow(...)` with a type per column, and you take the type from the table, as above. A computed column has no table column to take it from, so write the type name as a string instead: for `SELECT count(*) AS total FROM "User"`, write `.returnsRow({ total: "pg/int8@1" })`. [Raw queries](/orm/reference/raw-queries) lists the type names. Finish the query with `.build()` and pass it to `db.runtime().query()` for rows or `db.runtime().execute()` for a count. On PostgreSQL, `db.runtime()` returns the connection directly, so it needs no `await`; the MongoDB client's `db.runtime()` is the one you `await`.
+Every raw query that returns rows needs `.returnsRow(...)` with a type per column, and you take the type from the table, as above. A computed column has no table column to take it from, so write the type name as a string instead: for `SELECT count(*) AS total FROM "User"`, write `.returnsRow({ total: "pg/int8@1" })`. [Raw queries](/orm/reference/raw-queries) lists the type names. Finish the query with `.build()` and pass it to `db.runtime().query()` for rows, or to `db.runtime().execute()` for the number of rows a write changed. On PostgreSQL, `db.runtime()` returns the connection directly, so it needs no `await`.
 
 ### Transaction
 
@@ -358,7 +358,7 @@ Add `@@fullTextIndex([title], name: "post_title_search")` to the `Post` model so
 
 ## Not available [#not-available-yet]
 
-Prisma ORM 7 features that have no direct form in Prisma ORM 8, with what to do instead. The status column says which: not available today, available in a different form, coming in the next release, or (for `$extends`) not coming.
+Prisma ORM 7 features that have no direct form in Prisma ORM 8, with what to do instead. The status column says whether each feature is not available, available in a different form, or, for `$extends`, replaced by middleware.
 
 | Prisma ORM 7 feature | Status | What to do instead |
 | --- | --- | --- |
