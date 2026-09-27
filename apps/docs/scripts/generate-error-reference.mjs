@@ -16,15 +16,18 @@
 // path segment (…/error-reference/<CODE>, the shape the CLI engine composes
 // from a family docsBaseUrl; next.config.mjs redirects it to the fragment).
 // Each `###` heading is a code, either `NAMESPACE.SUBCODE` or an undotted
-// code such as `PSL_PRESET_CONFLICT`, and gets an explicit anchor equal to
-// the raw code text via Fumadocs' `[#custom-id]` syntax.
+// code of two or more words joined by underscores, such as
+// `PSL_PRESET_CONFLICT`, and gets an explicit anchor equal to the raw code
+// text via Fumadocs' `[#custom-id]` syntax.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CODE_HEADING = /^### ([A-Z0-9_]+(?:\.[A-Z0-9_]+)*)$/;
+const DOTTED_CODE = /[A-Z0-9_]+(?:\.[A-Z0-9_]+)+/;
+const UNDOTTED_CODE = /[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+/;
+const CODE_HEADING = new RegExp(`^### (${DOTTED_CODE.source}|${UNDOTTED_CODE.source})$`);
 
 // The site names the product "Prisma ORM" and adds a version number only
 // when two versions are contrasted, so a source that says "Prisma 8" means
@@ -183,8 +186,10 @@ export function transform(target, markdown) {
     if (!match) {
       throw new Error(
         `Unexpected heading shape: ${JSON.stringify(heading)}. ` +
-          "Anchors are only generated for headings that are an error code, " +
-          "such as `### NAMESPACE.SUBCODE` or `### PSL_PRESET_CONFLICT`.",
+          "A `###` heading must be an error code in one of two shapes: " +
+          "uppercase parts joined by dots (`NAMESPACE.SUBCODE`), or " +
+          "uppercase words joined by underscores (`PSL_PRESET_CONFLICT`). " +
+          "A single word such as `FAQ` is not a code.",
       );
     }
     codes.push(match[1]);

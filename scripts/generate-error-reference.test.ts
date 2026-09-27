@@ -34,7 +34,40 @@ test("dotted and undotted codes are counted together", () => {
   assert.equal(codeCount, 2);
 });
 
+for (const code of [
+  "PSL_BACKTICK_STRING_REQUIRES_TAG",
+  "PSL_UNKNOWN_DEFAULT_LITERAL_TAG",
+  "PSL_DEPRECATED_SCALAR_NAME",
+  "PSL_DEFAULT_TYPE_INCOMPATIBLE",
+  "PSL_INVALID_DEFAULT_LITERAL",
+  "PSL_INVALID_JSON_LITERAL",
+  "PSL_TAGGED_LITERAL_NUL",
+  "PSL_TAGGED_LITERAL_TOO_LARGE",
+  "PSL_LIST_AUTOINCREMENT_UNSUPPORTED",
+  "PSL_INVALID_DEFAULT_SQL",
+  "PSL_PRESET_ON_VARIANT_FIELD",
+  "PSL_PRESET_CONFLICT",
+  "OTHER_FAMILY_CODE",
+]) {
+  test(`the undotted code ${code} is accepted`, () => {
+    assert.ok(generate(`### ${code}\n\nText.`).includes(`### ${code} [#${code}]\n`));
+  });
+}
+
+test("the error for a rejected heading names the accepted shapes", () => {
+  assert.throws(
+    () => generate("### FAQ\n\nText."),
+    /NAMESPACE\.SUBCODE.*PSL_PRESET_CONFLICT/,
+  );
+});
+
 for (const heading of [
+  "### FAQ",
+  "### NOTES",
+  "### HTTP2",
+  "### _NOTES",
+  "### NOTES_",
+  "### PSL__PRESET",
   "### How to read this page",
   "### Psl_Preset_Conflict",
   "### PSL-PRESET-CONFLICT",
