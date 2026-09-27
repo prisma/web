@@ -39,7 +39,7 @@ Bring my local database up to date with the migrations on this branch using Pris
 1. Run `npx prisma migration status` and tell me what is pending. If it reports "Up to date", stop.
 2. If it warns that there is no migration path from the database state to the contract, the graph has two branch tips. Run `npx prisma migration graph`, then plan one merge migration from each tip with `npx prisma migration plan --from <migration-dir> --name merge_<other-change>`, and show me both DDL previews before continuing.
 3. Apply with `npx prisma db migrate --advance-ref db`, then run `npx prisma migration check` and `npx prisma db verify`.
-4. If `migration plan` fails with MIGRATION.AMBIGUOUS_TARGET or MIGRATION.PLAN_ORIGIN_UNKNOWN, do not delete any migration directory. Pass `--from` explicitly as in step 2 and show me the error text.
+4. If `migration plan` fails with MIGRATION.PLAN_ORIGIN_UNKNOWN, do not delete any migration directory. Pass `--from` explicitly as in step 2 and show me the error text.
 ```
 
 </AgentPrompt>
@@ -375,23 +375,7 @@ npx prisma migration status
 ⚠ No migration path from the database state (91e7f9f03580) to the application's contract (1e5059c1976c). Run `{bin} migration plan --name <name>` to author one.
 ```
 
-Follow that hint without an origin and the planner refuses, because it cannot decide which branch tip to continue from:
-
-```npm
-npx prisma migration plan --name merge_schema
-```
-
-```text no-copy
-✘ [MIGRATION.AMBIGUOUS_TARGET] Ambiguous migration target
-  why: The migration history has diverged into multiple branches: b29af3990b528c7a67809a2ac609305c59aa9c0af1ed0e4591cc0a727b38b1d1, 18b24e59a8b291a37b50e0d82c7afb58b314a2b64920d530627c73bd6e2d9768. This typically happens when two developers plan migrations from the same starting point.
-Divergence point: 91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
-Branches:
-  → b29af3990b528c7a67809a2ac609305c59aa9c0af1ed0e4591cc0a727b38b1d1 (1 edge(s): 20260910T1546_add_favorite_color)
-  → 18b24e59a8b291a37b50e0d82c7afb58b314a2b64920d530627c73bd6e2d9768 (1 edge(s): 20260910T1547_add_tag_model)
-→ Use `{bin} migration ref set <name> <hash>` to target a specific branch, delete one of the conflicting migration directories and re-run `{bin} migration plan`, or use --from <hash> to explicitly select a starting point.
-```
-
-This is the error the graph exists to give you. It names the divergence point and both tips. Do not take the "delete one of the conflicting migration directories" option: Ania's and Javier's databases have already applied those migrations.
+Do not follow that hint as written. Without `--from`, `migration plan` starts from the `db` ref, and after the merge that ref holds whichever side you kept in section 3.3. The plan would succeed, but it would start from one branch tip only, so every database on the other branch would still have no path to the merged contract. Do not delete either migration directory to make the history a single line again: Ania's and Javier's databases have already applied those migrations.
 
 ### 3.5. Close the diamond
 
@@ -425,7 +409,7 @@ from:       18b24e59a8b291a37b50e0d82c7afb58b314a2b64920d530627c73bd6e2d9768
 to:         1e5059c1976c2439863eae8ac13211916ca411614c917394c413346f0d00f60b
 ```
 
-`--from` accepts a migration directory name, as here, or a hash from the error message. The planner diffs the two contract snapshots and writes exactly the operations that are missing on that side. Review both DDL previews the way you would review any migration. The graph is now a diamond, and every database on either branch has a path to the top:
+`--from` accepts a migration directory name, as here, or a hash from the graph, such as `b29af39`. The planner diffs the two contract snapshots and writes exactly the operations that are missing on that side. Review both DDL previews the way you would review any migration. The graph is now a diamond, and every database on either branch has a path to the top:
 
 ```npm
 npx prisma migration graph

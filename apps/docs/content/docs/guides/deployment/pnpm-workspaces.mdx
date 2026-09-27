@@ -114,6 +114,8 @@ written
 └─ package.json
 ```
 
+On pnpm 12.3.4, `orm init` can write all the files and then fail at `Emit the contract` with `CLI.INIT_EMIT_FAILED`. If it does, apply the `pnpm dedupe` fix from [Common gotchas](#common-gotchas) and continue.
+
 The `@prisma/cli-engine` version comes from the `prisma` package the previous step installed, so the two always match. `orm init` emits the contract itself, so `src/prisma/contract.json` and `src/prisma/contract.d.ts` exist as soon as it finishes. After every schema edit, re-emit with the package's own CLI:
 
 ```bash
@@ -394,7 +396,7 @@ Open the URL Studio prints. The `User` and `Post` tables appear under **Tables**
 
 :::
 
-- If `pnpm prisma contract emit` reports `CLI.CONFIG_UNREADABLE` with `Cannot find module '@prisma/cli-engine'` or `No "exports" main defined`, the `@prisma/cli-engine` link in `packages/database/node_modules` is dangling. `pnpm install --force` does not repair it; `pnpm add -D prisma@latest @prisma/cli-engine@latest` does.
+- If `orm init` ends with `CLI.INIT_EMIT_FAILED`, or `pnpm prisma contract emit` reports `CLI.CONFIG_UNREADABLE`, and the message says `Cannot find module '@prisma/cli-engine'` or `No "exports" main defined`, the `@prisma/cli-engine` link in `packages/database/node_modules` points at a directory that does not exist. This happens on pnpm 12.3.4 and does not happen on pnpm 11.25.0. Run `pnpm dedupe` to rebuild the link, then `pnpm prisma contract emit`. You do not need to run `orm init` again, because it wrote all its files before it tried to emit. `pnpm install`, `pnpm install --force`, and adding the packages again do not repair the link.
 - Every Prisma command reads `DATABASE_URL` from `packages/database/.env` through `prisma.config.ts`, and the app reads `apps/web/.env`. Keep the two files in sync, or export the variable in your shell and drop both files.
 - Do not call `db.close()` in a page or route handler. The client is a module-level singleton whose connection pool is shared across requests; close it only in scripts that exit, like `seed.ts`.
 - After you change `src/prisma/contract.prisma`, run `pnpm --filter database contract:emit` so the app sees the new types, then `pnpm db:update` to apply the change. The root `build` script emits for you before every build.
