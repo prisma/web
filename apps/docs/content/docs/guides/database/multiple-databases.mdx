@@ -59,7 +59,7 @@ This guide starts from `create-next-app` and adds Prisma ORM with `orm init` ins
 Run `orm init` from the project root. The `--schema-path` flag puts the contract in a folder named after the database, and `orm init` places the client file next to it:
 
 ```npm
-npx prisma@latest orm init --target postgres --authoring psl --schema-path ./prisma/users/contract.prisma
+npx prisma@latest orm init --yes --target postgres --authoring psl --schema-path ./prisma/users/contract.prisma
 ```
 
 The command installs `@prisma/orm-postgres` and `dotenv`, adds `prisma` as a dev dependency, sets `"type": "module"` in `package.json`, updates `tsconfig.json`, and writes these files:
@@ -85,16 +85,16 @@ mv prisma.config.ts prisma.users.config.ts
 Point it at the users contract, a users-only migrations folder, and a `USERS_DATABASE_URL` variable:
 
 ```typescript title="prisma.users.config.ts"
-import "dotenv/config";
-import { definePrismaConfig } from "prisma/config";
-import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 
 export default definePrismaConfig({
   orm: ormConfig({
     contract: "./prisma/users/contract.prisma",
-    migrations: {
+    migrations: { // [!code ++]
       dir: "./prisma/users/migrations", // [!code ++]
-    },
+    }, // [!code ++]
     db: {
       connection: process.env.USERS_DATABASE_URL!, // [!code ++]
     },
@@ -124,10 +124,10 @@ model User {
 Change `prisma/users/db.ts` to read `USERS_DATABASE_URL` and export a name you can tell apart from the second client:
 
 ```typescript title="prisma/users/db.ts"
-import "dotenv/config";
-import postgres from "@prisma/orm-postgres/runtime";
-import type { Contract } from "./contract.d";
-import contractJson from "./contract.json" with { type: "json" };
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
 
 export const usersDb = postgres<Contract>({ // [!code ++]
   contractJson,
@@ -146,9 +146,9 @@ mkdir -p prisma/posts
 ```
 
 ```typescript title="prisma.posts.config.ts"
-import "dotenv/config";
-import { definePrismaConfig } from "prisma/config";
-import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 
 export default definePrismaConfig({
   orm: ormConfig({
@@ -178,10 +178,10 @@ model Post {
 `authorId` is a plain integer, not a relation. A contract describes one database, and PostgreSQL cannot enforce a foreign key into another database, so the link between a post and its author is resolved in application code in step 5.
 
 ```typescript title="prisma/posts/db.ts"
-import "dotenv/config";
-import postgres from "@prisma/orm-postgres/runtime";
-import type { Contract } from "./contract.d";
-import contractJson from "./contract.json" with { type: "json" };
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
 
 export const postsDb = postgres<Contract>({
   contractJson,

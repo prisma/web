@@ -261,7 +261,7 @@ Restrict a query to rows matching an expression.
 
 | Return type | Example | Description |
 |---|---|---|
-| `SelectQuery` | `db.sql.public.post.where(...)` | A query narrowed by the predicate. |
+| `SelectQuery` | `db.sql.public.post.select('id').where(...)` | A query narrowed by the predicate. |
 
 #### Examples
 
@@ -389,16 +389,17 @@ Sort the result set by a column or a computed expression, in a direction you cho
 TypeScript also accepts a `nulls` option, but it does nothing, and no `NULLS FIRST` or `NULLS LAST` reaches the SQL. To put nulls last, sort by a computed value first, then by the column:
 
 ```ts
-db.sql.public.user
-  .orderBy((f, fns) => fns.raw`CASE WHEN ${f.zip} IS NULL THEN 1 ELSE 0 END`.returns('pg/int4@1'))
-  .orderBy('zip', { direction: 'asc' });
+db.sql.public.task
+  .select('id', 'description')
+  .orderBy((f, fns) => fns.raw`CASE WHEN ${f.description} IS NULL THEN 1 ELSE 0 END`.returns('pg/int4@1'))
+  .orderBy('description', { direction: 'asc' });
 ```
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `SelectQuery` | `db.sql.public.user.orderBy('email', ...)` | A query with the sort key applied. Call `orderBy()` again to add secondary keys. |
+| `SelectQuery` | `db.sql.public.user.select('email').orderBy('email', ...)` | A query with the sort key applied. Call `orderBy()` again to add secondary keys. |
 
 #### Examples
 
@@ -458,7 +459,7 @@ Keep the first row per distinct key, according to the query's `orderBy()` (`DIST
 
 | Return type | Example | Description |
 |---|---|---|
-| `SelectQuery` | `db.sql.public.post.distinctOn('userId')` | A query keeping the first row per distinct key. |
+| `SelectQuery` | `db.sql.public.post.select('userId').distinctOn('userId')` | A query keeping the first row per distinct key. |
 
 #### Examples
 
@@ -490,7 +491,7 @@ Cap the number of returned rows and skip rows in the ordered result set.
 
 | Return type | Example | Description |
 |---|---|---|
-| `SelectQuery` | `db.sql.public.user.limit(2)` | A query with the row cap or offset applied. |
+| `SelectQuery` | `db.sql.public.user.select('id').limit(2)` | A query with the row cap or offset applied. |
 
 #### Examples
 
@@ -571,7 +572,7 @@ Group rows by one or more columns or by a computed expression, producing one row
 
 | Return type | Example | Description |
 |---|---|---|
-| `GroupedQuery` | `db.sql.public.order.groupBy('customerId')` | A grouped query supporting `having()`, aggregates, ordering, and limits. |
+| `GroupedQuery` | `db.sql.public.order.select('customerId').groupBy('customerId')` | A grouped query supporting `having()`, aggregates, ordering, and limits. |
 
 #### Examples
 
@@ -642,7 +643,7 @@ Filter groups by an aggregate comparison. Build the predicate from the aggregate
 
 | Return type | Example | Description |
 |---|---|---|
-| `GroupedQuery` | `db.sql.public.order.groupBy('customerId').having(...)` | A grouped query filtered to the groups matching the predicate. |
+| `GroupedQuery` | `db.sql.public.order.select('customerId').groupBy('customerId').having(...)` | A grouped query filtered to the groups matching the predicate. |
 
 #### Examples
 
@@ -910,7 +911,7 @@ const authorsById = db.sql.public.user
 
 const authors = db.sql.public.user
   .select('id', 'email')
-  .where((f, fns) => fns.exists(db.sql.public.post.select('id').where((inner, innerFns) => innerFns.eq(inner.userId, f.id))))
+  .where((f, fns) => fns.exists(db.sql.public.post.select('id').where((inner, innerFns) => innerFns.eq(inner.post.userId, f.user.id))))
   .build();
 ```
 

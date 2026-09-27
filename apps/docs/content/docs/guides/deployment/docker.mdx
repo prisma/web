@@ -457,9 +457,11 @@ docker compose up --build -d
 ```
 
 ```text no-copy
- Container postgres_db  Healthy
- Container docker-test-server-1  Starting
- Container docker-test-server-1  Started
+[+] up 4/4
+ ✔ Image docker-test-server       Built                                     1.4s
+ ✔ Network docker-test_default    Created                                   0.0s
+ ✔ Container postgres_db          Healthy                                   5.7s
+ ✔ Container docker-test-server-1 Started                                   5.7s
 ```
 
 Check the app:
@@ -479,12 +481,12 @@ docker compose logs server
 ```
 
 ```text no-copy
-docker-test-server-1  | > docker-test@1.0.0 db:migrate
-docker-test-server-1  | > prisma db migrate
-docker-test-server-1  | {"kind":"result","envelope":{"ok":true,"commandId":"db.migrate","result":{"ok":true,"migrationsApplied":1,"migrationsTotal":1,...,"summary":"Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)",...}}}
-docker-test-server-1  | > docker-test@1.0.0 start
-docker-test-server-1  | > node src/index.ts
-docker-test-server-1  | Server is running on http://localhost:3000
+server-1  | > docker-test@1.0.0 db:migrate
+server-1  | > prisma db migrate
+server-1  | {"kind":"result","envelope":{"ok":true,"commandId":"db.migrate","result":{"ok":true,"migrationsApplied":1,"migrationsTotal":1,...,"summary":"Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)",...}}}
+server-1  | > docker-test@1.0.0 start
+server-1  | > node src/index.ts
+server-1  | Server is running on http://localhost:3000
 ```
 
 The CLI prints JSON lines when it has no terminal attached, which is what you see in container logs. Restart the server and the migration step becomes a no-op:
@@ -495,8 +497,8 @@ docker compose logs --since 30s server
 ```
 
 ```text no-copy
-docker-test-server-1  | ...,"summary":"Already up to date",...
-docker-test-server-1  | Server is running on http://localhost:3000
+server-1  | ...,"summary":"Already up to date",...
+server-1  | Server is running on http://localhost:3000
 ```
 
 Your Prisma ORM app and database now run together under Docker Compose. To stop everything and remove the containers, network, and volumes:
@@ -531,7 +533,7 @@ Do not call `db.close()` in a route handler. The client's connection pool is sha
 
 - **`npm ci` fails in the image with `Missing: @emnapi/runtime ... from lock file`.** The lockfile `orm init` leaves behind on macOS or Windows lacks Linux-only optional packages. Regenerate it as in [step 3.1](#31-regenerate-the-lockfile).
 - **`db.ts` will not load.** If `orm init` warned about `"type": "commonjs"`, set `"type": "module"` in `package.json`. The scaffolded `db.ts` imports `contract.json` with an ES module import attribute.
-- **The image is large.** The built image measured 1.41 GB on `node:24-alpine` and 1.5 GB on `node:24-slim`, almost all of it the `prisma` dev dependency, which bundles the Composer and deploy toolchain. The image needs the CLI because it runs `db migrate` at start.
+- **The image is large.** The built image measured 2.12 GB on disk on `node:24-alpine` and 2.23 GB on `node:24-slim` (the `DISK USAGE` column of `docker image ls`), almost all of it the `prisma` dev dependency, which bundles the Composer and deploy toolchain. The image needs the CLI because it runs `db migrate` at start.
 - **`docker run --env-file` keeps the quotes.** Compose strips the quotes around `DATABASE_URL` in `.env.prod`; plain `docker run --env-file` does not, and the Prisma CLI then rejects the URL. Pass `-e DATABASE_URL=...` without quotes when you run the image by hand.
 - **Port 3000 or 5432 is already in use.** Change the host side of the port mapping (`"3100:3000"`) or stop the service that holds the port; the container side stays the same.
 

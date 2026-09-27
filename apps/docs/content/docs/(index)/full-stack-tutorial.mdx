@@ -30,7 +30,7 @@ Create a new Hono API composed with Prisma Composer and Prisma ORM, run it local
 1. Scaffold: `npm create prisma@latest -- my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` to confirm the Prisma agent skills the scaffold installed are current, and use them.
 2. Read `module.ts` and `service.ts` first: the Composer module provisions the database and the service, and it is what `dev` and `deploy` operate on.
 3. Build and run locally: `npm run build`, then `npx prisma dev module.ts`. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify the local URL that `dev` prints: its /users endpoint returns the seeded users.
-4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). Capture the baseline migration first with `npx prisma migration plan --name init` and note the migration directory it writes. Then run `npx prisma deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
+4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). The scaffold already wrote the baseline migration under `migrations/app/`; note its directory name, which ends in `_init`. Then run `npx prisma deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
 5. Evolve the schema: add `role String @default("member")` to the User model in `src/prisma/contract.prisma`, run `npx prisma contract emit`, add `"role"` to the typed select and the returned object in `src/prisma/users.ts`, and plan the migration with `npx prisma migration plan --name add-user-role --from <the init migration directory>`. Then run `npm run build` and `npx prisma deploy module.ts` again, and verify the live /users now returns `role: "member"` with the same createdAt values as before.
 ```
 
@@ -122,9 +122,9 @@ curl http://localhost:3000/users
 
 ```json no-copy
 [
-  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-08-24T13:51:34.797Z" },
-  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-08-24T13:51:34.803Z" },
-  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-08-24T13:51:34.804Z" }
+  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "createdAt": "2026-08-24 13:51:34.797+00" },
+  { "id": "2", "email": "bob@prisma.io", "username": "bob", "name": "Bob", "createdAt": "2026-08-24 13:51:34.803+00" },
+  { "id": "3", "email": "carol@prisma.io", "username": "carol", "name": "Carol", "createdAt": "2026-08-24 13:51:34.804+00" }
 ]
 ```
 
@@ -146,13 +146,7 @@ Sign in once (it opens your browser):
 npx prisma auth login
 ```
 
-Before the first deploy, capture your schema as the first checked-in migration. Deployed databases evolve through the migrations you commit, so the baseline must be one:
-
-```npm
-npx prisma migration plan --name init
-```
-
-The plan writes `migrations/app/<timestamp>_init`; commit it with your code. You will chain the next migration from it in [step 7](#7-evolve-the-data-model).
+Deployed databases evolve through the migrations you commit, so the first migration must create your starting schema. The scaffold already planned it for you as `migrations/app/<timestamp>_init`; commit it with your code. You will chain the next migration from it in [step 7](#7-evolve-the-data-model).
 
 Build and deploy the same declaration:
 
@@ -207,7 +201,7 @@ model User {
 }
 ```
 
-Re-emit the contract, then plan the migration that carries the change, chaining from the baseline migration you created in [step 5](#5-deploy-app-and-database-to-prisma-compute):
+Re-emit the contract, then plan the migration that carries the change, chaining from the baseline migration you committed in [step 5](#5-deploy-app-and-database-to-prisma-compute):
 
 ```npm
 npx prisma contract emit
@@ -245,7 +239,7 @@ curl https://xyz.ewr.prisma.build/users
 
 ```json no-copy
 [
-  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "role": "member", "createdAt": "2026-08-24T18:40:06.375Z" }
+  { "id": "1", "email": "alice@prisma.io", "username": "alice", "name": "Alice", "role": "member", "createdAt": "2026-08-24 18:40:06.375+00" }
 ]
 ```
 
