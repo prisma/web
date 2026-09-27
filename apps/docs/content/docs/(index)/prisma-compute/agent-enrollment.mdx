@@ -1,39 +1,37 @@
 ---
 title: Enroll your agent
-description: Give a coding agent its own Prisma credential and a permission policy you control. It asks you before production writes and admin actions, and every request it makes is logged.
+description: Give a coding agent its own Prisma credential and a permission policy you control, so it asks you before sensitive API actions and every request it makes is logged.
 url: /prisma-compute/agent-enrollment
 metaTitle: "Agent enrollment: give your AI agent its own Prisma credential"
 metaDescription: Enroll a coding agent into Prisma with a pairing code. The agent gets its own credential and permission policy, asks for your approval before production writes, and every request it makes is audited.
 ---
 
-A coding agent can already write a Prisma app. Once you enroll it, the agent can also create projects and databases, connect a GitHub repository, and set up deploys through the [Prisma REST API](/rest-api), using a credential that belongs to the agent instead of your own login.
+Enrolling a coding agent lets it set up Prisma for you: it can create projects and databases, connect a GitHub repository, and configure deploys through the [Prisma REST API](/rest-api). It does this with a credential of its own, and you decide which of its actions need your approval first.
 
-Without enrollment, an agent works through your signed-in CLI session, so the platform sees you. The agent has all of your access, its actions look like yours in the audit log, and the only way to stop it is to sign yourself out. An enrolled agent has:
+Without enrollment, an agent uses your signed-in CLI session, so to Prisma the agent is you. It has all of your access, the audit log records its actions as yours, and you can only stop it by signing yourself out.
 
-- **Its own credential.** You can pause or revoke it without affecting your own access.
-- **A permission policy.** By default the agent works freely on preview branches and asks you before production writes and admin actions. You can change this per agent.
-- **An audit trail.** Every request is recorded under the agent's name, with you as its sponsor.
+An enrolled agent gets its own credential instead, so you can pause or revoke it without affecting your own access. It also gets a permission policy: by default it works freely on [preview branches](/compute/branching), the isolated non-production copies of a project, and asks you before it changes production or does anything destructive. The person who approves the enrollment becomes the agent's sponsor, and every request the agent makes is recorded under its own name with that sponsor attached.
 
 ## Prerequisites
 
-- A [Prisma Data Platform account](https://pris.ly/pdp). You approve the enrollment while signed in to [Prisma Console](https://console.prisma.io).
+- A [Prisma account](https://pris.ly/pdp). You approve the enrollment while signed in to [Prisma Console](https://console.prisma.io), Prisma's web dashboard.
 - A coding agent that can make HTTP requests and write files in your project, such as Claude Code, Codex, or Cursor.
 - To deploy, a GitHub repository for your app. An enrolled agent deploys through a GitHub Actions workflow.
 
 ## How enrollment works
 
-Enrollment pairs the agent with your account through a short code, the same way you sign in to a streaming app on a TV. The agent never sees your password or your session. (This is the OAuth 2.0 device authorization flow.)
+Enrollment pairs the agent with your account through a short code, the same way you sign in to a streaming app on a TV. The agent never sees your password or your session.
 
 <ConceptAnimation name="agent-enrollment" />
 
 ## 1. Copy the enrollment instructions
 
-Get the instructions your agent follows to enroll. In Prisma Console, open any workspace, go to **Settings → Agents**, and click **Enroll agent**. You can also open [console.prisma.io/enroll](https://console.prisma.io/enroll) directly.
+Prisma Console gives you a block of instructions that an agent follows to enroll itself. In Prisma Console, open any of your workspaces (it doesn't matter which), go to **Settings → Agents**, and click **Enroll agent**. You can also open [console.prisma.io/enroll](https://console.prisma.io/enroll) directly.
 
 Under **No pairing code yet?**, click **Copy instructions**. The instructions tell the agent how to:
 
 - request a pairing code and wait for your approval
-- save its credential to `.prisma/agent-token`, a gitignored file readable only by your user, and reuse it in later sessions
+- save its credential to a file that Git ignores (the instructions suggest `.prisma/agent-token`), and reuse the credential in later sessions
 - handle requests that need your approval
 - connect a GitHub repository and deploy through GitHub Actions
 
@@ -45,7 +43,7 @@ The code expires after 10 minutes. While it waits, the agent keeps checking with
 
 :::tip
 
-To have future sessions reuse the credential, also add the instructions to your project's `AGENTS.md` or `CLAUDE.md`. The first instruction tells the agent to use `.prisma/agent-token` when it exists, and to enroll again only when the file is missing or Prisma rejects the credential.
+After the agent is enrolled, also paste the same instruction block into your project's `AGENTS.md` or `CLAUDE.md`, as its own section, so future sessions reuse the credential. The block starts by telling the agent to use its saved credential when the file exists, and to enroll again only when the file is missing or Prisma rejects the credential.
 
 :::
 
@@ -54,24 +52,24 @@ To have future sessions reuse the credential, also add the instructions to your 
 Back in Prisma Console, enter the code on the **Enroll agent** page and click **Continue**. Before you approve, check that:
 
 - the code on screen matches the one your agent showed you
-- **Client** and **Device** describe your agent and your machine
-- **Workspaces** lists the workspaces the agent will work in. This is every workspace you belong to, and the agent can never reach more than you can.
+- **Client** and **Device** name your agent (for example, Claude Code) and your machine
+- **Workspaces** shows what the agent will be able to reach: every workspace you belong to. You can't limit the agent to fewer workspaces. After enrollment you can hide individual projects from it with a [project override](#what-the-agent-can-do), but the agent can still reach projects created later until you add an override for them too.
 
-Click **Approve enrollment**. You are now the agent's sponsor. Within a few seconds, the agent receives its credential and saves it.
+When you click **Approve enrollment**, you become the agent's sponsor. Within a few seconds, the agent receives its credential and saves it.
 
-If the page says **Enrollment expired**, more than 10 minutes passed. Ask the agent to start again, then enter the new code.
+If anything doesn't match, click **Deny**, and the agent gets no credential. If the page says **Enrollment expired**, more than 10 minutes passed. Ask the agent to start again, then enter the new code.
 
 ## 4. Confirm the agent is connected
 
-Ask your agent to list your Prisma workspaces. It calls `GET https://api.prisma.io/v1/workspaces` with its new credential and gets back the workspaces you saw in step 3.
+Ask your agent to list your Prisma workspaces. It should answer with the workspaces you saw in step 3.
 
-Then confirm Git ignores the credential file:
+The agent checks that Git ignores its credential file before saving it, but it's worth confirming, because a committed credential would give anyone with the repository the agent's access. If your agent saved the credential somewhere other than `.prisma/agent-token`, ask it for the path and use that instead:
 
 ```bash
 git check-ignore -v .prisma/agent-token
 ```
 
-The output names the `.gitignore` rule that covers the file:
+When the file is ignored, the output names the `.gitignore` rule that covers it:
 
 ```text no-copy
 .gitignore:12:.prisma/	.prisma/agent-token
@@ -79,64 +77,132 @@ The output names the `.gitignore` rule that covers the file:
 
 If the command prints nothing, the file is not ignored. Add `.prisma/` to `.gitignore` before your next commit.
 
-In Prisma Console, the agent now appears under **Settings → Agents** as **Active**:
+In Prisma Console, the agent now appears as **Active** under **Settings → Agents**:
 
 ![The Agents page in Prisma Console, listing four enrolled agents with their sponsors, permission policies, and statuses, plus two pending approval requests waiting for review.](/img/prisma-compute/agent-enrollment/agents-list.png)
 
-Everyone in the workspace can see this page. Only an agent's sponsor or a workspace admin can change its policy, pause it, or revoke it.
+Every member of a workspace can see the agents listed there. The agent has one policy for all of your workspaces. You, or an admin of any workspace the agent can reach, can change that policy, pause the agent, or revoke it, and the change applies in all of them.
 
 ## What the agent can do
 
-Every agent starts with the default policy. Prisma checks each REST API request the agent makes against four rules:
+Every agent starts with the default policy, which decides what happens to each REST API request the agent makes:
 
-| Rule                       | Covers                                                                                           | Default |
-| -------------------------- | ------------------------------------------------------------------------------------------------ | ------- |
-| Preview branches           | Reading and changing resources on preview branches                                               | Allow   |
-| Production branches, read  | Reading production resources                                                                     | Allow   |
-| Production branches, write | Creating or changing databases, apps, and environment variables on a production branch           | Ask     |
-| Admin actions              | Deleting resources, creating a workspace, and creating service tokens or database connection strings | Ask     |
+| Rule                       | Covers                                                                                          | Default |
+| -------------------------- | ----------------------------------------------------------------------------------------------- | ------- |
+| Preview branches           | Viewing, creating, and changing anything on a preview branch, such as databases, apps, buckets (file storage), and environment variables | Allow   |
+| Production branches, read  | Viewing anything on a production branch                                                         | Allow   |
+| Production branches, write | Creating or changing anything on a production branch, including linking a GitHub repository to the project | Ask     |
+| Admin actions              | Deleting anything, creating a workspace, and creating service tokens (workspace API keys) or database connection strings | Ask     |
 
-Two details decide which rule applies:
+These rules refer to the branches of a Prisma project. The branch a project starts with (usually `main`) is its production branch, and every other branch is a preview branch with its own databases and apps. See [Branching](/compute/branching) for how they relate to your Git branches.
 
-- A request that creates something in a project without naming a branch targets the project's default branch. In a new project, that is the production branch, so the agent's first database in a new project asks for your approval.
-- When Prisma can't tell which branch a write affects, it treats the write as a production write.
+Deleting anything or creating a connection string asks even on a preview branch, because both are admin actions; a connection string is a lasting credential for the database. Creating a project doesn't ask. Creating a database on a preview branch doesn't ask either, but creating one on the production branch does, and a database created without choosing a branch counts as production.
 
-To change the policy, open the agent from **Settings → Agents** and select the **Permissions** tab. Set each rule to **Allow**, **Ask**, or **Block**. A blocked request fails with a `403` and doesn't create an approval request.
+The policy covers the agent's REST API requests only. When the agent pushes code, the deploy runs in GitHub Actions and signs in to Prisma separately, not with the agent's credential, so the policy can't stop it. See [Build and deploy with your agent](#build-and-deploy-with-your-agent).
+
+:::warning
+
+Enrolling an agent doesn't sign you out. If you're signed in to the Prisma CLI on the same machine, an agent can still run CLI commands as you, outside its policy, and the same goes for a Prisma MCP server you connected to your agent with your own account. The policy also doesn't cover database connection strings the agent can already read, such as `DATABASE_URL` in your `.env` file: with one of those, the agent connects to the database directly. The enrollment instructions tell the agent to use its own credential. If you want the policy to be the only way the agent reaches Prisma, sign out of the Prisma CLI while the agent works:
+
+```npm
+npx prisma@latest auth logout
+```
+
+Sign back in with `npx prisma@latest auth login` when you want to deploy from your terminal again.
+
+:::
+
+To change the policy, open the agent from **Settings → Agents** and select the **Permissions** tab. Set each rule to **Allow**, **Ask**, or **Block**; each change saves as soon as you click. A blocked request fails right away, without asking you.
 
 ![The Permissions tab for an agent, showing the default policy: preview branches and production reads set to Allow, production writes and admin actions set to Ask.](/img/prisma-compute/agent-enrollment/permissions.png)
 
-Below the rules, **Project overrides** make an exception for a single project:
+To make an exception for a single project, use **Project overrides** below the rules: choose a project, choose **Full access** or **No access**, and click **Add override**.
 
 - **Full access** allows every request in that project, production writes included.
 - **No access** hides the project from the agent entirely.
 
 ## Approve requests
 
-When a request matches an **Ask** rule, Prisma holds it until you decide. The agent doesn't have to start its task over.
+When a request matches an **Ask** rule, Prisma doesn't run it. It waits for your decision, and after you approve, the agent sends the same request again and continues its task.
 
 <ConceptAnimation name="agent-ask-to-act" />
 
-The agent sends you a link to the request. The request also appears in Prisma Console as an approvals counter in the header, in the **Pending approvals** list on the Agents page, and on the agent's **Approvals** tab. Each card shows what the agent wants to do, the exact API request, whether it targets production, and the agent's reason when it gave one:
+The agent sends you a link to the request in its chat. The request also appears in Prisma Console as an approvals counter in the header, in the **Pending approvals** list on the Agents page, and on the agent's **Approvals** tab. Each card shows what the agent wants to do, the exact API request, whether it targets production, and the agent's reason when it gave one:
 
 ![An approval card showing that an agent wants to create a database, with operation and production-branch chips, the exact API request, the agent's stated reason, and Approve once, Approve for 1 hour, and Deny buttons.](/img/prisma-compute/agent-enrollment/approval-card.png)
 
 Choose one of three responses:
 
-| Response               | What it allows                                                                                                                                                                                                  |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Approve once**       | This exact request, one time. The agent has 10 minutes to retry it.                                                                                                                                             |
-| **Approve for 1 hour** | Every request of the same kind for the next hour: the same HTTP method and resource type, in the same workspace, project, and branch type. Use it when the agent will repeat a step. Other actions still ask. |
-| **Deny**               | Nothing. The agent is told the request was denied.                                                                                                                                                              |
+| Response               | What it allows                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| **Approve once**       | This exact request, one time.                                                                  |
+| **Approve for 1 hour** | The same action for the next hour, such as creating databases, in the same project and on the same kind of branch (production or preview). |
+| **Deny**               | Nothing. The request is not run, and the agent learns that you denied it.                      |
 
-You don't need to tell the agent what you decided. It polls for your decision and retries the request on its own.
+Use **Approve for 1 hour** when the agent will repeat a step, so you don't approve each request separately. Requests of any other kind still ask.
 
-A pending request expires after 5 minutes, and the card shows a countdown. If you miss it, you can still approve the expired request for up to 24 hours, and the agent's retry uses your approval.
+You don't need to tell the agent what you decided, because it checks for your decision on its own.
 
-The agent's sponsor or an admin of the workspace the request targets can decide. Requests outside any workspace, such as creating a new workspace, can only be decided by the sponsor.
+Each request waits 5 minutes for your decision, and the card shows a countdown. If you miss it, the agent tries again and a new card appears for you to approve. For 24 hours, you can also approve an expired request from the history on the agent's **Approvals** tab by clicking **Approve anyway**, and the next time the agent sends that request, it goes through. If the agent has stopped, ask it to retry.
 
-### What the agent receives
+The agent's sponsor or an admin of the workspace the request targets can decide. Requests that don't belong to a workspace yet, such as creating a new workspace, can only be decided by the sponsor.
 
-If you build your own integration, this is the response for a request that needs approval. It has status `403`:
+## Review what the agent did
+
+Open an agent from **Settings → Agents** to see its history. The **Activity** tab lists every request the agent made and what the policy decided: allowed, approved, approval required (paused for your decision), or denied. Requests that a **Block** rule stopped show as denied. You can filter by decision and time range, and export the list as CSV.
+
+The **Approvals** tab shows what the agent asked for, who decided, and the outcome. A check mark next to **Approved** means the agent used the approval. Expand a row to see the agent's reason and the full timeline.
+
+![The approval history table for an agent, showing requests with their targets and outcomes: approved with a check mark showing the agent used it, approved for one hour, denied, and expired.](/img/prisma-compute/agent-enrollment/approval-history.png)
+
+Agent requests also appear in the workspace audit log under **Settings → Audit log**.
+
+## Pause or revoke an agent
+
+Both controls are at the bottom of the agent's **Permissions** tab:
+
+- **Pause agent** makes Prisma reject all of the agent's requests, starting immediately. The credential stays valid, and **Resume agent** restores access. To the agent, a paused credential looks like a rejected one, so it may start a new enrollment. Deny any pairing code it shows you while paused; after you resume, its existing credential works again.
+- **Revoke agent** permanently cancels the agent's credential. Its activity and approval history stay. To reconnect the agent, enroll it again.
+
+An agent also loses access when:
+
+- its credential expires, about 90 days after enrollment. Prisma then rejects the credential, so the agent starts a new enrollment for you to approve. Each enrollment creates a new agent with the default policy, so reapply any policy changes and project overrides afterward.
+- you leave a workspace. Your agents lose access to that workspace at the same time.
+- you delete your Prisma account.
+
+## Build and deploy with your agent
+
+With the agent enrolled, ask it to deploy your app:
+
+```text
+Deploy this app to Prisma Compute from its GitHub repository, using your enrolled Prisma credential.
+```
+
+If you already deployed the app from your terminal, tell the agent the names of the project and database to use, as shown in Prisma Console, so it doesn't create new ones. The agent works through the REST API and pauses where your policy asks:
+
+1. It finds or creates a workspace and a project. Creating a workspace asks for your approval.
+2. It creates a Prisma Postgres database for production, which asks for your approval.
+3. It connects your GitHub repository. If the Prisma GitHub App isn't installed on the repository yet, the agent gets a link from Prisma for you to open and install it. Linking the repository to the project also asks.
+4. It adds a `.github/workflows/prisma-deploy.yml` workflow that runs [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action). Because the repository is connected to Prisma, the workflow can sign in to Prisma without a token stored in the repository.
+5. It pushes to GitHub, using the Git access already set up on your machine. Pushes to your default Git branch deploy to the project's production branch, and pushes to other Git branches deploy to preview branches.
+
+:::warning
+
+A push to your default Git branch deploys to production without asking you, because the deploy runs with the workflow's credential, not the agent's. To review production deploys first, [protect your default branch](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) in GitHub and tell the agent to open pull requests instead of pushing to it. You can put that rule in your prompt or in `AGENTS.md`, for example: `Never push to main. Open a pull request for every change.`
+
+:::
+
+See [Deploy on push](/compute/deploy-on-push) for how the workflow deploys and cleans up preview branches.
+
+## Limitations
+
+- Agent credentials work with the Prisma REST API. The Prisma MCP server (Prisma's tool server for AI assistants) doesn't accept them yet.
+- You learn about pending approvals from the link the agent sends you and from Prisma Console. Email and mobile notifications aren't available yet.
+- Prisma doesn't offer agents read-only connection strings for production databases yet. Creating any connection string is an admin action, so each one asks for your approval.
+
+## For agent builders
+
+The enrollment instructions already teach an agent how to handle approvals. If you build your own integration, this is the response to a request that needs approval. It has HTTP status `403`:
 
 ```json no-copy
 {
@@ -150,63 +216,10 @@ If you build your own integration, this is the response for a request that needs
 }
 ```
 
-The agent sends `approveUrl` to you and polls `pollUrl` until `status` is `approved`, `approved_window`, `denied`, or `expired`. After an approval, it sends the original request again, unchanged. An agent can add a `Prisma-Agent-Reason` header with a one-sentence justification, which appears on the approval card.
-
-## Review what the agent did
-
-Open an agent from **Settings → Agents** to see its history. The **Activity** tab lists every request the agent made and the policy's decision: allowed, approved, approval required, or denied. You can filter by decision and time range, and export the list as CSV.
-
-The **Approvals** tab shows what the agent asked for, who decided, and the outcome. A check mark next to **Approved** means the agent used the approval. Expand a row to see the agent's reason and the full timeline.
-
-![The approval history table for an agent, showing requests with their targets and outcomes: approved with a consumption marker, approved for one hour, denied, and expired.](/img/prisma-compute/agent-enrollment/approval-history.png)
-
-Agent requests also appear in the workspace audit log under **Settings → Audit log**.
-
-## Pause or revoke an agent
-
-Both controls are at the bottom of the agent's **Permissions** tab:
-
-- **Pause agent** blocks all of the agent's requests immediately, including requests in progress. The credential stays valid, and **Resume agent** restores access.
-- **Revoke agent** permanently invalidates every credential the agent has. Its activity and approval history stay. To reconnect the agent, enroll it again.
-
-An agent also loses access when:
-
-- its credential expires, about 90 days after enrollment. Prisma then rejects the credential, and the agent starts a new enrollment for you to approve.
-- you leave a workspace. Your agents lose access to that workspace at the same time.
-- you delete your Prisma account.
-
-## Build and deploy with your agent
-
-With the agent enrolled, ask it to deploy your app:
-
-```text
-Deploy this app to Prisma Compute from its GitHub repository, using your enrolled Prisma credential.
-```
-
-The agent works through the REST API and pauses where your policy asks:
-
-1. It finds or creates a workspace and a project. Creating a workspace asks for your approval.
-2. It creates a Prisma Postgres database. In a new project this targets the production branch, so it asks for your approval.
-3. It connects your GitHub repository. If the Prisma GitHub App isn't installed on the repository yet, the API gives the agent a link for you to open and install it.
-4. It adds a `.github/workflows/prisma-deploy.yml` workflow that runs [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action). Because the repository is linked, the workflow signs in with GitHub OIDC, so no Prisma token is stored in the repository.
-5. It pushes. Pushes to the default branch deploy to production, and other branches deploy to preview stages.
-
-:::warning
-
-The deploy workflow runs with its own credential, not the agent's. The agent's policy covers its REST API requests, not the deploys that its pushes trigger. To review production deploys, protect your default branch in GitHub and have the agent open pull requests.
-
-:::
-
-See [Deploy on push](/compute/deploy-on-push) for how the workflow deploys and cleans up preview stages.
-
-## Limitations
-
-- Agent credentials work with the Prisma REST API. The Prisma MCP server doesn't accept them yet.
-- You learn about pending approvals from the link the agent sends you and from Prisma Console. Email and mobile notifications aren't available yet.
-- Read-only database connections for production branches aren't available yet. Creating a connection string is an admin action, so it asks for your approval.
+Send `approveUrl` to the sponsor, then poll `pollUrl` until its `status` is `approved`, `approved_window` (Approve for 1 hour), `denied`, or `expired`. After an approval, send the original request again, unchanged. To show the sponsor why the agent needs the action, add a `Prisma-Agent-Reason` header with one sentence of justification; it appears on the approval card.
 
 ## Next steps
 
-- [Deploy on push](/compute/deploy-on-push): how the GitHub workflow deploys production and preview stages.
+- [Deploy on push](/compute/deploy-on-push): how the GitHub workflow deploys production and preview branches.
 - [REST API](/rest-api): the API your agent calls.
 - [Deploy your first app](/prisma-compute/deploy): deploy from your own terminal instead.

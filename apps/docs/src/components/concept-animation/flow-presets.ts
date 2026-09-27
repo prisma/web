@@ -548,7 +548,6 @@ const agentEnrollment: FlowScene = {
     {
       id: "prisma",
       label: "Prisma",
-      sub: "auth.prisma.io",
       variant: "scope",
       x: 550,
       y: 156,
@@ -598,7 +597,7 @@ const agentEnrollment: FlowScene = {
     {
       title: "1. Request",
       caption:
-        "Your agent asks Prisma to start an enrollment. Prisma answers with a short pairing code for you and a private device code the agent keeps.",
+        "Your agent asks Prisma to start an enrollment, and Prisma gives it a short pairing code for you to approve.",
       nodes: ["agent", "prisma"],
       edges: ["e-request"],
       emphasize: ["agent"],
@@ -622,7 +621,7 @@ const agentEnrollment: FlowScene = {
     {
       title: "4. Get a credential",
       caption:
-        "The agent has been polling since step 1. Its next poll returns a credential of its own, which it saves to a gitignored file and reuses for about 90 days.",
+        "Once you approve, the agent receives a credential of its own. It saves the credential to a gitignored file and reuses it for about 90 days.",
       nodes: ["agent", "prisma", "you"],
       edges: ["e-request", "e-show", "e-approve", "e-credential"],
       emphasize: ["agent"],
@@ -705,7 +704,7 @@ const agentAskToAct: FlowScene = {
       toSide: "l",
       toDy: 24,
       dashed: true,
-      label: "poll",
+      label: "check",
     },
     {
       id: "e-card",
@@ -740,7 +739,7 @@ const agentAskToAct: FlowScene = {
     {
       title: "2. Ask",
       caption:
-        "When the answer is Ask, the request does not run. The agent gets a 403 with code approval_required and a link to send you, and an approval card appears in Prisma Console.",
+        "When the answer is Ask, Prisma doesn't run the request. It gives the agent an approval link to send you and shows an approval card in Prisma Console.",
       nodes: ["agent", "api", "you"],
       edges: ["e-req", "e-ask", "e-card"],
       emphasize: ["you"],
@@ -748,7 +747,7 @@ const agentAskToAct: FlowScene = {
     {
       title: "3. Decide",
       caption:
-        "The agent polls for your decision on its own. You choose Approve once, Approve for 1 hour, or Deny, and the agent's next poll reports it.",
+        "You choose Approve once, Approve for 1 hour, or Deny, and the agent picks up your decision.",
       nodes: ["agent", "api", "you"],
       edges: ["e-card", "e-decide", "e-poll"],
       emphasize: ["api"],
@@ -756,7 +755,7 @@ const agentAskToAct: FlowScene = {
     {
       title: "4. Retry",
       caption:
-        "After an approval, the agent sends the same request again. Prisma matches it to your grant and runs it. After a denial, the agent stops.",
+        "After an approval, the agent sends the same request again, and Prisma runs it because it matches your approval. After a denial, the request is not run.",
       nodes: ["agent", "api", "you"],
       edges: ["e-req", "e-ok"],
       emphasize: ["agent"],
