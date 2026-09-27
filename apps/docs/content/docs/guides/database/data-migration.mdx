@@ -36,7 +36,7 @@ Perform an expand-and-contract migration with Prisma ORM, following https://www.
 
 1. In a project with a `Post` model that has a `published Boolean @default(false)` field, make sure Prisma ORM is set up (`npx prisma@latest orm init --yes --target postgres --authoring psl` if it is not), `DATABASE_URL` is in `.env`, and the current contract is applied as a migration (`npx prisma contract emit`, `npx prisma migration plan --name init`, `npx prisma db migrate --advance-ref db`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
 2. Expand: add `enum Status { @@type("pg/text@1") Draft = "Draft" InProgress = "InProgress" InReview = "InReview" Published = "Published" }` and `status Status @default(Draft)` to `Post`. Keep `published`. Run `contract emit` and `migration plan --name add_status`.
-3. Open the planned `migration.ts` and append a `this.dataTransform(endContract, 'backfill-post-status', { check, run })` operation built with the typed SQL builder against the migration's own end contract: `check` selects `id` from `post` where `published = true AND status != 'Published'` with `limit(1)`, `run` updates those rows to `status = 'Published'`. Recompile with `node <migration-dir>/migration.ts`, confirm `ops.json` contains a `data` operation, then apply with `npx prisma db migrate --advance-ref db`. Verify with a query that every row with `published = true` now has `status = 'Published'`.
+3. Open the planned `migration.ts` and append a `this.dataTransform(endContract, 'backfill-post-status', { check, run })` operation built with the typed SQL builder against the migration's own end contract: `check` selects `id` from `Post` where `published = true AND status != 'Published'` with `limit(1)`, `run` updates those rows to `status = 'Published'`. Recompile with `node <migration-dir>/migration.ts`, confirm `ops.json` contains a `data` operation, then apply with `npx prisma db migrate --advance-ref db`. Verify with a query that every row with `published = true` now has `status = 'Published'`.
 4. Update application code to read and write `status` instead of `published`.
 5. Contract: remove `published` from the contract, run `contract emit`, `migration plan --name drop_published`, review the destructive warning, and apply with `npx prisma db migrate --advance-ref db`.
 6. For the production database, run `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"`, adding `--show` first if you want to preview the route. Do not use `db update` against production.
@@ -95,10 +95,10 @@ npx prisma db migrate --advance-ref db
 
 App space
 ├─ Create schema "public"
-├─ Create table "post"
-└─ marker 729edba246c4b1cc8c45123406d70fd9782dea4814445d43bedc2a806cb8aad8
+├─ Create table "Post"
+└─ marker e8804d8e27d8737475c7be0c538afd9665907df8b82c605bd5cd50926dd73fde
 
-✔ Advanced ref "db" → 729edba246c4b1cc8c45123406d70fd9782dea4814445d43bedc2a806cb8aad8
+✔ Advanced ref "db" → e8804d8e27d8737475c7be0c538afd9665907df8b82c605bd5cd50926dd73fde
 ```
 
 Seed a few posts so the migration has data to move. Node.js 24 runs TypeScript directly:
@@ -169,17 +169,17 @@ npx prisma migration plan --name add_status
 ✔ Planned 2 operation(s)
 
 migrations/app/20260910T1552_add_status
-├─ Add column "status" to "post"
-└─ Add check constraint "post_status_check_eaa35e2a" on "post"
+├─ Add column "status" to "Post"
+└─ Add check constraint "Post_status_check_eaa35e2a" on "Post"
 
-from:       729edba246c4b1cc8c45123406d70fd9782dea4814445d43bedc2a806cb8aad8
-to:         201c4b6c5561ea542fed665c1bad968b24d2789e2f2c8f8fc22e07cb29d1c571
+from:       e8804d8e27d8737475c7be0c538afd9665907df8b82c605bd5cd50926dd73fde
+to:         0e9486dcd7f4216d673cbe0ec503edb638520dec9b0a8a22f48bb88edd1442c4
 app space:  migrations/app/20260910T1552_add_status
 
 ℹ DDL preview
 
-ALTER TABLE "public"."post" ADD COLUMN "status" text DEFAULT 'Draft' NOT NULL;
-ALTER TABLE "public"."post" ADD CONSTRAINT "post_status_check_eaa35e2a" CHECK ("status" IN ('Draft', 'InProgress', 'InReview', 'Published'));
+ALTER TABLE "public"."Post" ADD COLUMN "status" text DEFAULT 'Draft' NOT NULL;
+ALTER TABLE "public"."Post" ADD CONSTRAINT "Post_status_check_eaa35e2a" CHECK ("status" IN ('Draft', 'InProgress', 'InReview', 'Published'));
 ```
 
 Your directory name carries your own timestamp. The planner did not ask for a backfill because the column has a default, so every existing row would become `Draft`. That is wrong for posts that are already published. The next step fixes it.
@@ -190,10 +190,10 @@ Open `migrations/app/<timestamp>_add_status/migration.ts`. It is the file the pl
 
 ```typescript title="migrations/app/20260910T1552_add_status/migration.ts"
 #!/usr/bin/env -S node
-import type { Contract as End } from '../../snapshots/201c4b6c5561ea542fed665c1bad968b24d2789e2f2c8f8fc22e07cb29d1c571/contract';
-import endContractJson from '../../snapshots/201c4b6c5561ea542fed665c1bad968b24d2789e2f2c8f8fc22e07cb29d1c571/contract.json' with { type: 'json' };
-import type { Contract as Start } from '../../snapshots/729edba246c4b1cc8c45123406d70fd9782dea4814445d43bedc2a806cb8aad8/contract';
-import startContract from '../../snapshots/729edba246c4b1cc8c45123406d70fd9782dea4814445d43bedc2a806cb8aad8/contract.json' with { type: 'json' };
+import type { Contract as End } from '../../snapshots/0e9486dcd7f4216d673cbe0ec503edb638520dec9b0a8a22f48bb88edd1442c4/contract';
+import endContractJson from '../../snapshots/0e9486dcd7f4216d673cbe0ec503edb638520dec9b0a8a22f48bb88edd1442c4/contract.json' with { type: 'json' };
+import type { Contract as Start } from '../../snapshots/e8804d8e27d8737475c7be0c538afd9665907df8b82c605bd5cd50926dd73fde/contract';
+import startContract from '../../snapshots/e8804d8e27d8737475c7be0c538afd9665907df8b82c605bd5cd50926dd73fde/contract.json' with { type: 'json' };
 import { Migration, MigrationCLI, col, lit } from '@prisma/orm-postgres/migration';
 import postgresAdapter from '@prisma/orm-postgres/adapter/runtime'; // [!code ++]
 import { sql } from '@prisma/orm-postgres/builder/runtime'; // [!code ++]
@@ -218,7 +218,7 @@ export default class M extends Migration<Start, End> {
     return [
       this.addColumn({
         schema: 'public',
-        table: 'post',
+        table: 'Post',
         column: col('status', 'text', {
           notNull: true,
           default: lit('Draft'),
@@ -227,18 +227,18 @@ export default class M extends Migration<Start, End> {
       }),
       this.addCheckConstraint({
         schema: 'public',
-        table: 'post',
-        constraint: 'post_status_check_eaa35e2a',
+        table: 'Post',
+        constraint: 'Post_status_check_eaa35e2a',
         expression: "\"status\" IN ('Draft', 'InProgress', 'InReview', 'Published')",
       }),
       this.dataTransform(endContract, 'backfill-post-status', { // [!code ++]
         check: () => // [!code ++]
-          db.public.post // [!code ++]
+          db.public.Post // [!code ++]
             .select('id') // [!code ++]
             .where((f, fns) => fns.and(fns.eq(f.published, true), fns.ne(f.status, 'Published'))) // [!code ++]
             .limit(1), // [!code ++]
         run: () => // [!code ++]
-          db.public.post // [!code ++]
+          db.public.Post // [!code ++]
             .update({ status: 'Published' }) // [!code ++]
             .where((f, fns) => fns.and(fns.eq(f.published, true), fns.ne(f.status, 'Published'))), // [!code ++]
       }), // [!code ++]
@@ -277,8 +277,8 @@ npx prisma migration show 20260910T1552_add_status
 ✔ 20260910T1552_add_status
 
 3 operation(s)
-├─ Add column "status" to "post"
-├─ Add check constraint "post_status_check_eaa35e2a" on "post"
+├─ Add column "status" to "Post"
+├─ Add check constraint "Post_status_check_eaa35e2a" on "Post"
 └─ Data transform: backfill-post-status
 ```
 
@@ -286,9 +286,9 @@ npx prisma migration show 20260910T1552_add_status
 {
   "id": "data_migration.backfill-post-status",
   "operationClass": "data",
-  "precheck": [{ "sql": "SELECT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"post\" WHERE (\"published\" = $1 AND \"status\" != $2) LIMIT 1) AS ok", "params": [true, "Published"] }],
-  "execute": [{ "sql": "UPDATE \"public\".\"post\" SET \"status\" = $1 WHERE (\"published\" = $2 AND \"status\" != $3)", "params": ["Published", true, "Published"] }],
-  "postcheck": [{ "sql": "SELECT NOT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"post\" WHERE (\"published\" = $1 AND \"status\" != $2) LIMIT 1) AS ok", "params": [true, "Published"] }]
+  "precheck": [{ "sql": "SELECT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"Post\" WHERE (\"published\" = $1 AND \"status\" != $2) LIMIT 1) AS ok", "params": [true, "Published"] }],
+  "execute": [{ "sql": "UPDATE \"public\".\"Post\" SET \"status\" = $1 WHERE (\"published\" = $2 AND \"status\" != $3)", "params": ["Published", true, "Published"] }],
+  "postcheck": [{ "sql": "SELECT NOT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"Post\" WHERE (\"published\" = $1 AND \"status\" != $2) LIMIT 1) AS ok", "params": [true, "Published"] }]
 }
 ```
 
@@ -306,12 +306,12 @@ npx prisma db migrate --advance-ref db
 ✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
 
 App space
-├─ Add column "status" to "post"
-├─ Add check constraint "post_status_check_eaa35e2a" on "post"
+├─ Add column "status" to "Post"
+├─ Add check constraint "Post_status_check_eaa35e2a" on "Post"
 ├─ Data transform: backfill-post-status
-└─ marker 201c4b6c5561ea542fed665c1bad968b24d2789e2f2c8f8fc22e07cb29d1c571
+└─ marker 0e9486dcd7f4216d673cbe0ec503edb638520dec9b0a8a22f48bb88edd1442c4
 
-✔ Advanced ref "db" → 201c4b6c5561ea542fed665c1bad968b24d2789e2f2c8f8fc22e07cb29d1c571
+✔ Advanced ref "db" → 0e9486dcd7f4216d673cbe0ec503edb638520dec9b0a8a22f48bb88edd1442c4
 ```
 
 Check the rows. The published posts moved to `Published`, and the draft kept the default:
@@ -390,13 +390,13 @@ npx prisma migration plan --name drop_published
 ✔ Planned 1 operation(s)
 
 migrations/app/20260910T1554_drop_published
-└─ ⚠ Drop column "published" from "post"
+└─ ⚠ Drop column "published" from "Post"
 
 ⚠ This migration contains destructive operations that may cause data loss.
 
 ℹ DDL preview
 
-ALTER TABLE "public"."post" DROP COLUMN "published";
+ALTER TABLE "public"."Post" DROP COLUMN "published";
 ```
 
 Nothing to edit this time. Apply it:
@@ -409,8 +409,8 @@ npx prisma db migrate --advance-ref db
 ✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 
 App space
-├─ ⚠ Drop column "published" from "post"
-└─ marker e3a661e1b3d49931cabc5d8bba4cb78286bdeb2081caae55ca2428187fd1840a
+├─ ⚠ Drop column "published" from "Post"
+└─ marker 79567c619bcb9790bf476efc358730a10317c94fc352e908e19424fc6441350a
 ```
 
 The data survived the round trip. Drop `published` from the select in `src/posts.ts` and run it again:
@@ -431,9 +431,9 @@ npx prisma migration log
 
 ```text no-copy
 Applied at                  Migration                     Change             Ops
-2026-09-10 17:51:19 +02:00  20260910T1551_init            ∅ → 729edba        2 ops
-2026-09-10 17:53:46 +02:00  20260910T1552_add_status      729edba → 201c4b6  3 ops
-2026-09-10 17:55:39 +02:00  20260910T1554_drop_published  201c4b6 → e3a661e  1 ops
+2026-09-10 17:51:19 +02:00  20260910T1551_init            ∅ → e8804d8        2 ops
+2026-09-10 17:53:46 +02:00  20260910T1552_add_status      e8804d8 → 0e9486d  3 ops
+2026-09-10 17:55:39 +02:00  20260910T1554_drop_published  0e9486d → 79567c6  1 ops
 ```
 
 ## 6. Deploy to production
@@ -449,19 +449,19 @@ It refuses to run a migration whose files no longer match the hash stored for it
 ```text no-copy
 ℹ The following 2 migrations will run:
 
-  20260910T1552_add_status    729edba → 201c4b6
-  20260910T1554_drop_published  201c4b6 → e3a661e
+  20260910T1552_add_status    e8804d8 → 0e9486d
+  20260910T1554_drop_published  0e9486d → 79567c6
 ```
 
 ```text no-copy
 ✔ Applied 2 migration(s) (4 operation(s)) across 1 contract space(s)
 
 App space
-├─ Add column "status" to "post"
-├─ Add check constraint "post_status_check_eaa35e2a" on "post"
+├─ Add column "status" to "Post"
+├─ Add check constraint "Post_status_check_eaa35e2a" on "Post"
 ├─ Data transform: backfill-post-status
-├─ ⚠ Drop column "published" from "post"
-└─ marker e3a661e1b3d49931cabc5d8bba4cb78286bdeb2081caae55ca2428187fd1840a
+├─ ⚠ Drop column "published" from "Post"
+└─ marker 79567c619bcb9790bf476efc358730a10317c94fc352e908e19424fc6441350a
 ```
 
 In practice the two migrations reach production in separate deploys, one per branch, and the app moves from `published` to `status` between them. The commands are the same either way. Production never runs your TypeScript: the runner executes `ops.json`, which is plain data, so no application code runs with production credentials.
