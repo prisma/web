@@ -518,6 +518,252 @@ const githubConnection: FlowScene = {
   ],
 };
 
+// Device-flow pairing. The sponsor sits above the agent ↔ auth exchange so the
+// "shows you the code" and "approve" hops route around the paired edges below.
+const agentEnrollment: FlowScene = {
+  label: "How an agent enrolls with a pairing code",
+  width: 720,
+  height: 236,
+  nodes: [
+    {
+      id: "you",
+      label: "You",
+      sub: "Prisma Console",
+      variant: "project",
+      x: 285,
+      y: 16,
+      w: 150,
+      h: 64,
+    },
+    {
+      id: "agent",
+      label: "Your agent",
+      sub: "on your machine",
+      variant: "neutral",
+      x: 20,
+      y: 156,
+      w: 150,
+      h: 64,
+    },
+    {
+      id: "prisma",
+      label: "Prisma",
+      sub: "auth.prisma.io",
+      variant: "scope",
+      x: 550,
+      y: 156,
+      w: 150,
+      h: 64,
+    },
+  ],
+  edges: [
+    {
+      id: "e-request",
+      from: "agent",
+      fromSide: "r",
+      fromDy: -12,
+      to: "prisma",
+      toSide: "l",
+      toDy: -12,
+      label: "request code",
+    },
+    {
+      id: "e-show",
+      from: "agent",
+      fromSide: "t",
+      to: "you",
+      toSide: "l",
+      label: "pairing code",
+    },
+    {
+      id: "e-approve",
+      from: "you",
+      fromSide: "r",
+      to: "prisma",
+      toSide: "t",
+      label: "approve",
+    },
+    {
+      id: "e-credential",
+      from: "prisma",
+      fromSide: "l",
+      fromDy: 12,
+      to: "agent",
+      toSide: "r",
+      toDy: 12,
+      label: "credential",
+    },
+  ],
+  steps: [
+    {
+      title: "1. Request",
+      caption:
+        "Your agent asks Prisma to start an enrollment. Prisma answers with a short pairing code for you and a private device code the agent keeps.",
+      nodes: ["agent", "prisma"],
+      edges: ["e-request"],
+      emphasize: ["agent"],
+    },
+    {
+      title: "2. Show the code",
+      caption:
+        "The agent shows you the pairing code, for example KQ7M-R4TX. The code is valid for 10 minutes.",
+      nodes: ["agent", "prisma", "you"],
+      edges: ["e-request", "e-show"],
+      emphasize: ["you"],
+    },
+    {
+      title: "3. Approve",
+      caption:
+        "You enter the code in Prisma Console, check the device and the workspaces it will cover, and approve. You are now the agent's sponsor.",
+      nodes: ["agent", "prisma", "you"],
+      edges: ["e-request", "e-show", "e-approve"],
+      emphasize: ["prisma"],
+    },
+    {
+      title: "4. Get a credential",
+      caption:
+        "The agent has been polling since step 1. Its next poll returns a credential of its own, which it saves to a gitignored file and reuses for about 90 days.",
+      nodes: ["agent", "prisma", "you"],
+      edges: ["e-request", "e-show", "e-approve", "e-credential"],
+      emphasize: ["agent"],
+    },
+  ],
+};
+
+// One gated request. The agent ↔ API link carries three lanes (request, the
+// API's answer, the poll); "response" and "approval required" share the
+// middle lane because no step shows both.
+const agentAskToAct: FlowScene = {
+  label: "How a request that needs approval pauses and resumes",
+  width: 760,
+  height: 140,
+  nodes: [
+    {
+      id: "agent",
+      label: "Your agent",
+      sub: "enrolled",
+      variant: "neutral",
+      x: 16,
+      y: 26,
+      w: 140,
+      h: 88,
+    },
+    {
+      id: "api",
+      label: "Prisma REST API",
+      sub: "checks the policy",
+      variant: "scope",
+      x: 310,
+      y: 26,
+      w: 140,
+      h: 88,
+    },
+    {
+      id: "you",
+      label: "You",
+      sub: "Prisma Console",
+      variant: "project",
+      x: 604,
+      y: 26,
+      w: 140,
+      h: 88,
+    },
+  ],
+  edges: [
+    {
+      id: "e-req",
+      from: "agent",
+      fromSide: "r",
+      fromDy: -24,
+      to: "api",
+      toSide: "l",
+      toDy: -24,
+      label: "request",
+    },
+    {
+      id: "e-ok",
+      from: "api",
+      fromSide: "l",
+      to: "agent",
+      toSide: "r",
+      label: "response",
+    },
+    {
+      id: "e-ask",
+      from: "api",
+      fromSide: "l",
+      to: "agent",
+      toSide: "r",
+      label: "approval required",
+    },
+    {
+      id: "e-poll",
+      from: "agent",
+      fromSide: "r",
+      fromDy: 24,
+      to: "api",
+      toSide: "l",
+      toDy: 24,
+      dashed: true,
+      label: "poll",
+    },
+    {
+      id: "e-card",
+      from: "api",
+      fromSide: "r",
+      fromDy: -12,
+      to: "you",
+      toSide: "l",
+      toDy: -12,
+      label: "approval card",
+    },
+    {
+      id: "e-decide",
+      from: "you",
+      fromSide: "l",
+      fromDy: 12,
+      to: "api",
+      toSide: "r",
+      toDy: 12,
+      label: "decision",
+    },
+  ],
+  steps: [
+    {
+      title: "1. Allow",
+      caption:
+        "Prisma checks each request the agent makes against its policy. When the answer is Allow, the request runs and the agent gets a normal response.",
+      nodes: ["agent", "api"],
+      edges: ["e-req", "e-ok"],
+      emphasize: ["api"],
+    },
+    {
+      title: "2. Ask",
+      caption:
+        "When the answer is Ask, the request does not run. The agent gets a 403 with code approval_required and a link to send you, and an approval card appears in Prisma Console.",
+      nodes: ["agent", "api", "you"],
+      edges: ["e-req", "e-ask", "e-card"],
+      emphasize: ["you"],
+    },
+    {
+      title: "3. Decide",
+      caption:
+        "The agent polls for your decision on its own. You choose Approve once, Approve for 1 hour, or Deny, and the agent's next poll reports it.",
+      nodes: ["agent", "api", "you"],
+      edges: ["e-card", "e-decide", "e-poll"],
+      emphasize: ["api"],
+    },
+    {
+      title: "4. Retry",
+      caption:
+        "After an approval, the agent sends the same request again. Prisma matches it to your grant and runs it. After a denial, the agent stops.",
+      nodes: ["agent", "api", "you"],
+      edges: ["e-req", "e-ok"],
+      emphasize: ["agent"],
+    },
+  ],
+};
+
 // One query's round trip: app → middleware chain → driver, and back out.
 // The app and database boxes span both lanes so the return edge (and the
 // cache's short-circuit) can run through the clear band under the chain.
@@ -1576,6 +1822,8 @@ export const FLOW_SCENES = {
   "composer-deploy-flow": composerDeployFlow,
   "env-layers": envLayers,
   "github-connection": githubConnection,
+  "agent-enrollment": agentEnrollment,
+  "agent-ask-to-act": agentAskToAct,
   "relation-one-to-one": relationOneToOne,
   "relation-one-to-many": relationOneToMany,
   "relation-many-to-many": relationManyToMany,
