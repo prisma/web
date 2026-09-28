@@ -152,7 +152,7 @@ model Post {
   content   String
   kind      String
   authorId  ObjectId
-  createdAt DateTime
+  createdAt Date
   author    User @relation(fields: [authorId], references: [id])
   @@discriminator(kind)
   @@index([authorId])
@@ -168,7 +168,7 @@ model Article {
 
 model Tutorial {
   difficulty String
-  duration   Int
+  duration   Int32
   @@base(Post, "tutorial")
 }
 ```
@@ -511,7 +511,7 @@ Sort the result set.
 
 - Available for PostgreSQL and MongoDB, with different argument shapes.
 - On PostgreSQL, `orderBy()` takes a callback that returns `.asc()` or `.desc()` on one column. Pass an array of such callbacks to sort by more than one column.
-- On PostgreSQL, the callback can also sort by a field of a related record, for a relation to one record and one relation deep, as in `(p) => p.author.name.asc()`.
+- On PostgreSQL, the callback can also sort by a field of a related record, for a relation to one record and one relation deep, as in `(p) => p.user.displayName.asc()`.
 - On PostgreSQL, the callback can also sort by the number of related records, for a relation to many records, as in `(u) => u.posts.count().desc()`. `count()` takes an optional filter, the same one `some()` takes.
 - On PostgreSQL, `.asc()` and `.desc()` take `{ nulls: "first" }` or `{ nulls: "last" }`. Without it, PostgreSQL puts nulls last for `.asc()` and first for `.desc()`.
 - On MongoDB, `orderBy()` takes an object instead: `{ field: 1 }` sorts ascending and `{ field: -1 }` sorts descending.
@@ -622,13 +622,13 @@ const secondPost = await db.orm.posts.orderBy({ createdAt: 1 }).offset(1).limit(
 
 ```typescript
 const byAuthor = await db.orm.public.Post.orderBy([
-  (p) => p.user.name.asc(),
+  (p) => p.user.displayName.asc(),
   (p) => p.id.asc(),
 ]).all();
 
 const mostPosts = await db.orm.public.User.orderBy((u) => u.posts.count().desc()).all();
 
-const titled = await db.orm.public.Post.orderBy((p) => p.title.desc({ nulls: "last" })).all();
+const described = await db.orm.public.Task.orderBy((t) => t.description.desc({ nulls: "last" })).all();
 ```
 
 ### `cursor()`
