@@ -51,9 +51,24 @@ The exact files depend on the target and authoring style, but a Postgres PSL set
 
 The install step adds the target package to `dependencies`, and `prisma@latest` plus the matching `@prisma/cli-engine` to `devDependencies`.
 
-The runtime files are ES modules. If your `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Set `"type": "module"` so the scaffolded `db.ts` loads.
+If your `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. [In a CommonJS project](#in-a-commonjs-project) explains what to change.
 
 The generated `prisma.config.ts` imports `definePrismaConfig` from `@prisma/cli-engine`, while projects created by `create-prisma` (and the examples in [Configuration](/cli/configuration)) import it from `prisma/config`. Both work; keep the import your project already has when you copy a config example.
+
+## In a CommonJS project
+
+When `package.json` declares `"type": "commonjs"`, `orm init` keeps that value and warns that the scaffolded `db.ts` will not load. It still writes `"module": "preserve"` and `"moduleResolution": "bundler"` into `tsconfig.json`. With those files, `npx tsc --noEmit` passes, `prisma contract emit` works, and `tsx` loads `db.ts`. Plain `node` does not: it stops with `SyntaxError: Cannot use import statement outside a module`, both when it runs a `.ts` file directly and when it runs the output of `tsc`.
+
+Take the case that matches how your app runs:
+
+- **You run the app through `tsx`.** Change nothing.
+- **You compile with `tsc` and run the output with `node`, and the app stays CommonJS.** Set `"module": "nodenext"` and `"moduleResolution": "nodenext"` in `tsconfig.json`, and remove `with { type: 'json' }` from the `contract.json` import in `db.ts`. TypeScript then compiles `db.ts` to `require` calls, and Node.js loads the Prisma ORM packages through `require`. If you keep the `with` part, TypeScript reports TS2856.
+
+  ```typescript title="src/prisma/db.ts (excerpt)"
+  import contractJson from './contract.json';
+  ```
+
+- **You want the app to run as ES modules.** Set `"type": "module"` in `package.json` and keep the scaffolded files as they are. Every file in the package then runs as an ES module, so a file that calls `require` or assigns `module.exports` needs rewriting.
 
 ## On a Prisma ORM 7 project
 

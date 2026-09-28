@@ -22,7 +22,7 @@ Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the P
 
 - [Node.js](https://nodejs.org) 24 or later
 - A Sequelize or TypeORM project that already connects to a PostgreSQL database
-- `"type": "module"` in your `package.json` (the generated Prisma ORM files are ES modules)
+- `"type": "module"` in your `package.json`, because the scripts in this guide use top-level `await` and run with `node`. If your app is CommonJS and must stay that way, see [In a CommonJS project](/cli/orm-init#in-a-commonjs-project)
 
 ## Use with your agent
 
@@ -33,7 +33,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Add Prisma ORM to this Sequelize or TypeORM project so I can migrate queries incrementally.
 
-1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` contains the DATABASE_URL the app already uses and that package.json has "type": "module".
+1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` contains the DATABASE_URL the app already uses and check package.json: if it has "type": "module", continue; if the app is CommonJS, keep the type and apply the changes under "In a CommonJS project" in https://www.prisma.io/docs/cli/orm-init.md.
 2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file, change every `Timestamptz` field type to `TimestamptzString`, and keep the `@@map` attributes so model names stay clean while table names stay as they are.
 3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. Do not run `db init` or `db update`; the tables already exist.
 4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
@@ -402,7 +402,7 @@ Turn off schema synchronization in the ORM you are leaving once the database is 
 
 - `.update()` and `.delete()` change exactly one row, even when the filter matches several. Use `updateAll()` or `deleteAll()` for bulk changes; this is the opposite default from TypeORM's `repo.update(criteria, ...)`, which updates every match.
 - `contract infer` writes `Timestamptz` for `timestamptz` columns. Change them to `TimestamptzString` before you emit, as in step 3, or every query that reads the column fails with `RUNTIME.TEMPORAL_UNAVAILABLE` on Node.js.
-- If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Set `"type": "module"`; the generated `db.ts` and `prisma.config.ts` are ES modules.
+- If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Plain `node` cannot load the scaffolded `db.ts` in that project. Either set `"type": "module"`, or keep the app CommonJS with the changes in [In a CommonJS project](/cli/orm-init#in-a-commonjs-project).
 - Do not run `db init` or `db update` on the existing database. `db sign` is the step for a database that already has the tables; `db update` and `migration plan` come later, when you change the contract yourself.
 - Do not call `db.close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.
 
