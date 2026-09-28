@@ -67,3 +67,23 @@ test("a closed panel starts collapsed before hydration", () => {
     assert.match(panel, /--radix-accordion-content-height:0px/);
   }
 });
+
+test("a single-mode string value is normalised when the accordion is multiple", () => {
+  // Stands in for a wrapper that switches `type` to "multiple" without
+  // remounting while its value is still a single-mode string.
+  const html = renderToStaticMarkup(
+    <Accordion type="multiple" value={"item-1" as unknown as string[]}>
+      {QA.map(([question, answer], index) => (
+        <AccordionItem key={question} value={`item-${index}`}>
+          <AccordionTrigger>{question}</AccordionTrigger>
+          <AccordionContent>{answer}</AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>,
+  );
+  const [first, second] = panelTags(html);
+  assert.match(second, /data-state="open"/);
+  assert.doesNotMatch(second, /\sinert=""/);
+  assert.match(first, /\sinert=""/);
+});
+

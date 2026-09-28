@@ -30,6 +30,20 @@ function Accordion({
   // still inert.
   const effectiveValue = controlledValue ?? value;
 
+  // Radix's multiple mode filters its value as an array, so a string left over
+  // from single mode (for example after `type` changes without a remount) has
+  // to be normalised before it reaches the root, or closing an item throws.
+  const normalizedValue =
+    type === "multiple"
+      ? Array.isArray(effectiveValue)
+        ? effectiveValue
+        : effectiveValue
+          ? [effectiveValue]
+          : []
+      : Array.isArray(effectiveValue)
+        ? (effectiveValue[0] ?? "")
+        : effectiveValue;
+
   const handleValueChange = React.useCallback(
     (next: string | string[]) => {
       setValue(next);
@@ -40,12 +54,12 @@ function Accordion({
 
   const openValues = React.useMemo(
     () =>
-      typeof effectiveValue === "string"
-        ? effectiveValue
-          ? [effectiveValue]
+      typeof normalizedValue === "string"
+        ? normalizedValue
+          ? [normalizedValue]
           : []
-        : effectiveValue,
-    [effectiveValue],
+        : normalizedValue,
+    [normalizedValue],
   );
 
   const root = (
@@ -53,7 +67,7 @@ function Accordion({
     <AccordionPrimitive.Root
       data-slot="accordion"
       type={type}
-      value={effectiveValue}
+      value={normalizedValue}
       onValueChange={handleValueChange}
       {...props}
     />
