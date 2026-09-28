@@ -47,7 +47,7 @@ npx prisma db migrate --show --db "$PRODUCTION_DATABASE_URL"
 npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
 ```
 
-The output in the rest of this section comes from an earlier point in the same project than the run at the top of this page: the newest migration is `add_user_phone`, and the production database has applied only `init`, so `add_user_phone` is pending.
+The examples in the rest of this section use a project with two migrations, `init` and `add_user_phone`, where the production database has applied only `init`.
 
 `npx prisma migration status --db "$PRODUCTION_DATABASE_URL"` never changes the database, so you can run it against production whenever you want to know which contract state that database matches. It draws your migration history, marks each migration as applied or pending, and shows which contract state the database matches:
 
@@ -145,13 +145,15 @@ In development, add `--advance-ref db` so the next `migration plan` starts from 
 
 - each migration's directory under `migrations/app/`
 - the refs in `migrations/app/refs/`, such as `prod.json`, which `db migrate --to prod` reads
-- the directories `migration plan` added under `migrations/snapshots/`, one per contract state
+- the copies of your contract that `migration plan` saved under `migrations/snapshots/`, one directory per contract state
 - one directory per [extension package](#extension-spaces) that ships migrations, such as `migrations/pgvector/`
 - `contract.prisma`, `contract.json`, and `contract.d.ts`
 
-When you deploy by hand, run the three commands in [Check before, preview, then apply](#check-before-preview-then-apply). The point of the `migration check` step is to tell you that what you are about to apply is still what was reviewed. In a pipeline, the deploy job runs only the last of them, `db migrate` with `--to <ref>`, which that section explains. That one command is all the pipeline needs, because `db migrate` refuses to run when a migration's files no longer match its hash.
+When you deploy by hand, run the three commands in [Check before, preview, then apply](#check-before-preview-then-apply). The point of the `migration check` step is to tell you that what you are about to apply is still what was reviewed. In a pipeline, the deploy job runs only the last of them, `db migrate` with `--to <ref>`, which that section explains. That one command is all the pipeline needs, because `db migrate` refuses to run when a migration's `ops.json` or `migration.json` no longer matches the hash recorded for it.
 
-When a migration's `ops.json` or `migration.json` no longer matches the `migrationHash` in its `migration.json`, `migration check` fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, as [Editing a migration](/orm/migrations/editing-a-migration) explains. To fix it, either restore the migration's files from Git, or move the hand edit into `migration.ts` and recompile. If the error comes back right after you recompile, and the migration's backfill updates a model with a `temporal.updatedAtString()` column, recompiling cannot fix it, and [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows how to write that backfill instead.
+Each migration's `migration.json` records a hash, `migrationHash`, computed from the rest of `migration.json` and from `ops.json`. If either file changes after the hash was recorded, for example because you edited it by hand, `migration check` fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, as [Editing a migration](/orm/migrations/editing-a-migration) explains. To fix it, either restore the migration's files from Git, or move the hand edit into `migration.ts` and recompile with `node migrations/app/<dir>/migration.ts`.
+
+One case needs a different fix. If the error comes back right after you recompile, and the migration's backfill updates a model with a `temporal.updatedAtString()` column, recompiling cannot fix it. [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows how to write that backfill instead.
 
 When a contract snapshot under `migrations/snapshots/` no longer matches the hash in its directory name, `migration check` fails with an error whose `code` is `MIGRATION.CHECK_SNAPSHOT_CONTENT_MISMATCH`. Other commands that read that snapshot, such as `migration plan --from <that state>` or `migration ref set prod <that state>`, fail with a different code, `MIGRATION.CONTRACT_SNAPSHOT_CONTENT_MISMATCH`. Recompiling `migration.ts` fixes neither error, so restore the edited snapshot from Git. MongoDB snapshots are not checked yet.
 

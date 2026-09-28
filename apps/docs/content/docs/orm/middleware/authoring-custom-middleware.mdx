@@ -19,7 +19,7 @@ The steps that follow build a query logger that prints every query with its row 
 - A Prisma ORM project with a working `src/prisma/db.ts`, the file where the client is created, because that is where middleware is registered. If you already have a project, you can use the `db.ts` you have. You also need a PostgreSQL database to run against, because `db.ts` reads its connection string from the `DATABASE_URL` environment variable, which you export in the shell you run the commands from. The [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) sets both up in a few minutes:
 
 ```npm
-npm create prisma@latest -- --provider postgres
+npm create prisma@latest -- --provider postgres --no-deploy
 cd my-app
 npm run db:init
 ```
@@ -73,7 +73,7 @@ You register a middleware by adding it to the `middleware` array where you creat
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
 import { queryLogger } from './query-logger';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const db = postgres<Contract>({
@@ -220,7 +220,7 @@ A hook you implement for one kind of call is never called for the other kind, so
 
 `beforeCompile` is where you change a query before it runs. It gives you the query as an AST, the abstract syntax tree, which is the query as a tree of typed objects rather than as text. A `SELECT` is one object whose `kind` is `'select'`, whose `from` is the table it reads, and whose `where` is its condition. The hook runs before Prisma ORM turns that tree into SQL text, so a changed tree changes the SQL that reaches the database.
 
-Its argument is called a draft because the SQL text does not exist yet. A draft has `ast`, the tree you change, and `meta`, which you pass through unchanged. `meta.lane` says which API built the query: `'orm-client'` for the ORM API and `'dsl'` for the SQL query builder. You return a copy of the draft with a new `ast`, or `undefined` when there is nothing to change.
+Its argument, the draft, is the query before Prisma ORM writes its SQL. A draft has `ast`, the tree you change, and `meta`, which you pass through unchanged. `meta.lane` says which API built the query: `'orm-client'` for the ORM API, and `'dsl'` for the SQL query builder. You return a copy of the draft with a new `ast`, or `undefined` when there is nothing to change.
 
 The middleware below adds a condition to every `SELECT` whose own `FROM` clause names the `User` table:
 
@@ -248,18 +248,18 @@ export function scopeUserSelects(condition: () => BinaryExpr | undefined): SqlMi
 
 The `kind` check on `from` keeps the middleware to plain tables: a `SELECT` that reads from a subquery has a `from` whose `kind` is `'derived-table-source'`, and one that reads from a function has `'function-source'`. The name it checks, `'User'`, is the table name in your database rather than the model name in your contract, because by this point the query is expressed in tables and columns. The two are the same unless the model sets `@@map`. `draft.ast.withWhere(where)` gives back a new tree with that `WHERE` and leaves the original alone.
 
-These checks read only the table in the query's own `FROM` clause, so `User` rows that a query reaches any other way do not get the condition. When you load related users with `.include(...)` from another model, such as the author of each post, the ORM API reads them inside that other model's query, whose `FROM` is the other table. A SQL query builder query that joins `User` onto another table is not filtered either, for the same reason.
+These checks read only the table in the query's own `FROM` clause, so `User` rows that a query reaches any other way do not get the condition. Users you load with `.include(...)` from another model, such as the author of each post, are not filtered, and neither is a SQL query builder query that joins `User` onto another table.
 
 The middleware calls `condition` for each `SELECT` whose `FROM` clause names `User`, after the checks above, so the condition can change from one request to the next. You build it from the same classes. Put values through `ParamRef.of` rather than `LiteralExpr.of`, because a `ParamRef` becomes a bound parameter such as `$1` while a literal is pasted into the SQL text itself, so a value that came from one of your users could inject SQL of its own. A `ParamRef` you build by hand has to name the PostgreSQL type of the value with `codec: { codecId: ... }`, and the ids start with `pg/` and end with `@1`, so the `text` column `name` takes `pg/text@1`. Leave that out and the query fails with an error whose `code` is `RUNTIME.PARAM_REF_MISSING_CODEC`.
 
-A request has no tenant of its own, so the middleware reads the value from something in its own scope. The example below keeps it in an `AsyncLocalStorage` from Node.js, which holds one value per request while that request's code runs:
+Prisma ORM does not know which request a query belongs to, so the value has to come from a place your condition function can read. The example below keeps it in an `AsyncLocalStorage` from Node.js, which holds one value per request while that request's code runs:
 
 ```ts title="src/prisma/db.ts"
 import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres from '@prisma/orm-postgres/runtime';
 import { BinaryExpr, ColumnRef, ParamRef } from '@prisma/orm-postgres/relational-core/ast';
 import { scopeUserSelects } from './scope-user-selects';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const currentName = new AsyncLocalStorage<string>();
@@ -280,7 +280,9 @@ export const db = postgres<Contract>({
 });
 ```
 
-Run each request's queries inside `currentName.run(...)`, and `await` them inside its callback:
+This file imports `BinaryExpr` without `type`, because it calls `BinaryExpr.eq(...)`. Keep the `type` on the `BinaryExpr` import in `scope-user-selects.ts`.
+
+Run each request's queries inside `currentName.run(...)`, and `await` them inside its callback. In a web server, that means wrapping the code of each request handler:
 
 ```ts title="src/routes/users.ts"
 import { currentName, db } from '../prisma/db';
@@ -298,8 +300,6 @@ Do not rely on this middleware alone to keep one tenant's rows away from another
 
 :::
 
-Copy each import as it is written, including the one that says `type` and the one that does not.
-
 The `codecId` depends on the field's type in your contract:
 
 | Type in your contract | `codecId` |
@@ -314,7 +314,7 @@ The `codecId` depends on the field's type in your contract:
 
 The `temporal` in the `DateTime` id means the value reaches your code as a JavaScript `Temporal.Instant` rather than a `Date`.
 
-For a field whose type is not in the table, read the `codecId` off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids in one place.
+For a field whose type is not in the table, read the `codecId` off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. The SQL query builder reference lists every id, in its section on [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns).
 
 `BinaryExpr` has one method per comparison (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `in`, `notIn`), and `AndExpr.of` and `OrExpr.of` combine conditions. They all come from `@prisma/orm-postgres/relational-core/ast`, so your editor lists them once you import from there.
 
@@ -353,7 +353,9 @@ export function userFixture(): SqlMiddleware {
 
 Prisma ORM decodes the rows you return the same way it decodes rows that came from the database, so your caller gets the types the contract gives those columns, even though you handed back plain driver values.
 
-The last three checks make the fixture answer only a `SELECT` that reads the `User` table directly, in the same way the `beforeCompile` example picks its queries. Matching on the SQL text instead, such as `plan.sql.includes('FROM "public"."User"')`, also catches `DELETE FROM "public"."User"`, so an ORM `.delete()` would get a made-up row back and delete nothing. On an `UPDATE` or a `DELETE` the table name is at `plan.ast.table.name`. `plan.meta.lane` tells you which API built a query, but nothing on the plan says which model or which ORM call it came from, so the table name in the tree is the only thing you have to match on.
+The last three checks make the fixture answer only a `SELECT` that reads the `User` table directly, in the same way the `beforeCompile` example picks its queries. Matching on the SQL text instead, such as `plan.sql.includes('FROM "public"."User"')`, also catches `DELETE FROM "public"."User"`, so an ORM `.deleteAll()` would get a made-up row back and delete nothing. On an `UPDATE` or a `DELETE` the table name is at `plan.ast.table.name`.
+
+`plan.meta.lane` tells you which API built a query, but nothing on the plan says which model or which ORM call it came from, so the table name in the tree is the only thing you have to match on.
 
 The first check, on `ctx.scope`, lets every query inside a transaction, or on a connection you took from the pool, go on to the database, so the fixture answers only queries sent on `db` directly. Keep it, because an ORM `.update()` or `.delete()` reads its row inside a transaction before it writes, and a made-up row there would send the write to the wrong row.
 

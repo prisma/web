@@ -163,7 +163,7 @@ Three middleware ship with Prisma ORM at present, and they are in the early stag
 
 A **migration** is a recorded change to your database. Most migrations change the database schema from what one contract describes to what another describes, so each one records which contract hash it starts `from` and which it ends at, `to`. A migration that only changes rows, such as a backfill, starts and ends at the same contract state. On disk, a migration is a directory in your repository that holds the change as editable TypeScript (`migration.ts`), the compiled operations that Prisma ORM runs (`ops.json`), and that `from` and `to` metadata (`migration.json`).
 
-Only one of these commands changes a database: [`db migrate`](/cli/db-migrate) applies the recorded migrations to it. The other `migration ...` commands create and inspect the migration files in your repository, and never connect to a database.
+Of the commands that work with migrations, only [`db migrate`](/cli/db-migrate) changes a database: it applies the recorded migrations to it. The `migration ...` commands create and inspect the migration files in your repository. Of those, only `migration status` and `migration log` connect to a database, and they only read it.
 
 Because every migration records its `from` and `to` hashes, the migrations in a repository form a **graph**: contracts are the nodes, migrations are the edges. When two branches each add a migration and both merge, the graph has a fork and a join, and `db migrate` works out which migrations to run, given the contract state the database matches and the one you name. No renumbering, no rebasing migration files.
 
@@ -192,8 +192,10 @@ The commands compose into four everyday workflows.
 ```npm
 npx prisma contract emit
 npx prisma migration plan --name add_user_phone
-npx prisma db migrate
+npx prisma db migrate --advance-ref db
 ```
+
+`--advance-ref db` records what you just applied, so the next `migration plan` starts from there. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) explains it.
 
 **Prototyping without migration files.** While a schema is still in flux, skip the migration directory and reconcile the database directly. [`db update`](/cli/db-update) diffs the live schema against the emitted contract and applies the difference; `--dry-run` previews it first:
 
@@ -213,7 +215,7 @@ npx prisma contract emit
 npx prisma db init --db "$DATABASE_URL"
 ```
 
-**Deploying.** A deploy pipeline pins each environment with a ref and migrates to it by name, and that one command is all it needs. `db migrate` refuses to run a migration whose files no longer match its hash, so the pipeline needs no separate check:
+**Deploying.** Give each environment a ref, such as `production`, that names the contract state the environment should reach. When a change is ready to ship, point the ref at the new state with [`migration ref set`](/cli/migration-ref), such as `npx prisma migration ref set production <hash>`, and commit the ref file it writes under `migrations/app/refs/`. The deploy pipeline then migrates the environment to its ref by name, and that one command is all it needs. `db migrate` refuses to run a migration whose files no longer match its hash, so the pipeline needs no separate check:
 
 ```npm
 npx prisma db migrate --db "$DATABASE_URL" --to production

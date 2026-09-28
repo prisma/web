@@ -14,7 +14,7 @@ The guide covers **PostgreSQL only**. Guidance for other databases will follow. 
 
 :::info
 
-Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` at `8.0.0-rc.17` and `@prisma/orm-postgres` at `8.0.0-rc.12`. The CLI is released separately from the ORM packages, so its version number will not match theirs. Prisma ORM 7 stays at `7.10.0`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.0`.
+Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` at `8.0.0-rc.17` and `@prisma/orm-postgres` at `8.0.0-rc.12`: the CLI is released separately, so the two numbers differ. Prisma ORM 7 stays at `7.10.0`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.0`.
 
 :::
 
@@ -36,7 +36,7 @@ The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) rep
 
 - **Node.js 22.18 or newer (on the 24 line, 24.11 or newer)**; Node.js 24 recommended
 - A working **Prisma ORM 7** application on PostgreSQL: `prisma.config.ts`, the `prisma-client` generator, and a driver adapter
-- **TypeScript 5.9 or newer** with `"strict": true`. [Step 2.6](#26-include-the-generated-types) tells you whether to change the `module` setting in `tsconfig.json`
+- **TypeScript 5.9 or newer** with `"strict": true`. [Step 2.6](#26-set-up-tsconfigjson-for-the-prisma-orm-8-client) tells you whether to change the `module` setting in `tsconfig.json`
 
 ## 1. Prepare Prisma ORM 7 for side-by-side operation
 
@@ -281,7 +281,7 @@ export default definePrismaConfig({
 });
 ```
 
-After step 2.5, run `npx prisma db sign`. [`db sign`](/cli/db-sign) checks that the database matches the contract Prisma ORM 8 read from `schema.prisma` and records in the database that it does. On this path it does not hand migrations to Prisma ORM 8: Prisma ORM 7 keeps planning and applying them, so after each `prisma7 migrate dev`, run `npx prisma contract emit` and then `npx prisma db sign` again. If you emit without signing, the Prisma ORM 8 client still runs queries, but `npx prisma db verify` reports that the contract no longer matches the one recorded in the database. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read.
+After step 2.5, run `npx prisma db sign`. [`db sign`](/cli/db-sign) checks that the database matches the contract Prisma ORM 8 read from `schema.prisma` and records in the database that it does. Signing does not move your migrations to Prisma ORM 8. Prisma ORM 7 keeps planning and applying them, so after each Prisma ORM 7 migration, whether you ran `prisma7 migrate dev` or `prisma7 migrate deploy`, run `npx prisma contract emit` and then `npx prisma db sign` again. If you emit without signing, the Prisma ORM 8 client still runs queries, but `npx prisma db verify` reports that the contract no longer matches the one recorded in the database. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read.
 
 If you have not started phase 1 yet, one command does phase 1 and this setup for you:
 
@@ -291,7 +291,7 @@ npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 
 Write `prisma@latest`, because in a Prisma ORM 7 project `npx prisma` runs version 7. The command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with phase 3, using the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
 
-Prisma ORM 7 keeps owning migrations on this path until you are ready for [phase 4](#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 works from a Prisma ORM 8 contract file, so switch to one first: run steps 2.3 to 2.5, and change `contract:` in `prisma.config.ts` back to `"prisma8/contract.prisma"`. Then follow phase 4 as written. Its first step, `db sign`, checks the new contract against the database before Prisma ORM 8 takes over.
+Prisma ORM 7 keeps owning migrations on this path until you are ready for [phase 4](#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 needs a contract file written for Prisma ORM 8, so switch to one first: run steps 2.3 to 2.5, and set `contract` in `prisma.config.ts` to `"prisma8/contract.prisma"`, the file those steps create. Then follow phase 4 as written. Its first step, `db sign`, checks the new contract against the database before Prisma ORM 8 takes over.
 
 :::
 
@@ -344,7 +344,7 @@ npx prisma contract emit
 
 `contract emit` writes `contract.json` and `contract.d.ts` to `generated/prisma8`, the runtime and type inputs for the Prisma ORM 8 client. Re-run it after every contract change.
 
-### 2.6. Include the generated types
+### 2.6. Set up tsconfig.json for the Prisma ORM 8 client
 
 Your `tsconfig.json` must allow the JSON import you will write in step 3.1: `import contractJson from "../generated/prisma8/contract.json" with { type: "json" }`. TypeScript accepts the `with { type: "json" }` part only when `module` is `esnext`, `node18`, `node20`, `nodenext`, or `preserve`, and only in a file it treats as an ES module. Any other value, such as `commonjs`, `es2022`, or `node16`, rejects it, and leaving `module` unset fails too. Take the first case below that matches how your app runs:
 

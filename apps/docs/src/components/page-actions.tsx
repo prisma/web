@@ -9,13 +9,6 @@ import { cva } from "class-variance-authority";
 
 const cache = new Map<string, string>();
 
-function toIndexMarkdownUrl(markdownUrl: string): string | null {
-  const withoutExtension = markdownUrl.slice(0, -".mdx".length);
-  if (withoutExtension.endsWith("/index")) return null;
-
-  return `${withoutExtension}/index.mdx`;
-}
-
 export function CopyPromptButton({ fullPrompt }: { fullPrompt: string }) {
   const [checked, onClick] = useCopyButton(async () => {
     await navigator.clipboard.writeText(fullPrompt);
@@ -49,8 +42,7 @@ export function LLMCopyButton({
 }) {
   const [isLoading, setLoading] = useState(false);
   const [checked, onClick] = useCopyButton(async () => {
-    const fallbackUrl = toIndexMarkdownUrl(markdownUrl);
-    const cached = cache.get(markdownUrl) ?? (fallbackUrl ? cache.get(fallbackUrl) : undefined);
+    const cached = cache.get(markdownUrl);
     if (cached) {
       await navigator.clipboard.writeText(cached);
       posthog.capture("docs:copy_markdown", { page_path: window.location.pathname });
@@ -167,17 +159,6 @@ export function ViewOptions({
             <path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z" />
           </svg>
         ),
-      },
-      {
-        title: "Open in T3 Chat",
-        tool: "t3_chat",
-        // T3 Chat's default model can't fetch URLs on its own; search=true
-        // turns on web search so the "Read <url>" prompt actually works.
-        href: `https://t3.chat/new?${new URLSearchParams({
-          q,
-          search: "true",
-        })}`,
-        icon: <i className="fa-regular fa-message" />,
       },
     ];
   }, [githubUrl, markdownUrl]);
