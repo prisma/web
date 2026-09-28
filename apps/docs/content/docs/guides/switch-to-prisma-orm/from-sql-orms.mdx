@@ -22,7 +22,7 @@ Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the P
 
 - [Node.js](https://nodejs.org) 24 or later
 - A Sequelize or TypeORM project that already connects to a PostgreSQL database
-- `"type": "module"` in your `package.json`, because the scripts in this guide use top-level `await` and run with `node`. If your app is CommonJS and must stay that way, see [In a CommonJS project](/cli/orm-init#in-a-commonjs-project)
+- A TypeScript project. The scripts in this guide are written for an app that runs as ES modules, and steps 2 and 5 say what to change in a CommonJS app
 
 ## Use with your agent
 
@@ -33,10 +33,10 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Add Prisma ORM to this Sequelize or TypeORM project so I can migrate queries incrementally.
 
-1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` contains the DATABASE_URL the app already uses and check package.json: if it has "type": "module", continue; if the app is CommonJS, keep the type and apply the changes under "In a CommonJS project" in https://www.prisma.io/docs/cli/orm-init.md.
+1. From the project root, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Before you run `orm init`, note whether package.json has "type": "module". If it does not, and the code uses `require` or compiles to `require` calls, the app is CommonJS: after `orm init`, apply the changes under "In a CommonJS project" in https://www.prisma.io/docs/cli/orm-init.md. Make sure `.env` contains the DATABASE_URL the app already uses.
 2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the existing tables into a contract. Open the file, change every `Timestamptz` field type to `TimestamptzString`, and keep the `@@map` attributes so model names stay clean while table names stay as they are.
 3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. Do not run `db init` or `db update`; the tables already exist.
-4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
+4. Following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-sql-orms.md, rewrite the read queries first, then the writes, importing `db` from `src/prisma/db.ts`. Run each rewritten query with `node <script>.ts` and show me the output. In a CommonJS project, import `db` from `./prisma/db` without the `.ts` extension, put the `await` calls inside an `async` function, and run the script with `npx tsx <script>.ts` instead. Leave the old ORM in place for queries you have not rewritten yet, but turn off its schema sync (`synchronize` in TypeORM, `sequelize.sync()` in Sequelize).
 ```
 
 </AgentPrompt>
@@ -118,7 +118,7 @@ Pick `PSL` as the authoring style and keep the default contract path, `src/prism
 "contractEmitted": true
 ```
 
-Three files matter for the migration:
+You will use these files during the migration:
 
 - `prisma.config.ts` loads `.env` and points the CLI at the contract and `DATABASE_URL`. Every command below reads the connection string from there.
 - `src/prisma/db.ts` creates the client your code imports.
@@ -136,7 +136,7 @@ export const db = postgres<Contract>({
 });
 ```
 
-There is no `prisma generate` and no driver adapter in Prisma ORM: the runtime reads `contract.json`, which `contract emit` writes, and connects with the `url` you pass. `orm init` also rewrites `tsconfig.json` so `contract.json` can be imported; it keeps `experimentalDecorators` and `emitDecoratorMetadata` in place for TypeORM.
+There is no `prisma generate` and no driver adapter in Prisma ORM: the runtime reads `contract.json`, which `contract emit` writes, and connects with the `url` you pass. `orm init` also changes `tsconfig.json`: it sets `"module": "preserve"`, `"moduleResolution": "bundler"`, and `"resolveJsonModule": true`, and it keeps `experimentalDecorators` and `emitDecoratorMetadata` in place for TypeORM. In `package.json`, it adds `"type": "module"` if the file has no `"type"` field. If your app is CommonJS, those changes stop it from starting, so follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you run the app again.
 
 ## 3. Infer the contract from your database
 
@@ -181,7 +181,7 @@ model Post {
 }
 ```
 
-Review the file before you go on. One edit is required for this schema: the `timestamptz` columns come back as `Timestamptz`, whose runtime codec returns `Temporal` values and fails on Node.js with `RUNTIME.TEMPORAL_UNAVAILABLE` because Node.js has no global `Temporal` yet. Change them to `TimestamptzString`, which reads and writes PostgreSQL's own text form and maps to the same column type:
+Review the file before you go on. One edit is required for this schema: the `timestamptz` columns come back as `Timestamptz`, which reads each value as a `Temporal` value. On Node.js 24 that fails with `RUNTIME.TEMPORAL_UNAVAILABLE`, because Node.js 24 has no global `Temporal`. Change them to `TimestamptzString`, which reads and writes PostgreSQL's own text form and maps to the same column type:
 
 ```prisma title="src/prisma/contract.prisma"
 model User {
@@ -195,7 +195,7 @@ model Post {
 }
 ```
 
-This is also the moment to drop tables you do not want Prisma ORM to see yet, or to rename a model while keeping its `@@map`. The [PSL syntax](/orm/contract-authoring/psl-syntax) page lists the attributes.
+This is also the moment to delete from `contract.prisma` the models you do not want Prisma ORM to use yet, or to rename a model while keeping its `@@map`. The [PSL syntax](/orm/contract-authoring/psl-syntax) page lists the attributes.
 
 ## 4. Emit and sign
 
@@ -330,6 +330,8 @@ Run it with Node.js 24, which executes TypeScript directly:
 node src/prisma-queries.ts
 ```
 
+In a CommonJS project this command fails, because the script uses top-level `await` and imports a file by its `.ts` name. Change the script as follows: import `db` from `"./prisma/db"`, move every line below the imports into an `async function main()`, and call `main()` on the last line. Then run it with `npx tsx src/prisma-queries.ts`, or compile it with the rest of your app and run the compiled file with `node`.
+
 ```text no-copy
 created { active: true, createdAt: '2026-09-10 21:57:22.667511+06', email: 'carol@prisma.io', id: 9, name: 'Carol' }
 transaction {
@@ -352,8 +354,8 @@ totals { users: 2 }
 
 What changed, in the order the script runs:
 
-- Models are addressed by schema on PostgreSQL: `db.orm.public.User`, not a repository or a model class. There is no `save()` step; `create` inserts and returns the full row, defaults included.
-- `db.transaction` gives the callback a `tx` with the same `orm` surface. Use `tx.orm` inside it; whatever the callback returns comes out of `db.transaction`.
+- On PostgreSQL you write the schema name, usually `public`, between `db.orm` and the model name: `db.orm.public.User`. You do not use a repository or a model class. There is no `save()` step; `create` inserts and returns the full row, defaults included.
+- `db.transaction` gives the callback a `tx` with the same `orm` methods. Use `tx.orm` inside it; whatever the callback returns comes out of `db.transaction`.
 - Filters and sorting chain: `.where({ active: true })` for equality, a lambda such as `(u) => u.createdAt.desc()` for sorting, `.limit()` for `take`, and `.all()` or `.first()` to run the query.
 - `.include("posts")` replaces `relations: { posts: true }`. The row Prisma ORM returned for Bob carries the post TypeORM wrote, because both ORMs read the same table.
 - `.update()` and `.delete()` act on one row and return it. For many rows use `updateAll()` and `deleteAll()`, or `updateAndCount()` and `deleteAndCount()` when you only need the number.
@@ -402,7 +404,7 @@ Turn off schema synchronization in the ORM you are leaving once the database is 
 
 - `.update()` and `.delete()` change exactly one row, even when the filter matches several. Use `updateAll()` or `deleteAll()` for bulk changes; this is the opposite default from TypeORM's `repo.update(criteria, ...)`, which updates every match.
 - `contract infer` writes `Timestamptz` for `timestamptz` columns. Change them to `TimestamptzString` before you emit, as in step 3, or every query that reads the column fails with `RUNTIME.TEMPORAL_UNAVAILABLE` on Node.js.
-- If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. Plain `node` cannot load the scaffolded `db.ts` in that project. Either set `"type": "module"`, or keep the app CommonJS with the changes in [In a CommonJS project](/cli/orm-init#in-a-commonjs-project).
+- If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. If it has no `"type"` field, `orm init` adds `"type": "module"`. Either way, a CommonJS app needs the changes in [In a CommonJS project](/cli/orm-init#in-a-commonjs-project).
 - Do not run `db init` or `db update` on the existing database. `db sign` is the step for a database that already has the tables; `db update` and `migration plan` come later, when you change the contract yourself.
 - Do not call `db.close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.
 

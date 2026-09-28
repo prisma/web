@@ -51,24 +51,54 @@ The exact files depend on the target and authoring style, but a Postgres PSL set
 
 The install step adds the target package to `dependencies`, and `prisma@latest` plus the matching `@prisma/cli-engine` to `devDependencies`.
 
-If your `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. [In a CommonJS project](#in-a-commonjs-project) explains what to change.
+`orm init` also changes the `module` settings in `tsconfig.json` and can add `"type": "module"` to `package.json`. If your app is CommonJS, read [In a CommonJS project](#in-a-commonjs-project) before you run the app again.
 
 The generated `prisma.config.ts` imports `definePrismaConfig` from `@prisma/cli-engine`, while projects created by `create-prisma` (and the examples in [Configuration](/cli/configuration)) import it from `prisma/config`. Both work; keep the import your project already has when you copy a config example.
 
 ## In a CommonJS project
 
-When `package.json` declares `"type": "commonjs"`, `orm init` keeps that value and warns that the scaffolded `db.ts` will not load. It still writes `"module": "preserve"` and `"moduleResolution": "bundler"` into `tsconfig.json`. With those files, `npx tsc --noEmit` passes, `prisma contract emit` works, and `tsx` loads `db.ts`. Plain `node` does not: it stops with `SyntaxError: Cannot use import statement outside a module`, both when it runs a `.ts` file directly and when it runs the output of `tsc`.
+A CommonJS project is one where your code loads other files with `require`, or where `tsc` compiles your `import` lines to `require` calls. `orm init` changes `package.json` and `tsconfig.json` in ways that stop a CommonJS app from starting. This list says what it changes, and the sections after it say what to change back before you run the app again:
 
-Take the case that matches how your app runs:
+- In `package.json`, `orm init` adds `"type": "module"` when the file has no `"type"` field, and Node.js then loads every `.js` file in the project as an ES module. When the file already declares `"type": "commonjs"`, `orm init` keeps it and prints a warning.
+- In `tsconfig.json`, `orm init` sets `"module": "preserve"` and `"moduleResolution": "bundler"` in place of the values you had, and adds `"resolveJsonModule": true`.
 
-- **You run the app through `tsx`.** Change nothing.
-- **You compile with `tsc` and run the output with `node`, and the app stays CommonJS.** Set `"module": "nodenext"` and `"moduleResolution": "nodenext"` in `tsconfig.json`, and remove `with { type: 'json' }` from the `contract.json` import in `db.ts`. TypeScript then compiles `db.ts` to `require` calls, and Node.js loads the Prisma ORM packages through `require`. If you keep the `with` part, TypeScript reports TS2856.
+What you do next depends on how you run the app.
 
-  ```typescript title="src/prisma/db.ts (excerpt)"
-  import contractJson from './contract.json';
-  ```
+### You run the app through `tsx`
 
-- **You want the app to run as ES modules.** Set `"type": "module"` in `package.json` and keep the scaffolded files as they are. Every file in the package then runs as an ES module, so a file that calls `require` or assigns `module.exports` needs rewriting.
+If `orm init` added `"type": "module"` to `package.json`, remove that line. Change nothing else. If you also compile with `tsc` for production, follow the next section instead.
+
+### You compile with `tsc` and run the output with `node`
+
+With the files as `orm init` leaves them, the compiled app does not start: `node` stops with `ERR_MODULE_NOT_FOUND`, or with `SyntaxError: Cannot use import statement outside a module` if your `package.json` declares `"type": "commonjs"`. To keep the app CommonJS, make the following changes. They also work if you run the app through `tsx` while you develop.
+
+1. If `orm init` added `"type": "module"` to `package.json`, remove that line.
+2. In `tsconfig.json`, set `module` and `moduleResolution` to `nodenext`, and set `skipLibCheck` to `true`:
+
+   ```json title="tsconfig.json (excerpt)"
+   {
+     "compilerOptions": {
+       "module": "nodenext",
+       "moduleResolution": "nodenext",
+       "resolveJsonModule": true,
+       "skipLibCheck": true
+     }
+   }
+   ```
+
+3. In `src/prisma/db.ts`, remove `with { type: 'json' }` from the line that imports `contract.json`:
+
+   ```typescript title="src/prisma/db.ts (excerpt)"
+   import contractJson from './contract.json';
+   ```
+
+With `nodenext`, `tsc` still writes CommonJS output, because your `package.json` does not say `"type": "module"`. Your relative imports stay as they are, without file extensions, and `tsc` copies `contract.json` into the output directory beside `db.js`. `prisma contract emit` does not rewrite `db.ts`, so you make that edit once.
+
+Do not restore `"module": "commonjs"` with `"moduleResolution": "node"`, because `tsc` cannot find the Prisma ORM packages with those values.
+
+### You want the app to run as ES modules
+
+Keep `"type": "module"` in `package.json`, or set it if `orm init` kept `"type": "commonjs"`, and leave the scaffolded files as they are. Every file in the project then runs as an ES module, so each file that uses `require`, `module.exports`, or `__dirname` needs rewriting.
 
 ## On a Prisma ORM 7 project
 
@@ -115,11 +145,11 @@ Review the generated files, set `DATABASE_URL`, and emit the contract when you c
 npx prisma contract emit
 ```
 
-Then initialize or verify the database:
+Then initialize a new database, or verify one that Prisma ORM already set up. On a database that already has your tables, run [`db sign`](/cli/db-sign) instead of `db init`:
 
 ```npm
 npx prisma db init --db "$DATABASE_URL"
 npx prisma db verify --db "$DATABASE_URL"
 ```
 
-The scaffolded `db.ts` reads `DATABASE_URL` from the process environment at runtime. The CLI loads `.env` through the config file, but your own scripts do not. Run them with the variable set, for example `node --env-file=.env src/index.ts`.
+The scaffolded `db.ts` starts with `import 'dotenv/config'`, so any script that imports `db` reads `DATABASE_URL` from the `.env` file in the directory you run it from.
