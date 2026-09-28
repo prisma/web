@@ -64,7 +64,7 @@ We're continuously working to expand regional support. If you'd like to request 
 
 ## Pricing
 
-Prisma Postgres bills based on _operations_ and _storage_ consumed. Visit the [pricing page](https://www.prisma.io/pricing) for details and our [blog post explaining operations-based billing](https://www.prisma.io/blog/operations-based-billing) for a detailed explanation on what an operation is and how this pricing model works.
+Prisma Postgres bills based on _operations_ and _storage_ consumed. It does not charge for egress traffic. Visit the [pricing page](https://www.prisma.io/pricing) for details and our [blog post explaining operations-based billing](https://www.prisma.io/blog/operations-based-billing) for a detailed explanation on what an operation is and how this pricing model works.
 
 ### What is an operation?
 
@@ -232,10 +232,6 @@ A production-grade, consumer-facing application handling ~`50000` MAUs. Heavy us
 
 `total_monthly_cost` = $`40.00` + $`129.00` = $`169.00` per month
 
-### Are cached operations billed the same?
-
-Every request, whether it hits the database or is served from cache, counts as an operation. Prisma Postgres use a flat per-operation price and never charge for egress traffic, so a cached response doesn't incur any extra or reduced fee. This unified rate keeps the billing model predictable and avoids per-request complexity.
-
 ### How do I upgrade my plan if I am using Prisma Postgres via Vercel?
 
 If you installed Prisma Postgres through the [Vercel Marketplace integration](/guides/postgres/vercel), the same [Prisma Postgres pricing plans](https://www.prisma.io/pricing) apply and your usage is billed through your Vercel account. To upgrade your plan via Vercel, follow these steps:
@@ -249,80 +245,11 @@ If you installed Prisma Postgres through the [Vercel Marketplace integration](/g
 
 ## Caching
 
-Prisma Postgres includes built-in connection pooling and global caching.
+### Does Prisma Postgres cache query results?
 
-### How does Prisma Postgres's cache layer know what region to fetch the cache from?
+Prisma Postgres includes connection pooling but does not support query caching, and query caching is not on our immediate roadmap.
 
-Under the hood, Prisma Postgres's cache layer uses Cloudflare, which uses [Anycast](https://www.cloudflare.com/learning/cdn/glossary/anycast-network/) for network addressing and routing. An incoming request will be routed to the nearest data center or "node" in their network that has the capacity to process the request efficiently. To learn more about how this works, we recommend looking into [Anycast](https://www.cloudflare.com/learning/cdn/glossary/anycast-network/).
-
-### How can I invalidate a cache for Prisma Postgres?
-
-You can invalidate the cache on-demand via the [`$accelerate.invalidate` API](/accelerate/reference/api-reference#accelerateinvalidate) if you're on a [paid plan](https://www.prisma.io/pricing#accelerate), or you can invalidate your entire cache, on a project level, a maximum of five times a day. This limit is set based on [your plan](https://www.prisma.io/pricing). You can manage this via the Accelerate configuration page.
-
-
-### How is Prisma Postgres's caching layer different from other caching tools, such as Redis?
-
-The caching layer of Prisma Postgres:
-
-- Is a _specialized_ cache that allows you to optimize data access in code at the query level with a cache strategy. On the other hand, tools such as Redis and Memcached are _general-purpose_ caches designed to be adaptable and flexible.
-- Is a managed service that reduces the time, risk, and engineering effort of building and maintaining a cache service.
-- Is globally distributed, by default, reducing the latency of your queries. Other cache tools would require additional configuration to make them available globally.
-
-### When should I not use Prisma Postgres's caching features?
-
-The caching layer of Prisma Postgres is a global data cache and connection pool that allows you to optimize data access in code at the query level. While caching with Prisma Postgres can greatly boost the performance of your app, it may not always be the right choice for your use case.
-
-This global cache feature may not be a good fit for your app if:
-
-- Your app is exclusively used within a specific region and both your application server and database are situated in that same region on the same network. For example, database queries will likely be much faster if your application server and database are in the same region and network. However, If your application server is in different regions or networks from your database, the cache nodes will speed up your queries because the data will be cached in the closest data center to your application.
-
-- Your application data _always_ needs to be up-to-date on retrieval, making it difficult to establish a reasonable cache strategy.
-
-### What is the maximum allowed value for the `ttl` parameter when configuring `cacheStrategy`?
-
-The [Time-to-live](/accelerate/caching) (`ttl`) parameter can be set for up to a _year_. However, items within the cache may be evicted if they are not frequently accessed.
-
-Based on our experimentation, we've seen cache items persist for around 18 hours. While items may remain in the cache for an extended period if they are actively accessed, there is no guarantee.
-
-:::note
-
-Even frequently accessed items may occasionally be evicted from the cache. It's unlikely for an item to survive for up to or longer than a month, regardless of its activity level.
-
-:::
-
-### Why do I sometimes see unexpected cache behavior?
-
-Prisma Postgres's cache layer performs best when it observes a higher load from a project. Many cache operations, such as committing data to cache and refreshing stale data, happen asynchronously. When benchmarking the cache layer, we recommend doing so with loops or a load testing approach. This will mimic higher load scenarios better and reduce outliers from low frequency operations.
-
-Prisma operations are sent to Prisma Postgres over HTTP. As a result, the first request to Prisma Postgres must establish an HTTP handshake and may have additional latency as a result. We're exploring ways to reduce this initial request latency in the future.
-
-### What regions are Prisma Postgres's cache nodes available in?
-
-Prisma Postgres's cache layer runs on Cloudflare's network and cache hits are served from Cloudflare's 300+ locations. You can find the regions where Prisma Postgres's cache nodes are available here: [https://www.cloudflare.com/network/](https://www.cloudflare.com/network/).
-
-### How long does it take to invalidate a cache query result?
-
-As the cache needs to be cleared globally, it is difficult to provide a specific time frame. However, the cached data is eventually consistent and typically propagates to all PoPs within a few seconds. In very rare cases, it may take longer.
-
-Here is a [demo app](https://pris.ly/test-cache-invalidation) to test the time it takes to invalidate a cache query result.
-
-### What is the difference between **Invalidate** and **Revalidate**?
-
-**Invalidate**: The cache entry is deleted, and new data will be fetched on the next request, causing a cache miss. This removes stale data but may lead to slower responses until the cache is repopulated.
-
-**Revalidate**: The cache entry is updated proactively, ensuring the next request uses fresh data from the cache. This keeps the cache valid and maintains faster response times by avoiding cache misses.
-
-### What is on-demand cache invalidation?
-
-[On-demand cache invalidation](/accelerate/caching) lets applications instantly update specific cached data when it changes, instead of waiting for regular cache refresh cycles. This keeps information accurate and up-to-date for users.
-
-### When should I use the cache invalidate API?
-
-The [cache invalidate API](/accelerate/caching) is essential when data consistency cannot wait for the cache's standard expiration or revalidation. Key use cases include:
-
-- **Content updates**: When critical changes occur, such as edits to a published article, product updates, or profile modifications, that need to be visible immediately.
-- **Inventory management**: In real-time applications, like inventory or booking systems, where stock levels, availability, or reservation statuses must reflect the latest information.
-- **High-priority data**: For time-sensitive data, like breaking news or urgent notifications, where it's essential for users to see the most current information right away.
+If your application passes `cacheStrategy` through a hosted Accelerate connection, that connection will be retired on December 1, 2026. [Connect to Prisma Postgres without Accelerate](/postgres/database/switch-from-accelerate) shows how to remove the caching APIs and replace the connection. After the switch, cached queries become ordinary database queries. A query served from the cache already counted as one operation, so removing caching does not change how operations are counted. Database load and response latency can change, so test the affected paths under representative traffic.
 
 ## Connection pooling
 

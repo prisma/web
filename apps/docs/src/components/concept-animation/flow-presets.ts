@@ -403,7 +403,7 @@ const envLayers: FlowScene = {
 };
 
 const githubConnection: FlowScene = {
-  label: "How a GitHub connection deploys on push",
+  label: "How deploy on push works: a GitHub connection plus a deploy workflow",
   width: 668,
   height: 256,
   groupLabels: [
@@ -510,7 +510,7 @@ const githubConnection: FlowScene = {
     {
       title: "3. Push to deploy",
       caption:
-        "After that, a push builds the pushed commit and deploys the matching branch, so a push to feature/login deploys that preview. Production stays deliberate: you promote a deployment when you're ready.",
+        "Last, a deploy workflow in the repository, prisma/cloud-deploy-action, deploys each push: the default branch updates production, and any other branch deploys a preview named after it. Without that workflow, a push deploys nothing.",
       nodes: ["workspace", "ghapp", "project", "repo", "deploy"],
       edges: ["e-install", "e-connect", "e-push"],
       emphasize: ["deploy"],
