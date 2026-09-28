@@ -48,20 +48,25 @@ A dump captures a snapshot: writes made after that snapshot are not included. St
 
 Export all application schemas and data, including migration history:
 
+{/* cspell:ignore mktemp */}
+
 ```bash title="Terminal"
-# Make the dump readable only by you
+# Create a fresh, private dump file for this export
 umask 077
 
+EA_DUMP_FILE="$(mktemp ./prisma-postgres-ea.XXXXXX)" &&
 pg_dump \
   --format=custom \
   --quote-all-identifiers \
   --no-privileges \
   --verbose \
   --dbname="$EA_DIRECT_URL" \
-  --file=prisma-postgres-ea.dump
+  --file="$EA_DUMP_FILE"
 ```
 
 Wait for the export to complete successfully before restoring, so you use a complete archive. Keep this file private: it contains your database's data.
+
+Each export creates a new file in your current directory, leaving earlier dumps untouched. Keep this terminal open and stay in the same directory for the restore; `EA_DUMP_FILE` holds the archive path.
 
 ## 3. Restore into your new database
 
@@ -75,7 +80,7 @@ pg_restore \
   --exit-on-error \
   --verbose \
   --dbname="$NEW_DIRECT_URL" \
-  prisma-postgres-ea.dump
+  "$EA_DUMP_FILE"
 ```
 
 A restore error rolls back the transaction, leaving your new database unchanged. Resolve the reported error before retrying the restore. If an extension or role is missing, consult the [PostgreSQL import guide](/prisma-postgres/import-from-existing-database-postgresql) or [ask for help](#need-a-hand).

@@ -121,7 +121,7 @@ You never write these types yourself. Both files come from the one `npx prisma c
 ```typescript title="src/prisma/db.ts"
 import "dotenv/config";
 import postgres from "@prisma/orm-postgres/runtime";
-import type { Contract } from "./contract.d.js";
+import type { Contract } from "./contract.d";
 import contractJson from "./contract.json" with { type: "json" };
 
 export const db = postgres<Contract>({
@@ -130,7 +130,7 @@ export const db = postgres<Contract>({
 });
 ```
 
-The connection string comes from the `DATABASE_URL` environment variable: `prisma orm init` writes `.env.example`, and you put your `DATABASE_URL` in `.env`. Import the type from `./contract.d.js`: TypeScript maps that path to `contract.d.ts` under every `module` setting, even when a `contract.ts` sits beside it. The extensionless `./contract.d` that older `prisma orm init` releases wrote fails under `nodenext`, `node18`, and `node20` as ES modules, and plain `./contract.js` resolves to `contract.ts` when you author the contract in TypeScript. The `tsconfig.json` settings the JSON import needs are on the [transactions and runtime page](/orm/reference/transactions-and-runtime). Before its first query, `db` reads the record in the database of which contract it matches and compares it with the contract's hashes. If they do not match, it logs a warning whose `code` is `CONTRACT.MARKER_MISMATCH` and runs the query anyway. If there is no record at all, because nothing has signed the database yet, it logs a warning whose `code` is `CONTRACT.MARKER_MISSING` and again runs the query. On MongoDB the client is `mongo<Contract>(...)` from `@prisma/orm-mongo/runtime`, described under [`mongo(options)`](/orm/reference/transactions-and-runtime#mongooptions).
+The connection string comes from the `DATABASE_URL` environment variable: `prisma orm init` writes `.env.example`, and you put your `DATABASE_URL` in `.env`. Keep the `.d` in the import path: it names `contract.d.ts`, so the import still finds the generated type when you author the contract in TypeScript and a `contract.ts` sits beside it. The `tsconfig.json` settings the JSON import needs are on the [transactions and runtime page](/orm/reference/transactions-and-runtime). Before its first query, `db` reads the record in the database of which contract it matches and compares it with the contract's hashes. If they do not match, it logs a warning whose `code` is `CONTRACT.MARKER_MISMATCH` and runs the query anyway. If there is no record at all, because nothing has signed the database yet, it logs a warning whose `code` is `CONTRACT.MARKER_MISSING` and again runs the query. On MongoDB the client is `mongo<Contract>(...)` from `@prisma/orm-mongo/runtime`, described under [`mongo(options)`](/orm/reference/transactions-and-runtime#mongooptions).
 
 When `CONTRACT.MARKER_MISMATCH` shows up in production, apply the pending migration, or run `npx prisma db sign` when the database already matches the contract. The client warns by default, and you can set [`verifyMarker`](/orm/reference/transactions-and-runtime#postgresoptions) to `false` to skip the check. It cannot be made to fail, so run `prisma db verify` when you need a check that fails.
 
