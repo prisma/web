@@ -1,19 +1,23 @@
 ---
-title: Migrate from EA to GA
-description: Move your Prisma Postgres Early Access database to a new generally available database with dump and restore.
+title: Migrate from Early Access
+description: Move your Prisma Postgres Early Access database to a new database with dump and restore before the retirement deadline.
 url: /postgres/migrate-from-ea-to-ga
-metaTitle: Migrate Prisma Postgres from Early Access to GA
-metaDescription: Export your Early Access database, restore it into a new Prisma Postgres GA database, and reconnect your application before the retirement deadline.
+metaTitle: Migrate Prisma Postgres from Early Access
+metaDescription: Export your Early Access database, restore it into a new Prisma Postgres database, and reconnect your application before the retirement deadline.
 ---
 
-Prisma Postgres Early Access (EA) databases run PostgreSQL 16. Generally available (GA) databases run PostgreSQL 17. To migrate, create a new GA database, copy your schema and data, and reconnect your application. Restarting an EA database does not upgrade it.
+Prisma Postgres Early Access (EA) databases are being retired. To keep using your data, migrate to a new database on the generally available version of Prisma Postgres within **30 days from your migration notification**. EA databases will be deleted at the deadline specified in that email; use its exact deletion date and timezone. If you need more time, [request an extension](#need-a-hand) before your deadline.
 
-EA databases will be deleted after the migration window. You have **30 days from your migration notification** to move your data. Use the exact deletion date and timezone in that email. If you need more time, [request an extension](#need-help-or-more-time) before your deadline.
+Your EA database runs PostgreSQL 16, and your new database runs PostgreSQL 17. Restarting your EA database does not upgrade it: you need to export your schema and data, restore them into your new database, and reconnect your application. **You do not need to upgrade Prisma ORM for this migration.**
+
+## Before you start
+
+Plan a maintenance window. Writes must remain paused through export, restore, verification, and application cutover, so choose a time when you can pause application writes and background jobs.
 
 ## 1. Prepare your databases and tools
 
 - Create a new, empty Prisma Postgres database in your workspace in [Prisma Console](https://console.prisma.io). Do not run schema migrations or seed it before restoring.
-- Get the [direct connection strings](/postgres/database/connecting-to-your-database#get-your-connection-strings) for your EA source and GA destination. If you cannot obtain a direct connection for your EA database, [ask for help](#need-help-or-more-time) before continuing.
+- Get the [direct connection strings](/postgres/database/connecting-to-your-database#get-your-connection-strings) for your EA database (source) and your new database (destination). If you cannot obtain a direct connection for your EA database, [ask for help](#need-a-hand).
 - Install [PostgreSQL 17 command-line tools](/postgres/database/backups#1-install-postgresql-command-line-tools) and have enough local disk space for the dump. These commands should report `17.x`:
 
 ```bash title="Terminal"
@@ -22,29 +26,25 @@ pg_restore --version
 psql --version
 ```
 
-Replace the placeholders with each database's direct URL. Keep the single quotes:
+Replace the placeholders with each database's direct URL. `EA_DIRECT_URL` is your source; `NEW_DIRECT_URL` is your destination. Keep the single quotes:
 
 ```bash title="Terminal"
 export EA_DIRECT_URL='postgresql://EA_USER:EA_PASSWORD@EA_HOST:5432/postgres?sslmode=require'
-export GA_DIRECT_URL='postgresql://GA_USER:GA_PASSWORD@GA_HOST:5432/postgres?sslmode=require'
+export NEW_DIRECT_URL='postgresql://NEW_USER:NEW_PASSWORD@NEW_HOST:5432/postgres?sslmode=require'
 ```
 
 Use PostgreSQL URLs, not pooled connections or `prisma://` URLs. Confirm the source reports PostgreSQL 16 and the destination reports PostgreSQL 17:
 
 ```bash title="Terminal"
 psql "$EA_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="SHOW server_version;"
-psql "$GA_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="SHOW server_version;"
+psql "$NEW_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="SHOW server_version;"
 ```
 
-If either connection fails or reports a different major version than expected, stop and ask for help.
+If either connection fails or reports a different major version than expected, [ask for help](#need-a-hand) before exporting.
 
 ## 2. Pause writes and export your EA database
 
-:::warning[Keep writes paused until the switch is complete]
-
-A dump copies a snapshot. Stop new application writes, background workers, scheduled jobs, and other writers. Drain in-flight requests and transactions, then confirm all EA writes have stopped before starting `pg_dump`. Keep writers paused through restore, verification, and switching your application to GA. Changes made afterward on EA will not be copied automatically.
-
-:::
+A dump captures a snapshot: writes made after that snapshot are not included. Stop new application writes, background workers, scheduled jobs, and other writers. Drain in-flight requests and transactions, then confirm all EA writes have stopped before starting `pg_dump`. Keep writes paused until you have verified and switched your application to your new database.
 
 Export all application schemas and data, including migration history:
 
@@ -60,9 +60,11 @@ pg_dump \
   --file=prisma-postgres-ea.dump
 ```
 
-Continue only if the command succeeds. Keep this file private: it contains your database's data.
+Wait for the export to complete successfully before restoring, so you use a complete archive. Keep this file private: it contains your database's data.
 
-## 3. Restore into your empty GA database
+## 3. Restore into your new database
+
+Restore the archive into the empty database you created:
 
 ```bash title="Terminal"
 pg_restore \
@@ -71,29 +73,29 @@ pg_restore \
   --single-transaction \
   --exit-on-error \
   --verbose \
-  --dbname="$GA_DIRECT_URL" \
+  --dbname="$NEW_DIRECT_URL" \
   prisma-postgres-ea.dump
 ```
 
-The command must exit successfully. A restore error rolls back the transaction; resolve it before continuing. If an extension or role is missing, consult the [PostgreSQL import guide](/prisma-postgres/import-from-existing-database-postgresql) or ask for help.
+A restore error rolls back the transaction, leaving your new database unchanged. Resolve the reported error before retrying the restore. If an extension or role is missing, consult the [PostgreSQL import guide](/prisma-postgres/import-from-existing-database-postgresql) or [ask for help](#need-a-hand).
 
-Refresh query-planner statistics:
+After the restore completes successfully, refresh query-planner statistics:
 
 ```bash title="Terminal"
-psql "$GA_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="ANALYZE;"
+psql "$NEW_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="ANALYZE;"
 ```
 
 ## 4. Verify and reconnect your application
 
-1. With EA writes still paused, compare schemas, table row counts, and important records between both databases. The [import verification steps](/prisma-postgres/import-from-existing-database-postgresql#5-verify-the-imported-data) provide a row-count comparison; use your EA URL as the source and GA URL as the destination.
-1. Update connection settings for your application, deployment, workers, and migration tools to use GA. Follow the [connection guidance for your runtime](/postgres/database/connecting-to-your-database). If you use Accelerate, follow the [application reconnection steps](/prisma-postgres/import-from-existing-database-postgresql#6-connect-your-application). You do not need to upgrade your ORM for this migration.
-1. Redeploy or restart your application with the new settings while production traffic remains paused. Test a read and a disposable or rolled-back write against GA.
-1. Once verification succeeds, resume traffic and writers against GA only. Keep EA writes stopped.
+1. With EA writes still paused, compare schemas, table row counts, and important records between both databases. The [import verification steps](/prisma-postgres/import-from-existing-database-postgresql#5-verify-the-imported-data) provide a row-count comparison; use your EA database's URL as the source and your new database's URL as the destination.
+1. Update connection settings for your application, deployment, workers, and migration tools to use your new database. Follow the [connection guidance for your runtime](/postgres/database/connecting-to-your-database). If you use Accelerate, follow the [application reconnection steps](/prisma-postgres/import-from-existing-database-postgresql#6-connect-your-application).
+1. Redeploy or restart your application with the new settings while production traffic remains paused. Test a read and a disposable or rolled-back write against your new database.
+1. Once verification succeeds, resume traffic and writers against your new database only. Keep EA writes stopped.
 
-Keep the EA database and your local dump until verification succeeds. If checks fail, keep traffic paused and resolve the issue or ask for help before switching.
+Keep your EA database and local dump until verification succeeds. If checks fail, keep traffic paused while you resolve the issue or [ask for help](#need-a-hand).
 
-## Need help or more time?
+## Need a hand?
 
-Reply to your migration notification email before the deadline. Include your workspace/project, the affected database name or ID, and any error you encountered. For an extension, include the date you need. Do not send passwords, connection strings, or database dumps.
+If you need help or more time, reply to your migration notification email before the deadline. Include your workspace/project, the affected database name or ID, and what's blocking you, including any error you encountered. For an extension, include the date you need. Please keep passwords, connection strings, and database dumps out of your reply.
 
-**An extension takes effect only when we confirm a revised deadline.** Until then, the deletion date in your notification still applies.
+Extensions need confirmation. Your original deletion deadline applies until we confirm a new date.
