@@ -35,6 +35,42 @@ const found = await db.orm.users.where({ _id: user._id }).first();
 
 The name after `db.orm.` is the collection name, so with `@@map("users")` you write `db.orm.users`, not `db.orm.user`. The values go straight into `create`, without the `data:` wrapper Prisma ORM 7 used. You `await` the whole chain, and the last call says what you want back: `.first()` for one document or `null`, `.all()` for every matching document.
 
+## Field types
+
+On MongoDB, each scalar type is named after the BSON type it stores:
+
+| Type | Stored as | In your code |
+| ---- | --------- | ------------ |
+| `String` | BSON string | `string` |
+| `Int32` | BSON int | `number` |
+| `Int64` | BSON long | `bigint` |
+| `Double` | BSON double | `number` |
+| `Decimal128` | BSON decimal | a string, so that no digit is lost |
+| `Bool` | BSON bool | `boolean` |
+| `Date` | BSON date | a JavaScript `Date` |
+| `Binary` | BSON binary | `Uint8Array` |
+| `Json` | a BSON object, array, string, number, bool or null | a JSON value |
+| `Bson` | any BSON value | the value the MongoDB driver returns |
+| `ObjectId` | BSON ObjectId | `string` |
+
+A `Json` field holds only JSON values. A read fails with `RUNTIME.DECODE_FAILED`, and a write with `RUNTIME.ENCODE_FAILED`, when the field holds a `Date`, an `ObjectId`, a `Decimal128`, a `Binary` or another value that is not JSON, at any depth. Type the field `Bson` when it holds such values. A contract whose source is a Prisma ORM 6 schema cannot declare `Bson`.
+
+The names `Int`, `Float`, `Boolean` and `DateTime` from earlier releases are deprecated. They still work and give the same contract, but `contract emit` reports a `PSL_DEPRECATED_SCALAR_NAME` warning for each use, and a later release removes them. Rename them to `Int32`, `Double`, `Bool` and `Date`.
+
+For a timestamp that Prisma ORM fills in, type the field `temporal.createdAt()` or `temporal.updatedAt()`:
+
+```prisma
+model Post {
+  id        ObjectId             @id @map("_id")
+  title     String
+  createdAt temporal.createdAt()
+  updatedAt temporal.updatedAt()
+  @@map("posts")
+}
+```
+
+With a client created by `mongo()`, `create` sets both fields, and every `update` that changes something sets `updatedAt` again. Both fields are optional in the values you pass to `create`.
+
 ## Embed or reference
 
 Two pieces of related data can live together in one document (embedded) or in separate collections linked by an id (referenced). Embedding nests the data inside its parent: an order and its line items in one document. One read returns everything, and a write updates parent and children together, atomically. The trade-off is that you cannot read embedded data without its parent, and it comes back on every read of the parent.
@@ -144,7 +180,7 @@ model Article {
 }
 model Tutorial {
   difficulty String
-  duration   Int
+  duration   Int32
   @@base(Post, "tutorial")
 }
 ```
