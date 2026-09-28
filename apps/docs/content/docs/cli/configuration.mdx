@@ -127,6 +127,33 @@ Once the config is in place, run `npx prisma contract emit` and then [`npx prism
 
 `contract emit` fails on any part of the schema that Prisma ORM 8 cannot represent exactly, such as a `view` block, `Unsupported(...)`, or `relationMode = "prisma"`. The error names the file and the line and suggests an edit to the Prisma ORM 7 schema. When that edit would also change the database on the next Prisma ORM 7 migration, the error says so. For example, removing an `Unsupported(...)` field drops its column, so for that field the error suggests adding `@@ignore` to the model instead, which leaves the next Prisma ORM 7 migration empty but removes the model from the Prisma ORM 7 client. Prisma ORM 8 has no views, so for a `view` block the error suggests removing the view or replacing it with a model over the table the view reads. `orm init --from-prisma7-schema` writes this config for you.
 
+## Use a Prisma ORM 6 MongoDB schema
+
+On MongoDB, Prisma ORM 8 can read a Prisma ORM 6 `schema.prisma` directly as its contract source. Wrap the path in `prisma6Schema`:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig, prisma6Schema } from "@prisma/orm-mongo/config";
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: prisma6Schema("prisma/schema.prisma"),
+    db: {
+      connection: process.env["DATABASE_URL"]!,
+    },
+  }),
+});
+```
+
+The schema file does not need the `// use prisma-8` first line. Run `npx prisma contract emit` and then [`npx prisma db sign`](/cli/db-sign), which checks that the database Prisma ORM 6 built matches the contract.
+
+`contract emit` fails on any part of the schema that Prisma ORM 8 cannot represent exactly, with an error code that starts with `PSL.PRISMA6_MONGO_`. The [error reference](/orm/reference/error-reference) lists each code and what to change.
+
+## Write your own contract source
+
+A config that builds `contract.source` itself, as an object with a `load` function, must give the object a `format`: `"psl"` when its inputs are PSL text, and `"typescript"` when it builds the contract in TypeScript. Without it, every command that reads the config fails with `CONFIG.VALIDATION_FAILED`. A path, a glob, `prisma7Schema` and `prisma6Schema` set the format for you.
+
 ## Emit-only config
 
 `contract emit` does not connect to a database, so the `orm` section can omit `db.connection`:

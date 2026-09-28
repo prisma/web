@@ -300,6 +300,27 @@ const posts = await db.orm.public.Post
   .all();
 ```
 
+On PostgreSQL, a sort can also use a related record, a count, and a placement for nulls:
+
+```typescript
+// Posts by their author's name
+const byAuthor = await db.orm.public.Post
+  .orderBy([(p) => p.author.name.asc(), (p) => p.id.asc()])
+  .all();
+
+// Users by how many posts they have
+const mostPosts = await db.orm.public.User
+  .orderBy((u) => u.posts.count().desc())
+  .all();
+
+// Posts without a title go last
+const titled = await db.orm.public.Post
+  .orderBy((p) => p.title.desc({ nulls: "last" }))
+  .all();
+```
+
+A relation to one record gives you that record's fields, one relation deep. A relation to many records gives you `count()`, which takes an optional filter, as in `u.posts.count((p) => p.views.gt(10))`. The [`orderBy()` reference](/orm/reference/orm-client#orderby) has the details.
+
 ### Cursor pagination
 
 Offset gets slower on deep pages, so for stable pagination over a large table, follow `.orderBy(...)` with `.cursor(...)` and resume from the last record you returned. `.cursor(...)` is PostgreSQL only.
@@ -321,6 +342,8 @@ const page2 = await db.orm.public.Post
   .limit(20)
   .all();
 ```
+
+A cursor works only when every sort is a plain field of the model. With a sort by a related record, a count, an extension operation such as a vector distance, or a `nulls` placement, `.cursor(...)` throws an error whose `code` is `ORM.ARGUMENT_INVALID`, so page those queries with `.limit(n)` and `.offset(n)`.
 
 On MongoDB, page with `.limit(n)` and `.offset(n)`.
 

@@ -511,6 +511,9 @@ Sort the result set.
 
 - Available for PostgreSQL and MongoDB, with different argument shapes.
 - On PostgreSQL, `orderBy()` takes a callback that returns `.asc()` or `.desc()` on one column. Pass an array of such callbacks to sort by more than one column.
+- On PostgreSQL, the callback can also sort by a field of a related record, for a relation to one record and one relation deep, as in `(p) => p.author.name.asc()`.
+- On PostgreSQL, the callback can also sort by the number of related records, for a relation to many records, as in `(u) => u.posts.count().desc()`. `count()` takes an optional filter, the same one `some()` takes.
+- On PostgreSQL, `.asc()` and `.desc()` take `{ nulls: "first" }` or `{ nulls: "last" }`. Without it, PostgreSQL puts nulls last for `.asc()` and first for `.desc()`.
 - On MongoDB, `orderBy()` takes an object instead: `{ field: 1 }` sorts ascending and `{ field: -1 }` sorts descending.
 - The example schema declares `Priority` text-backed, so on PostgreSQL it sorts by its stored text: `'high'`, then `'low'`, then `'urgent'`. A native enum column sorts in the order its members are declared instead, so the same members in a `native_enum Priority` block sort `Low`, `High`, `Urgent`. Use a native enum when the sort order matters.
 
@@ -615,6 +618,19 @@ const page2 = await db.orm.public.Post.orderBy((p) => p.createdAt.asc()).offset(
 const secondPost = await db.orm.posts.orderBy({ createdAt: 1 }).offset(1).limit(1).all();
 ```
 
+##### Related records, counts, and nulls (PostgreSQL)
+
+```typescript
+const byAuthor = await db.orm.public.Post.orderBy([
+  (p) => p.user.name.asc(),
+  (p) => p.id.asc(),
+]).all();
+
+const mostPosts = await db.orm.public.User.orderBy((u) => u.posts.count().desc()).all();
+
+const titled = await db.orm.public.Post.orderBy((p) => p.title.desc({ nulls: "last" })).all();
+```
+
 ### `cursor()`
 
 Resume pagination from a known position.
@@ -622,6 +638,7 @@ Resume pagination from a known position.
 #### Remarks
 
 - PostgreSQL only. `cursor()` does not exist on a MongoDB collection.
+- Every sort in the `orderBy()` must be a plain column of the model. A sort by a related record, a count, an extension operation such as a vector distance, or a sort with `nulls` makes `cursor()` throw an error whose `code` is `ORM.ARGUMENT_INVALID`. Page such a query with `limit()` and `offset()`.
 - Always call `orderBy()` before `cursor()`. TypeScript rejects the call if you do not. Nothing checks this while the query runs, so without the `orderBy()` the cursor is ignored and every row comes back.
 - The cursor object must name every column the `orderBy()` sorts on. Leave one out and running the query throws an error whose `code` is `ORM.CURSOR_VALUE_MISSING`. With two sort columns, give both keys. The cursor compares the sort columns in order: first by the first column, then by the second for rows that tie on the first.
 
@@ -690,7 +707,7 @@ Keep the first row per key according to `orderBy()`.
 
 - PostgreSQL only. `distinctOn()` does not exist on a MongoDB collection.
 - Call `orderBy()` first, so that "the first row per key" means something. TypeScript rejects the call if you do not.
-- Start the `orderBy()` with the same columns you pass to `distinctOn()`, as the example does. Sort by anything else first and the query fails in the database.
+- Start the `orderBy()` with the same columns you pass to `distinctOn()`, as the example does. Sort by anything else first and the query fails in the database. If one of those first sorts is not a plain column, the call throws an error whose `code` is `ORM.ARGUMENT_INVALID`; a sort by a related record or a count may follow them.
 
 #### Options
 
