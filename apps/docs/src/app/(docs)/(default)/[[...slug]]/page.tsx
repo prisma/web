@@ -1,6 +1,6 @@
 import { getPageImage, source } from "@/lib/source";
 import { getPageTitleText } from "@/lib/page-title";
-import { withDocsBasePath } from "@/lib/urls";
+import { withDocsBasePath, withMarkdownPath } from "@/lib/urls";
 import { resolveCanonicalUrl } from "@/lib/canonical";
 import { getPageVersion, withVersionDescription, withVersionTitle } from "@/lib/version-metadata";
 import { Badge } from "@prisma/eclipse";
@@ -87,11 +87,11 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
           <div className="flex flex-row gap-2 items-center" data-markdown-ignore>
             {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
             {!page.url.startsWith("/rest-api/endpoints") && (
-              <LLMCopyButton markdownUrl={`${withDocsBasePath(page.url)}.mdx`} />
+              <LLMCopyButton markdownUrl={withMarkdownPath(page.url)} />
             )}
 
             <ViewOptions
-              markdownUrl={`${withDocsBasePath(page.url)}.mdx`}
+              markdownUrl={withMarkdownPath(page.url)}
               githubUrl={`https://github.com/prisma/docs/blob/main/apps/docs/content/docs/${page.path}`}
             />
           </div>
