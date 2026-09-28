@@ -2,6 +2,7 @@
 title: "Make Your Applications Fast Globally"
 slug: "make-your-applications-fast-globally"
 date: "2025-04-22"
+updatedAt: "2026-09-28"
 authors:
   - "Ankur Datta"
 metaTitle: "Make Your Applications Fast Globally"
@@ -16,6 +17,8 @@ tags:
 Modern serverless and edge runtimes have made it easier than ever to deploy fast, scalable applications. But as apps grow more distributed, performance issues often shift away from code, and toward infrastructure.
 
 This post explores common backend bottlenecks that sneak into globally distributed apps: long database round-trips, connection churn, cold starts, and inefficient queries. It also walks through practical solutions like pooling, caching, region-aware deployment, and smarter monitoring—so your app stays fast, no matter where your users are.
+
+> **Updated (September 2026):** An earlier version of this post listed [Prisma Postgres](https://www.prisma.io/docs/postgres) as a database with built-in caching. Prisma Postgres has no query cache of its own. A query's `cacheStrategy` caches results against a Prisma Postgres database only when the app connects through a hosted Accelerate connection with `@prisma/extension-accelerate`, and direct, pooled and serverless driver connections do not cache. [Prisma Accelerate](https://www.prisma.io/docs/accelerate), including hosted Accelerate connections for Prisma Postgres, will be retired on December 1, 2026. If your app uses one, follow the guide to [connect to Prisma Postgres without Accelerate](https://www.prisma.io/docs/postgres/database/switch-from-accelerate), and note that neither replacement connection keeps query caching. The caching section below now covers caching in your application's memory or at the CDN instead.
 
 ## What edge and serverless really mean
 
@@ -47,7 +50,7 @@ Connection pooling lets multiple function invocations share a small, persistent 
 
 ![Diagram showing how serverless functions use a connection pool to reuse database connections efficiently, reducing load and avoiding exceeding a database's connection limit.](/make-your-applications-fast-globally/imgs/aec4f8712578f6cca7f95b9c9bf888968bf25f60-2888x2188.png)
 
-If you're using a database like [Prisma Postgres](https://www.prisma.io/postgres), connection pooling is handled behind the scenes—automatically pooling and optimizing queries across functions. Other tools like [PgBouncer](https://www.pgbouncer.org/) or [Supavisor](https://github.com/supabase/supavisor) (from [Supabase](https://supabase.com/)) can also be useful.
+If you're using [Prisma Postgres](https://www.prisma.io/docs/postgres/database/connection-pooling), it includes a connection pooler: send application traffic to its pooled connection string and keep the direct one for migrations and admin tools. Other tools like [PgBouncer](https://www.pgbouncer.org/) or [Supavisor](https://github.com/supabase/supavisor) (from [Supabase](https://supabase.com/)) can also be useful.
 
 Using a connection pooler for your database alone can stabilize performance in high-traffic edge environments.
 
@@ -74,9 +77,12 @@ Think: product lists, site settings, or feature flags. These values don’t need
 You can cache database queries using:
 
 - CDN-level caching with proper `Cache-Control` headers
-- Edge key-value databases (like [Vercel KV](https://vercel.com/changelog/vercel-kv), [Cloudflare Workers KV](https://developers.cloudflare.com/kv/))
-- In-memory caching inside warm serverless functions
-- Use a database provider with [built-in caching such as Prisma Postgres](https://www.prisma.io/docs/accelerate/caching)
+- In-memory caching inside your application's process, such as a warm serverless function or a service running on [Prisma Compute](https://www.prisma.io/docs/compute)
+- The first-party [cache middleware](https://www.prisma.io/docs/orm/middleware/built-in-cache) in [Prisma ORM 8](https://www.prisma.io/docs/orm) (a release candidate as of September 2026), which you turn on per query and which keeps the returned rows in your application's memory
+
+Prisma Postgres does not cache query results for you, so the cache lives in your application or at the CDN in front of it. A cache in your application's memory starts empty in every new instance and after every deploy, so in a serverless or edge function it helps only while an instance stays warm. On Prisma Compute, an instance that scales to zero while idle resumes with its memory intact, so its cache is still there.
+
+The Prisma ORM 8 cache middleware is part of the ORM and works with PostgreSQL and MongoDB from any provider. Because it keeps rows in the memory of one process, each instance of your app holds its own copy, and a write does not clear what is stored, so a cached read can return old rows until its time to live runs out.
 
 Caching lightens the load on your database and cuts down round-trip times for repeated requests significantly.
 
@@ -210,7 +216,7 @@ When identifying performance bottlenecks, also look for:
 
 Improving just a few heavy queries can cut your overall latency in half. Tools like [Prisma Optimize](https://www.prisma.io/docs/query-insights) make this easier by identifying your slowest queries across edge and serverless functions, pinpointing the root causes, and suggesting actionable fixes.
 
-![Animated demo of Prisma Optimize dashboard showing metrics like query latency, request rate, and cache hit rate to monitor and optimize database performance.](/make-your-applications-fast-globally/imgs/5c6d845a109959a693d009e00c975f3f864b1934-800x450.gif)
+![Animated demo of Prisma Optimize recording queries and their latency, then listing recommendations and opening one about long-running transactions.](/make-your-applications-fast-globally/imgs/5c6d845a109959a693d009e00c975f3f864b1934-800x450.gif)
 
 ## Quick recap
 
@@ -220,7 +226,7 @@ Here’s a quick look at the problems and how to solve them.
 | --- | --- |
 | Long database round-trips | Colocate compute with your DB |
 | Too many connections | Add a connection pool |
-| Repeated reads | Cache at the edge |
+| Repeated reads | Cache in your app's memory or at the CDN |
 | Global latency | Consider multi-region DBs |
 | Slow queries | Use monitoring tools like Prisma Optimize or Datadog |
 

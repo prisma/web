@@ -2,30 +2,31 @@
 title: "Prisma Postgres: The Future of Serverless Databases"
 slug: "prisma-postgres-the-future-of-serverless-databases"
 date: "2025-02-03"
-updatedAt: "2026-07-06"
+updatedAt: "2026-09-28"
 authors:
   - "Nikolas Burk"
 metaTitle: "Prisma Postgres: The Future of Serverless Databases"
-metaDescription: "Prisma Postgres is finally ready for production! Built on unikernels, it enables a unique set of benefits like no cold starts, connection pooling, edge caching, & more!"
+metaDescription: "Prisma Postgres is ready for production. Built on unikernels and bare metal, it has no cold starts, a built-in connection pool, and usage-based pricing."
 metaImagePath: "/prisma-postgres-the-future-of-serverless-databases/imgs/meta-53a4a10eec49b801af6538901c44b870e7d83404-1266x711.png"
 heroImagePath: "/prisma-postgres-the-future-of-serverless-databases/imgs/hero-8c5b6c03a60ac2704f65689abf686ff4adfd6e67-844x474.svg"
 tags:
   - "announcement"
 ---
 
-Prisma Postgres is _the_ database for developers, and it's ready for production! Built on Cloudflare, unikernels, and bare metal infrastructure, it enables a unique set of benefits like zero cold starts, global caching, connection pooling, and a lot more!
+Prisma Postgres is ready for production. Built on unikernels and bare metal infrastructure, it has zero cold starts, a built-in connection pool, and pricing based on operations and storage.
 
-:::note[Updated in July 2026]
-This post originally announced the General Availability of Prisma Postgres in February 2025. We've refreshed the plan limits, feature availability, links, and code samples so they reflect the current product. For the latest limits, see the [pricing page](https://www.prisma.io/pricing).
+:::note[Updated (September 2026)]
+This post announced the General Availability of Prisma Postgres in February 2025. We refreshed its plan limits, links, and code samples in July 2026. In September 2026 we corrected what it said about query caching, because the earlier text presented caching as a Prisma Postgres feature.
+
+Prisma Postgres has no query cache of its own. With Prisma Postgres, the `cacheStrategy` option caches results only when your app connects through a hosted Accelerate connection (a `prisma+postgres://accelerate.prisma-data.net` URL) with the `@prisma/extension-accelerate` extension, and direct, pooled, and serverless driver connections do not cache. [Prisma Accelerate](https://www.prisma.io/docs/accelerate), including hosted Accelerate connections for Prisma Postgres, will be retired on December 1, 2026, and neither replacement connection keeps caching. To move off a hosted Accelerate connection, follow [Connect to Prisma Postgres without Accelerate](https://www.prisma.io/docs/postgres/database/switch-from-accelerate). If your app needs caching, see [what to use instead](#query-caching-at-launch-and-what-to-use-now). For current plan limits, see the [pricing page](https://www.prisma.io/pricing).
 :::
 
 ## Prisma Postgres is ready for production 🎉
 
-Prisma Postgres is built on a unique technology stack, based on unikernels and Cloudflare infrastructure. Here are the main features and benefits this enables:
+Prisma Postgres is built on a technology stack based on unikernels and bare metal infrastructure. Here are the main features and benefits this enables:
 
 - **Zero cold starts**: Instant access to your database without delays.
 - **Generous free tier**: 100k operations, 500 MB storage per month & 50 databases.
-- **Global caching layer**: Query responses are easily cached at the edge.
 - **Built-in connection pool**: Scale your app without worrying about TCP connections.
 - **Query Insights**: Understand slow queries with AI-generated analysis and suggested fixes.
 - **Simple usage-based pricing**: Predictable costs based on operations & storage.
@@ -72,24 +73,17 @@ Our goal is to make pricing substantially more simple than other providers. This
 
 With Prisma Postgres' usage-based pricing, you truly pay only for what you need!
 
-### Serve data from a global cache close to your users
+### Query caching at launch, and what to use now
 
-One major benefit of Prisma Postgres is that you can configure database caching on a _per-query_ level. Database results are then cached at the edge and will be served to your application from a close, physical location. Caching is enabled by extending Prisma Client with the [`@prisma/extension-accelerate`](https://www.npmjs.com/package/@prisma/extension-accelerate) extension.
+When this post was first published, this section described a per-query cache that you turned on by extending Prisma Client with [`@prisma/extension-accelerate`](https://www.npmjs.com/package/@prisma/extension-accelerate) and adding a `cacheStrategy` option to a query. That cache is part of [Prisma Accelerate](https://www.prisma.io/docs/accelerate), not of the Prisma Postgres database, and it will be retired with Accelerate on December 1, 2026. Until then, it works only when your app connects to Prisma Postgres through a hosted Accelerate connection, and it serves cache hits from Cloudflare's network.
 
-Here's how easy it is to configure a cache strategy, just add the `cacheStrategy` option with `ttl` and/or `swr` options:
+A `cacheStrategy` takes two timing options. `ttl` (time-to-live) sets how long a cached result counts as _fresh_, and `swr` (stale-while-revalidate) sets how long a result past its `ttl` can still be served while the cache fetches a new one in the background. Accelerate also lets you [invalidate cached results on demand](https://www.prisma.io/docs/accelerate/reference/api-reference#accelerateinvalidate) through cache tags.
 
-```ts
-const posts = await prisma.post.findMany({
-  where: { published: true },
-  cacheStrategy: {
-    ttl: 60,
-    swr: 30,
-  }
-})
-```
-The `ttl` (Time-To-Live) and `swr` (Stale-While-Revalidate) options indicate to Prisma Postgres how long the currently cached data should be considered _fresh_ and whether an update of the cache should happen in the background. Prisma Postgres' cache also supports advanced use cases like [on-demand cache invalidation](https://www.prisma.io/docs/accelerate/reference/api-reference#accelerateinvalidate) via cache tags.
+If your code sets `cacheStrategy`, remove it before you move off Accelerate. The guide to [connect to Prisma Postgres without Accelerate](https://www.prisma.io/docs/postgres/database/switch-from-accelerate) lists every Accelerate API to search for.
 
-You can learn more about the [`cacheStrategy` options](https://www.prisma.io/docs/accelerate/reference/api-reference#cachestrategy) in our docs. 
+If your app needs caching, cache in your application's memory. [Prisma ORM 8](https://www.prisma.io/docs/orm), which is a release candidate, ships a first-party [cache middleware](https://www.prisma.io/docs/orm/middleware/built-in-cache) that does this per query: you mark a read with a TTL, and the middleware keeps the rows it returned in the memory of one process for up to that TTL. It is a Prisma ORM feature, not a Prisma Postgres feature, and it works with PostgreSQL and MongoDB.
+
+A cache like this suits reads that run over and over and can be a little out of date, such as a dashboard, a lookup table, or feature flags. Each process keeps its own copy of the rows, so two instances of your app can return different rows for the same read. Leave reads that must be correct uncached, such as a permission check or an account balance.
 
 ### Scale effortlessly with built-in connection pooling
 
@@ -206,13 +200,7 @@ Together with Unikraft, we were able to reduce the Prisma Postgres binary image 
 
 These specialized binary images are deployed as unikernels on our own bare metal machines; and, as unikernels are ultimately virtual machines, each PostgreSQL instance provides strong, _hardware-level_ isolation.
 
-### Caching layer built on Cloudflare
-
-At Prisma, we're huge fans of Cloudflare and strong believers that it'll leave a major mark on the cloud computing landscape. That's why we've built the Prisma Postgres caching layer on top of the global Cloudflare infrastructure.
-
-The cache is implemented via Cloudflare Workers (so it caches data at the edge) and uses the official Cloudflare Caching API. 
-
-> If you're curious about the details of the Prisma Postgres technology stack and how it works under the hood, check out this technical deep dive: [**Cloudflare, Unikernels & Bare Metal: Life of a Prisma Postgres Query**](/cloudflare-unikernels-and-bare-metal-life-of-a-prisma-postgres-query).
+> For how a query traveled through Cloudflare, unikernels, and bare metal at launch, read [**Cloudflare, Unikernels & Bare Metal: Life of a Prisma Postgres Query**](/cloudflare-unikernels-and-bare-metal-life-of-a-prisma-postgres-query). That post was written in February 2025, and its sections on the cache describe the Accelerate cache covered above.
 
 ### Looking ahead: Prisma 8
 
