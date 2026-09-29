@@ -7,7 +7,7 @@ import { siteConfig } from "@/lib/config";
 // and blog headers use). On the site its links stay relative.
 export function Logo() {
   return (
-    <PrismaLogoMenu siteUrl="">
+    <PrismaLogoMenu section="website" siteUrl="">
       <Link href="/" className="flex items-center">
         <Image src="/logo/full-color.svg" alt={siteConfig.name} width={110} height={28} priority />
       </Link>

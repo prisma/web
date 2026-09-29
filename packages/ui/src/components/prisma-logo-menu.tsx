@@ -5,7 +5,7 @@ import { Menu } from "@base-ui/react/menu";
 // through tsx, which compiles files outside apps/docs with the classic JSX
 // transform, and that needs `React` in scope.
 import * as React from "react";
-import { trackCTA } from "@prisma-docs/ui/lib/analytics";
+import { trackCTA, type SiteSection } from "@prisma-docs/ui/lib/analytics";
 // Copies of the brand kit's files (apps/site/public/brand-kit), bundled here
 // so the menu works in every zone, preview deployment, and local dev server
 // without depending on the site app serving /brand-kit.
@@ -43,8 +43,8 @@ const itemClass =
   "flex cursor-default select-none items-center gap-2 rounded-[6px] px-2 py-1.5 text-[#3a3b3c] no-underline outline-none data-highlighted:bg-[oklch(0.97_0_0)] dark:text-[oklch(0.985_0_0)] dark:data-highlighted:bg-[oklch(0.269_0_0)]";
 const itemIconClass = "size-4 shrink-0 text-[#646567] dark:text-[oklch(0.708_0_0)]";
 
-function track(cta_text: string, cta_destination: string) {
-  trackCTA({ cta_text, cta_location: "navbar_logo_menu", cta_destination });
+function track(section: SiteSection, cta_text: string, cta_destination: string) {
+  trackCTA({ cta_text, cta_location: "navbar_logo_menu", cta_destination, section });
 }
 
 function loadBlob(src: string, type: string) {
@@ -78,14 +78,18 @@ async function copyLogo({ svg, png }: CopyTile) {
  * logo, after the one on vercel.com: copy the logo or the symbol, download the
  * brand kit, or go to the brand & press kit page.
  *
- * `siteUrl` is where the site zone lives: "" on the site itself, so its links
- * stay relative, and the prisma.io origin (the default) from docs and blog.
+ * `section` is the zone rendering the menu, sent with its click events like
+ * the other navbar CTAs. `siteUrl` is where the site zone lives: "" on the site
+ * itself, so its links stay relative, and the prisma.io origin (the default)
+ * from docs and blog.
  */
 export function PrismaLogoMenu({
   children,
+  section,
   siteUrl = "https://www.prisma.io",
 }: {
   children: React.ReactNode;
+  section: SiteSection;
   siteUrl?: string;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -122,7 +126,7 @@ export function PrismaLogoMenu({
   }, [copyStatus]);
 
   function copy(tile: CopyTile) {
-    track(tile.label, tile.svg);
+    track(section, tile.label, tile.svg);
     const opening = openCount.current;
     const settle = (result: "copied" | "failed") => {
       if (openCount.current === opening) setCopyStatus({ key: tile.key, result });
@@ -204,7 +208,7 @@ export function PrismaLogoMenu({
                 href={zipUrl}
                 download
                 closeOnClick
-                onClick={() => track("Download brand assets", zipUrl)}
+                onClick={() => track(section, "Download brand assets", zipUrl)}
                 className={itemClass}
               >
                 <DownloadIcon className={itemIconClass} aria-hidden />
@@ -212,7 +216,7 @@ export function PrismaLogoMenu({
               </Menu.LinkItem>
               <Menu.LinkItem
                 href={brandKitUrl}
-                onClick={() => track("Brand & press kit", brandKitUrl)}
+                onClick={() => track(section, "Brand & press kit", brandKitUrl)}
                 className={itemClass}
               >
                 <LayersIcon className={itemIconClass} aria-hidden />

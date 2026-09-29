@@ -120,7 +120,7 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
         >
           {/* Right-clicking the logo opens the shared brand menu (the same one
               the site and docs headers use). */}
-          <PrismaLogoMenu>
+          <PrismaLogoMenu section="blog">
             <Logo href={logoHref} />
           </PrismaLogoMenu>
 

@@ -72,7 +72,7 @@ export function baseOptions(): BaseLayoutProps {
               visually hidden text node (for text-only crawlers). */}
           {/* Right-clicking the logo opens the shared brand menu (the same one
               the site and blog headers use). */}
-          <PrismaLogoMenu>
+          <PrismaLogoMenu section="docs">
             <Link
               href="https://www.prisma.io"
               aria-label="Prisma home"
