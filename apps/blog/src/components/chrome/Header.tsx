@@ -16,6 +16,7 @@
 // navigation-wrapper so UTM propagation is unchanged.
 import { Button } from "@prisma/eclipse";
 import { useSearchContext } from "@fumadocs/base-ui/contexts/search";
+import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
 import { ThemeToggle } from "@prisma-docs/ui/components/theme-toggle";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { Menu, Search } from "lucide-react";
@@ -117,7 +118,11 @@ export function Header({ links, logoHref, loginHref, signupHref }: HeaderProps) 
               : "bg-background-default/0 mt-4 h-16 max-w-[87.5rem] border-transparent px-4 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-6 sm:h-18 sm:px-10 dark:shadow-[0_1px_2px_rgba(0,0,0,0),0_8px_24px_-8px_rgba(0,0,0,0)]",
           )}
         >
-          <Logo href={logoHref} />
+          {/* Right-clicking the logo opens the shared brand menu (the same one
+              the site and docs headers use). */}
+          <PrismaLogoMenu>
+            <Logo href={logoHref} />
+          </PrismaLogoMenu>
 
           <NavMenu className="hidden md:flex">
             <NavMenuList className="gap-0.5 lg:gap-1">
