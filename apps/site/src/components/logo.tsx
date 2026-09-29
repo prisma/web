@@ -10,7 +10,7 @@ import {
   PRIMARY_SYMBOL,
   PRIMARY_SYMBOL_PNG,
 } from "@/components/brand-kit/content";
-import { Check, Download, Layers } from "@/components/icons/forma";
+import { Check, Download, Layers, X } from "@/components/icons/forma";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,29 +74,43 @@ async function copyLogo({ svg, png }: CopyTile) {
 // download the full kit, or go to the brand & press kit page.
 export function Logo() {
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState<CopyTile["key"] | null>(null);
+  const [copyStatus, setCopyStatus] = useState<{
+    key: CopyTile["key"];
+    result: "copied" | "failed";
+  } | null>(null);
   const linkRef = useRef<HTMLAnchorElement>(null);
   const dismissedOutside = useRef(false);
+  // Counts openings, so a copy that settles after its menu has closed and
+  // reopened doesn't report into (or close) the new one.
+  const openCount = useRef(0);
 
-  // Hold the menu open for a beat after a copy so "Copied" can be read.
+  // Hold the menu open for a beat after a copy so "Copied" can be read. A
+  // failed copy leaves it open with "Couldn't copy" on the tile.
   useEffect(() => {
-    if (!copied) return;
+    if (copyStatus?.result !== "copied") return;
     const timer = setTimeout(() => setOpen(false), 900);
     return () => clearTimeout(timer);
-  }, [copied]);
+  }, [copyStatus]);
 
   function onOpenChange(next: boolean) {
     setOpen(next);
-    if (next) setCopied(null);
+    if (next) {
+      openCount.current += 1;
+      setCopyStatus(null);
+    }
   }
 
   function copy(tile: CopyTile) {
     track(tile.label, tile.svg);
+    const opening = openCount.current;
+    const settle = (result: "copied" | "failed") => {
+      if (openCount.current === opening) setCopyStatus({ key: tile.key, result });
+    };
+    // Fails when the clipboard is unavailable (insecure context, denied
+    // permission) or a file doesn't load.
     copyLogo(tile).then(
-      () => setCopied(tile.key),
-      () => {
-        // Clipboard can be unavailable (insecure context); leave the menu open.
-      },
+      () => settle("copied"),
+      () => settle("failed"),
     );
   }
 
@@ -159,14 +173,19 @@ export function Logo() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={tile.svg} alt="" className={tile.imgClass} />
               </span>
-              <span className="flex items-center gap-1.5 px-1 text-foreground">
-                {copied === tile.key ? (
+              <span aria-live="polite" className="flex items-center gap-1.5 px-1 text-foreground">
+                {copyStatus?.key !== tile.key ? (
+                  tile.label
+                ) : copyStatus.result === "copied" ? (
                   <>
                     <Check className="size-3.5 text-foreground" aria-hidden />
                     Copied
                   </>
                 ) : (
-                  tile.label
+                  <>
+                    <X className="size-3.5 text-foreground" aria-hidden />
+                    Couldn&apos;t copy
+                  </>
                 )}
               </span>
             </DropdownMenuItem>
