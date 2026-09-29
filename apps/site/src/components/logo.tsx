@@ -3,7 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { MASTER_ZIP, PRIMARY_LOCKUP, PRIMARY_SYMBOL } from "@/components/brand-kit/content";
+import {
+  MASTER_ZIP,
+  PRIMARY_LOCKUP,
+  PRIMARY_LOCKUP_PNG,
+  PRIMARY_SYMBOL,
+  PRIMARY_SYMBOL_PNG,
+} from "@/components/brand-kit/content";
 import { Check, Download, Layers } from "@/components/icons/forma";
 import {
   DropdownMenu,
@@ -16,38 +22,59 @@ import { siteConfig } from "@/lib/config";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 
 const COPY_TILES = [
-  { key: "logo", label: "Copy logo", src: PRIMARY_LOCKUP, imgClass: "h-6 w-auto" },
-  { key: "symbol", label: "Copy symbol", src: PRIMARY_SYMBOL, imgClass: "h-8 w-auto" },
+  {
+    key: "logo",
+    label: "Copy logo",
+    svg: PRIMARY_LOCKUP,
+    png: PRIMARY_LOCKUP_PNG,
+    imgClass: "h-6 w-auto",
+  },
+  {
+    key: "symbol",
+    label: "Copy symbol",
+    svg: PRIMARY_SYMBOL,
+    png: PRIMARY_SYMBOL_PNG,
+    imgClass: "h-8 w-auto",
+  },
 ] as const;
 
-type TileKey = (typeof COPY_TILES)[number]["key"];
+type CopyTile = (typeof COPY_TILES)[number];
 
 function track(cta_text: string, cta_destination: string) {
   trackCTA({ cta_text, cta_location: "navbar_logo_menu", cta_destination, section: "website" });
 }
 
-// Puts an SVG file's markup on the clipboard, ready to paste into Figma or a
-// code editor. The file is fetched after the click, so the pending text goes
-// in a ClipboardItem: Safari only honours writes that start inside the gesture.
-async function copySvg(src: string) {
-  const markup = fetch(src).then((res) => {
+function loadBlob(src: string, type: string) {
+  return fetch(src).then(async (res) => {
     if (!res.ok) throw new Error(`Failed to load ${src}`);
-    return res.text();
+    return new Blob([await res.blob()], { type });
   });
+}
+
+// Puts a logo on the clipboard in two formats and lets the paste target pick:
+// the SVG markup as text, which Figma pastes as vectors and code editors as
+// source, and the rendered PNG, which Slack, docs, and slides paste as an
+// image. The files are fetched after the click, so they go in as pending
+// blobs: Safari only honours clipboard writes that start inside the gesture.
+async function copyLogo({ svg, png }: CopyTile) {
   if (typeof ClipboardItem !== "undefined" && navigator.clipboard.write) {
-    const blob = markup.then((svg) => new Blob([svg], { type: "text/plain" }));
-    await navigator.clipboard.write([new ClipboardItem({ "text/plain": blob })]);
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/plain": loadBlob(svg, "text/plain"),
+        "image/png": loadBlob(png, "image/png"),
+      }),
+    ]);
   } else {
-    await navigator.clipboard.writeText(await markup);
+    await navigator.clipboard.writeText(await (await loadBlob(svg, "text/plain")).text());
   }
 }
 
 // The header logo. A left click goes home; a right click opens a small brand
-// menu anchored under the logo (after Vercel's): copy the logo or symbol as
-// SVG, download the full kit, or go to the brand & press kit page.
+// menu anchored under the logo (after Vercel's): copy the logo or symbol,
+// download the full kit, or go to the brand & press kit page.
 export function Logo() {
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState<TileKey | null>(null);
+  const [copied, setCopied] = useState<CopyTile["key"] | null>(null);
   const linkRef = useRef<HTMLAnchorElement>(null);
   const dismissedOutside = useRef(false);
 
@@ -63,9 +90,9 @@ export function Logo() {
     if (next) setCopied(null);
   }
 
-  function copy(tile: (typeof COPY_TILES)[number]) {
-    track(tile.label, tile.src);
-    copySvg(tile.src).then(
+  function copy(tile: CopyTile) {
+    track(tile.label, tile.svg);
+    copyLogo(tile).then(
       () => setCopied(tile.key),
       () => {
         // Clipboard can be unavailable (insecure context); leave the menu open.
@@ -130,7 +157,7 @@ export function Logo() {
             >
               <span className="flex h-16 items-center justify-center rounded-lg border border-border/80 bg-muted/60 transition-colors group-data-[highlighted]/tile:border-foreground/15 group-data-[highlighted]/tile:bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={tile.src} alt="" className={tile.imgClass} />
+                <img src={tile.svg} alt="" className={tile.imgClass} />
               </span>
               <span className="flex items-center gap-1.5 px-1 text-foreground">
                 {copied === tile.key ? (
