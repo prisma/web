@@ -1,14 +1,16 @@
 ---
-title: PostgreSQL
-description: Add Prisma ORM to an existing PostgreSQL project.
+title: Add Prisma ORM to an existing PostgreSQL database
+description: Add Prisma ORM to an app whose PostgreSQL database already has tables.
 url: /prisma-orm/add-to-existing-project/postgresql
 metaTitle: Add Prisma ORM to an existing PostgreSQL project
 metaDescription: Add Prisma ORM to an existing PostgreSQL project.
 ---
 
-To add Prisma ORM to a project that already uses PostgreSQL, you will run `orm init`, infer a contract from the live schema, sign the database, and run a couple of queries.
+This page uses PostgreSQL. [Use MongoDB instead](/prisma-orm/add-to-existing-project/mongodb).
 
-Use this path when you already have an application and database. Make sure the app can already reach its PostgreSQL database and runs on Node.js 22.18 or newer (on the 24 line, 24.11 or newer; Node.js 24 is recommended). If you want Prisma ORM to create a new app for you, use the [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql).
+On this page you add Prisma ORM to an app whose PostgreSQL database already has tables. The contract is the file that holds your models, and in Prisma ORM 7 it was `schema.prisma`. You run `orm init`, generate the contract from your tables, run two queries, and apply your first schema change.
+
+Use this path when you already have an application and database. Make sure the app can already reach its PostgreSQL database and runs on Node.js 22.18 or newer (on the 24 line, 24.11 or newer; Node.js 24 is recommended). If your database has no tables yet, follow [Add Prisma ORM and PostgreSQL to an existing app](/prisma-orm/quickstart/existing-app/postgresql) instead. If you want Prisma ORM to create a new app for you, follow [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql).
 
 :::note[Using Prisma ORM 7?]
 
@@ -40,7 +42,7 @@ This command is for a project that already exists: it preselects PostgreSQL, add
 
 `orm init` also changes the `module` settings in `tsconfig.json`, and adds `"type": "module"` to `package.json` when the file has no `"type"` field. If your app is CommonJS, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you run the app again. The scripts in this guide run through `tsx`, which works in both kinds of project.
 
-It also adds `prisma-8.md`, a short project-level reference your coding agent can read. It does not install agent skills; the Prisma ORM skill ships inside the `@prisma/orm-postgres` package your project installs. If you later run `prisma init` or `prisma skills sync`, Prisma writes skill files for coding agents into your repo. To stop that, pass `--skills=none` to [`init`](/cli/init) or set the [`skills.agents`](/cli/configuration#agent-skills) config field to `[]`; the next [`skills sync`](/cli/skills) removes any copies already written.
+It also adds `prisma-8.md`, a short project-level reference your coding agent can read. It does not install agent skills; the Prisma ORM skill ships inside the `@prisma/orm-postgres` package your project installs. From now on, every `prisma` command ends with the line `Prisma agent skills are out of date`. The skills are instruction files for coding agents, and the line does not change what the command does. If you want the skills, [`npx prisma@latest init`](/cli/init) installs them, which also stops the line. The output on this page leaves the line out. If you later run `prisma init` or `prisma skills sync`, Prisma writes skill files for coding agents into your repo. To stop that, pass `--skills=none` to [`init`](/cli/init) or set the [`skills.agents`](/cli/configuration#agent-skills) config field to `[]`; the next [`skills sync`](/cli/skills) removes any copies already written.
 
 When Prisma ORM asks the remaining setup questions:
 
@@ -82,7 +84,69 @@ Run:
 npx prisma contract infer --output ./src/prisma/contract.prisma
 ```
 
-The command writes a first draft of `src/prisma/contract.prisma`.
+```text no-copy
+✔ Connecting to database...
+✔ Introspecting database schema...
+│  database:  postgres://****@127.0.0.1:54329/legacy
+
+✔ Contract written to src/prisma/contract.prisma
+```
+
+The command writes a first draft of `src/prisma/contract.prisma`. For a database with a `user` table and a `post` table, the draft looks like this:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+// Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
+
+namespace public {
+  model User {
+    id        Int         @id(map: "user_pkey") @default(autoincrement())
+    email     String      @unique(map: "user_email_key")
+    name      String?
+    role      String      @default("member")
+    age       Int?
+    createdAt Timestamptz @default(now()) @map("created_at")
+    posts     Post[]
+
+    @@check(expression: "(age >= 0)", map: "user_age_check")
+    @@map("user")
+  }
+
+  model Post {
+    id        Int          @id(map: "post_pkey") @default(autoincrement())
+    title     VarChar(200)
+    published Boolean      @default(false)
+    authorId  Int          @map("author_id")
+    author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "post_author_id_fkey")
+
+    @@index([authorId], map: "post_author_id_idx")
+    @@index([title], map: "post_published_idx", where: "published")
+    @@index(expression: "lower(title::text)", map: "post_title_lower_idx")
+    @@rls
+    @@map("post")
+  }
+
+  policy_select post_read {
+    target = Post
+    roles = [public]
+    using = "published"
+    @@map("post_read")
+  }
+}
+```
+
+`contract infer` reads these parts of the database and writes each one into the draft:
+
+| In the database | In the draft above |
+| --- | --- |
+| Primary keys and unique constraints | `@id`, `@unique` |
+| Column defaults | `@default("member")`, `@default(now())` |
+| Foreign keys, with what happens on delete | `@relation(..., onDelete: Cascade)` and the `posts` field |
+| Check constraints | `@@check` |
+| Indexes, including an index on part of a table and an index on an expression | the three `@@index` lines |
+| Row-level security and its policies | `@@rls` and the `policy_select` block |
+
+`contract infer` reads only the PostgreSQL schema named `public`. It skips tables in any other schema and prints no message about them.
 
 Open that file and review it before you go on. This is the moment to clean up model names, keep only the tables you want Prisma ORM to know about first, and make the file easier to read. A model's table is the model name exactly as written, so a table such as `User` gets a model with no `@@map`, and a table such as `user` or `user_profile` gets `@@map` with its name. Keep those `@@map` lines when you rename a model, so the table stays the same.
 
@@ -104,6 +168,14 @@ npx prisma contract emit
 
 This refreshes `src/prisma/contract.json` and `src/prisma/contract.d.ts` so the runtime and query APIs match the contract you just reviewed.
 
+If the inferred contract has a policy, a check, or an index that contains SQL text, `contract emit` prints one warning for each, and still writes both files. Each warning starts like this:
+
+```text no-copy
+(node:15169) [PN_EXACT_NAME_BODY_COMPARISON] Warning: check "user_age_check" uses map: with a SQL body.
+```
+
+These warnings are expected on a contract that `contract infer` wrote, and you do not need to change anything.
+
 ## 6. Sign the database
 
 Record that the live database matches the emitted contract:
@@ -112,7 +184,34 @@ Record that the live database matches the emitted contract:
 npx prisma db sign
 ```
 
-**Expected result:** `Database signed`. The command also stores the contract snapshot under `migrations/snapshots/` and points the `db` ref at it, so a later [migration plan](/cli/migration-plan) starts from the schema you just adopted instead of from an empty database.
+```text no-copy
+✔ Connecting to database...
+✔ Verifying database schema...
+✔ Signing database...
+│  contract:  src/prisma/contract.json
+│  database:  postgres://****@127.0.0.1:54329/legacy
+
+✔ Database signed
+
+from:  none
+to:    596586f61799d5b2585df874a00f8d6f12d73a522d2eefbcbec62dba4e9904a4
+
+✔ Advanced ref "db" → 596586f61799d5b2585df874a00f8d6f12d73a522d2eefbcbec62dba4e9904a4
+```
+
+Before it writes anything, `db sign` checks that the database has everything the contract declares. A table or a column that the database has and the contract does not declare is not a problem. When something the contract declares is missing from the database, `db sign` writes nothing and exits with code 4. For example, with a `phone` field in the `User` model and no `phone` column in the table:
+
+```text no-copy
+✘ Schema issues
+└─ ✘ missing: database/public/user/column:phone
+
+✘ [CONTRACT.SCHEMA_VERIFICATION_FAILED] Database schema does not satisfy contract (1 failure)
+  why: The live schema differs: missing: database/public/user/column:phone.
+```
+
+To fix it, remove from the contract what the database does not have, run `npx prisma contract emit`, and sign again.
+
+When the check passes, `db sign` stores a record in the database of which contract it matches. The record holds the hash of the contract, which is the long hexadecimal text after `to:` in the output. The command also writes two things into your project: a copy of the contract under `migrations/snapshots/`, and the `db` ref, which is the file `migrations/app/refs/db.json` and holds the same hash. A later [migration plan](/cli/migration-plan) reads them, so it starts from the tables you just adopted instead of from an empty database. Commit the `migrations/` directory.
 
 This step matters in two common cases:
 
@@ -123,7 +222,7 @@ This step matters in two common cases:
 
 With the database signed, you can test the higher-level API first and confirm Prisma ORM is reading the existing schema correctly.
 
-Create a `script.ts` file:
+Create `script.ts` with the code below, which reads the `User` model from step 4. Use one of your own models and its fields in its place:
 
 ```typescript title="script.ts"
 import { db } from "./src/prisma/db";
@@ -151,11 +250,18 @@ Run it:
 npx tsx script.ts
 ```
 
+```text no-copy
+[
+  { id: 1, email: 'alice@example.com', name: 'Alice' },
+  { id: 2, email: 'bob@example.com', name: 'Bob' }
+]
+```
+
 ## 8. Run a simple low-level query
 
 After the ORM example, this step shows the lower-level SQL builder against the same existing schema.
 
-The SQL builder names the table, where the ORM API names the model. This example reads a table named `User`. If your model has `@@map("user")`, write `db.sql.public.user`.
+The SQL builder names the table, where the ORM API names the model. This example reads the table `user`, which the `User` model in step 4 maps with `@@map("user")`. For a model without `@@map`, the table has the name of the model.
 
 Replace `script.ts` with this version:
 
@@ -163,7 +269,7 @@ Replace `script.ts` with this version:
 import { db } from "./src/prisma/db";
 
 async function main() {
-  const plan = db.sql.public.User
+  const plan = db.sql.public.user
     .select("id", "email", "name")
     .limit(2)
     .build();
@@ -186,25 +292,95 @@ Run it again:
 npx tsx script.ts
 ```
 
-## 9. Next steps
+```text no-copy
+[
+  { id: 1, email: 'alice@example.com', name: 'Alice' },
+  { id: 2, email: 'bob@example.com', name: 'Bob' }
+]
+```
 
-When you change `src/prisma/contract.prisma`, emit the contract again:
+## 9. Make your first schema change
+
+From here on, you change the database by changing the contract. Add a field to a model in `src/prisma/contract.prisma`. This example adds `phone` to the `User` model from step 4, so use a model and a field of your own:
+
+```prisma title="src/prisma/contract.prisma"
+  model User {
+    id        Int         @id(map: "user_pkey") @default(autoincrement())
+    email     String      @unique(map: "user_email_key")
+    name      String?
+    phone     String? // [!code ++]
+```
+
+Emit the contract again, then plan a migration. `migration plan` writes the difference between the new contract and the one that `db sign` recorded into a new directory under `migrations/app/`. `--name` sets the name of that directory.
 
 ```npm
 npx prisma contract emit
+npx prisma migration plan --name add_user_phone
 ```
 
-Use [db update](/cli/db-update) for a direct development update, or [migration plan](/cli/migration-plan) when you want a checked-in migration.
+```text no-copy
+│  contract:    src/prisma/contract.json
+│  migrations:  migrations/app
+│  name:        add_user_phone
 
-Put together, adopting the database and making a first schema change is this sequence:
+✔ Planned baseline (10 operation(s)) + 1 operation(s)
+
+migrations/app/20260929T2130_baseline
+├─ Create schema "public"
+├─ Create table "post"
+├─ Create table "user"
+├─ Add unique constraint on "user" (email)
+├─ Create index "post_author_id_idx" on "post"
+├─ Create index "post_published_idx" on "post"
+├─ Create index "post_title_lower_idx" on "post"
+├─ Add foreign key "post_author_id_fkey" on "post"
+├─ Enable row-level security on "post"
+└─ Create RLS policy "post_read" on "post"
+migrations/app/20260929T2131_add_user_phone
+└─ Add column "phone" to "user"
+
+from:       596586f61799d5b2585df874a00f8d6f12d73a522d2eefbcbec62dba4e9904a4
+to:         4ef74b97c298402786f23bf299e17baba815e8d521bc90aaab59ab7de747c969
+baseline:   migrations/app/20260929T2130_baseline
+app space:  migrations/app/20260929T2131_add_user_phone
+```
+
+The output continues with a preview of the SQL. The first plan writes two directories. The baseline records the tables you adopted. It lists `Create table` operations, and the next command runs none of them on your database. The second directory is your change. Commit both directories. [The automatic baseline](/cli/migration-plan#the-automatic-baseline) explains when `migration plan` writes a baseline.
+
+Apply the migration:
 
 ```npm
-npx prisma contract infer --output ./src/prisma/contract.prisma
-npx prisma contract emit
-npx prisma db sign
-# edit src/prisma/contract.prisma
-npx prisma contract emit
-npx prisma migration plan --name <slug>
+npx prisma db migrate --advance-ref db
 ```
 
-The plan starts from the contract `db sign` recorded, so it contains only your change. Because `migrations/app/` is still empty, that first plan also writes a baseline package recording the schema you adopted; see [the automatic baseline](/cli/migration-plan#the-automatic-baseline).
+```text no-copy
+✔ Running migration plan across spaces
+│  migrations:  migrations
+│  database:    postgres://****@127.0.0.1:54329/legacy
+
+✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
+
+App space
+├─ Add column "phone" to "user"
+└─ marker 4ef74b97c298402786f23bf299e17baba815e8d521bc90aaab59ab7de747c969
+
+✔ Advanced ref "db" → 4ef74b97c298402786f23bf299e17baba815e8d521bc90aaab59ab7de747c969
+```
+
+`db migrate` reads the record that `db sign` stored to see which contract the database already has, so only your change runs, and the rows in your tables stay as they are. `--advance-ref db` updates the `db` ref to the new hash, so that the next `migration plan` contains only your next change. Pass it every time you apply a migration to your development database.
+
+To apply the migration to any other database that has the same tables, such as production, pass its connection string. Leave out `--advance-ref`, because the `db` ref describes your development database:
+
+```npm
+npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
+```
+
+You do not need to run `db sign` on that database first. It has no record of a contract yet, so `db migrate` starts at the baseline, finds the tables already there, leaves them and their rows as they are, and then adds the `phone` column.
+
+## Next steps
+
+Every later change follows the same four steps: edit `src/prisma/contract.prisma`, run `npx prisma contract emit`, run `npx prisma migration plan --name <name>`, and run `npx prisma db migrate --advance-ref db`.
+
+- [Generating a migration](/orm/migrations/generating-a-migration) for what a migration directory contains and how to edit it.
+- [`db update`](/cli/db-update) to apply a contract change to a development database without writing migration files.
+- [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) for the Prisma ORM 8 name of each Prisma ORM 7 call.
