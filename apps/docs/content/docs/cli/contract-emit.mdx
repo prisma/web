@@ -10,10 +10,12 @@ metaDescription: Learn how to emit contract.json and contract.d.ts for Prisma OR
 
 The command is offline. It does not need a database connection.
 
+A Prisma schema source can be one `.prisma` file or a glob that matches several files; see [Split the schema across several files](/cli/configuration#split-the-schema-across-several-files). `contract emit` reads only the `.prisma` files whose first line is `// use prisma-8`, and skips any other file without a warning. When no file starts with that line, it fails with `CONTRACT.SOURCE_LOAD_FAILED` and reports the problem with the code `PSL_NO_OPTED_IN_SCHEMA_FILES`.
+
 ## Usage
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ## Options
@@ -31,14 +33,46 @@ The command emits:
 - `contract.json`, the canonical machine-readable contract
 - `contract.d.ts`, the generated TypeScript contract declarations
 
-Do not edit these files by hand. Re-run `contract emit` after changing the contract source or extension pack list.
+Do not edit these files by hand. Re-run `contract emit` after changing the contract source or extension pack list. The first emit after you upgrade from a release before `8.0.0-rc.12` reorders the entries in `contract.d.ts` to follow the order in `contract.json`, which needs no change to your code. The first emit after you upgrade to `8.0.0-rc.13` renames two keys in `contract.json`: each generated default under `execution.mutations.defaults` names its target as `entry` and `field` instead of `table` and `column`. The client refuses a contract that has the old keys, so run `contract emit` after you upgrade. `contract emit` does not rewrite the contract snapshots under `migrations/snapshots/`. In each snapshot that has an `execution` section, rename `table` to `entry` and `column` to `field` in every `ref` under `execution.mutations.defaults`, in both `contract.json` and `contract.d.ts`. Leave the snapshot's `executionHash` as it is.
+
+When the contract source cannot be read, the command fails with `CONTRACT.SOURCE_LOAD_FAILED` and prints each finding, meaning each problem it found in the source, with the file and line where it knows them. In `--json` output, the findings are the entries of the `envelope.diagnostics` array in the final `result` event, next to `envelope.error`. Each entry has a `code`, a `summary`, and, where known, `where.path` and `where.line`. If an entry's `code` is `CONTRACT.SOURCE_DIAGNOSTIC`, the code of the specific problem, such as `PSL_NO_OPTED_IN_SCHEMA_FILES`, is in its `meta.code`.
+
+## Run it automatically
+
+In development, a Vite plugin runs `contract emit` for you: once when the dev server starts, and again whenever the contract source or `prisma.config.ts` changes. It needs Vite 7 or 8, and comes with your database package, so there is nothing to install:
+
+```typescript title="vite.config.ts"
+import { defineConfig } from "vite";
+import { prismaVitePlugin } from "@prisma/orm-postgres/vite-plugin-contract-emit";
+
+export default defineConfig({
+  plugins: [prismaVitePlugin()],
+});
+```
+
+On MongoDB, import it from `@prisma/orm-mongo/vite-plugin-contract-emit`. The plugin reads `prisma.config.ts` from the Vite root; pass another path as the first argument, `prismaVitePlugin("config/prisma.config.ts")`. A second argument takes `debounceMs` (how long to wait after a change before emitting, 150 by default) and `logLevel` (`"silent"`, `"info"`, or `"debug"`). The dev server prints one line per emit:
+
+```text
+[prisma-vite-plugin-contract-emit] Emitted contract (storageHash: ab5014a0...)
+```
+
+An emit that fails shows in Vite's error overlay. The plugin does nothing in a production build, so builds and CI still run the command themselves. With any other bundler, or for a build, add the command as a `prebuild` script, which npm, pnpm, and yarn run before `build`:
+
+```json title="package.json (excerpt)"
+{
+  "scripts": {
+    "prebuild": "prisma contract emit",
+    "build": "next build"
+  }
+}
+```
 
 ## Examples
 
 ```npm
-npx prisma@latest contract emit
-npx prisma@latest contract emit --output-path ./generated
-npx prisma@latest contract emit --json
+npx prisma contract emit
+npx prisma contract emit --output-path ./generated
+npx prisma contract emit --json
 ```
 
 ## Next steps

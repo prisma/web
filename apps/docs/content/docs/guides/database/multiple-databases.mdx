@@ -59,7 +59,7 @@ This guide starts from `create-next-app` and adds Prisma ORM with `orm init` ins
 Run `orm init` from the project root. The `--schema-path` flag puts the contract in a folder named after the database, and `orm init` places the client file next to it:
 
 ```npm
-npx prisma@latest orm init --target postgres --authoring psl --schema-path ./prisma/users/contract.prisma
+npx prisma@latest orm init --yes --target postgres --authoring psl --schema-path ./prisma/users/contract.prisma
 ```
 
 The command installs `@prisma/orm-postgres` and `dotenv`, adds `prisma` as a dev dependency, sets `"type": "module"` in `package.json`, updates `tsconfig.json`, and writes these files:
@@ -85,16 +85,16 @@ mv prisma.config.ts prisma.users.config.ts
 Point it at the users contract, a users-only migrations folder, and a `USERS_DATABASE_URL` variable:
 
 ```typescript title="prisma.users.config.ts"
-import "dotenv/config";
-import { definePrismaConfig } from "prisma/config";
-import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 
 export default definePrismaConfig({
   orm: ormConfig({
     contract: "./prisma/users/contract.prisma",
-    migrations: {
+    migrations: { // [!code ++]
       dir: "./prisma/users/migrations", // [!code ++]
-    },
+    }, // [!code ++]
     db: {
       connection: process.env.USERS_DATABASE_URL!, // [!code ++]
     },
@@ -124,10 +124,10 @@ model User {
 Change `prisma/users/db.ts` to read `USERS_DATABASE_URL` and export a name you can tell apart from the second client:
 
 ```typescript title="prisma/users/db.ts"
-import "dotenv/config";
-import postgres from "@prisma/orm-postgres/runtime";
-import type { Contract } from "./contract.d";
-import contractJson from "./contract.json" with { type: "json" };
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
 
 export const usersDb = postgres<Contract>({ // [!code ++]
   contractJson,
@@ -146,9 +146,9 @@ mkdir -p prisma/posts
 ```
 
 ```typescript title="prisma.posts.config.ts"
-import "dotenv/config";
-import { definePrismaConfig } from "prisma/config";
-import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+import 'dotenv/config';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
 
 export default definePrismaConfig({
   orm: ormConfig({
@@ -178,10 +178,10 @@ model Post {
 `authorId` is a plain integer, not a relation. A contract describes one database, and PostgreSQL cannot enforce a foreign key into another database, so the link between a post and its author is resolved in application code in step 5.
 
 ```typescript title="prisma/posts/db.ts"
-import "dotenv/config";
-import postgres from "@prisma/orm-postgres/runtime";
-import type { Contract } from "./contract.d";
-import contractJson from "./contract.json" with { type: "json" };
+import 'dotenv/config';
+import postgres from '@prisma/orm-postgres/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
 
 export const postsDb = postgres<Contract>({
   contractJson,
@@ -247,9 +247,9 @@ npm run db:init
 ✔ Applied 2 operation(s) across 1 contract space
 
 App space
-├─ Create table "user"
-├─ Add unique constraint on "user" (email)
-└─ marker 3bb5103a83e513d042e9a53dec29c899f92b5209b3b88944fee251cbe86c0e9b
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+└─ marker f340195186d0acf8e9914097e58af0375650e7251358382aa9ad3ed5b724daf7
 
 │  contract:  prisma/posts/contract.json
 │  database:  postgres://****@localhost:5432/posts
@@ -257,8 +257,8 @@ App space
 ✔ Applied 1 operation(s) across 1 contract space
 
 App space
-├─ Create table "post"
-└─ marker 556eb8244a0431fc6f1483efacdf220c5daca7a0106048892be1142e807bced1
+├─ Create table "Post"
+└─ marker a0c012793cc392569087d82d7ea41686c8e60586b63c7a131391b99717157804
 ```
 
 Each database now carries a marker with the hash of the contract it was initialized from. Confirm both match:
@@ -282,7 +282,7 @@ npm run db:verify
 The marker is also what protects you from crossing the wires. Verifying the users contract against the posts database stops immediately:
 
 ```npm
-npx prisma@latest db verify --config ./prisma.users.config.ts --db "$POSTS_DATABASE_URL"
+npx prisma db verify --config ./prisma.users.config.ts --db "$POSTS_DATABASE_URL"
 ```
 
 ```text no-copy
@@ -322,8 +322,8 @@ async function main() {
   });
 
   console.log("Seeded", alice.email, "and", bob.email, "with one post each.");
-  await usersDb.runtime().close();
-  await postsDb.runtime().close();
+  await usersDb.close();
+  await postsDb.close();
 }
 
 main().catch((error) => {
@@ -461,13 +461,13 @@ Open the live URL. The page renders the same two lists from the same two databas
 
 :::warning
 
-Commands without `--config` fail once the default config is gone. Running `npx prisma@latest contract emit` with no `./prisma.config.ts` (or with one that has no `orm` section) stops with `[CONFIG.FILE_NOT_FOUND]` and a hint that the `orm` config section is absent. Use the package scripts from step 4, or pass `--config` explicitly.
+Commands without `--config` fail once the default config is gone. Running `npx prisma contract emit` with no `./prisma.config.ts` (or with one that has no `orm` section) stops with `[CONFIG.FILE_NOT_FOUND]` and a hint that the `orm` config section is absent. Use the package scripts from step 4, or pass `--config` explicitly.
 
 :::
 
 - **No relations across databases.** A contract covers one database. Keep a plain id column such as `authorId` on the side that references the other database, and join in application code.
 - **`npx prisma@latest init` writes a third config.** It creates a `prisma.config.ts` that holds only the `skills` section for agent skills. That is expected; the database commands keep using `--config` with the two database configs.
-- **Do not close a client per request.** In `page.tsx` and route handlers, never call `usersDb.runtime().close()`. The pools are shared across requests and close when the process exits. Only scripts such as `prisma/seed.ts` close them.
+- **Do not close a client per request.** In `page.tsx` and route handlers, never call `usersDb.close()`. The pools are shared across requests and close when the process exits. Only scripts such as `prisma/seed.ts` close them.
 - **`orm init` picks the package manager from your lockfile.** Run it after `create-next-app` has written `package-lock.json`, `pnpm-lock.yaml`, or `bun.lock`, or it may install with a different package manager than the one you use.
 
 ## Prompt your coding agent

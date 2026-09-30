@@ -26,25 +26,6 @@ Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the P
 - [Node.js](https://nodejs.org) 24 or later (the SolidStart 2 template requires it)
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Create a new SolidStart app with Prisma ORM, seed it, and serve users from an API route and a page.
-
-1. Scaffold: `npm init solid@latest my-solid-prisma-app -- -s --v2 -t basic --ts`. Delete the `pnpm-lock.yaml` the template ships (otherwise Prisma picks pnpm), then `cd my-solid-prisma-app` and run `npm install`.
-2. Add Prisma ORM: `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`.
-3. Run `npx prisma@latest db init` to create the tables from `src/prisma/contract.prisma`.
-4. Add `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, closes with `await db.runtime().close()`, and run it once with `node src/prisma/seed.ts`.
-5. Add `src/routes/api/users.ts` with a `GET` handler that returns `db.orm.public.User.include("posts").all()` as JSON, and replace `src/routes/index.tsx` with a page that loads the same query through a `"use server"` function wrapped in `query` and `createAsync`, with `<Suspense>` for loading and `<ErrorBoundary>` for errors, following https://www.prisma.io/docs/guides/frameworks/solid-start.md. Catch Prisma errors inside the server function and rethrow a plain `Error`.
-6. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/api/users` returns the seeded users and `curl http://localhost:3000/` includes their names, then stop the dev server.
-```
-
-</AgentPrompt>
-
 ## 1. Scaffold the SolidStart project
 
 Create a new SolidStart 2 project from the `basic` TypeScript template:
@@ -90,7 +71,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 Updated tsconfig.json with required compiler options.
 ✔ npm add @prisma/orm-postgres dotenv
 ✔ npm add -D prisma@latest @types/node
-✔ npm add -D @prisma/cli-engine@0.3.0
+✔ npm add -D @prisma/cli-engine@0.6.2
 ✔ Emit the contract
 │  target:     postgres
 │  authoring:  psl
@@ -169,7 +150,7 @@ Both `prisma.config.ts` and `db.ts` import `dotenv/config`, so the CLI and the d
 Create the tables the contract declares and sign the database:
 
 ```npm
-npx prisma@latest db init
+npx prisma db init
 ```
 
 ```text no-copy
@@ -182,15 +163,15 @@ npx prisma@latest db init
 ✔ Applied 5 operation(s) across 1 contract space
 
 App space
-├─ Create table "post"
-├─ Create table "user"
-├─ Add unique constraint on "user" (email)
-├─ Create index "post_authorId_idx_e47547ed" on "post"
-├─ Add foreign key "post_authorId_fkey" on "post"
-└─ marker 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
 ```
 
-`db init` replaces `prisma migrate dev` from Prisma ORM 7 for the first apply: it creates what is missing and records the contract hash in the database. Later schema changes go through [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) for a checked-in migration. To confirm the database matches the contract at any time, run `npx prisma@latest db verify`.
+`db init` replaces `prisma migrate dev` from Prisma ORM 7 for the first apply: it creates what is missing and records the contract hash in the database. Later schema changes go through [`db update`](/cli/db-update) for a direct development update or [`migration plan`](/cli/migration-plan) for a checked-in migration. To confirm the database matches the contract at any time, run `npx prisma db verify`.
 
 ## 4. Seed the database
 
@@ -223,7 +204,7 @@ async function main() {
     }
     console.log(`Seeded ${created.email} with ${posts.length} post(s)`);
   }
-  await db.runtime().close();
+  await db.close();
 }
 
 main().catch((error) => {
@@ -267,7 +248,7 @@ npm run dev
 ```
 
 ```text no-copy
-  VITE v8.3.0  ready in 5509 ms
+  VITE v8.3.1  ready in 5509 ms
 
   ➜  Local:   http://localhost:3000/
   ➜  Network: use --host to expose
@@ -371,7 +352,7 @@ The server-rendered HTML contains `<h3>Alice</h3>` and `<h3>Bob</h3>` with their
 
 :::warning
 
-Don't call `db.runtime().close()` in API routes or server functions. The client in `src/prisma/db.ts` is constructed once and its connection pool is shared across requests; close it only in one-off scripts like the seed.
+Don't call `db.close()` in API routes or server functions. The client in `src/prisma/db.ts` is constructed once and its connection pool is shared across requests; close it only in one-off scripts like the seed.
 
 :::
 
@@ -380,9 +361,26 @@ Don't call `db.runtime().close()` in API routes or server functions. The client 
 - **Rethrow a plain `Error` from server functions.** Prisma ORM throws structured errors that carry the SQL state, the failing statement, and a nested cause. When one of those crosses the server-to-browser boundary during server rendering, the page hangs on hydration instead of showing the `<ErrorBoundary>` fallback. Catching it and throwing `new Error("Could not load users")` keeps the fallback working and keeps database details out of the browser.
 - **The first request after `npm run dev` can return a 503.** While Vite is still creating its server environment, a request may answer `Vite environment "ssr" is unavailable`. Wait a second and retry; every request after that succeeds.
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Create a new SolidStart app with Prisma ORM, seed it, and serve users from an API route and a page.
+
+1. Scaffold: `npm init solid@latest my-solid-prisma-app -- -s --v2 -t basic --ts`. Delete the `pnpm-lock.yaml` the template ships (otherwise Prisma picks pnpm), then `cd my-solid-prisma-app` and run `npm install`.
+2. Add Prisma ORM: `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`.
+3. Run `npx prisma db init` to create the tables from `src/prisma/contract.prisma`.
+4. Add `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, closes with `await db.close()`, and run it once with `node src/prisma/seed.ts`.
+5. Add `src/routes/api/users.ts` with a `GET` handler that returns `db.orm.public.User.include("posts").all()` as JSON, and replace `src/routes/index.tsx` with a page that loads the same query through a `"use server"` function wrapped in `query` and `createAsync`, with `<Suspense>` for loading and `<ErrorBoundary>` for errors, following https://www.prisma.io/docs/guides/frameworks/solid-start.md. Catch Prisma errors inside the server function and rethrow a plain `Error`.
+6. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:3000/api/users` returns the seeded users and `curl http://localhost:3000/` includes their names, then stop the dev server.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages:
 
 ```npm
 npx prisma@latest init
@@ -391,13 +389,21 @@ npx prisma@latest init
 ```text no-copy
 ✔ Added "postinstall": "prisma skills sync || exit 0" to package.json.
 ⚠ prisma.config.ts already exists; left untouched.
-✔ Synced 2 skills.
+✔ Synced 3 skills.
 
-Skill            Package               Installed into
-prisma-8         @prisma/orm-postgres  .claude/skills, .cursor/skills, .agents/skills, .devin/skills
+project:  ~/my-solid-prisma-app
+check:    enabled
+
+Skill                          Package               Version      Installed into
+prisma-8                       @prisma/orm-postgres  8.0.0-rc.13  .claude/skills, .cursor/skills, .agents/skills, .devin/skills
+prisma-composer-core-concepts  @prisma/composer      0.25.0       .claude/skills, .cursor/skills, .agents/skills, .devin/skills
+prisma-platform-core-concepts  prisma                8.0.0-rc.19  .claude/skills, .cursor/skills, .agents/skills, .devin/skills
+
+⚠ [INIT.CONFIG_KEPT] prisma.config.ts already exists, so init left it alone instead of writing the skills section.
+→ Add skills: { agents: ["claude", "cursor", "agents", "devin"] } to the object passed to definePrismaConfig in prisma.config.ts.
 ```
 
-Prompts that map to this guide:
+Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add `GET /api/users/:id` that returns one user with posts or a 404."
 - "Add a `POST /api/users` route that creates a user from the request body with `db.orm.public.User.create`."
@@ -405,7 +411,7 @@ Prompts that map to this guide:
 
 ## Next steps
 
-- Change the schema in `src/prisma/contract.prisma`, then run `npx prisma@latest contract emit` and `npx prisma@latest db update`.
+- Change the schema in `src/prisma/contract.prisma`, then run `npx prisma contract emit` and `npx prisma db update`. SolidStart builds on Vite, so the [Vite plugin](/cli/contract-emit#run-it-automatically) can run `contract emit` for you whenever the contract changes while the dev server runs.
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
 - [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
 - [SolidStart documentation](https://start.solidjs.com/) for routing, server functions, and deployment presets.

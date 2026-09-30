@@ -1,0 +1,229 @@
+---
+title: "Where to host a TypeScript frontend, a Node API, and Postgres"
+slug: "where-to-host-typescript-frontend-node-api-postgres"
+date: "2026-09-22"
+authors:
+  - "Gregory Boch"
+metaTitle: "Where to host a TypeScript frontend, API and Postgres"
+metaDescription: "Railway, Render, Fly.io and Prisma compared for a TypeScript frontend, a Node API and Postgres from one GitHub repo: databases, deploys, previews and limits."
+heroImagePath: "/where-to-host-typescript-frontend-node-api-postgres/imgs/hero.svg"
+heroImageAlt: "A GitHub repository containing a frontend and an API, deploying to one project that also holds a Postgres database."
+metaImagePath: "/where-to-host-typescript-frontend-node-api-postgres/imgs/meta.png"
+excerpt: "Railway, Render and Fly.io deploy the repository you have next to a Postgres database. Prisma asks you to port the app to Composer, then provisions the services and the database together. Here is how to choose."
+tags:
+  - "platform"
+  - "prisma-postgres"
+---
+
+You can host all three from one GitHub repository on Railway, Render, Fly.io or Prisma, and the first question to answer is this: do you keep your code as it is and hand it the database through an environment variable, or port the app so the platform injects a typed database client and typed calls between your services? Railway, Render and Fly.io build your existing frontend and Node API and run them next to a Postgres database in the same project, with little change to the code. On Prisma, [Prisma Composer](https://www.prisma.io/docs/composer) describes the frontend, the API and the database in one TypeScript module, and one deploy provisions the services on [Prisma Compute](https://www.prisma.io/docs/compute) and the database on [Prisma Postgres](https://www.prisma.io/docs/postgres), applies your migrations, and gives every pushed branch a preview with its own database. Getting there means porting the app to Composer, which is in Early Access.
+
+This post compares the four, shows what the Prisma model looks like in code, and lists what a port changes and what to design around.
+
+## The short answer by workload
+
+| What you have | Pick |
+| --- | --- |
+| An existing Next.js frontend and Node API that you want to deploy with little change | Railway, Render, or Fly.io |
+| An app you are starting, or are willing to port, where the platform wires a typed database client and typed calls between services, and every pushed branch gets a preview with its own database | Prisma |
+| An API that streams model responses | Railway, Render, or Fly.io. On Prisma, only the service the browser calls can stream, because calls between services cannot |
+| An API that holds WebSocket connections open | Railway, Render, or Fly.io |
+| A frontend that needs a global CDN above everything else | Vercel for the frontend, with the API and database elsewhere |
+| Infrastructure declared in a file committed to the repo | Render (`render.yaml`), Railway (`.railway/railway.ts`; the older `railway.toml` is deprecated), Fly.io (`fly.toml`, one per app, with the Postgres cluster created separately), or Prisma (a Composer `module.ts`) |
+| The lowest possible bill, and you are willing to run servers yourself | A VPS you manage |
+
+## What the platforms do differently
+
+All four run a frontend, an API and Postgres. They differ in how the database reaches your code, where the build runs, and what a preview gets.
+
+| | Prisma | Railway | Render | Fly.io |
+| --- | --- | --- | --- | --- |
+| App and Postgres in one project | Yes, the database is declared in the app's Composer module | Yes, as a database template you maintain yourself | Yes, managed | Yes, Fly Managed Postgres in the same organization |
+| Deploy on push from GitHub | A GitHub Actions workflow runs `prisma/cloud-deploy-action` | The Railway GitHub app | The Render GitHub app | From the dashboard once the app is connected to GitHub, or a GitHub Actions workflow |
+| Where the build runs | Your GitHub Actions | Their build service, or a prebuilt image from your CI | Their build service, or a prebuilt image from your CI | Their builder, or your CI |
+| Deploy credential stored in the repo | None, the job exchanges a GitHub OIDC token | None with the GitHub app; a project token if you deploy from your own CI | None with the GitHub app; an API key or deploy hook if you deploy from your own CI | None with the dashboard connection; a deploy token, `FLY_API_TOKEN`, with a workflow |
+| Runtime | Bun, scales to zero when idle | Long-lived container that can sleep when idle (Serverless) | Long-lived container; free instances spin down when idle | Machines that can stop when idle (autostop) |
+| Previews | Per branch push, with the branch's own services and databases, torn down when the branch is deleted | Per pull request, deleted on merge or close | Per pull request; previews with databases need a Pro workspace or higher | Per pull request through a documented GitHub Action, one app by default |
+| Connection pooling | Included in Prisma Postgres | PgBouncer you add from the database settings | PgBouncer on paid databases, turned on with a toggle | Included in Fly Managed Postgres |
+
+The Prisma column is checked against Prisma's documentation. The other columns were checked against each vendor's documentation and pricing pages in September 2026, and those change often, so check the row you rely on before you commit to it.
+
+**How the database reaches your code.** On Railway, Render and Fly.io, the database is a resource next to the app, and the app reads its connection string from an environment variable. On Prisma, the database is a dependency the API declares in its Composer module. The API's module provisions it, the deploy creates it, and the API receives the connection and a typed client from the declaration, so there is no connection string to copy between environments.
+
+**Where the build runs.** Railway and Render build on their own machines when their GitHub app sees a push. Fly.io can deploy on push from its dashboard once the app is connected to GitHub, or from a GitHub Actions workflow that builds on its builder or in your CI. Prisma's deploy runs in your GitHub Actions: the job installs, builds and deploys with a short-lived token it gets from GitHub's OIDC exchange, so the repository holds no Prisma credential. The build environment is the one you already control, and the build minutes are yours to pay for.
+
+**What a preview gets.** On Prisma, a push to any branch other than the default deploys a stage named after that branch, whether or not it has a pull request, with its own services, its own databases and its own URL, and deleting the branch tears it down. Railway and Render create previews per pull request instead, and on Render a preview that includes a database needs a Pro workspace or higher. A Prisma preview's database starts from your migrations, not from a copy of production data.
+
+## What the Prisma model looks like
+
+With Composer, the app is a module. This is the root `module.ts` for a repository whose API (in `api/`) and Next.js app (in `web/`) are workspace packages: `@my-app/api` default-exports the API's module and `@my-app/web` default-exports the Next.js service. It follows the root module in [Apps and modules](https://www.prisma.io/docs/composer/apps-and-modules):
+
+```ts title="module.ts"
+import { module } from '@prisma/composer';
+import apiModule from '@my-app/api';
+import webService from '@my-app/web';
+
+export default module('my-app', ({ provision }) => {
+  const api = provision(apiModule);
+  provision(webService, { deps: { api: api.rpc } });
+});
+```
+
+The API's service declares the database it needs:
+
+```ts title="api/src/service.ts"
+import node from '@prisma/composer/node';
+import { compute } from '@prisma/composer-prisma-cloud';
+import { postgres } from '@prisma/composer-prisma-cloud/orm';
+import { apiContract } from './contract.ts';
+import { apiData } from './data.ts';
+
+export default compute({
+  name: 'api',
+  deps: {
+    db: postgres(apiData),
+  },
+  build: node({ module: import.meta.url, entry: '../dist/server.mjs' }),
+  expose: { rpc: apiContract },
+});
+```
+
+Declaring the database is not the same as creating it. The API's module provisions the database and wires it into the service, as the catalog module in [`examples/store`](https://github.com/prisma/composer/tree/main/examples/store) does:
+
+```ts title="api/src/module.ts"
+import { fileURLToPath } from 'node:url';
+import { module } from '@prisma/composer';
+import { postgres } from '@prisma/composer-prisma-cloud/orm';
+import { apiContract } from './contract.ts';
+import { apiData } from './data.ts';
+import apiService from './service.ts';
+
+const config = fileURLToPath(new URL('../prisma.config.ts', import.meta.url));
+
+export default module('api', { expose: { rpc: apiContract } }, ({ provision }) => {
+  const db = provision(postgres({ name: 'database', contract: apiData, config }));
+  const service = provision(apiService, { id: 'service', deps: { db } });
+  return { rpc: service.rpc };
+});
+```
+
+`config` points the deploy at `prisma.config.ts`, which is how it finds your migrations, and anything outside this module sees only the API's `rpc` port, never the database. `apiData` wraps the contract that [Prisma ORM](https://www.prisma.io/docs/orm) emits from your models: a `data.ts` file passes the emitted `contract.json` to `dataContract()` from `@prisma/composer-prisma-cloud/orm`, as [Composer databases](https://www.prisma.io/docs/composer/databases) shows. `apiContract` lists the calls the frontend can make, and the [porting guide](https://www.prisma.io/docs/composer/porting-an-app) covers the changes to your existing server code. What the declaration gives you:
+
+- **No connection string to manage.** At runtime the service loads `{ url, client }`: the raw connection string and a client typed from your contract. The same declaration resolves to a local database under `prisma dev` and a hosted one on deploy.
+- **Migrations applied by the deploy.** You plan each migration locally with `prisma migration plan` and commit it, and the deploy applies the committed migrations before the service starts.
+- **Typed calls between services.** The frontend reaches the API through its contract rather than a URL, so the calls are typed and every environment, production and each preview, gets the wiring without configuration.
+- **Other resources in the same file.** A module can also declare scheduled jobs, object storage and secrets. Scheduled jobs are the exception to scaling to zero: Composer's `cron` scheduler keeps one warm instance per app for its whole lifetime, and that instance's memory is metered. Object Store pricing and plan limits are not published yet.
+
+## What a port changes
+
+Porting an existing repository is real work, and these are the parts that move:
+
+- **The frontend stops calling the API by URL.** Composer connects services through contracts, so each route the Next.js server calls becomes a method on the API's contract. A contract endpoint answers only the services wired to it and returns `401` to everything else, browsers included, so a call the frontend makes from browser code moves into a Next.js page or server action that calls the contract. If clients outside the repository also call the API's routes, work out how you will keep serving them before you port.
+- **The server code changes where it reads its environment.** Each server listens on `service.port()` bound to `0.0.0.0`, config and credentials become fields of the service's input schema, and anything another service provides becomes a typed dependency. Each service's build must produce a self-contained entry file.
+- **Existing data does not move with the port.** The deployed database starts from your committed migrations, so copying rows from an existing database is a separate step to plan.
+- **The package manager matters to the deploy.** The deploy action detects npm and Bun lockfiles. A pnpm or Yarn repository needs an explicit `install-command`, and the action is not yet tested against them.
+- **The runtime is Bun.** Compute runs Bun, so code that depends on Node-only APIs or native addons needs checking.
+- **Parts of the stack are not generally available.** Prisma Composer is in Early Access, and its APIs and commands can change between releases. The deploy action is marked experimental. Composer's typed database client comes from Prisma ORM 8, a [release candidate](https://www.prisma.io/docs/orm/release-status) with general availability expected in October 2026, which does not yet have filtering inside JSON columns, atomic `increment`, most nested writes, transaction isolation levels or `P2002`-style error codes, and replaces `$extends` with middleware. Prisma ORM 7 keeps receiving fixes for 18 months after Prisma ORM 8 reaches general availability. The typed client and deploy-applied migrations need Prisma ORM 8, but a service that keeps its existing client, such as `pg` or Drizzle, can declare [`rawPostgres()`](https://www.prisma.io/docs/composer/databases) instead and build that client from the injected connection; it then gets no typed client and runs its own migrations.
+
+## Deploy on push
+
+Once the app deploys from your machine, [Deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) moves it to GitHub. The first deploy, `npx prisma deploy module.ts`, creates the project, and a new project needs a region, which you set once with `prismaCloud({ region })` in the Composer config. The guide then connects the repository with `npx prisma git connect` and has you commit this workflow:
+
+```yaml title=".github/workflows/prisma-deploy.yml"
+name: prisma-deploy
+
+on:
+  push:
+
+concurrency:
+  group: prisma-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+      - uses: prisma/cloud-deploy-action@v1
+        with:
+          build-command: npm run build
+```
+
+`id-token: write` lets the job exchange GitHub's OIDC token for a Prisma workspace token that lasts 30 minutes. Without it, or from a repository that is not connected, the action skips with its `outcome` set to `skipped-no-credential` and the run stays green, which is worth knowing the first time a deploy seems to succeed without deploying.
+
+Connecting a repository does not deploy it. The platform does not handle pushes, the workflow does, so a connected repository without the workflow deploys nothing. With the workflow in place, a push to the default branch deploys production and a push to any other branch deploys that branch's preview.
+
+## Limits to design around
+
+- **A request has 60 seconds to start responding.** If the service sends nothing for 60 seconds, the client gets `504 Gateway Time-out` and Compute cancels the request. A response that has started is not cut off, so a streamed response that begins quickly can run for minutes.
+- **Calls between services cannot stream.** Composer contracts are RPC over HTTP only, with no streaming or WebSocket contracts, so a streamed model response has to come from the service the browser calls, such as the Next.js app.
+- **WebSocket servers are not supported.**
+- **Idle apps scale to zero.** An idle app costs nothing unless it has scheduled jobs, whose `cron` scheduler stays awake. Idle database connections are closed, so a cold call can see `ECONNRESET`. Keep the connection pool small and able to reconnect.
+- **One region per service.** Each service runs in one of `us-east-1`, `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1` or `ap-southeast-1`, and there are no multi-region deployments, so keep the app and the database in the same region.
+- **Push-to-deploy is GitHub only, with no Prisma pull-request integration.** Deploys are driven by branches and pushes. The deploy workflow appears on a pull request as an ordinary GitHub Actions check, but Prisma posts no PR comments or preview links of its own.
+
+The [Compute limitations page](https://www.prisma.io/docs/compute/limitations) has the full list.
+
+## What it costs
+
+One plan covers both Prisma Compute and Prisma Postgres. On paid plans, Compute requests beyond the plan's allowance, and all provisioned memory, active CPU and outbound bandwidth from the first unit, are metered at these rates:
+
+| Meter | Price |
+| --- | --- |
+| Requests | $1 per million |
+| Provisioned memory | $0.006 per GB-hour |
+| Active CPU | $0.064 per vCPU-hour |
+| Outbound bandwidth | $0.025 per GB |
+
+| Plan | Monthly | Compute requests included | Postgres operations included | Postgres storage included | Databases |
+| --- | --- | --- | --- | --- | --- |
+| Free | $0 | 1M | 200k | 500 MB | 50 |
+| Starter | $10 | 5M | 1M, then $8 per million | 10 GB, then $2 per GB | 1,000 |
+| Pro | $49 | 20M | 10M, then $2 per million | 50 GB, then $1.50 per GB | 1,000 |
+| Business | $129 | 100M | 50M, then $1 per million | 100 GB, then $1 per GB | 1,000 |
+
+The Free plan also includes 360 GB-hours of memory, 4 vCPU-hours of CPU and 10 GB of bandwidth a month for Compute, with no usage billing. Rates and allowances are from the [Compute pricing docs](https://www.prisma.io/docs/compute/pricing) and the [pricing page](https://www.prisma.io/pricing), September 2026.
+
+Paid plans include spend limits, set in the Console, but usage reporting for Compute is still being built, so keep an eye on usage yourself. On a paid plan, a polling loop left running overnight keeps the app awake, so it bills provisioned memory for every hour it runs, plus active CPU and any requests beyond the plan's allowance, whether or not anyone is using the app.
+
+## Where Prisma is the wrong choice
+
+- **You want to deploy the repository you have.** A port to Composer changes how the frontend calls the API and how the API reaches its database. Railway, Render and Fly.io run the code you already have.
+- **You need every part of the stack to be generally available.** Composer is in Early Access and Prisma ORM 8 is a release candidate.
+- **You want the platform to run the build.** Prisma's builds run in your GitHub Actions, on your Actions minutes, and a failed build is debugged in your Actions logs. Railway builds on its own machines and does not charge for builds. Render builds on its own machines with a monthly allowance of pipeline minutes and bills for more.
+- **Your API streams to other services, or holds WebSocket connections open.** Use Railway, Render or Fly.io.
+- **You are not writing TypeScript.** A Python or Go API belongs on Railway, Render, Fly.io or a VPS.
+- **You need more than one region, or push-to-deploy with automatic preview teardown on a Git provider other than GitHub.** Other CI can still run `prisma deploy` with a service token, but you script the stages and their teardown yourself.
+- **Your frontend's main requirement is a global CDN.** Put it on Vercel and keep the API and database together elsewhere.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Does connecting a GitHub repository to Prisma deploy it?">
+Connecting a repository to Prisma does not deploy it. The platform does not handle pushes; a GitHub Actions workflow that runs `prisma/cloud-deploy-action` does, so a connected repository without that workflow deploys nothing. The workflow deploys a Prisma Composer app, which describes the app's services and databases in a `module.ts` file.
+  </Accordion>
+  <Accordion title="Do I need to set DATABASE_URL on Prisma?">
+A Prisma Composer app does not need `DATABASE_URL` for a database it declares. The service lists the database as a dependency, the API's module provisions it, and on deploy the code receives the connection string and a typed client from the declaration. The same declaration gives a local database during development and a hosted one on deploy, so there is no variable to swap between them.
+  </Accordion>
+  <Accordion title="Does every preview branch get its own database on Prisma?">
+Every branch deployed by the Prisma workflow gets its own database, whether or not the branch has a pull request. A push to a branch other than the default deploys a stage named after the branch, with its own services, databases and URL, and deleting the branch tears the stage down. The preview's database starts from the committed migrations, not from a copy of production data.
+  </Accordion>
+  <Accordion title="Can a Prisma Compute service handle a request that runs longer than 60 seconds?">
+A Prisma Compute service can serve a request longer than 60 seconds if it starts responding within 60 seconds. The deadline covers the wait for the first bytes, not the total length of the response, so a streamed response that begins in two seconds and runs for five minutes completes. A service that sends nothing for 60 seconds gets `504 Gateway Time-out` and the request is cancelled from outside the service.
+  </Accordion>
+  <Accordion title="Do I need a connection pooler for a Node API on Postgres?">
+A Node API on Prisma Postgres does not need its own pooler, because pooling is included. On Neon, use the `-pooler` connection string for app traffic. On Railway or Render, a single long-running API with a small pool can connect directly; turn on the built-in PgBouncer when many instances or short-lived connections approach the database's connection limit, which Render offers on paid databases only. On Supabase, the direct connection is the one Supabase recommends for a long-running server, but it is IPv6-only unless the project has the IPv4 add-on, so from an IPv4-only host use the session-mode pooler. Run migrations over a direct or unpooled connection, or over Supabase's session-mode pooler where the direct connection is out of reach.
+  </Accordion>
+</Accordions>
+
+## Which one to pick
+
+If you want to deploy the repository you have with the least change, Railway, Render and Fly.io all run a Next.js frontend and a Node API from GitHub next to a Postgres database, managed on Render and Fly.io and maintained by you on Railway. If you are starting the app, or are willing to port it, and you want the platform to inject a typed database client and typed calls between your services, with a preview and its own database for every pushed branch, not only for pull requests, that is what Prisma Compute, Prisma Postgres and Prisma Composer are built for, with the Early Access caveat above. Start with the [porting guide](https://www.prisma.io/docs/composer/porting-an-app), then [Deploy on push](https://www.prisma.io/docs/compute/deploy-on-push).

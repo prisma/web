@@ -22,7 +22,7 @@ Prisma 8 is the current release of Prisma ORM. Prisma 7 remains fully supported;
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) 24 or later
-- [pnpm](https://pnpm.io/installation) 10 or later (this guide uses pnpm 12)
+- [pnpm](https://pnpm.io/installation) 10.26 or later, but not 12.0 to 12.4.0, which have a defect that breaks step 2.1 (this guide uses pnpm 12.7.0)
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
 ## Use with your agent
@@ -37,8 +37,8 @@ Set up a pnpm workspaces monorepo with a shared Prisma 8 database package and a 
 1. Create `my-monorepo` with `pnpm init`, a `pnpm-workspace.yaml` listing `apps/*` and `packages/*` with `allowBuilds` for `esbuild`, `msgpackr-extract`, and `workerd`, and the directories `apps` and `packages/database`.
 2. In `packages/database`, run `pnpm init`, then `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `pnpm prisma init` in the same directory so the Prisma agent skills are installed, and use them.
 3. Write `packages/database/.env` with `DATABASE_URL` (use the connection string I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints). Run `pnpm prisma db init` in `packages/database`.
-4. Add `src/index.ts` exporting `db` from `./prisma/db`, set `"exports": { ".": "./src/index.ts" }` in the package's package.json, add a `src/seed.ts` that upserts two users with `db.orm.public.User.upsert(...)` and closes with `await db.runtime().close()`, and run it with `node src/seed.ts`.
-5. In `apps`, run `pnpm create next-app@latest web --yes --skip-install`, delete `apps/web/.git` and `apps/web/pnpm-workspace.yaml`, add `"database": "workspace:*"` to `apps/web/package.json`, copy `packages/database/.env` to `apps/web/.env`, and run `pnpm install` from the workspace root.
+4. Add `src/index.ts` exporting `db` from `./prisma/db`, set `"exports": { ".": "./src/index.ts" }` in the package's package.json, add a `src/seed.ts` that upserts two users with `db.orm.public.User.upsert(...)` and closes with `await db.close()`, and run it with `node src/seed.ts`.
+5. In `apps`, run `pnpm create next-app@latest web --yes --skip-install`, delete `apps/web/.git` and `apps/web/pnpm-workspace.yaml`, add `sharp: false` and `unrs-resolver: false` to `allowBuilds` in the root `pnpm-workspace.yaml`, add `"database": "workspace:*"` to `apps/web/package.json`, copy `packages/database/.env` to `apps/web/.env`, and run `pnpm install` from the workspace root.
 6. Replace `apps/web/app/page.tsx` with a server component that imports `{ db } from "database"`, exports `dynamic = "force-dynamic"`, queries `db.orm.public.User.select("id", "email", "name").all()`, and renders the list.
 7. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update`, and `seed` that filter to the right package, start `pnpm dev` in the background, verify http://localhost:3000 renders the seeded users, then stop it. Finally run `pnpm build` and confirm it completes.
 ```
@@ -88,15 +88,15 @@ pnpm init
 npx prisma@latest orm init --target postgres
 ```
 
-Answer the prompts: choose `PSL` for the authoring style and keep the default schema path, `src/prisma/contract.prisma`. `orm init` detects pnpm from the workspace, adds the dependencies to this package, and writes the Prisma 8 files:
+Answer the prompts: choose `PSL` for the authoring style and keep the other defaults, including the schema path `src/prisma/contract.prisma`. `orm init` detects pnpm from the workspace, adds the dependencies to this package, and writes the Prisma 8 files:
 
 ```text no-copy
 ▸ pnpm add @prisma/orm-postgres dotenv
 ✔ pnpm add @prisma/orm-postgres dotenv
 ▸ pnpm add -D prisma@latest @types/node
 ✔ pnpm add -D prisma@latest @types/node
-▸ pnpm add -D @prisma/cli-engine@0.4.0
-✔ pnpm add -D @prisma/cli-engine@0.4.0
+▸ pnpm add -D @prisma/cli-engine@0.6.2
+✔ pnpm add -D @prisma/cli-engine@0.6.2
 ▸ Emit the contract
 ✔ Emit the contract
 │  target:     postgres
@@ -113,6 +113,8 @@ written
 ├─ .gitattributes
 └─ package.json
 ```
+
+On pnpm 12.0 to 12.4.0, `orm init` writes all the files and then fails at `Emit the contract` with `CLI.INIT_EMIT_FAILED`. If you hit it, apply the `pnpm dedupe` fix from [Common gotchas](#common-gotchas) and continue.
 
 The `@prisma/cli-engine` version comes from the `prisma` package the previous step installed, so the two always match. `orm init` emits the contract itself, so `src/prisma/contract.json` and `src/prisma/contract.d.ts` exist as soon as it finishes. After every schema edit, re-emit with the package's own CLI:
 
@@ -156,13 +158,13 @@ pnpm prisma db init
 │  database:  postgres://****@localhost:5432/mydb
 ✔ Applied 5 operation(s) across 1 contract space
 App space
-├─ Create table "post"
-├─ Create table "user"
-├─ Add unique constraint on "user" (email)
-├─ Create index "post_authorId_idx_e47547ed" on "post"
-├─ Add foreign key "post_authorId_fkey" on "post"
-└─ marker 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
-✔ Advanced ref "db" → 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
+✔ Advanced ref "db" → 91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
 ```
 
 If `db init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Database already matches contract` when there is nothing left to do.
@@ -195,7 +197,7 @@ for (const user of users) {
 
 console.log(await db.orm.public.User.select("id", "email", "name").all());
 
-await db.runtime().close();
+await db.close();
 ```
 
 Point the package at the entry point and add scripts for the database steps. Replace the `main` field `pnpm init` wrote with an `exports` map, and drop the placeholder `test` script:
@@ -248,12 +250,27 @@ pnpm create next-app@latest web --yes --skip-install
 rm -rf web/.git web/pnpm-workspace.yaml
 ```
 
+The `pnpm-workspace.yaml` you removed told pnpm not to run the install scripts of two of the app's dependencies. Move that decision to the root file, or the `pnpm install` below fails with `ERR_PNPM_IGNORED_BUILDS`:
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  esbuild: true
+  msgpackr-extract: true
+  sharp: false # [!code ++]
+  unrs-resolver: false # [!code ++]
+  workerd: true
+```
+
 Add the shared package as a dependency of the app:
 
 ```json title="apps/web/package.json"
 "dependencies": {
   "database": "workspace:*", // [!code ++]
-  "next": "16.3.4",
+  "next": "16.3.6",
   "react": "19.2.8",
   "react-dom": "19.2.8"
 }
@@ -274,8 +291,8 @@ pnpm install
 
 ```text no-copy
 Scope: all 3 workspace projects
-Progress: resolved 8, reused 454, downloaded 0, added 8, done
-Done in 5.8s using pnpm v12.3.4
+Progress: resolved 700, reused 700, downloaded 0, added 700, done
+Done in 1.9s using pnpm v12.7.0
 ```
 
 ### 3.2. Render users from the shared package
@@ -336,7 +353,7 @@ pnpm dev
 
 ```text no-copy
 $ next dev
-▲ Next.js 16.3.4 (Turbopack)
+▲ Next.js 16.3.6 (Turbopack)
 - Local:         http://localhost:3000
 - Environments: .env
 ✓ Ready in 479ms
@@ -353,7 +370,7 @@ pnpm build
 ```text no-copy
 $ prisma contract emit
 $ next build
-▲ Next.js 16.3.4 (Turbopack)
+▲ Next.js 16.3.6 (Turbopack)
 ✓ Compiled successfully in 1026ms
   Running TypeScript ...
   Finished TypeScript in 2.2s ...
@@ -384,7 +401,7 @@ pnpm dlx prisma@prev studio --url "postgres://user:password@localhost:5432/mydb"
 Prisma Studio is running at: http://localhost:51212
 ```
 
-Open the URL Studio prints. The `user` and `post` tables appear under **Tables**, with the seeded rows ready to edit. See [Studio with Prisma 8](/studio/prisma-next) for the migration history view.
+Open the URL Studio prints. The `User` and `Post` tables appear under **Tables**, with the seeded rows ready to edit. See [Studio with Prisma 8](/studio/prisma-next) for the migration history view.
 
 ## Common gotchas
 
@@ -394,9 +411,9 @@ Open the URL Studio prints. The `user` and `post` tables appear under **Tables**
 
 :::
 
-- If `pnpm prisma contract emit` reports `CLI.CONFIG_UNREADABLE` with `Cannot find module '@prisma/cli-engine'` or `No "exports" main defined`, the `@prisma/cli-engine` link in `packages/database/node_modules` is dangling. `pnpm install --force` does not repair it; `pnpm add -D prisma@latest @prisma/cli-engine@latest` does.
+- If `orm init` ends with `CLI.INIT_EMIT_FAILED`, or `pnpm prisma contract emit` reports `CLI.CONFIG_UNREADABLE`, and the message says `Cannot find module '@prisma/cli-engine'` or `No "exports" main defined`, the `@prisma/cli-engine` link in `packages/database/node_modules` points at a directory that does not exist. This is a defect in pnpm 12.0 to 12.4.0, and pnpm 12.4.1 or later fixes it. In a project that already hit it, run `pnpm dedupe` to rebuild the link, then `pnpm prisma contract emit`. You do not need to run `orm init` again, because it wrote all its files before it tried to emit. `pnpm install`, `pnpm install --force`, and adding the packages again do not repair the link.
 - Every Prisma command reads `DATABASE_URL` from `packages/database/.env` through `prisma.config.ts`, and the app reads `apps/web/.env`. Keep the two files in sync, or export the variable in your shell and drop both files.
-- Do not call `db.runtime().close()` in a page or route handler. The client is a module-level singleton whose connection pool is shared across requests; close it only in scripts that exit, like `seed.ts`.
+- Do not call `db.close()` in a page or route handler. The client is a module-level singleton whose connection pool is shared across requests; close it only in scripts that exit, like `seed.ts`.
 - After you change `src/prisma/contract.prisma`, run `pnpm --filter database contract:emit` so the app sees the new types, then `pnpm db:update` to apply the change. The root `build` script emits for you before every build.
 
 ## Prompt your coding agent

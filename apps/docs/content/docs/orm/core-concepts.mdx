@@ -16,6 +16,8 @@ This idea relies upon a small vocabulary which repeats throughout: in the CLI, i
 The contract is your description of the data your application needs: the models, their fields, how they relate, and how they map to database tables or collections. You author it in PSL (the Prisma schema language) in a `.prisma` file, or in TypeScript:
 
 ```prisma title="prisma/contract.prisma"
+// use prisma-8
+
 model User {
   id    Int    @id @default(autoincrement())
   email String @unique
@@ -48,7 +50,7 @@ Read more in [The data contract](/orm/contract-authoring/the-data-contract), and
 Emitting is the build step that compiles your contract source into two plain files:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 1. `contract.json`: a canonical JSON description of your models, storage layout, and required capabilities.
@@ -82,7 +84,7 @@ With the SQL query builder, the two steps are visible in your code:
 ```typescript
 import { db } from "./prisma/db";
 
-const plan = db.sql.public.post
+const plan = db.sql.public.Post
   .select("id", "title", "userId")
   .where((f, fns) => fns.eq(f.published, true))
   .limit(10)
@@ -161,7 +163,7 @@ Three middleware ship with Prisma ORM at present, and they are in the early stag
 
 A **migration** is a recorded change to your database. Most migrations change the database schema from what one contract describes to what another describes, so each one records which contract hash it starts `from` and which it ends at, `to`. A migration that only changes rows, such as a backfill, starts and ends at the same contract state. On disk, a migration is a directory in your repository that holds the change as editable TypeScript (`migration.ts`), the compiled operations that Prisma ORM runs (`ops.json`), and that `from` and `to` metadata (`migration.json`).
 
-Only one of these commands changes a database: [`db migrate`](/cli/db-migrate) applies the recorded migrations to it. The other `migration ...` commands create and inspect the migration files in your repository, and never connect to a database.
+Of the commands that work with migrations, only [`db migrate`](/cli/db-migrate) changes a database: it applies the recorded migrations to it. The `migration ...` commands create and inspect the migration files in your repository. Of those, only `migration status` and `migration log` connect to a database, and they only read it.
 
 Because every migration records its `from` and `to` hashes, the migrations in a repository form a **graph**: contracts are the nodes, migrations are the edges. When two branches each add a migration and both merge, the graph has a fork and a join, and `db migrate` works out which migrations to run, given the contract state the database matches and the one you name. No renumbering, no rebasing migration files.
 
@@ -188,17 +190,19 @@ The commands compose into four everyday workflows.
 **The development loop.** Edit your contract, emit it, turn the change into a reviewable migration, apply it:
 
 ```npm
-npx prisma@latest contract emit
-npx prisma@latest migration plan --name add_user_phone
-npx prisma@latest db migrate
+npx prisma contract emit
+npx prisma migration plan --name add_user_phone
+npx prisma db migrate --advance-ref db
 ```
+
+`--advance-ref db` records what you just applied, so the next `migration plan` starts from there. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) explains it.
 
 **Prototyping without migration files.** While a schema is still in flux, skip the migration directory and reconcile the database directly. [`db update`](/cli/db-update) diffs the live schema against the emitted contract and applies the difference; `--dry-run` previews it first:
 
 ```npm
-npx prisma@latest contract emit
-npx prisma@latest db update --db "$DATABASE_URL" --dry-run
-npx prisma@latest db update --db "$DATABASE_URL"
+npx prisma contract emit
+npx prisma db update --db "$DATABASE_URL" --dry-run
+npx prisma db update --db "$DATABASE_URL"
 ```
 
 When the shape settles, switch to `migration plan` so changes become reviewable files.
@@ -206,18 +210,18 @@ When the shape settles, switch to `migration plan` so changes become reviewable 
 **Adopting an existing database.** [`contract infer`](/cli/contract-infer) writes a starter contract from a live schema. Review and edit it, emit, then bring the database under contract management: [`db init`](/cli/db-init) applies only additive changes and writes the first signature. If the database already matches the contract exactly, [`db sign`](/cli/db-sign) records the signature without changing anything:
 
 ```npm
-npx prisma@latest contract infer --db "$DATABASE_URL"
-npx prisma@latest contract emit
-npx prisma@latest db init --db "$DATABASE_URL"
+npx prisma contract infer --db "$DATABASE_URL"
+npx prisma contract emit
+npx prisma db init --db "$DATABASE_URL"
 ```
 
-**Checking in CI, deploying in CD.** [`migration check`](/cli#other-commands) verifies the migration files and graph offline, so it runs in CI with no database. [`db verify`](/cli/db-verify) is its live counterpart: a read-only check that a database satisfies the contract. A deploy pipeline pins environments with refs and migrates to them by name:
+**Deploying.** Give each environment a ref, such as `production`, that names the contract state the environment should reach. When a change is ready to ship, point the ref at the new state with [`migration ref set`](/cli/migration-ref), such as `npx prisma migration ref set production <hash>`, and commit the ref file it writes under `migrations/app/refs/`. The deploy pipeline then migrates the environment to its ref by name, and that one command is all it needs. `db migrate` refuses to run a migration whose files no longer match its hash, so the pipeline needs no separate check:
 
 ```npm
-npx prisma@latest migration check
-npx prisma@latest db verify --db "$DATABASE_URL"
-npx prisma@latest db migrate --db "$DATABASE_URL" --to production
+npx prisma db migrate --db "$DATABASE_URL" --to production
 ```
+
+[`migration check`](/cli#other-commands) runs the same file checks offline, which is useful before you commit a migration you edited by hand, and [`db verify`](/cli/db-verify) checks, without changing anything, whether a database satisfies the contract.
 
 ## Prompt your coding agent
 

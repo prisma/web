@@ -52,8 +52,8 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 Containerize a new Express app on Prisma ORM with Docker Compose, following https://www.prisma.io/docs/guides/deployment/docker.md.
 
 1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
-2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma@latest contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
-3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma@latest migration plan --name init` then `npx prisma@latest db migrate`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
+2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
+3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma migration plan --name init` then `npx prisma db migrate`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
 4. Regenerate the lockfile with `rm -rf node_modules package-lock.json && npm install` so `npm ci` succeeds on Linux. Write a `.dockerignore` (node_modules, .env, .env.prod), a `Dockerfile` based on `node:24-alpine` that runs `npm ci`, copies the project, and uses `CMD ["sh", "-c", "npm run db:migrate && npm start"]`, a `docker-compose.yml` with a `postgres_db` service and a `server` service that builds the Dockerfile, publishes port 3000, waits for the database healthcheck, and loads `.env.prod`, and `.env.prod` with `DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres"`.
 5. Run `docker compose up --build -d`, verify `curl http://localhost:3000` returns "No users have been added yet.", show me the `server` logs, then run `docker compose down -v`.
 ```
@@ -90,7 +90,7 @@ package.json declares "type": "commonjs" ... the scaffolded prisma/db.ts uses an
 If you want the default, set "type": "module" in package.json.
 ✔ npm add @prisma/orm-postgres dotenv
 ✔ npm add -D prisma@latest @types/node
-✔ npm add -D @prisma/cli-engine@0.3.0
+✔ npm add -D @prisma/cli-engine@0.6.2
 ✔ Emit the contract
 │  target:     postgres
 │  authoring:  psl
@@ -162,12 +162,12 @@ model User {
 Emit the contract again so `contract.json` and `contract.d.ts` match the new model:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ```text no-copy
 ✔ Emitted contract.json and contract.d.ts
-storageHash:  3bb5103a83e513d042e9a53dec29c899f92b5209b3b88944fee251cbe86c0e9b
+storageHash:  f340195186d0acf8e9914097e58af0375650e7251358382aa9ad3ed5b724daf7
 ```
 
 `contract emit` is offline; it needs no database.
@@ -258,7 +258,7 @@ DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres" # [!code hig
 Plan the first migration from the emitted contract. This is offline and writes a migration package under `migrations/app/`:
 
 ```npm
-npx prisma@latest migration plan --name init
+npx prisma migration plan --name init
 ```
 
 ```text no-copy
@@ -266,17 +266,17 @@ npx prisma@latest migration plan --name init
 
 migrations/app/20260910T1532_init
 ├─ Create schema "public"
-├─ Create table "user"
-└─ Add unique constraint on "user" (email)
+├─ Create table "User"
+└─ Add unique constraint on "User" (email)
 
 from:       (baseline)
-to:         3bb5103a83e513d042e9a53dec29c899f92b5209b3b88944fee251cbe86c0e9b
+to:         f340195186d0acf8e9914097e58af0375650e7251358382aa9ad3ed5b724daf7
 ```
 
 Apply it to the running database:
 
 ```npm
-npx prisma@latest db migrate
+npx prisma db migrate
 ```
 
 ```text no-copy
@@ -285,9 +285,9 @@ npx prisma@latest db migrate
 ✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
 App space
 ├─ Create schema "public"
-├─ Create table "user"
-├─ Add unique constraint on "user" (email)
-└─ marker 3bb5103a83e513d042e9a53dec29c899f92b5209b3b88944fee251cbe86c0e9b
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+└─ marker f340195186d0acf8e9914097e58af0375650e7251358382aa9ad3ed5b724daf7
 ```
 
 `db migrate` applies the migration packages in `migrations/` and records the resulting contract hash in the database. Running it again is safe; it reports `Already up to date`. This is the same command the container runs at start in step 3, which replaces `prisma migrate deploy` from Prisma ORM 7. There is no generate step afterwards: the runtime reads `contract.json`, which you already emitted.
@@ -295,12 +295,12 @@ App space
 Confirm the database and the contract agree:
 
 ```npm
-npx prisma@latest migration status
+npx prisma migration status
 ```
 
 ```text no-copy
-○   3bb5103  @contract @db
-│↑  20260910T1532_init         ∅ → 3bb5103  3 ops  ✓ applied
+○   f340195  @contract @db
+│↑  20260910T1532_init         ∅ → f340195  3 ops  ✓ applied
 ○   ∅
 ✔ Up to date
 ```
@@ -457,9 +457,11 @@ docker compose up --build -d
 ```
 
 ```text no-copy
- Container postgres_db  Healthy
- Container docker-test-server-1  Starting
- Container docker-test-server-1  Started
+[+] up 4/4
+ ✔ Image docker-test-server       Built                                     1.4s
+ ✔ Network docker-test_default    Created                                   0.0s
+ ✔ Container postgres_db          Healthy                                   5.7s
+ ✔ Container docker-test-server-1 Started                                   5.7s
 ```
 
 Check the app:
@@ -479,12 +481,12 @@ docker compose logs server
 ```
 
 ```text no-copy
-docker-test-server-1  | > docker-test@1.0.0 db:migrate
-docker-test-server-1  | > prisma db migrate
-docker-test-server-1  | {"kind":"result","envelope":{"ok":true,"commandId":"db.migrate","result":{"ok":true,"migrationsApplied":1,"migrationsTotal":1,...,"summary":"Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)",...}}}
-docker-test-server-1  | > docker-test@1.0.0 start
-docker-test-server-1  | > node src/index.ts
-docker-test-server-1  | Server is running on http://localhost:3000
+server-1  | > docker-test@1.0.0 db:migrate
+server-1  | > prisma db migrate
+server-1  | {"kind":"result","envelope":{"ok":true,"commandId":"db.migrate","result":{"ok":true,"migrationsApplied":1,"migrationsTotal":1,...,"summary":"Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)",...}}}
+server-1  | > docker-test@1.0.0 start
+server-1  | > node src/index.ts
+server-1  | Server is running on http://localhost:3000
 ```
 
 The CLI prints JSON lines when it has no terminal attached, which is what you see in container logs. Restart the server and the migration step becomes a no-op:
@@ -495,8 +497,8 @@ docker compose logs --since 30s server
 ```
 
 ```text no-copy
-docker-test-server-1  | ...,"summary":"Already up to date",...
-docker-test-server-1  | Server is running on http://localhost:3000
+server-1  | ...,"summary":"Already up to date",...
+server-1  | Server is running on http://localhost:3000
 ```
 
 Your Prisma ORM app and database now run together under Docker Compose. To stop everything and remove the containers, network, and volumes:
@@ -517,7 +519,7 @@ cd .. && npx prisma@prev studio --url "postgresql://postgres:prisma@localhost:54
 Prisma Studio is running at: http://localhost:5555
 ```
 
-Open [`http://localhost:5555`](http://localhost:5555) to browse the `user` table. Once the database has an applied migration, Studio also shows a **Migrations** view with the history `db migrate` recorded; see [Studio with Prisma ORM](/studio/prisma-next).
+Open [`http://localhost:5555`](http://localhost:5555) to browse the `User` table. Once the database has an applied migration, Studio also shows a **Migrations** view with the history `db migrate` recorded; see [Studio with Prisma ORM](/studio/prisma-next).
 
 Running Studio as a Compose service, as the Prisma ORM 7 guide did, does not work from the host: the Studio server binds to `127.0.0.1` inside its container, so a published port never reaches it.
 
@@ -525,13 +527,13 @@ Running Studio as a Compose service, as the Prisma ORM 7 guide did, does not wor
 
 :::warning
 
-Do not call `db.runtime().close()` in a route handler. The client's connection pool is shared across requests; close it only on process shutdown.
+Do not call `db.close()` in a route handler. The client's connection pool is shared across requests; close it only on process shutdown.
 
 :::
 
 - **`npm ci` fails in the image with `Missing: @emnapi/runtime ... from lock file`.** The lockfile `orm init` leaves behind on macOS or Windows lacks Linux-only optional packages. Regenerate it as in [step 3.1](#31-regenerate-the-lockfile).
 - **`db.ts` will not load.** If `orm init` warned about `"type": "commonjs"`, set `"type": "module"` in `package.json`. The scaffolded `db.ts` imports `contract.json` with an ES module import attribute.
-- **The image is large.** The built image measured 1.41 GB on `node:24-alpine` and 1.5 GB on `node:24-slim`, almost all of it the `prisma` dev dependency, which bundles the Composer and deploy toolchain. The image needs the CLI because it runs `db migrate` at start.
+- **The image is large.** The built image measured 2.12 GB on disk on `node:24-alpine` and 2.23 GB on `node:24-slim` (the `DISK USAGE` column of `docker image ls`), almost all of it the `prisma` dev dependency, which bundles the Composer and deploy toolchain. The image needs the CLI because it runs `db migrate` at start.
 - **`docker run --env-file` keeps the quotes.** Compose strips the quotes around `DATABASE_URL` in `.env.prod`; plain `docker run --env-file` does not, and the Prisma CLI then rejects the URL. Pass `-e DATABASE_URL=...` without quotes when you run the image by hand.
 - **Port 3000 or 5432 is already in use.** Change the host side of the port mapping (`"3100:3000"`) or stop the service that holds the port; the container side stays the same.
 
@@ -545,6 +547,6 @@ Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills
 
 ## Next steps
 
-- Change the schema in `src/prisma/contract.prisma`, run `npm run contract:emit`, then `npx prisma@latest migration plan --name <change>`; the next `docker compose up --build` applies it. See [Generating a migration](/orm/migrations/generating-a-migration) and [Applying a migration](/orm/migrations/applying-a-migration).
+- Change the schema in `src/prisma/contract.prisma`, run `npm run contract:emit`, then `npx prisma migration plan --name <change>`; the next `docker compose up --build` applies it. See [Generating a migration](/orm/migrations/generating-a-migration) and [Applying a migration](/orm/migrations/applying-a-migration).
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
 - [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.

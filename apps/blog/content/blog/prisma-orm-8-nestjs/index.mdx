@@ -1,0 +1,305 @@
+---
+title: "The new way to use Prisma ORM 8 in NestJS"
+slug: "prisma-orm-8-nestjs"
+date: "2026-09-24"
+authors:
+  - "Ankur Datta"
+metaTitle: "How to use Prisma ORM 8 in NestJS: setup, queries, deploy"
+metaDescription: "Prisma ORM 8 replaces the extends-PrismaClient service in NestJS with one shared client and plain query helpers. Scaffold, query, and deploy to Prisma Compute."
+heroImagePath: "/prisma-orm-8-nestjs/imgs/hero.svg"
+heroImageAlt: "The Prisma logo and the NestJS logo side by side"
+metaImagePath: "/prisma-orm-8-nestjs/imgs/meta.png"
+tags:
+  - "orm"
+series: prisma-8
+seriesIndex: 15
+---
+
+[Prisma ORM 8](https://www.prisma.io/docs/orm), the next major version of Prisma's TypeScript ORM, changes how you wire the client into [NestJS](https://nestjs.com). The Prisma ORM 8 client is a plain object exported by `src/prisma/db.ts`, so there is no class to extend, and the NestJS template that `create-prisma` scaffolds has no service that extends `PrismaClient`. One shared client lives in `src/prisma/db.ts`, and an injectable `PrismaService` exposes query helpers written as ordinary functions. Prisma ORM 8 is available today as a release candidate.
+
+This post is the fifteenth in our Prisma 8 series, following [Is Prisma 8 ready for long-lived production apps?](/is-prisma-8-ready-for-long-lived-production-apps). It walks through scaffolding a NestJS API on [Prisma Postgres](https://www.prisma.io/docs/postgres), following a request from the controller to the database, writing typed queries, and deploying the API to [Prisma Compute](https://www.prisma.io/docs/compute). We ran every command below against `prisma@8.0.0-rc.15`, `@prisma/orm-postgres@8.0.0-rc.11`, and NestJS 11.
+
+## Share your client without extending it
+
+If you have used Prisma with NestJS, you have probably written a service that extends `PrismaClient`. In Prisma ORM 7, the setup commonly looked like this:
+
+```ts
+import { Injectable, OnModuleInit } from "@nestjs/common";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client";
+
+@Injectable()
+export class PrismaService extends PrismaClient implements OnModuleInit {
+  constructor() {
+    super({
+      adapter: new PrismaPg({
+        connectionString: process.env.DATABASE_URL!,
+      }),
+    });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+}
+```
+
+That works for a basic client, but adding client extensions is where the class pattern gets awkward: `$extends()` returns an extended instance, while the service inherits from the original class. NestJS users have reported this for years in [issue 18628](https://github.com/prisma/orm/issues/18628).
+
+Prisma ORM 8 removes the class. The client is the object that `postgres({ ... })` returns in `src/prisma/db.ts`, so there is no `PrismaClient` to inherit from. `$extends` is gone too: cross-cutting behavior is [middleware](https://www.prisma.io/docs/orm/middleware/how-middleware-works) that you pass as the `middleware` option when you create the client, so there is no extended instance to keep in sync with a subclass. The NestJS starter wraps the client in a small injectable service and exposes the queries your application needs:
+
+```ts
+import { Injectable } from "@nestjs/common";
+import { db, listUsers, type StarterUser } from "./prisma/users";
+
+@Injectable()
+export class PrismaService {
+  readonly db = db;
+
+  listUsers(limit = 10): Promise<StarterUser[]> {
+    return listUsers(limit);
+  }
+}
+```
+
+NestJS injects `PrismaService`, and the service delegates to functions in `src/prisma/`. You keep query helpers in ordinary TypeScript files and call them from the service. You could wrap `PrismaClient` in a service before. What changes in Prisma ORM 8 is that there is no class and no generated package: the client is a value in `src/prisma/db.ts`, and the middleware that replaced `$extends` is an option you pass when you create it.
+
+`db.ts` first asks the Prisma Composer service binding for a database client. Outside Composer that lookup throws, so it falls back to `postgres({ contractJson, url: process.env.DATABASE_URL })`. Locally you use the fallback. On Prisma Compute the binding wins.
+
+There is also no generated client package. Prisma ORM 7 generated one into an output directory, and importing it from NestJS raised recurring questions about [import paths](https://github.com/prisma/orm/discussions/28866) and [pnpm type errors](https://github.com/prisma/orm/issues/28581). Prisma ORM 8 emits the contract into `src/prisma/` as `contract.json` and `contract.d.ts`, and `db.ts` imports them with relative paths.
+
+## 1. Create the NestJS project
+
+You need Node.js 24.11 or newer, or 22.18 or newer on the 22 line. Then run:
+
+```bash
+npm create prisma@latest -- nest-prisma-8 --template nest --provider postgres --yes
+cd nest-prisma-8
+```
+
+This creates the NestJS app, installs Prisma ORM 8, writes the [contract](https://www.prisma.io/docs/orm/contract-authoring/the-data-contract) to `src/prisma/contract.prisma` (what Prisma ORM 7 called `schema.prisma`) with its emitted `contract.json` and `contract.d.ts`, and adds `module.ts` and `service.ts` for deployment.
+
+`--yes` accepts the scaffold defaults and answers no to the deploy prompt. You deploy explicitly at the end. The defaults also install Prisma agent skill files into `.claude/`, `.cursor/`, `.agents/`, and `.devin/`, plus a `postinstall` script that keeps them in sync. Pass `--skills none` to skip that.
+
+The app already has a `/users` endpoint. These are the files to look at:
+
+| File                      | What it does                                                    |
+| ------------------------- | --------------------------------------------------------------- |
+| `src/users.controller.ts` | Handles HTTP requests to `/users`                               |
+| `src/users.service.ts`    | Calls the query exposed by `PrismaService`                      |
+| `src/prisma.service.ts`   | Makes the shared client and query helpers injectable            |
+| `src/app.module.ts`       | Registers both controllers and both providers                   |
+| `src/prisma/users.ts`     | Holds the starter `listUsers` query, which runs the seed first  |
+| `src/prisma/seed.ts`      | Upserts three sample users, once per process                    |
+| `src/prisma/db.ts`        | Creates the shared database client                              |
+
+`contract.json` and `contract.d.ts` are emitted from `contract.prisma`. After you change the contract, run `npm run contract:emit` to regenerate them, then `npm run db:update` to apply the change to the database.
+
+You can also choose a different contract authoring style, either [TypeScript](https://www.prisma.io/docs/orm/contract-authoring/typescript-schema-builder) or [Prisma Schema Language](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax), or a different package manager through the [`create-prisma` options](https://www.prisma.io/docs/prisma-orm/create-prisma).
+
+## 2. Connect to Prisma Postgres and initialize the database
+
+Create a temporary Prisma Postgres database:
+
+```bash
+npx create-db@latest
+```
+
+The command prints a connection string and a claim link. The database is deleted after 24 hours unless you open the claim link and keep it.
+
+Copy the connection string, export it in your terminal, then apply the starter contract to the database:
+
+```bash
+export DATABASE_URL="<your PostgreSQL connection string>"
+npm run db:init
+```
+
+The scaffold ships an `.env.example` that tells you to copy it to `.env`. Do not rely on that for this walkthrough: neither `prisma.config.ts` nor the CLI loads `.env`, so `db:init` and `npm run dev` only see a variable you exported in the shell.
+
+`db:init` ends with `Applied 5 operation(s) across 1 contract space` and lists the tables, constraints, and indexes it created. If it stops with `Connection terminated unexpectedly`, the new database is still starting. Wait a few seconds and run it again.
+
+There is no seed command. `listUsers` upserts three sample users the first time it runs in a process, so the data appears on the first request to `/users`.
+
+## 3. Follow a request from controller to database
+
+`AppModule` registers `PrismaService` and `UsersService`, and `UsersService` receives the shared Prisma service through NestJS dependency injection:
+
+```ts
+import { Inject, Injectable } from "@nestjs/common";
+import { PrismaService } from "./prisma.service";
+
+@Injectable()
+export class UsersService {
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  async findAll() {
+    return this.prisma.listUsers(10);
+  }
+}
+```
+
+The controller calls that service when a request arrives:
+
+```ts
+import { Controller, Get, Inject } from "@nestjs/common";
+import { UsersService } from "./users.service";
+
+@Controller("users")
+export class UsersController {
+  constructor(@Inject(UsersService) private readonly usersService: UsersService) {}
+
+  @Get()
+  findAll() {
+    return this.usersService.findAll();
+  }
+}
+```
+
+The explicit `@Inject(...)` decorators name each provider token. The starter runs `tsx watch` in development, and `tsx` transpiles with esbuild, which ignores the `emitDecoratorMetadata` flag in `tsconfig.json`. Without the metadata, NestJS cannot infer a constructor parameter's provider from its type, so the token is spelled out and injection behaves the same in development and in the `tsdown` production build. This applies to code you add too: put `@Inject(Token)` on every injected constructor parameter.
+
+Start the app:
+
+```bash
+npm run dev
+```
+
+In a second terminal, call the endpoint:
+
+```bash
+curl http://localhost:3000/users
+```
+
+You get the starter users as JSON. The request goes through the controller, the service, and the Prisma query helper, with one shared client behind them.
+
+## 4. Write queries for the endpoint
+
+Prisma ORM 8 queries chain the conditions you need, then execute with `.all()` or `.first()`.
+
+For example, a helper that fetches a short list of user ids and emails can look like this:
+
+```ts
+import { db } from "./db";
+
+export async function listUserIdsAndEmails() {
+  return db.orm.public.User.select("id", "email")
+    .orderBy((user) => user.email.asc())
+    .limit(10)
+    .all();
+}
+```
+
+Here, `public` is the PostgreSQL schema and `User` is the model.
+
+Selecting two fields also narrows the result type to those fields. A service can call this helper the same way it calls the starter's `listUsers` function. Helpers you write yourself do not call `seed()`, so on a fresh database request `/users` once before you expect rows from them. See the [reading data guide](https://www.prisma.io/docs/orm/fundamentals/reading-data) for filtering and pagination.
+
+When you need lower-level control, the same client exposes a SQL builder:
+
+```ts
+const query = db.sql.public.user
+  .select("id", "email")
+  .where((fields, operators) => operators.ilike(fields.email, "%@prisma.io"))
+  .limit(10)
+  .build();
+
+const users = await db.runtime().query(query);
+```
+
+The SQL builder is keyed by table name: the model name with a lowercase first letter, unless the model sets `@@map`. That is why the ORM path says `User` and the SQL path says `user`.
+
+The builder sends `%@prisma.io` as a query parameter, so the pattern is never concatenated into the SQL text. You can use the SQL builder for one endpoint and the ORM everywhere else; both run on the same client and pool. The [advanced queries guide](https://www.prisma.io/docs/orm/fundamentals/advanced-queries) covers joins, the SQL builder, and the MongoDB pipeline builder.
+
+The client is lazy: `postgres({ ... })` builds the query surface up front and opens the driver pool the first time a query runs. The starter's `seed()` calls `connectDatabase()` in `src/prisma/db.ts` to open that pool explicitly before its upserts. Nothing closes the pool. Keep that one client shared across requests. To release connections on shutdown, implement `OnModuleDestroy` on `PrismaService` and call `db.close()` there, then enable shutdown hooks with `app.enableShutdownHooks()` in `main.ts`:
+
+```ts
+import { Injectable, type OnModuleDestroy } from "@nestjs/common";
+import { db } from "./prisma/db";
+import { listUsers, type StarterUser } from "./prisma/users";
+
+@Injectable()
+export class PrismaService implements OnModuleDestroy {
+  readonly db = db;
+
+  listUsers(limit = 10): Promise<StarterUser[]> {
+    return listUsers(limit);
+  }
+
+  async onModuleDestroy() {
+    await this.db.close();
+  }
+}
+```
+
+If you are coming from Prisma ORM 7, the [Prisma ORM 7 to 8 upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) shows how contracts and the new query APIs fit together, one route at a time.
+
+## Deploy the API to Prisma Compute
+
+The scaffold includes `module.ts` and `service.ts`, which describe the app and its infrastructure through [Prisma Composer](https://www.prisma.io/docs/composer), which is in early access. The Prisma CLI can deploy that declaration to Prisma Compute.
+
+```bash
+npx prisma auth login
+npm run build
+npx prisma deploy module.ts
+```
+
+`prisma auth login` opens the browser once. `npm run build` bundles the app with `tsdown` into `dist/server.mjs`. `prisma deploy module.ts` provisions the database and the compute service and prints the app URL. `npm run deploy` runs the last two together.
+
+```text
+nest-prisma-8
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
+```
+
+The deploy does not copy your local database. `prisma deploy` provisions a Prisma Postgres database for the module and hands it to the app through the Composer binding, so the deployed app never reads your local `DATABASE_URL`. The first request to `/users` seeds it.
+
+Take the app URL printed by the CLI and check it:
+
+```bash
+curl https://<your-app-host>/users
+```
+
+You now have a NestJS API on Prisma Compute and its database on Prisma Postgres. For the full deployment walkthrough, see the [NestJS guide](https://www.prisma.io/docs/guides/frameworks/nestjs) in the docs. For previews per Git branch and deploy-on-push, see [Deploy on push](https://www.prisma.io/docs/compute/deploy-on-push).
+
+## Prisma ORM 8 supports MongoDB too
+
+[NestJS with MongoDB](https://github.com/prisma/orm/discussions/28608) was a recurring question on Prisma ORM 7. Prisma ORM 8 supports [MongoDB](/mongodb-without-compromise) in early access: document models in the contract, a pipeline builder for aggregations, and migration plans that create collections and indexes.
+
+Start a separate NestJS project with the MongoDB provider:
+
+```bash
+npm create prisma@latest -- nest-mongo --template nest --provider mongodb --package-manager pnpm --yes
+```
+
+With npm, the current `create-prisma` release stops at an `ERESOLVE` peer-dependency error: `@prisma/orm-mongo` requires the MongoDB 7 driver, while `alchemy`, the deployment library Prisma Composer depends on, still declares `mongodb@^6`. pnpm resolves it, so the command above pins pnpm.
+
+The scaffold writes `.env` with `mongodb://localhost:27017/mydb?replicaSet=rs0&directConnection=true`, but nothing loads that file. MongoDB projects use two variables: the Prisma CLI scripts such as `db:init` read `MONGODB_URL`, and the dev server in `src/prisma/db.ts` still reads `DATABASE_URL`. On a standalone `mongod`, drop `replicaSet=rs0` and export both before `pnpm run db:init` and `pnpm run dev`:
+
+```bash
+export MONGODB_URL="mongodb://localhost:27017/mydb?directConnection=true"
+export DATABASE_URL="$MONGODB_URL"
+```
+
+Prisma ORM 8 does not run MongoDB transactions yet. If you need them, [use the driver's sessions directly](https://www.prisma.io/docs/orm/fundamentals/transactions#transactions-on-mongodb). Transactions need a replica set, so in that case keep `replicaSet=rs0` and run `mongod` as a replica set.
+
+The [MongoDB quickstart](https://www.prisma.io/docs/prisma-orm/quickstart/mongodb) walks through the connection variables, the migration plan, and the first query.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Do I still need to extend PrismaClient in a NestJS service with Prisma ORM 8?">
+No. The Prisma ORM 8 client is a plain object, created by `postgres({ ... })` or handed in by the Prisma Composer service binding, so there is no class to extend. The NestJS starter created by `create-prisma` keeps one shared client in `src/prisma/db.ts`, writes query helpers as plain TypeScript functions in `src/prisma/users.ts`, and exposes them through a small injectable `PrismaService`.
+  </Accordion>
+  <Accordion title="Why does the Prisma ORM 8 NestJS starter use explicit @Inject decorators?">
+The starter annotates each constructor parameter with `@Inject(PrismaService)` or `@Inject(UsersService)` so NestJS resolves dependencies by token. The development script runs on `tsx`, whose esbuild transform ignores the `emitDecoratorMetadata` flag, so NestJS cannot infer the provider from the parameter type. Explicit tokens keep injection working the same under `tsx` in development and under the `tsdown` production build.
+  </Accordion>
+  <Accordion title="Does Prisma ORM 8 work with MongoDB in NestJS?">
+Yes, in early access. Scaffold with `npm create prisma@latest -- my-app --template nest --provider mongodb --package-manager pnpm --yes` (plain npm hits an `ERESOLVE` error in the current `create-prisma` release). The scaffold gives you document models in the contract, and the ORM adds a pipeline builder for aggregations and migration plans that create collections and indexes. The Prisma CLI reads `MONGODB_URL` while the dev server reads `DATABASE_URL`, so export both with the same value. Prisma ORM 8 does not run MongoDB transactions yet.
+  </Accordion>
+  <Accordion title="How do I move an existing NestJS app from Prisma ORM 7 to Prisma ORM 8?">
+The [Prisma ORM 7 to 8 upgrade guide for PostgreSQL](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) has you install Prisma ORM 8 next to Prisma ORM 7, infer a contract from the existing database, and move queries over one route at a time, with `findMany` and `findFirst` becoming `.all()` and `.first()`. In a NestJS app, replace the service that extends `PrismaClient` with an `@Injectable()` class that holds the shared `db` object and calls query functions from `src/prisma/`.
+  </Accordion>
+</Accordions>
+
+## Building with NestJS? Tell us how it goes
+
+Try Prisma ORM 8 in your NestJS app and tell us what works well or where you get stuck. Join our [Discord](https://pris.ly/discord) to report what breaks and ask questions. Release-candidate feedback goes straight to the ORM team.

@@ -48,8 +48,8 @@ An abridged `contract.json` for a `User` and `Post` schema:
   "target": "postgres",
   "profileHash": "…",
   "roots": {
-    "post": { "model": "Post", "namespace": "public" },
-    "user": { "model": "User", "namespace": "public" }
+    "Post": { "model": "Post", "namespace": "public" },
+    "User": { "model": "User", "namespace": "public" }
   },
   "domain": {
     "namespaces": {
@@ -63,7 +63,7 @@ An abridged `contract.json` for a `User` and `Post` schema:
             "storage": {
               "fields": { "email": { "column": "email" }, "id": { "column": "id" } },
               "namespaceId": "public",
-              "table": "user"
+              "table": "User"
             }
           }
         }
@@ -75,7 +75,7 @@ An abridged `contract.json` for a `User` and `Post` schema:
       "public": {
         "entries": {
           "table": {
-            "user": {
+            "User": {
               "columns": {
                 "email": { "codecId": "pg/text@1", "nativeType": "text", "nullable": false },
                 "id": { "codecId": "pg/uuid@1", "nativeType": "uuid", "nullable": false }
@@ -95,7 +95,7 @@ An abridged `contract.json` for a `User` and `Post` schema:
 The sections, top to bottom:
 
 - **`schemaVersion`, `targetFamily`, `target`**: the contract format version, whether the database is SQL or MongoDB, and which database this contract targets.
-- **`roots`**: one entry per table that stores a model. The key is the name of that table, so for a model `User` mapped to a table `users` the key is `users`. The value names the model. The [ORM reference](/orm/reference) covers both ways of reaching it, `db.sql.public.user` by table name and `db.orm.public.User` by model name.
+- **`roots`**: one entry per table that stores a model. The key is the name of that table, so for a model `User` mapped to a table `users` the key is `users`. The value names the model. You can query the model's data in two ways. The [SQL query builder](/orm/reference/sql-query-builder), `db.sql`, reaches the table by its table name, and the ORM API, `db.orm`, reaches the model by its model name. In this example both names are `User`, because the model sets no `@@map`, so the calls are `db.sql.public.User` and `db.orm.public.User`. For a model `User` mapped to a table `users`, they are `db.sql.public.users` and `db.orm.public.User`. The [ORM reference](/orm/reference) covers both.
 - **`domain` and `storage`**: your application's view, then the database's view. Each scalar field in `domain` records whether it is nullable and its `codecId`. `nativeType` is the column type in the database. `codecId` names how Prisma ORM reads and writes the value, the PostgreSQL type plus a version. `storage` holds the tables with their columns, keys, indexes, constraints, and enum values. `prisma db verify` compares it to the live database.
 - **`capabilities`**: which database features this contract can use. `npx prisma contract emit` collects them from the adapter for your database and from the packages listed in `extensions: [...]` in `prisma.config.ts`, the config file `prisma orm init` writes. The query APIs check them before building a query that needs one. See [supported database features](/orm/contract-authoring/capabilities) and [extension types](/orm/contract-authoring/psl-syntax#extension-types).
 
@@ -109,7 +109,7 @@ The declarations file gives the type system the same information. It exports:
 
 ```typescript title="src/prisma/contract.d.ts (excerpt)"
 export type StorageHash =
-  StorageHashBase<'9f49f8f9e51a9cc016f1ec2098ebae9406521a3cc2cf00207adc795078333d8b'>;
+  StorageHashBase<'fac9b49833c04e1ea5da153f6f7c2444520bbbc24cc5bcf7e21a80b199ca412b'>;
 ```
 
 You never write these types yourself. Both files come from the one `npx prisma contract emit` run, so they only drift when someone commits one and not the other. The CI check below catches that.
@@ -130,13 +130,13 @@ export const db = postgres<Contract>({
 });
 ```
 
-The connection string comes from the `DATABASE_URL` environment variable: `prisma orm init` writes `.env.example`, and you put your `DATABASE_URL` in `.env`. Keep the `.d` in the import path, because if you delete it the import stops resolving. The `tsconfig.json` settings the JSON import needs are on the [transactions and runtime page](/orm/reference/transactions-and-runtime). Before its first query, `db` reads the record in the database of which contract it matches and compares it with the contract's hashes. If they do not match, it logs a warning whose `code` is `CONTRACT.MARKER_MISMATCH` and runs the query anyway. If there is no record at all, because nothing has signed the database yet, it logs a warning whose `code` is `CONTRACT.MARKER_MISSING` and again runs the query. On MongoDB the client is `mongo<Contract>(...)` from `@prisma/orm-mongo/runtime`, described under [`mongo(options)`](/orm/reference/transactions-and-runtime#mongooptions).
+The connection string comes from the `DATABASE_URL` environment variable: `prisma orm init` writes `.env.example`, and you put your `DATABASE_URL` in `.env`. Keep the `.d` in the import path: it names `contract.d.ts`, so the import still finds the generated type when you author the contract in TypeScript and a `contract.ts` sits beside it. The `tsconfig.json` settings the JSON import needs are on the [transactions and runtime page](/orm/reference/transactions-and-runtime). Before its first query, `db` reads the record in the database of which contract it matches and compares it with the contract's hashes. If they do not match, it logs a warning whose `code` is `CONTRACT.MARKER_MISMATCH` and runs the query anyway. If there is no record at all, because nothing has signed the database yet, it logs a warning whose `code` is `CONTRACT.MARKER_MISSING` and again runs the query. On MongoDB the client is `mongo<Contract>(...)` from `@prisma/orm-mongo/runtime`, described under [`mongo(options)`](/orm/reference/transactions-and-runtime#mongooptions).
 
 When `CONTRACT.MARKER_MISMATCH` shows up in production, apply the pending migration, or run `npx prisma db sign` when the database already matches the contract. The client warns by default, and you can set [`verifyMarker`](/orm/reference/transactions-and-runtime#postgresoptions) to `false` to skip the check. It cannot be made to fail, so run `prisma db verify` when you need a check that fails.
 
 ## Version control
 
-Commit `contract.json` and `contract.d.ts` alongside the source: they hold structure only, no data and no credentials. Committing them lets teammates, CI, and deploys read the contract without running `npx prisma contract emit` first. Run `npx prisma contract emit` after every source change so the two files never trail the source. A CI job can check this in two lines:
+Commit `contract.json` and `contract.d.ts` alongside the source: they hold structure only, no data and no credentials. Committing them lets teammates, CI, and deploys read the contract without running `npx prisma contract emit` first. Run `npx prisma contract emit` after every source change so the two files never trail the source; in a Vite project, the [Vite plugin](/cli/contract-emit#run-it-automatically) does that whenever the contract or `prisma.config.ts` changes while the dev server runs. A CI job can check this in two lines:
 
 ```bash
 npx prisma contract emit

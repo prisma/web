@@ -224,10 +224,13 @@ const docsMarkdownHeaders = [
   },
 ];
 
+// The root page's Markdown is /docs/index.md, not /docs.md: the `.md` rewrite
+// below sits under basePath /docs and never sees a request for /docs.md.
 const docsRootMarkdownHeaders = [
   {
     key: "Link",
-    value: '</docs.md>; rel="alternate"; type="text/markdown", </docs/llms.txt>; rel="llms-txt"',
+    value:
+      '</docs/index.md>; rel="alternate"; type="text/markdown", </docs/llms.txt>; rel="llms-txt"',
   },
 ];
 

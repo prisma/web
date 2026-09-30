@@ -232,7 +232,7 @@ Add the database scripts and a package entrypoint to `packages/database/package.
     "dotenv": "^17.4.2"
   },
   "devDependencies": {
-    "@prisma/cli-engine": "0.3.0",
+    "@prisma/cli-engine": "0.6.1",
     "@types/node": "26.4.1",
     "prisma": "8.0.0"
   }
@@ -321,24 +321,29 @@ pnpm turbo run migration:plan --filter=@repo/db -- --name init
 ```
 
 ```text no-copy
-@repo/db:contract:emit: cache miss, executing
-@repo/db:contract:emit: ✔ Emitted contract.json and contract.d.ts
-@repo/db:migration:plan: $ prisma migration plan --name init
-@repo/db:migration:plan: ✔ Planned 6 operation(s)
-@repo/db:migration:plan: migrations/app/20260910T1601_init
-@repo/db:migration:plan: ├─ Create schema "public"
-@repo/db:migration:plan: ├─ Create table "post"
-@repo/db:migration:plan: ├─ Create table "user"
-@repo/db:migration:plan: ├─ Add unique constraint on "user" (email)
-@repo/db:migration:plan: ├─ Create index "post_authorId_idx_e47547ed" on "post"
-@repo/db:migration:plan: └─ Add foreign key "post_authorId_fkey" on "post"
-@repo/db:migration:plan: from:       (baseline)
-@repo/db:migration:plan: to:         1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
-@repo/db:migration:plan: ℹ DDL preview
-@repo/db:migration:plan: CREATE SCHEMA IF NOT EXISTS "public";
-@repo/db:migration:plan: CREATE TABLE "public"."post" (
+┌─ @repo/db#contract:emit > cache miss, executing b7a2c51b5beafae3
+$ prisma contract emit
+✔ Emitted contract.json and contract.d.ts
+└─ @repo/db#contract:emit ──
+┌─ @repo/db#migration:plan > cache bypass, force executing 6cfc90ea54b2156b
+$ prisma migration plan --name init
+✔ Planned 6 operation(s)
+migrations/app/20260910T1601_init
+├─ Create schema "public"
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+└─ Add foreign key "Post_authorId_fkey" on "Post"
+from:       (baseline)
+to:         91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
+ℹ DDL preview
+CREATE SCHEMA IF NOT EXISTS "public";
+CREATE TABLE "public"."Post" (
 ...
 ```
+
+Turborepo shows the tasks in a terminal UI while they run and leaves each task's log in your terminal when it exits. Without a terminal, for example in CI, the Prisma CLI prints JSON instead; add `--format human` to the script to keep the human-readable output. See [Global flags](/cli/global-flags).
 
 The command is offline: it writes `packages/database/migrations/app/<timestamp>_init/` with the migration as TypeScript (`migration.ts`), the compiled operations (`ops.json`), and the history marker (`migration.json`), and prints the exact DDL it will run. Review it, then apply it:
 
@@ -347,17 +352,19 @@ pnpm turbo run db:migrate --filter=@repo/db
 ```
 
 ```text no-copy
-@repo/db:db:migrate: $ prisma db migrate --advance-ref db
-@repo/db:db:migrate: ✔ Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
-@repo/db:db:migrate: App space
-@repo/db:db:migrate: ├─ Create schema "public"
-@repo/db:db:migrate: ├─ Create table "post"
-@repo/db:db:migrate: ├─ Create table "user"
-@repo/db:db:migrate: ├─ Add unique constraint on "user" (email)
-@repo/db:db:migrate: ├─ Create index "post_authorId_idx_e47547ed" on "post"
-@repo/db:db:migrate: ├─ Add foreign key "post_authorId_fkey" on "post"
-@repo/db:db:migrate: └─ marker 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
-@repo/db:db:migrate: ✔ Advanced ref "db" → 1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
+┌─ @repo/db#db:migrate > cache bypass, force executing d71a24f43fe14f8b
+$ prisma db migrate --advance-ref db
+✔ Applied 1 migration(s) (6 operation(s)) across 1 contract space(s)
+App space
+├─ Create schema "public"
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
+✔ Advanced ref "db" → 91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
+└─ @repo/db#db:migrate ──
 ```
 
 Commit the `migrations/` directory with the rest of the package. The same `db:migrate` task is what CI or a deploy hook runs against staging and production; there is no separate `migrate deploy` command in Prisma 8.
@@ -449,7 +456,7 @@ if (existing.length === 0) {
   await db.orm.public.User.create({ email: "bob@prisma.io", name: "Bob" });
 }
 console.log(await db.orm.public.User.select("id", "email", "name").all());
-await db.runtime().close();
+await db.close();
 ```
 
 Add it as a script and run it:
@@ -485,14 +492,13 @@ pnpm turbo run dev --filter=web
 ```
 
 ```text no-copy
-@repo/db:contract:emit: cache hit, replaying logs
-web:dev: ▲ Next.js 16.3.4 (Turbopack)
-web:dev: - Local:         http://localhost:3000
-web:dev: - Environments: .env
-web:dev: ✓ Ready in 1005ms
+▲ Next.js 16.3.4 (Turbopack)
+- Local:         http://localhost:3000
+- Environments: .env
+✓ Ready in 1005ms
 ```
 
-Turborepo replays the cached `contract:emit` for `@repo/db`, then starts Next.js. Open [http://localhost:3000](http://localhost:3000): the page lists the seeded users.
+Turborepo runs `contract:emit` for `@repo/db`, then starts Next.js. Its terminal UI lists both tasks; select `web#dev` to see the Next.js log. Open [http://localhost:3000](http://localhost:3000): the page lists the seeded users.
 
 ```text no-copy
 Users
@@ -526,14 +532,20 @@ pnpm turbo run migration:plan --filter=@repo/db -- --name add-user-bio
 ```
 
 ```text no-copy
-@repo/db:contract:emit: cache miss, executing
-@repo/db:migration:plan: ✔ Planned 1 operation(s)
-@repo/db:migration:plan: migrations/app/20260910T1601_add_user_bio
-@repo/db:migration:plan: └─ Add column "bio" to "user"
-@repo/db:migration:plan: from:       1e8412e162dbbe69f4bb3bf8d07f0280ae67eaab15c34dcf201e67468315428d
-@repo/db:migration:plan: to:         155ebf55586e71f917e8b534544f97d97523544e862ae74b8e70d2af933df807
-@repo/db:migration:plan: ℹ DDL preview
-@repo/db:migration:plan: ALTER TABLE "public"."user" ADD COLUMN "bio" text;
+┌─ @repo/db#contract:emit > cache miss, executing 654198244cf388ef
+$ prisma contract emit
+✔ Emitted contract.json and contract.d.ts
+└─ @repo/db#contract:emit ──
+┌─ @repo/db#migration:plan > cache bypass, force executing 83824ab92bdf22eb
+$ prisma migration plan --name add-user-bio
+✔ Planned 1 operation(s)
+migrations/app/20260910T1601_add_user_bio
+└─ Add column "bio" to "User"
+from:       91e7f9f035806fa2789a4d726ef7724cad434fd6b00014d47ebf12d6e6bb784e
+to:         1cb334c8d48b39d9b29d14f8f8ad799c8d566dc9af2ba6c46a6d02dbb232d425
+ℹ DDL preview
+ALTER TABLE "public"."User" ADD COLUMN "bio" text;
+└─ @repo/db#migration:plan ──
 ```
 
 Apply it, then check where the database stands:
@@ -544,27 +556,27 @@ pnpm --filter @repo/db migration:status
 ```
 
 ```text no-copy
-○   155ebf5  @contract @db (db)
-│↑  20260910T1601_add_user_bio  1e8412e → 155ebf5  1 ops  ✓ applied
-○   1e8412e
-│↑  20260910T1601_init                ∅ → 1e8412e  6 ops  ✓ applied
+○   1cb334c  @contract @db (db)
+│↑  20260910T1601_add_user_bio  91e7f9f → 1cb334c  1 ops  ✓ applied
+○   91e7f9f
+│↑  20260910T1601_init                ∅ → 91e7f9f  6 ops  ✓ applied
 ○   ∅
 ✔ Up to date
 ```
 
-The next `pnpm turbo run dev --filter=web` re-emits the contract before Next.js starts, and `user.bio` is available in the page's types. For a local change you do not want to keep as a migration, `npx prisma@latest db update` reconciles the database with the contract directly; see [db update](/cli/db-update).
+The next `pnpm turbo run dev --filter=web` re-emits the contract before Next.js starts, and `user.bio` is available in the page's types. For a local change you do not want to keep as a migration, `npx prisma db update` reconciles the database with the contract directly; see [db update](/cli/db-update).
 
 ## Common gotchas
 
 :::warning
 
-Without a `db` ref or `--from`, `migration plan` has no origin and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist, because a plan from an empty database would recreate every table. The `--advance-ref db` flag on `db:migrate` keeps the ref current. If you applied a migration without it, point the ref at that migration once: `npx prisma@latest migration ref set db <migration directory name>`.
+Without a `db` ref or `--from`, `migration plan` has no origin and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist, because a plan from an empty database would recreate every table. The `--advance-ref db` flag on `db:migrate` keeps the ref current. If you applied a migration without it, point the ref at that migration once: `npx prisma migration ref set db <migration directory name>`.
 
 :::
 
 :::warning
 
-In the web app, never call `db.runtime().close()` in a page or route handler; the client's connection pool is shared across requests. Close it only in one-off scripts like the seed.
+In the web app, never call `db.close()` in a page or route handler; the client's connection pool is shared across requests. Close it only in one-off scripts like the seed.
 
 :::
 

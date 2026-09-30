@@ -47,7 +47,7 @@ The route handlers are thin wrappers: shared builders in `llms.ts` are the singl
 
 **(c) Changing page chrome.** The hidden `llms.txt` directive lives in `apps/docs/src/app/layout.tsx` as the first child of `<body>` — keep it there (before `<Banner`), never move it into the page component where the sidebar markup would push it past 50% of the HTML. In `[[...slug]]/page.tsx`, put `data-markdown-ignore` on any human-only chrome (banners, nav, badges) so it stays out of the parity comparison. New interactive/human-only MDX components should get `data-markdown-ignore` on their wrapper plus a markdown fallback in `normalizeProcessedMarkdown` (`llm-markdown.ts`), following `APIPage`/`formatApiPage`.
 
-**(d) Changing the CLI workflow or MCP tools** in docs content: update the skill copy in `apps/site/src/lib/agent-skills.ts` AND `apps/docs/src/lib/agent-skill.ts` — they quote real commands and tool names. Keep them in sync with the Prisma Postgres quickstart and `content/docs/ai/tools/mcp-server.mdx`. The `commonQueries` links in `llms.ts` must point to existing pages (the guard fails on stale links).
+**(d) Changing the CLI workflow or MCP tools** in docs content: update the skill copy in `apps/site/src/lib/agent-skills.ts` AND `apps/docs/src/lib/agent-skill.ts` — they quote real commands and tool names. Keep them in sync with the Prisma Postgres quickstart, the setup page `content/docs/ai/tools/mcp-server.mdx`, and the tool catalog `content/docs/ai/mcp-tools.mdx` (the site test `agent-skills.test.ts` pins `MCP_TOOLS` to that catalog). The `commonQueries` links in `llms.ts` must point to existing pages (the guard fails on stale links).
 
 **(e) Verification.**
 

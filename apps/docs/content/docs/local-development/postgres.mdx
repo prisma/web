@@ -53,10 +53,29 @@ You may:
 
 - <kbd>q</kbd> to quit
 
-If you want to connect via Prisma ORM, hit <kbd>h</kbd> on your keyboard, copy the `DATABASE_URL` and store it in your `.env` file. This will be used to connect to the local Prisma Postgres server:
+If you want to connect via Prisma ORM, hit <kbd>h</kbd> on your keyboard and copy both `DATABASE_URL` and `SHADOW_DATABASE_URL` into your `.env` file. Prisma ORM connects through the first one. Prisma Migrate uses the second one as the [shadow database](/orm/v7/prisma-migrate/understanding-prisma-migrate/shadow-database) when it checks for drift. Without it, the first `prisma migrate dev` run works but later runs fail with a `relation "..." already exists` error.
 
 ```text title=".env"
-DATABASE_URL="prisma+postgres://localhost:51213/?api_key=__API_KEY__"
+DATABASE_URL="postgres://postgres:postgres@localhost:51214/template1?sslmode=disable&connection_limit=10&connect_timeout=0&max_idle_connection_lifetime=0&pool_timeout=0&socket_timeout=0"
+SHADOW_DATABASE_URL="postgres://postgres:postgres@localhost:51215/template1?sslmode=disable&connection_limit=10&connect_timeout=0&max_idle_connection_lifetime=0&pool_timeout=0&socket_timeout=0"
+```
+
+Then point the `datasource` block of your Prisma config at both variables:
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: process.env["DATABASE_URL"],
+    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"],
+  },
+});
 ```
 
 Keep the local Prisma Postgres server running in the background while you work on your application.
@@ -82,6 +101,31 @@ npx prisma migrate dev
 Make sure the local Prisma Postgres server is running before running the `prisma migrate dev` command.
 
 If you must use a different port, append [`--port <number>`](/orm/v7/reference/prisma-cli-reference#dev) (for example, `npx prisma migrate dev --port 5422`) and update your `DATABASE_URL` (or other connection settings) to match.
+
+:::
+
+:::note
+
+If the first `prisma migrate dev` run against a fresh instance fails with `Error: P1017 Server has closed the connection` before it creates any tables, you have hit [prisma/orm#29366](https://github.com/prisma/orm/issues/29366): the query that reads the `_prisma_migrations` table drops the connection when that table does not exist yet. Create the table yourself, then run the command again:
+
+```sql title="create-migrations-table.sql"
+CREATE TABLE "_prisma_migrations" (
+    "id"                  VARCHAR(36)  PRIMARY KEY NOT NULL,
+    "checksum"            VARCHAR(64)  NOT NULL,
+    "finished_at"         TIMESTAMPTZ,
+    "migration_name"      VARCHAR(255) NOT NULL,
+    "logs"                TEXT,
+    "rolled_back_at"      TIMESTAMPTZ,
+    "started_at"          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    "applied_steps_count" INTEGER      NOT NULL DEFAULT 0
+);
+```
+
+```npm
+npx prisma db execute --file create-migrations-table.sql
+```
+
+`prisma db push` does not read that table, so it works as an alternative if you do not need migration files yet.
 
 :::
 
