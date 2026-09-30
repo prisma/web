@@ -89,7 +89,7 @@ That starts a local Prisma Postgres instance on [PGlite](https://pglite.dev), an
    DATABASE_URL="postgres://postgres:postgres@localhost:51214/template1?sslmode=disable&..."
 ```
 
-Node.js 20 or later is the only requirement. `npx prisma@7 dev --name myapp` gives every project its own named instance, `--detach` runs the server in the background, and `prisma dev ls`, `prisma dev stop <name>` and `prisma dev rm <name>` list, stop and delete instances.
+The only requirement is a Node.js version Prisma ORM 7 supports: 20.19 or later, 22.12 or later, or 24. `npx prisma@7 dev --name myapp` gives every project its own named instance, `--detach` runs the server in the background, and `prisma dev ls`, `prisma dev stop <name>` and `prisma dev rm <name>` list, stop and delete instances.
 
 It is a development tool that serves one connection at a time, not something you self-host; the [local development docs](https://www.prisma.io/docs/local-development/postgres) have the full reference.
 
@@ -143,11 +143,13 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
     url: env("DIRECT_URL"),
+    // Local development with `prisma dev` only; unset in production.
+    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"],
   },
 });
 ```
 
-The `url` line is the only change. That is the Prisma ORM 7 setup, where connection URLs live in `prisma.config.ts`; on Prisma ORM 6 the same job is done by `directUrl` in the schema's `datasource` block. For local development, set `DIRECT_URL` to the same value as `DATABASE_URL`, because the local server has no pooler.
+The `url` line is the change production needs. That is the Prisma ORM 7 setup, where connection URLs live in `prisma.config.ts`; on Prisma ORM 6 the same job is done by `directUrl` in the schema's `datasource` block. For local development with `prisma dev`, set `DIRECT_URL` to the same value as `DATABASE_URL`, because the local server has no pooler, and copy the `SHADOW_DATABASE_URL` it prints into `.env` as well. Prisma Migrate uses that second database as its shadow database, and without it a later `migrate dev` fails with `relation "..." already exists`. `migrate deploy` in production does not use a shadow database, so the variable stays unset there.
 
 Leave `.env` pointing at production for now: every Prisma CLI command in the rest of this checklist runs against the hosted database, and the last step switches local development back. Anything that loads `.env` in this window talks to production, including your test suite and any seed script that clears tables, and `migrate dev` and `migrate reset` will do to production exactly what their names say; the permanent home for these credentials is your hosting platform's environment settings.
 
