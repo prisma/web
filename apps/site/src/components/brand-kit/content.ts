@@ -81,8 +81,12 @@ export const LOGO_VARIANTS: LogoVariant[] = [
   },
 ];
 
-// The primary lockup path, reused by the hero and logo sections.
+// The primary lockup and symbol paths, reused by the hero and by the header
+// logo's right-click menu. The PNGs are the white-background renders.
 export const PRIMARY_LOCKUP = "/brand-kit/full-color/full-color.svg";
+export const PRIMARY_LOCKUP_PNG = "/brand-kit/full-color/full-color.png";
+export const PRIMARY_SYMBOL = "/brand-kit/logo-mark/logo-mark.svg";
+export const PRIMARY_SYMBOL_PNG = "/brand-kit/logo-mark/logo-mark.png";
 export const MASTER_ZIP = "/brand-kit/prisma-brand-kit.zip";
 
 export const FORMAT_LABELS: Record<LogoFormat, string> = {
