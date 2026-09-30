@@ -9,7 +9,7 @@ const PREVIEWS = ["pr-214", "pr-207"];
 
 export function IsolatedBranches() {
   return (
-    <SurfaceCard label="Illustration contrasting a shared test database with Prisma Postgres giving every preview environment its own fully-isolated database branched from production">
+    <SurfaceCard label="Illustration contrasting a shared test database with Prisma Postgres giving every preview environment its own fully-isolated database">
       <CardChrome file="branches" />
       <div className="flex flex-1 flex-col justify-center gap-2 px-4 py-3 text-[0.625rem] leading-none">
         {/* what it replaces */}
@@ -18,7 +18,8 @@ export function IsolatedBranches() {
           <span className="font-mono text-muted-foreground">shared test db</span>
         </div>
 
-        {/* one isolated database per preview, branched from production */}
+        {/* one isolated database per preview, beside production; its data is
+            the preview's own, not a copy of production's */}
         <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-card p-2">
           <Database className="size-3 shrink-0 text-foreground/60" />
           <span className="font-mono text-foreground">production</span>

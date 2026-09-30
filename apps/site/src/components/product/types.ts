@@ -108,7 +108,8 @@ export type ProductPageContent = {
    * The shared "Compare Prisma" reading list (sections/compare-links.tsx),
    * rendered after the platform section, with this page's own one-sentence
    * intro above it: the list repeats across pages, the sentence does not.
-   * Added 2026-09-30 for /postgres; /compute follows once its copy is approved.
+   * Added 2026-09-30 for /postgres. /compute carries it too and renders it
+   * from app/compute/page.tsx, since that page does not go through ProductPage.
    */
   compare?: { intro: string };
   /**
