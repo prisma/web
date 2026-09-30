@@ -1,5 +1,13 @@
 import type { ProductPageContent } from "@/components/product/types";
-import { bulletList, ctaList, definitionList, heading, joinBlocks, paragraphs } from "./blocks";
+import {
+  bulletList,
+  ctaList,
+  definitionList,
+  heading,
+  joinBlocks,
+  link,
+  paragraphs,
+} from "./blocks";
 import { renderTestimonialsMarkdown } from "./testimonials";
 
 /**
@@ -20,6 +28,8 @@ export const PRODUCT_PLATFORM_HEADING = "Built to work with the rest of Prisma";
 export const PRODUCT_PLATFORM_SWAP_LINE = "Best together. Swappable when needed.";
 /** product-page.tsx / app/orm/page.tsx pass this to <TestimonialsReveal />. */
 export const PRODUCT_TESTIMONIALS_HEADING = "Trusted by 500K+ TypeScript developers";
+/** sections/faq.tsx's default heading, which product-faq.tsx leaves in place. */
+export const PRODUCT_FAQ_HEADING = "FAQ";
 
 /** A section rendered between the template's own sections, in page order. */
 export type ProductExtraSection =
@@ -70,7 +80,7 @@ export function renderProductMarkdown({
   afterFeatures = [],
   testimonials = true,
 }: ProductMarkdownOptions): string {
-  const { hero, problem, features, platform, cta } = content;
+  const { hero, problem, features, platform, compare, faq, cta } = content;
 
   return joinBlocks([
     // Hero. The h1 and subheadline are emitted by the caller, so this picks up
@@ -108,6 +118,30 @@ export function renderProductMarkdown({
 
     // sections/testimonials-reveal.tsx
     testimonials ? renderTestimonialsMarkdown(PRODUCT_TESTIMONIALS_HEADING) : undefined,
+
+    // product-compare.tsx, on the pages that carry one (/compute). The links
+    // stay followable, in the page's order.
+    compare
+      ? joinBlocks([
+          heading(2, compare.headline),
+          paragraphs(compare.body),
+          ctaList(compare.links),
+        ])
+      : undefined,
+
+    // product-faq.tsx -> sections/faq.tsx, on the pages that carry one. Only
+    // the first accordion item is open on the page; every answer is printed
+    // here because the Markdown has no interaction. The read-more link is the
+    // same sentence the component appends after the answer.
+    faq?.length
+      ? joinBlocks([
+          heading(2, PRODUCT_FAQ_HEADING),
+          ...faq.flatMap((item) => [
+            heading(3, item.question),
+            paragraphs(item.link ? `${item.answer} ${link(item.link)}.` : item.answer),
+          ]),
+        ])
+      : undefined,
 
     // product-cta.tsx -> sections/cta-burst.tsx
     heading(2, cta.headline),

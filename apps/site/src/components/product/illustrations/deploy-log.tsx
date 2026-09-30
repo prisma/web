@@ -1,16 +1,20 @@
 import { AppWindow, CheckBold, Database } from "@/components/icons/forma";
 import { CardChrome, HeroPanel, StatRow } from "./parts";
 
-// Stop two of the /compute hero tour — "Deploy". The deploy itself, running:
-// services detected, everything built, the database branched and migrated
-// alongside the app, then a live URL. Real: the command, the step names, the
-// service names and the hostname shape. The timings are this build's own — they
-// are not a platform performance claim, and nothing here is a latency figure.
+// Stop two of the /compute hero tour, "Deploy". The deploy itself, running:
+// the services module.ts declares, uploaded from your build output, the
+// database provisioned and migrated alongside the app, then a live URL. Real:
+// the command shape and the hostname shape. The step names paraphrase what
+// deploy does: it assembles what your build produced and does not build for
+// you (cli/deploy.mdx, composer/deploying.mdx), so no step here says "built".
+// The migrations step is what composer/databases.mdx describes for a database
+// typed by a Prisma ORM contract. The timings are this build's own: they are
+// not a platform performance claim, and nothing here is a latency figure.
 
 const STEPS = [
-  { label: "detected 3 services", detail: "web · api · worker", time: "0.4s" },
-  { label: "built services", detail: "3 of 3", time: "18.2s" },
-  { label: "provisioned branched database", detail: "from main", time: "2.1s" },
+  { label: "read module.ts", detail: "web · api · worker", time: "0.4s" },
+  { label: "uploaded services", detail: "3 of 3", time: "18.2s" },
+  { label: "provisioned database", detail: "postgres", time: "2.1s" },
   { label: "ran migrations", detail: "3 applied", time: "1.3s" },
   { label: "health check", detail: "200 OK", time: "0.9s" },
 ];
@@ -26,7 +30,7 @@ function Chip({ icon: Icon, label }: { icon: typeof AppWindow; label: string }) 
 
 export function DeployLog() {
   return (
-    <HeroPanel label="Illustration of a Prisma Compute deploy running: three detected services built, a branched database provisioned and migrated alongside the app, a passing health check, and the app live on its own URL">
+    <HeroPanel label="Illustration of a Prisma Compute deploy running: the three services declared in module.ts uploaded from your build, a database provisioned and migrated alongside the app, a passing health check, and the app live on its own URL">
       <CardChrome
         file="deploy"
         right={
@@ -42,7 +46,7 @@ export function DeployLog() {
         <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/30 p-3 font-mono text-[0.625rem] leading-none">
           <p className="flex items-center gap-2 text-[0.6875rem]">
             <span className="text-prism-cyan-500">$</span>
-            <span className="text-foreground">prisma deploy</span>
+            <span className="text-foreground">prisma deploy module.ts</span>
           </p>
 
           {STEPS.map(({ label, detail, time }) => (

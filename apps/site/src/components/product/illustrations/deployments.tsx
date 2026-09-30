@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 import { Bar, CardChrome, HeroPanel, SectionLabel } from "./parts";
 
 // The /compute hero abstraction: the platform's core claim in one frame — a
-// production deploy and a per-PR preview, each carrying an app and a database
-// that were branched together. Real: the environment names, the preview
-// hostname shape, and the deploy command. Abstracted: every commit subject and
-// measured value.
+// production deploy and a preview for a pushed branch, each carrying an app
+// and its own database. Real: the environment names, the preview hostname
+// shape, and the deploy command. Abstracted: every commit subject and measured
+// value. The preview's database is its own, not a copy of production's, so the
+// frame says "preview branch" rather than anything about branching data.
 
 function Pair({ accent }: { accent?: boolean }) {
   return (
@@ -40,7 +41,7 @@ function Pair({ accent }: { accent?: boolean }) {
 
 export function Deployments() {
   return (
-    <HeroPanel label="Illustration of Prisma Compute deployments: a production deploy and a per-PR preview deploy, each pairing an app with its own branched database, deployed with one command">
+    <HeroPanel label="Illustration of Prisma Compute deployments: a production deploy and a preview deploy for a pushed branch, each pairing an app with its own database, deployed with one command">
       <CardChrome
         file="deployments"
         right={
@@ -67,7 +68,7 @@ export function Deployments() {
           </div>
         </div>
 
-        {/* the preview that branches both halves together */}
+        {/* the preview, carrying both halves */}
         <div className="flex flex-col gap-2.5">
           <SectionLabel>Preview</SectionLabel>
           <div className="flex flex-col gap-2.5 rounded-lg border border-prism-cyan-200 bg-prism-cyan-50/40 p-3">
@@ -75,7 +76,7 @@ export function Deployments() {
               <span className="font-mono text-[0.6875rem] text-foreground">pr-214</span>
               <span className="flex items-center gap-1 text-[0.625rem] font-semibold text-prism-cyan-800">
                 <GitBranch className="size-2.5" />
-                branched together
+                preview branch
               </span>
               <span className="ml-auto">
                 <Pair accent />
@@ -107,7 +108,7 @@ export function Deployments() {
         <div className="flex items-end gap-4 border-t border-border/60 pt-3.5">
           <p className="flex min-w-0 flex-1 items-center gap-2 font-mono text-[0.6875rem]">
             <span className="text-prism-cyan-500">$</span>
-            <span className="text-foreground">prisma deploy</span>
+            <span className="text-foreground">prisma deploy module.ts</span>
             <CheckBold className="size-3 shrink-0 text-prism-cyan-500" />
             <Bar className="w-10" />
           </p>
