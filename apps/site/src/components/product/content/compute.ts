@@ -126,7 +126,7 @@ export const computeContent: ProductPageContent = {
       {
         name: "A preview per pushed branch",
         description:
-          "Once deploy on push is set up, every pushed branch gets its own services and its own database, built from your migrations, and deleting the branch tears them down. No shared test DB that passes tests production fails.",
+          "Once deploy on push is set up, every pushed branch gets its own services and its own database, and deleting the branch tears them down. A database typed by a Prisma ORM contract gets your migrations applied on deploy; one declared with rawPostgres() keeps your own migration step. No shared test DB that passes tests production fails.",
         illustration: "branchedStack",
       },
       {
