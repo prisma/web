@@ -8,6 +8,8 @@ import {
   paragraphs,
   table,
 } from "./blocks";
+import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
+import { renderCompareLinksMarkdown } from "./compare-links";
 import { renderTestimonialsMarkdown } from "./testimonials";
 
 /**
@@ -456,5 +458,8 @@ export function renderPricingMarkdown(): string {
 
     heading(2, "FAQs"),
     ...FAQS.flatMap((faq) => [heading(3, faq.question), paragraphs(faq.answer)]),
+
+    // sections/compare-links.tsx, the page's closing section.
+    renderCompareLinksMarkdown(PRICING_COMPARE_INTRO),
   ]);
 }

@@ -46,6 +46,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/product/product-problem.tsx",
     "src/components/product/product-features.tsx",
     "src/components/product/product-platform.tsx",
+    "src/components/sections/compare-links.tsx",
   ],
   "/compute": [
     "src/components/product/product-hero.tsx",
@@ -63,6 +64,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/sections/pricing-comparison.tsx",
     "src/components/sections/pricing-spec-table.tsx",
     "src/components/sections/faq.tsx",
+    "src/components/sections/compare-links.tsx",
   ],
   "/studio": ["src/app/studio/page.tsx"],
   "/stack": ["src/app/stack/page.tsx", "src/components/sections/stack-bento.tsx"],

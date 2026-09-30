@@ -1,5 +1,6 @@
 import type { ProductPageContent } from "@/components/product/types";
 import { bulletList, ctaList, definitionList, heading, joinBlocks, paragraphs } from "./blocks";
+import { renderCompareLinksMarkdown } from "./compare-links";
 import { renderTestimonialsMarkdown } from "./testimonials";
 
 /**
@@ -20,6 +21,8 @@ export const PRODUCT_PLATFORM_HEADING = "Built to work with the rest of Prisma";
 export const PRODUCT_PLATFORM_SWAP_LINE = "Best together. Swappable when needed.";
 /** product-page.tsx / app/orm/page.tsx pass this to <TestimonialsReveal />. */
 export const PRODUCT_TESTIMONIALS_HEADING = "Trusted by 500K+ TypeScript developers";
+/** sections/faq.tsx's default heading, which product-page.tsx renders `content.faq` under. */
+export const PRODUCT_FAQ_HEADING = "FAQ";
 
 /** A section rendered between the template's own sections, in page order. */
 export type ProductExtraSection =
@@ -105,6 +108,19 @@ export function renderProductMarkdown({
     heading(2, PRODUCT_PLATFORM_HEADING),
     paragraphs(platform.body),
     paragraphs(`**${PRODUCT_PLATFORM_SWAP_LINE}**`),
+
+    // sections/compare-links.tsx, when the page carries it (product-page.tsx)
+    content.compare ? renderCompareLinksMarkdown(content.compare.intro) : undefined,
+
+    // sections/faq.tsx, when the page carries one. Only the first accordion
+    // item is open in the HTML; every answer is included here because the
+    // Markdown has no interaction.
+    content.faq
+      ? joinBlocks([
+          heading(2, PRODUCT_FAQ_HEADING),
+          ...content.faq.flatMap((item) => [heading(3, item.question), paragraphs(item.answer)]),
+        ])
+      : undefined,
 
     // sections/testimonials-reveal.tsx
     testimonials ? renderTestimonialsMarkdown(PRODUCT_TESTIMONIALS_HEADING) : undefined,

@@ -104,6 +104,19 @@ export type ProductPageContent = {
      */
     body: string;
   };
+  /**
+   * The shared "Compare Prisma" reading list (sections/compare-links.tsx),
+   * rendered after the platform section, with this page's own one-sentence
+   * intro above it: the list repeats across pages, the sentence does not.
+   * Added 2026-09-30 for /postgres; /compute follows once its copy is approved.
+   */
+  compare?: { intro: string };
+  /**
+   * A visible FAQ (sections/faq.tsx) after the platform section, in the words
+   * people ask answer engines. Plain strings only, no FAQ schema: the Markdown
+   * rendition prints the answers as-is.
+   */
+  faq?: { question: string; answer: string }[];
   cta: {
     /**
      * The closer is deliberately per-page. Review feedback flagged all three
