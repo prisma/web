@@ -105,12 +105,12 @@ export const TARGETS = {
       "`prisma db`, `prisma migration`, and `prisma orm`, and the codes your app can raise at runtime, " +
       `including from extensions. Every other \`prisma\` command has its codes on the ${CLI_PAGE}.`,
     sharedCliNamespace:
-      `This page and the ${CLI_PAGE} both have a \`CLI\` namespace, with different codes in each. ` +
-      "The engine that runs every `prisma` command raises its own `CLI.*` codes for arguments, config " +
-      "loading, prompts, and consent, and those are on the CLI error reference even when the command " +
-      "was a Prisma ORM one, for example `CLI.CONFIG_SECTION_INVALID` from `prisma contract emit`. " +
+      "One exception: some `CLI.*` codes come from the command-line layer that every `prisma` command " +
+      "runs through, for its arguments, for loading `prisma.config.ts`, for prompts, and for consent. " +
+      `Those are on the ${CLI_PAGE} even when you ran a Prisma ORM command. ` +
+      "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
       "The `CLI.*` codes on this page are the ones the Prisma ORM commands raise themselves. " +
-      "If a `CLI.*` code is not on this page, look on the other.",
+      "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
 title: Error reference
 description: The structured error codes of the Prisma ORM commands, runtime, and extensions, by namespace, with the condition that raises each one.
@@ -132,12 +132,12 @@ metaDescription: The structured error codes of the Prisma ORM commands, runtime,
       "from `prisma contract`, `prisma db`, `prisma migration`, and `prisma orm`, and the codes your " +
       `app can raise at runtime, are on the ${ORM_PAGE}.`,
     sharedCliNamespace:
-      `This page and the ${ORM_PAGE} both have a \`CLI\` namespace, with different codes in each. ` +
-      "The `CLI.*` codes on this page come from the engine that runs every `prisma` command, for " +
-      "arguments, config loading, prompts, and consent, whatever the command was, for example " +
-      "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit`. The Prisma ORM commands also raise " +
-      "`CLI.*` codes of their own, and those are on the Prisma ORM error reference. " +
-      "If a `CLI.*` code is not on this page, look on the other.",
+      "One exception: the `CLI.*` codes on this page come from the command-line layer that every " +
+      "`prisma` command runs through, for its arguments, for loading `prisma.config.ts`, for prompts, " +
+      "and for consent. They are on this page even when you ran a Prisma ORM command. " +
+      "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
+      `The Prisma ORM commands also raise \`CLI.*\` codes of their own, and those are on the ${ORM_PAGE}. ` +
+      "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
 title: Error reference
 description: The structured error codes of the Prisma CLI platform commands, by namespace, with the condition that raises each one.
@@ -234,10 +234,15 @@ function replaceNamespaceList(body, target) {
     return description ? `- ${link}: ${description}` : `- ${link}`;
   });
   const list = ["Namespaces on this page:", "", ...items, ""];
-  if (namespaces.includes("CLI")) list.push(target.sharedCliNamespace, "");
 
   const firstSection = body.search(/^## /m);
-  return `${body.slice(0, firstSection)}${list.join("\n")}\n${body.slice(firstSection)}`;
+  body = `${body.slice(0, firstSection)}${list.join("\n")}\n${body.slice(firstSection)}`;
+  if (!namespaces.includes("CLI")) return body;
+
+  // The note answers the reader who arrived with a CLI.* code, so it sits
+  // under the scope sentence, before the upstream paragraphs and the list.
+  const firstParagraphEnd = body.search(/\n\s*\n/);
+  return `${body.slice(0, firstParagraphEnd)}\n\n${target.sharedCliNamespace}${body.slice(firstParagraphEnd)}`;
 }
 
 export function transform(target, markdown) {

@@ -137,7 +137,8 @@ test("the shared CLI namespace is explained only when the source has a CLI secti
   const withoutCli = transform(TARGETS.cli, sourceWith({ namespaces: ["AUTH"] })).mdx;
 
   assert.ok(withCli.includes(TARGETS.cli.sharedCliNamespace));
-  assert.ok(!withoutCli.includes("both have a `CLI` namespace"));
+  assert.ok(withCli.indexOf(TARGETS.cli.sharedCliNamespace) < withCli.indexOf("Namespaces on this page:"));
+  assert.ok(!withoutCli.includes("One exception:"));
 });
 
 test("a reworded source intro still gets the scope sentence after its first paragraph, with a warning", () => {
@@ -147,7 +148,9 @@ test("a reworded source intro still gets the scope sentence after its first para
   );
 
   assert.ok(
-    mdx.includes(`Every error is a structured envelope.\n\n${TARGETS.orm.scope}\n\nMatch on`),
+    mdx.includes(
+      `Every error is a structured envelope.\n\n${TARGETS.orm.scope}\n\n${TARGETS.orm.sharedCliNamespace}\n\nMatch on`,
+    ),
   );
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /This page lists every published code/);
