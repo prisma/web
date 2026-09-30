@@ -11,7 +11,8 @@ This is a **Turborepo** monorepo with pnpm workspaces (`apps/*` and `packages/*`
 │   ├── site/                 # Prisma marketing site and multi-zone host (port 3000)
 │   ├── docs/                 # Prisma documentation site (Next.js 16 + Fumadocs, port 3001)
 │   ├── blog/                 # Prisma blog (Next.js + Fumadocs, port 3002)
-│   └── eclipse/              # Eclipse design system showcase (Next.js + Fumadocs, port 3003)
+│   ├── eclipse/              # Eclipse design system showcase (Next.js + Fumadocs, port 3003)
+│   └── handbook/             # Builders Handbook (Next.js + Fumadocs, port 3004)
 ├── packages/
 │   ├── ui/                   # Shared UI components (@prisma-docs/ui, no build step)
 │   └── eclipse/              # Eclipse design system (@prisma/eclipse, published, builds to dist/)
@@ -21,7 +22,7 @@ This is a **Turborepo** monorepo with pnpm workspaces (`apps/*` and `packages/*`
 ```
 
 **Apps** - each pins its own dev port in its `dev` script, so `pnpm dev` at the root starts all
-four side by side.
+five side by side.
 
 - **`site`** (apps/site, port 3000) - The prisma.io marketing site and the root zone of the
   multi-zone setup. It has no `basePath`, serves its assets from `/site-static`, and owns the
@@ -35,6 +36,11 @@ four side by side.
   design system, from MDX in `content/design-system/`. It is a static export
   (`output: "export"`, unoptimized images) and has no `basePath`, so it is not one of the zones
   the site app rewrites into.
+
+- **`handbook`** (apps/handbook, port 3004) - The Builders Handbook: MDX chapters in
+  `content/handbook/`, served under `basePath: "/handbook"` with assets at `/handbook-static`.
+  Content is dictated by Shane and structured by Claude; `apps/handbook/AUTHORING.md` is binding.
+  Not yet forwarded by the site app's rewrites.
 
 **Packages:**
 
