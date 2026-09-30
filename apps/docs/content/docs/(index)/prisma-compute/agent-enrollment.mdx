@@ -10,7 +10,7 @@ Enrolling a coding agent lets it set up Prisma for you: it can create projects a
 
 Without enrollment, an agent uses your signed-in CLI session, so to Prisma the agent is you. It has all of your access, the audit log records its actions as yours, and you can only stop it by signing yourself out.
 
-An enrolled agent gets its own credential instead, so you can pause or revoke it without affecting your own access. It also gets a permission policy: by default it works freely on [preview branches](/compute/branching), the isolated non-production copies of a project, and asks you before it changes production or does anything destructive. The person who approves the enrollment becomes the agent's sponsor, and every request the agent makes is recorded under its own name with that sponsor attached.
+An enrolled agent gets its own credential instead, so you can pause or revoke it without affecting your own access. It also gets a permission policy: by default it works freely on [preview branches](/compute/branching), the non-production copies of a project with their own apps and databases, and asks you before it changes production or does anything destructive. The person who approves the enrollment becomes the agent's sponsor, and every request the agent makes is recorded under its own name with that sponsor attached.
 
 ## Prerequisites
 
@@ -63,7 +63,17 @@ If anything doesn't match, click **Deny**, and the agent gets no credential. If 
 
 Ask your agent to list your Prisma workspaces. It should answer with the workspaces you saw in step 3.
 
-The agent checks that Git ignores its credential file before saving it, but it's worth confirming, because a committed credential would give anyone with the repository the agent's access. If your agent saved the credential somewhere other than `.prisma/agent-token`, ask it for the path and use that instead:
+The agent checks that Git ignores its credential file before saving it, but it's worth confirming, because a committed credential would give anyone with the repository the agent's access. If your agent saved the credential somewhere other than `.prisma/agent-token`, ask it for the path and use that in the commands below.
+
+First, check that Git isn't already tracking the file:
+
+```bash
+git ls-files .prisma/agent-token
+```
+
+If the command prints nothing, the file isn't tracked. If it prints the path, the credential is committed, and an ignore rule won't remove it. [Revoke the agent](#pause-or-revoke-an-agent), because the credential stays in your Git history. Then stop tracking the file with `git rm --cached .prisma/agent-token`, add `.prisma/` to `.gitignore`, and enroll the agent again.
+
+Then check that Git ignores the file:
 
 ```bash
 git check-ignore -v .prisma/agent-token
@@ -95,6 +105,8 @@ Every agent starts with the default policy, which decides what happens to each R
 | Admin actions              | Deleting anything, creating a workspace, and creating service tokens (workspace API keys) or database connection strings | Ask     |
 
 These rules refer to the branches of a Prisma project. The branch a project starts with (usually `main`) is its production branch, and every other branch is a preview branch with its own databases and apps. See [Branching](/compute/branching) for how they relate to your Git branches.
+
+A preview app still connects to whatever database its `DATABASE_URL` points to. If a preview's `DATABASE_URL` points at your production database, changes the policy allows on that preview can reach production data. Give each preview its own preview-scoped `DATABASE_URL`, as described in [Environment variables](/compute/environment-variables).
 
 Deleting anything or creating a connection string asks even on a preview branch, because both are admin actions; a connection string is a lasting credential for the database. Creating a project doesn't ask. Creating a database on a preview branch doesn't ask either, but creating one on the production branch does, and a database created without choosing a branch counts as production.
 
