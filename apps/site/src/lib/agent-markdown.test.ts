@@ -162,28 +162,13 @@ test("getAgentMarkdownPath normalises to a member of AGENT_MARKDOWN_PATHS", () =
   assert.equal(getAgentMarkdownPath("/nope"), undefined);
 });
 
-// --- the three places the page list is spelled out have to agree ---------
+// --- the two places the page list is spelled out have to agree -----------
+//
+// The proxy is no longer a third: its matcher covers every page for Agent
+// Front, and the nine-page boundary is `getAgentMarkdownRewritePathname`
+// itself. `proxy-matcher.test.ts` checks that the proxy honours it.
 
 const siteRoot = new URL("../..", import.meta.url).pathname;
-
-test("the proxy matcher covers exactly AGENT_MARKDOWN_PATHS", () => {
-  // config.matcher has to be a statically analysable literal, so it cannot be
-  // derived from AGENT_MARKDOWN_PATHS. Read it back out of the source instead.
-  const proxySource = readFileSync(join(siteRoot, "src/proxy.ts"), "utf8");
-  const matcher = proxySource.match(/matcher:\s*\[([\s\S]*?)\]/)?.[1];
-  assert.ok(matcher, "expected a matcher array in src/proxy.ts");
-  assert.ok(matcher.includes('"/"'), "the proxy matcher should cover the homepage");
-
-  const alternation = matcher.match(/"\/:page\(([^)]+)\)"/)?.[1];
-  assert.ok(alternation, "expected a /:page(...) matcher source in src/proxy.ts");
-
-  const matched = new Set(["/", ...alternation.split("|").map((page) => `/${page}`)]);
-  assert.deepEqual(
-    [...matched].sort(),
-    [...AGENT_MARKDOWN_PATHS].sort(),
-    "src/proxy.ts matcher and AGENT_MARKDOWN_PATHS disagree",
-  );
-});
 
 test("next.config.mjs sends Vary/Link for exactly AGENT_MARKDOWN_PATHS", () => {
   const configSource = readFileSync(join(siteRoot, "next.config.mjs"), "utf8");

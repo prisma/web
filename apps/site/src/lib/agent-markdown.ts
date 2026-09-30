@@ -33,7 +33,8 @@ const AGENT_USER_AGENT_PATTERNS = [
  * their own Markdown. Anything not named here is left alone.
  *
  * Keep in sync with `markdownPages` in `@/lib/markdown-pages` (asserted by
- * `src/lib/agent-markdown.test.ts`) and with the `matcher` in `src/proxy.ts`.
+ * `src/lib/agent-markdown.test.ts`). `src/proxy.ts` runs on every page for
+ * Agent Front, so this list, not its matcher, is what bounds the rewrite.
  */
 export const AGENT_MARKDOWN_PATHS = [
   "/",

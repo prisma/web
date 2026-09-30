@@ -253,8 +253,8 @@ const securityHeaders = [
 
 /**
  * The marketing pages that also have a Markdown rendition. Mirrors
- * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts and the matcher in
- * src/proxy.ts; src/lib/agent-markdown.test.ts asserts the three agree.
+ * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts;
+ * src/lib/agent-markdown.test.ts asserts the two agree.
  */
 const agentMarkdownPaths = [
   "/",
