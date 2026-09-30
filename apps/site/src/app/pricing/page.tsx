@@ -1,4 +1,6 @@
 import { createPageMetadata } from "@/lib/page-metadata";
+import { CompareLinks } from "@/components/sections/compare-links";
+import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { PricingCalculator } from "@/components/sections/pricing-calculator";
 import { PricingComparison } from "@/components/sections/pricing-comparison";
@@ -73,6 +75,11 @@ export default function PricingPage() {
         secondaryCta={{ label: "Talk to us", href: "/contact" }}
       />
       <PricingFaq />
+      {/* The "Compare Prisma" reading list (2026-09-30): the comparison posts
+          and the import guide, for readers weighing Prisma against other
+          options. The list is shared with /postgres, the sentence above it
+          is this page's own; see sections/compare-links.tsx. */}
+      <CompareLinks intro={PRICING_COMPARE_INTRO} />
     </>
   );
 }
