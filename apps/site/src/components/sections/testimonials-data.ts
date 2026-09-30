@@ -6,8 +6,14 @@
  * of holding a second copy of the quotes.
  *
  * Quotes sourced verbatim (trimmed) from prisma.io customer case studies
- * (Bucket, Solin, Grover, Invisible, Poppy, Pearly Plan) and the showcase's
- * community quotes (Cal.com, Gamma, Stellate, Trunk, Memberstack, Instatus).
+ * (Bucket, Grover, Invisible, Poppy, Pearly Plan), the showcase's community
+ * quotes (Cal.com, Gamma, Stellate, Trunk, Memberstack, Instatus) and the
+ * former homepage's testimonials (Fluidwave, src/data/homepage.json).
+ *
+ * Solin's quote about Accelerate caching was retired 2026-09-30: Prisma
+ * Postgres has no query cache and Accelerate retires on December 1, 2026, so
+ * the page must not sell caching. Fluidwave's Prisma Postgres quote took its
+ * slot so testimonials-reveal.tsx keeps six unique quotes per row.
  */
 
 export type Testimonial = {
@@ -28,11 +34,10 @@ export const TESTIMONIALS: Testimonial[] = [
   },
   {
     quote:
-      "We are able to take advantage of caching to speed up queries and reduce latency, making them lightning fast.",
-    name: "Blake Carroll",
-    role: "CTO",
-    company: "Solin",
-    logo: "/logos/customers/solin.png",
+      "Prisma Postgres has really good DX. It's easy, simple, straightforward. I don't spend time on deployment. It just works.",
+    name: "Martin Adams",
+    role: "Founder",
+    company: "Fluidwave",
   },
   {
     quote:

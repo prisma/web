@@ -309,7 +309,10 @@ export const comparisonSections: Array<{
     ],
   },
   {
-    title: "Global Cache",
+    // Accelerate, and its cache with it, retires on December 1, 2026 and bills
+    // until then, so the rows stay; the title carries the date. The switch
+    // guide is /docs/postgres/database/switch-from-accelerate.
+    title: "Accelerate cache (retires December 1, 2026)",
     rows: [
       [
         "Cache tag invalidations",

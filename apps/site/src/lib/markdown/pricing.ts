@@ -217,7 +217,12 @@ const SPEC_PLAN_ROW: [string, string, string, string, string] = [
   "$129",
 ];
 
-const SPEC_GROUPS: { label: string; rows: [string, string, string, string, string][] }[] = [
+// `note` mirrors the optional link in the HTML table's group header.
+const SPEC_GROUPS: {
+  label: string;
+  rows: [string, string, string, string, string][];
+  note?: { label: string; href: string };
+}[] = [
   {
     label: "Prisma Postgres",
     rows: [
@@ -269,7 +274,8 @@ const SPEC_GROUPS: { label: string; rows: [string, string, string, string, strin
     ],
   },
   {
-    label: "Accelerate (global cache)",
+    label: "Accelerate cache (retires December 1, 2026)",
+    note: { label: "How to switch", href: "/docs/postgres/database/switch-from-accelerate" },
     rows: [
       ["Operations included", "60,000", "60,000", "60,000", "60,000"],
       ["Operation overage", "—", "$0.018 per 1,000", "$0.008 per 1,000", "$0.006 per 1,000"],
@@ -431,6 +437,7 @@ export function renderPricingMarkdown(): string {
     table(["Plan", ...SPEC_COLUMNS], [SPEC_PLAN_ROW]),
     ...SPEC_GROUPS.flatMap((group) => [
       heading(3, group.label),
+      group.note ? paragraphs(link(group.note)) : undefined,
       table(["Feature", ...SPEC_COLUMNS], group.rows),
     ]),
 
