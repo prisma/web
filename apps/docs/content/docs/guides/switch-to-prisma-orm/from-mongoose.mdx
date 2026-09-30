@@ -38,7 +38,7 @@ Migrate this Mongoose app to Prisma ORM against the same MongoDB database, follo
 1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
 2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma contract emit`.
 3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
-4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply the previewed collMod statements, then run `npx prisma db sign` and `npx prisma db verify`.
+4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive --confirm <database name from DATABASE_URL>`, then run `npx prisma db verify`.
 ```
 
 </AgentPrompt>
@@ -455,10 +455,10 @@ curl http://localhost:3000/users
 ```
 
 ```json no-copy
-[{"profile":{"bio":"Writes about databases"},"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice"},{"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob"}]
+[{"profile":{"bio":"Writes about databases"},"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice"},{"profile":null,"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob"}]
 ```
 
-The same documents Mongoose returned, `__v` included, because both read the same collection.
+The same documents Mongoose returned, `__v` included, because both read the same collection. Bob's document has no `profile`, and because `profile` is optional in the contract, Prisma ORM returns it as `null`.
 
 ```bash
 curl http://localhost:3000/posts
@@ -549,20 +549,16 @@ db.runCommand({ collMod: "users", validator: {"$jsonSchema":{"additionalProperti
 ℹ This is a dry run. No changes were applied.
 ```
 
-Adding a validator to a populated collection counts as destructive, so `db update` asks you to type the database name before applying it. On MongoDB it currently cannot resolve that name and stops with `CLI.CONSENT_TOKEN_UNRESOLVED`. Apply the three previewed `collMod` commands yourself: paste them into `mongosh` against your database. Each returns `{ ok: 1 }`.
-
-Then record that the database matches the contract, and verify it:
+Adding a validator to a populated collection counts as destructive, so `db update` asks you to type the database name before applying it. The name is the one in `DATABASE_URL`, here `blog`. Apply the validators:
 
 ```npm
-npx prisma db sign
-npx prisma db verify
+npx prisma db update
 ```
 
-```text no-copy
-✔ Database signed
+Type `blog` when the command asks. In CI, or with `--no-interactive`, where the command cannot ask, pass the name as `--confirm blog` instead. `db update` applies the three validators and records in the database that it matches the contract. Then verify it:
 
-from:  none
-to:    7a7760fc1ac91a781b0f6509b8c495fa3f6ae2be1ba2815bceccbf75286b93c6
+```npm
+npx prisma db verify
 ```
 
 ```text no-copy
@@ -586,15 +582,9 @@ The query API uses the field names stored in MongoDB, not the names on the left 
 
 :::
 
-:::warning[Writing arrays of ObjectIds]
-
-Passing a whole `ObjectId[]` value, such as `categories: [id]`, to `.create(...)` or `.update({...})` fails with `Failed to encode parameter mongo/objectId@1`. Create the document without the array and add ids with a field operation: `db.orm.posts.where({ _id }).update((p) => [p.categories.push(id)])`.
-
-:::
-
 :::warning[ObjectId filters in the pipeline builder]
 
-`.match((f) => f._id.eq(id))` and `MongoFieldFilter.eq("_id", id)` send the id as a plain string and match nothing. Filter ObjectId fields through the ORM, `db.orm.posts.where({ _id: id })`, which encodes them for you.
+In the pipeline builder, `.match((f) => f._id.eq(id))` sends the id as a plain string and matches nothing. Filter ObjectId fields through the ORM, `db.orm.posts.where({ _id: id })` or `db.orm.posts.where(MongoFieldFilter.eq("_id", id))`, which converts the id for you. In a pipeline, pass an `ObjectId` instead, as the [`match()` reference](/orm/reference/pipeline-builder#match) shows.
 
 :::
 

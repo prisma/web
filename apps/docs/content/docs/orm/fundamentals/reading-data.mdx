@@ -226,6 +226,8 @@ const junePosts = await db.orm.posts
   .all();
 ```
 
+Each value goes through the field's type, as in a write, so pass the value your code reads from that field. For an `Int64` field that is a `bigint`, which a filter takes wrapped in a `MongoParamRef` from `@prisma/orm-mongo/value`, as in `MongoFieldFilter.gt("views", new MongoParamRef(5n))`. A value the field's type refuses throws an error whose `code` is `RUNTIME.ENCODE_FAILED` before the query runs.
+
 Chained `.where(...)` calls combine with AND, the same as on PostgreSQL. Call `.not()` on a filter to invert it, and use `MongoOrExpr.of([...])` from the same import to combine filters with OR:
 
 ```typescript
@@ -410,9 +412,9 @@ for await (const post of db.orm.public.Post.all()) {
 }
 ```
 
-It does not fetch less: on the standard client (`postgres({...})` in `src/prisma/db.ts`) every row is loaded first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)).
+It does not fetch less: on the standard client (`postgres({...})` in `src/prisma/db.ts`) every row is loaded first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)). A client created with the `cursor` option, such as `postgres({ contractJson, url, cursor: { batchSize: 100 } })`, reads the rows through a server-side cursor instead, in batches, as your loop asks for them. See [`postgres(options)`](/orm/reference/transactions-and-runtime#postgresoptions).
 
-The serverless client, `postgresServerless(...)`, does fetch rows as you iterate, but it has no `db.orm`, so none of the queries on this page run on it: see [Transactions and runtime](/orm/reference/transactions-and-runtime).
+The queries on this page also run on the serverless client from `@prisma/orm-postgres/serverless`, through the connection that its `connect({ url })` returns. Its reads load every row first too, unless you create it with `cursor`. See [Serverless client on PostgreSQL](/orm/reference/transactions-and-runtime#serverless-client-on-postgresql).
 
 ### An iterated result can only be read once
 
