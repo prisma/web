@@ -37,11 +37,11 @@ model Post {
 }
 ```
 
-The first line, `// use prisma-8`, is required, because `contract emit` reads only the `.prisma` files that start with it. [`prisma orm init`](/cli/orm-init) writes it for you.
+The first line, `// use prisma-8`, is required: Prisma ORM 8 ignores a `.prisma` file that does not start with it. [`prisma orm init`](/cli/orm-init) writes it for you.
 
 The schema is what the database has right now: its tables or collections, their columns, and their indexes. Prisma ORM 7 called your file the schema, but Prisma ORM 8 keeps that word for the database side, because the whole point is that your file and your database can disagree. So when a command or an error message says "schema", it means the database.
 
-Everything else on this page is a relationship between the two. Queries are typed against the contract, migrations change the schema until it matches the contract, and `db verify` checks that the schema still satisfies the contract.
+Everything else on this page is a relationship between the two. Queries are typed against the contract, migrations change the schema until it matches the contract, and `db verify` checks that the schema still matches the contract.
 
 Read more in [The data contract](/orm/contract-authoring/the-data-contract), and write your contract [in PSL](/orm/contract-authoring/psl-syntax) or [in TypeScript](/orm/contract-authoring/typescript-schema-builder).
 
@@ -156,7 +156,7 @@ npx prisma db migrate --advance-ref db
 
 Review the new directory under `migrations/app/` before you apply it, and commit it with your contract. `--advance-ref db` keeps the `db` ref current, which the next section explains.
 
-In a new project, `db init` creates the first tables and signs the database. The first `migration plan` after it writes two migrations: a baseline, which is a migration from an empty database that creates the tables `db init` already made, and a second one with your change. `db migrate` on your development database runs only your change. On a fresh, empty database, such as one in CI, `db migrate` runs the baseline and then your change, because that database has no signature yet. [Add Prisma ORM and PostgreSQL to an existing app](/prisma-orm/quickstart/existing-app/postgresql#5-create-the-table) walks through it.
+In a new project, `db init` creates the first tables and signs the database, but writes no migration file. Your first `migration plan` writes one for those tables, called the baseline, plus one for your change. Your development database already has the baseline tables, so `db migrate` applies only your change there. An empty database, such as one in CI, gets both. [Add Prisma ORM and PostgreSQL to an existing app](/prisma-orm/quickstart/existing-app/postgresql#5-create-the-table) walks through it.
 
 ### Planning a migration
 
@@ -166,7 +166,7 @@ In a new project, `db init` creates the first tables and signs the database. The
 
 A ref is a named pointer to a contract hash, stored as a file under `migrations/app/refs/` so that it is versioned with your migrations. `app` is your app's own migration history (extension packages can ship their own). The `db` ref has a special meaning: it records the contract hash you expect your development database to match. When you run `migration plan` without `--from`, Prisma ORM assumes you mean from the `db` ref, so as long as the ref is current, each plan contains only your latest change.
 
-Commands that connect to a database take the connection string from `prisma.config.ts`, the config file the CLI reads, unless you pass one on the command line with `--db`. [Configuration](/cli/configuration) describes the file, and `prisma orm init` writes it. Whether you pass `--db` decides whether some commands update the `db` ref:
+Commands that connect to a database take the connection string from `prisma.config.ts`, the config file the CLI reads, unless you pass one on the command line with `--db`. [Configuration](/cli/configuration) describes the file, and `prisma orm init` writes it. The `db` ref describes your development database, and `--db` often points at another one, so whether you pass `--db` decides whether some commands update the ref:
 
 | Command | When it updates the `db` ref |
 | --- | --- |
@@ -209,7 +209,7 @@ If you run `migration plan` before `db sign` instead, there is no `db` ref and n
 
 ### Iterating with db update
 
-[`db update`](/cli/db-update) replaces `prisma db push`, and it also takes over one of the two jobs `prisma migrate dev` did: `db update` takes the prototyping job, and `migration plan` plus `db migrate` take the reviewed-migration job.
+[`db update`](/cli/db-update) replaces `prisma db push`. `prisma migrate dev` is split in two: use `db update` to try changes quickly, and `migration plan` then `db migrate` to write and apply a migration.
 
 `db update` compares the live database with the emitted contract and applies the difference directly, with no migration file. It then signs the database. When the connection comes from `prisma.config.ts`, it also points the `db` ref at the new contract hash. `--dry-run` shows what it would change, and it asks before an operation that would destroy data.
 
