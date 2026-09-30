@@ -15,14 +15,15 @@ export function DatabaseSwitcher() {
   const { database, availableDatabases, selectDatabase } = useDatabaseSelection();
   if (availableDatabases.length < 2) return null;
 
-  const selected = database ?? availableDatabases[0];
-  const label = DATABASES.find(({ id }) => id === selected)!.label;
+  const label = DATABASES.find(({ id }) => id === database)?.label ?? "Select database";
 
   return (
     <div className="flex flex-col gap-1.5">
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label={`Select example database, currently ${label}`}
+          aria-label={
+            database ? `Select example database, currently ${label}` : "Select example database"
+          }
           className="group flex w-full cursor-pointer items-center gap-2.5 rounded-full border border-stroke-neutral bg-fd-background px-3.5 py-2 text-sm font-medium text-fd-foreground transition-colors hover:bg-fd-accent motion-reduce:transition-none"
         >
           <DatabaseIcon className="size-4 shrink-0 text-fd-primary" aria-hidden="true" />
@@ -34,7 +35,7 @@ export function DatabaseSwitcher() {
           className="min-w-(--radix-dropdown-menu-trigger-width) rounded-(--radius-square-high) border-stroke-neutral"
         >
           <DropdownMenuRadioGroup
-            value={selected}
+            value={database ?? ""}
             onValueChange={(value) => {
               const database = normalizeDatabase(value);
               if (database) selectDatabase(database);
@@ -48,7 +49,7 @@ export function DatabaseSwitcher() {
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      {!availableDatabases.includes(selected) && (
+      {database && !availableDatabases.includes(database) && (
         <p className="px-1 text-xs text-fd-muted-foreground">
           {label} examples aren’t available here.
         </p>
