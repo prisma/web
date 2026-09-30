@@ -69,7 +69,9 @@ export const docs = defineDocs({
     },
   },
   meta: {
-    schema: metaSchema,
+    schema: metaSchema.extend({
+      hiddenPages: z.array(z.string()).optional(),
+    }),
   },
 });
 

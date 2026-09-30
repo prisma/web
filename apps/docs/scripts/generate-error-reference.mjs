@@ -5,7 +5,7 @@
 //   node scripts/generate-error-reference.mjs [--target orm|cli] [--source <path-to-error-reference.md>]
 //
 // Targets:
-//   orm (default)  prisma/prisma       -> content/docs/orm/reference/error-reference.mdx
+//   orm (default)  prisma/orm          -> content/docs/orm/reference/error-reference.mdx
 //   cli            prisma/prisma-cli   -> content/docs/cli/error-reference.mdx
 //
 // Without --source, the file is fetched from raw.githubusercontent.com.
@@ -94,12 +94,12 @@ const CLI_PAGE = "[CLI error reference](/cli/error-reference)";
 
 export const TARGETS = {
   orm: {
-    sourceRepo: "prisma/prisma",
+    sourceRepo: "prisma/orm",
     output: join(HERE, "../content/docs/orm/reference/error-reference.mdx"),
     applyNamingStandard: applyOrmNamingStandard,
     hostedIntro:
       "When an error prints a `docsUrl`, that link opens the code's entry on this page. " +
-      "This page is generated from the `prisma/prisma` repository.",
+      "This page is generated from the `prisma/orm` repository.",
     scope:
       "This page lists the codes from the Prisma ORM commands, which start with `prisma contract`, " +
       "`prisma db`, `prisma migration`, and `prisma orm`, and the codes your app can raise at runtime, " +

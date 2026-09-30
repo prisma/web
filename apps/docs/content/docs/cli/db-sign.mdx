@@ -8,7 +8,7 @@ metaDescription: Learn how to sign a database once it matches the current Prisma
 
 `db sign` verifies that the live database satisfies the emitted contract and, if so, writes or updates the database signature. The signature records that this database instance matches a specific contract version.
 
-It is idempotent and safe to run in CI or a deployment pipeline. Use it after importing or inferring an existing schema, or after a deployment flow that already applied the required database changes.
+It is safe to run more than once, and safe to run in CI or a deployment pipeline. Use it after importing or inferring an existing schema, or after a deployment flow that already applied the required database changes.
 
 After a successful signature, `db sign` also stores the signed contract as a snapshot and points the [ref](/cli/migration-ref) named `db` at it, so the next [`migration plan`](/cli/migration-plan) starts from the state you just signed instead of from an empty database. Unlike `db init` and `db update`, passing `--db` does not turn this off, because you normally sign the real database. Pass `--no-advance-ref` when you do not want the command to write a ref or a snapshot, for example in a deployment pipeline.
 
@@ -22,13 +22,17 @@ npx prisma db sign --db "$DATABASE_URL"
 
 | Argument or option | What it does |
 | --- | --- |
-| `[contract]` | Signs against a specific contract reference (hash, prefix, ref name, or migration directory name) instead of the emitted contract. |
+| `[contract]` | Signs against a specific contract state instead of the emitted contract. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). |
 | `--db <url>` | Connects to the database. |
-| `--contract <contract>` | The contract reference as a flag. Also accepts the `<dir>^` and `./path` forms that the positional argument does not. |
+| `--contract <contract>` | The same value as `[contract]`, passed as an option in place of the argument. |
 | `--advance-ref <name>` | Advances this ref instead of `db` after a successful signature. |
 | `--no-advance-ref` | Signs without writing any ref or snapshot. Cannot be combined with `--advance-ref`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. It includes `advancedRef` with the ref name and contract hash, or `null` when no ref was written. |
+
+### Contract references [#contract-references]
+
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
 
 ## Exit codes
 
@@ -61,7 +65,7 @@ The plan starts from the signed contract, so it contains only the change you mad
 
 Use `db sign` only after you believe the live database already matches the emitted contract. It is common after:
 
-- `contract infer` for a brownfield database
+- `contract infer` for an existing database
 - a manually reviewed migration flow
 - a database restore that you need to mark as matching the current contract
 

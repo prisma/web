@@ -6,7 +6,9 @@ metaTitle: db migrate | Prisma ORM CLI
 metaDescription: Learn how to apply pending Prisma ORM on-disk migrations with the db migrate command.
 ---
 
-`db migrate` applies pending on-disk migrations to advance the database. It walks every contract space (app and extensions) and applies migrations in canonical order: extensions alphabetically, then the app. It applies only the migrations that exist on disk and never generates new operations.
+`db migrate` applies pending on-disk migrations to advance the database. It walks every contract space and applies migrations in canonical order: extensions alphabetically, then the app. It applies only the migrations that exist on disk and never generates new operations.
+
+Prisma ORM keeps one migration history for your own models, called the `app` space, in `migrations/app/`, and one for each [extension package](/orm/extensions/using-extensions) that ships its own migrations, such as pgvector. Each of these histories is a [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page).
 
 Use it from a controlled deployment step after reviewing migration packages.
 
@@ -21,12 +23,18 @@ npx prisma db migrate --db "$DATABASE_URL"
 | Option | What it does |
 | --- | --- |
 | `--db <url>` | Connects to the database. |
-| `--to <contract>` | Applies migrations up to a target contract (hash, prefix, ref name, migration directory name, `<dir>^`, or `./path`). |
+| `--to <contract>` | Applies migrations up to a target contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). With `--show`, it also accepts the tokens [`@contract`](#contract-references) and [`@empty`](#contract-references). |
 | `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-apply marker after success. |
 | `--show` | Previews the migration route without applying (read-only). |
-| `--from <contract>` | Sets the from-state for the `--show` preview: `@contract` (the emitted contract), `@db` (the database's current marker), a hash, a ref name, or a migration directory. |
+| `--from <contract>` | Use it with `--show`, where it sets the starting state for the preview. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
+
+### Contract references [#contract-references]
+
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+
+`@contract` names the contract in `contract.json`, which `contract emit` writes. The database stores a marker, a row that says which contract state it matches. `@db` names that state. `@empty` names the empty database, before any migration.
 
 ## Recommended flow
 
