@@ -1,112 +1,95 @@
 ---
 title: Prisma ORM
-description: 'Prisma ORM 8 is the next major version, with a TypeScript runtime, contract-based data models, a new query API, and a revised migration workflow.'
+description: 'Prisma ORM is a typed data layer for TypeScript, with typed queries and migrations for PostgreSQL, MongoDB, and SQLite.'
 url: /orm
 metaTitle: What is Prisma ORM?
-metaDescription: 'Prisma ORM 8 is the next major version. It introduces a TypeScript runtime, contract-based data models, a new query API, and a revised migration workflow.'
+metaDescription: 'Prisma ORM is a typed data layer for TypeScript. You describe your data in a contract, and Prisma ORM gives you typed queries and migrations for PostgreSQL, MongoDB, and SQLite.'
 ---
 
-Prisma ORM 8 rewrites Prisma ORM in TypeScript. The schema-first workflow and model-first queries from earlier versions stay, but what changes is what your schema produces and how queries run. This page gives you the mental model, and the [quickstart](/prisma-orm/quickstart/postgresql) gets you to a running query.
+Prisma ORM is the library your TypeScript app uses to read and write its database. You describe your data in a contract, which is the file that holds your models, and Prisma ORM gives you typed queries and migrations for it. If you know Prisma ORM 7, the contract takes the place of `schema.prisma`, and the queries have a new shape, which the example below shows.
 
-:::note[Using Prisma ORM 7?]
+Prisma ORM 8 is a release candidate, not yet a final release, and it is what `npm install prisma` gives you today. It supports PostgreSQL. MongoDB is in early access, so some of what works on PostgreSQL is missing on it. SQLite ships as an experimental package, `@prisma/orm-sqlite`. MySQL, SQL Server, and CockroachDB come later, and until then Prisma ORM 7 supports them. [Supported databases](/orm/supported-databases) says what early access and experimental mean, and what works on each database.
 
-Prisma ORM 8 is the current release, as a release candidate. Prisma ORM 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
+Here is a contract with two models, a query that reads them, and what the query prints. The first line of the contract, `// use prisma-8`, is required, and the setup commands write it for you. `db` is exported from `src/prisma/db.ts`, which reads `DATABASE_URL` and creates the client. For a new app, `npm create prisma@latest` writes both files. For an app you already have, `npx prisma@latest orm init` writes them. Run the query file with `npx tsx index.ts`.
 
-For what release candidate means, when the final release is expected, and how to stay on version 7, see [Release status](/orm/release-status). For the Prisma ORM 8 name of every Prisma ORM 7 API, see [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7).
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
 
-:::
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  posts Post[]
+}
 
-## Your schema becomes a contract
-
-You still author models in a Prisma schema file (or in TypeScript), but instead of generating a client package, Prisma ORM emits the schema as a **contract**: a JSON document plus TypeScript types that your application, the migration tools, and coding agents all read. The contract is a plain artifact you can inspect and diff.
-
-The workflow has three steps:
-
-1. **Author your schema**: define your models in a Prisma schema (`.prisma`) or directly in TypeScript.
-2. **Emit the contract**: a lightweight build step turns the schema into a deterministic JSON contract plus TypeScript types.
-3. **Query with a composable DSL**: write queries inline against the typed contract. Each query compiles to a verifiable plan at runtime, with no hidden client methods.
-
-## What changed for developers
-
-- **Better queries**: simpler nested queries, custom collection methods on your models, results you can iterate a record at a time, and a low-level type-safe SQL builder when you need raw control.
-- **Extensible by design**: a minimal core exposed through a public SPI. Everything around it, including Postgres support itself, is an extension, so you can add databases, query builders, data types, and middleware.
-- **Rethought migrations**: [graph-based migrations](/orm/migrations/the-migration-graph) that resolve branch conflicts automatically and make partial failures safe to retry, with both schema and data migrations written in TypeScript and validated against your contract.
-- **AI-agent friendly**: the contract is machine-readable and each query produces an inspectable plan, which gives coding agents something concrete to check their work against. The installers also register agent skills for your editor's AI assistant.
-
-### Supported databases
-
-Prisma ORM ships first-class support for **PostgreSQL** (the primary target), **MongoDB**, and **SQLite** (`@prisma/orm-sqlite`). **MySQL** support is planned next.
-
-## Get started
-
-Scaffold a new project in one command:
-
-```npm
-npm create prisma@latest
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId Int
+}
 ```
 
+```typescript title="index.ts"
+import { db } from "./src/prisma/db";
+
+const users = await db.orm.public.User.include("posts").all();
+console.dir(users, { depth: null });
+
+await db.close();
+```
+
+```text title="Output" no-copy
+[
+  {
+    email: 'alice@example.com',
+    id: 1,
+    name: 'Alice',
+    posts: [
+      { authorId: 1, id: 1, title: 'Hello, world' },
+      { authorId: 1, id: 2, title: 'Second post' }
+    ]
+  },
+  { email: 'bob@example.com', id: 2, name: 'Bob', posts: [] }
+]
+```
+
+Every field in the result is typed from the contract, down to each post's `title`. `db.orm` holds the typed queries for your models, and `public` is the PostgreSQL schema the table is in, which is the default one unless you created another. After you change the contract, run `npx prisma contract emit`. It replaces `prisma generate`, and there is no `@prisma/client` package: your code imports `db` from `src/prisma/db.ts`.
+
+## Start here
+
+Pick the page that matches where you are starting from. Each page uses PostgreSQL and links its MongoDB version.
+
 <Cards>
-  <Card href="/prisma-orm/quickstart/postgresql" title="Quickstart with PostgreSQL" icon={<Rocket className="text-primary" />}>
-    Scaffold a Prisma ORM app with PostgreSQL, seed it, and run your first query.
+  <Card href="/prisma-orm/quickstart/postgresql" title="I'm creating a new app" icon={<Rocket className="text-primary" />}>
+    Create an app from a template and run your first query.
   </Card>
-  <Card href="/prisma-orm/add-to-existing-project/postgresql" title="Add to an existing project" icon={<FolderPlus className="text-primary" />}>
-    Add Prisma ORM to an existing app with the `orm init` command.
+  <Card href="/prisma-orm/quickstart/existing-app/postgresql" title="I have an app, but no database yet" icon={<FolderPlus className="text-primary" />}>
+    Add Prisma ORM to your app, create the tables, and apply your first migration.
   </Card>
-  <Card href="/" title="The full stack path" icon={<Milestone className="text-primary" />}>
-    Prisma ORM with Prisma Postgres and a Prisma Compute deploy, with guide and agent options.
+  <Card href="/prisma-orm/add-to-existing-project/postgresql" title="I have a database already" icon={<Database className="text-primary" />}>
+    Write the contract from the tables you have, then make your first change to the tables as a migration.
+  </Card>
+  <Card href="/guides/upgrade-prisma-orm/postgresql" title="I have a Prisma 7 app" icon={<Milestone className="text-primary" />}>
+    Install Prisma ORM 8 next to Prisma ORM 7 in the same app, against the same database, and move one part of the app at a time.
   </Card>
 </Cards>
 
-## Go deeper
+## What you can do with Prisma ORM
 
-<Cards>
-  <Card
-    href="/orm/fundamentals/reading-data"
-    title="Learn the fundamentals"
-    icon={<BookOpen className="text-primary" />}
-  >
-    Read, write, and relate data with the ORM, run transactions, and reach for
-    advanced queries when you need them.
-  </Card>
-  <Card
-    href="/orm/contract-authoring/the-data-contract"
-    title="The data contract"
-    icon={<FileJson className="text-primary" />}
-  >
-    Learn how your schema becomes a verifiable contract, authored in PSL or
-    TypeScript.
-  </Card>
-  <Card
-    href="/cli"
-    title="CLI reference"
-    icon={<Database className="text-primary" />}
-  >
-    The contract, database, and migration commands in the Prisma ORM CLI.
-  </Card>
-  <Card
-    href="/studio/prisma-next"
-    title="See your migrations in Studio"
-    icon={<Palette className="text-primary" />}
-  >
-    Read your applied migration history in Prisma Studio: a visual diff, the
-    executed SQL, and a schema diff per migration.
-  </Card>
-  <Card
-    href="/prisma-compute/deploy"
-    title="Deploy the application"
-    icon={<Cpu className="text-primary" />}
-  >
-    Deploy your Prisma ORM app to Prisma Compute, next to your
-    Prisma Postgres database.
-  </Card>
-</Cards>
+- [Model your data](/orm/data-modeling): describe your models, their fields, and how they relate to each other.
+- [Read and write data](/orm/fundamentals/reading-data): fetch, filter, sort, and paginate records, then create, update, and delete them.
+- [Query relations](/orm/fundamentals/relations-and-joins): read related records in the same query with `.include(...)`.
+- [Run transactions](/orm/fundamentals/transactions): make several writes succeed or fail together.
+- [Migrate your database](/orm/migrations/how-migrations-work): after you change the contract and run `npx prisma contract emit`, `npx prisma migration plan` writes the migration for you to review. `npx prisma db migrate` then applies it. The two commands take the place of `prisma migrate dev`.
+- [Add middleware](/orm/middleware/how-middleware-works): run your own code before and after every query, for example to log each query. It takes the place of both `$use` and `$extends`.
+- [Use extensions](/orm/extensions/using-extensions): add PostgreSQL features such as vector search, geospatial data, and full-text search. These are database extensions, not the `$extends` of Prisma ORM 7.
+- [Use the CLI](/cli): run the `npx prisma` commands for your contract, your database, and your migrations.
 
-## Learn more about the design of Prisma ORM
+## Coming from Prisma ORM 7
 
-The thinking behind Prisma ORM is documented on the [Prisma blog](https://www.prisma.io/blog). Start with these:
+[Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) is a lookup table: what each Prisma ORM 7 schema attribute, command, and query is called in Prisma ORM 8. To move a running app, follow "I have a Prisma 7 app" above instead, and use the table while you do.
 
-- **[The Next Evolution of Prisma ORM](https://www.prisma.io/blog/the-next-evolution-of-prisma-orm)**: why Prisma is being rebuilt, with a tour of the new query API, extensibility model, migrations, and AI-friendly design.
-- **[Rethinking Database Migrations](https://www.prisma.io/blog/rethinking-database-migrations)**: how graph-based migrations replace timestamp ordering with schema state hashes.
-- **[Prisma 8 Is ~90% As Fast as Raw PG](https://www.prisma.io/blog/prisma-next-performance-benchmark)**: benchmarks against the raw PostgreSQL driver.
+## Release status
 
-The full series also covers [TypeScript migrations](https://www.prisma.io/blog/typescript-migrations-in-prisma-next), [data migrations](https://www.prisma.io/blog/data-migrations-in-prisma-next), [the extension API](https://www.prisma.io/blog/prisma-next-call-for-extension-authors), the [roadmap](https://www.prisma.io/blog/prisma-next-roadmap), and the [early-access launch](https://www.prisma.io/blog/prisma-next-early-access-write-your-contract-prompt-your-agent-ship-your-app). The source lives on [GitHub](https://github.com/prisma/orm).
+`npm install prisma` gives you Prisma ORM 8 today. If your app is on Prisma ORM 7 and you want to stay there, lock `prisma` and `@prisma/client` to version 7 in `package.json`, as [Release status](/orm/release-status) shows. That page also has the date of the final release and how long Prisma ORM 7 stays supported after it.
