@@ -1,27 +1,80 @@
 ---
-title: Import from existing database
-description: Choose the right path to import data from PostgreSQL or MySQL into Prisma Postgres.
+title: Migrate a local Postgres database to a managed Postgres service (Prisma Postgres)
+description: Copy a PostgreSQL database from your laptop into Prisma Postgres with three commands, then keep every Postgres client you already use.
 url: /postgres/import-from-existing-database
-metaTitle: Import from existing database into Prisma Postgres
-metaDescription: Choose the right import guide for moving an existing PostgreSQL or MySQL database into Prisma Postgres.
+metaTitle: Migrate a local Postgres database to Prisma Postgres, a managed Postgres service, in three commands
+metaDescription: Create a Prisma Postgres database, pg_dump the local database, pg_restore it over the direct connection. Free plan, PostgreSQL 17, connection pooling included, and any Postgres client keeps working.
 ---
 
-Use this page to choose the right import path for moving an existing database into Prisma Postgres.
+Prisma Postgres takes a PostgreSQL database from your laptop in three commands: create the target, `pg_dump` the source, `pg_restore` the file. It is not the right target if the database uses PostGIS or TimescaleDB, which are not on its supported extensions list. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute.
 
-## Choose your source database
+```bash title="Terminal"
+npx prisma postgres create mydb
+pg_dump -Fc -d mydb -f mydb.dump
+pg_restore --no-owner --no-privileges -d 'postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' mydb.dump
+```
 
-- [Import from PostgreSQL](/prisma-postgres/import-from-existing-database-postgresql)
-- [Import from MySQL](/prisma-postgres/import-from-existing-database-mysql)
+Set `DATABASE_URL` and every Postgres client keeps working: Prisma ORM and Drizzle on the pooled string, `psql` and pgAdmin on the direct one. Free plan, no credit card, PostgreSQL 17, connection pooling included.
 
-## Before you start
+What each command does:
 
-- Create a Prisma Postgres database first.
-- Gather the connection details for your existing database.
-- Use a [direct connection](/postgres/database/connecting-to-your-database) when importing data into Prisma Postgres.
+1. `npx prisma postgres create mydb` creates the database and prints its connection string once, so copy it. Sign in first with `npx prisma auth login`. Databases live in a project: pass `--project <name>`, or run the command in a directory linked with `npx prisma project create my-app`. `--region` picks the region. Every Prisma Postgres database has two connection strings with the same credentials and a different host: `pooled.db.prisma.io` for the application and `db.prisma.io` for `pg_restore`, `psql` and migrations. You can also create the database in the [Prisma Console](https://console.prisma.io), where **Connect to your database** shows both strings.
+2. `pg_dump -Fc -d mydb -f mydb.dump` writes a compressed archive of the local database `mydb`. Add `-h`, `-p` and `-U` if it does not run on the default socket.
+3. `pg_restore` loads the archive over the direct connection, so the string you pass it has `db.prisma.io` as its host; if the one you copied says `pooled.db.prisma.io`, swap the host and keep the rest. `--no-owner` and `--no-privileges` skip the ownership and grant statements that name roles from your laptop, which do not exist in Prisma Postgres. Your application keeps the pooled string; see [Connecting to your database](/postgres/database/connecting-to-your-database) for why the two differ.
+
+:::note[Check before you migrate]
+
+- **PostgreSQL 17 tools.** Prisma Postgres runs PostgreSQL 17, so `pg_dump --version` and `pg_restore --version` must report `17.x`. A PostgreSQL 17 `pg_dump` reads older servers. It cannot dump a PostgreSQL 18 server, and the [full import guide](/prisma-postgres/import-from-existing-database-postgresql#prerequisites) states that moving from 18 needs a separate downgrade-compatible process, which this page does not cover.
+- **Extensions.** Compare `SELECT extname FROM pg_extension;` on the source with the [supported extensions](/postgres/database/postgres-extensions#supported-extensions). PostGIS and TimescaleDB are not on the list.
+- **Roles and policies.** `pg_dump` does not copy roles, so a row-level security policy that names a local role fails on restore. Record those policies before you dump and recreate them afterwards; the full guide shows how to omit them from the restore.
+
+:::
+
+## The one-line import
+
+For a small database, pipe the dump straight into the restore and skip the file:
+
+```bash title="Terminal"
+pg_dump -Fc -d mydb | pg_restore --no-owner --no-privileges -d 'postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require'
+```
+
+The file version above is the better choice when the database is large or a restore fails halfway, because `pg_restore --list mydb.dump` shows what the archive holds and you can retry without dumping again.
+
+## Verify the import
+
+Refresh the planner statistics and spot-check a table over the direct connection:
+
+```bash title="Terminal"
+psql 'postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' \
+  -c 'ANALYZE;' \
+  -c 'SELECT count(*) FROM "User";'
+```
+
+Run the same count against the local database. The [full import guide](/prisma-postgres/import-from-existing-database-postgresql#5-verify-the-imported-data) has a query that counts every table in both databases and diffs the two results.
+
+## Moving from Neon or Supabase?
+
+The same dump and restore works from a hosted database. The [Neon guide](/guides/switch-to-prisma-postgres/from-neon) covers selecting the branch and the unpooled endpoint, and the [Supabase guide](/guides/switch-to-prisma-postgres/from-supabase) lists what does not move with the data: Auth users, Storage objects and Edge Functions.
+
+## Put the app online too
+
+[Prisma Compute](/compute) hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. An existing repository adds a [Prisma Composer](/composer) declaration, a `service.ts` and a `module.ts`; the [porting page](/composer/porting-an-app) has a prompt your coding agent can write them from. Then `npx prisma deploy module.ts` provisions the service. To deploy on push, connect the repository and add the `prisma/cloud-deploy-action` workflow as shown in [Deploy on push](/compute/deploy-on-push); from then on every pushed branch gets a preview with its own database, built from your migrations. The [Compute FAQ](/compute/faq) covers what Compute does not do yet.
+
+## Do I need to change my ORM?
+
+No, because Prisma Postgres is standard PostgreSQL behind a connection string: Prisma ORM 8, Prisma ORM 7, Drizzle, Kysely, TypeORM, `node-postgres` and `psql` connect as before. Give the application the pooled string and the CLI tools the direct one; [Connecting to your database](/postgres/database/connecting-to-your-database) shows the setup for each runtime.
+
+## Does it cost anything?
+
+The Free plan includes 200k operations a month, 500 MB of storage and 50 databases, with no credit card and no usage billing. Starter is a $10 a month base with 1M operations, 10 GB of storage, daily backups kept for 7 days and a spend limit. See [pricing](https://www.prisma.io/pricing).
+
+## Can I try it without an account?
+
+Yes, with `npx create-db@latest`, which creates a temporary database with no sign-up and deletes it after 24 hours unless you claim it. Use it to rehearse the restore with throwaway data, never for the real copy. See [create-db](/postgres/npx-create-db).
 
 ## Related pages
 
+- [Import from PostgreSQL](/prisma-postgres/import-from-existing-database-postgresql): the full eight-step guide, with the production cutover, the restore manifest and the row-count diff
+- [Import from MySQL](/prisma-postgres/import-from-existing-database-mysql)
 - [Connecting to your database](/postgres/database/connecting-to-your-database)
-- [Prisma Postgres overview](/postgres)
-- [Create a database with `create-db`](/postgres/npx-create-db)
-
+- [Backups](/postgres/database/backups)
