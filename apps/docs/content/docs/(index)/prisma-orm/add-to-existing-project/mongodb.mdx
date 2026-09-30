@@ -1,14 +1,18 @@
 ---
-title: MongoDB
-description: Add Prisma ORM to an existing MongoDB project.
+title: Add Prisma ORM to an existing MongoDB database
+description: Add Prisma ORM to an app whose MongoDB database already has collections.
 url: /prisma-orm/add-to-existing-project/mongodb
 metaTitle: Add Prisma ORM to an existing MongoDB project
 metaDescription: Add Prisma ORM to an existing MongoDB project.
 ---
 
-To add Prisma ORM to a project that already uses MongoDB, you will run `orm init`, describe the collections you want to work with, emit the generated artifacts, and run a couple of queries.
+This page uses MongoDB. [Use PostgreSQL instead](/prisma-orm/add-to-existing-project/postgresql).
 
-Use this path when you already have an application and database. Make sure the app can already reach its MongoDB deployment and runs on Node.js 22.18 or newer (on the 24 line, 24.11 or newer; Node.js 24 is recommended). If you want Prisma ORM to create a new app for you, use the [MongoDB quickstart](/prisma-orm/quickstart/mongodb).
+On this page you add Prisma ORM to an app whose MongoDB database already has collections. You run `orm init`, write a contract that describes your collections, and run two queries. The contract is the file that holds your models. In earlier Prisma ORM versions, it was `schema.prisma`.
+
+Your app must reach its MongoDB database and run on Node.js 22.18 or newer. A single `mongod` server is enough. You need a replica set only for transactions and change streams, and MongoDB Atlas already runs one.
+
+If your database has no collections yet, follow [Add Prisma ORM and MongoDB to an existing app](/prisma-orm/quickstart/existing-app/mongodb) instead, which creates the collections for you. If you want Prisma ORM to create a new app for you, follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb).
 
 :::note[Using Prisma ORM 7?]
 
@@ -18,78 +22,77 @@ For what release candidate means, when the final release is expected, and how to
 
 :::
 
-A standalone `mongod` is enough for the steps below. A replica set is only needed for transactions and change streams; MongoDB Atlas already gives you one.
+## 1. Install `tsx`
 
-## 1. Make sure you can run the example script
-
-If your project already runs TypeScript scripts, you can skip this step.
-
-Otherwise, install the script tooling:
+The scripts on this page run with `tsx`. If your project does not have it, install it:
 
 ```npm
 npm install --save-dev tsx typescript
 ```
 
-Later, `orm init` will also add the Node.js types it needs and make sure the generated Prisma ORM files can run as ES modules. If your project already declares `"type": "commonjs"`, Prisma ORM leaves that choice alone and prints a warning so you can decide how to wire the generated helper into your app.
-
 ## 2. Initialize Prisma ORM
 
-From the root of your existing project, run:
+The `orm init` command below changes your `tsconfig.json` and your `package.json`. In `tsconfig.json`, it sets `module` to `preserve` and `moduleResolution` to `bundler`. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
+
+From the root of your project, run:
 
 ```npm
-npx prisma@latest orm init --target mongodb
+npx prisma@latest orm init --yes --target mongodb --authoring psl --write-env
 ```
 
-This is the existing-project path. It preselects MongoDB, adds Prisma ORM files and package scripts to the app you already have, and does not scaffold a new framework project.
+`prisma@latest` runs Prisma ORM 8, and `--target mongodb` picks MongoDB. `--authoring psl` picks PSL, the Prisma Schema Language, which is the `.prisma` file format you know from earlier Prisma ORM versions. `--write-env` writes a `.env` file, unless you already have one. `--yes` accepts the default answer to every question, so the command asks nothing.
 
-It also adds `prisma-8.md`, a short project-level reference your coding agent can read. It does not install agent skills; the Prisma ORM skill ships inside the `@prisma/orm-mongo` package your project installs. If you later run `prisma init` or `prisma skills sync`, Prisma writes skill files for coding agents into your repo. To stop that, pass `--skills=none` to [`init`](/cli/init) or set the [`skills.agents`](/cli/configuration#agent-skills) config field to `[]`; the next [`skills sync`](/cli/skills) removes any copies already written.
+The command installs the Prisma ORM packages and writes its files. You use three of them on this page:
 
-When Prisma ORM asks the remaining setup questions:
+- `src/prisma/contract.prisma`, an example contract. In step 4 you change it to describe your collections.
+- `src/prisma/db.ts`, the file your code imports to run queries.
+- `.env`, which holds the connection string.
 
-- choose `PSL`
-- keep the default schema path, `src/prisma/contract.prisma`. Pass `--schema-path` if you want the contract somewhere else; the rest of this page assumes the default.
-- answer the last question, `Also write a .env file from .env.example? (gitignored)`, with Yes. It defaults to No, and `--write-env` skips the prompt and writes the file.
+The command also writes `prisma-8.md`, a short reference for writing queries. You do not need it for this page.
+
+From now on, every `prisma` command ends with the line `Prisma agent skills are out of date`. You can ignore it, because it does not change what the command does. Agent skills are instruction files that AI coding tools read, and the line appears because your project has none yet. To add them and stop the line, run [`npx prisma@latest init`](/cli/init). In Prisma ORM 8, `init` adds the skills and a `postinstall` script that keeps them up to date, and it leaves your contract and your `.env` alone. `orm init` is the command that sets up Prisma ORM.
 
 ## 3. Set your database connection string
 
-`orm init` always writes `.env.example`, and writes `.env` only if you asked it to. Put the connection string for the MongoDB deployment your app already uses into `.env`:
+If you had no `.env`, `orm init` wrote one with a placeholder, `DATABASE_URL="mongodb://user:password@localhost:27017/mydb"`. Set `DATABASE_URL` in `.env` to the connection string of the database your app already uses:
 
 ```text title=".env"
-DATABASE_URL="mongodb://127.0.0.1:27017/app?replicaSet=rs0"
+DATABASE_URL="mongodb://username:password@host:27017/database"
 ```
 
-`orm init` also writes `src/prisma/db.ts`, the file your application imports. It builds the Prisma ORM client from the emitted contract and reads the connection string from the environment:
+The part after the last `/`, and before any `?`, is the name of the database.
+
+`orm init` wrote `src/prisma/db.ts`, and you do not need to change it:
 
 ```typescript title="src/prisma/db.ts"
-import "dotenv/config";
-import mongo from "@prisma/orm-mongo/runtime";
-import type { Contract } from "./contract.d";
-import contractJson from "./contract.json" with { type: "json" };
+import 'dotenv/config';
+import mongo from '@prisma/orm-mongo/runtime';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
 
 export const db = mongo<Contract>({
   contractJson,
-  url: process.env["DATABASE_URL"]!,
+  url: process.env['DATABASE_URL']!,
 });
 ```
 
-The first line is `import "dotenv/config"`, so any script that imports `db` loads `.env` for itself. You do not need to pass the URL again at the call site.
+The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports are written by `contract emit` in step 5.
 
-## 4. Describe the collections you want Prisma ORM to know about
+## 4. Describe your collections in the contract
 
-This is the key adoption step for MongoDB, because you decide which part of the existing database Prisma ORM should model first.
+Prisma ORM cannot read a MongoDB database to write the contract for you, so you write it yourself. Describe only the collections that your code reads and writes through Prisma ORM. The other collections stay as they are.
 
-PostgreSQL has `contract infer`. MongoDB does not, so this step is manual.
-
-Open `src/prisma/contract.prisma` and make it match the collections you want Prisma ORM to query first. If your existing database already has `users` and `posts` collections with `email`, `name`, `title`, and `authorId`, the starter contract is already a useful first draft:
+The example contract in `src/prisma/contract.prisma` describes a `users` collection and a `posts` collection:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
 
 model User {
-  id    ObjectId @id @map("_id")
-  email String   @unique
-  name  String?
-  posts Post[]
+  id       ObjectId @id @map("_id")
+  email    String   @unique
+  username String?
+  name     String?
+  posts    Post[]
   @@map("users")
 }
 
@@ -103,25 +106,25 @@ model Post {
 }
 ```
 
-You do not need to model every collection on day one. Start with the part of the database you want to read and write first.
+Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `@@map("users")` names the collection that stores the model. MongoDB stores the identifier of every document in `_id`. On MongoDB, `contract emit` names each field in `contract.json` by the name in its `@map`, so in queries and in results you use `_id`, not `id`. The same goes for any other field with `@map`.
 
-## 5. Emit the generated artifacts
+Change the models to match your documents: one model for each collection, with one field for each field of its documents. [Data modeling](/orm/data-modeling) lists the field types.
 
-Once the contract looks right, this step turns it into the generated files the runtime and query APIs use.
+## 5. Generate the files your code imports
 
-Run:
+`contract emit` takes the place of `prisma generate`, and you run it after every change to the contract:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
-This refreshes `src/prisma/contract.json` and `src/prisma/contract.d.ts` so the runtime and query APIs match the contract you just reviewed.
+The command writes `src/prisma/contract.json` and `src/prisma/contract.d.ts`, and `db.ts` imports both of them. Commit them, because your app cannot run without them.
 
-## 6. Run a simple high-level query
+## 6. Query a collection with `db.orm`
 
-With the emitted artifacts in place, you can test the higher-level API first and confirm Prisma ORM can read the existing collections.
+`db.orm` queries your models, the way Prisma Client did in earlier Prisma ORM versions. On MongoDB you reach a model by the name of its collection, which is the name in `@@map`. So the `User` model is `db.orm.users`.
 
-Create a `script.ts` file:
+Create `script.ts` with the code below, and put your own names in it: replace `users` with the name of one of your collections, and replace `email` and `existing@example.com` with a field and a value from its documents.
 
 ```typescript title="script.ts"
 import { db } from "./src/prisma/db";
@@ -145,11 +148,20 @@ Run it:
 npx tsx script.ts
 ```
 
-## 7. Run a simple low-level query
+```text no-copy
+{
+  username: undefined,
+  _id: '6abca6a1e7a9bb8d8c716f65',
+  email: 'existing@example.com',
+  name: 'Existing User'
+}
+```
 
-After the ORM example, this step shows the lower-level MongoDB pipeline builder against the same existing collections.
+The document has no `username` field, so the result shows it as `undefined`. If no document matches, the script prints `null`.
 
-Pipeline plans run through the runtime. On MongoDB `db.runtime()` returns a promise, so it has to be awaited; on PostgreSQL the same call is synchronous.
+## 7. Query a collection with a pipeline
+
+`db.query` builds a MongoDB aggregation pipeline on a collection, which it names as it is stored in MongoDB. `.build()` returns the pipeline, and `runtime.query()` runs it, where `runtime` is the object that `await db.runtime()` returns. Replace `users`, `email`, and the value with your own again.
 
 Replace `script.ts` with this version:
 
@@ -158,13 +170,13 @@ import { db } from "./src/prisma/db";
 
 async function main() {
   const runtime = await db.runtime();
-  const plan = db.query
+  const query = db.query
     .from("users")
     .match((fields) => fields.email.eq("existing@example.com"))
     .project("email", "name")
     .build();
 
-  const rows = await runtime.query(plan);
+  const rows = await runtime.query(query);
   console.log(rows);
 
   await db.close();
@@ -182,12 +194,18 @@ Run it again:
 npx tsx script.ts
 ```
 
-## 8. Next steps
-
-When you change `src/prisma/contract.prisma`, emit the contract again:
-
-```npm
-npx prisma@latest contract emit
+```text no-copy
+[
+  {
+    email: 'existing@example.com',
+    name: 'Existing User',
+    _id: '6abca6a1e7a9bb8d8c716f65'
+  }
+]
 ```
 
-You do not need a migration just to read collections that already exist. Use [migration plan](/cli/migration-plan) when you want Prisma ORM to own a schema change.
+## 8. Next steps
+
+When you change `src/prisma/contract.prisma`, run `npx prisma contract emit` again.
+
+You can read and write documents in collections that already exist without a migration. Use [`migration plan`](/cli/migration-plan) when you want Prisma ORM to create or change collections and indexes.

@@ -62,7 +62,7 @@ The `PRISMA_SERVICE_TOKEN` environment variable is set but blank; a blank token 
 
 ### AUTH.SERVICE_TOKEN_REJECTED [#AUTH.SERVICE_TOKEN_REJECTED]
 
-The management API rejected (401) the service token supplied through `PRISMA_SERVICE_TOKEN`; such a token carries no refresh token and can never be renewed, and nothing stored is cleared. Built only through the shared `credentialRejectedError` dispatcher in the engine's API request path — the one place wording differs by credential origin (a stored session with the same failure gets `CLI.CREDENTIALS_REQUIRED` instead). The suggested action is to replace the variable with a valid service token or unset it to fall back to stored sessions. Meta: none.
+The management API rejected (401) the service token supplied through `PRISMA_SERVICE_TOKEN`; such a token carries no refresh token and can never be renewed, and nothing stored is cleared. Built only through the shared `credentialRejectedError` dispatcher in the engine's API request path — the one place wording differs by credential origin (a stored session with the same failure gets `CLI.CREDENTIALS_REQUIRED` instead). `prisma auth whoami` fails with this code too rather than reporting the rejected token as signed in. The suggested action is to replace the variable with a valid service token or unset it to fall back to stored sessions. Meta: none.
 
 ### AUTH.SESSIONS_UNSUPPORTED [#AUTH.SESSIONS_UNSUPPORTED]
 
@@ -74,7 +74,7 @@ A command that needs an active workspace found an authenticated credential that 
 
 ### AUTH.WORKSPACE_AMBIGUOUS [#AUTH.WORKSPACE_AMBIGUOUS]
 
-A user-typed workspace name matched more than one workspace, from two raise sites with different meta: the session-ref resolver behind `prisma auth workspace use`/`logout` when several stored sessions share the name (meta carries `workspaceIds`), and `prisma project transfer` when a `--to-workspace` reference matches several authenticated workspaces (meta carries `workspaceRef` and `matches`, each match holding `id`, `name`, `credentialWorkspaceId`). Both point the user at `prisma auth workspace list` to retry with an exact workspace id. Meta: `workspaceIds` (workspace commands) or `workspaceRef`, `matches` (project transfer).
+A user-typed workspace name matched more than one workspace, from two raise sites with different meta: the session-ref resolver behind `prisma auth workspace use`/`logout` when several stored sessions share the name (meta carries `workspaceIds` and `sessions`, each session holding `workspaceId` and a nullable `user`), and `prisma project transfer` when a `--to-workspace` reference matches several authenticated workspaces (meta carries `workspaceRef` and `matches`, each match holding `id`, `name`, `credentialWorkspaceId`). Both point the user at `prisma auth workspace list` to retry with an exact workspace id. Meta: `workspaceIds`, `sessions` (workspace commands) or `workspaceRef`, `matches` (project transfer).
 
 ### AUTH.WORKSPACE_NOT_AUTHENTICATED [#AUTH.WORKSPACE_NOT_AUTHENTICATED]
 
@@ -108,7 +108,7 @@ The run's abort signal fired before the command completed — a thrown abort err
 
 ### CLI.AUTH_SERVICE_ERROR [#CLI.AUTH_SERVICE_ERROR]
 
-The authentication service failed transiently while refreshing a stored OAuth session; the stored credentials are left untouched, and the guidance is to retry rather than sign in again, because the credentials themselves were not rejected. Meta: none.
+The authentication service failed transiently while refreshing a stored OAuth session; the stored credentials are left untouched, and the guidance is to retry rather than sign in again, because the credentials themselves were not rejected. `prisma auth whoami` does not fail with this code: it answers from the credential's own claims and reports `verified: false`. Meta: none.
 
 ### CLI.BROWSER_WAIT_TIMEOUT [#CLI.BROWSER_WAIT_TIMEOUT]
 
@@ -129,6 +129,22 @@ The evaluated `prisma.config.ts` default export carries no `$prismaConfig` versi
 ### CLI.CONFIG_NOT_FOUND [#CLI.CONFIG_NOT_FOUND]
 
 The file `--config` named does not exist. Only an explicitly named file is an error — an absent `prisma.config.ts` found by discovery is fine, because section validators own absence and supply defaults. The path is in `where.path`. Meta: none.
+
+### CLI.CONFIG_PARENT_CYCLE [#CLI.CONFIG_PARENT_CYCLE]
+
+A config file's explicit `parent` names a file that is already on the config chain, which would loop forever. Raised by the config loader while following the chain; the declaring file's absolute path is in `where.path` and the summary names both files. The fix is to point `parent` elsewhere or set it to `false`. Meta: none.
+
+### CLI.CONFIG_PARENT_INVALID [#CLI.CONFIG_PARENT_INVALID]
+
+A config file declares `parent` with a value that is neither `false` nor a path string. Raised by the config loader while following the chain; the declaring file's absolute path is in `where.path`. Meta: none.
+
+### CLI.CONFIG_PARENT_NOT_FOUND [#CLI.CONFIG_PARENT_NOT_FOUND]
+
+A config file's explicit `parent` names a file that does not exist. Naming a parent is deliberate, so its absence is an error — unlike discovery, where finding no file is fine. Raised by the config loader while following the chain; the declaring file's absolute path is in `where.path` and the summary names the missing target. Meta: none.
+
+### CLI.CONFIG_FIELD_INVALID [#CLI.CONFIG_FIELD_INVALID]
+
+One field of a config section declared by schema failed that schema: the wrong type, a missing required field, or a value outside the declared set. The summary names the section and the field with arktype's description of the problem; `where.path` is the config file that declared the field's top-level key (so the file to fix on a chain), and `meta.section` and `meta.field` carry the names. Travels as an accompanying diagnostic under `CLI.CONFIG_SECTION_INVALID`. Raised by the engine's schema validation before the handler runs. Meta: `section`, `field`.
 
 ### CLI.CONFIG_SECTION_INVALID [#CLI.CONFIG_SECTION_INVALID]
 
@@ -156,7 +172,7 @@ The advisory lock on the stored-credentials file was held by another prisma proc
 
 ### CLI.CREDENTIALS_REQUIRED [#CLI.CREDENTIALS_REQUIRED]
 
-The command needs a signed-in credential and none is usable. One constructor covers five reasons: not signed in at all, an expired session, a session expiring too soon for a command that hands credentials to a child process (which cannot refresh them), a workspace session that ended mid-run, and workspace sessions held with none selected as current. Raised identically by the engine's needs check, `ctx.activeCredential`, and the request path; next actions point at signing in or `prisma auth workspace use`. Meta: none.
+The command needs a signed-in credential and none is usable. One constructor covers five reasons: not signed in at all, an expired session, a session expiring too soon for a command that hands credentials to a child process (which cannot refresh them), a workspace session that ended mid-run, and workspace sessions held with none selected as current. Raised identically by the engine's needs check, `ctx.activeCredential`, and the request path; next actions point at signing in or `prisma auth workspace use`. When `prisma auth whoami` meets this code during its identity lookup it reports `authenticated: false` with exit `0` instead of failing. Meta: none.
 
 ### CLI.CREDENTIALS_UNREADABLE [#CLI.CREDENTIALS_UNREADABLE]
 

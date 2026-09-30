@@ -11,17 +11,17 @@ import type { McpAgent } from "./_components/mcp-agents-section";
 import type { McpCapability } from "./_components/mcp-capabilities-section";
 import type { McpHeroFeature } from "./_components/mcp-hero-section";
 
-export const PAGE_TITLE = "Prisma MCP Server | Manage Databases with AI Agents";
+export const PAGE_TITLE = "Prisma MCP Server | Manage Databases and Compute with AI";
 export const PAGE_DESCRIPTION =
-  "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents. Works great with Prisma Postgres.";
+  "Manage Prisma Postgres databases, Prisma Compute deployments, and Object Storage from your AI tools with the Prisma MCP server.";
 
 export const DOCS_MCP = "https://www.prisma.io/docs/ai/tools/mcp-server";
 
 export const heroFeatures: McpHeroFeature[] = [
-  { text: "Natural language database operations" },
-  { text: "Works with any AI agent" },
-  { text: "Quick 2-minute setup" },
-  { text: "Enterprise-grade security & OAuth" },
+  { text: "Prisma Postgres and Compute" },
+  { text: "Object Storage" },
+  { text: "Composer topology" },
+  { text: "Sign in with your Prisma account" },
 ];
 
 export const agents: McpAgent[] = [
@@ -89,32 +89,33 @@ export const capabilities: McpCapability[] = [
   {
     icon: "database",
     title: "Database management",
-    description: "Create projects, databases, or clean them up via natural language",
-    prompt: "Set up this project with a new database in us-east-1",
-  },
-  {
-    icon: "search",
-    title: "Data analysis",
-    description: "Execute queries and analyze data through conversation",
-    prompt: "Show me all users who signed up this week and their activity levels",
-  },
-  {
-    icon: "table",
-    title: "Schema insight",
-    description: "Inspect database structure and understand relationships",
-    prompt: "Introspect my product database and summarize the user tables",
+    description: "Create databases, manage connection strings, and restore automated backups",
+    prompt: "Create a Prisma Postgres database in US East",
   },
   {
     icon: "settings",
-    title: "Database administration",
-    description: "Handle backups, restores, and multi-database workflows",
-    prompt: "Create a new database from the most recent backup to my product db",
+    title: "Compute deployments",
+    description: "Read app logs, manage existing deployments, and set environment variables",
+    prompt: "List my Compute apps and show the latest failed builds",
+  },
+  {
+    icon: "table",
+    title: "Schemas and queries",
+    description: "Inspect database tables and relationships, run SQL queries, and analyze results",
+    prompt: "Introspect my product database and summarize the user tables",
+  },
+  {
+    icon: "search",
+    title: "Composer topology",
+    description:
+      "See how your services connect, with links to the project and apps in Prisma Console",
+    prompt: "Show how this project's Composer services connect and give me the Console links",
   },
   {
     icon: "repeat",
-    title: "Connection management",
-    description: "Create, list, and revoke database connection strings",
-    prompt: "Create a connection string for my staging database",
+    title: "Object Storage",
+    description: "Create and list buckets, and manage their access keys",
+    prompt: "List the Object Storage buckets in this project",
   },
 ];
 

@@ -36,9 +36,9 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 Migrate this Mongoose app to Prisma ORM against the same MongoDB database, following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-mongoose.md.
 
 1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
-2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma@latest contract emit`.
+2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma contract emit`.
 3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
-4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma@latest db update --dry-run`, apply the previewed collMod statements, then run `npx prisma@latest db sign` and `npx prisma@latest db verify`.
+4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply the previewed collMod statements, then run `npx prisma db sign` and `npx prisma db verify`.
 ```
 
 </AgentPrompt>
@@ -54,7 +54,7 @@ The steps for migrating from Mongoose to Prisma ORM are the same for any applica
 3. Replace Mongoose queries with Prisma ORM queries, one route at a time
 4. Remove Mongoose and let Prisma ORM own the schema
 
-Prisma ORM does not generate a client. There is no `prisma generate` step and no `schema.prisma`: the contract is emitted once to `contract.json` and `contract.d.ts`, and the runtime reads them.
+Prisma ORM does not generate a client. There is no `prisma generate` step and no `schema.prisma`: `contract emit` writes the contract to `contract.json` and `contract.d.ts`, and your app reads those two files.
 
 ### 1.2. The example app
 
@@ -131,7 +131,7 @@ The database is seeded with two users, two categories, and three posts. With the
 [{"profile":{"bio":"Writes about databases"},"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0}]
 ```
 
-Keep this response around. The Prisma ORM version of the route returns the same documents.
+Keep this response to compare against later, because the Prisma ORM version of the route returns the same documents.
 
 ### 1.3. Add Prisma ORM to the project
 
@@ -146,7 +146,7 @@ Choose `PSL` when asked for the contract authoring style and keep the default sc
 ```text no-copy
 ✔ npm add @prisma/orm-mongo dotenv
 ✔ npm add -D prisma@latest
-✔ npm add -D @prisma/cli-engine@0.3.0
+✔ npm add -D @prisma/cli-engine@0.6.2
 ✔ Emit the contract
 │  target:     mongodb
 │  authoring:  psl
@@ -165,11 +165,13 @@ installed
 ├─ @prisma/orm-mongo
 ├─ dotenv
 ├─ prisma@latest (dev)
-└─ @prisma/cli-engine@0.3.0 (dev)
+└─ @prisma/cli-engine@0.6.2 (dev)
 ✔ Done. Open prisma-8.md to get started.
 ```
 
-`@prisma/orm-mongo` is the MongoDB runtime. It uses the `mongodb` driver, the same one Mongoose already depends on, so nothing else is installed. If your `package.json` declares `"type": "commonjs"`, `orm init` leaves it alone and prints a warning; the generated files are ES modules, so set `"type": "module"` if you can.
+`@prisma/orm-mongo` is the library your app imports to query MongoDB. It uses the `mongodb` driver, the same one Mongoose already depends on, so you do not need a second database driver.
+
+`orm init` also changes the `module` settings in `tsconfig.json`, and adds `"type": "module"` to `package.json` when the file has no `"type"` field. If your app is CommonJS, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start the server again.
 
 Install the [Prisma agent skills](/cli/skills) for your coding agent with [`init`](/cli/init), which also adds a `postinstall` hook that resyncs them on every install:
 
@@ -177,7 +179,7 @@ Install the [Prisma agent skills](/cli/skills) for your coding agent with [`init
 npx prisma@latest init
 ```
 
-If a later CLI command reports that the skills are out of date, run `npx prisma@latest skills sync`.
+If a later CLI command reports that the skills are out of date, run `npx prisma skills sync`.
 
 ### 1.4. Configure the connection
 
@@ -212,7 +214,7 @@ export const db = mongo<Contract>({
 });
 ```
 
-Both read `DATABASE_URL`. Point it at the database your Mongoose app already uses. `orm init` writes an `.env.example` but never touches an existing `.env`:
+Both read `DATABASE_URL`, so point it at the database your Mongoose app already uses. `orm init` writes an `.env.example` but never touches an existing `.env`:
 
 ```bash title=".env"
 DATABASE_URL="mongodb://localhost:27017/blog?replicaSet=rs0&directConnection=true"
@@ -225,7 +227,7 @@ DATABASE_URL="mongodb://localhost:27017/blog?replicaSet=rs0&directConnection=tru
 On PostgreSQL, `contract infer` reads the live schema and writes a starter contract. MongoDB has no schema to read, so the command stops:
 
 ```npm
-npx prisma@latest contract infer --output ./src/prisma/contract.prisma
+npx prisma contract infer --output ./src/prisma/contract.prisma
 ```
 
 ```text no-copy
@@ -274,7 +276,7 @@ model Post {
   id          ObjectId   @id @map("_id")
   title       String
   content     String
-  published   Boolean
+  published   Bool
   author      User       @relation(fields: [authorId], references: [id])
   authorId    ObjectId   @map("author")
   categoryIds ObjectId[] @map("categories")
@@ -282,7 +284,7 @@ model Post {
 }
 ```
 
-Two things to know before you go on:
+Before you go on, check these differences from Mongoose:
 
 - Prisma ORM reads and writes MongoDB fields by their stored names. `authorId @map("author")` is exposed by the query API as `author`, the key Mongoose stores, and `.include("author")` fills it with the user document the way `populate("author")` does. `db.orm.posts.where({ authorId })` is a type error.
 - Mongoose adds a `__v` version key to every document. It is not in the contract and Prisma ORM passes it through on reads. You remove it in step 4, before Prisma ORM adds validators.
@@ -294,7 +296,7 @@ You do not have to model every collection on day one. Start with the ones the ro
 Turn the contract into the artifacts the runtime and the CLI read:
 
 ```npm
-npx prisma@latest contract emit
+npx prisma contract emit
 ```
 
 ```text no-copy
@@ -364,7 +366,7 @@ const posts = await db.orm.posts.where({ published: true }).include("author").al
 
 ### 3.2. Populate an array of references
 
-`.include(...)` covers a single reference. `populate("categories")` on an array of ids has no `.include` equivalent yet, so express it as a pipeline: `.lookup(...)` is a typed `$lookup`, and MongoDB matches an array on the local side against `_id` on the foreign side. Adding `.unwind("author")` after a lookup on a single reference turns the one-element array `$lookup` produces into the object Mongoose returns:
+`.include(...)` covers a single reference, but `populate("categories")` on an array of ids has no `.include` equivalent yet, so express it as a pipeline: `.lookup(...)` is a typed `$lookup`, and MongoDB matches an array on the local side against `_id` on the foreign side. Adding `.unwind("author")` after a lookup on a single reference turns the one-element array `$lookup` produces into the object Mongoose returns:
 
 ```typescript
 const runtime = await db.runtime();
@@ -386,7 +388,7 @@ const plan = db.query
 const posts = await runtime.query(plan);
 ```
 
-Read plans run with `runtime.query(plan)`. `runtime.execute(plan)` is for write plans and rejects an `aggregate` command.
+Run read plans with `runtime.query(plan)`, because `runtime.execute(plan)` is for write plans and rejects an `aggregate` command.
 
 ### 3.3. Update the routes
 
@@ -525,7 +527,7 @@ If you cannot do this yet, add `v Int? @map("__v")` to every model instead and d
 Prisma ORM tracks a database by a signature and, on MongoDB, by a `$jsonSchema` validator per collection. Preview what it wants to apply:
 
 ```npm
-npx prisma@latest db update --dry-run
+npx prisma db update --dry-run
 ```
 
 ```text no-copy
@@ -552,8 +554,8 @@ Adding a validator to a populated collection counts as destructive, so `db updat
 Then record that the database matches the contract, and verify it:
 
 ```npm
-npx prisma@latest db sign
-npx prisma@latest db verify
+npx prisma db sign
+npx prisma db verify
 ```
 
 ```text no-copy
@@ -569,7 +571,7 @@ to:    7a7760fc1ac91a781b0f6509b8c495fa3f6ae2be1ba2815bceccbf75286b93c6
 
 From here on, schema changes go through the contract: edit `contract.prisma`, run `contract emit`, then `db update` for a direct development update or [`migration plan`](/cli/migration-plan) followed by `db migrate` for a checked-in migration.
 
-The validators are strict. A write that carries a field the contract does not declare now fails, which is what a leftover Mongoose model produces:
+The validators are strict: a write that includes a field the contract does not declare now fails, which is what a leftover Mongoose model produces:
 
 ```text no-copy
 Document failed validation

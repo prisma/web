@@ -8,7 +8,7 @@ metaDescription: 'Add Prisma ORM 8 to an empty Node.js project without a templat
 
 By the end of this page you have a project with a `prisma.config.ts`, a `prisma/contract.prisma` holding one `User` model, and a single `index.ts` that writes, updates, and reads rows in PostgreSQL through Prisma ORM 8, plus a migration you planned and applied. No template generates anything: you create every file yourself and see what each one is for.
 
-Use this path when you want to see every file Prisma ORM needs, or when you are adding Prisma ORM to a repository that already has its own layout. If you would rather have the files written for you, run `npm create prisma@latest` and follow the [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql).
+Use this path when you want to see every file Prisma ORM needs, or when you are adding Prisma ORM to a repository that already has its own layout. If you would rather have the files written for you, run `npm create prisma@latest` and follow [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql).
 
 :::note[Using Prisma ORM 7?]
 
@@ -22,7 +22,7 @@ Two commands have new names in Prisma ORM 8. `contract emit` does what `prisma g
 
 ## Prerequisites
 
-- Node.js 22.18 or newer (on the 24 line, 24.11 or newer); Node.js 24 is recommended.
+- Node.js 22.18 or newer.
 - A connection string for an empty PostgreSQL database. Step 4 creates the tables and step 5 clears the `User` table on every run, so do not point this page at a database that holds data you need. Any PostgreSQL URL works. If you don't have one, `npx create-db@latest` creates a temporary Prisma Postgres database and prints its connection string, plus a claim URL if you want to keep it.
 
 ## 1. Create the project
@@ -43,7 +43,7 @@ npm install @prisma/orm-postgres dotenv
 npm install --save-dev prisma tsx typescript
 ```
 
-`@prisma/orm-postgres` is the library your code imports, and `prisma` is the command-line tool. `dotenv` loads `.env`, `tsx` runs `index.ts` without a build step, and `typescript` 5.9 or newer is a peer dependency of `@prisma/orm-postgres`. The two Prisma packages have different version numbers (this page was tested with `prisma` 8.0.0-rc.15 and `@prisma/orm-postgres` 8.0.0-rc.11); that is normal, and any two `latest` versions work together.
+`@prisma/orm-postgres` is the library your code imports, and `prisma` is the command-line tool. `dotenv` loads `.env`, `tsx` runs `index.ts` without a build step, and `typescript` 5.9 or newer is a peer dependency of `@prisma/orm-postgres`. The two Prisma packages have different version numbers (for example, `prisma` 8.0.0-rc.19 and `@prisma/orm-postgres` 8.0.0-rc.13); that is normal, and any two `latest` versions work together.
 
 ## 2. Create the config file and `.env`
 
@@ -122,13 +122,13 @@ npx prisma db init
 │  database:  postgres://****:****@db.prisma.io:5432/postgres?sslmode=require
 ✔ Applied 2 operation(s) across 1 contract space
 App space
-├─ Create table "user"
-├─ Add unique constraint on "user" (email)
-└─ marker f4e1954fd8bed87828d13c3f1a02164dc9796ef1af76ed6f98184c01263169c5
-✔ Advanced ref "db" → f4e1954fd8bed87828d13c3f1a02164dc9796ef1af76ed6f98184c01263169c5
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+└─ marker b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
+✔ Advanced ref "db" → b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
 ```
 
-It also writes `migrations/app/refs/db.json` and a snapshot of the contract under `migrations/snapshots/`; commit both. If the command fails with `DRIVER.CONNECTION_FAILED`, `DATABASE_URL` in `.env` is wrong or the database is not reachable. A `SECURITY WARNING` about SSL modes comes from the `pg` driver and does not stop the command; change `sslmode=require` to `sslmode=verify-full` in `.env` to silence it.
+The `marker` line in the output is the record that signing stores in the database: the hash that identifies the version of the contract the database now matches. `db init` also writes `migrations/app/refs/db.json`, called the `db` ref: a file that records which contract version your development database is at, so that `migration plan` in step 6 knows where to start. The `Advanced ref "db"` line in the output is `db init` writing it. Commit it, together with the snapshot of the contract that `db init` writes under `migrations/snapshots/`. If the command fails with `DRIVER.CONNECTION_FAILED`, `DATABASE_URL` in `.env` is wrong or the database is not reachable. A `SECURITY WARNING` about SSL modes comes from the `pg` driver and does not stop the command; change `sslmode=require` to `sslmode=verify-full` in `.env` to silence it.
 
 ## 5. Write and read data
 
@@ -213,15 +213,15 @@ npx prisma migration plan --name add_user_phone
 ```
 
 ```text
-✔ Planned baseline + 1 operation(s)
+✔ Planned baseline (3 operation(s)) + 1 operation(s)
 migrations/app/20260917T1457_add_user_phone
-└─ Add column "phone" to "user"
-from:       f4e1954fd8bed87828d13c3f1a02164dc9796ef1af76ed6f98184c01263169c5
-to:         a8a6806fd2d219065fd4449b295c80626e9123c18bd40847ec3588aa9d565bc9
+└─ Add column "phone" to "User"
+from:       b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
+to:         300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
 baseline:   migrations/app/20260917T1456_baseline
 app space:  migrations/app/20260917T1457_add_user_phone
 ℹ DDL preview
-ALTER TABLE "public"."user" ADD COLUMN "phone" text;
+ALTER TABLE "public"."User" ADD COLUMN "phone" text;
 ```
 
 Two directories appear under `migrations/app/`: a baseline that records the table `db init` created, and your change. The baseline is never applied to this database, because the database is already signed at that state. Each migration directory holds a `migration.ts` you can read and edit; [Generating a migration](/orm/migrations/generating-a-migration) explains the files.
@@ -235,9 +235,9 @@ npx prisma db migrate --advance-ref db
 ```text
 ✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 App space
-├─ Add column "phone" to "user"
-└─ marker a8a6806fd2d219065fd4449b295c80626e9123c18bd40847ec3588aa9d565bc9
-✔ Advanced ref "db" → a8a6806fd2d219065fd4449b295c80626e9123c18bd40847ec3588aa9d565bc9
+├─ Add column "phone" to "User"
+└─ marker 300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
+✔ Advanced ref "db" → 300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
 ```
 
 If you do not want migration files for a throwaway database, [`db update`](/cli/db-update) applies the contract change directly instead of `migration plan` and `db migrate`.
@@ -265,10 +265,10 @@ npx prisma migration status
 ```
 
 ```text
-○   a8a6806  @contract @db (db)
-│↑  20260917T1457_add_user_phone  f4e1954 → a8a6806  1 ops  ✓ applied
-○   f4e1954
-│↑  20260917T1456_baseline              ∅ → f4e1954  3 ops
+○   3008325  @contract @db (db)
+│↑  20260917T1457_add_user_phone  b5ae4e6 → 3008325  1 ops  ✓ applied
+○   b5ae4e6
+│↑  20260917T1456_baseline              ∅ → b5ae4e6  3 ops
 ○   ∅
 ✔ Up to date
 ```
@@ -279,4 +279,4 @@ From here, every schema change follows the same routine: edit `prisma/contract.p
 
 - [Data modeling](/orm/data-modeling) for relations, more field types, and indexes.
 - [Generating a migration](/orm/migrations/generating-a-migration) for what is in a migration directory and how to edit one.
-- [PostgreSQL quickstart](/prisma-orm/quickstart/postgresql) if you want the same setup generated for you with a starter app.
+- [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql) if you want the same setup generated for you with a starter app.

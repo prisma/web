@@ -8,9 +8,9 @@ import {
 } from "@/app/mcp/mcp-content";
 import { bulletList, ctaList, heading, joinBlocks, link, paragraphs } from "./blocks";
 
-export const MCP_H1 = "Your database workflow, powered by AI";
+export const MCP_H1 = "Manage databases and apps from your AI tools";
 export const MCP_SUBHEADLINE =
-  "Manage your databases with natural language via MCP in Claude, Codex, Cursor, Warp, ChatGPT, and other AI agents. Works great with Prisma Postgres.";
+  "Connect your AI tools to Prisma Postgres, Prisma Compute, and Object Storage. Query databases, inspect app logs, and manage deployments through conversation.";
 
 /**
  * One agent tile. A tile either deep-links an install flow — kept as a real
@@ -44,9 +44,7 @@ export function renderMcpMarkdown(): string {
     // contributes nothing here.
 
     heading(2, "Works with your AI agent"),
-    paragraphs(
-      "Works with any AI agent, whether you prefer to use a remote or a local server, we've got you.",
-    ),
+    paragraphs("Connect from an AI tool that supports remote MCP servers with OAuth sign-in."),
     bulletList(agents.map(renderAgent)),
 
     paragraphs("Or add the server to any MCP client"),
@@ -65,13 +63,13 @@ export function renderMcpMarkdown(): string {
 
     heading(2, "Start building with AI"),
     paragraphs(
-      "Join thousands of developers, and agents, already using Prisma MCP for faster, more intuitive database workflows.",
+      "Connect the Prisma MCP server to your AI tool and choose the workspace you want to manage.",
     ),
     // readDocsHref is a literal prop in page.tsx rather than a hoisted const.
     ctaList([
       { label: "Add MCP server", href: DOCS_MCP },
       { label: "Read the docs", href: "https://www.prisma.io/docs/ai" },
     ]),
-    paragraphs("2-minute setup. Works with all MCP tools."),
+    paragraphs("Sign in with your Prisma account."),
   ]);
 }

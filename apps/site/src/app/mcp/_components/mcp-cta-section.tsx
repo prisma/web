@@ -15,14 +15,14 @@ export function McpCtaSection({
             Start building with AI
           </h2>
           <p className="max-w-[48ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
-            Join thousands of developers, and agents, already using Prisma MCP for faster, more
-            intuitive database workflows.
+            Connect the Prisma MCP server to your AI tool and choose the workspace you want to
+            manage.
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row">
             <PrismButton href={docsHref}>Add MCP server</PrismButton>
             <PrismButtonOutline href={readDocsHref}>Read the docs</PrismButtonOutline>
           </div>
-          <p className="text-xs text-muted-foreground">2-minute setup. Works with all MCP tools.</p>
+          <p className="text-xs text-muted-foreground">Sign in with your Prisma account.</p>
         </div>
       </div>
     </section>
