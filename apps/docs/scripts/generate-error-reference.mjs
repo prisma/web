@@ -106,8 +106,11 @@ export const TARGETS = {
       `including from extensions. Every other \`prisma\` command has its codes on the ${CLI_PAGE}.`,
     sharedCliNamespace:
       `This page and the ${CLI_PAGE} both have a \`CLI\` namespace, with different codes in each. ` +
-      "A `CLI.*` code from `prisma contract`, `prisma db`, `prisma migration`, or `prisma orm` is on this " +
-      "page. One from any other `prisma` command is on the other page.",
+      "The engine that runs every `prisma` command raises its own `CLI.*` codes for arguments, config " +
+      "loading, prompts, and consent, and those are on the CLI error reference even when the command " +
+      "was a Prisma ORM one, for example `CLI.CONFIG_SECTION_INVALID` from `prisma contract emit`. " +
+      "The `CLI.*` codes on this page are the ones the Prisma ORM commands raise themselves. " +
+      "If a `CLI.*` code is not on this page, look on the other.",
     frontmatter: `---
 title: Error reference
 description: The structured error codes of the Prisma ORM commands, runtime, and extensions, by namespace, with the condition that raises each one.
@@ -130,8 +133,11 @@ metaDescription: The structured error codes of the Prisma ORM commands, runtime,
       `app can raise at runtime, are on the ${ORM_PAGE}.`,
     sharedCliNamespace:
       `This page and the ${ORM_PAGE} both have a \`CLI\` namespace, with different codes in each. ` +
-      "A `CLI.*` code from `prisma contract`, `prisma db`, `prisma migration`, or `prisma orm` is on the " +
-      "other page. One from any other `prisma` command is on this page.",
+      "The `CLI.*` codes on this page come from the engine that runs every `prisma` command, for " +
+      "arguments, config loading, prompts, and consent, whatever the command was, for example " +
+      "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit`. The Prisma ORM commands also raise " +
+      "`CLI.*` codes of their own, and those are on the Prisma ORM error reference. " +
+      "If a `CLI.*` code is not on this page, look on the other.",
     frontmatter: `---
 title: Error reference
 description: The structured error codes of the Prisma CLI platform commands, by namespace, with the condition that raises each one.
