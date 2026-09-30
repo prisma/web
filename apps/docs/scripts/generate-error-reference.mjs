@@ -240,9 +240,12 @@ function replaceNamespaceList(body, target) {
   if (!namespaces.includes("CLI")) return body;
 
   // The note answers the reader who arrived with a CLI.* code, so it sits
-  // under the scope sentence, before the upstream paragraphs and the list.
-  const firstParagraphEnd = body.search(/\n\s*\n/);
-  return `${body.slice(0, firstParagraphEnd)}\n\n${target.sharedCliNamespace}${body.slice(firstParagraphEnd)}`;
+  // directly under the paragraph that holds the scope sentence.
+  const scopeAt = body.indexOf(target.scope);
+  const from = scopeAt === -1 ? 0 : scopeAt;
+  const paragraphEnd = body.slice(from).search(/\n\s*\n/);
+  const at = paragraphEnd === -1 ? body.length : from + paragraphEnd;
+  return `${body.slice(0, at)}\n\n${target.sharedCliNamespace}${body.slice(at)}`;
 }
 
 export function transform(target, markdown) {
