@@ -7,6 +7,7 @@ import logoMark from "../../public/logo/mark.svg";
 import { DiscordIcon } from "@/components/icons/discord";
 import { NavBreadcrumb } from "@/components/layout/nav-breadcrumb";
 import Link from "next/link";
+import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
 
 // The full-colour lockup (prism mark + wordmark) from the redesign. Two files
 // rather than one recoloured file: the wordmark is solid black in the light
@@ -69,20 +70,24 @@ export function baseOptions(): BaseLayoutProps {
               An image-only anchor reads as an empty link to crawlers, so the
               link carries both an aria-label (for assistive tech) and a
               visually hidden text node (for text-only crawlers). */}
-          <Link
-            href="https://www.prisma.io"
-            aria-label="Prisma home"
-            className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
-          >
-            <span className="max-lg:hidden lg:contents">{logo}</span>
-            <Image
-              alt="Prisma"
-              src={logoMark}
-              aria-hidden
-              className="h-7 w-auto shrink-0 lg:hidden"
-            />
-            <span className="sr-only">Prisma home</span>
-          </Link>
+          {/* Right-clicking the logo opens the shared brand menu (the same one
+              the site and blog headers use). */}
+          <PrismaLogoMenu section="docs">
+            <Link
+              href="https://www.prisma.io"
+              aria-label="Prisma home"
+              className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
+            >
+              <span className="max-lg:hidden lg:contents">{logo}</span>
+              <Image
+                alt="Prisma"
+                src={logoMark}
+                aria-hidden
+                className="h-7 w-auto shrink-0 lg:hidden"
+              />
+              <span className="sr-only">Prisma home</span>
+            </Link>
+          </PrismaLogoMenu>
           <span className="text-fd-muted-foreground" aria-hidden="true">
             /
           </span>
