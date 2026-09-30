@@ -69,7 +69,11 @@ export const docs = defineDocs({
     },
   },
   meta: {
-    schema: metaSchema,
+    schema: metaSchema.extend({
+      // Pages that belong to this folder but get no sidebar entry; see
+      // `src/lib/hidden-pages.ts`.
+      hiddenPages: z.array(z.string()).optional(),
+    }),
   },
 });
 

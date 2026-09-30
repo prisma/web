@@ -8,7 +8,7 @@ metaDescription: 'Add Prisma ORM to an app you already have: run orm init, write
 
 This page uses MongoDB. [Use PostgreSQL instead](/prisma-orm/quickstart/existing-app/postgresql).
 
-Use this page when you already have an app and its database has no collections yet. By the end, your app has one model, the database has a collection for it, a script writes and reads a document, and you have applied one change to the model as a migration. If your database already has collections, follow [Add Prisma ORM to an existing MongoDB database](/prisma-orm/add-to-existing-project/mongodb) instead.
+Use this page when you already have an app and its database has no collections yet. By the end, your app has one model, the database has a collection for it, and a script writes and reads a document. You also change the model once and apply the change to the database with a migration. If your database already has collections, follow [Add Prisma ORM to an existing MongoDB database](/prisma-orm/add-to-existing-project/mongodb) instead.
 
 :::note[Using Prisma ORM 7?]
 
@@ -26,7 +26,7 @@ For what release candidate means, when the final release is expected, and how to
 
 ## 1. Add Prisma ORM to the project
 
-The command changes two files that your app may already have. In `tsconfig.json`, it sets `module` to `preserve` and `moduleResolution` to `bundler`. If your `package.json` has no `"type"` field, it adds `"type": "module"`. A CommonJS app is one whose code loads other files with `require`, and these changes can stop it from starting. If that is your app, you can still finish this page, because its steps run a script through `tsx` and work either way. Then follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start the app again.
+The `orm init` command below changes your `tsconfig.json` and your `package.json`. In `tsconfig.json`, it sets `module` to `preserve` and `moduleResolution` to `bundler`. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
 
 From the root of your project, run:
 
@@ -34,7 +34,9 @@ From the root of your project, run:
 npx prisma@latest orm init --yes --target mongodb --authoring psl --write-env
 ```
 
-`--target mongodb` picks MongoDB, `--authoring psl` picks the `.prisma` file format you know from earlier Prisma ORM versions, and `--write-env` writes a `.env` file. `--yes` accepts the default location for the files, so the command asks no questions. The other value for `--authoring` is `typescript`, which this page does not use. The command installs the packages, writes the files, and ends with the summary below. In `package.json`, the command adds the packages and a `contract:emit` script. If your project already has a `tsconfig.json` or a `.gitignore`, the command edits that file and keeps the rest of it. It leaves a `.env` that you already have untouched.
+`prisma@latest` runs Prisma ORM 8, and `--target mongodb` picks MongoDB. `--authoring psl` picks PSL, the Prisma Schema Language, which is the `.prisma` file format you know from earlier Prisma ORM versions. `--write-env` writes a `.env` file, unless you already have one. `--yes` accepts the default answer to every question, so the command asks nothing.
+
+The command installs the packages, writes the files, and ends with the summary below. In `package.json`, it adds the packages with their current version numbers, and a `contract:emit` script that runs `prisma contract emit`. If your project already has a `tsconfig.json` or a `.gitignore`, the command edits that file and keeps the rest of it.
 
 ```text no-copy
 │  target:     mongodb
@@ -64,13 +66,13 @@ installed
 
 You work with three of these files:
 
-- `src/prisma/contract.prisma` holds your models. It is what `schema.prisma` was in earlier Prisma ORM versions, and Prisma ORM 8 calls it the contract.
+- `src/prisma/contract.prisma` holds your models. It is what `schema.prisma` was in earlier Prisma ORM versions, and Prisma ORM 8 calls it the contract. The summary lists it as `schema`.
 - `prisma.config.ts` tells the `prisma` commands where the contract is and which database to connect to.
 - `src/prisma/db.ts` is the file your app imports to run queries.
 
-You do not need `prisma-8.md` for this page. It is a short reference for writing queries.
+You do not need `prisma-8.md` for this page. It is a short reference for writing queries. `.gitattributes` marks the files that Prisma ORM generates, so that GitHub collapses them in pull request diffs.
 
-This is `src/prisma/db.ts` in full:
+`orm init` wrote `src/prisma/db.ts`, and you do not need to change it:
 
 ```typescript title="src/prisma/db.ts"
 import 'dotenv/config';
@@ -86,7 +88,7 @@ export const db = mongo<Contract>({
 
 The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports are written by `contract emit` in step 4.
 
-From now on, every `prisma` command ends with the line `Prisma agent skills are out of date`. The skills are instruction files for coding agents, and the line does not change what the command does. If you want the skills, [`npx prisma@latest init`](/cli/init) installs them, which also stops the line. The output on this page leaves the line out.
+From now on, every `prisma` command ends with the line `Prisma agent skills are out of date`. You can ignore it, because it does not change what the command does. Agent skills are instruction files that AI coding tools read, and the line appears because your project has none yet. To add them and stop the line, run [`npx prisma@latest init`](/cli/init). In Prisma ORM 8, `init` adds the skills and a `postinstall` script that keeps them up to date, and it leaves your contract and your `.env` alone. `orm init` is the command that sets up Prisma ORM.
 
 ## 2. Set the connection string
 
@@ -96,7 +98,7 @@ If you had no `.env`, `orm init` wrote one with a placeholder, `DATABASE_URL="mo
 DATABASE_URL="mongodb://username:password@host:27017/database"
 ```
 
-The last part of the connection string is the name of the database.
+The part after the last `/`, and before any `?`, is the name of the database.
 
 `orm init` added `.env` to `.gitignore`, so the password stays out of version control.
 
@@ -115,11 +117,11 @@ model User {
 }
 ```
 
-Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `@@map("users")` names the collection that stores the model. The file has no `datasource` or `generator` block. The connection string comes from `.env`, and `contract emit` in the next step takes the place of the generator. [Data modeling](/orm/data-modeling) covers field types and relations.
+Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `@@map("users")` names the collection that stores the model. MongoDB stores the identifier of every document in `_id`. On MongoDB, `contract emit` names each field in `contract.json` by the name in its `@map`, so in queries and in results you use `_id`, not `id`. The same goes for any other field with `@map`. The file has no `datasource` or `generator` block. The connection string comes from `.env`, and `contract emit` in the next step takes the place of the generator. [Data modeling](/orm/data-modeling) covers field types and relations.
 
 ## 4. Generate the files your code imports
 
-Run `contract emit` after every change to the contract. It takes the place of `prisma generate`. This command and the ones after it start with `npx prisma`, without `@latest`, which runs the version that `orm init` installed in your project:
+Run `contract emit` after every change to the contract. It takes the place of `prisma generate`. From here on, commands start with `npx prisma`, without `@latest`. That runs the version of Prisma ORM that `orm init` installed in your project:
 
 ```npm
 npx prisma contract emit
@@ -161,8 +163,10 @@ App space
 
 `db init` creates the collections and indexes your contract declares. It also gives each collection a validator, which is the MongoDB rule that lists the fields a document may have. MongoDB then rejects a document with a field that the contract does not declare. The output names two more things it wrote:
 
-- The `marker` is a record that `db init` stores in the database. It holds the hash of your contract, which is the long hexadecimal text in the output. The hash changes whenever the contract changes, so later commands compare it with your contract to tell whether the database is up to date.
-- The `db` ref is the file `migrations/app/refs/db.json` in your project. It holds the same hash. `migration plan` in step 7 does not connect to the database, so it reads this file to find out which version of the contract your development database has.
+- The `marker` is a record in the database. It holds the hash of your contract, which is the long text in the output, so that later commands can tell which version of the contract the database has.
+- The `db` ref is the file `migrations/app/refs/db.json` in your project. It holds the same hash. The line `Advanced ref "db"` means that the command wrote this file. `migration plan` in step 7 reads it to find out which contract your development database has.
+
+You can ignore the word `space` in the output, because all your migrations are in `migrations/app/`.
 
 Commit the `migrations/` directory together with your code, because `migration plan` reads it on every later change. If the command fails with `DRIVER.CONNECTION_FAILED`, the value of `DATABASE_URL` in `.env` is wrong or the database is not reachable.
 
@@ -192,7 +196,7 @@ main().catch((error) => {
 });
 ```
 
-You reach the model as `db.orm.users`. On MongoDB you address a model by the name of its collection, which is the name in `@@map`. `await db.close()` closes the database connections, and without it the script keeps running after the last query. `create` takes the fields directly, with no `data` wrapper, and `.all()` does what `findMany()` did.
+`db.orm` queries your models, the way Prisma Client did in earlier Prisma ORM versions. You reach this model as `db.orm.users`, because on MongoDB you address a model by the name of its collection, which is the name in `@@map`. `await db.close()` closes the database connections, and without it the script keeps running after the last query. `create` takes the fields directly, with no `data` wrapper, and `.all()` does what `findMany()` did.
 
 Run it:
 
@@ -215,7 +219,7 @@ All users: [
 ]
 ```
 
-The script passes no identifier, and the new document gets one. The result names it `_id`, as MongoDB stores it, and returns it as a string. Use `_id` in filters too, as in `db.orm.users.where({ _id: created._id }).first()`.
+The script passes no identifier, and the new document gets one in `_id`, returned as a string. To find a document by it, filter on `_id`, as in `db.orm.users.where({ _id: created._id }).first()`.
 
 In your app, import `db` from `src/prisma/db.ts` the same way. [Reading data](/orm/fundamentals/reading-data) and [Writing data](/orm/fundamentals/writing-data) show the other queries.
 
@@ -235,7 +239,7 @@ model User {
 }
 ```
 
-Generate the files again, then plan a migration. `migration plan` writes the difference between the new contract and the one your database has into a new directory under `migrations/app/`. `--name` sets the name of that directory.
+Generate the files again, then plan a migration. `migration plan` compares the new contract with the last one you applied to your development database, and writes the difference into a new directory under `migrations/app/`. `--name` sets the end of the directory's name, after the date and time.
 
 ```npm
 npx prisma contract emit
@@ -261,7 +265,7 @@ baseline:   migrations/app/20260929T2126_baseline
 app space:  migrations/app/20260929T2127_add_user_phone
 ```
 
-The output continues with a preview of the MongoDB commands. The first plan in a project writes two directories. The baseline records the collection and the index that `db init` already created. The second directory is your change. Your change updates the validator, so that a document may have the `phone` field.
+The output continues with a preview of the MongoDB commands. The first plan in a project writes two directories. The baseline holds the steps that create the collection and the index, which `db init` already ran on your development database. The second directory is your change. Your change updates the validator, so that a document may have the `phone` field.
 
 Apply the migration:
 
@@ -283,7 +287,7 @@ App space
 ✔ Advanced ref "db" → f0035d1963f127dc8ee91e154d51810755ee91b090659127881d1ab31e03e3cf
 ```
 
-`db migrate` reads the marker to see which contract the database already has, so here it runs only your change. `--advance-ref db` then updates the `db` ref to the new hash, so that the next `migration plan` contains only your next change. Pass it every time you apply a migration to your development database. Commit the two new directories.
+`db migrate` runs only the migrations that the database does not have yet, so here it runs only your change. `--advance-ref db` writes the new hash to the `db` ref, so that the next `migration plan` contains only your next change. Pass it every time you apply a migration to your development database. Commit the `migrations/` directory again.
 
 To apply the migrations to any other database, such as production, pass its connection string. Leave out `--advance-ref`, because the `db` ref describes your development database:
 

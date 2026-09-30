@@ -4,6 +4,7 @@ import { type InferPageType, type LoaderPlugin, loader } from "fumadocs-core/sou
 import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
 import { openapiPlugin } from "fumadocs-openapi/server";
 import { BucketIcon } from "../components/icons/bucket";
+import { hiddenPagesPlugin } from "./hidden-pages";
 
 // Icons meta.json can name that lucide does not ship. Runs before
 // lucideIconsPlugin, which leaves already-resolved (non-string) icons alone.
@@ -28,7 +29,7 @@ function customIconsPlugin(): LoaderPlugin {
 export const source = loader({
   baseUrl: "/",
   source: docs.toFumadocsSource(),
-  plugins: [customIconsPlugin(), lucideIconsPlugin(), openapiPlugin()],
+  plugins: [hiddenPagesPlugin(), customIconsPlugin(), lucideIconsPlugin(), openapiPlugin()],
 });
 
 export function getPageImage(page: InferPageType<typeof source>) {
