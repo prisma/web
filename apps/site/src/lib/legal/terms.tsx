@@ -456,11 +456,19 @@ export const termsSections: TermsSection[] = [
           upon receiving valid infringement notices.
         </p>
         <p>
-          To report claimed copyright infringement, email{" "}
-          <a href="mailto:abuse@prisma.io">abuse@prisma.io</a> or contact Prisma&apos;s designated
-          Copyright Agent: [COPYRIGHT AGENT NAME OR TITLE, POSTAL ADDRESS, TELEPHONE NUMBER, AND
-          EMAIL ADDRESS TO BE CONFIRMED BY LEGAL — must match the agent registered with the US
-          Copyright Office].
+          Notices of claimed copyright infringement should be sent to Prisma&apos;s designated
+          agent:
+        </p>
+        <p>
+          Copyright Agent
+          <br />
+          Prisma Data, Inc.
+          <br />
+          [STREET ADDRESS AS REGISTERED WITH THE US COPYRIGHT OFFICE]
+          <br />
+          Telephone: [TELEPHONE NUMBER AS REGISTERED]
+          <br />
+          Email: <a href="mailto:abuse@prisma.io">abuse@prisma.io</a>
         </p>
         <p>A copyright infringement notice must include:</p>
         <ul>
@@ -756,9 +764,7 @@ export const termsSections: TermsSection[] = [
           responsible for, the Customer Content stored in your databases, including any personal
           data of your end users and any consents or notices required to collect and process it.
           Prisma processes personal data contained in Customer Content on your behalf in
-          accordance with the DPA described in Section 3. Backup features, where included in your
-          plan, are operational features of the service and do not guarantee data durability;
-          Sections 10 and 11 apply.
+          accordance with the DPA described in Section 3.
         </p>
         <p>
           Object Storage buckets store the files you upload. You are responsible for the objects you
@@ -807,9 +813,10 @@ export const termsSections: TermsSection[] = [
         </ul>
         <p>
           Where you provide contact details, Prisma will confirm receipt of your report and inform
-          you of its decision. Reports are reviewed by Prisma personnel. [DESCRIBE ANY AUTOMATED
-          TOOLS USED TO DETECT OR ACT ON ABUSE, SUCH AS MALWARE, PHISHING, OR RESOURCE-ABUSE
-          DETECTION — TO BE CONFIRMED BY LEGAL AND ENGINEERING]
+          you of its decision. Reports are reviewed, and moderation decisions are made, by Prisma
+          personnel. Prisma does not currently use automated tools to detect, identify, or act
+          against illegal content or content that violates these Terms. If Prisma introduces such
+          tools, it will describe them in this Section.
         </p>
         <p>
           When Prisma removes Content or suspends or disables an Application or account because of
@@ -821,10 +828,10 @@ export const termsSections: TermsSection[] = [
         <p>
           Sections 5, 14, and this Section 21 together describe Prisma&apos;s content moderation
           policies for the purposes of applicable law, including the EU Digital Services Act.{" "}
-          <a href="mailto:abuse@prisma.io">abuse@prisma.io</a> serves as Prisma&apos;s electronic
-          point of contact for communications from member state authorities, the European
-          Commission, and recipients of the service, in English [AND ANY OTHER OFFICIAL EU
-          LANGUAGES — CONTACT POINT AND LANGUAGES TO BE CONFIRMED BY LEGAL].
+          <a href="mailto:abuse@prisma.io">abuse@prisma.io</a> is Prisma&apos;s single point of
+          contact for communications with member state authorities, the European Commission, and
+          the European Board for Digital Services, and the point of contact for recipients of the
+          service. Communications may be sent in English or German.
         </p>
         <p>
           If Prisma becomes aware of information giving rise to a suspicion that a criminal offense
@@ -845,14 +852,19 @@ export const termsSections: TermsSection[] = [
     content: (
       <>
         <p>
-          You may export your Customer Content at any time. Data in Prisma Postgres can be exported
-          with standard PostgreSQL tooling, such as <code>pg_dump</code> over a direct connection.
-          Objects in Object Storage buckets can be downloaded with any S3-compatible client. For
-          Applications deployed on Prisma Compute, you retain your source code and may retrieve
-          your deployed assets and configuration; environment variable values are write-only, so
-          keep your own copies. Prisma will provide exports in structured, commonly used,
-          machine-readable formats and will provide reasonable assistance for migrations to
-          another provider or to on-premises infrastructure.
+          Exportable data means the Customer Content that you own or control and that you or your
+          end users have uploaded to and stored in the Prisma Services. Exportable data does not
+          include, and Prisma does not guarantee the export of, Prisma&apos;s own metrics, logs,
+          configuration, or infrastructure and service setup details, any other data specific to
+          the internal functioning of the Prisma Services, or any intellectual property of Prisma.
+          Exportable data also does not include credentials or other secrets that you supply, such
+          as environment variable values, which are stored in a form that cannot be retrieved; you
+          are responsible for retaining your own copies.
+        </p>
+        <p>
+          You may export your exportable data at any time. Prisma will make it available in a
+          structured, commonly used, and machine-readable format and will provide reasonable
+          assistance for migrations to another provider or to on-premises infrastructure.
         </p>
         <p>
           Where the EU Data Act applies to your use of the Prisma Services and you ask to switch to
@@ -878,13 +890,6 @@ export const termsSections: TermsSection[] = [
           </li>
         </ul>
         <p>
-          Exportable data means the Customer Content you store in the Prisma Services, such as
-          database contents, objects in storage buckets, and Application configuration. It does not
-          include data specific to the internal functioning of the Prisma Services, such as
-          Prisma&apos;s internal logs, metrics, and infrastructure configuration. [EXHAUSTIVE LIST
-          OF EXPORTABLE DATA AND EXCLUSIONS TO BE CONFIRMED BY LEGAL AND ENGINEERING]
-        </p>
-        <p>
           Prisma does not impose any termination fee, exit fee, or other charge for terminating
           these Terms or for switching to another provider or to on-premises infrastructure.
           Throughout any switching process, standard service fees continue to apply to your actual
@@ -894,9 +899,9 @@ export const termsSections: TermsSection[] = [
         </p>
         <p>
           Notwithstanding the foregoing, where the EU Data Act applies to your use of the Prisma
-          Services, any data egress charges for data exported as part of a switching process shall
-          not exceed the costs directly incurred by Prisma in connection with that switching process
-          until 12 January 2027, and from 12 January 2027 Prisma shall not impose such charges.
+          Services, data egress charges for data exported as part of a switching process shall be
+          charged at cost until 12 January 2027, and from 12 January 2027 Prisma shall not impose
+          such charges.
         </p>
       </>
     ),
