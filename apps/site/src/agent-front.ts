@@ -515,6 +515,24 @@ async function visitorHash(ip: string, ua: string): Promise<string | undefined> 
   }
 }
 
+/**
+ * PRISMA LOCAL CHANGE — not in ora's file; re-apply when updating it.
+ *
+ * The page the visitor came from, without its query string or fragment. On a
+ * same-origin navigation the browser sends the full previous URL, so the raw
+ * header would carry a prisma.io query string to ora even though `query`
+ * above only reports the allow-listed parameters.
+ */
+function refererWithoutQuery(value: string | null): string | undefined {
+  if (!value) return undefined;
+  try {
+    const u = new URL(value);
+    return `${u.origin}${u.pathname}`.slice(0, 2048);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Static files — scripts, styles, images, fonts, media — are not reported. */
 const ASSET_EXTENSIONS = new Set([
   "js", "mjs", "css", "map", "png", "jpg", "jpeg", "gif", "svg", "webp", "avif",
@@ -577,7 +595,7 @@ async function report(req: NextRequest, host: string, status: number, startedAt:
     method: req.method,
     status,
     ua: ua.slice(0, 512),
-    referer: h.get("referer") ?? undefined,
+    referer: refererWithoutQuery(h.get("referer")),
     vh: await visitorHash(ip, ua),
     cc: h.get("x-vercel-ip-country") ?? h.get("cf-ipcountry") ?? undefined,
     durMs: Math.max(0, Date.now() - startedAt),

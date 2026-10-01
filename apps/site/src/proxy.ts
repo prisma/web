@@ -9,7 +9,8 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 /**
  * Two jobs, in this order.
  *
- * 1. Agent Front (`src/agent-front.ts`, ora's file, kept as they ship it)
+ * 1. Agent Front (`src/agent-front.ts`, ora's file, with one change marked
+ *    PRISMA LOCAL CHANGE that strips the query string from the referer)
  *    reports each page request to ora after the response has been sent, so the
  *    Agent traffic page can tell agents from people. It answers a request
  *    itself only for `/__ora/status`, or once Autopilot is switched on in the
