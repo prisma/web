@@ -98,3 +98,10 @@ test("requires a matching published key and accepts only confirmed notifications
       /checkpoint not saved/,
     );
 });
+
+test("full sync resubmits unchanged URLs and retains removal notifications", () => {
+  const previous = { [origin + "/compute"]: "same", [origin + "/old"]: "old" };
+  const current = { [origin + "/compute"]: "same" };
+  assert.deepEqual(changedUrls(previous, current), [origin + "/old"]);
+  assert.deepEqual(changedUrls(previous, current, true), [origin + "/compute", origin + "/old"]);
+});

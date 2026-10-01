@@ -102,9 +102,9 @@ export function manifestFor(app, urls, tree) {
   );
 }
 
-export function changedUrls(previous, current) {
+export function changedUrls(previous, current, full = false) {
   return [...new Set([...Object.keys(previous), ...Object.keys(current)])]
-    .filter((url) => previous[url] !== current[url])
+    .filter((url) => full || previous[url] !== current[url])
     .map(publicUrl)
     .sort();
 }
@@ -145,7 +145,7 @@ export async function submitUrls(urls, key, fetcher = fetch) {
 export async function main() {
   const app = process.argv[2];
   if (!Object.hasOwn(SITEMAPS, app))
-    throw new Error("Usage: node scripts/indexnow.mjs <site|docs|blog> [--submit]");
+    throw new Error("Usage: node scripts/indexnow.mjs <site|docs|blog> [--submit] [--full]");
   const urls = parseSitemap(await getText(ORIGIN + SITEMAPS[app], fetch));
   const tree = execFileSync("git", ["ls-tree", "-rz", "HEAD"], {
     encoding: "utf8",
@@ -160,7 +160,7 @@ export async function main() {
   const current = manifestFor(app, urls, tree);
   const statePath = resolve(".indexnow-state", `${app}.json`);
   const previous = existsSync(statePath) ? JSON.parse(readFileSync(statePath, "utf8")) : {};
-  const urlsToSubmit = changedUrls(previous, current);
+  const urlsToSubmit = changedUrls(previous, current, process.argv.includes("--full"));
   console.log(
     `${app}: ${urls.length} sitemap URLs; ${urlsToSubmit.length} added, changed or removed since last successful notification`,
   );

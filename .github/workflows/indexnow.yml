@@ -9,12 +9,17 @@ on:
         type: choice
         required: true
         options: [site, docs, blog]
+      full:
+        description: Resubmit all current URLs and notify removals
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: indexnow-production
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -61,7 +66,11 @@ jobs:
       - name: Notify changed published URLs
         env:
           APP: ${{ steps.scope.outputs.app }}
-        run: node scripts/indexnow.mjs "$APP" --submit
+          FULL_SYNC: ${{ inputs.full }}
+        run: |
+          args=("$APP" --submit)
+          if [ "$FULL_SYNC" = "true" ]; then args+=(--full); fi
+          node scripts/indexnow.mjs "${args[@]}"
       - uses: actions/cache/save@v4
         with:
           path: .indexnow-state

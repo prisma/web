@@ -14,8 +14,9 @@ node scripts/indexnow.mjs site          # dry run, no submission or checkpoint
 node scripts/indexnow.mjs docs          # dry run
 node scripts/indexnow.mjs blog          # dry run
 node scripts/indexnow.mjs site --submit # production key must already be live
+node scripts/indexnow.mjs site --submit --full # force recovery/backfill
 ```
 
-After merging and deploying the site, manually dispatch once for `site`, `docs`, and `blog` to seed the checkpoints. Subsequent successful deployments sync their affected app automatically. The workflow needs no additional secret or Bing account access. HTTP 202 (key validation pending) and other non-200 responses fail without saving the checkpoint; rerun after resolving the response. HTTP 200 confirms receipt, not indexing or AI recommendations.
+After merging and deploying the site, manually dispatch with `full: true` once for `site`, `docs`, and `blog` to seed the checkpoints. Subsequent successful deployments sync their affected app automatically. The workflow needs no additional secret or Bing account access. HTTP 202 (key validation pending) and other non-200 responses fail without saving the checkpoint; rerun after resolving the response. HTTP 200 confirms receipt, not indexing or AI recommendations.
 
-The workflow uses production sitemap contents at run time. If publication has not yet propagated to the canonical host, rerun once the sitemap reflects the release. Changes outside this repository need a manual run after their content is reflected in a deployment; this workflow is not a substitute for accurate sitemap generation.
+The workflow uses production sitemap contents at run time. If publication has not yet propagated to the canonical host, rerun once the sitemap reflects the release. Use the manual `full` input (or CLI `--full`) to resubmit unchanged URLs after out-of-repository content updates or to recover from a stale publication snapshot. The shared concurrency queue retains up to 100 pending runs instead of replacing them; this workflow is not a substitute for accurate sitemap generation.
