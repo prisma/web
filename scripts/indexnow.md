@@ -1,6 +1,6 @@
 # IndexNow notifications
 
-`indexnow.yml` runs only after successful Vercel deployments named `Production – site`, `Production – docs`, or `Production – blog`, or a manual run from `main`. It verifies that the checked-out commit belongs to `main`. Preview deploys do not submit URLs.
+`indexnow.yml` runs only after successful Vercel deployments named `Production – site`, `Production – docs`, or `Production – blog`, or a manual run from `main`. Deployment events verify that the deployed commit belongs to `main`, then dispatch the notification on the `main` branch with that exact commit SHA. The notification verifies ancestry again. This dispatch step is required because GitHub Actions caches do not support `deployment_status` events directly. Preview deploys do not submit URLs. Only the dispatch job receives `actions: write`; the notification job retains read-only repository permissions.
 
 The site serves `public/prisma-indexnow.txt` as the public ownership-verification file. This is an IndexNow verification key, not a Bing Webmaster API key. Deploy the site before running a docs or blog backfill. Every submission first checks that the production key file matches the repository.
 

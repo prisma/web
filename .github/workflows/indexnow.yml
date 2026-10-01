@@ -9,6 +9,10 @@ on:
         type: choice
         required: true
         options: [site, docs, blog]
+      deployed_sha:
+        description: Successfully deployed main commit (defaults to current main)
+        type: string
+        required: false
       full:
         description: Resubmit all current URLs and notify removals
         type: boolean
@@ -23,17 +27,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  notify:
+  dispatch:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-      (github.event.deployment_status.state == 'success' &&
-       contains(fromJSON('["Production – site", "Production – docs", "Production – blog"]'), github.event.deployment.environment))
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      contains(fromJSON('["Production – site", "Production – docs", "Production – blog"]'), github.event.deployment.environment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Dispatch a branch-scoped notification after verifying deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYED_SHA: ${{ github.event.deployment.sha }}
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+        run: |
+          [[ "$DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$DEPLOYED_SHA" origin/main
+          case "$DEPLOYMENT_ENVIRONMENT" in
+            'Production – site') app=site ;;
+            'Production – docs') app=docs ;;
+            'Production – blog') app=blog ;;
+            *) exit 1 ;;
+          esac
+          gh workflow run indexnow.yml --ref main -f app="$app" -f deployed_sha="$DEPLOYED_SHA"
+  notify:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.deployment.sha || github.sha }}
+          ref: ${{ inputs.deployed_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -42,17 +74,10 @@ jobs:
       - name: Verify trusted production commit and select app
         id: scope
         env:
-          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
           REQUESTED_APP: ${{ inputs.app }}
         run: |
           git merge-base --is-ancestor HEAD origin/main
-          case "$DEPLOYMENT_ENVIRONMENT" in
-            'Production – site') app=site ;;
-            'Production – docs') app=docs ;;
-            'Production – blog') app=blog ;;
-            '') app="$REQUESTED_APP" ;;
-            *) exit 1 ;;
-          esac
+          app="$REQUESTED_APP"
           case "$app" in site|docs|blog) ;; *) exit 1 ;; esac
           echo "app=$app" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
