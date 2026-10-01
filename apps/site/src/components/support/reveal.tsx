@@ -29,16 +29,7 @@ export function Reveal({ children, className }: { children: ReactNode; className
   }, []);
 
   return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: shown ? 1 : 0,
-        transform: shown ? "none" : "translateY(44px)",
-        transition:
-          "opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1)",
-      }}
-    >
+    <div ref={ref} data-shown={shown} className={className ? `reveal ${className}` : "reveal"}>
       {children}
     </div>
   );

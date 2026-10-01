@@ -135,7 +135,7 @@ const RESOURCES = [
 
 export default function SupportPage() {
   return (
-    <main className="min-h-screen">
+    <div>
       {/* Hero */}
       <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
         <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
@@ -328,6 +328,6 @@ export default function SupportPage() {
           </Reveal>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
