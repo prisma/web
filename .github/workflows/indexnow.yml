@@ -1,0 +1,68 @@
+name: Notify IndexNow after production deployment
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Published app to sync
+        type: choice
+        required: true
+        options: [site, docs, blog]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexnow-production
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.deployment_status.state == 'success' &&
+       contains(fromJSON('["Production – site", "Production – docs", "Production – blog"]'), github.event.deployment.environment))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify trusted production commit and select app
+        id: scope
+        env:
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+          REQUESTED_APP: ${{ inputs.app }}
+        run: |
+          git merge-base --is-ancestor HEAD origin/main
+          case "$DEPLOYMENT_ENVIRONMENT" in
+            'Production – site') app=site ;;
+            'Production – docs') app=docs ;;
+            'Production – blog') app=blog ;;
+            '') app="$REQUESTED_APP" ;;
+            *) exit 1 ;;
+          esac
+          case "$app" in site|docs|blog) ;; *) exit 1 ;; esac
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        id: checkpoint
+        with:
+          path: .indexnow-state
+          key: indexnow-v1-${{ steps.scope.outputs.app }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: indexnow-v1-${{ steps.scope.outputs.app }}-
+      - name: Test notification safeguards
+        run: node --test scripts/indexnow.test.mjs
+      - name: Notify changed published URLs
+        env:
+          APP: ${{ steps.scope.outputs.app }}
+        run: node scripts/indexnow.mjs "$APP" --submit
+      - uses: actions/cache/save@v4
+        with:
+          path: .indexnow-state
+          key: ${{ steps.checkpoint.outputs.cache-primary-key }}
