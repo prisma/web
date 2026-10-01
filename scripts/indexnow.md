@@ -6,6 +6,8 @@ The site serves `public/prisma-indexnow.txt` as the public ownership-verificatio
 
 Each run reads that app's live sitemap and compares Git content fingerprints with its previous successful checkpoint. Changed MDX pages are notified individually; shared layout or dependency changes notify affected pages. Listings use the whole app fingerprint. Removed sitemap URLs are also notified. On the first run, or if GitHub evicts the cache, the current sitemap is submitted in full. Only canonical HTTPS URLs on `www.prisma.io` are accepted; preview hosts, API routes, query strings and static assets are rejected.
 
+The script requires Node.js 24 and Python 3 (available on the Ubuntu runner). Python’s standard XML parser validates the complete document before URL change detection; no package installation is required.
+
 Run locally from the repository root:
 
 ```sh

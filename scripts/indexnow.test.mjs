@@ -105,3 +105,28 @@ test("full sync resubmits unchanged URLs and retains removal notifications", () 
   assert.deepEqual(changedUrls(previous, current), [origin + "/old"]);
   assert.deepEqual(changedUrls(previous, current, true), [origin + "/compute", origin + "/old"]);
 });
+
+test("rejects truncated and structurally invalid XML before computing removals", () => {
+  const prior = { [origin + "/compute"]: "old", [origin + "/postgres"]: "old" };
+  for (const xml of [
+    `<urlset><url><loc>${origin}/compute</loc></url>`,
+    `<urlset><loc>${origin}/compute</loc></urlset>`,
+    `<urlset><url><loc>${origin}/compute</loc><loc>${origin}/postgres</loc></url></urlset>`,
+    `<urlset><url><loc>${origin}/compute</loc></url><url/></urlset>`,
+    `<urlset><url><loc>${origin}/compute</loc></url></urlset><extra/>`,
+  ]) {
+    let changeDetectionReached = false;
+    assert.throws(() => {
+      const urls = parseSitemap(xml);
+      changeDetectionReached = true;
+      changedUrls(prior, manifestFor("site", urls, []));
+    }, /Invalid sitemap XML/);
+    assert.equal(changeDetectionReached, false);
+  }
+  assert.deepEqual(
+    parseSitemap(
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/compute</loc></url></urlset>`,
+    ),
+    [origin + "/compute"],
+  );
+});

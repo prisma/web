@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { pathToFileURL } from "node:url";
+import { pathToFileURL, fileURLToPath } from "node:url";
 
 export const ORIGIN = "https://www.prisma.io";
 export const SITEMAPS = {
@@ -14,6 +14,7 @@ export const SITEMAPS = {
 const KEY_PATH = "apps/site/public/prisma-indexnow.txt";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 
+/** Validate that a URL identifies a canonical public page. */
 export function publicUrl(value) {
   const url = new URL(value);
   if (
@@ -31,29 +32,25 @@ export function publicUrl(value) {
   return url.href;
 }
 
+/** Validate the entire XML document before exposing URLs to change detection. */
 export function parseSitemap(xml) {
-  if (!/<urlset(?:\s|>)/.test(xml) || /<!DOCTYPE|<!ENTITY/i.test(xml))
-    throw new Error("Expected a URL sitemap");
-  const urls = [...xml.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/g)].map(([, value]) =>
-    publicUrl(
-      value.trim().replace(
-        /&(amp|quot|apos|lt|gt);/g,
-        (_, entity) =>
-          ({
-            amp: "&",
-            quot: '"',
-            apos: "'",
-            lt: "<",
-            gt: ">",
-          })[entity],
-      ),
-    ),
-  );
-  if (!urls.length || urls.length > 10000)
-    throw new Error(`Unexpected sitemap size: ${urls.length}`);
-  return [...new Set(urls)].sort();
+  let urls;
+  try {
+    urls = JSON.parse(
+      execFileSync("python3", [fileURLToPath(new URL("./indexnow-sitemap.py", import.meta.url))], {
+        input: xml,
+        encoding: "utf8",
+        maxBuffer: 4 * 1024 * 1024,
+        stdio: ["pipe", "pipe", "pipe"],
+      }),
+    );
+  } catch (error) {
+    throw new Error(`Invalid sitemap XML: ${error.stderr?.toString().trim() || error.message}`);
+  }
+  return [...new Set(urls.map(publicUrl))].sort();
 }
 
+/** Map an MDX source file to its public docs or blog route. */
 export function contentPath(file, app) {
   const prefix = `apps/${app}/content/${app === "blog" ? "blog" : "docs"}/`;
   if (app === "site" || !file.startsWith(prefix) || !file.endsWith(".mdx")) return null;
@@ -65,6 +62,7 @@ export function contentPath(file, app) {
   return `/${app}/${parts.join("/")}`.replace(/\/$/, "");
 }
 
+/** Fingerprint each published page using its content and shared app sources. */
 export function manifestFor(app, urls, tree) {
   const appPrefix = `apps/${app}/`;
   const entries = tree.filter(
@@ -102,6 +100,7 @@ export function manifestFor(app, urls, tree) {
   );
 }
 
+/** Select changed or removed pages, or all pages for an explicit full sync. */
 export function changedUrls(previous, current, full = false) {
   return [...new Set([...Object.keys(previous), ...Object.keys(current)])]
     .filter((url) => full || previous[url] !== current[url])
@@ -109,12 +108,14 @@ export function changedUrls(previous, current, full = false) {
     .sort();
 }
 
+/** Fetch a public resource without following redirects. */
 async function getText(url, fetcher) {
   const response = await fetcher(url, { redirect: "error", signal: AbortSignal.timeout(30000) });
   if (!response.ok) throw new Error(`GET ${url}: ${response.status}`);
   return response.text();
 }
 
+/** Verify the live public key and submit batches without accepting pending responses. */
 export async function submitUrls(urls, key, fetcher = fetch) {
   if (!/^[a-zA-Z0-9-]{8,128}$/.test(key)) throw new Error("Invalid IndexNow key");
   const keyLocation = `${ORIGIN}/prisma-indexnow.txt`;
@@ -142,6 +143,7 @@ export async function submitUrls(urls, key, fetcher = fetch) {
   }
 }
 
+/** Read the live sitemap, submit changes when requested, then save the checkpoint. */
 export async function main() {
   const app = process.argv[2];
   if (!Object.hasOwn(SITEMAPS, app))
