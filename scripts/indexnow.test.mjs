@@ -30,6 +30,12 @@ test("reads canonical sitemap URLs and refuses malformed or empty input", () => 
   for (const xml of ["<urlset/>", "<sitemapindex></sitemapindex>", "<!DOCTYPE x><urlset></urlset>"])
     assert.throws(() => parseSitemap(xml));
 });
+test("decodes XML entities once without interpreting escaped entity text", () => {
+  assert.deepEqual(
+    parseSitemap(`<urlset><url><loc>${origin}/blog/a&amp;quot;b</loc></url></urlset>`),
+    [origin + "/blog/a&quot;b"],
+  );
+});
 test("maps docs route groups and blog index pages", () => {
   assert.equal(contentPath("apps/docs/content/docs/(index)/v7/index.mdx", "docs"), "/docs/v7");
   assert.equal(contentPath("apps/blog/content/blog/example/index.mdx", "blog"), "/blog/example");

@@ -36,7 +36,17 @@ export function parseSitemap(xml) {
     throw new Error("Expected a URL sitemap");
   const urls = [...xml.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/g)].map(([, value]) =>
     publicUrl(
-      value.trim().replaceAll("&amp;", "&").replaceAll("&quot;", '"').replaceAll("&apos;", "'"),
+      value.trim().replace(
+        /&(amp|quot|apos|lt|gt);/g,
+        (_, entity) =>
+          ({
+            amp: "&",
+            quot: '"',
+            apos: "'",
+            lt: "<",
+            gt: ">",
+          })[entity],
+      ),
     ),
   );
   if (!urls.length || urls.length > 10000)
