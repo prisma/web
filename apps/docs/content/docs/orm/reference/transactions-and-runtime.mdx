@@ -32,6 +32,8 @@ Create a PostgreSQL client.
 - A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeQuery: (query) => { if (query.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the query. The hooks are `beforeCompile`, `beforeQuery`, `beforeExecute`, `interceptQuery`, `interceptExecute`, `onRow`, `afterQuery`, and `afterExecute`. See [How middleware works](/orm/middleware/how-middleware-works).
 - Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record and logs a warning on a mismatch, then runs anyway. If you see the warning, run `npx prisma db update`. `verifyMarker: false` skips the check.
 - `postgres(options)` does not open a connection. The client opens one on first use, so [`connect()`](#connect) is optional: call it to open the connection up front and fail early.
+- Without `cursor`, a read loads its whole result before it gives you the first row. With `cursor: { batchSize: 100 }`, reads go through a server-side cursor and fetch the rows in batches of that size, so a `for await` loop gets the first rows before the rest arrive. `cursor: {}` uses batches of 100. A `batchSize` that is not a positive integer makes `postgres(...)` throw an error whose `code` is `RUNTIME.ARGUMENT_INVALID`.
+- While a `for await` loop reads through a cursor, the cursor holds its database connection until the loop ends. A query inside the loop that needs the same connection waits forever. That happens when you loop over a query on a transaction's `tx` and query `tx` inside the loop, and on a client you created with one `pg` `Client`.
 
 #### Options
 
@@ -47,6 +49,7 @@ Pass exactly one of `url`, `pg`, and `binding`.
 | `extensions` | Array of extension runtimes, the default export of each package's `/runtime` subpath | No | The PostgreSQL extensions your contract's types need. Install each package, then import its `/runtime` subpath and put the default export in this array. |
 | `middleware` | Array of middleware | No | Code that runs around every query. See [How middleware works](/orm/middleware/how-middleware-works). |
 | `verifyMarker` | `'onFirstUse'` or `false` | No | Whether the first query checks that the database was set up for this contract. Defaults to `'onFirstUse'`. |
+| `cursor` | `PostgresCursorOptions`, which is `{ batchSize?: number }` | No | Read through a server-side cursor in batches of `batchSize` rows, 100 when you leave `batchSize` out. Without `cursor`, reads are not batched. |
 
 #### Return type
 
@@ -173,6 +176,51 @@ The client implements `Symbol.asyncDispose`, so `await using` closes it automati
   await using db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL! });
   const tags = await db.runtime().query(db.sql.public.tag.select('id', 'label').build());
 } // db is closed here
+```
+
+## Serverless client on PostgreSQL
+
+`@prisma/orm-postgres/serverless` exports `postgresServerless`, a client for serverless and edge runtimes such as Cloudflare Workers, AWS Lambda, and Vercel. It holds no database connection, so you create it once, outside your request handler. Each request opens its own connection with `connect({ url })`.
+
+### `postgresServerless(options)`
+
+Create a serverless client.
+
+#### Remarks
+
+- It takes the options of `postgres(...)` that say how queries run: `contractJson` or `contract`, `extensions`, `middleware`, `verifyMarker`, and `cursor`. It takes no database options. You pass the connection string to `connect()` instead.
+- It has `sql`, `raw`, `enums`, `nativeEnums`, and `contract`, which need no connection, and `connect()`. It has no `orm`, `runtime()`, or `transaction()`. Those are on the connection.
+- As on `postgres(...)`, reads load the whole result unless you pass `cursor`. Behind Cloudflare Hyperdrive, reads through a cursor hang, so leave `cursor` out there.
+
+### `connect({ url })` on the serverless client
+
+Open a database connection and return it.
+
+#### Remarks
+
+- Returns a `Promise<PostgresServerlessConnection>`. The connection has the members of a `postgres(...)` client except `connect()`: `orm`, `sql`, `raw`, `enums`, `nativeEnums`, `contract`, [`runtime()`](#runtime), [`transaction()`](#dbtransactioncallback), [`prepare()`](#dbpreparedeclaration-callback), and [`close()`](#close). Code written for a `postgres(...)` client works on it. Import the type `PostgresServerlessConnection` from `@prisma/orm-postgres/serverless`.
+- `connect()` opens the connection before it returns. It rejects with an error whose `code` is `DRIVER.CONNECTION_FAILED` when the database refuses the connection, rejects the credentials, or does not answer within 20 seconds, and it leaves nothing open. A URL that does not start with `postgres://` or `postgresql://` makes it reject with `RUNTIME.BINDING_INVALID`.
+- Close the connection with `await using`, as the example below does, or with `close()`. Await every query before the connection closes. A query whose rows you read after that fails.
+- Each connection that `connect()` returns uses one database connection. While a `for await` loop reads through a cursor, a query on the same connection inside the loop waits forever.
+
+#### Examples
+
+##### Query from a Cloudflare Worker
+
+```typescript title="src/index.ts"
+import postgresServerless from '@prisma/orm-postgres/serverless';
+import type { Contract } from './prisma/contract.d';
+import contractJson from './prisma/contract.json' with { type: 'json' };
+
+const postgres = postgresServerless<Contract>({ contractJson });
+
+export default {
+  async fetch(_request: Request, env: Env): Promise<Response> {
+    await using db = await postgres.connect({ url: env.HYPERDRIVE.connectionString });
+    const users = await db.orm.public.User.all();
+    return Response.json(users);
+  },
+};
 ```
 
 ## Client lifecycle on MongoDB
@@ -797,6 +845,6 @@ const after = runtime.telemetry();
 
 [`all()`](/orm/reference/orm-client#all), [`createAll()`](/orm/reference/orm-client#createall), and the runtime's `query(...)` return an `AsyncIterableResult`. `all()` and `query(...)` read rows, and `createAll()` writes rows and returns the ones it wrote. `await` the result to collect an array, or `for await` it to take rows one at a time.
 
-Use `await`, and use `for await` only to handle rows as they arrive. On PostgreSQL it does not reduce memory, because every row is loaded first.
+Use `await`, and use `for await` only to handle rows as they arrive. On PostgreSQL it does not reduce memory unless the client was created with the [`cursor` option](#postgresoptions), because without it every row is loaded first.
 
 Pick `await` or `for await` for a given result and do not mix the two. Calling `.toArray()` does the same thing as `await`. Re-`await`ing a result you already awaited is safe and returns the same array, but switching between `await` and `for await`, or looping a second time with `for await`, throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. For the full rules on reading a result, shared identically by PostgreSQL and MongoDB, see [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult) in the ORM client reference.

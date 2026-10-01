@@ -202,15 +202,26 @@ const plan = db.query
 const recent = await runtime.query(plan);
 ```
 
-:::warning[`_id` equality filters do not work through the pipeline builder]
-Filtering by `_id` equality inside `match()` **never matches any document**: neither a hex string (`f._id.eq('507f...')`) nor an `ObjectId` matches. There is no supported way to filter by `_id` equality through the typed pipeline builder. To fetch one document by its id, use the [ORM client](/orm/reference/orm-client), which converts the hex string for you, while the pipeline builder does not convert it:
+:::warning[`match()` does not convert a hex string to an `ObjectId`]
+`match()` sends each value as you give it. A hex string never matches an `_id`, or another field stored as an `ObjectId`, so `f._id.eq('507f...')` **matches no document**. Pass an `ObjectId` from the `mongodb` package instead, wrapped in a `MongoParamRef` from `@prisma/orm-mongo/value` so that the call type-checks:
 
 ```typescript
+import { MongoParamRef } from '@prisma/orm-mongo/value';
+import { ObjectId } from 'mongodb';
+
 const postId = '6650f1c2a1b2c3d4e5f60003';
-const post = await db.orm.posts.where({ _id: postId }).first();
+const plan = db.query
+  .from('posts')
+  .match((f) => f._id.eq(new MongoParamRef(new ObjectId(postId))))
+  .build();
+const [post] = await runtime.query(plan);
 ```
 
-For an `_id` filter inside a pipeline, use [`rawCommand()`](#rawcommand), which places a real `ObjectId` directly in a raw pipeline document.
+To fetch one document by its id, the [ORM client](/orm/reference/orm-client) is shorter, because it converts the hex string for you:
+
+```typescript
+const post = await db.orm.posts.where({ _id: postId }).first();
+```
 :::
 
 ### `sort()`
@@ -922,7 +933,7 @@ const rows = await runtime.query(plan);
 - "Not equal" has two spellings on this page. The filter method is `MongoFieldFilter.neq` and the expression helper is `fn.ne`.
 - Inside a computed value in `project()` or `addFields()` there is no way to write OR, AND, or NOT. Write that stage yourself with [`pipe()`](#pipe), or write the whole command with [`rawCommand()`](#rawcommand).
 - `fn.slice(array, ...rest)` and `fn.range(start, end, step)` take positional arguments, and so does every helper not listed in the table below. This page does not give the positional order for those helpers. Look each one up in [MongoDB's aggregation operator reference](https://www.mongodb.com/docs/manual/reference/operator/aggregation/). Each argument is an expression from the `f` argument or a `fn.literal(...)` value.
-- **`fn.toObjectId()` cannot take a `fn.literal()` value.** `fn.toObjectId(fn.literal(id))` throws a `TypeError`. There is no way to turn a string id into an `ObjectId` inside a pipeline. Build the `ObjectId` in your own code instead and put it in a raw `$match` with [`rawCommand()`](#rawcommand), as the last example on this page does.
+- **`fn.toObjectId()` cannot take a `fn.literal()` value.** `fn.toObjectId(fn.literal(id))` throws a `TypeError`. There is no way to turn a string id into an `ObjectId` inside a pipeline. Build the `ObjectId` in your own code instead and pass it to [`match()`](#match) in a `MongoParamRef`, as the `match()` warning shows.
 
 These helpers take one object of named arguments instead of positional ones:
 
@@ -1032,7 +1043,7 @@ Updater callbacks (the `(f) => [...]` argument to the update methods) must retur
 - The document you pass to `insertOne` / `insertMany` is a plain record. TypeScript requires no particular field, and the builder does not check the record against your contract. You can leave nullable fields out. The examples below pass `null` for them to make the document shape explicit.
 - You can leave `_id` out and let MongoDB assign one.
 - **On the way in, values are stored exactly as you pass them, so pass a `Date` for a date field and an `ObjectId` from the `mongodb` package for an id field.** Nothing turns a string into either. This is the write direction only. Reads are decoded as the first half of this page describes.
-- [`match()`](#match) filter values follow the same rule as the values you insert. The one value you cannot filter on this way is `_id`. An `_id` filter written in `match()` never matches anything, so use [`rawCommand()`](#rawcommand) instead. The [`match()`](#match) warning gives the detail, and the last example on this page shows the form that works.
+- [`match()`](#match) filter values follow the same rule as the values you insert, so an `_id` filter takes an `ObjectId`, not a hex string. The [`match()`](#match) warning shows how to pass one.
 - `insertMany([])` throws an error whose `code` is `ORM.MUTATION_DATA_MISSING`.
 
 #### Examples
@@ -1212,7 +1223,7 @@ Run a raw MongoDB aggregate command through the pipeline builder.
 #### Remarks
 
 - `db.query.rawCommand(command)` takes a command you build yourself, for example `new RawAggregateCommand(collection, pipeline)`, and sends it as you wrote it. The rows come back as `unknown`, so you type them yourself.
-- Use it for anything the typed builder cannot express, including `_id` equality filters (see the [`match()`](#match) warning) and MongoDB's `$redact` stage.
+- Use it for anything the typed builder cannot express, such as MongoDB's `$redact` stage.
 - For the full raw MongoDB API (raw collection methods, untyped writes, and rows that come back as the driver gives them), see [Raw queries](/orm/reference/raw-queries).
 
 #### Examples
@@ -1227,7 +1238,7 @@ const rows = await runtime.query(plan);
 // [{ total: 2 }]
 ```
 
-##### Filter by `_id` (the way that works)
+##### Filter by `_id` in a raw pipeline
 
 ```typescript
 import { ObjectId } from 'mongodb';
@@ -1236,5 +1247,5 @@ const plan = db.query.rawCommand(
   new RawAggregateCommand('posts', [{ $match: { _id: new ObjectId(postId) } }]),
 );
 const rows = await runtime.query(plan);
-// a real ObjectId in a raw pipeline document matches correctly
+// a real ObjectId in a raw pipeline document matches the stored _id
 ```

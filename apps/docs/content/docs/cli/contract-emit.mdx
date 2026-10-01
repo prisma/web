@@ -33,9 +33,18 @@ The command emits:
 - `contract.json`, the canonical machine-readable contract
 - `contract.d.ts`, the generated TypeScript contract declarations
 
-Do not edit these files by hand. Re-run `contract emit` after changing the contract source or extension pack list. The first emit after you upgrade from a release before `8.0.0-rc.12` reorders the entries in `contract.d.ts` to follow the order in `contract.json`, which needs no change to your code. The first emit after you upgrade to `8.0.0-rc.13` renames two keys in `contract.json`: each generated default under `execution.mutations.defaults` names its target as `entry` and `field` instead of `table` and `column`. The client refuses a contract that has the old keys, so run `contract emit` after you upgrade. `contract emit` does not rewrite the contract snapshots under `migrations/snapshots/`. In each snapshot that has an `execution` section, rename `table` to `entry` and `column` to `field` in every `ref` under `execution.mutations.defaults`, in both `contract.json` and `contract.d.ts`. Leave the snapshot's `executionHash` as it is.
+Do not edit these files by hand. Re-run `contract emit` after changing the contract source or extension pack list. The first emit after you upgrade from a release before `8.0.0-rc.12` reorders the entries in `contract.d.ts` to follow the order in `contract.json`, which needs no change to your code. The first emit after you upgrade from a release before `8.0.0-rc.13` renames two keys in `contract.json`: each generated default under `execution.mutations.defaults` names its target as `entry` and `field` instead of `table` and `column`. The client refuses a contract that has the old keys, so run `contract emit` after you upgrade. `contract emit` does not rewrite the contracts stored under `migrations/`, such as the snapshots in `migrations/snapshots/`. To rename the keys in them, download the [`rename-execution-ref-keys` script](https://github.com/prisma/orm/blob/v8.0.0-rc.14/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.12-to-8.0.0-rc.13/scripts/execution-ref-entry-field/rename-execution-ref-keys.ts) into your project root and run it there:
+
+```bash title="Terminal"
+curl -O https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.14/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.12-to-8.0.0-rc.13/scripts/execution-ref-entry-field/rename-execution-ref-keys.ts
+npx tsx rename-execution-ref-keys.ts
+```
+
+The script renames `table` to `entry` and `column` to `field` in each `ref` under `execution.mutations.defaults`, in every `.json` and `.d.ts` file under a `migrations/` folder. It leaves each `executionHash` as it is, and a second run changes nothing. Pass `--check` to list the files it would change without writing them.
 
 When the contract source cannot be read, the command fails with `CONTRACT.SOURCE_LOAD_FAILED` and prints each finding, meaning each problem it found in the source, with the file and line where it knows them. In `--json` output, the findings are the entries of the `envelope.diagnostics` array in the final `result` event, next to `envelope.error`. Each entry has a `code`, a `summary`, and, where known, `where.path` and `where.line`. If an entry's `code` is `CONTRACT.SOURCE_DIAGNOSTIC`, the code of the specific problem, such as `PSL_NO_OPTED_IN_SCHEMA_FILES`, is in its `meta.code`.
+
+A warning in the contract source, such as `PSL_DEPRECATED_SCALAR_NAME` for a MongoDB scalar type name that is deprecated, does not stop the command. It is reported as a diagnostic whose `severity` is `warn`, and the command still writes both files. In `--json` output, the warning is an entry of `envelope.diagnostics` in the final `result` event, with `code` set to `CONTRACT.SOURCE_DIAGNOSTIC` and the warning's own code in `meta.code`.
 
 ## Run it automatically
 

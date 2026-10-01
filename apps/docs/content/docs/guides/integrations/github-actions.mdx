@@ -164,7 +164,7 @@ to:         0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
 app space:  migrations/app/20260910T1549_init
 ```
 
-`migration plan` is offline. It writes a migration directory under `migrations/app/` and prints a DDL preview; it does not touch the database. Apply it to your development database:
+`migration plan` is offline: it writes a migration directory under `migrations/app/` and prints a DDL preview, and it does not touch the database. Apply it to your development database:
 
 ```npm
 npx prisma db migrate
@@ -183,11 +183,11 @@ App space
 └─ marker 0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
 ```
 
-Commit the `migrations/` directory. Whenever you change the contract, run `contract emit`, `migration plan --name <change>`, and `db migrate` again; the pull request's database then receives exactly the migrations the pull request adds. See [How migrations work](/orm/migrations/how-migrations-work) for the full loop.
+Commit the `migrations/` directory, and whenever you change the contract, run `contract emit`, `migration plan --name <change>`, and `db migrate` again; the pull request's database then receives exactly the migrations the pull request adds. See [How migrations work](/orm/migrations/how-migrations-work) for the full loop.
 
 ### 2.5. Seed the database
 
-Create `src/prisma/seed.ts`. Prisma ORM writes take one row at a time and return the inserted row, so create each user, then create its posts with the returned `id`:
+Create `src/prisma/seed.ts` with the code below. `User.create()` returns the user it created, and the script uses that user's `id` when it creates the user's posts:
 
 ```typescript title="src/prisma/seed.ts"
 import { db } from "./db.ts";
@@ -292,7 +292,7 @@ await db.close();
 ]
 ```
 
-The project now works locally. Next, set up the platform side that the workflow will drive.
+The project now works locally, so next set up the platform side that the workflow will drive.
 
 ## 3. Create a platform project for preview databases
 
@@ -421,7 +421,7 @@ The workflow creates databases in `us-east-1`. Change `PRISMA_POSTGRES_REGION` i
 
 ### 4.2. Add the base configuration
 
-Paste the following into `.github/workflows/prisma-postgres-preview.yml`. It sets the triggers, the secrets the CLI reads, and the raw database name:
+Paste the following into `.github/workflows/prisma-postgres-preview.yml`, which sets the triggers, the secrets the CLI reads, and the raw database name:
 
 ```yaml title=".github/workflows/prisma-postgres-preview.yml"
 name: Prisma Postgres preview database
@@ -741,7 +741,7 @@ Always pass `--project` to the `postgres` commands in CI. From a fresh checkout 
 
 :::warning
 
-Keep the seed script's `db.close()`. The runtime owns a connection pool that keeps the Node.js process alive, so a script that forgets to close it never exits and the job runs until its timeout.
+Keep the `db.close()` at the end of the seed script: without it the connection pool keeps the Node.js process alive after the seed finishes, and the job runs until its timeout.
 
 :::
 
@@ -753,7 +753,7 @@ Use `--json` in every CI step that needs a value back. The `--json` stream ends 
 
 ## Prompt your coding agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. `init` and `orm init` are different commands. `orm init` sets up Prisma ORM in a project, and you ran it in [step 2.1](#21-initialize-prisma-orm). `init` installs the agent skills and does not set up Prisma ORM. Prompts that map to this guide:
 
 - "Using the prisma-8 skill, add a `Comment` model to the contract, plan a migration for it, and update the seed script."
 - "Add a test job to the preview workflow that runs `npm test` against the provisioned database after the seed step."

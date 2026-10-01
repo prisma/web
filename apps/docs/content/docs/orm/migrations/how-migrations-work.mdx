@@ -106,7 +106,7 @@ After `migration plan`, commit the new migration directory, any new directories 
 - the contract hash it starts `from`
 - the contract hash it ends at, `to`
 - when it was created
-- its own hash, `migrationHash`, which `npx prisma migration check` reads
+- its own hash, `migrationHash`, which `npx prisma migration check` uses to find a `migration.json` or `ops.json` that was edited by hand. The hash is computed from the rest of `migration.json` and from `ops.json`, so it changes when either file changes.
 
 Do not edit `migration.json` or `ops.json` by hand, because both are written for you from `migration.ts`. Edit `migration.ts` and recompile instead.
 
@@ -122,7 +122,7 @@ Inside `ops.json`, an operation is not only the change itself: it also carries t
 
 When `db migrate` reaches an operation, it runs the postcheck first. If the postcheck passes, the change is already in the database, so `db migrate` skips the operation. If it does not pass, `db migrate` runs the precheck, then the statements, then the postcheck again, and it stops the run if either check fails. Once the operations are done, it checks the database against the contract before it updates the marker, which catches a database that satisfied every individual operation but still doesn't match what you declared.
 
-Say `"user"` already has a `phone` column of another type. The postcheck only asks whether a `phone` column exists, so it passes and the operation is skipped. The check against the contract then finds the wrong type, and the run fails with an error whose `code` is `MIGRATION.RUNNER_FAILED` and whose `why:` line reads `The resulting database schema does not satisfy the destination contract.` To see which columns differ, run `npx prisma db verify --schema-only`. Then change the column by hand to the type your contract declares, here `text`, with `ALTER TABLE "public"."user" ALTER COLUMN "phone" TYPE text;`, and run `db migrate` again. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) covers other changes made outside a migration.
+Say `"user"` already has a `phone` column of another type. The postcheck only asks whether a `phone` column exists, so it passes and the operation is skipped. The check against the contract then finds the wrong type, and the run fails with an error whose `code` is `MIGRATION.RUNNER_FAILED` and whose `why:` line reads `The resulting database schema does not satisfy the destination contract.` To see which columns differ, run [`npx prisma db verify --schema-only`](/cli/db-verify), which compares the tables with your contract and skips the marker check. Then change the column by hand to the type your contract declares, here `text`, with `ALTER TABLE "public"."user" ALTER COLUMN "phone" TYPE text;`, and run `db migrate` again. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) covers other changes made outside a migration.
 
 Each operation also has an `operationClass`, which says what kind of change the operation makes to the database and which you choose yourself when you write a raw SQL operation:
 
@@ -148,7 +148,7 @@ The migration commands are part of the [Prisma ORM CLI](/cli) and run as `npx pr
 | `migration graph`         | Draw your [migration history](/orm/migrations/the-migration-graph) as a graph |
 | `migration check`         | Check that each migration's `migrationHash` still matches its files and no files are missing, before you commit a hand edit |
 
-`<target>` is a migration's directory name, its path under `migrations/app/`, or the first 6 or more characters of its `migrationHash`.
+`<target>` is a migration's directory name, its path under `migrations/app/`, or the first 6 or more characters of its `migrationHash`. You find a migration's `migrationHash` in its `migration.json`, and `migration show` prints it on the `hash:` line. It is the migration's own hash, not a contract hash, so you cannot pass it to `--from` or `--to`, which take a contract reference, such as a contract hash prefix. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms.
 
 The commands in this table connect to a database:
 
@@ -162,7 +162,28 @@ If you used Prisma ORM 7, these commands replace its migrate commands:
 
 - `migrate dev` becomes `migration plan`, then `db migrate --advance-ref db`. `migrate dev` also had a second job, making a development database match the contract without writing migration files, and that job is now `db update`, which changes the database directly. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) lists what each of these does to the ref.
 - `migrate deploy` becomes `db migrate`.
-- `migrate reset` has no equivalent. Drop and recreate the database with your own tools, then run `npx prisma db migrate --advance-ref db` to run your migrations again, or `npx prisma db init` to create what your contract declares without running them.
+- `migrate reset` has no equivalent. On PostgreSQL, drop the database, create it again, and run your migrations, here for a database named `mydb`:
+
+  ```bash
+  dropdb --if-exists mydb
+  createdb mydb
+  npx prisma db migrate --advance-ref db
+  ```
+
+  `dropdb` and `createdb` are PostgreSQL's own command-line tools. They do not read `DATABASE_URL`. They read the server, user, and password from the `PGHOST`, `PGPORT`, `PGUSER`, and `PGPASSWORD` environment variables, which are PostgreSQL's standard ones. `db migrate` does not run a seed script, so run yours afterwards.
+
+  To create the tables your contract declares without running the migrations, replace the last line with [`npx prisma db init`](/cli/db-init).
+
+  If you cannot drop the database, drop both the `public` schema and the `prisma_contract` schema, and then run the same `db migrate` or `db init` command:
+
+  ```sql
+  DROP SCHEMA public CASCADE;
+  DROP SCHEMA prisma_contract CASCADE;
+  ```
+
+  You do not need to create `public` again, because `db migrate` and `db init` create it.
+
+  Do not drop only `public`, because the marker is in `prisma_contract` and stays in the database. `db migrate` then reports `Already up to date` on a database with no tables, while `db verify` fails.
 - `migrate diff` becomes `migration show <dir>`, which prints one migration, or `db update --dry-run`, which shows the operations that would make a database match the contract.
 - Baselining, marking an existing database as already migrated, is now [`npx prisma db sign`](/cli/db-sign), which checks that the tables match your contract before it writes the marker. For a database Prisma ORM 7 migrated, follow [Prisma ORM 7 to 8 (PostgreSQL)](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership).
 

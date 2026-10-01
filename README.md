@@ -10,6 +10,7 @@ This repository is a **pnpm monorepo** containing the Prisma documentation, blog
 |------|--------------|
 | `apps/docs` | Prisma documentation site (Next.js + Fumadocs) |
 | `apps/blog` | Prisma blog |
+| `apps/handbook` | Builders Handbook (Next.js + Fumadocs), chapters written by Shane, see `apps/handbook/AUTHORING.md` |
 | `apps/eclipse` | Eclipse design system documentation |
 | `packages/eclipse` | Eclipse design system component library (`@prisma/eclipse`) |
 | `packages/ui` | Shared UI components and utilities (`@prisma-docs/ui`) |
@@ -36,6 +37,7 @@ This starts all apps via Turbo:
 - **Docs** — http://localhost:3001  
 - **Blog** — http://localhost:3002  
 - **Eclipse** — http://localhost:3003  
+- **Handbook** — http://localhost:3004/handbook  
 
 To run a single app:
 
@@ -43,6 +45,7 @@ To run a single app:
 pnpm --filter docs dev      # docs only
 pnpm --filter blog dev      # blog only
 pnpm --filter eclipse dev   # eclipse design system docs only
+pnpm --filter handbook dev  # builders handbook only
 ```
 
 ## Build

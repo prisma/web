@@ -296,7 +296,7 @@ Create the client inside `fetch` and close it with `ctx.waitUntil(db.close())`, 
 
 :::info
 
-`@prisma/orm-postgres/serverless` exports `postgresServerless`, a per-request client built for serverless runtimes. It opens one `pg` connection per `await db.connect({ url })` call and disposes it when the request scope ends (`await using`). It runs in Workers with `nodejs_compat`, but it exposes only the SQL builder (`db.sql`), not `db.orm`, so this guide uses the regular runtime client per request instead. Reach for it when you only need [SQL builder](/orm/fundamentals/advanced-queries) queries.
+`@prisma/orm-postgres/serverless` exports `postgresServerless`, a client built for serverless runtimes. It runs in Workers with `nodejs_compat`. Create it once at module level, as `const postgres = postgresServerless<Contract>({ contractJson })`. It holds no database connection. Inside `fetch`, open a connection for the request with `await using db = await postgres.connect({ url: env.DATABASE_URL })`. The connection has `db.orm`, `db.sql`, and `db.transaction(...)`, like the client this guide creates, and `await using` closes it when the request scope ends, so await every query before then. `connect()` opens the connection before it returns, and rejects with `DRIVER.CONNECTION_FAILED` when the database cannot be reached. Reads load the whole result unless you create the serverless client with a `cursor` option, and reads through a cursor hang behind Hyperdrive. See [Serverless client on PostgreSQL](/orm/reference/transactions-and-runtime#serverless-client-on-postgresql).
 
 :::
 

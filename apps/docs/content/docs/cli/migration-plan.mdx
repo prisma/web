@@ -27,7 +27,7 @@ The baseline only creates things, because it is planned from an empty database, 
 
 If a migration already starts from the contract the `db` ref points at, `migration plan` writes a second migration that starts from the same contract, so the [migration history](/orm/migrations/the-migration-graph) splits into two branches. This happens, for example, after `db migrate` without `--advance-ref db`, which applies migrations but leaves the `db` ref where it was. `migration plan` still writes the migration and prints a warning. A database that has already run the existing migration then has no migration leading to your new contract, so `db migrate` on that database fails with `MIGRATION.PATH_UNREACHABLE`. To build on the newest migration instead, delete the directory this run wrote and plan again with `--from` set to the newest migration's directory name.
 
-The command is offline. It does not need a database connection.
+The command is offline, so it does not need a database connection.
 
 ## Usage
 
@@ -40,10 +40,14 @@ npx prisma migration plan --name add_users_table
 | Option | What it does |
 | --- | --- |
 | `--name <slug>` | Sets the migration directory name suffix. |
-| `--from <contract>` | Uses a specific starting contract reference (hash, prefix, ref name, migration directory name, `<dir>^`, `./path`, or `@empty`) instead of the `db` ref. `migration plan` is offline, so `@db` and `@contract` are not accepted here. |
-| `--to <contract>` | Sets the destination contract reference. Defaults to the emitted contract. Same grammar as `--from`, except that `@empty` is refused as a destination. |
+| `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
+| `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
+
+### Contract references [#contract-references]
+
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. `@empty` names the empty database, before any migration. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
 
 ## Recommended flow
 
