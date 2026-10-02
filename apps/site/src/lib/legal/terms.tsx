@@ -463,6 +463,10 @@ export const termsSections: TermsSection[] = [
           <br />
           Prisma Data, Inc.
           <br />
+          251 Little Falls Drive
+          <br />
+          Wilmington, New Castle, Delaware 19808
+          <br />
           Email: <a href="mailto:abuse@prisma.io">abuse@prisma.io</a>
         </p>
         <p>A copyright infringement notice must include:</p>
@@ -815,11 +819,13 @@ export const termsSections: TermsSection[] = [
           tools, it will describe them in this Section.
         </p>
         <p>
-          When Prisma removes Content or suspends or disables an Application or account because of
-          illegal content or a violation of Section 14 (Acceptable Use), Prisma will, where
-          required by applicable law, provide the affected user with a statement of the facts and
-          grounds for the decision. You can ask Prisma to review a decision by replying to the
-          statement of reasons, and you may also seek redress before the courts.
+          When Prisma removes Content or suspends or disables an Application, a Prisma Compute
+          deployment, a Prisma Postgres database, any other resource provisioned through the Prisma
+          Services, or an account because of illegal content or a violation of Section 14
+          (Acceptable Use), Prisma will, where required by applicable law, provide the affected
+          user with a statement of the facts and grounds for the decision. You can ask Prisma to
+          review a decision by replying to the statement of reasons, and you may also seek redress
+          before the courts.
         </p>
         <p>
           Sections 5, 14, and this Section 21 together describe Prisma&apos;s content moderation
@@ -881,8 +887,8 @@ export const termsSections: TermsSection[] = [
             days after the transition
           </li>
           <li>
-            Erase your exportable data and digital assets after the retrieval period ends or the
-            switch is complete
+            Erase your exportable data and digital assets after the retrieval period ends,
+            provided the switch has been completed successfully
           </li>
         </ul>
         <p>
