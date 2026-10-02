@@ -34,11 +34,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const url = (path: string): string => new URL(withBlogBasePath(path), baseUrl).toString();
 
   const items = blog.getPages().map((page) => {
-    const { lastModified, date } = page.data as {
+    // Same precedence as the post page's dateModified: the frontmatter
+    // `updatedAt` a rewrite sets, then the git-derived `lastModified`, then
+    // the publish date, so the visible "Updated" line, BlogPosting
+    // dateModified and this lastmod never disagree.
+    const { updatedAt, lastModified, date } = page.data as {
+      updatedAt?: Date | string;
       lastModified?: Date | string;
       date?: Date | string;
     };
-    const resolvedLastModified = lastModified ?? date;
+    const resolvedLastModified = updatedAt ?? lastModified ?? date;
     const lastModifiedDate = resolvedLastModified ? new Date(resolvedLastModified) : undefined;
 
     return {

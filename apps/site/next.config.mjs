@@ -409,12 +409,38 @@ const config = {
         destination: "https://www.prisma.io/:path*",
         permanent: true,
       },
+      // The www. variants are separate entries on purpose: a host value is
+      // matched as an anchored pattern (^value$), so the bare-host entry above
+      // never matches the www. variant, and a literal value can be checked at
+      // a glance where a pattern cannot.
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.prismagraphql.com",
+          },
+        ],
+        destination: "https://www.prisma.io/:path*",
+        permanent: true,
+      },
       {
         source: "/:path*",
         has: [
           {
             type: "host",
             value: "prisma.sh",
+          },
+        ],
+        destination: "https://www.prisma.io/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.prisma.sh",
           },
         ],
         destination: "https://www.prisma.io/:path*",
@@ -665,11 +691,13 @@ const config = {
         destination: "/data-platform/:any*",
         permanent: true,
       },
-      // Point straight at the final 200 destination: /accelerate and /optimize
-      // are themselves redirected to / by vercel.json, and /pulse to /postgres.
+      // Point straight at the final 200 destination, matching vercel.json:
+      // Accelerate keeps its docs until it retires on December 1, 2026, and
+      // Optimize was replaced by Query Insights (there is no /optimize page in
+      // apps/docs). /pulse goes to /postgres.
       {
         source: "/data-platform/accelerate",
-        destination: "/",
+        destination: "/docs/accelerate",
         permanent: true,
       },
       {
@@ -679,7 +707,7 @@ const config = {
       },
       {
         source: "/data-platform/optimize",
-        destination: "/",
+        destination: "/docs/query-insights",
         permanent: true,
       },
       {
@@ -689,7 +717,7 @@ const config = {
       },
       {
         source: "/optimise",
-        destination: "/",
+        destination: "/docs/query-insights",
         permanent: true,
       },
       {
