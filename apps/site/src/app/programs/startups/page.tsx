@@ -87,7 +87,7 @@ export default function StartupsProgramPage() {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-white px-4 py-12 sm:px-8 sm:py-24">
         <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-2 md:gap-20">
           <div>
             <h2 className="text-[clamp(1.5rem,2.25vw,2rem)] leading-[1.15]">

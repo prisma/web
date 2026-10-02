@@ -56,15 +56,32 @@ export function Faq({
   items?: readonly FaqItem[];
 } = {}) {
   return (
-    <section className="px-6 py-24 lg:px-8">
-      <div className="mx-auto max-w-site">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+    <section className="px-6 py-14 sm:py-20 lg:px-8 lg:py-24">
+      {/* From lg the heading takes a sticky left column with a way out to the
+          docs and the team, and the accordion fills the rest — a centred
+          3xl column left most of a 1440 screen empty */}
+      <div className="mx-auto max-w-site lg:grid lg:grid-cols-12 lg:gap-16">
+        <Reveal className="mx-auto max-w-3xl sm:max-w-2xl sm:text-center lg:sticky lg:top-28 lg:col-span-4 lg:mx-0 lg:max-w-none lg:self-start lg:text-left">
+          <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[clamp(2rem,3.5vw,3rem)] lg:leading-[1.1]">
             {heading}
           </h2>
+          <p className="mt-4 text-pretty leading-relaxed text-muted-foreground max-lg:hidden">
+            More answers live in the{" "}
+            <a href="/docs" className="font-medium text-foreground underline underline-offset-4">
+              docs
+            </a>
+            , or{" "}
+            <a href="/contact" className="font-medium text-foreground underline underline-offset-4">
+              talk to our team
+            </a>
+            .
+          </p>
         </Reveal>
 
-        <Reveal delay={0.1} className="mx-auto mt-16 max-w-3xl">
+        <Reveal
+          delay={0.1}
+          className="mx-auto mt-6 max-w-3xl sm:mt-16 lg:col-span-8 lg:mx-0 lg:mt-0 lg:max-w-none"
+        >
           <Accordion type="single" collapsible defaultValue="item-0">
             {items.map((faq, index) => (
               <AccordionItem key={faq.question} value={`item-${index}`}>

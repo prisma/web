@@ -77,7 +77,7 @@ export function ProductHero({
               so the gap under the navbar matches the wrapper's bottom */}
           {/* the demo takes the larger half — the copy column is short enough
               now that an even split left it stranded beside a tall panel */}
-          <div className="mx-auto grid max-w-site items-center gap-12 pb-20 pt-36 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:pb-28 md:pt-48 lg:gap-16">
+          <div className="mx-auto grid max-w-site items-center gap-10 pb-12 pt-32 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:gap-12 md:pb-28 md:pt-48 lg:gap-16">
             {/* copy */}
             <div className="flex flex-col items-start">
               {/* the site's standard tagline: sentence case, ink at 70%, colour
@@ -88,13 +88,13 @@ export function ProductHero({
                   resolves wider than this column, so the column has to be the
                   hard limit — otherwise a headline with a long nowrap emphasis
                   runs into the illustration beside it. */}
-              <h1 className="isolate mt-4 max-w-[min(16ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+              <h1 className="isolate mt-4 max-w-[min(16ch,100%)] text-balance text-[clamp(2rem,9vw,2.5rem)] leading-[1.06] md:text-[clamp(2.5rem,4vw,3.5rem)]">
                 <Headline headline={hero.headline} emphasis={hero.headlineEmphasis} />
               </h1>
-              <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+              <p className="mt-5 max-w-[46ch] text-pretty text-[1.0625rem] leading-relaxed text-muted-foreground sm:mt-6 sm:text-lg">
                 {hero.subheadline}
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-4">
+              <div className="mt-7 flex flex-wrap items-center gap-3 sm:mt-8 sm:gap-4">
                 <PrismButton href={hero.primaryCta.href} size="lg">
                   {hero.primaryCta.label}
                 </PrismButton>
@@ -109,7 +109,7 @@ export function ProductHero({
                   below it now, so they can carry their original weight without
                   competing — it's the position that was pushing the CTA down,
                   not the type. */}
-              <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
+              <ul className="mt-7 flex flex-col gap-2.5 border-t border-black/[0.07] pt-6 sm:mt-8 sm:pt-7">
                 {hero.benefits.map((label, i) => (
                   <li
                     key={i}

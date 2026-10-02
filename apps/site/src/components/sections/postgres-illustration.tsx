@@ -45,7 +45,7 @@ export function PostgresIllustration() {
     <div
       ref={ref}
       aria-hidden
-      className="relative flex min-h-[22rem] select-none items-stretch justify-center overflow-hidden p-8 lg:min-h-full"
+      className="relative flex min-h-[19rem] select-none items-stretch justify-center overflow-hidden p-5 sm:min-h-[22rem] sm:p-8"
     >
       {/* ray backdrop — saturation boosted (bold pass) on its own layer so the
           filter doesn't touch the card content */}

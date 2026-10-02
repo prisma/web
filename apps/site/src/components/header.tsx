@@ -58,8 +58,8 @@ export function Header() {
         className={cn(
           "mx-auto flex items-center justify-between rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           floating
-            ? "mt-3 h-14 max-w-[calc(100%-1.5rem)] border-black/[0.06] bg-white/85 px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-4xl"
-            : "mt-5 h-16 max-w-[96rem] border-transparent bg-white/0 px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16",
+            ? "mt-3 h-14 max-w-[calc(100%-1.5rem)] border-black/[0.06] bg-white/85 pl-5 pr-2 md:px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-4xl"
+            : "mt-5 h-16 max-w-[96rem] border-transparent bg-white/0 px-7 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16",
         )}
       >
         <Logo />
@@ -152,30 +152,76 @@ export function Header() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        {/* phones keep the primary CTA in reach: the pill carries a compact
+            Get started beside search and the menu, instead of hiding it
+            behind the menu the way it used to */}
+        <div className="flex items-center gap-1 md:hidden">
+          <Button
+            asChild
+            size="sm"
+            className="mr-1 h-8 rounded-full px-3.5 text-[13px] max-[374px]:hidden"
+          >
+            <a
+              href="https://console.prisma.io/sign-up"
+              onClick={() =>
+                trackCTA({
+                  cta_text: "Get started",
+                  cta_location: "navbar-mobile",
+                  cta_destination: "https://console.prisma.io/sign-up",
+                  section: "website",
+                })
+              }
+            >
+              Get started
+            </a>
+          </Button>
           <UnifiedSearchTrigger />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="size-10" aria-label="Open menu">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px]" aria-describedby={undefined}>
+            <SheetContent side="right" className="w-[min(20rem,88vw)]" aria-describedby={undefined}>
               <SheetTitle className="sr-only">Menu</SheetTitle>
-              <nav className="mt-8 flex flex-col gap-4 px-5 pb-6 text-left">
+              <nav className="mt-8 flex flex-col gap-4 overflow-y-auto px-5 pb-6 text-left">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Platform
                 </p>
-                {[...siteConfig.platform, siteConfig.stack].map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="text-lg font-medium"
-                    onClick={() => setOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {/* same product rows as the desktop Platform menu: glyph,
+                    name, one-line description */}
+                <ul className="-mx-2 flex flex-col gap-0.5">
+                  {siteConfig.platform.map(({ label, href, description }) => {
+                    const Icon = PLATFORM_ICONS[href];
+                    return (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          className="flex items-start gap-3 rounded-lg p-2 transition-colors active:bg-muted"
+                          onClick={() => setOpen(false)}
+                        >
+                          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card">
+                            {Icon && <Icon className="size-4" />}
+                          </span>
+                          <span className="flex flex-col gap-0.5">
+                            <span className="text-base font-medium text-foreground">{label}</span>
+                            <span className="text-xs leading-snug text-muted-foreground">
+                              {description}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <Link
+                  href={siteConfig.stack.href}
+                  className="flex items-center gap-1.5 text-base font-medium"
+                  onClick={() => setOpen(false)}
+                >
+                  {siteConfig.stack.label}
+                  <ArrowRight className="size-3.5" />
+                </Link>
                 <div className="border-t pt-4 flex flex-col gap-4">
                   {siteConfig.nav.map((item) => (
                     <SiteLink

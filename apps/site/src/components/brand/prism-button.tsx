@@ -64,16 +64,19 @@ type PrismButtonProps = {
   size?: "default" | "lg";
 };
 
+// `lg` steps down to the default box below sm: on a phone two hero-size pills
+// can't share a row, and the stacked pair pushed the benefits a screen down.
+// It still reads as the page's action there — the phone navbar pill is 32px.
 const SIZES = {
   default: "px-6 py-3 text-[16px]",
-  lg: "px-8 py-4 text-[17px]",
+  lg: "px-6 py-3 text-[16px] sm:px-8 sm:py-4 sm:text-[17px]",
 } as const;
 
 // The outline pill gives a pixel of padding back to its border on each axis, so
 // its box matches the filled pill's at the same size.
 const OUTLINE_SIZES = {
   default: "px-[22px] py-[11px] text-[16px]",
-  lg: "px-[30px] py-[15px] text-[17px]",
+  lg: "px-[22px] py-[11px] text-[16px] sm:px-[30px] sm:py-[15px] sm:text-[17px]",
 } as const;
 
 // The brand's primary CTA, ported from the approved stylescape: a living

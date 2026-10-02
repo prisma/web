@@ -109,7 +109,7 @@ export function TeamPhotos() {
 
 export function CompanyInvestors() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+    <section className="bg-white px-4 py-12 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           Our investors

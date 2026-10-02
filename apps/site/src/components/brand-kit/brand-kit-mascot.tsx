@@ -17,7 +17,7 @@ const LEAD = "/brand-kit/mascot/happy.png";
 // a set, with the rules that keep him a character rather than a second logo.
 export function BrandKitMascot() {
   return (
-    <section id="mascot" className="scroll-mt-24 bg-white px-4 py-20 sm:px-8 sm:py-24">
+    <section id="mascot" className="scroll-mt-24 bg-white px-4 py-12 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
         <SectionHeader
           kicker="Mascot"

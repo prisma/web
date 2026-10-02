@@ -24,7 +24,7 @@ export default function HomePage() {
       <StackBento />
       <AgentLoop />
       <PricingScale />
-      <TestimonialsReveal />
+      <TestimonialsReveal kicker="Customers" />
       <Faq />
       <CtaBurst />
     </>

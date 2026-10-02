@@ -455,6 +455,7 @@ export function renderPricingMarkdown(): string {
     ]),
 
     heading(2, "FAQs"),
+    paragraphs("More answers live in the [docs](/docs), or [talk to our team](/contact)."),
     ...FAQS.flatMap((faq) => [heading(3, faq.question), paragraphs(faq.answer)]),
   ]);
 }

@@ -1,6 +1,7 @@
 import {
   AppWindow,
   Bot,
+  CheckBold,
   ChevronRight,
   ChevronsUpDown,
   Copy,
@@ -41,6 +42,13 @@ const NAV = [
   { icon: GitBranch, bar: "w-8", active: false },
   { icon: Layers, bar: "w-20", active: false },
   { icon: Settings, bar: "w-12", active: false },
+];
+
+// The deploy the hero command kicks off — decorative log lines, same idiom as
+// the rest of the card (real labels, abstracted values).
+const DEPLOY_LOG = [
+  { label: "Built storefront", detail: "1.4s" },
+  { label: "Linked Primary database", detail: "us-west-1" },
 ];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -191,10 +199,6 @@ export function ConsoleIllustration() {
                   <Bot className="size-3.5" />
                   Deploy with your agent
                 </span>
-                <div className="mt-2.5 flex flex-col gap-1.5">
-                  <Bar className="h-1 w-full" />
-                  <Bar className="h-1 w-2/3" />
-                </div>
                 <span className="mt-3 flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-[0.6875rem] text-primary-foreground/90">
                   <span className="text-prism-cyan-400">$</span>
                   <span className="flex min-w-0 items-center">
@@ -206,6 +210,32 @@ export function ConsoleIllustration() {
                   </span>
                   <Copy className="ml-auto size-3 text-primary-foreground/50" />
                 </span>
+                {/* the command runs once the console has risen in: build,
+                    database, live — prompt to production in one beat. Lines
+                    rest in their final state under reduced motion. */}
+                <ol className="mt-2.5 flex flex-col gap-1.5 text-[0.6875rem] leading-none text-muted-foreground">
+                  {DEPLOY_LOG.map(({ label, detail }, i) => (
+                    <li
+                      key={label}
+                      className="flex animate-deploy-line items-center gap-1.5 motion-reduce:animate-none"
+                      style={{ animationDelay: `${1.9 + i * 0.55}s` }}
+                    >
+                      <CheckBold className="size-2.5 shrink-0 text-prism-cyan-500" />
+                      {label}
+                      <span className="ml-auto font-mono text-muted-foreground/70">{detail}</span>
+                    </li>
+                  ))}
+                  <li
+                    className="mt-0.5 flex animate-deploy-line items-center gap-1.5 font-semibold text-foreground motion-reduce:animate-none"
+                    style={{ animationDelay: `${1.9 + DEPLOY_LOG.length * 0.55}s` }}
+                  >
+                    <span className="size-1.5 shrink-0 rounded-full bg-prism-cyan-400 animate-status-pulse motion-reduce:animate-none" />
+                    Live in production
+                    <span className="ml-auto rounded-full bg-prism-cyan-100 px-1.5 py-0.5 text-[0.5625rem] font-semibold uppercase tracking-[0.08em] text-prism-cyan-700">
+                      Deployed
+                    </span>
+                  </li>
+                </ol>
               </div>
             </div>
           </div>

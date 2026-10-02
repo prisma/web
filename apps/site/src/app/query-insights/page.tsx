@@ -117,7 +117,7 @@ export default function QueryInsightsPage() {
       </section>
 
       {/* Feature tour: alternating two-column rows, light shots on wash cards */}
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-white px-4 py-12 sm:px-8 sm:py-24">
         <div className="mx-auto flex max-w-site flex-col gap-16 sm:gap-20">
           {FEATURES.map((feature, index) => (
             <div

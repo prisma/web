@@ -24,7 +24,7 @@ type CommunitySectionData = {
 // names are unused; image marks (tech logos) keep rendering.
 export function CommunitySection({ data }: { data: CommunitySectionData }) {
   return (
-    <section className="bg-white px-4 py-20 pb-24 sm:px-8 sm:pb-32">
+    <section className="bg-white px-4 py-12 pb-14 sm:px-8 sm:py-20 sm:pb-32">
       <div className="mx-auto max-w-site">
         <h2 className="mx-auto max-w-[26ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           {data.title}

@@ -31,7 +31,7 @@ export async function HowSection({
   const hasTabs = Boolean(data.tabs && data.tabs.body.length > 0);
 
   return (
-    <section className="scroll-mt-20 bg-white px-4 py-20 sm:px-8" id={data.tabs?.id}>
+    <section className="scroll-mt-20 bg-white px-4 py-12 sm:px-8 sm:py-20" id={data.tabs?.id}>
       <div className="mx-auto max-w-site">
         <h2 className="mx-auto max-w-[26ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           {data.title}

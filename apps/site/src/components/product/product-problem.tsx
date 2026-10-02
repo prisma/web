@@ -7,7 +7,7 @@ import type { ProductPageContent } from "./types";
 // unlocks. Copy carries this section; the tiles stay quiet.
 export function ProductProblem({ problem }: Pick<ProductPageContent, "problem">) {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-white px-4 py-14 sm:px-8 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-site">
         <div className="mx-auto max-w-3xl text-center max-md:text-left">
           <Reveal>
@@ -23,12 +23,12 @@ export function ProductProblem({ problem }: Pick<ProductPageContent, "problem">)
             ))}
           </div>
         </div>
-        <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:mt-14 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
           {problem.outcomes.map(({ icon, label }, i) => {
             const Icon = PRODUCT_ICONS[icon];
             return (
               <Reveal key={i} delay={i * 0.1} className="h-full">
-                <div className="flex h-full flex-col items-start gap-4 rounded-xl border border-black/[0.06] bg-white p-6">
+                <div className="flex h-full flex-row items-center gap-4 rounded-xl border border-black/[0.06] bg-white p-4 sm:flex-col sm:items-start sm:p-6">
                   <IconTile>
                     <Icon className="size-5 text-foreground" aria-hidden />
                   </IconTile>

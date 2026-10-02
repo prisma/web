@@ -262,14 +262,24 @@ const PLAN_NAMES = ["Free", "Starter", "Pro", "Business"];
 // Starter carries "Most popular" on the cards, so it reads as the lit column here too.
 const HIGHLIGHT = 1;
 
-function Cell({ value, highlight }: { value: string; highlight: boolean }) {
+function Cell({
+  value,
+  highlight,
+  compact = false,
+}: {
+  value: string;
+  highlight: boolean;
+  /** Tighter leading for the mobile plan grid, where cells stack two by two. */
+  compact?: boolean;
+}) {
   if (value === YES) {
     return <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />;
   }
   return (
     <span
       className={cn(
-        "text-sm leading-relaxed",
+        "text-sm",
+        compact ? "leading-snug" : "leading-relaxed",
         value === "—"
           ? "text-muted-foreground/50"
           : highlight
@@ -289,7 +299,7 @@ function Cell({ value, highlight }: { value: string; highlight: boolean }) {
 function MobileRow({ row }: { row: Row }) {
   const uniform = row.values.every((v) => v === row.values[0]);
   return (
-    <div className="border-t border-black/[0.06] px-5 py-3.5 first:border-t-0">
+    <div className="border-t border-black/[0.06] px-4 py-3 first:border-t-0 sm:px-5 sm:py-3.5">
       {uniform ? (
         <div className="flex items-start justify-between gap-4">
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
@@ -300,12 +310,12 @@ function MobileRow({ row }: { row: Row }) {
       ) : (
         <>
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
-          <dd className="mt-2.5 grid grid-cols-2 gap-2">
+          <dd className="mt-2 grid grid-cols-2 gap-1.5 sm:mt-2.5 sm:gap-2">
             {row.values.map((v, i) => (
               <div
                 key={PLAN_NAMES[i]}
                 className={cn(
-                  "rounded-lg px-3 py-2",
+                  "rounded-lg px-3 py-1.5 sm:py-2",
                   // Recommended plan lifted on white, the rest recessed — the
                   // site's before/after language from pricing-comparison.tsx.
                   i === HIGHLIGHT ? "bg-white ring-1 ring-black/[0.09]" : "bg-foreground/[0.03]",
@@ -314,8 +324,8 @@ function MobileRow({ row }: { row: Row }) {
                 <p className="text-[0.6875rem] font-medium text-muted-foreground">
                   {PLAN_NAMES[i]}
                 </p>
-                <div className="mt-1">
-                  <Cell value={v} highlight={i === HIGHLIGHT} />
+                <div className="mt-0.5 sm:mt-1">
+                  <Cell value={v} highlight={i === HIGHLIGHT} compact />
                 </div>
               </div>
             ))}
@@ -351,7 +361,7 @@ function DesktopRow({ row }: { row: Row }) {
 export function PricingSpecTable() {
   return (
     <section className="overflow-x-clip bg-white px-4 sm:px-8">
-      <div className="mx-auto max-w-site py-16 sm:py-24">
+      <div className="mx-auto max-w-site py-12 sm:py-24">
         <Reveal>
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
             Compare plans
@@ -413,7 +423,7 @@ export function PricingSpecTable() {
             </div>
             {GROUPS.map((group) => (
               <div key={group.label} className="border-b border-black/[0.06] last:border-b-0">
-                <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
+                <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-4 py-3 text-sm font-semibold text-foreground sm:px-5">
                   <group.icon className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
                 </p>

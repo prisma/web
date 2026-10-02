@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckBold, X } from "@/components/icons/forma";
 import { PrismButton } from "@/components/brand/prism-button";
+import { SectionKicker } from "@/components/brand/section-kicker";
 import { Reveal } from "@/components/motion/reveal";
 import { CountUp } from "@/components/motion/count-up";
 import { cn } from "@/lib/utils";
@@ -259,13 +260,14 @@ function ScenarioCarousel() {
 
 export function PricingScale() {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-white px-4 py-14 sm:px-8 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-site">
         {/* Top: heading + description (left), bullets + CTA (right) */}
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-16">
+        <div className="grid gap-8 sm:gap-10 lg:grid-cols-2 lg:items-start lg:gap-16">
           <div>
             <Reveal>
-              <h2 className="max-w-[20ch] text-balance text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
+              <SectionKicker>Pricing</SectionKicker>
+              <h2 className="mt-4 max-w-[20ch] text-balance text-[clamp(2rem,3.5vw,3rem)] leading-[1.1]">
                 Pricing that scales with you
               </h2>
             </Reveal>
@@ -302,7 +304,7 @@ export function PricingScale() {
         </div>
 
         {/* Below: the scenario card, full width */}
-        <Reveal className="mt-14 min-w-0">
+        <Reveal className="mt-10 min-w-0 sm:mt-14">
           <ScenarioCarousel />
         </Reveal>
       </div>

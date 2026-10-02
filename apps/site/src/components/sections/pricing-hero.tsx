@@ -72,7 +72,7 @@ export function PricingHero({ children }: { children?: React.ReactNode }) {
           they come out both roomier AND 46px shorter — which is the only reason
           the padding here still leaves the CTAs above the fold at 1440x800.
           Measured at 1440: 270px wide / 528px tall -> 326px / 482px. */}
-      <div className="relative mx-auto max-w-site pb-20 pt-32 sm:pb-24 md:pt-36">
+      <div className="relative mx-auto max-w-site pb-14 pt-28 sm:pb-24 sm:pt-32 md:pt-36">
         <div className="flex min-w-0 flex-col items-start">
           <RoleKicker color="bg-prism-cyan-400">Pricing</RoleKicker>
           <h1 className="isolate mt-5 max-w-[34ch] text-balance text-[clamp(2.25rem,3.4vw,3.125rem)] leading-[1.06]">

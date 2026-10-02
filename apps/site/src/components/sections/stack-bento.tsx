@@ -1,7 +1,7 @@
 import { Console, Table } from "@/components/icons/forma";
 import { IconTile } from "@/components/brand/icon-tile";
 import { LearnMore } from "@/components/brand/learn-more";
-import { ConnectorStrip } from "@/components/sections/connector-strip";
+import { ConnectorJoint, ConnectorStrip } from "@/components/sections/connector-strip";
 import { OrmIllustration } from "@/components/sections/orm-illustration";
 import { PostgresIllustration } from "@/components/sections/postgres-illustration";
 import { ComputeIllustration } from "@/components/sections/compute-illustration";
@@ -10,6 +10,7 @@ import { Pattern } from "@/components/brand/pattern";
 import { Texture } from "@/components/brand/texture";
 import { Reveal } from "@/components/motion/reveal";
 import { RoleKicker } from "@/components/brand/role-kicker";
+import { SectionKicker } from "@/components/brand/section-kicker";
 
 // Spectrum gradient matching the brand CTA glow (see prism-button.tsx).
 const SPECTRUM =
@@ -74,30 +75,35 @@ export function StackBento() {
         </div>
         <Texture opacity={0.06} blend="multiply" />
 
-        <div className="relative px-4 py-20 sm:px-8 sm:py-24">
-          <Reveal className="mx-auto flex max-w-3xl flex-col items-start text-left md:items-center md:text-center">
-            <h2 className="max-w-[24ch] text-balance text-[clamp(2.125rem,3.5vw,3rem)] leading-[1.1]">
-              The TypeScript stack, integrated by design
-            </h2>
-            <p className="mt-5 max-w-[64ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+        <div className="relative px-4 py-12 sm:px-8 sm:py-24">
+          {/* section header: kicker and headline left, the supporting line
+              in the right-hand columns from lg (the homepage's header system) */}
+          <Reveal className="mx-auto max-w-site lg:grid lg:grid-cols-12 lg:items-end lg:gap-10">
+            <div className="lg:col-span-7">
+              <SectionKicker>The platform</SectionKicker>
+              <h2 className="mt-4 max-w-[24ch] text-balance text-[clamp(2rem,3.5vw,3rem)] leading-[1.1]">
+                The TypeScript stack, integrated by design
+              </h2>
+            </div>
+            <p className="mt-4 max-w-[64ch] text-pretty text-[1.0625rem] leading-relaxed text-muted-foreground sm:mt-5 sm:text-lg lg:col-span-5 lg:mt-0 lg:pb-1">
               ORM, database, and hosting designed to work together, so your agent can build, deploy,
               and iterate without coordinating between vendors.
             </p>
           </Reveal>
 
-          <div className="mx-auto mt-16 flex max-w-site flex-col">
+          <div className="mx-auto mt-10 flex max-w-site flex-col sm:mt-16">
             {/* Prisma ORM — the foundation, full width */}
             <Reveal className="overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
               <div className="grid lg:grid-cols-2">
                 <OrmIllustration />
-                <div className="p-7 max-lg:order-last sm:p-9 lg:order-first">
+                <div className="p-6 max-lg:order-last sm:p-9 lg:order-first">
                   <RoleKicker color="bg-prism-cyan-400">Type-safe data layer</RoleKicker>
                   <h3 className="mt-3 text-2xl">Prisma ORM</h3>
                   <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                     A declarative, type-safe schema rebuilt in native TypeScript, the shared
                     contract your whole stack and your agent are built around.
                   </p>
-                  <ul className="mt-5 flex flex-col gap-3">
+                  <ul className="mt-4 flex flex-col gap-2.5 sm:mt-5 sm:gap-3">
                     <Bullet>Schema-as-LLM-context: small, dense, machine-readable</Bullet>
                     <Bullet>
                       Errors structured for agent consumption, not just human-readable
@@ -120,18 +126,22 @@ export function StackBento() {
               gradient="from-prism-cyan-400 to-prism-yellow-400"
             />
 
-            {/* Prisma Postgres — full-width row, illustration left */}
-            <Reveal className="overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
-              <div className="grid lg:grid-cols-2">
+            {/* From lg, Postgres and Compute share a row under the ORM — the
+                two products prisma.config.ts ties together, side by side, with
+                the file bridging the gap between them (ConnectorJoint). Below
+                lg they stack with the vertical connector between. */}
+            <div className="relative lg:grid lg:grid-cols-2 lg:gap-6">
+              {/* Prisma Postgres */}
+              <Reveal className="flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
                 <PostgresIllustration />
-                <div className="p-7 sm:p-9">
+                <div className="flex flex-1 flex-col p-6 sm:p-9">
                   <RoleKicker color="bg-prism-yellow-400">Managed database</RoleKicker>
                   <h3 className="mt-3 text-2xl">Prisma Postgres</h3>
                   <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                     Managed Postgres already wired to your schema and co-located with your app
                     hosting, on infrastructure built for single-digit ms boot times.
                   </p>
-                  <ul className="mt-5 flex flex-col gap-3">
+                  <ul className="mt-4 flex flex-col gap-2.5 sm:mt-5 sm:gap-3">
                     <Bullet>Unikernel microVMs on bare metal, single-digit ms boot</Bullet>
                     <Bullet>Operation-based pricing with spend limits, no bill shock</Bullet>
                     <Bullet>Free per-branch databases, integrated with hosting previews</Bullet>
@@ -141,29 +151,29 @@ export function StackBento() {
                       fix them
                     </Bullet>
                   </ul>
-                  <LearnMore href="/postgres" product="Prisma Postgres" />
+                  <LearnMore href="/postgres" product="Prisma Postgres" className="mt-auto pt-5" />
                 </div>
+              </Reveal>
+
+              <div className="lg:hidden">
+                <ConnectorStrip
+                  file="prisma.config.ts"
+                  caption="One config, both products"
+                  gradient="from-prism-yellow-400 to-prism-red-500"
+                />
               </div>
-            </Reveal>
 
-            <ConnectorStrip
-              file="prisma.config.ts"
-              caption="One config, both products"
-              gradient="from-prism-yellow-400 to-prism-red-500"
-            />
-
-            {/* Prisma Compute — full-width row, illustration right */}
-            <Reveal className="overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
-              <div className="grid lg:grid-cols-2">
+              {/* Prisma Compute */}
+              <Reveal className="flex flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
                 <ComputeIllustration />
-                <div className="flex flex-col p-7 max-lg:order-last sm:p-9 lg:order-first">
+                <div className="flex flex-1 flex-col p-6 sm:p-9">
                   <RoleKicker color="bg-prism-red-500">App hosting</RoleKicker>
                   <h3 className="mt-3 text-2xl">Prisma Compute</h3>
                   <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                     TypeScript app hosting that runs on the same host as your database, so your
                     agent can deploy, debug, and redeploy end-to-end.
                   </p>
-                  <ul className="mt-5 flex flex-col gap-3">
+                  <ul className="mt-4 flex flex-col gap-2.5 sm:mt-5 sm:gap-3">
                     <Bullet>Bun runtime on bare metal</Bullet>
                     <Bullet>Co-located with Prisma Postgres, single-digit ms query latency</Bullet>
                     <Bullet>
@@ -176,13 +186,24 @@ export function StackBento() {
                   </ul>
                   <LearnMore href="/compute" product="Prisma Compute" className="mt-auto pt-5" />
                 </div>
-              </div>
-            </Reveal>
+              </Reveal>
+
+              <Reveal
+                delay={0.2}
+                className="absolute left-1/2 top-[10rem] z-10 -translate-x-1/2 -translate-y-1/2 max-lg:hidden"
+              >
+                <ConnectorJoint
+                  file="prisma.config.ts"
+                  caption="One config, both products"
+                  gradient="from-prism-yellow-400 to-prism-red-500"
+                />
+              </Reveal>
+            </div>
 
             {/* Working across the stack — half the connector-strip gap: close
                 enough to read as part of the stack, distinct from the wired
                 product rows */}
-            <Reveal className="relative mt-20 overflow-hidden rounded-2xl border border-black/[0.06] bg-card p-7 sm:p-9">
+            <Reveal className="relative mt-12 overflow-hidden rounded-2xl border border-black/[0.06] bg-card p-6 sm:mt-20 sm:p-9">
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 opacity-[0.04] grayscale [mask-image:linear-gradient(to_bottom,black,transparent_55%)]"
@@ -190,15 +211,20 @@ export function StackBento() {
                 <Pattern className="h-full w-full" scale={2.5} />
               </div>
               <h3 className="text-2xl">Working across the stack</h3>
-              <div className="mt-7 grid gap-10 lg:grid-cols-2">
+              <div className="mt-7 grid gap-8 sm:gap-10 lg:grid-cols-2">
                 <div>
-                  <IconTile className="size-14">
-                    <Table className="size-6 text-foreground" />
-                  </IconTile>
-                  <h4 className="mt-5 text-xl">Prisma Studio</h4>
-                  <em className="mt-0.5 block text-sm text-muted-foreground">
-                    to inspect your data
-                  </em>
+                  {/* glyph beside the title on phones, above it from sm */}
+                  <div className="flex items-center gap-4 sm:block">
+                    <IconTile className="size-12 shrink-0 sm:size-14">
+                      <Table className="size-6 text-foreground" />
+                    </IconTile>
+                    <div>
+                      <h4 className="text-xl sm:mt-5">Prisma Studio</h4>
+                      <em className="mt-0.5 block text-sm text-muted-foreground">
+                        to inspect your data
+                      </em>
+                    </div>
+                  </div>
                   <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                     Visual data browser and editor built into the Console. See what your agent did
                     to your database, collaborate with teammates without SQL, embeddable in your own
@@ -207,13 +233,17 @@ export function StackBento() {
                   <LearnMore href="/postgres" product="Prisma Studio" />
                 </div>
                 <div>
-                  <IconTile className="size-14">
-                    <Console className="size-6 text-foreground" />
-                  </IconTile>
-                  <h4 className="mt-5 text-xl">CLI + Management API</h4>
-                  <em className="mt-0.5 block text-sm text-muted-foreground">
-                    to stay in the loop
-                  </em>
+                  <div className="flex items-center gap-4 sm:block">
+                    <IconTile className="size-12 shrink-0 sm:size-14">
+                      <Console className="size-6 text-foreground" />
+                    </IconTile>
+                    <div>
+                      <h4 className="text-xl sm:mt-5">CLI + Management API</h4>
+                      <em className="mt-0.5 block text-sm text-muted-foreground">
+                        to stay in the loop
+                      </em>
+                    </div>
+                  </div>
                   <p className="mt-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                     The agent interface for the full platform. Structured output and{" "}
                     <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.8125em]">

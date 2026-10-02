@@ -318,7 +318,7 @@ export function PlatformStack() {
   };
 
   return (
-    <div className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
+    <div className="mx-auto mt-8 max-w-5xl overflow-hidden rounded-2xl border border-black/[0.08] bg-white sm:mt-14 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
       <div className="flex items-center gap-4 border-b border-black/[0.06] px-6 py-4 sm:px-8">
         <p className="text-[0.8125rem] font-semibold text-foreground">
           Swap any layer. <span className="font-normal text-muted-foreground">It still works.</span>

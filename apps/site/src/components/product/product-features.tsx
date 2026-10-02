@@ -82,7 +82,7 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
         </div>
         <Texture opacity={0.06} blend="multiply" />
 
-        <div className="relative mx-auto max-w-site px-4 py-20 sm:px-8 sm:py-24">
+        <div className="relative mx-auto max-w-site px-4 py-12 sm:px-8 sm:py-24">
           <div className="mx-auto max-w-3xl text-center max-md:text-left">
             <Reveal>
               <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
@@ -96,7 +96,10 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
             </Reveal>
           </div>
           <div
-            className={cn("mt-14 grid gap-5", COLUMNS[features.items.length] ?? "md:grid-cols-2")}
+            className={cn(
+              "mt-8 grid gap-4 sm:mt-14 sm:gap-5",
+              COLUMNS[features.items.length] ?? "md:grid-cols-2",
+            )}
           >
             {features.items.map(({ name, description, href, illustration }, i) => {
               const Illustration = illustration ? PRODUCT_ILLUSTRATIONS[illustration] : null;
@@ -108,7 +111,7 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                 >
                   <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
                     {/* illustration and content split the card roughly in half */}
-                    <div className="relative flex h-64 select-none items-center justify-center overflow-hidden p-5">
+                    <div className="relative flex h-52 select-none items-center justify-center overflow-hidden p-5 sm:h-64">
                       <div
                         aria-hidden
                         className={cn(
@@ -131,7 +134,7 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                         </div>
                       )}
                     </div>
-                    <div className="flex grow flex-col p-7">
+                    <div className="flex grow flex-col p-6 sm:p-7">
                       <h3 className="text-xl">{name}</h3>
                       <p className="mt-3 grow text-pretty leading-relaxed text-muted-foreground">
                         {description}

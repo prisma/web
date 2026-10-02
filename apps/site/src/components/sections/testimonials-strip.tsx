@@ -177,7 +177,7 @@ function Row({ hidden = false }: { hidden?: boolean }) {
 
 export function TestimonialsStrip() {
   return (
-    <section className="overflow-hidden bg-white py-24 sm:py-32">
+    <section className="overflow-hidden bg-white py-14 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-8">
         <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
           Real teams, real builds

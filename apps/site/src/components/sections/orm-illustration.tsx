@@ -42,7 +42,7 @@ export function OrmIllustration() {
     <div
       ref={ref}
       aria-hidden
-      className="relative flex h-full min-h-[15rem] select-none items-center justify-center overflow-hidden p-8"
+      className="relative flex h-full min-h-[15rem] select-none items-center justify-center overflow-hidden p-5 sm:p-8"
     >
       {/* ray backdrop — saturation boosted (bold pass) on its own layer so the
           filter doesn't touch the card content */}

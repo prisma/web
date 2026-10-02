@@ -139,7 +139,7 @@ function AfterCell({
 // ── 01 The divide (baseline) ────────────────────────────────────────────────
 function DivideBaseline() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8">
+    <section className="bg-white px-4 py-12 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <Heading />
         <div className="relative mt-12 overflow-hidden rounded-[1.5rem] border border-black/[0.06]">
@@ -177,7 +177,7 @@ function DivideBaseline() {
 // The checks glow against it; the gray past stays pale.
 function DivideDark() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8">
+    <section className="bg-white px-4 py-12 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <Heading />
         <div className="relative mt-12 overflow-hidden rounded-[1.5rem] border border-black/[0.06]">
@@ -215,7 +215,7 @@ function DivideDark() {
 // angle and the band leans with it.
 function DivideAngled() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8">
+    <section className="bg-white px-4 py-12 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <Heading />
         <div className="relative mt-12 overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
@@ -254,7 +254,7 @@ function DivideAngled() {
 // the after half, brightest where the transformation happens.
 function DivideGlow() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8">
+    <section className="bg-white px-4 py-12 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <Heading />
         <div className="relative mt-12 overflow-hidden rounded-[1.5rem] border border-black/[0.06]">
@@ -300,7 +300,7 @@ function DivideGlow() {
 // seam, marking the row's transformation.
 function DivideChips() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8">
+    <section className="bg-white px-4 py-12 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <Heading />
         <div className="relative mt-12 overflow-hidden rounded-[1.5rem] border border-black/[0.06]">
@@ -340,7 +340,7 @@ function DivideChips() {
 // one below it. Items flow down through the prism plane.
 function DivideWaterfall() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8">
+    <section className="bg-white px-4 py-12 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <Heading />
         <div className="mt-12 overflow-hidden rounded-[1.5rem] border border-black/[0.06]">

@@ -18,7 +18,7 @@ const SWAP_LINE = "Best together. Swappable when needed.";
 // the stack's own footer, rather than by a diagram insisting on it.
 export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform">) {
   return (
-    <section className="relative overflow-hidden bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="relative overflow-hidden bg-white px-4 py-14 sm:px-8 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-site">
         <div className="mx-auto max-w-3xl text-center max-md:text-left">
           <Reveal>

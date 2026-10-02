@@ -18,7 +18,7 @@ export function ProductDetailBlocks({
   visual?: React.ReactNode;
 }) {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-white px-4 py-14 sm:px-8 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-site">
         {/* headline holds the left column, the bridge sits beside it rather than
             under it, so the visual starts higher up the section */}
@@ -39,7 +39,7 @@ export function ProductDetailBlocks({
           </Reveal>
         ) : null}
 
-        <div className="mt-14 grid gap-x-10 gap-y-10 border-t border-black/[0.06] pt-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-x-10 gap-y-8 border-t border-black/[0.06] pt-10 sm:mt-14 sm:grid-cols-2 sm:gap-y-10 sm:pt-12 lg:grid-cols-4">
           {blocks.map(({ icon, name, description }, i) => {
             const Icon = PRODUCT_ICONS[icon];
             return (

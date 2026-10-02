@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion/reveal";
+import { SectionKicker } from "@/components/brand/section-kicker";
 import { cn } from "@/lib/utils";
 import { TESTIMONIALS, type Testimonial } from "./testimonials-data";
 
@@ -91,24 +92,49 @@ function HalfTrack({ items, hidden = false }: { items: Testimonial[]; hidden?: b
   );
 }
 
-export function TestimonialsReveal({ heading = "Real teams, real builds" }: { heading?: string }) {
+// `kicker` opts into the homepage's left-aligned section header (kicker over
+// headline); without it the heading stays centred, as on the product pages
+// whose other sections are centred too.
+export function TestimonialsReveal({
+  heading = "Real teams, real builds",
+  kicker,
+}: {
+  heading?: string;
+  kicker?: string;
+}) {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section className="bg-white px-4 py-14 sm:px-8 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-site">
-        <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+        {kicker ? <SectionKicker>{kicker}</SectionKicker> : null}
+        <h2
+          className={cn(
+            "max-w-[24ch] text-balance leading-[1.1]",
+            kicker
+              ? "mt-4 text-[clamp(2rem,3.5vw,3rem)]"
+              : "text-[clamp(1.75rem,2.75vw,2.375rem)] sm:mx-auto sm:text-center",
+          )}
+        >
           {heading}
         </h2>
       </div>
 
       {/* Full-bleed strip: the rows run edge to edge like the logo carousel,
           dissolving into the page at the margins. Hover pauses both rows. */}
-      <Reveal delay={0.1} className="group relative mt-14">
+      <Reveal delay={0.1} className="group relative mt-8 sm:mt-14">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-white to-transparent sm:w-28" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-white to-transparent sm:w-28" />
 
         <div className="flex flex-col gap-4">
-          {ROWS.map((row) => (
-            <div key={row.durationClass} className="overflow-hidden motion-reduce:overflow-x-auto">
+          {/* phones get the first row only: two drifting rows of 19rem cards
+              is a lot of moving text for a narrow screen */}
+          {ROWS.map((row, i) => (
+            <div
+              key={row.durationClass}
+              className={cn(
+                "overflow-hidden motion-reduce:overflow-x-auto",
+                i > 0 && "max-sm:hidden",
+              )}
+            >
               <div
                 className={cn(
                   "flex w-max items-stretch animate-logo-marquee group-hover:[animation-play-state:paused] motion-reduce:animate-none",

@@ -51,8 +51,21 @@ export function ConnectorStrip({
       });
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    // The frame loop only runs while the strip is near the viewport — it used
+    // to run every frame for the life of the page. Off screen the fill sits at
+    // whichever end the reader left it, which is where the loop would put it.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        cancelAnimationFrame(raf);
+        if (entry?.isIntersecting) raf = requestAnimationFrame(tick);
+      },
+      { rootMargin: "25% 0px" },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
   return (
@@ -70,6 +83,38 @@ export function ConnectorStrip({
       <span aria-hidden className="relative h-7 w-0.5 overflow-hidden rounded-full bg-border/70">
         <span data-fill className={cn("absolute inset-0 origin-top bg-gradient-to-b", gradient)} />
       </span>
+    </div>
+  );
+}
+
+// Side-by-side counterpart of ConnectorStrip, for two cards sitting in one
+// row: the file chip bridges the gap between them, overlapping both card
+// edges, with a short gradient lead piped into each side. Position it with
+// className (absolute, centred on the gap).
+export function ConnectorJoint({
+  file,
+  caption,
+  gradient,
+  className,
+}: {
+  file: string;
+  caption: string;
+  gradient: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("pointer-events-none flex items-center", className)}>
+      <span aria-hidden className={cn("h-0.5 w-8 rounded-full bg-gradient-to-r", gradient)} />
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/95 px-4 py-3 text-center shadow-[0_12px_32px_-14px_rgba(21,21,21,0.3)] backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <span className="flex size-7 items-center justify-center rounded-full border border-border bg-card">
+            <Swap className="size-3.5 text-foreground/70" aria-hidden />
+          </span>
+          <FileChip>{file}</FileChip>
+        </div>
+        <em className="whitespace-nowrap text-xs text-muted-foreground">{caption}</em>
+      </div>
+      <span aria-hidden className={cn("h-0.5 w-8 rounded-full bg-gradient-to-l", gradient)} />
     </div>
   );
 }

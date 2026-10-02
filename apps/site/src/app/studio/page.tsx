@@ -117,7 +117,7 @@ export default function StudioPage() {
       </section>
 
       {/* Feature tour: alternating two-column rows, mockups in ink frames */}
-      <section className="bg-white px-4 py-20 sm:px-8 sm:py-24">
+      <section className="bg-white px-4 py-12 sm:px-8 sm:py-24">
         <div className="mx-auto flex max-w-site flex-col gap-16 sm:gap-20">
           {FEATURE_ROWS.map((feature, index) => (
             <div

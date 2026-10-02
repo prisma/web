@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/brand-kit/section-header";
 
 export function BrandKitElements() {
   return (
-    <section id="elements" className="scroll-mt-24 bg-white px-4 py-20 sm:px-8 sm:py-24">
+    <section id="elements" className="scroll-mt-24 bg-white px-4 py-12 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
         <SectionHeader
           kicker="Brand elements"

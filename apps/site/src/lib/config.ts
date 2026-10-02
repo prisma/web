@@ -6,11 +6,18 @@ export const siteConfig = {
   ogImage: "/og.png",
   // The hero proof line, shared by the homepage and /contact so the numbers
   // can't drift apart — the star count in particular dates fast. The first
-  // entry is rendered as "Trusted by <stat> <label>".
+  // entry is rendered as "Trusted by <stat> <label>". `compact` and
+  // `tileLabel` are the short forms the homepage hero's stat tiles use, where
+  // the figure sits on its own above a two-line-at-most caption.
   proof: [
-    { stat: "500,000+", label: "developers" },
-    { stat: "28%", label: "of the TypeScript ORM market" },
-    { stat: "46,500+", label: "GitHub stars" },
+    { stat: "500,000+", compact: "500K+", label: "developers", tileLabel: "developers" },
+    {
+      stat: "28%",
+      compact: "28%",
+      label: "of the TypeScript ORM market",
+      tileLabel: "TS ORM market share",
+    },
+    { stat: "46,500+", compact: "46.5K+", label: "GitHub stars", tileLabel: "GitHub stars" },
   ],
   // Routes per design-ref/sitemap.md (Phase 1)
   platform: [

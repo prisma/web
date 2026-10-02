@@ -163,7 +163,7 @@ function PendingBadge() {
 // gets the emphasis rather than sitting in a table cell.
 export function PricingComparison() {
   return (
-    <section className="bg-white px-3 py-16 sm:px-4 sm:py-24">
+    <section className="bg-white px-3 py-10 sm:px-4 sm:py-24">
       <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
         {/* spectral bottom — wash plus the three brand beams */}
         <div
@@ -200,7 +200,7 @@ export function PricingComparison() {
         />
         <Texture />
 
-        <div className="relative px-4 pb-12 pt-16 sm:px-8 sm:pb-14 sm:pt-24">
+        <div className="relative px-4 pb-10 pt-12 sm:px-8 sm:pb-14 sm:pt-24">
           <div className="mx-auto max-w-site">
             <Reveal>
               <h2 className="mx-auto max-w-[24ch] text-balance text-center text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">

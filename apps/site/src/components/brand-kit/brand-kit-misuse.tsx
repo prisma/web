@@ -52,7 +52,7 @@ const MISUSES: Misuse[] = [
 
 export function BrandKitMisuse() {
   return (
-    <section id="misuse" className="scroll-mt-24 bg-white px-4 py-20 sm:px-8 sm:py-24">
+    <section id="misuse" className="scroll-mt-24 bg-white px-4 py-12 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
         <SectionHeader
           kicker="Misuse"

@@ -46,9 +46,9 @@ export function CtaBurst({
   secondaryCta = { label: "See pricing", href: "/pricing" },
 }: CtaBurstProps = {}) {
   return (
-    <section className="bg-white px-3 py-24 sm:px-4 sm:py-32">
+    <section className="bg-white px-3 py-10 sm:px-4 sm:py-20 lg:py-28">
       <div className="mx-auto max-w-[96rem]">
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[url('/brand/agent-loop.jpg')] bg-cover bg-center p-8">
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[url('/brand/agent-loop.jpg')] bg-cover bg-center p-3 sm:p-8">
           <video
             aria-hidden
             autoPlay
@@ -110,7 +110,7 @@ export function CtaBurst({
 
             {/* centered on desktop; left-aligned on mobile like the rest of
                 the page */}
-            <div className="relative flex flex-col items-start px-6 py-16 text-left sm:items-center sm:px-10 sm:py-20 sm:text-center">
+            <div className="relative flex flex-col items-start px-5 py-12 text-left sm:items-center sm:px-10 sm:py-20 sm:text-center">
               <Reveal>
                 <h2
                   className={cn(
