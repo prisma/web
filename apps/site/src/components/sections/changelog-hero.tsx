@@ -52,8 +52,7 @@ export function ChangelogHero() {
                 The <GlassGlide>Changelog</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[54ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                New features, improvements, and fixes across Prisma ORM, Prisma Postgres, and the
-                platform — shipped continuously and gathered here.
+                Latest features, improvements, and fixes across Prisma ORM, Prisma Postgres, Prisma Compute, and the Platform.
               </p>
             </div>
           </div>
