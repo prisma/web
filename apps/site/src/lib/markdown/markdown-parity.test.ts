@@ -65,7 +65,16 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/sections/faq.tsx",
   ],
   "/studio": ["src/app/studio/page.tsx"],
-  "/stack": ["src/app/stack/page.tsx", "src/components/sections/stack-bento.tsx"],
+  "/stack": [
+    "src/app/stack/page.tsx",
+    "src/components/sections/platform-hero.tsx",
+    "src/components/sections/platform-compare.tsx",
+    "src/components/sections/platform-flow.tsx",
+    "src/components/sections/platform-products.tsx",
+    "src/components/sections/platform-open.tsx",
+    "src/components/sections/agent-loop.tsx",
+    "src/components/sections/cta-burst.tsx",
+  ],
   "/enterprise": ["src/app/enterprise/page.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
@@ -87,13 +96,16 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
  * an expression in the JSX and the content-object test below is what covers it.
  */
 const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
-  "/": 6,
+  // Comparison and AgentLoop take their heading as a prop (with the homepage
+  // copy as the default) since /use-cases and /stack reuse them, so those two
+  // are expressions here and covered by the hard-coded home.ts rendition.
+  "/": 4,
   "/orm": 1,
   "/postgres": 1,
   "/compute": 1,
   "/pricing": 5,
   "/studio": 3,
-  "/stack": 2,
+  "/stack": 5,
   "/enterprise": 3,
   "/mcp": 4,
 };
@@ -226,7 +238,9 @@ test("the product pages inherit their copy from the page's own content object", 
     const document = renderMarkdownDocument(markdownPages[path], baseUrl);
 
     assert.ok(document.includes(content.hero.headline), `${path}: hero headline missing`);
-    assert.ok(document.includes(content.hero.subheadline), `${path}: subheadline missing`);
+    for (const paragraph of [content.hero.subheadline].flat()) {
+      assert.ok(document.includes(paragraph), `${path}: subheadline missing`);
+    }
     assert.ok(document.includes(content.problem.headline), `${path}: problem headline missing`);
     assert.ok(document.includes(content.features.headline), `${path}: features headline missing`);
     assert.ok(document.includes(content.cta.headline), `${path}: cta headline missing`);

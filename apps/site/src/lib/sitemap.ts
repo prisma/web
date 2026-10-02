@@ -3,6 +3,7 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
+import { CUSTOMER_STORY_DETAILS } from "@/data/customer-stories";
 import { extensions } from "@prisma-docs/ui/data/extensions";
 
 type SitemapEntry = {
@@ -171,6 +172,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       ...pageRoutes.map((route) => route.pathname),
       ...changelogPages.map((page) => page.url),
       ...extensions.map((entry) => `/extensions/${entry.slug}`),
+      ...CUSTOMER_STORY_DETAILS.map((story) => `/customers/${story.slug}`),
     ]),
   ];
 

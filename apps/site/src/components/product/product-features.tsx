@@ -1,5 +1,6 @@
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { LearnMore } from "@/components/brand/learn-more";
+import { PrismButtonOutline } from "@/components/brand/prism-button";
 import { Texture } from "@/components/brand/texture";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,33 @@ function centreLastPair(count: number, i: number) {
 // (~2:3): the prism-tinted illustration block fills the card above the
 // content, the feature's abstraction filling the block, inside the homepage
 // stack's wrapped panel.
-export function ProductFeatures({ features }: Pick<ProductPageContent, "features">) {
+export function ProductFeatures({
+  features,
+  cta,
+  placeholderLabel = "[Feature abstraction]",
+  mediaHeight = "h-64",
+  frameIllustration = false,
+}: Pick<ProductPageContent, "features"> & {
+  /** Closes the section where the copy carries one — use-case pages do, product pages don't. */
+  cta?: { label: string; href: string };
+  /** What the reserved illustration slots are waiting for, when there aren't any yet. */
+  placeholderLabel?: string;
+  /**
+   * Float each illustration in a rounded, bordered, shadowed surface over the
+   * ray photo, so hero-scale panels (which are otherwise flush) read as one
+   * consistent card per feature instead of some panels hitting the edges. Used
+   * by pages that reuse the full-bleed hero panels here (the AI-agents stack).
+   */
+  frameIllustration?: boolean;
+  /**
+   * Height of each card's illustration block. The default suits the three-up
+   * row the cards were proportioned for (~2:3 portrait). At two-up the cards
+   * are nearly twice as wide, so the same block leaves them landscape and
+   * squat — pages running four cards can grow it back toward portrait
+   * (André, 2026-08-13).
+   */
+  mediaHeight?: string;
+}) {
   return (
     <section className="bg-white px-3 py-3 sm:px-4">
       <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
@@ -108,7 +135,13 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                 >
                   <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
                     {/* illustration and content split the card roughly in half */}
-                    <div className="relative flex h-64 select-none items-center justify-center overflow-hidden p-5">
+                    <div
+                      className={cn(
+                        "relative flex select-none items-center justify-center overflow-hidden p-5",
+                        frameIllustration && "p-6 sm:p-8",
+                        mediaHeight,
+                      )}
+                    >
                       <div
                         aria-hidden
                         className={cn(
@@ -117,7 +150,13 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                         )}
                       />
                       {Illustration ? (
-                        <div className="relative size-full">
+                        <div
+                          className={cn(
+                            "relative size-full",
+                            frameIllustration &&
+                              "overflow-hidden rounded-xl border border-black/[0.07] shadow-[0_12px_32px_-14px_rgba(21,21,21,0.22)]",
+                          )}
+                        >
                           <Illustration />
                         </div>
                       ) : (
@@ -125,8 +164,8 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                           aria-hidden
                           className="relative flex h-full w-full items-center justify-center rounded-xl border border-dashed border-black/20 bg-white/70 backdrop-blur-sm"
                         >
-                          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                            [Feature abstraction]
+                          <p className="max-w-[20ch] text-center text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            {placeholderLabel}
                           </p>
                         </div>
                       )}
@@ -145,6 +184,14 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
               );
             })}
           </div>
+
+          {cta ? (
+            <Reveal delay={0.2} className="mt-12 flex justify-center max-md:justify-start">
+              <PrismButtonOutline href={cta.href} size="lg">
+                {cta.label}
+              </PrismButtonOutline>
+            </Reveal>
+          ) : null}
         </div>
       </div>
     </section>

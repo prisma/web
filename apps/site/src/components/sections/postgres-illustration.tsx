@@ -35,7 +35,11 @@ const IN_VIEW = { margin: "0px 0px -20% 0px" } as const;
 // the database floats, the brand ray breathes light through it, a boot pulse
 // sweeps across the branch strip (main → pr-214 → feat-auth, the story of a
 // preview branch spinning up), and the "Live" dot breathes.
-export function PostgresIllustration() {
+//
+// `compact` fits the illustration into a narrow column (the /platform product
+// cards) instead of the homepage's half-page cell: a fixed frame height rather
+// than stretching to the row, tighter padding, and a smaller database.
+export function PostgresIllustration({ compact = false }: { compact?: boolean } = {}) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, IN_VIEW);
@@ -45,7 +49,10 @@ export function PostgresIllustration() {
     <div
       ref={ref}
       aria-hidden
-      className="relative flex min-h-[22rem] select-none items-stretch justify-center overflow-hidden p-8 lg:min-h-full"
+      className={cn(
+        "relative flex select-none items-stretch justify-center overflow-hidden",
+        compact ? "h-[20rem] p-5" : "min-h-[22rem] p-8 lg:min-h-full",
+      )}
     >
       {/* ray backdrop — saturation boosted (bold pass) on its own layer so the
           filter doesn't touch the card content */}
@@ -88,7 +95,10 @@ export function PostgresIllustration() {
           <motion.img
             src="/brand/database-3d.png"
             alt=""
-            className="relative w-36 drop-shadow-[0_18px_28px_rgba(21,21,21,0.22)]"
+            className={cn(
+              "relative drop-shadow-[0_18px_28px_rgba(21,21,21,0.22)]",
+              compact ? "w-28" : "w-36",
+            )}
             initial={false}
             animate={run ? { y: [0, -8, 0], rotate: [0, 1.5, 0] } : { y: 0, rotate: 0 }}
             transition={

@@ -1,3 +1,8 @@
+import {
+  CHANGELOG_CATEGORIES,
+  type ChangelogCategory,
+  type ChangelogEntry,
+} from "@/data/changelog";
 import { getAllContent, getContentBySlug } from "@/lib/content";
 
 // Changelog entries, ported from apps/site/content/changelog (fumadocs there,
@@ -9,7 +14,62 @@ export type ChangelogFrontmatter = {
   headline?: string;
   tags?: string[];
   metaDescription?: string;
+  /**
+   * Product area for the /changelog feed's colour and filter. Optional: when
+   * absent it is derived from `tags` (see `deriveCategory`), so set it only
+   * where that guess is wrong for the entry.
+   */
+  category?: ChangelogCategory;
+  /** Featured treatment in the feed — reserve for GA / public-beta moments. */
+  highlight?: boolean;
 };
+
+// Which product area a frontmatter tag speaks for. The first tag in the
+// entry's own order that maps wins, so an entry tagged "Prisma 8" ahead of
+// "Prisma Compute" files under ORM: the release notes list the headline
+// product first.
+const TAG_CATEGORY: Record<string, ChangelogCategory> = {
+  "Prisma ORM": "orm",
+  "Prisma 8": "orm",
+  "Prisma Postgres": "postgres",
+  Accelerate: "postgres",
+  Pulse: "postgres",
+  "Prisma Compute": "compute",
+  "Prisma Composer": "compute",
+  "Prisma Studio": "studio",
+  Studio: "studio",
+  "Query Insights": "studio",
+  Optimize: "studio",
+};
+
+function deriveCategory(frontmatter: ChangelogFrontmatter): ChangelogCategory {
+  if (frontmatter.category && CHANGELOG_CATEGORIES.has(frontmatter.category)) {
+    return frontmatter.category;
+  }
+  for (const tag of frontmatter.tags ?? []) {
+    const category = TAG_CATEGORY[tag];
+    if (category) return category;
+  }
+  return "platform";
+}
+
+// The bare "Prisma" tag is on nearly every entry and says nothing the page
+// doesn't already; the rest stay as pills.
+const GENERIC_TAGS = new Set(["Prisma"]);
+
+/** The feed's view of every entry, newest first — see data/changelog.ts. */
+export function getChangelogFeedEntries(): ChangelogEntry[] {
+  return getChangelogEntries().map((entry) => ({
+    slug: entry.slug,
+    date: entry.frontmatter.date,
+    title: entry.frontmatter.headline ?? entry.frontmatter.title,
+    description: entry.frontmatter.metaDescription ?? extractPreview(entry.content) ?? "",
+    category: deriveCategory(entry.frontmatter),
+    tags: (entry.frontmatter.tags ?? []).filter((tag) => !GENERIC_TAGS.has(tag)),
+    highlight: entry.frontmatter.highlight === true,
+    href: `/changelog/${entry.slug}`,
+  }));
+}
 
 // Entry images still live in apps/site/public/changelog (~78MB — deliberately
 // not duplicated into this app). Until the asset cutover, point them at the

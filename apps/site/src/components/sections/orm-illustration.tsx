@@ -29,7 +29,11 @@ const IN_VIEW = { margin: "0px 0px -20% 0px" } as const;
 // autocomplete. On scroll-in it loops: the dropdown drops down, a cursor glides
 // in and hovers an option (the highlight follows), then the cursor retreats and
 // the dropdown closes. The schema stack (3D) floats gently throughout.
-export function OrmIllustration() {
+//
+// `compact` fits the illustration into a narrow column (the /platform product
+// cards) instead of the homepage's half-page cell: tighter frame padding and a
+// smaller schema stack, so the editor keeps its breathing room.
+export function OrmIllustration({ compact = false }: { compact?: boolean } = {}) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, IN_VIEW);
@@ -42,7 +46,10 @@ export function OrmIllustration() {
     <div
       ref={ref}
       aria-hidden
-      className="relative flex h-full min-h-[15rem] select-none items-center justify-center overflow-hidden p-8"
+      className={cn(
+        "relative flex select-none items-center justify-center overflow-hidden",
+        compact ? "h-[20rem] p-5" : "h-full min-h-[15rem] p-8",
+      )}
     >
       {/* ray backdrop — saturation boosted (bold pass) on its own layer so the
           filter doesn't touch the card content */}
@@ -132,19 +139,23 @@ export function OrmIllustration() {
             </div>
 
             <p className="mt-3">)</p>
-            <div className="mt-4 flex flex-col gap-2.5">
-              <p className="flex items-center gap-2">
-                <span className="text-prism-cyan-600">for</span> <Bar className="w-8" />{" "}
-                <span className="text-prism-cyan-600">of</span> users {"{"}
-              </p>
-              <p className="flex items-center gap-2 pl-4">
-                <Bar className="w-20" /> <Bar className="w-12 bg-prism-red-100" />
-              </p>
-              <p className="flex items-center gap-2 pl-4">
-                <Bar className="w-14" /> <Bar className="w-24" />
-              </p>
-              <p>{"}"}</p>
-            </div>
+            {/* the loop below the query is the first thing to go in a narrow
+                column — the autocomplete is what the illustration is about */}
+            {!compact && (
+              <div className="mt-4 flex flex-col gap-2.5">
+                <p className="flex items-center gap-2">
+                  <span className="text-prism-cyan-600">for</span> <Bar className="w-8" />{" "}
+                  <span className="text-prism-cyan-600">of</span> users {"{"}
+                </p>
+                <p className="flex items-center gap-2 pl-4">
+                  <Bar className="w-20" /> <Bar className="w-12 bg-prism-red-100" />
+                </p>
+                <p className="flex items-center gap-2 pl-4">
+                  <Bar className="w-14" /> <Bar className="w-24" />
+                </p>
+                <p>{"}"}</p>
+              </div>
+            )}
           </div>
           <p className="flex items-center gap-2 border-t border-border/60 pt-3 text-[0.6875rem] text-black">
             <span className="size-1.5 rounded-full bg-prism-cyan-400" />
@@ -152,11 +163,16 @@ export function OrmIllustration() {
             <Bar className="ml-auto w-14" />
           </p>
         </div>
-        {/* the schema stack — floats gently over the editor's right half */}
+        {/* the schema stack — floats gently over the editor's right half. In a
+            narrow column it rides higher and smaller, clear of the autocomplete
+            popup that would otherwise sit underneath it. */}
         <motion.img
           src="/brand/cards-3d.png"
           alt=""
-          className="absolute right-4 top-[46%] w-52 -translate-y-1/2 drop-shadow-[0_18px_26px_rgba(21,21,21,0.24)] max-md:hidden"
+          className={cn(
+            "absolute -translate-y-1/2 drop-shadow-[0_18px_26px_rgba(21,21,21,0.24)] max-md:hidden",
+            compact ? "right-2 top-[30%] w-24" : "right-4 top-[46%] w-52",
+          )}
           initial={false}
           animate={run ? { y: [0, -9, 0], rotate: [0, -1.6, 0] } : { y: 0, rotate: 0 }}
           transition={

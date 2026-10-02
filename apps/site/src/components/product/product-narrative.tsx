@@ -9,17 +9,20 @@ export function ProductNarrative({
   headline,
   paragraphs,
   illustration,
+  centerText = false,
 }: {
   headline: string;
   paragraphs: string[];
   illustration: React.ReactNode;
+  /** Vertically centre the copy against a full-height (e.g. square) graphic. */
+  centerText?: boolean;
 }) {
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
       {/* columns stretch rather than centre, so the graphic reads as a panel
           the height of the argument beside it instead of a card floating in it */}
       <div className="mx-auto grid max-w-site gap-12 lg:grid-cols-2 lg:gap-16">
-        <div className="flex flex-col items-start">
+        <div className={cn("flex flex-col items-start", centerText && "lg:justify-center")}>
           <Reveal>
             <h2 className="max-w-[24ch] text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
               {headline}
