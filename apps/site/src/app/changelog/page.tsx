@@ -39,7 +39,7 @@ export default function ChangelogPage() {
       <CtaBurst
         headline="Build on a platform that ships"
         headlineMaxWidth="max-w-[20ch]"
-        body="Everything above landed in the last few months. Start free with the ORM, and add Postgres and Compute when you need them."
+        body="Start free with the ORM, and add Postgres and Compute when you need them."
         primaryCta={{ label: "Get started free", href: "https://console.prisma.io" }}
         secondaryCta={{ label: "See pricing", href: "/pricing" }}
       />

@@ -85,9 +85,12 @@ export function ChangelogFeed({ entries: allEntries }: { entries: ChangelogEntry
         {/* Timeline */}
         <ol className="relative">
           {entries.map((entry, i) => (
-            <Reveal key={entry.date + entry.title} delay={Math.min(i, 4) * 0.05}>
-              <TimelineRow entry={entry} isLast={i === entries.length - 1} />
-            </Reveal>
+            <TimelineRow
+              key={entry.date + entry.title}
+              entry={entry}
+              isLast={i === entries.length - 1}
+              delay={Math.min(i, 4) * 0.05}
+            />
           ))}
         </ol>
       </div>
@@ -142,43 +145,60 @@ function FilterPill({
   );
 }
 
-function TimelineRow({ entry, isLast }: { entry: ChangelogEntry; isLast: boolean }) {
+function TimelineRow({
+  entry,
+  isLast,
+  delay,
+}: {
+  entry: ChangelogEntry;
+  isLast: boolean;
+  delay: number;
+}) {
   const meta = CATEGORY_META[entry.category];
   return (
-    <li className="relative grid grid-cols-1 gap-x-8 md:grid-cols-[8.5rem_minmax(0,1fr)]">
-      {/* Date rail — desktop only, right-aligned onto the spine */}
-      <div className="hidden md:flex md:flex-col md:items-end md:pt-1.5 md:text-right">
-        <time dateTime={entry.date} className="text-sm font-semibold text-foreground">
-          {FMT.format(new Date(entry.date))}
-        </time>
-        <span className={cn("mt-1.5 text-xs font-semibold", meta.text)}>{meta.label}</span>
-      </div>
-
-      {/* Content column — the spine is this column's left border; consecutive
-          rows stack their borders into one continuous line. The node sits on
-          it, punched through with a background-colored ring. */}
-      <div
-        className={cn(
-          "relative md:border-l md:border-border md:pl-10",
-          isLast ? "pb-0" : "pb-14 sm:pb-16",
-        )}
+    // The li stays a direct child of the ol so the timeline reads as a list to
+    // assistive tech; Reveal sits inside it and carries the row's grid.
+    <li>
+      <Reveal
+        delay={delay}
+        className="relative grid grid-cols-1 gap-x-8 md:grid-cols-[8.5rem_minmax(0,1fr)]"
       >
-        {/* node */}
-        <span
-          aria-hidden
-          className="absolute -left-[7px] top-1.5 hidden size-3.5 items-center justify-center md:flex"
-        >
-          {entry.highlight && (
-            <span
-              className="absolute size-6 rounded-full opacity-30 blur-md"
-              style={{ background: meta.glow }}
-            />
-          )}
-          <span className={cn("relative size-3.5 rounded-full ring-4 ring-background", meta.dot)} />
-        </span>
+        {/* Date rail — desktop only, right-aligned onto the spine */}
+        <div className="hidden md:flex md:flex-col md:items-end md:pt-1.5 md:text-right">
+          <time dateTime={entry.date} className="text-sm font-semibold text-foreground">
+            {FMT.format(new Date(entry.date))}
+          </time>
+          <span className={cn("mt-1.5 text-xs font-semibold", meta.text)}>{meta.label}</span>
+        </div>
 
-        <EntryCard entry={entry} meta={meta} />
-      </div>
+        {/* Content column — the spine is this column's left border; consecutive
+            rows stack their borders into one continuous line. The node sits on
+            it, punched through with a background-colored ring. */}
+        <div
+          className={cn(
+            "relative md:border-l md:border-border md:pl-10",
+            isLast ? "pb-0" : "pb-14 sm:pb-16",
+          )}
+        >
+          {/* node */}
+          <span
+            aria-hidden
+            className="absolute -left-[7px] top-1.5 hidden size-3.5 items-center justify-center md:flex"
+          >
+            {entry.highlight && (
+              <span
+                className="absolute size-6 rounded-full opacity-30 blur-md"
+                style={{ background: meta.glow }}
+              />
+            )}
+            <span
+              className={cn("relative size-3.5 rounded-full ring-4 ring-background", meta.dot)}
+            />
+          </span>
+
+          <EntryCard entry={entry} meta={meta} />
+        </div>
+      </Reveal>
     </li>
   );
 }
