@@ -1,6 +1,6 @@
 import { createPageMetadata } from "@/lib/page-metadata";
 import { LegalPage } from "@/components/sections/legal-page";
-import { cocDescription, cocLastUpdated, cocSections } from "@/data/event-code-of-conduct";
+import { cocDescription, cocEffectiveDate, cocSections } from "@/data/event-code-of-conduct";
 
 export const metadata = createPageMetadata({
   title: "Event Code of Conduct",
@@ -13,7 +13,7 @@ export default function EventCodeOfConductPage() {
   return (
     <LegalPage
       title="Event Code of Conduct"
-      lastUpdated={cocLastUpdated}
+      effectiveDate={cocEffectiveDate}
       sections={cocSections}
       intro={cocDescription}
     />
