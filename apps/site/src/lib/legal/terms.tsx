@@ -464,10 +464,6 @@ export const termsSections: TermsSection[] = [
           <br />
           Prisma Data, Inc.
           <br />
-          [STREET ADDRESS AS REGISTERED WITH THE US COPYRIGHT OFFICE]
-          <br />
-          Telephone: [TELEPHONE NUMBER AS REGISTERED]
-          <br />
           Email: <a href="mailto:abuse@prisma.io">abuse@prisma.io</a>
         </p>
         <p>A copyright infringement notice must include:</p>
