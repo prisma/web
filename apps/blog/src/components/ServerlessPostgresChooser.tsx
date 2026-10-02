@@ -22,7 +22,7 @@ const tree: DecisionTreeData = {
       id: "free-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "100k operations, 500 MB and 50 databases per month free, with no card. Always ready, with no cold starts (our own architecture claim).",
+      why: "200k operations, 500 MB and 50 databases per month free, with no card. Always ready, with no cold starts (our own architecture claim).",
       caveat: "Grows into $10/month for 1M operations. Prisma publishes this guide.",
     },
     {

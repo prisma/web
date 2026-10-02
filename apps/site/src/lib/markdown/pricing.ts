@@ -151,7 +151,7 @@ const EVERY_PLAN_INCLUDES = [
 // readout each button shows (fmtOps · fmtGB). The V2 `blurb` on each preset is
 // not rendered by the compact preset row, so it is not included.
 const CALCULATOR_PRESETS = [
-  "Hobby — 100K · 500 MB",
+  "Hobby — 200K · 500 MB",
   "Startup — 1M · 8 GB",
   "Scaleup — 20M · 40 GB",
 ];
@@ -160,7 +160,7 @@ const CALCULATOR_PRESETS = [
 // only the monthly totals and the "Recommended" / "Not available" states depend
 // on the slider positions, and those are interactive-only, so they are omitted.
 const CALCULATOR_PLAN_TERMS = [
-  { name: "Free plan", description: "100,000 ops • 0.5GB storage • free forever" },
+  { name: "Free plan", description: "200,000 ops • 0.5GB storage • free forever" },
   {
     name: "Starter plan",
     description: "1,000,000 ops included, then $0.008 per 1,000 • 10GB included, then $2/GB",
