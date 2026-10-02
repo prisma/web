@@ -17,10 +17,9 @@ export const termsSections: TermsSection[] = [
           &quot;Prisma&quot; means Prisma Data, Inc and its subsidiaries or affiliates involved in
           providing the Prisma Service. The &quot;Prisma Service&quot; means the services Prisma
           makes available through this website, including the website itself, the Prisma Console,
-          Prisma Postgres, Prisma Compute, Prisma Composer, Object Storage, Query Insights, Prisma
-          Studio (including Embeddable Prisma Studio as described in Section 19), the Prisma REST
-          API and MCP server, add-ons, and any other software or services offered by Prisma,
-          including Beta Services.
+          Prisma Postgres, Prisma Compute, Query Insights, Prisma Studio (including Embeddable
+          Prisma Studio as described in Section 19), the Prisma REST API and MCP server, add-ons,
+          and any other software or services offered by Prisma, including Beta Services.
         </p>
         <p>
           &quot;Free Tier&quot; refers to the no-cost access tier of the Prisma Services, which
@@ -58,19 +57,18 @@ export const termsSections: TermsSection[] = [
           <li>
             &quot;Application&quot; means any software, code, service, or workload that you develop,
             deploy, or run using the Prisma Services, including applications hosted on Prisma
-            Compute and services defined with Prisma Composer.
+            Compute.
           </li>
           <li>
             &quot;Content&quot; has the meaning given in Section 5, and comprises &quot;Customer
-            Content&quot; (data, code, and materials that you or your end users submit to, store
-            in, or process through the Prisma Services, including data stored in Prisma Postgres
-            and objects stored in Object Storage buckets) and &quot;Prisma Content&quot;
-            (materials that Prisma makes available through the Prisma Services).
+            Content&quot; (data, code, files, and other materials that you or your end users
+            submit to, store in, or process through the Prisma Services, including data stored in
+            Prisma Postgres) and &quot;Prisma Content&quot; (materials that Prisma makes available
+            through the Prisma Services).
           </li>
           <li>
             &quot;Beta Services&quot; means products, features, or versions labeled Early Access,
-            Preview, Beta, Public Beta, Release Candidate, or Experimental, such as Prisma Composer
-            while in Early Access.
+            Preview, Beta, Public Beta, Release Candidate, or Experimental.
           </li>
         </ul>
       </>
@@ -351,11 +349,12 @@ export const termsSections: TermsSection[] = [
         </p>
         <p>
           Prisma may suspend or disable an Application, a Prisma Compute deployment, a Prisma
-          Postgres database, or an Object Storage bucket that violates Section 14 (Acceptable Use),
-          poses a security or operational risk to the Prisma Services or to other customers, or
-          exposes Prisma to legal liability. Where required by applicable law, Prisma will provide
-          notice and a statement of reasons as described in Section 21. Prisma may act immediately
-          and without prior notice where the risk is severe, such as child sexual abuse material or
+          Postgres database, or any other resource provisioned through the Prisma Services that
+          violates Section 14 (Acceptable Use), poses a security or operational risk to the Prisma
+          Services or to other customers, or exposes Prisma to legal liability. Where required by
+          applicable law, Prisma will provide notice and a statement of reasons as described in
+          Section 21. Prisma may act immediately and without prior notice where the risk is
+          severe, such as child sexual abuse material or
           active attack infrastructure.
         </p>
         <p>
@@ -563,9 +562,10 @@ export const termsSections: TermsSection[] = [
           </li>
         </ul>
         <p>
-          This section applies to Applications deployed on Prisma Compute, to data stored in Prisma
-          Postgres and Object Storage buckets, and to your end users&apos; use of your Applications;
-          you are responsible for your end users&apos; compliance. To report a violation of this
+          This section applies to Applications deployed on Prisma Compute, to data and files stored
+          in Prisma Postgres or elsewhere in the Prisma Services, and to your end users&apos; use of
+          your Applications; you are responsible for your end users&apos; compliance. To report a
+          violation of this
           section, use the Report Abuse link in the footer of prisma.io or email{" "}
           <a href="mailto:abuse@prisma.io">abuse@prisma.io</a>. Section 21 describes how Prisma
           handles reports.
@@ -740,8 +740,8 @@ export const termsSections: TermsSection[] = [
     content: (
       <>
         <p>
-          Prisma Compute and Prisma Composer allow you to deploy and run Applications on
-          infrastructure managed by Prisma. You are solely responsible for the code you deploy,
+          Prisma Compute allows you to deploy and run Applications on infrastructure managed by
+          Prisma. You are solely responsible for the code you deploy,
           including its dependencies, security patches and updates, its behavior, and its end users.
           Prisma manages the underlying infrastructure. Prisma has no obligation to monitor, and
           does not endorse, the Applications you deploy or the Content you store, but may act on
@@ -763,9 +763,9 @@ export const termsSections: TermsSection[] = [
           accordance with the DPA described in Section 3.
         </p>
         <p>
-          Object Storage buckets store the files you upload. You are responsible for the objects you
-          store and for any access you grant to them, including through access keys and presigned
-          URLs. Deleting a bucket permanently deletes its contents.
+          You are responsible for the files and other Customer Content you store using the Prisma
+          Services, and for any access you grant to them, including through access keys,
+          credentials, and shared or presigned URLs.
         </p>
         <p>
           The Prisma Services are offered from the regions listed in the documentation. Region
@@ -773,9 +773,9 @@ export const termsSections: TermsSection[] = [
           data-residency commitment.
         </p>
         <p>
-          Prisma may suspend or disable Applications, databases, and buckets as described in
-          Section 9. Beta Services used as part of these services, such as Prisma Composer while in
-          Early Access, are also subject to the Beta Services terms in Section 1.
+          Prisma may suspend or disable Applications, databases, and other resources as described in
+          Section 9. Beta Services used as part of these services are also subject to the Beta
+          Services terms in Section 1.
         </p>
       </>
     ),
