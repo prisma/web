@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const slaLastUpdated = "March 11, 2024";
+export const slaEffectiveDate = "October 12, 2026";
 
 type SlaSection = {
   title: string;

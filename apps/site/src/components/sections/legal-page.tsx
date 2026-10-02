@@ -16,17 +16,21 @@ function sectionId(title: string) {
   return title.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
+type LegalPageDate =
+  | { lastUpdated: string; effectiveDate?: never }
+  | { effectiveDate: string; lastUpdated?: never };
+
 export function LegalPage({
   title,
   lastUpdated,
+  effectiveDate,
   sections,
   intro,
 }: {
   title: string;
-  lastUpdated: string;
   sections: LegalSection[];
   intro?: ReactNode;
-}) {
+} & LegalPageDate) {
   return (
     <article className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
       <div className="mx-auto max-w-3xl">
@@ -41,7 +45,10 @@ export function LegalPage({
             </p>
           )}
           <p className="mt-4 text-sm text-muted-foreground">
-            <strong className="font-semibold text-foreground">Last updated:</strong> {lastUpdated}
+            <strong className="font-semibold text-foreground">
+              {effectiveDate ? "Effective Date:" : "Last updated:"}
+            </strong>{" "}
+            {effectiveDate ?? lastUpdated}
           </p>
         </header>
 
