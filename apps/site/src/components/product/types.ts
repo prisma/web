@@ -18,6 +18,25 @@ export type ProductTourStop = {
   illustration: Illustration;
 };
 
+/**
+ * One visible question and answer in a product page's FAQ (product-faq.tsx).
+ * The answer is plain text, not JSX, because lib/markdown/product.ts prints it
+ * verbatim into the page's Markdown rendition.
+ */
+export type ProductFaqItem = {
+  question: string;
+  answer: string;
+  /** Where the answer is documented, rendered as a sentence after it. */
+  link?: Cta;
+};
+
+/** A hand-picked list of links under a heading (product-compare.tsx). */
+export type ProductLinkList = {
+  headline: string;
+  body: string;
+  links: Cta[];
+};
+
 // Content contract for the product page template. Copy source is the Notion
 // request card "Product Page Batch One (3-5) - Copy", toggle **V4** — the final
 // approved version. Earlier drafts (V1–V3) differ in headlines, CTAs and
@@ -104,6 +123,14 @@ export type ProductPageContent = {
      */
     body: string;
   };
+  /**
+   * Optional sections a page composes between the platform section and the
+   * closer, in this order. /compute carries both (see app/compute/page.tsx);
+   * /orm and /postgres carry neither yet. Both are content so that
+   * lib/markdown/product.ts renders them from the same object.
+   */
+  compare?: ProductLinkList;
+  faq?: ProductFaqItem[];
   cta: {
     /**
      * The closer is deliberately per-page. Review feedback flagged all three

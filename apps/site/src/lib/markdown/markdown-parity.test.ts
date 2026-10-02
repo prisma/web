@@ -52,6 +52,8 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/product/product-problem.tsx",
     "src/components/product/product-features.tsx",
     "src/components/product/product-platform.tsx",
+    "src/components/product/product-compare.tsx",
+    "src/components/product/product-faq.tsx",
   ],
   "/pricing": [
     "src/app/pricing/page.tsx",
