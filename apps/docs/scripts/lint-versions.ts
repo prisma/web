@@ -2,7 +2,9 @@
 
 /**
  * Every pinned Prisma ORM 8 version in the current docs must be the package's
- * `latest` dist-tag on npm. A version mentioned as history ("since 8.0.0-rc.10",
+ * `latest` dist-tag on npm. `@prisma/cli-engine` is the exception: `prisma`
+ * installs the exact engine version it depends on, so the expected version is
+ * the one in the `dependencies` of `prisma@latest`. A version mentioned as history ("since 8.0.0-rc.10",
  * an "Added in" column) is allowed to be older, and so is a pin to an older
  * major line, such as a `prisma@6.x` install step for readers staying on 6.
  *
@@ -16,13 +18,9 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = path.join(__dirname, "../content/docs");
 
-const TRACKED_PACKAGES = [
-  "prisma",
-  "@prisma/orm-postgres",
-  "@prisma/orm-mongo",
-  "@prisma/cli-engine",
-  "@prisma/prisma7",
-];
+const TRACKED_PACKAGES = ["prisma", "@prisma/orm-postgres", "@prisma/orm-mongo", "@prisma/prisma7"];
+
+const PACKAGES_PINNED_BY_PRISMA = ["@prisma/cli-engine"];
 
 /** Older releases keep their own content trees and pin their own versions. */
 const VERSIONED_TREES = ["(index)/v7", "cli/v7", "guides/v7", "orm/v6", "orm/v7"];
@@ -55,12 +53,23 @@ type Violation = {
   expected: string;
 };
 
-async function fetchLatest(pkg: string): Promise<string> {
+type Manifest = { version: string; dependencies?: Record<string, string> };
+
+async function fetchLatestManifest(pkg: string): Promise<Manifest> {
   const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
   if (!response.ok) {
     throw new Error(`npm registry returned ${response.status} for ${pkg}`);
   }
-  const { version } = (await response.json()) as { version: string };
+  return (await response.json()) as Manifest;
+}
+
+function versionPinnedByPrisma(prisma: Manifest, pkg: string): string {
+  const version = prisma.dependencies?.[pkg];
+  if (!version || !/^\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(version)) {
+    throw new Error(
+      `prisma@${prisma.version} does not depend on an exact version of ${pkg} (found ${version})`,
+    );
+  }
   return version;
 }
 
@@ -151,10 +160,20 @@ function lintFile(file: string, latest: Map<string, string>): Violation[] {
 }
 
 async function main() {
-  const latest = new Map(
-    await Promise.all(TRACKED_PACKAGES.map(async (pkg) => [pkg, await fetchLatest(pkg)] as const)),
+  const manifests = new Map(
+    await Promise.all(
+      TRACKED_PACKAGES.map(async (pkg) => [pkg, await fetchLatestManifest(pkg)] as const),
+    ),
   );
+  const latest = new Map([...manifests].map(([pkg, { version }]) => [pkg, version]));
   for (const [pkg, version] of latest) console.log(`${pkg}@${version}`);
+
+  const prisma = manifests.get("prisma")!;
+  for (const pkg of PACKAGES_PINNED_BY_PRISMA) {
+    const version = versionPinnedByPrisma(prisma, pkg);
+    latest.set(pkg, version);
+    console.log(`${pkg}@${version} (installed by prisma@${prisma.version})`);
+  }
 
   const files = findMdxFiles(DOCS_DIR).filter((file) => !isVersionedTree(file));
   const violations = files.flatMap((file) => lintFile(file, latest));
@@ -166,7 +185,7 @@ async function main() {
 
   console.error(`\n❌ ${violations.length} stale version reference(s):\n`);
   for (const { file, line, found, expected } of violations) {
-    console.error(`${file}:${line}: ${found} (latest is ${expected})`);
+    console.error(`${file}:${line}: ${found} (expected ${expected})`);
   }
   console.error(
     '\nBump the version, or mark it as history with a phrase like "since" or "before" or an "Added in" column.',

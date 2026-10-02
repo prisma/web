@@ -18,7 +18,7 @@ Prefer page-to-page redirects; the cutover block in `next.config.mjs` (search fo
 
 Every code sample must be executed against the published `@prisma/orm-*` packages before it lands, or clearly marked as conceptual. Scaffold throwaway apps with `create-prisma@latest` non-interactive flags; use `bunx create-db` for PostgreSQL and `mongodb-memory-server` (replica set) for MongoDB. Key tested facts that older internal docs get wrong:
 
-- PostgreSQL model access is namespace-qualified: `db.orm.public.User`, `db.sql.public.user`. MongoDB uses flat lowercase plural roots (`db.orm.users`) and documents keep `_id`.
+- PostgreSQL model access is namespace-qualified: `db.orm.public.User`, `db.sql.public.User`. MongoDB uses flat lowercase plural roots (`db.orm.users`) and documents keep `_id`.
 - `.update()` / `.delete()` affect one record; `updateAll` / `deleteAll` / `*Count` are the bulk forms. No `.count()` terminal; use `.aggregate(...)`.
 - No `data` wrapper on `.create(...)`. SQL-builder inserts take an array of rows.
 - MongoDB: no `db.transaction(...)`, no ORM `.aggregate(...)`, `@default(now())` not applied at create time.

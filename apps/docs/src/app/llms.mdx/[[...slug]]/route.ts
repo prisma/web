@@ -5,6 +5,17 @@ import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
 
+/**
+ * Markdown is served as text/plain, not text/markdown.
+ *
+ * ChatGPT's URL fetcher rejects text/markdown with "400 Unsupported
+ * content-type" on every plan (verified 2026-09-28 with the Open in ChatGPT
+ * link and with the agent user-agent rewrite in src/proxy.ts, which sends
+ * ChatGPT-User to this route for ordinary docs URLs too). text/plain is read by
+ * every assistant we link to and by every browser, so nothing loses out.
+ */
+const MARKDOWN_CONTENT_TYPE = "text/plain; charset=utf-8";
+
 const MAX_NEAREST_MATCH_SEGMENTS = 12;
 const MAX_NEAREST_MATCH_PATH_LENGTH = 240;
 
@@ -85,7 +96,7 @@ ${nearestLinks || "_No nearby documentation pages found._"}
   return new Response(content, {
     status: 404,
     headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
+      "Content-Type": MARKDOWN_CONTENT_TYPE,
     },
   });
 }
@@ -99,7 +110,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
 
   return new Response(content, {
     headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
+      "Content-Type": MARKDOWN_CONTENT_TYPE,
     },
   });
 }

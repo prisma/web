@@ -36,7 +36,7 @@ import { RangeInput } from "./calculator-options/controls";
 // matches exactly and its card lights up. The log scale snaps to two
 // significant digits and every preset value is two-sig-digit.
 export function PricingCalculator() {
-  const [ops, setOps] = useState(100_000);
+  const [ops, setOps] = useState(200_000);
   const [gb, setGb] = useState(0.5);
 
   const priced = priceAllPlans(ops, gb);

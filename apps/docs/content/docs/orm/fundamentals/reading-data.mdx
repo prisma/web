@@ -88,7 +88,7 @@ model User {
   id        ObjectId @id @map("_id")
   email     String   @unique
   name      String?
-  createdAt DateTime @default(now())
+  createdAt Date
   posts     Post[]
   @@map("users")
 }
@@ -97,10 +97,10 @@ model Post {
   id        ObjectId @id @map("_id")
   title     String
   content   String?
-  published Boolean
+  published Bool
   author    User     @relation(fields: [authorId], references: [id])
   authorId  ObjectId
-  createdAt DateTime @default(now())
+  createdAt Date
   @@map("posts")
 }
 ```
@@ -175,7 +175,7 @@ const recentPosts = await db.orm.public.Post
 
 ### Filter operators on PostgreSQL
 
-On PostgreSQL, `.where(...)` also accepts a callback for richer comparisons, as in the range example above. The callback receives one object, written `p` here, with a property per field of your model. Each of those fields has `.eq`, `.neq`, `.lt`, `.lte`, `.gt`, `.gte`, `.like`, `.ilike`, `.in([...])`, `.notIn([...])`, `.isNull()`, and `.isNotNull()`. `.like` and `.ilike` take SQL `LIKE` patterns, where `%` matches any run of characters:
+On PostgreSQL, `.where(...)` also accepts a callback for richer comparisons, as in the range example above. The callback receives one object, written `p` here, with a property per field of your model. Each of those fields has `.eq`, `.neq`, `.lt`, `.lte`, `.gt`, `.gte`, `.like`, `.ilike`, `.in([...])`, `.notIn([...])`, `.isNull()`, and `.isNotNull()`, as far as its type supports them: a native enum field (`pg.enum(...)`), for example, has no `.like` or `.ilike`. `.like` and `.ilike` take SQL `LIKE` patterns, where `%` matches any run of characters. For search over words rather than patterns, text fields also have PostgreSQL [full-text search](/orm/reference/orm-client#full-text-search):
 
 ```typescript
 // Case-insensitive text search
@@ -225,6 +225,8 @@ const junePosts = await db.orm.posts
   .where(MongoFieldFilter.lt("createdAt", new Date("2026-07-01")))
   .all();
 ```
+
+Each value goes through the field's type, as in a write, so pass the value your code reads from that field. For an `Int64` field that is a `bigint`, which a filter takes wrapped in a `MongoParamRef` from `@prisma/orm-mongo/value`, as in `MongoFieldFilter.gt("views", new MongoParamRef(5n))`. A value the field's type refuses throws an error whose `code` is `RUNTIME.ENCODE_FAILED` before the query runs.
 
 Chained `.where(...)` calls combine with AND, the same as on PostgreSQL. Call `.not()` on a filter to invert it, and use `MongoOrExpr.of([...])` from the same import to combine filters with OR:
 
@@ -300,6 +302,27 @@ const posts = await db.orm.public.Post
   .all();
 ```
 
+On PostgreSQL, a sort can also use a related record, a count, and a placement for nulls:
+
+```typescript
+// Posts by their author's name
+const byAuthor = await db.orm.public.Post
+  .orderBy([(p) => p.author.name.asc(), (p) => p.id.asc()])
+  .all();
+
+// Users by how many posts they have
+const mostPosts = await db.orm.public.User
+  .orderBy((u) => u.posts.count().desc())
+  .all();
+
+// Posts without content go last
+const titled = await db.orm.public.Post
+  .orderBy((p) => p.content.desc({ nulls: "last" }))
+  .all();
+```
+
+A relation to one record gives you that record's fields, one relation deep. A relation to many records gives you `count()`, which takes an optional filter, as in `u.posts.count((p) => p.published.eq(true))`. The [`orderBy()` reference](/orm/reference/orm-client#orderby) has the details.
+
 ### Cursor pagination
 
 Offset gets slower on deep pages, so for stable pagination over a large table, follow `.orderBy(...)` with `.cursor(...)` and resume from the last record you returned. `.cursor(...)` is PostgreSQL only.
@@ -321,6 +344,8 @@ const page2 = await db.orm.public.Post
   .limit(20)
   .all();
 ```
+
+A cursor works only when every sort is a plain field of the model. With a sort by a related record, a count, an extension operation such as a vector distance, or a `nulls` placement, `.cursor(...)` throws an error whose `code` is `ORM.ARGUMENT_INVALID`, so page those queries with `.limit(n)` and `.offset(n)`.
 
 On MongoDB, page with `.limit(n)` and `.offset(n)`.
 
@@ -387,9 +412,9 @@ for await (const post of db.orm.public.Post.all()) {
 }
 ```
 
-It does not fetch less: on the standard client (`postgres({...})` in `src/prisma/db.ts`) every row is loaded first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)).
+It does not fetch less: on the standard client (`postgres({...})` in `src/prisma/db.ts`) every row is loaded first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)). A client created with the `cursor` option, such as `postgres({ contractJson, url, cursor: { batchSize: 100 } })`, reads the rows through a server-side cursor instead, in batches, as your loop asks for them. See [`postgres(options)`](/orm/reference/transactions-and-runtime#postgresoptions).
 
-The serverless client, `postgresServerless(...)`, does fetch rows as you iterate, but it has no `db.orm`, so none of the queries on this page run on it: see [Transactions and runtime](/orm/reference/transactions-and-runtime).
+The queries on this page also run on the serverless client from `@prisma/orm-postgres/serverless`, through the connection that its `connect({ url })` returns. Its reads load every row first too, unless you create it with `cursor`. See [Serverless client on PostgreSQL](/orm/reference/transactions-and-runtime#serverless-client-on-postgresql).
 
 ### An iterated result can only be read once
 

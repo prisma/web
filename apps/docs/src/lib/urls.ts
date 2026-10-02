@@ -39,6 +39,18 @@ export function withDocsBasePath(path: string): string {
 }
 
 /**
+ * Path of a page's raw Markdown, served by the `/:path*.mdx` rewrite in
+ * next.config.mjs. That rewrite lives under `basePath: "/docs"`, so the root
+ * page cannot be `/docs.mdx` (nothing answers it) and is `/docs/index.mdx`
+ * instead, which the `llms.mdx` route resolves to the root page.
+ */
+export function withMarkdownPath(pageUrl: string, extension: "md" | "mdx" = "mdx"): string {
+  const docsPath = withDocsBasePath(pageUrl);
+  if (docsPath === DOCS_PREFIX) return `${DOCS_PREFIX}/index.${extension}`;
+  return `${docsPath}.${extension}`;
+}
+
+/**
  * Strips the /docs prefix for segment-based comparison.
  * All docs paths share this prefix, so we compare the segments to avoid
  * /docs/orm incorrectly matching /docs/prisma-orm.

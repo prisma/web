@@ -1,0 +1,113 @@
+---
+title: Migrate from Early Access
+description: Move your Prisma Postgres Early Access database to a new PostgreSQL 17 database with dump and restore.
+url: /postgres/migrate-from-ea-to-ga
+metaTitle: Migrate Prisma Postgres from Early Access
+metaDescription: Export your Early Access database, restore it into a new Prisma Postgres database, and reconnect your application before the retirement deadline.
+---
+
+Prisma Postgres is now generally available, running PostgreSQL 17 on a platform built for production reliability. Early Access (EA) databases run on the earlier PostgreSQL 16 setup and can't be upgraded in place, so moving over means creating a new database and bringing your schema and data with you. This guide walks you through it, and you don't need to upgrade Prisma ORM along the way.
+
+EA databases will be deleted on **1 November 2026 at 00\:00 UTC**, so plan to finish your migration before then. If anything is getting in the way, [let us know](#need-a-hand) and we'll help you get moved over.
+
+## Before you start
+
+Plan a maintenance window. Writes must remain paused through export, restore, verification, and application cutover, so choose a time when you can pause application writes and background jobs.
+
+## 1. Prepare your databases and tools
+
+- Create a new, empty Prisma Postgres database in your workspace in [Prisma Console](https://console.prisma.io). Do not run schema migrations or seed it before restoring.
+- Get the [direct connection strings](/postgres/database/connecting-to-your-database#get-your-connection-strings) for your EA database (source) and your new database (destination). If you cannot obtain a direct connection for your EA database, [ask for help](#need-a-hand).
+- Install [PostgreSQL 17 command-line tools](/postgres/database/backups#1-install-postgresql-command-line-tools) and have enough local disk space for the dump. These commands should report `17.x`:
+
+```bash title="Terminal"
+pg_dump --version
+pg_restore --version
+psql --version
+```
+
+Replace the placeholders with each database's direct URL. `EA_DIRECT_URL` is your source; `NEW_DIRECT_URL` is your destination. Keep the single quotes:
+
+```bash title="Terminal"
+export EA_DIRECT_URL='postgresql://EA_USER:EA_PASSWORD@EA_HOST:5432/postgres?sslmode=require'
+export NEW_DIRECT_URL='postgresql://NEW_USER:NEW_PASSWORD@NEW_HOST:5432/postgres?sslmode=require'
+```
+
+Use PostgreSQL URLs, not pooled connections or `prisma://` URLs. Confirm the source reports PostgreSQL 16 and the destination reports PostgreSQL 17:
+
+```bash title="Terminal"
+psql "$EA_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="SHOW server_version;"
+psql "$NEW_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="SHOW server_version;"
+```
+
+If either connection fails or reports a different major version than expected, [ask for help](#need-a-hand) before exporting.
+
+Before pausing writes, run the [extension and policy checks](/prisma-postgres/import-from-existing-database-postgresql#1-inspect-the-source-database) with `EA_DIRECT_URL` as the source URL. Resolve unsupported extensions before the final dump. If policies reference roles that exist only in the EA database, plan target-compatible replacements before the maintenance window.
+
+## 2. Pause writes and export your EA database
+
+A dump captures a snapshot: writes made after that snapshot are not included. Stop new application writes, background workers, scheduled jobs, and other writers. Drain in-flight requests and transactions, then confirm all EA writes have stopped before starting `pg_dump`. Keep writes paused until you have verified and switched your application to your new database.
+
+Export all application schemas and data, including migration history:
+
+{/* cspell:ignore mktemp */}
+
+```bash title="Terminal"
+# Create a fresh, private dump file for this export
+umask 077
+
+EA_DUMP_FILE="$(mktemp ./prisma-postgres-ea.XXXXXX)" &&
+pg_dump \
+  --format=custom \
+  --quote-all-identifiers \
+  --no-privileges \
+  --verbose \
+  --dbname="$EA_DIRECT_URL" \
+  --file="$EA_DUMP_FILE"
+```
+
+Wait for the export to complete successfully before restoring, so you use a complete archive. Keep this file private: it contains your database's data.
+
+Each export creates a new file in your current directory, leaving earlier dumps untouched. Keep this terminal open and stay in the same directory for the restore; `EA_DUMP_FILE` holds the archive path.
+
+## 3. Restore into your new database
+
+If the policy check found source-only roles, use `pg_restore --list "$EA_DUMP_FILE" > postgres-restore.list` and follow the import guide's [policy filtering instructions](/prisma-postgres/import-from-existing-database-postgresql#3-stop-source-writes-and-export-the-final-snapshot) before restoring. Add `--use-list=postgres-restore.list` to the command below. Recreate each omitted policy with target-compatible roles and verify access before resuming traffic.
+
+Restore the archive into the empty database you created:
+
+```bash title="Terminal"
+pg_restore \
+  --no-owner \
+  --no-privileges \
+  --single-transaction \
+  --exit-on-error \
+  --verbose \
+  --dbname="$NEW_DIRECT_URL" \
+  "$EA_DUMP_FILE"
+```
+
+A restore error rolls back the transaction, leaving your new database unchanged. Resolve the reported error before retrying the restore. If an extension or role is missing, consult the [PostgreSQL import guide](/prisma-postgres/import-from-existing-database-postgresql) or [ask for help](#need-a-hand).
+
+After the restore completes successfully, refresh query-planner statistics:
+
+```bash title="Terminal"
+psql "$NEW_DIRECT_URL" -X --set ON_ERROR_STOP=1 --command="ANALYZE;"
+```
+
+## 4. Verify and reconnect your application
+
+1. With EA writes still paused, compare schemas, table row counts, and important records between both databases. The [import verification steps](/prisma-postgres/import-from-existing-database-postgresql#5-verify-the-imported-data) provide a row-count comparison; use your EA database's URL as the source and your new database's URL as the destination.
+1. Update connection settings for your application, deployment, workers, and migration tools to use your new database. Follow the [connection guidance for your runtime](/postgres/database/connecting-to-your-database). If you use Accelerate, follow the [application reconnection steps](/prisma-postgres/import-from-existing-database-postgresql#6-connect-your-application).
+1. Redeploy or restart your application with the new settings while production traffic remains paused. Test a read and a disposable or rolled-back write against your new database.
+1. Once verification succeeds, resume traffic and writers against your new database only. Keep EA writes stopped.
+
+Keep your EA database and local dump until verification succeeds. If checks fail, keep traffic paused while you resolve the issue or [ask for help](#need-a-hand).
+
+## Need a hand? [#need-a-hand]
+
+We want this move to be as smooth as possible, and every setup is different. If something is getting in the way, [contact us](mailto:ppg-ea@prisma.io) and tell us what's blocking you. It might be an error you can't get past, a large database, a downtime window to plan around, or not enough time before 1 November.
+
+It helps to include your workspace and project, the name or ID of the EA database, what's blocking you (including any error messages), and any timing constraints on your side. Please keep passwords, connection strings, and database dumps out of your message.
+
+We'll help you work out the next steps. The shutdown date still applies unless we confirm a different date.

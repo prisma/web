@@ -253,8 +253,8 @@ const securityHeaders = [
 
 /**
  * The marketing pages that also have a Markdown rendition. Mirrors
- * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts and the matcher in
- * src/proxy.ts; src/lib/agent-markdown.test.ts asserts the three agree.
+ * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts;
+ * src/lib/agent-markdown.test.ts asserts the two agree.
  */
 const agentMarkdownPaths = [
   "/",
@@ -324,6 +324,52 @@ const config = {
   transpilePackages: ["@prisma/eclipse"],
   async redirects() {
     return [
+      // Search Console 404s: published docs URLs missing the /docs base path.
+      // Exact mappings preserve the /orm marketing page and unknown-path 404s.
+      { source: "/ai/mcp-tools", destination: "/docs/ai/mcp-tools", permanent: true },
+      {
+        source: "/orm/v6/prisma-client/queries/pagination",
+        destination: "/docs/orm/v6/prisma-client/queries/pagination",
+        permanent: true,
+      },
+      {
+        source: "/orm/reference/migration-api",
+        destination: "/docs/orm/reference/migration-api",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/more/ai-tools/github-copilot",
+        destination: "/docs/orm/v6/more/ai-tools/github-copilot",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/overview/databases/sqlite",
+        destination: "/docs/orm/v6/overview/databases/sqlite",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/prisma-client/client-extensions/shared-extensions/permit-rbac",
+        destination: "/docs/orm/v6/prisma-client/client-extensions/shared-extensions/permit-rbac",
+        permanent: true,
+      },
+      {
+        source:
+          "/orm/v6/prisma-client/debugging-and-troubleshooting/troubleshooting-binary-size-issues",
+        destination:
+          "/docs/orm/v6/prisma-client/debugging-and-troubleshooting/troubleshooting-binary-size-issues",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/prisma-client/deployment/deploy-migrations-from-a-local-environment",
+        destination:
+          "/docs/orm/v6/prisma-client/deployment/deploy-migrations-from-a-local-environment",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/prisma-client/deployment/edge/deploy-to-cloudflare",
+        destination: "/docs/orm/v6/prisma-client/deployment/edge/deploy-to-cloudflare",
+        permanent: true,
+      },
       // 2026 rebrand: old-site URLs whose content moved in the redesign IA.
       { source: "/about", destination: "/company", permanent: true },
       { source: "/careers", destination: "/company/careers", permanent: true },

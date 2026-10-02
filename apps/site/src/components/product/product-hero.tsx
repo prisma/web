@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CheckBold } from "@/components/icons/forma";
 import { GlassGlide } from "@/components/brand/glass-glide";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
@@ -43,7 +44,15 @@ export function ProductHero({
   name,
   accent,
   hero,
-}: Pick<ProductPageContent, "name" | "accent" | "hero">) {
+  visual,
+  visualAspect = true,
+}: Pick<ProductPageContent, "name" | "accent" | "hero"> & {
+  // Optional custom hero visual. When provided, it replaces the illustration /
+  // product tour / placeholder in the visual slot. `visualAspect={false}` lets
+  // the visual set its own height instead of the default 4:3 mobile aspect.
+  visual?: ReactNode;
+  visualAspect?: boolean;
+}) {
   const Illustration = hero.illustration ? PRODUCT_ILLUSTRATIONS[hero.illustration] : null;
 
   return (
@@ -139,7 +148,11 @@ export function ProductHero({
                     intermediate state while editing content, and it is truthy —
                     it would render a tour whose `% stops.length` is NaN, giving
                     an empty card with no tabs instead of falling through here */}
-                {hero.tour?.length ? (
+                {visual ? (
+                  <div className={cn("md:h-full", visualAspect && "max-md:aspect-[4/3]")}>
+                    {visual}
+                  </div>
+                ) : hero.tour?.length ? (
                   <ProductTour stops={hero.tour} />
                 ) : Illustration ? (
                   <div className="max-md:aspect-[4/3] md:h-full">
