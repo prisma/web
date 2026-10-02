@@ -38,7 +38,7 @@ bill, and one about what each stack leaves out.
 2. **Where does the connection string come from?** Neon injects `DATABASE_URL` into Functions, and its
    Vercel integrations set it in the Vercel project. With a host that has no integration, you copy it
    between dashboards. On Prisma it depends on how you deploy. In a
-   [Prisma Composer](https://www.prisma.io/docs/composer) app, which is in Early Access, the database
+   [Prisma Composer](https://www.prisma.io/docs/composer) app, the database
    is a declared dependency: the service receives the connection and a typed
    [Prisma ORM](https://www.prisma.io/docs/orm) client, there is no `DATABASE_URL` to set, and the
    deploy applies your committed migrations before the service starts. Without Composer, you create
@@ -46,11 +46,11 @@ bill, and one about what each stack leaves out.
    and once for preview.
 3. **What does a preview environment get?** On Neon, a branch is a copy-on-write clone of the database
    with its parent's data, and the branch gets its own Functions deployment and storage namespace. On
-   Prisma, a GitHub Actions workflow running `prisma/cloud-deploy-action`, which is marked
-   experimental, deploys a Composer app on every push, and each pushed branch becomes a stage with its
-   own services and databases. A stage's database starts from your migrations, and production data is
-   not copied into it. A connected repository without that workflow deploys nothing on push, and on
-   plain Compute a preview is only as isolated as the preview `DATABASE_URL` you set.
+   Prisma, a GitHub Actions workflow running `prisma/cloud-deploy-action` deploys a Composer app on
+   every push, and each pushed branch becomes a stage with its own services and databases. A stage's
+   database starts from your migrations, and production data is not copied into it. A connected
+   repository without that workflow deploys nothing on push, and on plain Compute a preview is only as
+   isolated as the preview `DATABASE_URL` you set.
 4. **What does idle cost?** Neon's paid plans have no base fee, and compute up to 16 CU suspends after
    five minutes of inactivity by default, so an idle project pays for storage, restore history and any
    extra branches. Prisma charges the plan's base fee, $0 to $129, plus any storage above the plan's
@@ -61,21 +61,20 @@ bill, and one about what each stack leaves out.
    restore, only daily snapshots on paid plans. Prisma Compute runs each service in one region, chosen
    from six, with no multi-region deployments. It does not support WebSocket servers, it gives each
    request 60 seconds to start responding before the client gets a 504, and it deploys on push only
-   from GitHub. The integrated preview flow depends on Composer, which is in Early Access.
+   from GitHub. The integrated preview flow depends on Composer.
 
 Connection pooling does not separate the two: both run PgBouncer in transaction mode and give you
 pooled and direct connection strings, with no pooler to provision. Prisma Postgres does not include
 query caching. The `cacheStrategy` API belongs to Prisma Accelerate, which is retired on December 1,
-2026, including hosted Accelerate connections for Prisma Postgres. Prisma ORM 8, a release candidate,
-has an optional cache middleware that keeps results in each process's memory, and it works against
-Neon as well.
+2026, including hosted Accelerate connections for Prisma Postgres. Prisma ORM 8 has an optional cache
+middleware that keeps results in each process's memory, and it works against Neon as well.
 
 ## At a glance
 
 | | Prisma Postgres and Prisma Compute | Neon |
 | --- | --- | --- |
 | App hosting | Compute runs HTTP services, frontends and backends | Functions run Node.js backends on each branch; no website hosting |
-| Connection string | Composer app (Early Access): declared dependency, nothing to set; otherwise you set `DATABASE_URL` per scope | Injected into Functions; Vercel integrations set it in the Vercel project |
+| Connection string | Composer app: declared dependency, nothing to set; otherwise you set `DATABASE_URL` per scope | Injected into Functions; Vercel integrations set it in the Vercel project |
 | Preview database | Composer stage: its own database, built from migrations, no production data | Copy-on-write branch with the parent's data |
 | Branch pricing | No branching feature; separate databases, no per-branch fee | 10 branches per project on Free and Launch, 25 on Scale, then $1.50 per extra branch-month (no extras on Free) |
 | Billing unit | Operations (one per Prisma ORM query, or per SQL statement over a direct connection) plus storage above the plan allowance; Compute usage meters on top | CU-hours plus storage; Functions have their own meters |
@@ -124,9 +123,8 @@ legitimate architecture with little wiring.
 the API, so a web app needs no second host. In a Composer app, the service declares the database it
 needs and receives the connection and a typed client at runtime, the deploy applies committed
 migrations before the service starts, and each pushed branch gets a preview with its own database.
-Composer is in Early Access and the deploy action is marked experimental, and both warn that their
-interfaces can change between releases. Without Composer, you set `DATABASE_URL` yourself for each
-scope, and preview isolation depends on pointing the preview value at a non-production database.
+Without Composer, you set `DATABASE_URL` yourself for each scope, and preview isolation depends on
+pointing the preview value at a non-production database.
 
 **Billing follows your queries.** An operation is one Prisma ORM query, or one SQL statement over a
 direct connection, so the bill maps to something you can see in your code. That shape fits a
@@ -185,8 +183,8 @@ you want no monthly floor, or if you only need a database for a host you already
 **Choose Prisma Postgres with Compute** if you want the frontend, the backend and the database from one
 vendor, if your app is a TypeScript HTTP service that starts every response within 60 seconds, holds no
 WebSocket connections and can sleep between requests, if it is a user-facing app with quiet hours at
-moderate query volume, or if you want a spend limit that is on by default. For the integrated preview
-flow, you also need to be comfortable adopting Composer while it is in Early Access.
+moderate query volume, or if you want a spend limit that is on by default. The integrated preview
+flow also needs a Composer app.
 
 **It does not matter much** if you are below the free tiers on both and building a prototype. Pick
 either, and revisit when you have real traffic.
@@ -222,8 +220,8 @@ checks for them.
   <Accordion title="Does Prisma Postgres support database branching like Neon?">
 Prisma Postgres has no branching feature. You create separate databases, and there is no per-branch
 fee, whereas Neon includes 10 branches per project on Free and Launch and 25 on Scale, then charges
-$1.50 per extra branch-month on paid plans. For previews on Prisma Compute, a Prisma Composer app (in
-Early Access) that a GitHub Actions workflow deploys with `prisma/cloud-deploy-action` gives each
+$1.50 per extra branch-month on paid plans. For previews on Prisma Compute, a Prisma Composer app
+that a GitHub Actions workflow deploys with `prisma/cloud-deploy-action` gives each
 pushed branch its own database, built from your committed migrations. Production data is not copied
 into it, so it is not a copy-on-write clone of production the way a Neon branch is. Without Composer,
 you create a preview database yourself and point the preview `DATABASE_URL` at it.
@@ -249,8 +247,8 @@ with quiet hours at moderate query volume ($33.10 against about $78).
   <Accordion title="Can I use Prisma ORM with Neon?">
 Prisma ORM works with any PostgreSQL database, including Neon, and it is free. Using Prisma ORM does
 not require Prisma Postgres, and choosing Neon for the database does not stop you using the ORM.
-Prisma ORM 8 is a release candidate, with general availability expected in October 2026, and Prisma
-ORM 7 keeps getting fixes for 18 months after that.
+Prisma ORM 8 is the version npm installs by default, and Prisma ORM 7 remains supported, with its
+docs at [prisma.io/docs/orm/v7](https://www.prisma.io/docs/orm/v7).
   </Accordion>
   <Accordion title="Is migrating from Neon to Prisma Postgres difficult?">
 Both are standard PostgreSQL, so a Neon database on PostgreSQL 17 or earlier moves with an ordinary
