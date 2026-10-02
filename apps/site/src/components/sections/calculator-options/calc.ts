@@ -193,7 +193,7 @@ export const PRESETS = [
     id: "hobby",
     label: "Hobby",
     blurb: "Start free while you build, test, and learn your usage patterns.",
-    ops: 100_000,
+    ops: 200_000,
     gb: 0.5,
   },
   {

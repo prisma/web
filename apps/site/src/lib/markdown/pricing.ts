@@ -151,7 +151,7 @@ const EVERY_PLAN_INCLUDES = [
 // readout each button shows (fmtOps · fmtGB). The V2 `blurb` on each preset is
 // not rendered by the compact preset row, so it is not included.
 const CALCULATOR_PRESETS = [
-  "Hobby — 100K · 500 MB",
+  "Hobby — 200K · 500 MB",
   "Startup — 1M · 8 GB",
   "Scaleup — 20M · 40 GB",
 ];
