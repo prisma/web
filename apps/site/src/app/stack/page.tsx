@@ -25,7 +25,7 @@ export default function PrismaStackPage() {
     <>
       <ProductHero
         name="The Prisma Stack"
-        accent="bg-prism-cyan-400"
+        accent="orm"
         hero={hero}
         visual={<StackHeroVisual />}
         visualAspect={false}

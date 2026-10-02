@@ -79,7 +79,10 @@ export function BestFor({ bestFor }: { bestFor: BestForContent }) {
                     <h3 className="flex items-baseline gap-3 text-balance text-lg leading-snug sm:text-xl">
                       <span
                         aria-hidden
-                        className={cn("size-2 shrink-0 translate-y-[-0.1em] rounded-full max-sm:hidden", hue.dot)}
+                        className={cn(
+                          "size-2 shrink-0 translate-y-[-0.1em] rounded-full max-sm:hidden",
+                          hue.dot,
+                        )}
                       />
                       {title}
                     </h3>

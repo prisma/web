@@ -96,8 +96,7 @@ export const comparison: ComparisonContent = {
     {
       point: "Preview environments",
       assembled: "App previews and database branches often need separate setup.",
-      prisma:
-        "Prisma can connect preview deployments with isolated app and database environments.",
+      prisma: "Prisma can connect preview deployments with isolated app and database environments.",
     },
     {
       point: "Agent workflow",
