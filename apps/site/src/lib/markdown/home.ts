@@ -276,9 +276,9 @@ export function renderHomeMarkdown(): string {
     heading(2, "FAQ"),
     heading(3, "Do I have to use all three products?"),
     paragraphs(
-      "No. Prisma Postgres works with any ORM. Prisma Compute works with any TypeScript app. " +
-        "The ORM is free and works with any database. Use whichever pieces solve your problem, " +
-        "and add the rest when you're ready.",
+      "No. Prisma Postgres works with any ORM. Prisma Compute works with TypeScript services " +
+        "built for Node.js, Bun or Next.js. The ORM is free and works with any database. Use " +
+        "whichever pieces solve your problem, and add the rest when you're ready.",
     ),
     heading(3, "What if I'm not using an AI coding agent?"),
     paragraphs(

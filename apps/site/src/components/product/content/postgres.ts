@@ -23,12 +23,13 @@ export const postgresContent: ProductPageContent = {
   hero: {
     headline: "Production-ready Postgres, already wired to your stack",
     headlineEmphasis: "already",
-    // V4's second sentence ("Pair it with Compute and you get one platform…")
-    // is dropped here and left to the Compute card in the platform section —
-    // it was pushing the CTA below the fold and the section under the hero
-    // already made the same point.
+    // Deviation (2026-09-30, entity freeze): the positioning sentence from the
+    // content brief replaces V4's one-liner. It is the same text, verbatim, as
+    // the homepage description, /compute and the docs Compute index, so search
+    // and answer engines meet one description of the product everywhere.
+    // Check the CTA still clears the fold at 1440x800 when the copy changes.
     subheadline:
-      "Prisma Postgres is a production-ready managed database that works with any TypeScript stack.",
+      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
     benefits: [
       "Branch your database alongside your app, free, per PR",
       "Autoscaling that handles spikes without capacity planning",
@@ -90,8 +91,10 @@ export const postgresContent: ProductPageContent = {
       },
       {
         name: "One config for both halves",
+        // Deviation (2026-09-30): the app is declared in the Composer module,
+        // not in prisma.config.ts (docs compute/limitations.mdx, "CLI").
         description:
-          "The same prisma.config.ts declares your app and your database. No two-vendor wiring, no dashboards to keep in sync.",
+          "The same Composer module.ts declares your app and your database. No two-vendor wiring, no dashboards to keep in sync.",
         illustration: "configBoth",
       },
       {
@@ -108,8 +111,10 @@ export const postgresContent: ProductPageContent = {
       },
       {
         name: "Standard Postgres, no lock-in",
+        // Deviation (2026-09-30): opens with the exit-path line from the
+        // content brief, shared with /compute.
         description:
-          "Standard SQL and wire protocol, extensions like pgvector, and migration in or out with pg_dump.",
+          "Standard Postgres underneath: leave with pg_dump; the Composer module is a TypeScript file in your repo, not a runtime. Standard SQL and wire protocol, with extensions like pgvector.",
         illustration: "noLockIn",
       },
     ],
@@ -117,6 +122,41 @@ export const postgresContent: ProductPageContent = {
   platform: {
     body: "Prisma Postgres runs on the same platform as Compute, and the schema you define in Prisma ORM drives your migrations and your typed client. The more of the stack you use, the less there is to wire together.",
   },
+  // Added 2026-09-30 (not in V4): the shared "Compare Prisma" reading list and
+  // a visible FAQ in the words people ask answer engines. Plain text, no FAQ
+  // schema. Every claim is checked against the docs or pricing page named in
+  // the PR that added it; keep the answers in step with those pages.
+  compare: {
+    intro:
+      "How Prisma Postgres and Prisma Compute compare with Neon, Supabase and other places to run a TypeScript app and its database, including where another pick is better.",
+  },
+  faq: [
+    {
+      question: "How do I move a Postgres database from my laptop online?",
+      answer:
+        "Three commands: create a database with npx prisma postgres create, dump the local one with pg_dump, and load it with pg_restore over the direct connection string. Prisma Postgres runs PostgreSQL 17, so use the PostgreSQL 17 command-line tools. pg_dump does not copy roles, so recreate roles and the policies that name them by hand. The Free plan covers 500 MB and 200k operations a month with no credit card, and any Postgres client keeps working. The import guide in the docs has the exact commands.",
+    },
+    {
+      question: "Do I need Prisma ORM to use Prisma Postgres?",
+      answer:
+        "No. Prisma Postgres is standard PostgreSQL 17 with a PgBouncer connection pool included, and it works with any Postgres client: Prisma ORM, Drizzle, Kysely, TypeORM, node-postgres or psql. Prisma ORM is optional.",
+    },
+    {
+      question: "Can I host the app next to the database?",
+      answer:
+        "Yes. Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan, and it has been generally available since August 2026. Declare the app with Prisma Composer, a service.ts per service and one module.ts, which a coding agent can write from the prompt on the docs porting page, then run npx prisma deploy module.ts. To deploy on push, connect the GitHub repository and add the prisma/cloud-deploy-action workflow; from then on every pushed branch gets a preview with its own database, built from your migrations. Each service runs in one region, and Compute does not serve WebSocket servers.",
+    },
+    {
+      question: "Is Prisma Postgres related to Prisma Cloud?",
+      answer:
+        "No. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute, and its dashboard is Prisma Console. Prisma Postgres and Prisma Compute are unrelated to Palo Alto Networks' Prisma Cloud.",
+    },
+    {
+      question: "How do I leave?",
+      answer:
+        "Run pg_dump against the direct connection string (the Backups page in the docs has the command) and restore the file with pg_restore on any PostgreSQL server. Nothing else needs exporting: your Composer module is ordinary TypeScript in your repository, and Prisma ORM runs against any Postgres.",
+    },
+  ],
   cta: {
     headline: "Postgres that ships with the rest of your stack",
     body: "Prisma Postgres is the data half of a TypeScript platform. Use it on its own with any ORM and any host, or pair it with Compute and your app and database become one deploy, one config, one branched preview environment per PR.",

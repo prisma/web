@@ -1,3 +1,5 @@
+import { CompareLinks } from "@/components/sections/compare-links";
+import { Faq } from "@/components/sections/faq";
 import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 import { ProductCta } from "./product-cta";
 import { ProductFeatures } from "./product-features";
@@ -17,6 +19,11 @@ export function ProductPage({ content }: { content: ProductPageContent }) {
       <ProductProblem problem={content.problem} />
       <ProductFeatures features={content.features} />
       <ProductPlatform platform={content.platform} />
+      {/* Optional, content-driven: the "Compare Prisma" list and the FAQ sit
+          between the platform section and the testimonials, and the Markdown
+          rendition (lib/markdown/product.ts) mirrors that order. */}
+      {content.compare ? <CompareLinks intro={content.compare.intro} /> : null}
+      {content.faq ? <Faq items={content.faq} /> : null}
       <TestimonialsReveal heading="Trusted by 500K+ TypeScript developers" />
       <ProductCta cta={content.cta} />
     </>

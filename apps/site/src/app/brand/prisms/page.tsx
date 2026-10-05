@@ -25,7 +25,6 @@ const CHECKS = [
 
 const PROOF = [
   { stat: "500,000+", label: "developers" },
-  { stat: "28%", label: "of the TypeScript ORM market" },
   { stat: "46,500+", label: "GitHub stars" },
 ];
 

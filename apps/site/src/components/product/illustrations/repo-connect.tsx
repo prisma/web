@@ -9,7 +9,7 @@ import { CardChrome, HeroPanel, StatRow } from "./parts";
 
 export function RepoConnect() {
   return (
-    <HeroPanel label="Illustration of the first step of deploying on Prisma Compute: connecting a GitHub repository on the main branch, or deploying straight from your machine with one command, with the app's services auto-detected">
+    <HeroPanel label="Illustration of the first step of deploying on Prisma Compute: connecting a GitHub repository on the main branch, or deploying straight from your machine with one command, with the app's services declared in module.ts">
       <CardChrome
         file="get started"
         right={
@@ -71,15 +71,15 @@ export function RepoConnect() {
           </div>
           <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/40 px-3 py-2.5">
             <span className="truncate font-mono text-[0.625rem] text-muted-foreground">
-              <span className="text-prism-cyan-500">$</span> bunx @prisma/cli@latest app deploy
+              <span className="text-prism-cyan-500">$</span> npx prisma deploy module.ts
             </span>
             <Copy className="ml-auto size-3 shrink-0 text-muted-foreground/60" />
           </div>
         </div>
 
-        {/* what Compute already worked out before you deploy */}
+        {/* what the Composer module declares, read before you deploy */}
         <div className="flex flex-col">
-          <StatRow label="services auto-detected" value="web · api · worker" accent />
+          <StatRow label="services in module.ts" value="web · api · worker" accent />
           <StatRow label="primary database" value="us-west-1" />
         </div>
       </div>
