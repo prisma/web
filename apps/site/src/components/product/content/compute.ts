@@ -170,7 +170,7 @@ export const computeContent: ProductPageContent = {
     {
       question: "What does Prisma Compute not do?",
       answer:
-        "No WebSocket servers yet. Each service runs in one region, chosen from six. A request has 60 seconds to send its first byte, and a response that has started streaming is not cut off. No cron scheduling and no persistent filesystem. The runtime is Bun. The Compute FAQ in the docs has the full list of trade-offs.",
+        "Compute does not support WebSocket servers, cron scheduling or a persistent filesystem today, and each service runs in one region, chosen from six. A request has 60 seconds to send its first byte, and a response that has started streaming is not cut off. The runtime is Bun. The Compute FAQ in the docs has the full list of trade-offs.",
     },
     {
       question: "Do I need Prisma ORM?",
