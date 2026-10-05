@@ -42,9 +42,7 @@ export function CoLocated() {
               db
             </span>
           </div>
-          <p className="font-mono text-[0.5625rem] text-prism-cyan-700/80">
-            one project, one plan
-          </p>
+          <p className="font-mono text-[0.5625rem] text-prism-cyan-700/80">one project, one plan</p>
         </div>
       </div>
     </SurfaceCard>
