@@ -96,6 +96,13 @@ test("unknown templates still render with fallbacks", () => {
   );
 });
 
+test("every template is by Prisma unless the registry says otherwise", () => {
+  for (const template of catalog) {
+    assert.equal(template.author.name, "Prisma", `${template.id} should default to Prisma`);
+    assert.equal(template.author.logo, null, "the Prisma mark renders inline");
+  }
+});
+
 test("deploy and source URLs point at the console and the examples repo", () => {
   const hono = byId("hono");
   assert.equal(

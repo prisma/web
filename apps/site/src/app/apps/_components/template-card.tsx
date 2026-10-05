@@ -1,7 +1,7 @@
 import { ArrowRight } from "@/components/icons/forma";
 import { Marker } from "@/components/brand/marker";
 import { PrismButtonOutline } from "@/components/brand/prism-button";
-import type { GalleryTemplate, StackMeta } from "../_lib/catalog";
+import type { AuthorMeta, GalleryTemplate, StackMeta } from "../_lib/catalog";
 import { PrismaMark } from "./prisma-mark";
 import { TemplatePreview } from "./template-preview";
 
@@ -27,7 +27,13 @@ export function TemplateCard({ template }: { template: GalleryTemplate }) {
 
       <div className="flex flex-1 flex-col p-6">
         <div className="flex min-h-5 items-center gap-2 text-xs font-medium text-muted-foreground">
-          {template.useCase && <span>{template.useCase}</span>}
+          <AuthorLine author={template.author} />
+          {template.useCase && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{template.useCase}</span>
+            </>
+          )}
           {template.isNew && (
             <Marker color="bg-prism-red-500" className="ml-auto">
               New
@@ -75,6 +81,36 @@ export function TemplateCard({ template }: { template: GalleryTemplate }) {
         </div>
       </div>
     </article>
+  );
+}
+
+// "by <mark> Prisma": the maintainer, linked. Community templates carry their
+// own name and logo from the registry.
+function AuthorLine({ author }: { author: AuthorMeta }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span>by</span>
+      <a
+        href={author.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 font-semibold text-foreground transition-colors hover:text-prism-cyan-700"
+      >
+        {author.logo ? (
+          <img
+            src={author.logo}
+            alt=""
+            width={14}
+            height={14}
+            loading="lazy"
+            className="size-3.5 shrink-0 rounded-sm object-contain"
+          />
+        ) : (
+          <PrismaMark className="size-3.5 shrink-0" />
+        )}
+        {author.name}
+      </a>
+    </span>
   );
 }
 

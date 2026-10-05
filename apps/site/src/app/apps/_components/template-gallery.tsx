@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { ChevronsUpDown, X } from "@/components/icons/forma";
+import { ArrowRight, ChevronsUpDown, X } from "@/components/icons/forma";
+import { PrismButtonOutline } from "@/components/brand/prism-button";
 import { cn } from "@/lib/utils";
 import {
   CATEGORY_META,
   CATEGORY_ORDER,
+  CONTRIBUTE,
   filterTemplates,
   frameworkOptions,
   groupByCategory,
@@ -33,9 +35,6 @@ import { FrameworkLogo } from "./template-preview";
 // default view (everything, Featured) into the static HTML, and the client
 // applies the query string on hydration without a Suspense boundary blanking
 // the grid for crawlers.
-
-const REQUEST_TEMPLATE_URL =
-  "https://github.com/prisma/prisma-examples/issues/new?title=Compute%20template%20request%3A%20";
 
 const listeners = new Set<() => void>();
 
@@ -172,7 +171,7 @@ export function TemplateGallery({ templates }: { templates: GalleryTemplate[] })
           <p className="mt-10 text-sm leading-relaxed text-muted-foreground">
             Missing your framework?{" "}
             <a
-              href={REQUEST_TEMPLATE_URL}
+              href={CONTRIBUTE.requestUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="spectrum-underline font-semibold text-foreground"
@@ -280,9 +279,71 @@ export function TemplateGallery({ templates }: { templates: GalleryTemplate[] })
               ))}
             </div>
           )}
+
+          <ContributePanel />
         </div>
       </div>
     </section>
+  );
+}
+
+// The community door: every template here is by Prisma today, and this is how
+// someone else's gets in. A folder under compute/ plus a manifest entry, sent
+// as a pull request, and it appears in the gallery with their name on it.
+function ContributePanel() {
+  return (
+    <aside
+      aria-labelledby="apps-contribute"
+      className="relative mt-16 overflow-hidden rounded-2xl border border-black/[0.08] bg-card p-7 sm:p-8"
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-32"
+        style={{
+          background: [
+            "radial-gradient(70% 60% at 12% 100%, color-mix(in srgb, var(--color-prism-cyan-300) 30%, transparent), transparent 70%)",
+            "radial-gradient(60% 50% at 50% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 24%, transparent), transparent 68%)",
+            "radial-gradient(70% 55% at 88% 100%, color-mix(in srgb, var(--color-prism-red-300) 26%, transparent), transparent 70%)",
+          ].join(","),
+        }}
+      />
+      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-[56ch]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Community templates
+          </p>
+          <h2 id="apps-contribute" className="mt-2 text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.15]">
+            Built something on Prisma Compute? Add it here.
+          </h2>
+          <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground">
+            Add a folder under{" "}
+            <a href={CONTRIBUTE.folderUrl} className="spectrum-underline font-semibold text-foreground">
+              compute/
+            </a>{" "}
+            with a README and a Composer module, list it in{" "}
+            <a href={CONTRIBUTE.manifestUrl} className="spectrum-underline font-semibold text-foreground">
+              templates.json
+            </a>
+            , and open a pull request. Once merged it shows up in this gallery with your name on it.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <PrismButtonOutline href={CONTRIBUTE.repoUrl}>Contribute a template</PrismButtonOutline>
+          <a
+            href={CONTRIBUTE.guideUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group/guide inline-flex items-center gap-1.5 text-sm font-semibold text-foreground transition-colors hover:text-prism-cyan-700"
+          >
+            Read the guidelines
+            <ArrowRight
+              className="size-4 transition-transform duration-300 group-hover/guide:translate-x-1 motion-reduce:transition-none"
+              aria-hidden
+            />
+          </a>
+        </div>
+      </div>
+    </aside>
   );
 }
 

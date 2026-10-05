@@ -169,10 +169,39 @@ export const STACK: Record<StackId, StackMeta> = {
 const DEFAULT_STACK: readonly StackId[] = ["prisma-orm", "prisma-postgres", "bun", "typescript"];
 
 // ---------------------------------------------------------------------------
+// Authors
+
+export type AuthorMeta = {
+  name: string;
+  href: string;
+  /** Path under /public, or `null` for the Prisma mark, which renders inline. */
+  logo: string | null;
+};
+
+export const PRISMA_AUTHOR: AuthorMeta = {
+  name: "Prisma",
+  href: "https://github.com/prisma",
+  logo: null,
+};
+
+// Where community templates come from: a folder under compute/ and an entry in
+// the manifest, sent as a pull request to prisma-examples.
+export const CONTRIBUTE = {
+  repoUrl: "https://github.com/prisma/prisma-examples",
+  folderUrl: "https://github.com/prisma/prisma-examples/tree/latest/compute",
+  manifestUrl: "https://github.com/prisma/prisma-examples/blob/latest/compute/templates.json",
+  guideUrl: "https://github.com/prisma/prisma-examples/blob/latest/CONTRIBUTING.md",
+  requestUrl:
+    "https://github.com/prisma/prisma-examples/issues/new?title=Compute%20template%20request%3A%20",
+} as const;
+
+// ---------------------------------------------------------------------------
 // Per-template registry
 
 type TemplateMeta = {
   category: Category;
+  /** Who maintains the template. Defaults to Prisma. */
+  author?: AuthorMeta;
   /** Short use-case label shown beside the framework ("REST API", "Full-stack app"). */
   useCase: string;
   /** Framework id, used when the manifest entry predates the `framework` field. */
@@ -249,6 +278,7 @@ export type GalleryTemplate = {
   sourceUrl: string;
   deployUrl: string;
   framework: FrameworkMeta;
+  author: AuthorMeta;
   category: Category;
   useCase: string | null;
   stack: StackMeta[];
@@ -290,6 +320,7 @@ export function enrichTemplates(
       sourceUrl: `${TEMPLATE_SOURCE_BASE}${template.path}`,
       deployUrl: deployUrlFor(template.id),
       framework: frameworkMeta(frameworkId),
+      author: meta?.author ?? PRISMA_AUTHOR,
       category: meta?.category ?? "app",
       useCase: meta?.useCase ?? null,
       stack: (meta?.stack ?? DEFAULT_STACK).map((id) => STACK[id]),

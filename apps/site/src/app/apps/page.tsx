@@ -4,6 +4,7 @@ import { CtaBurst } from "@/components/sections/cta-burst";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { TemplateGallery } from "./_components/template-gallery";
 import {
+  CONTRIBUTE,
   enrichTemplates,
   TEMPLATE_MANIFEST_URL,
   templateManifestSchema,
@@ -18,9 +19,6 @@ export const metadata = createPageMetadata({
   ogKicker: "Prisma Compute",
   ogAccent: "red",
 });
-
-const REQUEST_TEMPLATE_URL =
-  "https://github.com/prisma/prisma-examples/issues/new?title=Compute%20template%20request%3A%20";
 
 // The manifest lives in prisma/prisma-examples and is refreshed every five
 // minutes; the gallery enriches it with the registry in _lib/catalog.ts.
@@ -104,7 +102,7 @@ export default async function AppsPage() {
           { label: "Every push to the connected branch deploys", color: "text-prism-red-500" },
         ]}
         primaryCta={{ label: "Read the Compute docs", href: "/docs/compute" }}
-        secondaryCta={{ label: "Request a template", href: REQUEST_TEMPLATE_URL }}
+        secondaryCta={{ label: "Request a template", href: CONTRIBUTE.requestUrl }}
       />
     </>
   );
