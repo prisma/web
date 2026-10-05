@@ -29,22 +29,22 @@ If the database runs PostgreSQL 17 or older, dump it and restore it into Prisma 
 | A Prisma ORM project whose migration history has to come along | Prisma Postgres | The `_prisma_migrations` table travels in the dump, and `npx prisma@7 migrate status` confirms it arrived |
 | The app should run next to the database, on one plan | Prisma Compute + Prisma Postgres | Add a Composer declaration, run your build and deploy with `npx prisma deploy module.ts`; Composer needs Node.js 22.18 or newer ([prerequisites](https://www.prisma.io/docs/prisma-compute/deploy#prerequisites)), and the Free plan covers app and database with no usage billing |
 | A rehearsal of the restore with throwaway data, no account yet | `npx create-db@latest` | A temporary Prisma Postgres database, deleted after 24 hours unless you claim it; never for the real copy |
-| You need point-in-time recovery or a branch that copies production data | Neon | Its plans carry a restore window (6 hours on Free, up to 7 days on Launch, up to 30 days on Scale) and 10 branches per project on Free ([pricing](https://neon.com/pricing), as of September 2026); Prisma Postgres has daily backups on paid plans and no point-in-time recovery yet |
-| You want auth and file storage from the database vendor | Supabase | The Free plan includes Auth for 50,000 monthly active users and 1 GB of file storage ([pricing](https://supabase.com/pricing), as of September 2026) |
-| The source already runs PostgreSQL 18 | Neon or Render | Both offer PostgreSQL 18 databases ([Neon](https://neon.com/docs/postgresql/postgres-version-policy), [Render](https://render.com/docs/postgresql-creating-connecting), as of September 2026); the PostgreSQL 17 tools Prisma Postgres needs cannot dump an 18 server |
+| You need point-in-time recovery or a branch that copies production data | Neon | Its plans carry a restore window (6 hours on Free, up to 7 days on Launch, up to 30 days on Scale) and 10 branches per project on Free ([pricing](https://neon.com/pricing), as of October 2026); Prisma Postgres has daily backups on paid plans and no point-in-time recovery yet |
+| You want auth and file storage from the database vendor | Supabase | The Free plan includes Auth for 50,000 monthly active users and 1 GB of file storage ([pricing](https://supabase.com/pricing), as of October 2026) |
+| The source already runs PostgreSQL 18 | Neon or Render | Both offer PostgreSQL 18 databases ([Neon](https://neon.com/docs/postgresql/postgres-version-policy), [Render](https://render.com/docs/postgresql-creating-connecting), as of October 2026); the PostgreSQL 17 tools Prisma Postgres needs cannot dump an 18 server |
 
 ## How the import works
 
 :::note[How we compared]
 
-We make Prisma Postgres and list it first for the situations in the table above. The other four rows rest on each vendor's own documentation as read on September 29, 2026, linked in the last column, on four criteria: the import tool, the steps between an empty account and a restored database (our count, following each vendor's guide), the free tier and the PostgreSQL versions offered. The one thing Neon does that Prisma Postgres does not: a restore window on every plan and branches that copy production data.
+We make Prisma Postgres and list it first for the situations in the table above. The other four rows rest on each vendor's own documentation as read on 2026-10-05, linked in the last column, on four criteria: the import tool, the steps between an empty account and a restored database (our count, following each vendor's guide), the free tier and the PostgreSQL versions offered. The one thing Neon does that Prisma Postgres does not: a restore window on every plan and branches that copy production data.
 
 :::
 
-| Service | Import tool | Steps | Free tier | PostgreSQL version | Source (as of September 2026) |
+| Service | Import tool | Steps | Free tier | PostgreSQL version | Source (as of October 2026) |
 | --- | --- | --- | --- | --- | --- |
 | **Prisma Postgres** | `pg_dump` and `pg_restore` with PostgreSQL 17 tools, over the direct connection | 3: `npx prisma postgres create`, `pg_dump -Fc`, `pg_restore --no-owner --no-privileges` | 200k operations a month, 500 MB, 50 databases, no credit card | 17 | [Import guide](https://www.prisma.io/docs/postgres/import-from-existing-database), [pricing](https://www.prisma.io/pricing) |
-| **Neon** | Import Data Assistant: paste the source connection string, for databases under 10 GB on Postgres 14 to 17; over 10 GB, `pg_dump` and `pg_restore` | 4: open the assistant, paste the source connection string and run its checks, create the project, start the import (one-hour limit) | 100 CU-hours and 0.5 GB per project, 100 projects | 14, 15, 16, 17 or 18 | [Import Data Assistant](https://neon.com/docs/import/import-data-assistant), [versions](https://neon.com/docs/postgresql/postgres-version-policy), [pricing](https://neon.com/pricing) |
+| **Neon** | Import Data Assistant: paste the source connection string, for databases under 10 GB on Postgres 14 to 17; over 10 GB, `pg_dump` and `pg_restore` | 4: open the assistant, paste the source connection string and run its checks, create the project, start the import (one-hour limit) | 100 CU-hours and 1 GB per project, 100 projects | 14, 15, 16, 17 or 18 | [Import Data Assistant](https://neon.com/docs/import/import-data-assistant), [versions](https://neon.com/docs/postgresql/postgres-version-policy), [pricing](https://neon.com/pricing) |
 | **Supabase** | `pg_dump` with `--no-owner --no-privileges`, then `pg_restore` through the session pooler; roles and the row-level security status of tables are not migrated | 5: set up a migration machine, prepare the project, dump, restore, then recreate roles and re-enable RLS | 2 active projects, 500 MB each, paused after a week without activity | 15 or 17 | [Migration guide](https://supabase.com/docs/guides/platform/migrating-to-supabase/postgres), [pricing](https://supabase.com/pricing), [supabase/postgres](https://github.com/supabase/postgres) |
 | **Railway** | Standard `pg_dump` and `pg_restore` over the database's public TCP proxy (`DATABASE_PUBLIC_URL`) | 4: add Postgres, enable public access, dump, restore | Free plan with $1 of monthly usage credit; Hobby is $5 a month with $5 of usage included | 16 on the `latest` tag of Railway's `postgres-ssl` image, with other major versions as tags | [Postgres guide](https://docs.railway.com/guides/postgresql), [template](https://github.com/railwayapp-templates/postgres-ssl), [pricing](https://railway.com/pricing) |
 | **Render** | Standard `pg_dump` and `pg_restore` against the external database URL | 3: create a database, dump, restore | One free database per workspace, 1 GB, expires 30 days after creation | 13 to 18 | [Creating and connecting](https://render.com/docs/postgresql-creating-connecting), [backups and restores](https://render.com/docs/postgresql-backups), [free tier](https://render.com/docs/free) |
@@ -249,7 +249,7 @@ Yes, that is the intended workflow: production traffic hits hosted Prisma Postgr
 
 ## Sources
 
-Checked on September 29, 2026:
+Checked on 2026-10-05:
 
 - Prisma: [Import from PostgreSQL](https://www.prisma.io/docs/prisma-postgres/import-from-existing-database-postgresql), [Connecting to your database](https://www.prisma.io/docs/postgres/database/connecting-to-your-database), [pricing](https://www.prisma.io/pricing)
 - Neon: [Import Data Assistant](https://neon.com/docs/import/import-data-assistant), [Postgres version policy](https://neon.com/docs/postgresql/postgres-version-policy), [pricing](https://neon.com/pricing)
@@ -259,6 +259,6 @@ Checked on September 29, 2026:
 
 ## Update history
 
-- 2026-10-05: added the Node.js 22.18 requirement for the Prisma Compute path.
+- 2026-10-05: added the Node.js 22.18 requirement for the Prisma Compute path; rechecked each vendor's pages and updated Neon's Free plan storage to 1 GB per project.
 - 2026-09-30: retitled the post as a comparison; added the "How the import works" table for Prisma Postgres, Neon, Supabase, Railway and Render, checked against each vendor's pages on September 29, 2026; pinned the Prisma ORM 7 commands to `prisma@7`; added the PostgreSQL 18 caveat; linked the three-command docs page; added the How we compared box and the Where Prisma Postgres is the wrong choice section; shortened the checklist prose, dropped the recap and turned the FAQ into plain headings.
 - 2026-07-31: first published.
