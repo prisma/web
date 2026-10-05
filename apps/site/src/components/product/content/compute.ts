@@ -41,13 +41,14 @@ import type { ProductPageContent } from "../types";
 const CONSOLE = "https://console.prisma.io/sign-up";
 const DOCS = "/docs";
 
-// The trust line the brief puts on the homepage, /compute and /postgres. Its
-// numbers are siteConfig.proof's first and last entries (developers, GitHub
-// stars), the same source as the homepage hero, so the pages cannot drift
-// apart. The market-share entry between them stays off this page.
-const developers = siteConfig.proof[0];
-const stars = siteConfig.proof[2];
-const TRUST_LINE = `Trusted by ${developers.stat} ${developers.label} · ${stars.stat} ${stars.label}`;
+// The trust line the brief puts on the homepage and /compute. It is built from
+// every entry of siteConfig.proof, the way hero-home.tsx and
+// lib/markdown/home.ts build the homepage's proof line, so the two pages
+// cannot drift apart and nothing here depends on how many entries the list
+// has.
+const TRUST_LINE = siteConfig.proof
+  .map(({ stat, label }, i) => `${i === 0 ? "Trusted by " : ""}${stat} ${label}`)
+  .join(" · ");
 
 export const computeContent: ProductPageContent = {
   name: "Prisma Compute",
