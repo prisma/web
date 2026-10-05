@@ -8,15 +8,17 @@ import { CardChrome, HeroPanel, StatRow } from "./parts";
 // deploy does: it assembles what your build produced and does not build for
 // you (cli/deploy.mdx, composer/deploying.mdx), so no step here says "built".
 // The migrations step is what composer/databases.mdx describes for a database
-// typed by a Prisma ORM contract. The timings are this build's own: they are
-// not a platform performance claim, and nothing here is a latency figure.
+// typed by a Prisma ORM contract. There is no health-check step: the docs
+// describe one only for the Alchemy route (compute/alchemy.mdx), not for
+// prisma deploy. The timings are this build's own: they are not a platform
+// performance claim, and nothing here is a latency figure. The "deployed in"
+// row is their sum, so change both together.
 
 const STEPS = [
   { label: "read module.ts", detail: "web · api · worker", time: "0.4s" },
   { label: "uploaded services", detail: "3 of 3", time: "18.2s" },
   { label: "provisioned database", detail: "postgres", time: "2.1s" },
   { label: "ran migrations", detail: "3 applied", time: "1.3s" },
-  { label: "health check", detail: "200 OK", time: "0.9s" },
 ];
 
 function Chip({ icon: Icon, label }: { icon: typeof AppWindow; label: string }) {
@@ -30,7 +32,7 @@ function Chip({ icon: Icon, label }: { icon: typeof AppWindow; label: string }) 
 
 export function DeployLog() {
   return (
-    <HeroPanel label="Illustration of a Prisma Compute deploy running: the three services declared in module.ts uploaded from your build, a database provisioned and migrated alongside the app, a passing health check, and the app live on its own URL">
+    <HeroPanel label="Illustration of a Prisma Compute deploy running: the three services declared in module.ts uploaded from your build, a database provisioned and migrated alongside the app, and the app live on its own URL">
       <CardChrome
         file="deploy"
         right={
@@ -94,7 +96,7 @@ export function DeployLog() {
         </div>
 
         <div className="flex flex-col">
-          <StatRow label="deployed in" value="22.9s" />
+          <StatRow label="deployed in" value="22.0s" />
           <StatRow label="app + database" value="shipped together" accent />
         </div>
       </div>
