@@ -28,7 +28,7 @@ const tree: DecisionTreeData = {
     {
       id: "free-neon",
       title: "Neon",
-      why: "Each of up to 100 projects gets its own free 100 CU-hours and 0.5 GB per month, with scale-to-zero after 5 minutes idle.",
+      why: "Each of up to 100 projects gets its own free 100 CU-hours a month and 1 GB of storage, up to 20 GB across all projects, with scale-to-zero after 5 minutes idle.",
       caveat:
         "First query after idle takes a few hundred milliseconds. Supabase's free tier also works if week-idle pausing is acceptable.",
     },

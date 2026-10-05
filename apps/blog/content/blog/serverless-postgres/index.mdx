@@ -16,14 +16,14 @@ heroImageAlt: "A compute usage curve that suspends after five minutes idle and w
 
 Serverless Postgres is PostgreSQL you never provision or manage: the platform allocates compute on demand and bills you for usage, not for a server size you picked up front. One label, though, covers very different products, and they differ on two things that decide your cost and your latency: **what they bill for**, and **whether compute sleeps when idle**.
 
-This guide leads with the comparison and a way to choose, then explains the reasoning. It compares serverless behavior and pricing only; a production decision should also weigh extensions, read replicas, backups, regions, and compliance, which are out of scope here. Every price and behavior was checked against the provider's own pages in July 2026, and vendor claims (including Prisma's) are labeled as such.
+This guide leads with the comparison and a way to choose, then explains the reasoning. It compares serverless behavior and pricing only; a production decision should also weigh extensions, read replicas, backups, regions, and compliance, which are out of scope here. Every price and behavior was checked against the provider's own pages in July 2026, and vendor claims (including Prisma's) are labeled as such. Neon's Free plan figures were re-checked on 2026-10-05, after Neon raised the storage limit.
 
 ## The providers at a glance
 
 | | Bills for | Scale-to-zero | Cold start | Free tier | Paid entry |
 |---|---|---|---|---|---|
 | **Prisma Postgres** | Operations (queries) | No (stays ready) | None (by design; vendor claim) | 200k ops, 500 MB, 50 DBs | $10/mo (1M ops, 10 GB) |
-| **Neon** | Compute-hours | After 5 min idle | A few hundred ms | 100 CU-hrs, 0.5 GB × 100 projects | Pay-as-you-go, $0.106/CU-hr |
+| **Neon** | Compute-hours | After 5 min idle | A few hundred ms | 100 CU-hrs and 1 GB per project, 100 projects, 20 GB total | Pay-as-you-go, $0.106/CU-hr |
 | **Aurora Serverless v2** | Compute-seconds | Optional (0 ACU min) | ~15 s | None | Per ACU-second + storage |
 | **Supabase** | Instance + usage | Free tier only | None on paid; restore on free | 2 projects, 500 MB | $25/mo |
 | **PlanetScale Postgres** | Instance per branch | No (always-on) | None (never sleeps) | None | $5/mo (single node) |
@@ -97,7 +97,7 @@ The reference implementation of the compute-time model, and the provider that po
 - **Best for:** bursty or idle-heavy workloads that can tolerate a sub-second wake.
 - **Bills for:** compute in CUs (1 CU = 1 vCPU + 4 GB), $0.106/CU-hour on Launch, $0.222 on Scale, storage $0.35/GB-month. Pay-as-you-go, no monthly minimum.
 - **Idle behaviour:** suspends after 5 minutes; wakes in "a few hundred milliseconds." Paid plans can disable auto-suspend for zero cold starts.
-- **Free / entry:** genuinely per project: each of up to 100 projects gets 100 CU-hours and 0.5 GB a month.
+- **Free / entry:** per project: each of up to 100 projects gets 100 CU-hours a month and 1 GB of storage, with storage capped at 20 GB across all projects.
 - **Watch out for:** Databricks agreed to acquire Neon in May 2025; Neon's docs say it continues as a standalone platform positioned alongside Databricks Lakebase, which is a stated intention worth weighing for long-horizon bets.
 
 ### Aurora Serverless v2
@@ -173,7 +173,7 @@ Serverless Postgres is PostgreSQL run by a platform that allocates compute on de
 No. Cold starts only exist where compute suspends: Neon takes a few hundred milliseconds to activate from idle (its own docs' figure), and Aurora Serverless v2 takes about 15 seconds to resume from 0 ACUs. PlanetScale and paid Supabase avoid cold starts by never suspending, which you pay for as always-on instances, and Prisma Postgres states its unikernel architecture has no suspended state at all (a vendor claim, ours).
   </Accordion>
   <Accordion title="Which serverless Postgres is cheapest for a side project?">
-For most side projects, a free tier covers it entirely: Prisma Postgres includes 200,000 operations, 500 MB and 50 databases per month with no credit card, and Neon includes 100 CU-hours and 0.5 GB per project across 100 projects. The first paid dollar differs by model: $5/month buys an always-on single node on PlanetScale, $10/month buys 1M operations on Prisma Postgres, and Neon bills pure usage with no minimum.
+For most side projects, a free tier covers it entirely: Prisma Postgres includes 200,000 operations, 500 MB and 50 databases per month with no credit card, and Neon includes 100 CU-hours and 1 GB of storage per project, for up to 100 projects and 20 GB of storage in total. The first paid dollar differs by model: $5/month buys an always-on single node on PlanetScale, $10/month buys 1M operations on Prisma Postgres, and Neon bills pure usage with no minimum.
   </Accordion>
   <Accordion title="Is Neon still maintained after the Databricks acquisition?">
 Yes. Databricks agreed to acquire Neon on May 14, 2025 (reported at about $1 billion) and committed to continued investment in the platform; Neon's own docs describe it as continuing as a standalone serverless Postgres platform. As of July 2026, Neon operates under its own brand with active pricing and docs, positioned as complementary to Databricks Lakebase. Those are stated intentions rather than guarantees, which is worth weighing for long-horizon platform bets.
