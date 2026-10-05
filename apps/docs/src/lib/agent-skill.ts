@@ -172,8 +172,7 @@ Prisma publishes deeper, task-specific skills in the Agent Skills format (https:
 
 \`\`\`bash
 npx skills add prisma/skills          # Prisma CLI, Prisma Client, Prisma Postgres, Prisma Compute, upgrade guides
-npx skills add prisma/prisma/skills   # Prisma ORM 8 (also installed automatically by \`npx prisma@latest orm init\`)
-npx skills add prisma/composer        # Prisma Composer
+npx prisma@latest skills sync         # Prisma ORM 8 and Prisma Composer: copies the skills that ship inside the installed @prisma/orm-* and @prisma/composer packages
 \`\`\`
 
 The catalog of skills and what each one teaches: https://www.prisma.io/docs/ai/tools/skills.md
