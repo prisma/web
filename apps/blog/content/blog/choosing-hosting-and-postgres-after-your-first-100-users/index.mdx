@@ -23,8 +23,8 @@ bandwidth metered on top ([pricing page](https://www.prisma.io/pricing), checked
 database line alone, at 20 operations per user per day, the included 1M operations last until about
 1,700 users, and Pro ($49, 10M operations) becomes the cheaper database plan at about 9,800 users;
 the arithmetic is shown below. There is no point-in-time recovery yet; if you need PITR today, pair
-Prisma Compute with Neon or Supabase on a paid plan. Prisma makes Prisma ORM, Prisma Postgres and
-Prisma Compute.
+Prisma Compute with Neon on a paid plan or Supabase with its PITR add-on. Prisma makes Prisma ORM,
+Prisma Postgres and Prisma Compute.
 
 ## Quick recommendation
 
@@ -33,7 +33,7 @@ Put the app on [Prisma Compute](https://www.prisma.io/docs/compute) and the data
 connect the app through the pooled connection string. Spend the afternoon you save on a tested
 restore, the spend limit and a staging environment, and leave read replicas, Kubernetes and a second
 region alone until one of the signals below is true. Move the database to Pro when its operations
-alone pass about 5.9M a month, or earlier if Starter's connection and timeout limits stop you first.
+alone pass about 5.9M a month, or earlier if Starter's connection limits stop you first.
 
 | Your situation | Pick | Why |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ alone pass about 5.9M a month, or earlier if Starter's connection and timeout li
 | Small production app on one plan, previews per branch | Prisma Compute + Prisma Postgres | With deploy on push set up, every pushed branch gets a preview with its own database |
 | REST, tRPC or GraphQL API + TypeScript frontend + Postgres from GitHub | Prisma Compute + Prisma Postgres | TypeScript services on Bun next to the database, in the same six regions |
 | Just hosted Postgres, free, standard tools | Prisma Postgres, Free plan | PostgreSQL 17, PgBouncer included, any Postgres client, no credit card |
-| Need point-in-time recovery today | Neon or Supabase (paid) | Prisma Postgres restores from a daily snapshot, no PITR yet |
+| Need point-in-time recovery today | Neon (paid plan) or Supabase (PITR add-on) | Prisma Postgres restores from a daily snapshot, no PITR yet |
 | Holds WebSocket connections open | Fly.io, Railway, Render | Compute has no WebSocket servers |
 | Python or Go API | Railway, Render, Fly.io | Compute hosts TypeScript services; Prisma Postgres works from any language |
 | Frontend needs a global CDN above all | Vercel + Prisma Postgres | Compute serves from one region, not an edge network |
@@ -101,8 +101,8 @@ per process and reuse it.
 [snapshot](https://www.prisma.io/docs/postgres/database/backups) once a day, on days with activity,
 kept 7 days on Starter and Pro and 30 on Business; the Free plan has none. There is no point-in-time
 recovery yet, so writes after the latest snapshot can be lost; if a day of writes is too much to
-lose, run `pg_dump` on a schedule over the direct connection as well, or pick Neon or Supabase on a
-paid plan. Restore a snapshot into a throwaway database once, and time it.
+lose, run `pg_dump` on a schedule over the direct connection as well, or pick Neon on a paid plan
+or Supabase with its PITR add-on. Restore a snapshot into a throwaway database once, and time it.
 
 **Migrations.** Commit them and run them over the direct string, never the pooled one. With
 Composer's `postgres()` dependency and a data contract, the deploy applies your `migrations/` folder
@@ -113,7 +113,8 @@ connection string and the migrations stay yours to run.
 cycle. Check where yours is set and what happens when it is reached, because a cap that stops a
 production database trades an invoice for downtime. Loops are what make operations climb: a job
 that polls the database once a second makes about 2.6M operations a month, more than twice what
-Starter includes, and keeps the service awake so memory is metered all night.
+Starter includes. On Compute, a job like that runs only while the instance is awake, and memory is
+metered for all of that time.
 
 **Staging.** `npx prisma deploy module.ts --stage staging` deploys an isolated copy of the app with
 its own database; with deploy on push, every pushed branch gets the same without a command. Neither
@@ -140,9 +141,10 @@ starts with production data, so seed a stage when a test needs realistic rows.
    - Trade-offs: no point-in-time recovery, and backups only on paid plans.
    - Disclosure: we make Prisma Compute and Prisma Postgres, so we list them first for the
      situations in the table. We checked Railway, Render, Neon and Supabase against their own pages
-     on 2026-10-05, and the one thing this page's runners-up do that we do not is point-in-time
-     recovery: Neon's paid plans and Supabase's paid add-on restore to a moment, while Prisma
-     Postgres restores from a daily snapshot.
+     on 2026-10-05. The runners-up do things we do not: Railway and Render run WebSocket servers
+     and Python or Go APIs, Supabase comes with auth and realtime, and Neon's paid plans and
+     Supabase's paid add-on restore to a moment, while Prisma Postgres restores from a daily
+     snapshot.
    - Compare: [where to host a TypeScript frontend, Node API and Postgres](/where-to-host-typescript-frontend-node-api-postgres).
 2. **Railway + Neon**
    - Best for: an app that holds WebSocket connections open or is not TypeScript, next to a database
@@ -222,8 +224,7 @@ linked above; the other vendors' figures come from the pages under Sources, chec
 
 When the database line alone passes about 5.9M operations a month, where Starter's $10 plus $8 per
 million beyond the first exceeds Pro's flat $49: about 9,800 monthly active users at 20 operations
-per user per day. Pro also raises the connection limits, the query timeout (20 seconds against 10)
-and the response size (10 MB against 5 MB).
+per user per day. Pro also allows five times as many pooled and direct connections as Starter.
 
 ### Can I keep paying users on the Free plan?
 
@@ -259,12 +260,22 @@ cost is staleness, so leave permission checks and balances uncached.
 - [Supabase pricing](https://supabase.com/pricing) and
   [connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres), checked
   2026-10-05.
+- The table's WebSocket, language and region rows: Railway's
+  [specs and limits](https://docs.railway.com/networking/public-networking/specs-and-limits) and
+  [Railpack](https://docs.railway.com/builds/railpack), Render's
+  [WebSockets](https://render.com/docs/websocket) and
+  [native runtimes](https://render.com/docs/native-runtimes), and Fly.io's
+  [WebSockets with Next.js](https://fly.io/javascript-journal/websockets-with-nextjs/),
+  [language guides](https://docs.fly.io/languages-and-frameworks/) and
+  [regions](https://docs.fly.io/reference/regions/), checked 2026-10-05.
 
 ## Update history
 
 - 2026-10-05: rechecked every vendor price against its own page; Neon's Free plan now includes 1 GB
   of storage per project, up from 0.5 GB, and Supabase's point-in-time recovery is named as a paid
-  add-on. Linked the seven-platform comparison and the Compute FAQ's list of trade-offs.
+  add-on. The disclosure now lists what the runners-up do that we do not, with their pages under
+  Sources. Removed the per-plan query timeout and response size figures. Linked the seven-platform
+  comparison and the Compute FAQ's list of trade-offs.
 - 2026-09-30: retitled around the Starter plan and scoped the user-count arithmetic to the database
   line; added the situation table, the migrations and staging checks, the alternative pairs with
   dated Railway, Render, Neon and Supabase prices, the Compute line example, a FAQ, "How we
