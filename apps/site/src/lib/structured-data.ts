@@ -1,5 +1,5 @@
 import { getBaseUrl } from "@/lib/url";
-import { SITE_HOME_DESCRIPTION, SITE_NAME } from "@/lib/site-metadata";
+import { SITE_NAME, SITE_ORGANIZATION_DESCRIPTION } from "@/lib/site-metadata";
 
 type FaqEntry = {
   question: string;
@@ -31,7 +31,9 @@ function toPlainText(value: string): string {
 
 export function createSiteStructuredData() {
   const baseUrl = getBaseUrl();
-  const description = SITE_HOME_DESCRIPTION;
+  // Describes the organization and the site, not the homepage's product
+  // pitch; the meta description (SITE_HOME_DESCRIPTION) stays in layout.tsx.
+  const description = SITE_ORGANIZATION_DESCRIPTION;
 
   return {
     "@context": "https://schema.org",

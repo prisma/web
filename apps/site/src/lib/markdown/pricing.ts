@@ -8,6 +8,8 @@ import {
   paragraphs,
   table,
 } from "./blocks";
+import { PRICING_COMPARE_INTRO } from "@/components/sections/compare-links-data";
+import { renderCompareLinksMarkdown } from "./compare-links";
 import { renderTestimonialsMarkdown } from "./testimonials";
 
 /**
@@ -151,7 +153,7 @@ const EVERY_PLAN_INCLUDES = [
 // readout each button shows (fmtOps · fmtGB). The V2 `blurb` on each preset is
 // not rendered by the compact preset row, so it is not included.
 const CALCULATOR_PRESETS = [
-  "Hobby — 100K · 500 MB",
+  "Hobby — 200K · 500 MB",
   "Startup — 1M · 8 GB",
   "Scaleup — 20M · 40 GB",
 ];
@@ -160,7 +162,7 @@ const CALCULATOR_PRESETS = [
 // only the monthly totals and the "Recommended" / "Not available" states depend
 // on the slider positions, and those are interactive-only, so they are omitted.
 const CALCULATOR_PLAN_TERMS = [
-  { name: "Free plan", description: "100,000 ops • 0.5GB storage • free forever" },
+  { name: "Free plan", description: "200,000 ops • 0.5GB storage • free forever" },
   {
     name: "Starter plan",
     description: "1,000,000 ops included, then $0.008 per 1,000 • 10GB included, then $2/GB",
@@ -217,7 +219,12 @@ const SPEC_PLAN_ROW: [string, string, string, string, string] = [
   "$129",
 ];
 
-const SPEC_GROUPS: { label: string; rows: [string, string, string, string, string][] }[] = [
+// `note` mirrors the optional link in the HTML table's group header.
+const SPEC_GROUPS: {
+  label: string;
+  rows: [string, string, string, string, string][];
+  note?: { label: string; href: string };
+}[] = [
   {
     label: "Prisma Postgres",
     rows: [
@@ -269,7 +276,8 @@ const SPEC_GROUPS: { label: string; rows: [string, string, string, string, strin
     ],
   },
   {
-    label: "Accelerate (global cache)",
+    label: "Accelerate cache (retires December 1, 2026)",
+    note: { label: "How to switch", href: "/docs/postgres/database/switch-from-accelerate" },
     rows: [
       ["Operations included", "60,000", "60,000", "60,000", "60,000"],
       ["Operation overage", "—", "$0.018 per 1,000", "$0.008 per 1,000", "$0.006 per 1,000"],
@@ -431,6 +439,7 @@ export function renderPricingMarkdown(): string {
     table(["Plan", ...SPEC_COLUMNS], [SPEC_PLAN_ROW]),
     ...SPEC_GROUPS.flatMap((group) => [
       heading(3, group.label),
+      group.note ? paragraphs(link(group.note)) : undefined,
       table(["Feature", ...SPEC_COLUMNS], group.rows),
     ]),
 
@@ -456,5 +465,8 @@ export function renderPricingMarkdown(): string {
 
     heading(2, "FAQs"),
     ...FAQS.flatMap((faq) => [heading(3, faq.question), paragraphs(faq.answer)]),
+
+    // sections/compare-links.tsx, the page's closing section.
+    renderCompareLinksMarkdown(PRICING_COMPARE_INTRO),
   ]);
 }

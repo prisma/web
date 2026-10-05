@@ -2,6 +2,7 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { APIPage } from "@/components/api-page";
 import { ConceptAnimation } from "@/components/concept-animation";
+import { DatabaseCodeTabs } from "@/components/database-code-tabs";
 import { DeployButtonGenerator } from "@/components/deploy-button-generator";
 import {
   AgentPrompt,
@@ -24,7 +25,6 @@ import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import * as icons from "lucide-react";
 import {
   CodeBlock,
-  CodeBlockTabs,
   CodeBlockTabsList,
   CodeBlockTabsTrigger,
   CodeBlockTab,
@@ -114,7 +114,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ...components,
     // Eclipse CodeBlock tab components - globally available for code blocks
     Button,
-    CodeBlockTabs,
+    CodeBlockTabs: DatabaseCodeTabs,
     CodeBlockTabsList,
     CodeBlockTabsTrigger,
     CodeBlockTab,

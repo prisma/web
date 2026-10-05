@@ -57,6 +57,9 @@ type Group = {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
   rows: Row[];
+  /** An optional link shown at the right of the group header, for a group
+      whose label alone leaves the reader with nowhere to go next. */
+  note?: { text: string; href: string };
 };
 
 // Monthly price is plan-level, not a Postgres feature, so it sits above the
@@ -177,9 +180,13 @@ const GROUPS: Group[] = [
   {
     // Accelerate limits restored 2026-08-25 — table only, not the plan cards
     // (see the header note). Values are the old site's last published figures.
-    label: "Accelerate (global cache)",
+    // Accelerate retires on December 1, 2026 and bills until then, so the rows
+    // stay, the label carries the date, and the header links to the switch
+    // guide at /docs/postgres/database/switch-from-accelerate.
+    label: "Accelerate cache (retires December 1, 2026)",
     icon: Layers,
     color: "text-prism-cyan-500",
+    note: { text: "How to switch", href: "/docs/postgres/database/switch-from-accelerate" },
     rows: [
       {
         label: "Operations included",
@@ -416,6 +423,14 @@ export function PricingSpecTable() {
                 <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
                   <group.icon className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
+                  {group.note && (
+                    <a
+                      href={group.note.href}
+                      className="ml-auto shrink-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
+                    >
+                      {group.note.text}
+                    </a>
+                  )}
                 </p>
                 <dl>
                   {group.rows.map((row) => (
@@ -489,6 +504,14 @@ export function PricingSpecTable() {
                       <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
                         <group.icon className={cn("size-4 shrink-0", group.color)} />
                         {group.label}
+                        {group.note && (
+                          <a
+                            href={group.note.href}
+                            className="ml-auto shrink-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
+                          >
+                            {group.note.text}
+                          </a>
+                        )}
                       </span>
                     </th>
                   </tr>

@@ -25,7 +25,7 @@ export const PLANS: Plan[] = [
     id: "free",
     name: "Free",
     base: 0,
-    opsIncluded: 100_000,
+    opsIncluded: 200_000,
     opsOveragePer1K: null,
     storageIncludedGB: 0.5,
     storagePerGB: null,
@@ -148,7 +148,7 @@ export function lastOfRuns(candidates: number[], total: (v: number) => number) {
   return out;
 }
 
-export const OPS_CANDIDATES: number[] = [100_000];
+export const OPS_CANDIDATES: number[] = [200_000];
 for (let v = 250_000; v <= 10_000_000; v += 250_000) OPS_CANDIDATES.push(v);
 for (let v = 11_000_000; v <= 50_000_000; v += 1_000_000) OPS_CANDIDATES.push(v);
 for (let v = 52_000_000; v <= 200_000_000; v += 2_000_000) OPS_CANDIDATES.push(v);
@@ -193,7 +193,7 @@ export const PRESETS = [
     id: "hobby",
     label: "Hobby",
     blurb: "Start free while you build, test, and learn your usage patterns.",
-    ops: 100_000,
+    ops: 200_000,
     gb: 0.5,
   },
   {

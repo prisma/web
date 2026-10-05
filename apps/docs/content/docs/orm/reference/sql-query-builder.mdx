@@ -385,15 +385,9 @@ Sort the result set by a column or a computed expression, in a direction you cho
 |---|---|---|---|
 | `key` | Column name (`string`) or `(f, fns) => Expression` | Yes | The column or computed value to sort by. |
 | `options.direction` | `'asc' \| 'desc'` | No | Sort direction. |
+| `options.nulls` | `'first' \| 'last'` | No | Where rows with a null sort value go. Adds `NULLS FIRST` or `NULLS LAST` to the sort key. |
 
-TypeScript also accepts a `nulls` option, but it does nothing, and no `NULLS FIRST` or `NULLS LAST` reaches the SQL. To put nulls last, sort by a computed value first, then by the column:
-
-```ts
-db.sql.public.task
-  .select('id', 'description')
-  .orderBy((f, fns) => fns.raw`CASE WHEN ${f.description} IS NULL THEN 1 ELSE 0 END`.returns('pg/int4@1'))
-  .orderBy('description', { direction: 'asc' });
-```
+Without `options.nulls`, PostgreSQL puts nulls last for `'asc'` and first for `'desc'`. Any value other than `'first'` or `'last'` makes `orderBy()` throw an error whose `code` is `ORM.ARGUMENT_INVALID`.
 
 #### Return type
 
@@ -408,6 +402,20 @@ db.sql.public.task
 ```ts
 const plan = db.sql.public.user.select('id', 'email').orderBy('email', { direction: 'asc' }).build();
 const rows = await runtime.query(plan);
+```
+
+##### Put nulls last
+
+```ts
+const plan = db.sql.public.task
+  .select('id', 'description')
+  .orderBy('description', { direction: 'desc', nulls: 'last' })
+  .build();
+const rows = await runtime.query(plan);
+```
+
+```sql no-copy
+SELECT "id" AS "id", "description" AS "description" FROM "public"."task" ORDER BY "description" DESC NULLS LAST
 ```
 
 ##### Sort by a computed value
@@ -1060,6 +1068,6 @@ const rows = await runtime.query(plan); // Row[]
 
 ### Streaming vs. collecting
 
-`await runtime.query(plan)` collects every row into an array, which is the common case and what every example on this page uses. You can also loop the same result with `for await` to handle one row at a time. On PostgreSQL every row is loaded before the loop starts, so `for await` saves nothing there. Use `await`.
+`await runtime.query(plan)` collects every row into an array, which is the common case and what every example on this page uses. You can also loop the same result with `for await` to handle one row at a time. On PostgreSQL every row is loaded before the loop starts, so `for await` saves nothing there. Use `await`. The exception is a client created with the [`cursor` option](/orm/reference/transactions-and-runtime#postgresoptions), which reads rows through a server-side cursor in batches.
 
 Keep the result in a variable, as in `const result = runtime.query(plan)`, and you can `await result` as many times as you like. You cannot mix `await` and `for await` on the same result, and you cannot `for await` it twice. Either one throws an error whose `code` is `RUNTIME.ITERATOR_CONSUMED`. See [`AsyncIterableResult`](/orm/reference/orm-client#asynciterableresult).

@@ -6,6 +6,7 @@ import CustomSearchDialog from "@/components/search";
 import type { ReactNode } from "react";
 import { TrackingProvider } from "@/components/tracking-provider";
 import { UtmPersistence } from "@/components/utm-persistence";
+import { DatabaseProvider } from "@/components/database-provider";
 
 const KAPA_INTEGRATION_ID = "1b51bb03-43cc-4ef4-95f1-93288a91b560";
 
@@ -29,7 +30,7 @@ export function Provider({ children }: { children: ReactNode }) {
         >
           <TrackingProvider />
           <UtmPersistence />
-          {children}
+          <DatabaseProvider>{children}</DatabaseProvider>
         </RootProvider>
       </KapaProvider>
     </NextProvider>
