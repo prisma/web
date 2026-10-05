@@ -25,6 +25,16 @@ export const templateManifestSchema = z.object({
       // Added to the manifest after the gallery shipped; older manifests may
       // omit it, in which case the framework is read from the registry below.
       framework: z.string().trim().min(1).optional(),
+      // Who built it. Prisma's own templates omit it; a community template
+      // names its author here and the gallery credits them without a site
+      // change. The logo is an absolute URL, or omitted for a plain name.
+      author: z
+        .object({
+          name: z.string().trim().min(1),
+          url: z.string().url(),
+          logo: z.string().url().optional(),
+        })
+        .optional(),
     }),
   ),
 });
@@ -174,7 +184,7 @@ const DEFAULT_STACK: readonly StackId[] = ["prisma-orm", "prisma-postgres", "bun
 export type AuthorMeta = {
   name: string;
   href: string;
-  /** Path under /public, or `null` for the Prisma mark, which renders inline. */
+  /** Path under /public or an absolute URL, or `null` for the Prisma mark. */
   logo: string | null;
 };
 
@@ -185,7 +195,7 @@ export const PRISMA_AUTHOR: AuthorMeta = {
 };
 
 // Where community templates come from: a folder under compute/ and an entry in
-// the manifest, sent as a pull request to prisma-examples.
+// the manifest naming the author, sent as a pull request to prisma-examples.
 export const CONTRIBUTE = {
   repoUrl: "https://github.com/prisma/prisma-examples",
   folderUrl: "https://github.com/prisma/prisma-examples/tree/latest/compute",
@@ -298,6 +308,19 @@ export function deployUrlFor(id: string): string {
   return url.toString();
 }
 
+// The manifest names the author; the registry is the fallback for templates
+// that predate the field, and Prisma is the default for everything else.
+function authorFor(template: ManifestTemplate, meta: TemplateMeta | undefined): AuthorMeta {
+  if (template.author) {
+    return {
+      name: template.author.name,
+      href: template.author.url,
+      logo: template.author.logo ?? null,
+    };
+  }
+  return meta?.author ?? PRISMA_AUTHOR;
+}
+
 export function enrichTemplates(
   templates: readonly ManifestTemplate[],
   now: Date = new Date(),
@@ -320,7 +343,7 @@ export function enrichTemplates(
       sourceUrl: `${TEMPLATE_SOURCE_BASE}${template.path}`,
       deployUrl: deployUrlFor(template.id),
       framework: frameworkMeta(frameworkId),
-      author: meta?.author ?? PRISMA_AUTHOR,
+      author: authorFor(template, meta),
       category: meta?.category ?? "app",
       useCase: meta?.useCase ?? null,
       stack: (meta?.stack ?? DEFAULT_STACK).map((id) => STACK[id]),

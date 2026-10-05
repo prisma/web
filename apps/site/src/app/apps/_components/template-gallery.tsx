@@ -288,8 +288,8 @@ export function TemplateGallery({ templates }: { templates: GalleryTemplate[] })
 }
 
 // The community door: every template here is by Prisma today, and this is how
-// someone else's gets in. A folder under compute/ plus a manifest entry, sent
-// as a pull request, and it appears in the gallery with their name on it.
+// someone else's gets in. A folder under compute/ plus a manifest entry that
+// names the author, sent as a pull request, and the gallery credits them.
 function ContributePanel() {
   return (
     <aside
@@ -323,8 +323,9 @@ function ContributePanel() {
             with a README and a Composer module, add it to{" "}
             <a href={CONTRIBUTE.manifestUrl} className="spectrum-underline font-semibold text-foreground">
               templates.json
-            </a>
-            , and open a pull request. When it merges, it appears here under your name.
+            </a>{" "}
+            with yourself as the author, and open a pull request. When it merges, it appears here
+            under your name.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">

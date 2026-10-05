@@ -96,11 +96,30 @@ test("unknown templates still render with fallbacks", () => {
   );
 });
 
-test("every template is by Prisma unless the registry says otherwise", () => {
+test("every template is by Prisma unless the manifest or registry says otherwise", () => {
   for (const template of catalog) {
     assert.equal(template.author.name, "Prisma", `${template.id} should default to Prisma`);
     assert.equal(template.author.logo, null, "the Prisma mark renders inline");
   }
+});
+
+test("a manifest author is credited as written, with or without a logo", () => {
+  const author = { name: "Acme", url: "https://github.com/acme" };
+  const [plain, withLogo] = enrichTemplates(
+    [
+      { ...MANIFEST[4], author },
+      { ...MANIFEST[4], author: { ...author, logo: "https://example.com/acme.svg" } },
+    ],
+    NOW,
+  );
+  assert.deepEqual(plain.author, { name: "Acme", href: "https://github.com/acme", logo: null });
+  assert.equal(withLogo.author.logo, "https://example.com/acme.svg");
+
+  const parsed = templateManifestSchema.safeParse({
+    version: 1,
+    templates: [{ ...MANIFEST[4], author: { name: "Acme", url: "not a url" } }],
+  });
+  assert.equal(parsed.success, false, "an author needs a real link");
 });
 
 test("deploy and source URLs point at the console and the examples repo", () => {
