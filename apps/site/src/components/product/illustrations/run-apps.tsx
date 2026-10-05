@@ -12,13 +12,13 @@ import { CardChrome, HeroPanel, SectionLabel } from "./parts";
 
 // Stop four of the /compute hero tour — "Apps". Answers the two questions the
 // abstraction otherwise leaves open: what you start from, and what actually
-// runs here. Real: the framework and workload names, each one a line in
-// compute/limitations.mdx ("Runtime"): HTTP services, streaming, background
-// work between requests through the keep-awake primitives, on Bun. Cron and
-// WebSocket servers are not part of this release, so they are not listed. No
-// logos, since we hold no marks for these projects, so every framework is a
-// text label and a shared icon. Nothing here claims a performance
-// characteristic.
+// runs here. Real: the framework and workload names. HTTP services, streaming
+// and background work between requests through the keep-awake primitives are
+// lines in compute/limitations.mdx ("Runtime"); the Bun runtime is in
+// compute/faq.mdx ("Where it has trade-offs"). Cron and WebSocket servers are
+// not part of this release, so they are not listed. No logos, since we hold no
+// marks for these projects, so every framework is a text label and a shared
+// icon. Nothing here claims a performance characteristic.
 
 const STARTERS = [
   { icon: Code, name: "Hono", descriptor: "lightweight" },

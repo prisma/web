@@ -19,8 +19,10 @@ import type { ProductPageContent } from "../types";
 //    four; Object Store buckets, launched 2026-07-24, were added after the
 //    review, and the cron card left in the claims pass.
 //
-// Claims pass, 2026-09-30: every product sentence on this page now has a line
-// in apps/docs behind it. What went, and why:
+// Claims pass, 2026-09-30: every product sentence in this file now has a line
+// in apps/docs behind it. The shared platform-stack.tsx section, which /orm,
+// /postgres and /compute all render, is not part of this pass. What went, and
+// why:
 //  - "the easiest way to host", "microsecond", "same machine", "no code
 //    changes": superlatives and latency figures nothing in the docs states.
 //  - "every PR", "branched from production", "branched together": previews are
@@ -165,7 +167,7 @@ export const computeContent: ProductPageContent = {
     {
       question: "Can I host my existing GitHub repo with a TypeScript frontend and Node API here?",
       answer:
-        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts); the porting guide in the docs has a prompt your coding agent can write it from. Deploy with npx prisma deploy module.ts. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every pushed branch gets a preview with its own database.",
+        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts); the porting guide in the docs has a prompt your coding agent can write it from. Run your build, then deploy with npx prisma deploy module.ts. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every pushed branch gets a preview with its own database.",
     },
     {
       question: "What does Prisma Compute not do?",
