@@ -23,8 +23,8 @@ import { FrameworkLogo } from "./template-preview";
 
 // The browsable gallery: filters down the left (type, framework), a sort
 // control over the grid, and the templates grouped by category when no type is
-// selected so app templates lead and the personal starters sit in their own
-// section underneath.
+// selected, each category in its own section (CATEGORY_ORDER decides which
+// leads).
 //
 // Filter state lives in the URL (?type=app&framework=nextjs&sort=newest) so a
 // filtered view can be linked from docs or a tweet, but it is read with

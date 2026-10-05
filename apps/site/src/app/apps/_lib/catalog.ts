@@ -36,7 +36,9 @@ export type ManifestTemplate = z.infer<typeof templateManifestSchema>["templates
 
 export type Category = "app" | "starter";
 
-export const CATEGORY_ORDER: readonly Category[] = ["app", "starter"];
+// Starters lead: the personal site is the quickest thing to make your own, and
+// the framework apps follow underneath.
+export const CATEGORY_ORDER: readonly Category[] = ["starter", "app"];
 
 export const CATEGORY_META: Record<
   Category,
