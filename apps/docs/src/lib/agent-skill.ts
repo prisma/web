@@ -40,8 +40,8 @@ These are the core commands for a new TypeScript project (copied from the Prisma
    npm init -y
    npm install typescript tsx @types/node --save-dev
    npx tsc --init
-   npm install prisma @types/pg --save-dev
-   npm install @prisma/client @prisma/adapter-pg pg dotenv
+   npm install prisma@7 @types/pg --save-dev
+   npm install @prisma/client@7 @prisma/adapter-pg pg dotenv
    \`\`\`
 
 2. **Configure ESM support.** Update \`tsconfig.json\`:
