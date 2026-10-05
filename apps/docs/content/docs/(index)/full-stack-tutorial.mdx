@@ -1,20 +1,69 @@
 ---
 title: Deploy the full Prisma stack
-description: A single tutorial from empty directory to live URL, with Prisma Composer, Prisma ORM, and Prisma Postgres.
+description: From an empty directory to a live TypeScript app with a Prisma Postgres database on Prisma Compute, with the Free plan limits listed.
 url: /full-stack-tutorial
-metaTitle: "Tutorial: the full Prisma stack"
-metaDescription: Compose an app with Prisma Composer, model data with Prisma ORM, run it on a local Prisma Postgres, then deploy app and database to Prisma Compute with one command.
+metaTitle: "Quickstart: TypeScript app + Postgres on Prisma, Free plan"
+metaDescription: Scaffold a TypeScript app with a Prisma Postgres database, run it locally, and deploy it to Prisma Compute. Lists what the Free plan includes.
 ---
+
+The fastest path to a TypeScript app with a Postgres database on Prisma starts with `npm create prisma@latest`, which scaffolds the app. After `npm run build`, `npx prisma dev module.ts` runs it on a local [Prisma Postgres](/postgres) database with no account, and once you sign in, `npx prisma deploy module.ts` puts it on [Prisma Compute](/compute) and creates its hosted database. All of it runs on the [Free plan](#what-the-free-plan-includes), with no credit card.
 
 This tutorial takes you through the whole recommended stack in one sitting. [Prisma Composer](/composer) declares your app: its services, its databases, and how they connect. [Prisma ORM](/orm) types your data. [Prisma Postgres](/postgres) stores it, locally while you develop and on the platform when you deploy. One declaration drives everything: the same `module.ts` runs the app on your machine and deploys it to [Prisma Compute](/compute). Plan on about 15 minutes.
 
 It uses the `hono` template so you get a small API you can verify with curl at every step. The same journey works for the other templates; the [framework guides](/guides) cover each one.
 
+:::note[Already have an app?]
+
+You keep your server code and add a Prisma Composer declaration next to it: a `service.ts` for each server and one `module.ts`. The server reads its port from `service.port()` and binds `0.0.0.0`. See [Port an existing app](/composer/porting-an-app) for the changes and an agent prompt that makes them, or [Bring an app you already have](/prisma-compute/deploy#bring-an-app-you-already-have) for a worked example. Once the app runs under `npx prisma dev module.ts`, continue at [step 5](#5-deploy-app-and-database-to-prisma-compute). SvelteKit and Deno apps cannot deploy to Prisma Compute yet.
+
+:::
+
 ## Prerequisites
 
 - Node.js 22.18 or newer (on the 24 line, 24.11 or newer; 24 recommended), or Bun
-- A [Prisma Data Platform account](https://pris.ly/pdp) for the deploy step, free to create
+- A [Prisma Data Platform account](https://pris.ly/pdp) for the deploy step, free to create, with no credit card needed on the [Free plan](#what-the-free-plan-includes)
 - No database needed: local runs provision a local Prisma Postgres, and deploys provision a real one, both from your Composer declaration
+
+## What the Free plan includes
+
+Everything in this tutorial runs on the Free plan: $0 a month, with no credit card, no time limit, and no usage billing. The limits below are the ones on the [pricing page](https://www.prisma.io/pricing) as of 2026-10-05.
+
+### Prisma Postgres
+
+| Limit              | Free plan       |
+| ------------------ | --------------- |
+| Operations         | 200,000 a month |
+| Storage            | 500 MB          |
+| Databases          | 50              |
+| Data transfer      | Unlimited       |
+| Pooled connections | 10              |
+| Direct connections | 10              |
+| Automated backups  | None            |
+
+Each query counts as one operation, whether it reads or writes. See [What is an operation?](/postgres/faq#what-is-an-operation). The Free plan has no automated backups and Prisma Postgres has no point-in-time recovery yet, so use `pg_dump` to keep your own copies. See [Backups](/postgres/database/backups).
+
+### Prisma Compute
+
+| Meter              | Free plan, per month |
+| ------------------ | -------------------- |
+| Requests           | 1M                   |
+| Provisioned memory | 360 GB-hours         |
+| Active CPU         | 4 vCPU-hours         |
+| Outbound bandwidth | 10 GB                |
+
+An idle app scales to zero, and provisioned memory counts only while the app is running or kept awake. See [Compute pricing](/compute/pricing) for what each meter measures.
+
+### Prisma ORM
+
+Prisma ORM is free and optional: Prisma Postgres accepts any PostgreSQL client, and Compute runs apps that do not use Prisma ORM. See [Do I need Prisma ORM to use Compute?](/compute/faq#do-i-need-prisma-orm-to-use-compute). The scaffold in this tutorial uses Prisma ORM 8, and [Release status](/orm/release-status) says where that version stands.
+
+### When you reach a limit
+
+The Free plan has no usage billing, so reaching a limit does not add a charge. Operations and the four Compute meters are monthly limits, while storage and the number of databases are not tied to a month.
+
+To see how much a database has used, run `npx prisma postgres usage <database>` or open the [Prisma Console](https://console.prisma.io). A CLI report for Compute usage is still being built.
+
+To go past a limit, move your workspace to a paid plan. Paid plans include more operations, storage, and requests, and bill usage beyond those amounts. They bill Compute memory, CPU, and bandwidth per use with no included amount, and you can set a spend limit to cap the charge. See the [pricing page](https://www.prisma.io/pricing) for the rates.
 
 ## Use with your agent
 
@@ -180,7 +229,7 @@ npx prisma deploy module.ts --name my-app-tutorial
 curl https://xyz.ewr.prisma.build/users
 ```
 
-The same three users come back, now served from production next to your database, seeded on the deployed app's first query. Re-deploying is idempotent: build again, deploy again, and the platform applies only the difference. That includes removals, because your module is the source of truth: delete a provision from `module.ts`, deploy again, and the resource disappears from the platform. See [Removing resources](/composer/deploying#removing-resources).
+The same three users come back, now served from production next to your database, seeded on the deployed app's first query. Re-deploying is safe to run more than once: build again, deploy again, and the platform applies only the difference. That includes removals, because your module is the source of truth: delete a provision from `module.ts`, deploy again, and the resource disappears from the platform. See [Removing resources](/composer/deploying#removing-resources).
 
 ## 7. Evolve the data model
 
@@ -216,7 +265,7 @@ The plan is your change and nothing else. Review it like any other diff, with [`
 ALTER TABLE "public"."User" ADD COLUMN "role" text DEFAULT 'member' NOT NULL
 ```
 
-Emitting also updated the query types, so surface the new field in the route's typed select in `src/prisma/users.ts`, adding `"role"` to the `.select(...)` list and `role: user.role` to the returned object:
+Emitting also updated the query types, so include the new field in the route's typed select in `src/prisma/users.ts`, adding `"role"` to the `.select(...)` list and `role: user.role` to the returned object:
 
 ```ts title="src/prisma/users.ts"
 const users = await db.orm.public.User.select("id", "email", "username", "name", "role", "createdAt").limit(limit).all();
