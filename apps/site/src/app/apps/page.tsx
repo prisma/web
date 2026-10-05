@@ -60,17 +60,27 @@ export default async function AppsPage() {
             <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
           </div>
           <Texture opacity={0.06} blend="multiply" />
+          {/* Compact on purpose: the gallery is the page, so the hero states
+              the premise in two lines and gets out of the way. */}
           <div className="relative px-4 sm:px-8">
-            <div className="mx-auto flex max-w-site flex-col items-center pb-14 pt-32 text-center md:pb-16 md:pt-40">
+            <div className="mx-auto flex max-w-site flex-col items-center pb-10 pt-24 text-center md:pb-12 md:pt-28">
               <RoleKicker color="bg-prism-red-500" className="justify-center">
                 Apps
               </RoleKicker>
-              <h1 className="isolate mt-4 max-w-[20ch] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+              <h1 className="isolate mt-3 max-w-[20ch] text-balance text-[clamp(2rem,3.2vw,2.75rem)] leading-[1.08]">
                 Start from an app
               </h1>
-              <p className="mt-6 max-w-[54ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Open-source TypeScript templates for Prisma Compute. See what each one looks like
-                and what it ships with, then deploy it with Prisma Postgres from the console.
+              <p className="mt-4 max-w-[76ch] text-pretty leading-relaxed text-muted-foreground md:text-lg">
+                Open-source templates on the Prisma Stack. Preview one, check its stack, deploy it.
+              </p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Built a template on the Prisma Stack?{" "}
+                <a
+                  href="#apps-contribute"
+                  className="spectrum-underline font-semibold text-foreground"
+                >
+                  Add it here
+                </a>
               </p>
             </div>
           </div>

@@ -307,24 +307,24 @@ function ContributePanel() {
           ].join(","),
         }}
       />
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-[56ch]">
+      <div className="relative flex flex-col gap-6">
+        <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Community templates
           </p>
-          <h2 id="apps-contribute" className="mt-2 text-[clamp(1.375rem,2vw,1.75rem)] leading-[1.15]">
-            Built something on Prisma Compute? Add it here.
+          <h2 id="apps-contribute" className="mt-2 text-[1.375rem] leading-snug">
+            Add it here if you built a template using the Prisma Stack
           </h2>
-          <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground">
-            Add a folder under{" "}
+          <p className="mt-3 max-w-[80ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+            Put it in a folder under{" "}
             <a href={CONTRIBUTE.folderUrl} className="spectrum-underline font-semibold text-foreground">
               compute/
             </a>{" "}
-            with a README and a Composer module, list it in{" "}
+            with a README and a Composer module, add it to{" "}
             <a href={CONTRIBUTE.manifestUrl} className="spectrum-underline font-semibold text-foreground">
               templates.json
             </a>
-            , and open a pull request. Once merged it shows up in this gallery with your name on it.
+            , and open a pull request. When it merges, it appears here under your name.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
