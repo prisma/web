@@ -1,6 +1,6 @@
 /**
- * The hand-picked "Compare Prisma" reading list shown on /postgres and
- * /pricing (sections/compare-links.tsx) and repeated in their Markdown
+ * The hand-picked "Compare Prisma" reading list shown on /postgres, /compute
+ * and /pricing (sections/compare-links.tsx) and repeated in their Markdown
  * renditions (lib/markdown/compare-links.ts). Plain data, no JSX, so the
  * Markdown modules and their node tests can import it.
  *
@@ -18,7 +18,7 @@ export type CompareLink = {
 /**
  * The one-line intro above the list on /pricing. The list is shared between
  * pages; the sentence above it is not, so each page writes its own (the
- * /postgres one lives in product/content/postgres.ts). Only the positioning
+ * /postgres and /compute ones live in product/content/). Only the positioning
  * sentence may repeat verbatim across pages.
  */
 export const PRICING_COMPARE_INTRO =
