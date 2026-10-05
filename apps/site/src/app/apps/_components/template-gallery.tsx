@@ -14,6 +14,7 @@ import {
   SORT_OPTIONS,
   sortTemplates,
   type Category,
+  type CategoryMeta,
   type FrameworkMeta,
   type GalleryTemplate,
   type SortKey,
@@ -263,8 +264,8 @@ export function TemplateGallery({ templates }: { templates: GalleryTemplate[] })
                         <span aria-hidden className={cn("size-2.5 rounded-full", group.meta.dot)} />
                         {group.meta.label}
                       </h2>
-                      <p className="mt-2 max-w-[60ch] text-pretty text-sm leading-relaxed text-muted-foreground">
-                        {group.meta.description}
+                      <p className="mt-2 max-w-[72ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                        <SectionDescription meta={group.meta} />
                       </p>
                     </div>
                   </div>
@@ -282,6 +283,23 @@ export function TemplateGallery({ templates }: { templates: GalleryTemplate[] })
         </div>
       </div>
     </section>
+  );
+}
+
+// The section line, with the meta's linked phrase rendered as a link into the
+// rest of the site.
+function SectionDescription({ meta }: { meta: CategoryMeta }) {
+  const { description, link } = meta;
+  const at = link ? description.indexOf(link.label) : -1;
+  if (!link || at === -1) return description;
+  return (
+    <>
+      {description.slice(0, at)}
+      <a href={link.href} className="spectrum-underline font-semibold text-foreground">
+        {link.label}
+      </a>
+      {description.slice(at + link.label.length)}
+    </>
   );
 }
 

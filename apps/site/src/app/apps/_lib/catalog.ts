@@ -40,22 +40,28 @@ export type Category = "app" | "starter";
 // the framework apps follow underneath.
 export const CATEGORY_ORDER: readonly Category[] = ["starter", "app"];
 
-export const CATEGORY_META: Record<
-  Category,
-  { label: string; shortLabel: string; description: string; dot: string }
-> = {
+export type CategoryMeta = {
+  label: string;
+  shortLabel: string;
+  /** One line under the section heading. */
+  description: string;
+  /** A phrase inside `description` to render as a link. */
+  link?: { label: string; href: string };
+  dot: string;
+};
+
+export const CATEGORY_META: Record<Category, CategoryMeta> = {
   app: {
     label: "App templates",
     shortLabel: "Apps",
-    description:
-      "Framework starters wired to Prisma ORM and Prisma Postgres. Pick the framework you already build with and ship the database alongside it.",
+    description: "Framework starters with Prisma Stack, ready to build on top of and ship.",
+    link: { label: "Prisma Stack", href: "/stack" },
     dot: "bg-prism-red-500",
   },
   starter: {
     label: "Personal & starter templates",
     shortLabel: "Personal & starter",
-    description:
-      "Small sites and starting points that run on Prisma Compute without a database. Make them yours in one config file.",
+    description: "Small sites and starting points that run on Prisma Compute without a database.",
     dot: "bg-prism-yellow-400",
   },
 };
