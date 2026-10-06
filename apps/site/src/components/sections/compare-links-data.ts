@@ -5,8 +5,7 @@
  * Markdown modules and their node tests can import it.
  *
  * The slugs are stable: each post keeps its URL when its title changes, so
- * update the label here when a title moves, never the href. Add the hosting
- * comparison page here when it publishes.
+ * update the label here when a title moves, never the href.
  */
 export type CompareLink = {
   label: string;
@@ -25,6 +24,12 @@ export const PRICING_COMPARE_INTRO =
   "Weighing the bill against other hosts and Postgres providers? These posts set the plans side by side, with the situations where another platform is the better pick.";
 
 export const COMPARE_PRISMA_LINKS: CompareLink[] = [
+  {
+    label: "App hosting platforms with managed Postgres compared (2026)",
+    href: "/blog/app-hosting-platforms-with-managed-postgres-2026",
+    description:
+      "Prisma Compute, Railway, Render, Fly.io, Supabase, Neon and Vercel compared for an app next to managed Postgres.",
+  },
   {
     label: "Where to host a TypeScript frontend, a Node API and Postgres",
     href: "/blog/where-to-host-typescript-frontend-node-api-postgres",
