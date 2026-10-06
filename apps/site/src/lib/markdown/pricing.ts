@@ -55,7 +55,7 @@ const PLANS = [
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
-    postgres: ["200k operations / month", "500 MB storage", "50 databases"],
+    postgres: ["200k operations / month", "1.01 GB storage", "50 databases"],
     platform: [],
     cta: "Start for free",
     popular: false,
@@ -162,7 +162,7 @@ const CALCULATOR_PRESETS = [
 // only the monthly totals and the "Recommended" / "Not available" states depend
 // on the slider positions, and those are interactive-only, so they are omitted.
 const CALCULATOR_PLAN_TERMS = [
-  { name: "Free plan", description: "200,000 ops • 0.5GB storage • free forever" },
+  { name: "Free plan", description: "200,000 ops • 1.01GB storage • free forever" },
   {
     name: "Starter plan",
     description: "1,000,000 ops included, then $0.008 per 1,000 • 10GB included, then $2/GB",
@@ -230,7 +230,7 @@ const SPEC_GROUPS: {
     rows: [
       ["Operations included", "200k", "1M", "10M", "50M"],
       ["Operation overage", "—", "$8 per million", "$2 per million", "$1 per million"],
-      ["Storage included", "500 MB", "10 GB", "50 GB", "100 GB"],
+      ["Storage included", "1.01 GB", "10 GB", "50 GB", "100 GB"],
       ["Storage overage", "—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
       ["Databases", "50", "1,000", "1,000", "1,000"],
       ["Data transfer", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],

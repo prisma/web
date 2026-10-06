@@ -36,7 +36,7 @@ const PLANS = [
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
-    postgres: ["200k operations / month", "500 MB storage", "50 databases"],
+    postgres: ["200k operations / month", "1.01 GB storage", "50 databases"],
     platform: [],
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",

@@ -87,7 +87,7 @@ const GROUPS: Group[] = [
       },
       {
         label: "Storage included",
-        values: ["500 MB", "10 GB", "50 GB", "100 GB"],
+        values: ["1.01 GB", "10 GB", "50 GB", "100 GB"],
       },
       {
         label: "Storage overage",
