@@ -59,8 +59,12 @@ const PAGES: PageCopy[] = [
   {
     path: "/compute",
     title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+    // Changed on purpose in the 2026-09-30 claims pass: the audit copy said
+    // "long-lived" and "long-running", which the Compute docs do not back. The
+    // description is now the positioning sentence shared with the homepage,
+    // /postgres and the docs Compute index, character for character.
     description:
-      "Prisma Compute deploys TypeScript apps, APIs, and AI agents from your repo as long-lived Bun processes next to Prisma Postgres, with long-running requests and streaming. One platform for your app and its database.",
+      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
   },
   {
     path: "/pricing",

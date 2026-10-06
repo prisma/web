@@ -114,7 +114,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
     subtitle: "Perfect for that weekend idea",
     points: [
       "<b>200,000</b> operations<span>*</span> included",
-      "<b>500 MB</b> storage",
+      "<b>1.01 GB</b> storage",
       "<b>50</b> databases",
       "No credit card required",
     ],

@@ -2,14 +2,18 @@ import { ChevronsUpDown, Console, Copy, GitBranch, Github } from "@/components/i
 import { CardChrome, HeroPanel, StatRow } from "./parts";
 
 // Stop one of the /compute hero tour — "Connect". The console's get-started
-// screen as an abstraction: point Compute at a repo, or run one command from
-// your machine. Real: the CLI line, the GitHub App install step, the repo and
-// branch shape. Abstracted: the project id and the account picker. The repo
-// path is deliberately the loud one — that is the recommended route in product.
+// screen as an abstraction: connect the repo for deploy on push (the Console
+// opens the pull request that adds the deploy workflow), or run one command
+// from your machine. Real: the CLI line, the GitHub App install step, the repo
+// and branch shape, the service names a module.ts declares. Abstracted: the
+// project id and the account picker. The repo path is deliberately the loud
+// one, since that is the recommended route in product. Connecting alone deploys
+// nothing (compute/deploy-on-push.mdx), which is why the caption beside this
+// panel names the workflow too.
 
 export function RepoConnect() {
   return (
-    <HeroPanel label="Illustration of the first step of deploying on Prisma Compute: connecting a GitHub repository on the main branch, or deploying straight from your machine with one command, with the app's services declared in module.ts">
+    <HeroPanel label="Illustration of the first step of deploying on Prisma Compute: connecting a GitHub repository on the main branch for deploy on push, or deploying straight from your machine with one command, with the app's services declared in module.ts">
       <CardChrome
         file="get started"
         right={

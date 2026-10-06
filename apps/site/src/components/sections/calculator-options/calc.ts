@@ -27,7 +27,7 @@ export const PLANS: Plan[] = [
     base: 0,
     opsIncluded: 200_000,
     opsOveragePer1K: null,
-    storageIncludedGB: 0.5,
+    storageIncludedGB: 1.01,
     storagePerGB: null,
   },
   {
@@ -172,7 +172,7 @@ export function fmtOps(n: number) {
 }
 
 export function fmtGB(gb: number) {
-  return gb < 1 ? `${Math.round(gb * 1000)} MB` : `${Math.round(gb)} GB`;
+  return gb < 1 ? `${Math.round(gb * 1000)} MB` : `${+gb.toFixed(2)} GB`;
 }
 
 export function fmtUSD(n: number, cents = true) {

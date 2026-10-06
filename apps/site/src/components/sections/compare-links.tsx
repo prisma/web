@@ -4,9 +4,9 @@ import { COMPARE_PRISMA_LINKS } from "./compare-links-data";
 
 // The "Compare Prisma" reading list: the comparison posts and the import guide,
 // by their stable URLs, for the pages where someone is weighing Prisma against
-// other options (/postgres and /pricing). The list is shared; the sentence
-// above it comes from the page, so no paragraph repeats verbatim across pages
-// (content brief). Same rhythm as sections/faq.tsx: a
+// other options (/postgres, /compute and /pricing). The list is shared; the
+// sentence above it comes from the page, so no paragraph repeats verbatim
+// across pages (content brief). Same rhythm as sections/faq.tsx: a
 // centred heading, then one column of entries. The heading is literal JSX on
 // purpose, so markdown-parity.test.ts catches the Markdown rendition drifting
 // (see lib/markdown/compare-links.ts). The links cross into the blog and docs

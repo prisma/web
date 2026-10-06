@@ -1,12 +1,11 @@
 /**
- * The hand-picked "Compare Prisma" reading list shown on /postgres and
- * /pricing (sections/compare-links.tsx) and repeated in their Markdown
+ * The hand-picked "Compare Prisma" reading list shown on /postgres, /compute
+ * and /pricing (sections/compare-links.tsx) and repeated in their Markdown
  * renditions (lib/markdown/compare-links.ts). Plain data, no JSX, so the
  * Markdown modules and their node tests can import it.
  *
  * The slugs are stable: each post keeps its URL when its title changes, so
- * update the label here when a title moves, never the href. Add the hosting
- * comparison page here when it publishes.
+ * update the label here when a title moves, never the href.
  */
 export type CompareLink = {
   label: string;
@@ -18,13 +17,19 @@ export type CompareLink = {
 /**
  * The one-line intro above the list on /pricing. The list is shared between
  * pages; the sentence above it is not, so each page writes its own (the
- * /postgres one lives in product/content/postgres.ts). Only the positioning
+ * /postgres and /compute ones live in product/content/). Only the positioning
  * sentence may repeat verbatim across pages.
  */
 export const PRICING_COMPARE_INTRO =
   "Weighing the bill against other hosts and Postgres providers? These posts set the plans side by side, with the situations where another platform is the better pick.";
 
 export const COMPARE_PRISMA_LINKS: CompareLink[] = [
+  {
+    label: "App hosting platforms with managed Postgres compared (2026)",
+    href: "/blog/app-hosting-platforms-with-managed-postgres-2026",
+    description:
+      "Prisma Compute, Railway, Render, Fly.io, Supabase, Neon and Vercel compared for an app next to managed Postgres.",
+  },
   {
     label: "Where to host a TypeScript frontend, a Node API and Postgres",
     href: "/blog/where-to-host-typescript-frontend-node-api-postgres",

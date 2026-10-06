@@ -3,8 +3,8 @@ import { definitionList, heading, joinBlocks, paragraphs } from "./blocks";
 
 /**
  * Markdown for sections/compare-links.tsx, shared by every page that renders
- * it (/postgres and /pricing). The list itself comes from the same data module
- * the section renders, so only the heading is a literal here.
+ * it (/postgres, /compute and /pricing). The list itself comes from the same
+ * data module the section renders, so only the heading is a literal here.
  */
 
 /** compare-links.tsx renders this h2 above the list. */
