@@ -1,300 +1,283 @@
 ---
-title: "Choosing hosting and Postgres after your first 100 paying users"
+title: "Hosting and managed Postgres for your first 100 paying users (2026)"
 slug: "choosing-hosting-and-postgres-after-your-first-100-users"
 date: "2026-09-24"
+updatedAt: "2026-10-05"
 authors:
   - "Gregory Boch"
-metaTitle: "Hosting and Postgres after your first 100 users"
-metaDescription: "A scaling checklist, where to run your app, what Postgres costs at 100, 1,000 and 10,000 users with the arithmetic shown, and signs you have outgrown it."
+metaTitle: "Managed Postgres hosting that scales: hosting and Postgres for your first 100 paying users (2026)"
+metaDescription: "App on Prisma Compute, database on Prisma Postgres, one plan: Starter is a $10 base plus metered compute. The database arithmetic at 100, 1,000 and 10,000 users, and dated Railway, Render, Neon and Supabase prices."
 heroImagePath: "/choosing-hosting-and-postgres-after-your-first-100-users/imgs/hero.svg"
-heroImageAlt: "A cost curve for Prisma Postgres by monthly active users at 20 actions a day: Starter holds at $10 to about 1,700 users, then rises and crosses Pro's flat $49 at about 9,800 users."
+heroImageAlt: "A cost curve for the Prisma Postgres database line by monthly active users at 20 actions a day: Starter holds at $10 to about 1,700 users, then rises and crosses Pro's flat $49 at about 9,800 users."
 metaImagePath: "/choosing-hosting-and-postgres-after-your-first-100-users/imgs/meta.png"
-excerpt: "Your prototype has paying users. Here is what to check before the next thousand arrive, how to choose where the app runs, what the database costs with the arithmetic shown, and the specific signals that mean it is time to move."
+excerpt: "Your prototype has paying users. Here is the stack pair to run them on, what the database line costs at 100, 1,000 and 10,000 users with the arithmetic shown, the checks to make before the next thousand arrive, and the dated prices of the alternative pairs."
 tags:
   - "platform"
   - "prisma-postgres"
 ---
 
-At 100 paying users almost nothing needs to change, and the useful question is which decisions are
-expensive to reverse later. Two are: whether your app's database connections go through a pooler,
-and how and where the app runs. The second covers whether it is a long-lived server you pay for
-while it is up or instances you pay for by use, and whether it sits in the same region as its
-database. Settle those now, along with two cheap checks, a restore you have tested and a spend
-limit you have looked at. Everything else can wait. This post covers that checklist, how to choose where the app runs and what
-[Prisma Compute](https://www.prisma.io/docs/compute) costs, what
-[Prisma Postgres](https://www.prisma.io/docs/postgres) costs at 100, 1,000 and 10,000 users with the
-arithmetic shown, and the signals that mean you have outgrown a setup.
+App on Prisma Compute, database on Prisma Postgres, one plan. Starter is $10 a month and includes 1M
+database operations, 10 GB of storage, PgBouncer pooling, daily backups kept 7 days, Query Insights
+and a spend limit; Compute on Starter includes 5M requests a month, with memory, vCPU-hours and
+bandwidth metered on top ([pricing page](https://www.prisma.io/pricing), checked 2026-10-05). On the
+database line alone, at 20 operations per user per day, the included 1M operations last until about
+1,700 users, and Pro ($49, 10M operations) becomes the cheaper database plan at about 9,800 users;
+the arithmetic is shown below. There is no point-in-time recovery yet; if you need PITR today, pair
+Prisma Compute with Neon on a paid plan or Supabase with its PITR add-on. Prisma makes Prisma ORM,
+Prisma Postgres and Prisma Compute.
 
-## The short version
+## Quick recommendation
 
-At 20 database operations per user per day, your Prisma Postgres bill at 1,000 users is $10 a month.
-It stays at $10 until you pass the 1 million operations the Starter plan includes, at about 1,700
-users. After that it rises $8 for each extra million, and at 5.875 million operations, about 9,800
-users, Pro at a flat $49 becomes the cheaper plan.
+Put the app on [Prisma Compute](https://www.prisma.io/docs/compute) and the database on
+[Prisma Postgres](https://www.prisma.io/docs/postgres) in the same region, on the Starter plan, and
+connect the app through the pooled connection string. Spend the afternoon you save on a tested
+restore, the spend limit and a staging environment, and leave read replicas, Kubernetes and a second
+region alone until one of the signals below is true. Move the database to Pro when its operations
+alone pass about 5.9M a month, or earlier if Starter's connection limits stop you first.
 
-For hosting, Prisma Compute bills by use under the same plan and scales idle apps to zero, and it
-fits a TypeScript app that can run in one region, needs no WebSocket server and starts every response
-within 60 seconds. If your app holds WebSocket connections open, a long-lived server on a host such
-as Railway or Render, which both support them, is the better fit.
+| Your situation | Pick | Why |
+| --- | --- | --- |
+| First 100 paying users, one vendor, one plan | Prisma Compute + Prisma Postgres, Starter | $10 base holds the database line to 1M operations; Compute meters on top |
+| I just want it deployed from GitHub, everything in one project | Prisma Compute + Prisma Postgres | Add a Composer declaration, run your build, then `npx prisma deploy module.ts`; connect the repo plus the deploy workflow for deploy on push |
+| Small production app on one plan, previews per branch | Prisma Compute + Prisma Postgres | With deploy on push set up, every pushed branch gets a preview with its own database |
+| REST, tRPC or GraphQL API + TypeScript frontend + Postgres from GitHub | Prisma Compute + Prisma Postgres | TypeScript services on Bun next to the database, in the same six regions |
+| Just hosted Postgres, free, standard tools | Prisma Postgres, Free plan | PostgreSQL 17, PgBouncer included, any Postgres client, no credit card |
+| Need point-in-time recovery today | Neon (paid plan) or Supabase (PITR add-on) | Prisma Postgres restores from a daily snapshot, no PITR yet |
+| Holds WebSocket connections open | Fly.io, Railway, Render | Compute has no WebSocket servers |
+| Python or Go API | Railway, Render, Fly.io | Compute hosts TypeScript services; Prisma Postgres works from any language |
+| Frontend needs a global CDN above all | Vercel + Prisma Postgres | Compute serves from one region, not an edge network |
+| More than one region | Fly.io | Each Compute service runs in one of six regions |
+| Lowest bill, run servers yourself | A VPS | You take on backups, upgrades and failover |
 
-You do not need a bigger plan, a read replica, a queue, or a second region yet. What you do need is
-an app on the pooled connection string, in the same region as its database, a backup you have
-actually restored once, and a spend limit you have checked.
+## Buy time, not architecture
 
-## The checklist
+At 100 paying users almost nothing needs to change; the decisions that are expensive to reverse
+later are whether your database connections go through a pooler, and where the app runs relative to
+its data. A bigger plan, a read replica, a queue or a second region can wait until a signal you can
+name says otherwise, because infrastructure work now is paid for out of feature work. The pair below
+is our pick, the alternative pairs follow with dated prices, and the
+[comparison of seven app hosting platforms with managed Postgres](/app-hosting-platforms-with-managed-postgres-2026)
+sets Prisma next to Railway, Render, Fly.io, Supabase, Neon and Vercel.
 
-Four things to confirm now, while the cost of fixing them is an afternoon.
+## The stack pair: app on Prisma Compute, database on Prisma Postgres
 
-**Connection pooling.** Postgres allocates memory per connection, so a connection limit is reached
-long before a CPU limit. If your app runs as serverless functions, each function instance holds its
-own connections, and the limit arrives sooner than you expect. Prisma Postgres includes a PgBouncer
-pooler, but only connections to the pooled connection string (host `pooled.db.prisma.io`) go
-through it. The `db.prisma.io` string that `npx create-db` prints is the
-direct one, meant for migrations and admin tools, and app traffic over TCP on it works at low
-concurrency and then exhausts connections under production load. The exception is the
-[serverless driver](https://www.prisma.io/docs/postgres/database/serverless-driver) (`@prisma/ppg`),
-meant for short-lived or globally distributed runtimes: it takes the direct string but talks HTTP and
-WebSockets rather than opening a TCP connection. On other providers, check whether pooling exists
-and is switched on: Railway and Render make you add PgBouncer first, and Render offers it only on
-paid databases. Supabase recommends its transaction pooler for serverless functions and a direct
-connection for long-running servers. Whichever you use, create one client per process and reuse it
-across requests.
+One plan covers both products, and its two lines differ. Prisma Postgres bills on
+operations and storage, with no charge for instance hours: Starter includes 1M operations a month,
+then $8 per million. Prisma Compute bills by use on the same plan: 5M requests a month included on
+Starter, then $1 per million, with provisioned memory ($0.006 per GB-hour), active CPU ($0.064 per
+vCPU-hour) and outbound bandwidth ($0.025 per GB) metered from the first unit
+([Compute pricing](https://www.prisma.io/docs/compute/pricing)). An idle service scales to zero and
+bills nothing, and only the Free plan has no usage billing, so read Starter as a $10 base plus
+metered compute, not as the whole bill.
 
-**A restore you have tested.** On paid plans, Prisma Postgres takes a
-[backup snapshot](https://www.prisma.io/docs/postgres/database/backups) once a day, on days the
-database has activity, and keeps the last 7 days of them on Starter and Pro and 30 on Business.
-There is no point-in-time recovery yet, so anything written after the latest snapshot can be lost,
-and if losing a day of writes is too much, run your own `pg_dump` on a schedule as well. Having
-backups and knowing you can use them are different things, so restore one into a throwaway database
-once, while nothing is wrong, and write down how long it took. The first time you read recovery
-documentation should not be during an incident.
+Both run in the same six regions (San Francisco, North Virginia, Paris, Frankfurt, Tokyo and
+Singapore), and a Compute service runs in one of them. The
+[Compute FAQ](https://www.prisma.io/docs/compute/faq#where-it-has-trade-offs) has the full list of
+what the pair does not do today.
 
-**A spend limit.** Every paid plan has a spend limit, on by default, that caps what you are charged
-in a billing cycle. Open the Console, check where yours is set, and put it comfortably above your
-normal month. Before you rely on it, find out what happens to your app when the limit is reached,
-because a cap that stops a production database trades a large invoice for downtime. Loops are what
-make operations climb: a job that polls the database once a second makes about 2.6 million
-operations a month on its own, more than twice what Starter includes, and a query inside a render
-runs on every page view.
+## Can I host my existing GitHub repo on Prisma?
 
-**Where your app runs relative to your data.** Cross-region latency is paid on every query, so an
-endpoint making six queries pays it six times. Put the app and the database in the same region now,
-because moving a live database later is the one migration nobody enjoys. Compute services and
-Prisma Postgres databases are offered in the same six regions, so on Prisma this means choosing the
-same one for both.
+Yes, with one addition: a [Prisma Composer](https://www.prisma.io/docs/composer) declaration next to
+the code you already have, one `service.ts` per server plus a `module.ts` that wires them together;
+the [porting page](https://www.prisma.io/docs/composer/porting-an-app) has a prompt your coding agent
+can run to produce both. Then `npx prisma deploy module.ts` provisions the service and its database.
+Deploy on push needs the repository connection and a GitHub Actions workflow running
+`prisma/cloud-deploy-action`; connecting the repository alone deploys nothing. With both in place,
+the default branch deploys to production and every other pushed branch gets a preview with its own
+services and database, built from your migrations, not from production data. What Composer does not
+do yet is on its [limitations page](https://www.prisma.io/docs/composer/limitations).
 
-Caching is the fifth thing, and it can wait until a page is slow. Prisma Postgres has no query cache
-of its own, and Prisma Accelerate's `cacheStrategy` goes away on December 1, 2026, when Accelerate,
-including its hosted connections for Prisma Postgres, is retired. On
-[Prisma ORM](https://www.prisma.io/docs/orm) 8, the version npm installs by default, you
-register `createCacheMiddleware()` from
-`@prisma/orm-extension-middleware-cache` on the client and mark each read you want cached with
-`cacheAnnotation({ ttl })`, with the TTL in milliseconds, as the
-[cache middleware docs](https://www.prisma.io/docs/orm/middleware/built-in-cache) show. Writes are
-never cached. The built-in store keeps rows in one process's memory, so each instance of your app
-fills its own copy, and one cache shared by every instance needs a store you write, for example on
-top of Redis. Prisma ORM 7 has no Prisma-provided replacement, so a cache there is code you write
-yourself.
+## The growth checklist
 
-## Where the app runs, and what that costs
+**Connection pooling.** The connection limit arrives long before the CPU limit, and sooner when the
+app runs as functions that each hold their own. Prisma Postgres includes a PgBouncer pooler, but only
+the pooled string (host `pooled.db.prisma.io`) goes through it; the `db.prisma.io` string is the
+direct one, for migrations and admin tools, and app traffic on it exhausts connections under load.
+Elsewhere, check that pooling is on: Render's integrated PgBouncer comes only with paid
+databases, and Supabase recommends its transaction pooler for serverless functions. Create one client
+per process and reuse it.
 
-The hosting choice that is expensive to reverse is the kind of process your code runs in, because
-it sets both how many database connections you open and what you pay for while nobody is using the
-app. A long-lived server keeps one connection pool and bills while it is up: Railway, for example,
-bills a running service for its CPU and memory whether or not it is handling requests, unless you
-turn on its Serverless setting, which stops inactive services. Short-lived functions bill by use,
-but each function instance holds its own connections, which is why pooling is first on the
-checklist.
+**Backups and point-in-time recovery.** On paid plans Prisma Postgres takes a
+[snapshot](https://www.prisma.io/docs/postgres/database/backups) once a day, on days with activity,
+kept 7 days on Starter and Pro and 30 on Business; the Free plan has none. There is no point-in-time
+recovery yet, so writes after the latest snapshot can be lost; if a day of writes is too much to
+lose, run `pg_dump` on a schedule over the direct connection as well, or pick Neon on a paid plan
+or Supabase with its PITR add-on. Restore a snapshot into a throwaway database once, and time it.
 
-Prisma Compute sits between the two. Each service is a TypeScript HTTP app that runs on Bun in one
-region, and when a service is idle its instances scale to zero and later resume from a memory
-snapshot in milliseconds, so idle hours add nothing to your usage charges. Three limits decide
-whether your app fits: a request has 60 seconds to start responding before the client gets
-`504 Gateway Time-out`, WebSocket servers are not supported, and there are no multi-region
-deployments. An app that holds WebSocket connections open belongs on a long-lived server, and
-Railway and Render both support WebSocket connections.
+**Migrations.** Commit them and run them over the direct string, never the pooled one. With
+Composer's `postgres()` dependency and a data contract, the deploy applies your `migrations/` folder
+before the service starts, in production and in every preview; with `rawPostgres()` you get a
+connection string and the migrations stay yours to run.
 
-Compute bills by use under the same plan as your database, so the $10 Starter fee in the next
-section covers both. Starter includes 5 million requests a month and Pro includes 20 million, and
-requests beyond that cost $1 per million. On paid plans, memory ($0.006 per GB-hour while the app is
-running), active CPU ($0.064 per vCPU-hour) and outbound bandwidth ($0.025 per GB) are billed per
-use, and an app that has scaled to zero is not billed. Keep Compute requests and database operations
-as separate numbers when you estimate, because they measure different things: every inbound request
-your app handles counts as a request, so one page view can be several requests, and one API call
-often runs several queries. [Compute pricing](https://www.prisma.io/docs/compute/pricing) has worked
-examples.
+**Spend limits.** Every paid plan has one, on by default, capping what you are charged in a billing
+cycle. Check where yours is set and what happens when it is reached, because a cap that stops a
+production database trades an invoice for downtime. Loops are what make operations climb: a job
+that polls the database once a second makes about 2.6M operations a month, more than twice what
+Starter includes. On Compute, a job like that runs only while the instance is awake, and memory is
+metered for all of that time.
 
-If you move the app to Compute, the database reaches your code in one of two ways. Without
-[Prisma Composer](https://www.prisma.io/docs/composer), you set `DATABASE_URL` yourself with
-`npx prisma project env add`, once for production and once for previews, and it should hold the
-pooled string. With Composer, the app declares its database as a
-dependency in `module.ts`, the service receives the connection and a typed client with no
-`DATABASE_URL` to set, and the deploy applies your committed migrations before the service starts.
-Composer is also the path to deploy on push: a GitHub Actions workflow running
-`prisma/cloud-deploy-action` deploys each push. A push to the
-default branch updates production, and every other pushed branch gets its own stage with its own
-services and databases. Those preview databases do not start with a copy of production data, and a
-repository connected without the workflow deploys nothing.
+**Staging.** `npx prisma deploy module.ts --stage staging` deploys an isolated copy of the app with
+its own database; with deploy on push, every pushed branch gets the same without a command. Neither
+starts with production data, so seed a stage when a test needs realistic rows.
 
-## What it actually costs
+## What not to do yet
 
-Prisma Postgres bills on operations plus storage, with no charge for instance hours. One operation
-is one query, a read or a write. The docs estimate operations with the formula below, which counts
-actions, and each action is one database operation, so a page view that runs five queries is five
-actions:
+- **Kubernetes.** A cluster is an operations job, and your app is two services.
+- **Self-hosted Postgres.** Backups, upgrades and failover become your on-call, and the money saved
+  is smaller than the first weekend lost.
+- **Read replicas.** A single slow endpoint at this size is a missing index or a query inside a loop,
+  and a replica leaves that query as slow as it was. Prisma Postgres lists no read replicas as of
+  October 2026.
 
-```
-total_ops = MAUs x actions_per_user_per_day x 30
-```
+## Alternative pairs, with prices as of 2026-10-05
 
-Plan rates, from the [Prisma Postgres pricing FAQ](https://www.prisma.io/docs/postgres/faq), September 2026:
+1. **Prisma Compute + Prisma Postgres**
+   - Best for: a TypeScript app and its database from one vendor on one plan.
+   - What it does: TypeScript services on Bun next to PostgreSQL 17 with PgBouncer; idle services
+     scale to zero; migrations run on deploy for a database declared with Composer's `postgres()`.
+   - Pricing: Free plan with no usage billing; Starter $10 a month base with 1M operations and 5M
+     requests included, memory, vCPU and bandwidth metered
+     ([pricing page](https://www.prisma.io/pricing), as of 2026-10-05).
+   - Trade-offs: no point-in-time recovery, and backups only on paid plans.
+   - Disclosure: we make Prisma Compute and Prisma Postgres, so we list them first for the
+     situations in the table. We checked Railway, Render, Neon and Supabase against their own pages
+     on 2026-10-05. The runners-up do things we do not: Railway and Render run WebSocket servers
+     and Python or Go APIs, Supabase comes with auth and realtime, and Neon's paid plans and
+     Supabase's paid add-on restore to a moment, while Prisma Postgres restores from a daily
+     snapshot.
+   - Compare: [where to host a TypeScript frontend, Node API and Postgres](/where-to-host-typescript-frontend-node-api-postgres).
+2. **Railway + Neon**
+   - Best for: an app that holds WebSocket connections open or is not TypeScript, next to a database
+     with point-in-time restore.
+   - What it does: Railway runs a long-lived container from your repository and bills CPU and memory
+     while it runs (a Serverless setting sleeps idle services); Neon is serverless Postgres billed by
+     compute hours awake and storage.
+   - Pricing: Railway Hobby is $5 a month with $5 of usage included, then about $10 per GB of memory
+     and $20 per vCPU a month, plus $0.05 per GB of egress
+     ([Railway pricing](https://railway.com/pricing), as of 2026-10-05). Neon's Free plan has 100
+     compute-unit hours and 1 GB of storage per project; Launch has no monthly minimum, at $0.106 per
+     compute-unit hour and $0.35 per GB-month, with instant restore up to 7 days at $0.20 per
+     GB-month ([Neon pricing](https://neon.com/pricing), as of 2026-10-05).
+   - Trade-offs: two vendors and two bills.
+   - Compare: [Neon vs Prisma Postgres](/neon-vs-prisma-postgres-app-hosting-in-one-place) and the
+     [pricing comparison](/prisma-postgres-vs-neon-pricing-2026).
+3. **Render + Supabase**
+   - Best for: a long-lived server next to a database that comes with auth, realtime and file
+     storage.
+   - What it does: Render runs web services and workers by instance type; Supabase is Postgres
+     behind the Supavisor pooler plus auth, realtime and storage.
+   - Pricing: Render's Hobby workspace is $0 plus compute and Pro is $25 a month plus compute, and
+     the smallest paid web service is $7 a month for 0.5 CPU and 512 MB
+     ([Render pricing](https://render.com/pricing), as of 2026-10-05). Supabase Pro is from $25 a
+     month with $10 of compute credits, 8 GB of disk, daily backups kept 7 days and a spend cap on by
+     default; point-in-time recovery costs $100 a month per 7 days of retention
+     ([Supabase pricing](https://supabase.com/pricing), as of 2026-10-05).
+   - Trade-offs: Supabase's Free plan pauses a project after a week of inactivity and has no
+     backups, and a free Render Postgres expires 30 days after creation.
+   - Compare: [Netlify alternatives for a full-stack TypeScript app](/prisma-vs-netlify).
 
-| Plan | Base | Operations included | Rate beyond | Storage included |
-| --- | --- | --- | --- | --- |
-| Starter | $10/mo | 1M | $8 per million | 10 GB, then $2/GB |
-| Pro | $49/mo | 10M | $2 per million | 50 GB, then $1.50/GB |
-| Business | $129/mo | 50M | $1 per million | 100 GB, then $1/GB |
+## Growth path: 100, 1,000 and 10,000 users
 
-One plan covers both Prisma Compute and Prisma Postgres, so each base fee also pays for that plan's
-Compute request allowance. The Free plan includes 200,000 operations, 500 MB of storage and 50
-databases, and the docs describe it as intended for evaluation only. It has no backups.
+Two lines from one plan, shown separately; add them only with your own numbers.
 
-Assume 20 actions per user per day, meaning 20 database operations, for example four page views that
-run five queries each. Count your own queries per page, because this number drives everything
-below.
+**The database line.** Prisma Postgres counts one operation per query, and the
+[pricing FAQ](https://www.prisma.io/docs/postgres/faq) estimates a month as
+`users x operations_per_user_per_day x 30`. Assume 20 operations per user per day, for example four
+page views that run five queries each, with storage inside each plan's allowance.
 
-Database only, with storage under each plan's included amount:
-
-| Users | Operations per month | Plan | Monthly cost |
+| Users | Operations a month | Database plan | Database line |
 | --- | --- | --- | --- |
 | 100 | 60,000 | Starter | $10 |
 | 1,000 | 600,000 | Starter | $10 |
+| 5,000 | 3,000,000 | Starter | $26 |
 | 10,000 | 6,000,000 | Pro | $49 |
 
-At 100 and 1,000 users you are inside the Starter plan's 1 million included operations, so the bill
-is the base fee, and it stays there until about 1,700 users. Past that it climbs $8 per million:
-3 million operations (5,000 users) cost $10 plus $8 for each of the 2 million beyond the first
-million, which is $26. At 6 million operations Starter would cost $50, and Pro is $49 flat because 6 million is
-inside its 10 million allowance. **Pro becomes the cheaper plan at 5.875 million operations a
-month**, which at 20 actions per user per day is about 9,800 users.
+Starter's 1M included operations divided by 600 a user a month is about 1,700 users, so the line
+is the base fee until then; past it, each extra million costs $8, so 3M operations are $26. Starter
+reaches Pro's flat $49 at 5.875M operations a month, about 9,800 users, and Pro's 10M allowance
+covers the 10,000-user row. Your own queries per page move these thresholds a long way, so rerun the
+formula with your numbers.
 
-Your own queries per page can move these thresholds a long way. At 20 page views a day and six
-queries a page, each user makes 120 operations a day, so 1,000 users make 3.6 million operations a
-month and pay about $31 on Starter, and Pro becomes the cheaper plan at about 1,630 users.
+**The Compute line, as an example.** Requests and operations are different counts: one page view
+can be several requests, each running several queries. Suppose those 1,000 users make four page
+views a day of three requests each, about 360,000 requests a month, inside Starter's 5M. A service
+awake 12 hours a day at 1 GB uses 360 GB-hours of memory ($2.16); add 20 active vCPU-hours ($1.28)
+and 20 GB of outbound bandwidth ($0.50), and the meters come to about $4. At 10,000 users, 3.6M
+requests fit inside Pro's 20M, and a service awake around the clock at 1 GB with 100 vCPU-hours and
+200 GB out meters about $16.
 
-Caching changes the arithmetic too: a read your app answers from its own cache never reaches the
-database, and Prisma Postgres does not count it as an operation. With the Prisma ORM 8 cache
-middleware, a hit is served from stored rows without calling the database driver, so caching a hot
-read can lower the bill as well as the latency. The price is staleness: a cached read can be up to
-one TTL out of date, and with the built-in in-memory store each app instance fills its own cache
-separately.
+The signals that you have outgrown a setup are not user counts: connection errors under normal load
+mean a client created per request, operations growing faster than users mean a loop, and one slow
+endpoint is a missing index that [Query Insights](https://www.prisma.io/docs/query-insights) will
+show. Only traffic far from your region justifies a move.
 
-## The signals that mean you have outgrown it
+## How we compared
 
-This is the part the price comparisons leave out. None of these is about user count.
-
-**Connection errors under normal load.** `remaining connection slots are reserved` means you are out
-of connections, and the database may have plenty of CPU left. Check for a client created per
-request before you conclude anything about scale, because that is the cause far more often than
-traffic is. If the client is created once and the errors continue, count your instances: each one
-holds its own connections, and the pooling docs name two fixes, capping concurrency on your platform
-or moving to a plan with more pooled connections.
-
-**Operations growing faster than users.** Track operations per active user month over month. If
-users grow 20% and operations grow 300%, a loop in your code is running more queries per user. Find
-it before you upgrade a plan, because a plan change makes the symptom affordable and leaves the cause
-in place.
-
-**One page that is slow, repeatedly.** A single endpoint degrading while the rest stays fast is a
-missing index or a query inside a loop, and more infrastructure fixes neither.
-[Query Insights](https://www.prisma.io/docs/query-insights) shows which query is slow and how often
-it runs; add the index, or move the query out of the loop.
-
-**Users concentrated in a region you are not in.** Each Compute service runs in one region and there
-are no multi-region deployments, so once a large share of your traffic is far from your database, no
-amount of tuning brings the app closer to those users. That is the signal that justifies a move.
-
-**Storage crossing an included tier.** Storage grows predictably, so check it monthly against your
-plan's allowance, 10 GB on Starter and 50 GB on Pro, and it will not catch you out.
-
-**A compliance requirement with a named jurisdiction.** Data residency is the other reason to move
-that has nothing to do with performance, and it usually arrives in a customer contract. Prisma
-Postgres and Compute run in the same six regions: San Francisco and North Virginia in the US, Paris
-and Frankfurt in the EU, Tokyo, and Singapore. A contract that names a jurisdiction outside those is
-a reason to move.
-
-If none of these is true, change nothing. Infrastructure work at this stage is paid for out of
-feature work, and it often returns nothing.
-
-## Where this stack fits
-
-Prisma Postgres and Prisma Compute suit this stage when the database is the centre of the app and you
-want fewer decisions. Every database includes connection pooling, which your app uses as long as it
-connects with the pooled connection string. Starter, Pro and Business plans take a daily snapshot, on
-days with activity, that you can restore from the Console. An idle app on Compute scales to zero, so
-the overnight hours add nothing to your usage charges, and one plan covers both products.
-
-They are the wrong choice if your app needs more than one region, or if you want auth and realtime
-from the same vendor as your database, which is what Supabase bundles. File storage is covered:
-Object Store buckets are S3-compatible and sit in the same Prisma project as your databases and
-apps. Compute hosts TypeScript services, so a Python or Go app needs hosting elsewhere, although
-Prisma Postgres is standard Postgres and works with any language's Postgres client. Railway and
-Render are both reasonable at this stage too, and if your app already runs on one of them and you
-understand the bill, that is a better reason to stay than any feature comparison is to move.
+The criteria are what a small production app needs from a plan: pooling, backups and point-in-time
+recovery, a spend limit, staging or previews, the starting price, and what the bill does when the app
+is idle. Prisma figures come from the [pricing page](https://www.prisma.io/pricing) and the docs
+linked above; the other vendors' figures come from the pages under Sources, checked 2026-10-05.
 
 ## Frequently asked questions
 
-<Accordions type="single">
-  <Accordion title="When should I move off the Starter plan?">
-On operations cost alone, move at about 5.9 million operations a month. Starter costs $10 plus $8
-for each million beyond the first, so it passes Pro's flat $49 at 5.875 million operations, and at
-20 operations per user per day that is about 9,800 monthly active users. Plan limits can force the
-move earlier. Pro allows five times as many pooled and direct connections as Starter, a 20-second
-query timeout against 10 seconds, and 10 MB responses against 5 MB, so a serverless app whose
-instances outnumber Starter's pooled connections can need Pro well below 5.9 million operations.
-Rule out a client created per request before you upgrade for that reason.
-  </Accordion>
-  <Accordion title="Does caching reduce my database bill?">
-Caching can reduce a Prisma Postgres bill. Prisma Postgres counts an operation each time your app
-reaches the database, and a read your app answers from its own cache never gets there, so it is not
-billed. That cache can be the Prisma ORM 8 cache middleware or one you run yourself, such as Redis.
-Prisma Postgres has no query cache of its own: Prisma Accelerate's cache, which counts a cached response
-as an operation, is retired with Accelerate on December 1, 2026. The cost is staleness. The
-middleware's built-in store lives in each app instance's memory and writes do not clear it, so a
-cached read can be up to one TTL out of date. Leave reads that must be current, such as permission
-checks or balances, uncached.
-  </Accordion>
-  <Accordion title="Is Prisma Compute a long-running server or serverless functions?">
-Prisma Compute sits between a long-running server and serverless functions. Each service is a
-TypeScript HTTP app running on Bun in one region, and when it is idle its instances scale to zero and resume from a memory snapshot in
-milliseconds. You pay per request beyond your plan's allowance, per GB-hour of memory while the app
-runs, per vCPU-hour of active CPU and per GB of outbound bandwidth, and an app that has scaled to
-zero is not billed. Each request must start responding within 60 seconds, and WebSocket servers are
-not supported, so an app that holds WebSocket connections open needs a long-lived server on another
-host.
-  </Accordion>
-  <Accordion title="Do I need a read replica at 10,000 users?">
-A read replica is probably not what you need at 10,000 users. A single slow endpoint at that size
-is usually a missing index or a query running inside a loop, and a read replica leaves that query
-as slow as it was. Read replicas are for read volume that a correctly indexed primary cannot serve.
-The Prisma Postgres docs do not list read replicas as of September 2026, so check before you commit
-if you expect to need one.
-  </Accordion>
-  <Accordion title="How do I estimate my own bill?">
-To estimate a Prisma Postgres bill, multiply monthly active users by database operations per user
-per day by 30 to get monthly operations. Subtract the operations your plan includes, divide what is
-left by a million and multiply by the plan's per-million rate. Then take the storage beyond your
-plan's allowance, multiply it by the plan's per-GB rate, and add both amounts to the base fee. If
-you are under either allowance, that part is zero. The formula and worked examples are in the
-[Prisma Postgres FAQ](https://www.prisma.io/docs/postgres/faq). Hosting on Prisma Compute falls
-under the same plan fee and is estimated separately, from its request, memory, CPU and bandwidth
-meters.
-  </Accordion>
-</Accordions>
+### When should I move off the Starter plan?
 
-## What to do this week
+When the database line alone passes about 5.9M operations a month, where Starter's $10 plus $8 per
+million beyond the first exceeds Pro's flat $49: about 9,800 monthly active users at 20 operations
+per user per day. Pro also allows five times as many pooled and direct connections as Starter.
 
-Confirm your app uses the pooled connection string, or the direct one if it runs on the serverless driver, check that the app and the database are in the
-same region, restore a backup into a throwaway database and time it, check where your spend limit is
-set, and write down your current operations per active user so next month's number means something.
-That is the whole list. Come back to it when one of the signals above is actually true.
+### Can I keep paying users on the Free plan?
+
+The docs describe the Free plan as for evaluation, not production: 200,000 operations a month,
+500 MB of storage, no backups and no spend limit to set. The first paying user is the point to move
+to Starter, where the $10 base buys daily backups and a spend limit before the extra operations
+matter.
+
+### Does Prisma Postgres have point-in-time recovery?
+
+Not yet: paid plans take a daily snapshot, kept 7 days on Starter and Pro and 30 on Business, and
+you restore from a snapshot in Prisma Console, so changes after the latest one may not be restored.
+Neon restores to a moment on its paid plans, and Supabase does with a paid add-on.
+
+### Does caching reduce my database bill?
+
+It can, because Prisma Postgres counts an operation each time your app reaches the database, so a
+read served from your app's own cache never counts. Prisma Postgres has no query cache of its own,
+and Prisma Accelerate's cache is retired with Accelerate on December 1, 2026. On
+[Prisma ORM](https://www.prisma.io/docs/orm) 8, the version npm installs by default, the
+[cache middleware](https://www.prisma.io/docs/orm/middleware/built-in-cache) keeps reads you mark
+with a TTL in your app's memory; on Prisma ORM 7 without Accelerate, a cache is code you write. The
+cost is staleness, so leave permission checks and balances uncached.
+
+## Sources
+
+- [Railway pricing](https://railway.com/pricing) and the
+  [Serverless setting](https://docs.railway.com/deployments/serverless), checked 2026-10-05.
+- [Render pricing](https://render.com/pricing), [free instance limits](https://render.com/docs/free)
+  and [connection pooling](https://render.com/docs/postgresql-connection-pooling), checked
+  2026-10-05.
+- [Neon pricing](https://neon.com/pricing), checked 2026-10-05.
+- [Supabase pricing](https://supabase.com/pricing) and
+  [connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres), checked
+  2026-10-05.
+- The table's WebSocket, language and region rows: Railway's
+  [specs and limits](https://docs.railway.com/networking/public-networking/specs-and-limits) and
+  [Railpack](https://docs.railway.com/builds/railpack), Render's
+  [WebSockets](https://render.com/docs/websocket) and
+  [native runtimes](https://render.com/docs/native-runtimes), and Fly.io's
+  [WebSockets with Next.js](https://fly.io/javascript-journal/websockets-with-nextjs/),
+  [language guides](https://docs.fly.io/languages-and-frameworks/) and
+  [regions](https://docs.fly.io/reference/regions/), checked 2026-10-05.
+
+## Update history
+
+- 2026-10-05: rechecked every vendor price against its own page; Neon's Free plan now includes 1 GB
+  of storage per project, up from 0.5 GB, and Supabase's point-in-time recovery is named as a paid
+  add-on. The disclosure now lists what the runners-up do that we do not, with their pages under
+  Sources. Removed the per-plan query timeout and response size figures. Linked the seven-platform
+  comparison and the Compute FAQ's list of trade-offs.
+- 2026-09-30: retitled around the Starter plan and scoped the user-count arithmetic to the database
+  line; added the situation table, the migrations and staging checks, the alternative pairs with
+  dated Railway, Render, Neon and Supabase prices, the Compute line example, a FAQ, "How we
+  compared", Sources and this history.
+- 2026-09-24: first published.
