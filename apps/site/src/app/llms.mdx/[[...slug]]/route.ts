@@ -23,6 +23,18 @@ import { getBaseUrl } from "@/lib/url";
  */
 export const revalidate = false;
 
+/**
+ * Markdown is served as text/plain, not text/markdown.
+ *
+ * ChatGPT's URL fetcher answers "400 Unsupported content-type: text/markdown"
+ * and falls back to search. The docs route has sent text/plain since #8337
+ * (2026-09-28); this route kept text/markdown, so ChatGPT-User most likely
+ * could not read /pricing, /postgres or /compute. text/plain is read by every
+ * assistant we link to and by every browser, so nothing loses out. Same
+ * constant as apps/docs/src/app/llms.mdx/[[...slug]]/route.ts.
+ */
+const MARKDOWN_CONTENT_TYPE = "text/plain; charset=utf-8";
+
 /** Guards the Levenshtein pass below against a pathological request path. */
 const MAX_NEAREST_MATCH_SEGMENTS = 12;
 const MAX_NEAREST_MATCH_PATH_LENGTH = 240;
@@ -87,12 +99,12 @@ function getNearestPaths(slug: string[] | undefined) {
 
 function markdownHeaders(extra: Record<string, string>) {
   // Cache-Control is deliberately not set, which is what the site's other
-  // text/markdown responders (changelog.md, skill.md, .well-known/agent-skills)
-  // do: `revalidate = false` makes these static, and Next and the CDN then
-  // apply the same caching the rest of the site gets. Pinning a value here
-  // would opt the renditions out of it.
+  // hand-written Markdown responders (changelog.md, skill.md,
+  // .well-known/agent-skills) do: `revalidate = false` makes these static, and
+  // Next and the CDN then apply the same caching the rest of the site gets.
+  // Pinning a value here would opt the renditions out of it.
   return {
-    "Content-Type": "text/markdown; charset=utf-8",
+    "Content-Type": MARKDOWN_CONTENT_TYPE,
     // The same URL answers HTML to a browser and Markdown to an agent, so a
     // shared cache has to key the two variants apart.
     Vary: "Accept",
