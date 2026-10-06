@@ -1,14 +1,14 @@
 ---
-title: Deploy the full Prisma stack
+title: Start a TypeScript app with Postgres on Prisma for free
 description: From an empty directory to a live TypeScript app with a Prisma Postgres database on Prisma Compute, with the Free plan limits listed.
 url: /full-stack-tutorial
 metaTitle: "Quickstart: TypeScript app + Postgres on Prisma, Free plan"
 metaDescription: Scaffold a TypeScript app with a Prisma Postgres database, run it locally, and deploy it to Prisma Compute. Lists what the Free plan includes.
 ---
 
-The fastest path to a TypeScript app with a Postgres database on Prisma is the CLI. `npm create prisma@latest` scaffolds the app, `npm run build` and `npx prisma dev module.ts` run it on a local [Prisma Postgres](/postgres) database with no account, and `npx prisma deploy module.ts` puts it on [Prisma Compute](/compute) and creates its database. Everything runs on the [Free plan](#what-the-free-plan-includes) with no credit card.
+The fastest path to a TypeScript app with a Postgres database on Prisma is the CLI: it scaffolds the app, runs it on a local [Prisma Postgres](/postgres) database with no account, and, once you sign in, deploys it to [Prisma Compute](/compute) and creates its database there. Everything runs on the [Free plan](#what-the-free-plan-includes) with no credit card. The steps below do it by hand, and the prompt under [Use with your agent](#use-with-your-agent) runs the same journey end to end.
 
-This tutorial takes you through the whole recommended stack in one sitting. [Prisma Composer](/composer) declares your app: its services, its databases, and how they connect. [Prisma ORM](/orm) types your data. [Prisma Postgres](/postgres) stores it, locally while you develop and on the platform when you deploy. One declaration drives everything: the same `module.ts` runs the app on your machine and deploys it to [Prisma Compute](/compute). Plan on about 15 minutes.
+[Prisma Composer](/composer) declares your app: its services, its databases, and how they connect. [Prisma ORM](/orm) types your data. Prisma Postgres stores it, locally while you develop and on the platform when you deploy. One declaration drives everything: the same `module.ts` runs the app on your machine and deploys it to Prisma Compute. Plan on about 15 minutes.
 
 It uses the `hono` template so you get a small API you can verify with curl at every step. The same journey works for the other templates; the [framework guides](/guides) cover each one.
 
@@ -18,9 +18,17 @@ It uses the `hono` template so you get a small API you can verify with curl at e
 - A [Prisma Data Platform account](https://pris.ly/pdp) for the deploy step, free to create, with no credit card needed on the [Free plan](#what-the-free-plan-includes)
 - No database needed: local runs provision a local Prisma Postgres, and deploys provision a real one, both from your Composer declaration
 
+:::note[Already have an app?]
+
+Keep your code and add a small Prisma Composer declaration next to it: a `service.ts` for each server and one `module.ts`. The server reads its port from `service.port()` and binds `0.0.0.0`; [Port an existing app](/composer/porting-an-app) lists the other changes and has an agent prompt that makes them, and [Bring an app you already have](/prisma-compute/deploy#bring-an-app-you-already-have) is a worked example. Once `npm run build` and `npx prisma dev module.ts` run it, continue at [step 5](#5-deploy-app-and-database-to-prisma-compute). SvelteKit and Deno apps do not deploy to Prisma Compute yet.
+
+:::
+
 ## What the Free plan includes
 
-Everything in this tutorial runs on the Free plan: $0 a month, no credit card, no time limit, and no usage billing. The limits below are the ones on the [pricing page](https://www.prisma.io/pricing), which also lists the paid plans.
+Everything in this tutorial runs on the Free plan: $0 a month, no credit card, no time limit, and no usage billing. The limits below are the ones on the [pricing page](https://www.prisma.io/pricing), which also lists the paid plans. They apply to your whole [workspace](/console/concepts#workspace), the billing unit of your Prisma account that holds all of your projects and databases, so each number is shared across everything in the workspace, not granted to each database.
+
+Prisma ORM is optional on both products: Prisma Postgres works with any PostgreSQL client, and Compute runs apps that do not use Prisma ORM. See [Do I need Prisma ORM to use Compute?](/compute/faq#do-i-need-prisma-orm-to-use-compute). The scaffold in this tutorial uses Prisma ORM 8, which is a release candidate; see [Release status](/orm/release-status).
 
 ### Prisma Postgres
 
@@ -30,38 +38,29 @@ Everything in this tutorial runs on the Free plan: $0 a month, no credit card, n
 | Storage            | 500 MB          |
 | Databases          | 50              |
 | Data transfer      | Unlimited       |
-| Pooled connections | 10              |
 | Direct connections | 10              |
 | Automated backups  | None            |
 
-Each query is one operation, whether it reads or writes. See [What is an operation?](/postgres/faq#what-is-an-operation). The Free plan has no automated backups, and Prisma Postgres has no point-in-time recovery yet, so `pg_dump` over a direct connection is how you keep your own copies. See [Backups](/postgres/database/backups).
+Each query is one operation, whether it reads or writes. See [What is an operation?](/postgres/faq#what-is-an-operation). Direct connections are the ones PostgreSQL tools such as `pg_dump` open, and 5 of the 10 are reserved for platform operations; see [Connection limits](/postgres/database/connection-pooling#connection-limits). The Free plan has no automated backups, and Prisma Postgres cannot yet restore a database to an earlier point in time, so keep your own copies with `pg_dump`, the PostgreSQL command-line backup tool, over a direct connection. See [Backups](/postgres/database/backups).
 
 ### Prisma Compute
 
-| Meter              | Free plan, per month |
+| Meter              | Free plan            |
 | ------------------ | -------------------- |
-| Requests           | 1M                   |
-| Provisioned memory | 360 GB-hours         |
-| Active CPU         | 4 vCPU-hours         |
-| Outbound bandwidth | 10 GB                |
+| Requests           | 1,000,000 a month    |
+| Provisioned memory | 360 GB-hours a month |
+| Active CPU         | 4 vCPU-hours a month |
+| Outbound bandwidth | 10 GB a month        |
 
-An idle app scales to zero, and provisioned memory counts only while the app is running or kept awake. See [Compute pricing](/compute/pricing) for what each meter measures.
+A GB-hour is one gigabyte of memory allocated for one hour, and a vCPU-hour is one virtual CPU in use for one hour. Memory counts only while the app is running or you have chosen to keep it awake, because an idle app scales to zero: it stops running and costs nothing while idle. Outbound bandwidth is the data your app sends out to the internet, and incoming requests do not count. It is separate from the database's unlimited data transfer: Compute includes 10 GB of outbound bandwidth a month on Free. See [Compute pricing](/compute/pricing) for what each meter measures.
 
-Prisma ORM is optional on both products: Prisma Postgres accepts any PostgreSQL client, and Compute runs apps that do not use it. See [Do I need Prisma ORM to use Compute?](/compute/faq#do-i-need-prisma-orm-to-use-compute). The scaffold in this tutorial uses Prisma ORM 8, and [Release status](/orm/release-status) says where that version stands.
-
-### When you reach a limit
+### Check your usage and upgrade
 
 The Free plan has no usage billing, so reaching a limit does not add a charge. Operations and the four Compute meters are monthly limits, while storage and the number of databases are not tied to a month.
 
-To see how much a database has used, run `npx prisma postgres usage <database>` or open the usage view in the [Prisma Console](https://console.prisma.io). Usage reporting for Compute in the CLI and API is still being built.
+To see how much a database has used, run `npx prisma postgres usage <database>`, or track usage in the [Prisma Console](https://console.prisma.io); see [Billing and limits](/postgres#billing-and-limits). Usage reporting for Compute in the CLI and API is still being built.
 
 To go past a limit, move the workspace to a paid plan. Paid plans include more operations, storage, and requests, then bill usage beyond those amounts. Compute memory, CPU, and bandwidth are billed per use on paid plans, and a spend limit can cap the charge. The [pricing page](https://www.prisma.io/pricing) has the rates.
-
-:::note[Already have an app?]
-
-Keep your server code and add a Prisma Composer declaration next to it: a `service.ts` for each server and one `module.ts`, with the server reading its port from `service.port()` and binding `0.0.0.0`. [Port an existing app](/composer/porting-an-app) lists the changes and has an agent prompt that makes them; [Bring an app you already have](/prisma-compute/deploy#bring-an-app-you-already-have) is a worked example. Once `npm run build` and `npx prisma dev module.ts` run it, continue at [step 5](#5-deploy-app-and-database-to-prisma-compute). SvelteKit and Deno apps do not deploy to Prisma Compute yet.
-
-:::
 
 ## Use with your agent
 
@@ -76,8 +75,8 @@ Create a new Hono API composed with Prisma Composer and Prisma ORM, run it local
 
 1. Scaffold: `npm create prisma@latest -- my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` to confirm the Prisma agent skills the scaffold installed are current, and use them.
 2. Read `module.ts` and `service.ts` first: the Composer module provisions the database and the service, and it is what `dev` and `deploy` operate on.
-3. Build and run locally: `npm run build`, then `npx prisma dev module.ts`. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify the local URL that `dev` prints: its /users endpoint returns the seeded users.
-4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). The scaffold already wrote the baseline migration under `migrations/app/`; note its directory name, which ends in `_init`. Then run `npx prisma deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
+3. Build and run locally: `npm run build`, then start `npx prisma dev module.ts` in the background and wait until it prints the local URL. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify with curl that the local URL's /users endpoint returns the seeded users, then stop `dev`.
+4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). The scaffold already wrote the baseline migration under `migrations/app/`; note its directory name, which ends in `_init`. The scaffold's `prisma-composer.config.ts` already sets the deploy region, so do not add one. Then run `npx prisma deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
 5. Evolve the schema: add `role String @default("member")` to the User model in `src/prisma/contract.prisma`, run `npx prisma contract emit`, add `"role"` to the typed select and the returned object in `src/prisma/users.ts`, and plan the migration with `npx prisma migration plan --name add-user-role --from <the init migration directory>`. Then run `npm run build` and `npx prisma deploy module.ts` again, and verify the live /users now returns `role: "member"` with the same createdAt values as before.
 ```
 
@@ -101,7 +100,7 @@ If you work with a coding agent, run [`npx prisma@latest init`](/cli/init) once.
 
 ## 2. The Composer app
 
-Start with the declaration, because it is what every later command operates on. The scaffold declares the whole app in two files. `module.ts` is the app: it provisions a Prisma Postgres database and the service, and wires one to the other:
+Start with the declaration, because it is what every later command operates on. The scaffold declares the whole app in two files and adds a third for deploys. `module.ts` is the app: it provisions a Prisma Postgres database and the service, and wires one to the other:
 
 ```ts title="module.ts"
 import { module } from "@prisma/composer";
@@ -142,6 +141,19 @@ export default compute({
 });
 ```
 
+`prisma-composer.config.ts` is the deploy config, which only the CLI reads and your app never imports. It already names the region the first deploy needs to create your project, `us-east-1`, so there is nothing to set before you deploy. To deploy somewhere else, change the region here before the first deploy; the region ids are listed under [Limitations](/compute/limitations).
+
+```ts title="prisma-composer.config.ts"
+import { defineConfig } from "@prisma/composer/config";
+import { nodeBuild } from "@prisma/composer/node/control";
+import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
+
+export default defineConfig({
+  extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
+  state: prismaState(),
+});
+```
+
 Notice there is no connection string anywhere. The database is a declared dependency, typed by your contract, and Composer injects the connection wherever the app runs. The declaration is ordinary TypeScript: `npx tsc --noEmit` checks the wiring, and mistakes fail the compile instead of a deploy. [Composer](/composer) covers the model in full: modules, services, dependencies, and the first-party building blocks.
 
 ## 3. The Prisma ORM data model
@@ -161,7 +173,7 @@ npx prisma dev module.ts
 
 `dev` provisions a local Prisma Postgres database, applies the contract to it, starts the service, and prints the app's local URL when everything is ready. No account, credentials, or connection string are involved; see [Local development](/local-development) for how the local platform works.
 
-Sample users are seeded automatically the first time the app queries the database. Confirm the API serves the seeded rows. `dev` picks a free port and prints the URL, so use the one it printed if it differs from the `3000` shown here:
+Sample users are seeded automatically the first time the app queries the database. Confirm the API serves the seeded rows. `dev` keeps running until you press Ctrl-C, so run the curl in a second terminal. `dev` also picks a free port and prints the URL, so use the one it printed if it differs from the `3000` shown here:
 
 ```bash
 curl http://localhost:3000/users
@@ -175,11 +187,11 @@ curl http://localhost:3000/users
 ]
 ```
 
-If you prefer the framework's own dev server, `npm run dev` runs it directly. Composer does not manage that mode, so the app needs a database of your own in `DATABASE_URL`. Create one inside your project with the CLI:
+If you prefer the framework's own dev server, `npm run dev` runs it directly. Composer does not manage that mode, so the app needs a database of your own in `DATABASE_URL`. Create one with the CLI, in a project named differently from the module so that it does not collide with the project the deploy in [step 5](#5-deploy-app-and-database-to-prisma-compute) creates:
 
 ```npm
 npx prisma auth login
-npx prisma project create my-app
+npx prisma project create my-app-local
 npx prisma postgres create mydb
 ```
 
@@ -202,7 +214,7 @@ npm run build
 npx prisma deploy module.ts
 ```
 
-Composer creates a project named after your module, provisions the Prisma Postgres database declared in `module.ts`, wires it to the service, and starts the app. There is nothing to configure and no environment file to pass, because the deployed database comes from the declaration exactly as the local one did. When everything is up, the deploy prints what it made, each part of your app next to the platform resource it became, along with the public URL:
+Composer creates a project named after your module, in the region from `prisma-composer.config.ts`, provisions the Prisma Postgres database declared in `module.ts`, connects it to the service, and starts the app. There is no environment file to pass, because the deployed database comes from the declaration exactly as the local one did. When everything is up, the deploy prints what it made, each part of your app next to the platform resource it became, along with the public URL:
 
 ```text no-copy
 my-app
