@@ -9,6 +9,7 @@
  * Everything here takes plain data, so it runs under `node:test` without the
  * content source. `llms-source.ts` maps the source's pages onto `LlmsPost`.
  */
+import { normalizePostMarkdown } from "./llm-markdown";
 import { withBlogBasePath } from "./url";
 
 export type LlmsPost = {
@@ -167,11 +168,25 @@ ${list}
 `;
 }
 
+/** The slugs of the given posts: `/my-post` gives `my-post`. */
+export function getPostSlugs(posts: Pick<LlmsPost, "path">[]): Set<string> {
+  return new Set(posts.map((post) => post.path.replace(/^\/+|\/+$/g, "")));
+}
+
 /**
  * One post as Markdown: the title, a metadata block, then the body. Served on
  * its own at the post's `.md` URL and concatenated into `llms-full.txt`.
+ *
+ * The body is the processed MDX. `normalizePostMarkdown` turns its components
+ * into Markdown and makes its links absolute, which needs every post slug to
+ * tell a link to a post from a link to the rest of the site.
  */
-export function formatPostMarkdown(post: LlmsPost, body: string, baseUrl: string): string {
+export function formatPostMarkdown(
+  post: LlmsPost,
+  body: string,
+  baseUrl: string,
+  postSlugs: ReadonlySet<string>,
+): string {
   const published = formatDate(post.date);
   const updated = formatDate(post.updatedAt);
   const description = singleLine(post.description);
@@ -189,7 +204,7 @@ export function formatPostMarkdown(post: LlmsPost, body: string, baseUrl: string
 
 ${metadata.join("\n")}
 
-${body.trim()}`;
+${normalizePostMarkdown(body, { baseUrl, postSlugs })}`;
 }
 
 export function buildLlmsFullContent(
@@ -198,6 +213,7 @@ export function buildLlmsFullContent(
 ): string {
   const byPath = new Map(entries.map((entry) => [entry.post.path, entry.body]));
   const ordered = sortNewestFirst(entries.map((entry) => entry.post));
+  const postSlugs = getPostSlugs(ordered);
   const count = ordered.length;
 
   const header = `# Prisma Blog: full content
@@ -210,6 +226,8 @@ ${freshnessNotice(baseUrl)}
 
   return [
     header,
-    ...ordered.map((post) => formatPostMarkdown(post, byPath.get(post.path) ?? "", baseUrl)),
+    ...ordered.map((post) =>
+      formatPostMarkdown(post, byPath.get(post.path) ?? "", baseUrl, postSlugs),
+    ),
   ].join(FULL_ENTRY_SEPARATOR);
 }
