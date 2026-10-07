@@ -141,7 +141,8 @@ PostgreSQL 17 behind a connection string, so any Postgres client can reach it an
 optional. To move the data, run `pg_dump` with the PostgreSQL 17 tools over the direct connection
 string (host `db.prisma.io`), then restore the dump into Amazon RDS, Aurora or any other PostgreSQL
 host; the [backups page](https://www.prisma.io/docs/postgres/database/backups) has the `pg_dump`
-command. A dump is a snapshot of one moment, so stop writes during the cutover.
+command. A dump is a snapshot of one moment, so stop writes before you start `pg_dump` and keep
+them stopped until the restore is done and the app points at the new database.
 
 The Prisma-specific part of the app is its Composer declaration: the `service.ts`, `module.ts` and
 `prisma-composer.config.ts` files. The [port](https://www.prisma.io/docs/composer/porting-an-app)
@@ -210,7 +211,9 @@ variables again and call the other services by URL, and the rest of the server c
      $2.30 ([RDS for PostgreSQL pricing](https://aws.amazon.com/rds/postgresql/pricing/), as of
      2026-10-07). RDS Proxy is $0.015 per vCPU-hour of the database instance with a 2-vCPU minimum,
      so pooling for that instance adds about $21.90 over the same month
-     ([RDS Proxy pricing](https://aws.amazon.com/rds/proxy/pricing/), as of 2026-10-07).
+     ([RDS Proxy pricing](https://aws.amazon.com/rds/proxy/pricing/), as of 2026-10-07). T4g
+     instances run in Unlimited mode, so if average CPU over a rolling 24 hours stays above the
+     instance's baseline, AWS adds CPU credits at $0.075 per vCPU-hour on top of those figures.
    - Trade-offs: the instance bills while it runs whether or not the app is busy, the pooler is a
      second line on the bill, and the app needs a host of its own.
 
