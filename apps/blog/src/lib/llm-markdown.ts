@@ -404,7 +404,10 @@ function formatImage(attrs: string) {
   const src = getAttribute(attrs, "src");
   if (!src) return "";
   const alt = getAttribute(attrs, "alt") ?? getAttribute(attrs, "caption") ?? "";
-  return `![${singleLine(alt)}](${src})`;
+  // A space or parenthesis would end the Markdown destination early, and
+  // absolutizeLinks would then resolve only part of the path.
+  const safeSrc = src.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29");
+  return `![${singleLine(alt)}](${safeSrc})`;
 }
 
 function formatYoutube(attrs: string) {

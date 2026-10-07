@@ -254,6 +254,13 @@ test("embeds become links and quotes keep their speaker", () => {
   );
 });
 
+test("an image source with spaces or parentheses stays one resolvable URL", () => {
+  assert.equal(
+    normalize('<Image src="/blog/some-post/imgs/Screen Shot (1).png" alt="A screenshot" />'),
+    "![A screenshot](https://www.prisma.io/blog/some-post/imgs/Screen%20Shot%20%281%29.png)",
+  );
+});
+
 test("an agent prompt keeps the prompt and the command", () => {
   const markdown =
     '<AgentPrompt prompt="Deploy this branch with its own database." skill="prisma-cli" terminalCommand="npx @prisma/cli@latest app deploy --db" terminalLines="lines" />';
