@@ -60,8 +60,8 @@ export const computeContent: ProductPageContent = {
     headlineEmphasis: "One platform",
     // The first sentence of the entity wording shared with the homepage,
     // /postgres and the docs. The microline carries its second and third
-    // sentences; the page's meta description (app/compute/page.tsx) carries
-    // all four verbatim.
+    // sentences. The page's meta description (app/compute/page.tsx) repeats
+    // the last three verbatim and words the first one as a PaaS definition.
     subheadline:
       "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan.",
     benefits: [

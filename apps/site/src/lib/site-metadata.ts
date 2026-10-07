@@ -11,9 +11,10 @@ export const SITE_HOME_TAGLINE = "Agent Infrastructure for TypeScript";
 /** Brand-first, per Google's guidance for homepage titles. */
 export const SITE_HOME_TITLE = `${SITE_NAME} | ${SITE_HOME_TAGLINE}`;
 
-// Opens with the positioning sentence shared verbatim by /compute, /postgres,
-// the docs Compute index and the package READMEs (content brief, "entity
-// wording"), so every surface describes the same product in the same words.
+// Opens with the positioning sentence shared verbatim by /postgres, the docs
+// Compute index and the package READMEs (content brief, "entity wording"), so
+// every surface describes the same product in the same words. The /compute
+// meta description words its first sentence as a PaaS definition instead.
 export const SITE_HOME_DESCRIPTION =
   "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute.";
 

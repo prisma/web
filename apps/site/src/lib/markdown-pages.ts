@@ -95,9 +95,9 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   "/compute": {
     path: "/compute",
     title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
-    // The entity wording, verbatim from app/compute/page.tsx.
+    // The meta description, verbatim from app/compute/page.tsx.
     description:
-      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
+      "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
     h1: productH1(computeContent),
     subheadline: productSubheadline(computeContent),
     // /compute is the template minus the testimonials section, plus the
