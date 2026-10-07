@@ -60,8 +60,8 @@ export const computeContent: ProductPageContent = {
     headlineEmphasis: "One platform",
     // The first sentence of the entity wording shared with the homepage,
     // /postgres and the docs. The microline carries its second and third
-    // sentences; the page's meta description (app/compute/page.tsx) carries
-    // all four verbatim.
+    // sentences. The page's meta description (app/compute/page.tsx) repeats
+    // the last three verbatim and words the first one as a PaaS definition.
     subheadline:
       "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan.",
     benefits: [
@@ -187,7 +187,7 @@ export const computeContent: ProductPageContent = {
     {
       question: "What does it cost?",
       answer:
-        "The Free plan includes 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of outbound bandwidth a month for Compute, and 200k operations, 500 MB and 50 databases for Prisma Postgres, with no credit card and no usage billing. Starter is $10 a month base plus metered compute: 5M requests and 1M operations are included, memory ($0.006 per GB-hour), active vCPU ($0.064 per hour) and bandwidth ($0.025 per GB) are metered from the first unit, and you can set a spend limit. An idle app scales to zero. The pricing page lists every plan.",
+        "The Free plan includes 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of outbound bandwidth a month for Compute, and 200k operations, 1.01 GB and 50 databases for Prisma Postgres, with no credit card and no usage billing. Starter is $10 a month base plus metered compute: 5M requests and 1M operations are included, memory ($0.006 per GB-hour), active vCPU ($0.064 per hour) and bandwidth ($0.025 per GB) are metered from the first unit, and you can set a spend limit. An idle app scales to zero. The pricing page lists every plan.",
     },
   ],
   cta: {

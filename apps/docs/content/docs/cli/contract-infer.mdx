@@ -47,6 +47,10 @@ The file starts with `// use prisma-8`, because `contract emit` reads only `.pri
 
 Every column default is written in a form `contract emit` accepts, so you can emit the file without editing it. [Default values](/orm/contract-authoring/psl-syntax#default-values) shows those forms. A list column that allows `NULL` is written `Type[]?`, and a list column that is `NOT NULL` is written `Type[]`.
 
+Date and time columns are written as text types, so your application reads and writes them as strings and needs no `Temporal`: a `timestamp(3)` column is written `TimestampString(3)`, `timestamptz(3)` is `TimestamptzString(3)`, `date` is `DateString`, and `time(3)` is `TimeString(3)`. A `timestamp` value reads as `"2026-09-14 10:00:00.123"`. To get `Temporal` values instead, change the types to `Timestamp(3)`, `Timestamptz(3)`, `Date`, and `Time(3)` in the inferred file. A `bytea` default is written as the base64 text the `Bytes` type stores, such as `@default("aGVsbG8=")`.
+
+A contract inferred before `8.0.0-rc.15` keeps its types until you run `contract infer` again. When you do, the date and time fields and any `bytea` default change, and so does the storage hash: emit the contract, update the code that used `Temporal` values for these fields, then run `prisma db sign` for a database you keep with `db update`, or create an empty migration with [`migration new`](/cli/migration-new) and apply it when you use migrations.
+
 If you keep an inferred contract in version control, running `contract infer` again after an upgrade can write the same database differently, so review the diff before you commit it.
 
 The command stops at `contract.prisma`. Follow it with the emit and sign steps:

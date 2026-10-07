@@ -33,7 +33,7 @@ export const db = postgres<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
   middleware: [
-    createCacheMiddleware({ maxEntries: 1_000 }),
+    createCacheMiddleware(),
     lints(),
     budgets({ maxRows: 10_000, maxLatencyMs: 1_000 }),
   ],
@@ -79,11 +79,11 @@ You write only the hooks you care about, and Prisma ORM skips the ones you leave
 
 **A row query** is anything that returns rows. On the ORM API that is every call except `createAndCount`, `updateAndCount`, and `deleteAndCount`, so `create`, `update`, and `delete` are row queries too. It is also what you get from `db.runtime().query(plan)`. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces. A row query calls your hooks in this order:
 
-`beforeCompile` → `beforeQuery` → `interceptQuery` → `onRow` (once per row) → `afterQuery`
+`beforeCompile` → `beforeQuery` → `interceptQuery` → `onRow` (once per row) → `afterQuery` → `afterTransaction`
 
 **A non-returning write** is a statement that reports how many rows it affected rather than returning them. On the ORM API those are `createAndCount`, `updateAndCount`, and `deleteAndCount`, and with the SQL query builder it is whatever you hand to `db.runtime().execute(plan)`. These run a shorter sequence:
 
-`beforeCompile` → `beforeExecute` → `interceptExecute` → `afterExecute`
+`beforeCompile` → `beforeExecute` → `interceptExecute` → `afterExecute` → `afterTransaction`
 
 `beforeQuery` never runs for a non-returning write, and `beforeExecute` never runs for a row query, so a middleware that has to cover reads and writes both needs a hook in each sequence. In practice that means writing the check once and calling it from `beforeQuery` and from `beforeExecute`:
 
@@ -206,13 +206,13 @@ Check `entry.codecId` before you call `replaceValue`, as the example does. Write
 
 These hooks let you answer a query yourself, so the database never sees it. Return `{ rows }` from `interceptQuery`, or `{ stats }` from `interceptExecute`, and that is what your caller gets back, but return `undefined` and the query carries on to the database as usual. The `stats` you return is the count that statement reports, for example `{ stats: { affectedRows: 0 } }`.
 
-The rows you return are plain objects, keyed by the column aliases in the SQL, holding the values in the form the database driver hands them over: numbers for integers, strings for text and timestamps. A read that selects `id`, `email`, and `createdAt` produces rows like this one:
+The rows you return are plain objects, keyed by the column aliases in the SQL, holding the values in the form the database driver hands them over. On PostgreSQL every value that is not SQL `NULL` is the text the database printed, so integers are strings, as are text and timestamps. A `NULL` stays `null`. A read that selects `id`, `email`, and `createdAt` produces rows like this one:
 
 ```ts
-{ id: 3, email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
+{ id: '3', email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
 ```
 
-So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database. So if you return a `createdAt` as a string, a caller on the ORM API gets a `Temporal.Instant`, which is the type of a `DateTime` field.
+So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: '1', email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database. So if you return a `createdAt` as a string, a caller on the ORM API gets a `Temporal.Instant`, which is the type of a `DateTime` field.
 
 Before-hooks still run on a query that an intercept hook answers, because every middleware's before-hooks run before any intercept hook, whatever order you list the middleware in. So in the setup at the top of this page, where the cache comes first in the array, `lints` still checks every query before the cache answers it.
 
@@ -229,6 +229,14 @@ After a row query, `afterQuery` receives `result.rowCount`, how many rows came b
 After a non-returning write, `afterExecute` receives the same `result.completed`, `result.latencyMs`, and `result.source`, and on a run that completed it also gets the number of rows the statement changed, in `result.stats.affectedRows`. There is no `result.rowCount` on this one, and there is no `result.stats` on a write that failed, so read the count only when `result.completed` is `true`.
 
 Timing, logging, and latency budgets all belong in these two hooks.
+
+### afterTransaction: act once the effects are final
+
+`afterTransaction(plan, result, ctx)` is the last hook of every query, of both kinds. It runs once, when the query's effects are final. For a query inside `db.transaction(...)`, that is after the transaction commits or rolls back, so each query of the transaction gets its call then, not when the query itself finished. For a query outside a transaction, it runs when the query ends.
+
+`result.outcome` says what happened: `'committed'` when the transaction committed, or the query outside a transaction completed; `'rolled-back'` when the transaction rolled back; and `'unknown'` when Prisma ORM cannot tell, for example when a query outside a transaction failed, or a query inside a committed transaction failed. Use this hook for work that must not happen for a write that did not last, such as publishing an event or removing a cache entry.
+
+Inside a transaction, the hooks run while the transaction's connection is still checked out, so keep them short. Do not send a query on that connection, and do not wait on another query through the same client: if every connection of the pool is busy, it never finishes. Prisma ORM logs an error thrown from `afterTransaction` and does not pass it to your code.
 
 ## What ships built in
 

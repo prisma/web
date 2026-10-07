@@ -8,9 +8,11 @@ metaDescription: Learn how to sign a database once it matches the current Prisma
 
 `db sign` verifies that the live database satisfies the emitted contract and, if so, writes or updates the database signature. The signature records that this database instance matches a specific contract version.
 
+It signs every contract space: your application's contract, and the contract of each extension that ships one, such as pgvector or PostGIS. It verifies each space, then signs every space that verified, in one transaction on PostgreSQL and SQLite. A space that fails verification is not signed: the command prints its differences and exits with code `4`.
+
 It is safe to run more than once, and safe to run in CI or a deployment pipeline. Use it after importing or inferring an existing schema, or after a deployment flow that already applied the required database changes.
 
-After a successful signature, `db sign` also stores the signed contract as a snapshot and points the [ref](/cli/migration-ref) named `db` at it, so the next [`migration plan`](/cli/migration-plan) starts from the state you just signed instead of from an empty database. Unlike `db init` and `db update`, passing `--db` does not turn this off, because you normally sign the real database. Pass `--no-advance-ref` when you do not want the command to write a ref or a snapshot, for example in a deployment pipeline.
+After a successful signature, `db sign` also stores the signed contract as a snapshot and points the [ref](/cli/migration-ref) named `db` of each signed space at it, so the next [`migration plan`](/cli/migration-plan) starts from the state you just signed instead of from an empty database. Unlike `db init` and `db update`, passing `--db` does not turn this off, because you normally sign the real database. Pass `--no-advance-ref` when you do not want the command to write a ref or a snapshot, for example in a deployment pipeline.
 
 ## Usage
 
@@ -28,7 +30,7 @@ npx prisma db sign --db "$DATABASE_URL"
 | `--advance-ref <name>` | Advances this ref instead of `db` after a successful signature. |
 | `--no-advance-ref` | Signs without writing any ref or snapshot. Cannot be combined with `--advance-ref`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
-| `--json` | Prints a machine-readable result. It includes `advancedRef` with the ref name and contract hash, or `null` when no ref was written. |
+| `--json` | Prints a machine-readable result, with one outcome per contract space. See [JSON output](#json-output). |
 
 ### Contract references [#contract-references]
 
@@ -38,9 +40,43 @@ A ref name is a name you gave a contract state with [`migration ref set`](/cli/m
 
 | Code | Meaning |
 | --- | --- |
-| `0` | The database was signed. |
-| `2` | The command could not run: unresolvable contract reference, no emitted contract, or unreachable database. |
-| `4` | Schema verification failed and no signature was written. |
+| `0` | Every contract space was signed. |
+| `2` | The command could not run: unresolvable contract reference, no emitted contract, or unreachable database. Also used when it signed the database but could not write every ref. |
+| `4` | Schema verification failed for a space, or another process changed that space's signature while `db sign` ran. That space's signature was not written. |
+
+## JSON output [#json-output]
+
+With `--json`, `db sign` prints one document:
+
+```json title="db sign --json output"
+{
+  "ok": true,
+  "summary": "Database signed",
+  "spaces": [
+    {
+      "space": "app",
+      "status": "updated",
+      "contract": { "storageHash": "…", "profileHash": "…" },
+      "previous": { "storageHash": "…", "profileHash": "…" }
+    }
+  ],
+  "advancedRefs": [{ "space": "app", "name": "db", "hash": "…" }]
+}
+```
+
+`spaces` has one entry per contract space, with the hashes of its contract in `contract`. `status` is one of:
+
+| Status | Meaning |
+| --- | --- |
+| `created` | The space had no signature, and now has one. |
+| `updated` | The signature held other hashes, now in `previous`. |
+| `unchanged` | The signature already held the contract's hashes. |
+| `failed` | Verification failed. The entry has `schema`, the verification result, and `ok` is `false`. |
+| `conflict` | Another process, such as `db migrate`, changed the signature while `db sign` ran. The entry has `expected` and `found`, the hashes `db sign` read and the ones it found. Run `db sign` again once that process has finished. |
+
+`advancedRefs` lists each ref the command moved. It is empty with `--no-advance-ref`.
+
+Since `8.0.0-rc.15`, the document has this shape. Before, it was `{ ok, summary, contract, target, marker }` for the application's space only.
 
 ## Example
 
