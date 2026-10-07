@@ -270,6 +270,35 @@ test("an agent prompt keeps the prompt and the command", () => {
   );
 });
 
+test("attribute values are decoded, so a Mermaid chart is valid Mermaid", () => {
+  const markdown = [
+    "<Mermaid",
+    '  chart="flowchart LR',
+    "    S[&#x22;Sentry issue&#x22;] --> B[&#x22;Gather context&#x22;]",
+    '    B --> C[&#x22;Makers & agents&#x22;]"',
+    "/>",
+    "",
+    '<Accordion title="What does &#x22;one plan&#x22; mean?">',
+    "  The answer.",
+    "</Accordion>",
+  ].join("\n");
+
+  assert.equal(
+    normalize(markdown),
+    [
+      "```mermaid",
+      "flowchart LR",
+      '    S["Sentry issue"] --> B["Gather context"]',
+      '    B --> C["Makers & agents"]',
+      "```",
+      "",
+      '### What does "one plan" mean?',
+      "",
+      "The answer.",
+    ].join("\n"),
+  );
+});
+
 test("other components are unwrapped, widgets without text and MDX comments are dropped", () => {
   const markdown = [
     "Before.",

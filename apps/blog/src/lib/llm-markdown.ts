@@ -219,14 +219,40 @@ function withCodeProtected(markdown: string, transform: (value: string) => strin
 // Components
 // ---------------------------------------------------------------------------
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  apos: "'",
+  gt: ">",
+  lt: "<",
+  nbsp: " ",
+  quot: '"',
+};
+
+/**
+ * Decodes the character references in an attribute value. The processed
+ * Markdown writes a `"` inside an attribute as `&#x22;`, which would otherwise
+ * end up in a heading, a link or a Mermaid code block as written.
+ */
+function decodeEntities(value: string) {
+  return value.replace(
+    /&(?:#x([0-9a-f]+)|#(\d+)|([a-z]+));/gi,
+    (match, hex: string | undefined, decimal: string | undefined, name: string | undefined) => {
+      if (name) return NAMED_ENTITIES[name.toLowerCase()] ?? match;
+      const code = hex ? Number.parseInt(hex, 16) : Number(decimal);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+    },
+  );
+}
+
 function getAttribute(attrs: string, name: string) {
   const pattern = new RegExp(
     `(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{\\s*"([^"]*)"\\s*\\}|\\{\\s*'([^']*)'\\s*\\})`,
   );
-  return attrs
+  const value = attrs
     .match(pattern)
     ?.slice(1)
-    .find((value) => value !== undefined);
+    .find((candidate) => candidate !== undefined);
+  return value === undefined ? undefined : decodeEntities(value);
 }
 
 function singleLine(value: string) {
