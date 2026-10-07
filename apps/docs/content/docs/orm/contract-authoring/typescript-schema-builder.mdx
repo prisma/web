@@ -55,8 +55,8 @@ Export the contract under the name `contract`, as below, or as the file's defaul
 ```typescript title="src/prisma/contract.ts" tab="PostgreSQL"
 import { defineContract, enumType, member } from "@prisma/orm-postgres/contract-builder";
 
-// nativeType is the column type the database gets. codecId picks how Prisma ORM converts the value between TypeScript and that column, and its @1 is the version of that conversion.
-const pgText = { codecId: "pg/text@1", nativeType: "text" } as const;
+// codecId picks how Prisma ORM converts the value between TypeScript and the column, and its @1 is the version of that conversion. The column type comes from the codec.
+const pgText = { codecId: "pg/text@1" } as const;
 
 const Priority = enumType("Priority", pgText, member("Low", "low"), member("High", "high"));
 
@@ -197,7 +197,7 @@ The examples below use the PostgreSQL builder.
 | UUID stored in a `character(36)` column | `field.uuidString()` |
 | UUID stored in a `uuid` column | `field.uuidNative()` |
 
-There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1", nativeType: "date" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
+There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
 
 For a primary key your app generates, use a `field.id.*` helper. Each one marks the field as the primary key and generates the ID in your app when you create a row. `field.id.uuidv4String()` is the common choice, and the others are `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, and `field.id.ksuid()`. To store a UUID in a `uuid` column instead of a `character(36)` column, use `field.id.uuidv4Native()` or `field.id.uuidv7Native()`.
 
@@ -216,14 +216,14 @@ Every field builder supports chained modifiers:
 - `.default(...)` also takes a default the database computes: `.default(now())`, `.default(autoincrement())`, or any other SQL expression as a `sql` template, such as ``.default(sql`gen_random_uuid()`)``. Import `now`, `autoincrement`, and `sql` from `@prisma/orm-postgres/contract-builder`. `` sql`now()` `` and `` sql`autoincrement()` `` are refused, so use the named helpers. `.defaultSql(expression)` still works but is deprecated, and it will be removed in the stable `8.0.0` release.
 - `.unique()` adds a unique constraint. `.id()` marks the primary key, for a key that is not generated, such as an integer you set yourself.
 - `.column("column_name")` sets the column name in the database when it differs from the field name.
-- `.many()` makes the field a list, stored as a PostgreSQL array column such as `text[]`. A list column gets a check constraint that rejects `NULL` elements.
+- `.many()` makes the field a list, stored as a PostgreSQL array column such as `text[]`. A list column gets a check constraint that rejects `NULL` elements. To allow `NULL` elements, write `.many({ elementsNullable: true })`: the field's TypeScript type becomes `ReadonlyArray<T | null>`. Add `.optional()` to allow a `NULL` list as well.
 - `.noCheck()` leaves out the check constraints Prisma ORM generates for the column: the one that keeps an enum column to the enum's values, and the one that keeps `NULL` out of a list. `.noCheck("membership")` and `.noCheck("elementNotNull")` leave out one or the other. The field's TypeScript type does not change.
 
 ## Enums
 
 `enumType` declares an enum, the type its values are stored as, and its members, as `Priority` does in the full example above.
 
-The second argument says how each member is stored, as the same `codecId` and `nativeType` pair the full example above explains. Write `as const` after the object, so TypeScript keeps the exact strings. To store the members as integers, pass `{ codecId: "pg/int4@1", nativeType: "int4" } as const`. More type ids are listed with the [raw query `param` helper](/orm/reference/raw-queries#binding-a-bare-value-with-param), which names types the same way.
+The second argument says how each member is stored, as the `codecId` the full example above explains. Write `as const` after the object, so TypeScript keeps the exact string. To store the members as integers, pass `{ codecId: "pg/int4@1" } as const`. Write each member's stored value as the column stores it: the codec checks it, and `defineContract` refuses a value the codec does not take with [`CONTRACT.ENUM_INVALID`](/orm/reference/error-reference#CONTRACT.ENUM_INVALID). More type ids are listed with the [raw query `param` helper](/orm/reference/raw-queries#binding-a-bare-value-with-param), which names types the same way.
 
 Each `member(name, storedValue)` pairs the TypeScript-visible name with the value stored in the column. Fields reference the enum with `field.namedType(Priority)`, and defaults reference a member as `Priority.members.Low`. Include the enum in the returned `enums` map so it reaches the two files.
 
@@ -414,6 +414,8 @@ export const contract = defineContract({ extensions: { pgvector } }, ({ field, m
   return { types, models: { Post: Post.sql({ table: "post" }) } };
 });
 ```
+
+List every pack whose column types the contract uses, also when you use its codec through `field.column(...)`. `defineContract` takes each column's database type from its codec, and a codec from a pack you did not list fails with [`CONTRACT.CODEC_DESCRIPTOR_MISSING`](/orm/reference/error-reference#CONTRACT.CODEC_DESCRIPTOR_MISSING). An argument out of range, such as a vector length or an SRID below 1, fails `defineContract` with [`CONTRACT.TYPE_PARAMS_INVALID`](/orm/reference/error-reference#CONTRACT.TYPE_PARAMS_INVALID).
 
 The key on `type.pgvector` is the pack's own name, not the name you gave the import. The name is in the pack's documentation, and pgvector's is `pgvector`. `Embedding1536` is a name you choose, and it appears under that name in `contract.d.ts`. Return the `types` map so the name reaches the two files.
 

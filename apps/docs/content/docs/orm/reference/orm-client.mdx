@@ -198,7 +198,7 @@ Some parts of the schema the examples rely on:
   ```
 
 - An enum member's stored value is the string after `=`, or the member name when there is no `=`. That string is what you pass to `.eq()`. So `Urgent = "urgent"` is matched by `.eq('urgent')`, and a bare `admin` member is matched by `.eq('admin')`.
-- A variant is a model that reuses another model's fields and rows. `@@base(Task, "bug")` makes `Bug` a variant of `Task`. Its second argument, `"bug"`, is the value stored in the discriminator column for a `Bug` row. `@@discriminator(type)` names that column. `db.orm.public.Task.variant('Bug')` returns only the `Bug` rows. Pass the model name, `'Bug'`, not the string in `@@base`.
+- A variant is a model that reuses another model's fields and rows. `@@base(Task, "bug")` makes `Bug` a variant of `Task`. Its second argument, `"bug"`, is the value stored in the discriminator column for a `Bug` row. `@@discriminator(type)` names that column. `db.orm.public.Task.variant('bug')` returns only the `Bug` rows. Pass the string in `@@base`, `'bug'`, not the model name.
 - `PostTag` is required. To join `Post.tags Tag[]` and `Tag.posts Post[]`, write a third model with one foreign key to each side and an `@@id` of exactly those two columns. Prisma ORM finds it for you, and neither `Post` nor `Tag` names it. A pair of list fields with no such model is rejected. See [Relations and joins](/orm/fundamentals/relations-and-joins#many-to-many).
 - On PostgreSQL, a `DateTime` field comes back as a `Temporal.Instant`, the standard JavaScript object for a point in time. A filter on that field takes the same type, so you can pass a value straight back in.
 
@@ -739,7 +739,8 @@ Narrow a model to one of the variants declared with `@@base`.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB.
-- Pass the variant's model name, such as `'Bug'`, not the string in its `@@base` attribute. On MongoDB you pass the model name too, even though the accessor before it is the collection name.
+- Pass the variant's discriminator value, the string in its `@@base` attribute, such as `'bug'` for `@@base(Task, "bug")`, not its model name. A value the model does not declare, or a call on a model with no `@@discriminator`, throws [`ORM.ARGUMENT_INVALID`](/orm/reference/error-reference#ORM.ARGUMENT_INVALID).
+- Call `variant()` once, on the base model. A second `variant()` call on a narrowed collection throws: select each variant from the base model instead.
 - On PostgreSQL, a variant that sets its own `@@map`, as `Bug` and `Feature` do, is stored in its own table. Read [`createAndCount()`](#createandcount) and [`upsert()`](#upsert) before you write to such a variant.
 - On MongoDB, every variant is a document in the one collection, told apart by the field named in `@@discriminator`.
 
@@ -747,24 +748,24 @@ Narrow a model to one of the variants declared with `@@base`.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `variantName` | `string` | Yes | The model name of the variant. |
+| `value` | `string` | Yes | The discriminator value the variant declares in `@@base`. |
 
 #### Return type
 
 | Return type | Example | Description |
 |---|---|---|
-| `Collection`, narrowed to the variant | `db.orm.public.Task.variant('Bug')` | A collection holding only rows of that variant. |
+| `Collection`, narrowed to the variant | `db.orm.public.Task.variant('bug')` | A collection holding only rows of that variant. |
 
 #### Examples
 
 ##### Narrow to a variant
 
 ```typescript tab="PostgreSQL"
-const bugs = await db.orm.public.Task.variant('Bug').all();
+const bugs = await db.orm.public.Task.variant('bug').all();
 ```
 
 ```typescript tab="MongoDB"
-const tutorials = await db.orm.posts.variant('Tutorial').all();
+const tutorials = await db.orm.posts.variant('tutorial').all();
 ```
 
 ## Read methods [#read-terminals]
@@ -897,7 +898,10 @@ On PostgreSQL you can subclass `Collection` to add your own methods to a model, 
 - `db.orm` cannot use your subclass. Call the `orm(...)` function with a `collections` object to get a second accessor with the same methods as `db.orm.public`. Use that accessor for the models you subclassed, and keep `db.orm.public` for every other model. Your existing `db.orm.public.X` calls keep working.
 - `client` in the example below is what `postgres(...)` returns, the same object [Setting up the client](#setting-up-the-client) calls `db`. The example creates one so that it runs on its own.
 - `Collection<Contract, 'Task'>` takes two type arguments: your contract type, and the name of the model this collection is for.
-- A method that returns `this.variant('Bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
+- A method that returns `this.variant('bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
+- Your methods stay available after `where()`, `orderBy()`, `limit()`, `offset()`, `include()`, `distinct()`, `distinctOn()`, and `cursor()`, because each of them returns the collection's own class. `tasks.Task.where({ title }).bugs()` compiles.
+- To override one of those chaining methods, or a method that returns rows, give the override a type parameter for the receiver and a `this` parameter of that type, and call the base method with `call`: `override limit<Self>(this: Self, n: number): Self { return super.limit.call<Self, [number], Self>(this, Math.min(n, 100)); }`.
+- `apply` and `scope` are methods of every collection, so a member of your own with either name and another signature does not compile. See [Scopes](#scopes).
 
 #### Examples
 
@@ -912,10 +916,10 @@ import contractJson from './contract.json' with { type: 'json' };
 
 class TaskCollection extends Collection<Contract, 'Task'> {
   bugs() {
-    return this.variant('Bug');
+    return this.variant('bug');
   }
   features() {
-    return this.variant('Feature');
+    return this.variant('feature');
   }
 }
 
@@ -930,6 +934,57 @@ const tasks = orm({
 
 const bugs = await tasks.Task.bugs().all();
 const features = await tasks.Task.features().all();
+const recentBugs = await tasks.Task.orderBy((t) => t.id.desc()).limit(10).bugs().all();
+```
+
+### Scopes
+
+A scope is a function from a collection to a collection, a piece of a query you share between places. `apply(scope)` runs one on a collection and returns its result: `db.orm.public.Post.apply((posts) => posts.where({ userId }))` has the same type as `db.orm.public.Post.where({ userId })`. Two helpers make the scopes TypeScript cannot type on its own, and a third turns a sort field from a request into an order.
+
+#### Remarks
+
+- PostgreSQL only.
+- `db.orm.scope(fields, body)` makes a scope for every model that has the given fields. Declare each field with the `field` builders from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `apply` does not compile.
+- `db.orm.public.Post.scope(body)` makes a scope for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`.
+- A scope that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. A scope that orders returns `Ordered<C>`, so `cursor()` compiles after it.
+- `CollectionRowOf<C>` is the row type a collection returns, including the relations `include()` adds. `CollectionTypeStateOf<C>` is what the collection's type records, such as `hasWhere` and `hasOrderBy`. Import these types, `Filtered`, and `Ordered` from `@prisma/orm-postgres/orm-client`.
+- `orderByField(collection, name, direction, allowed)` returns an `orderBy()` selector for a field named in a request. `direction` is `'asc'` or `'desc'`, and `undefined` means `'asc'`. `allowed` lists the fields a request may sort by. It is required, because sorting by any field lets a request learn the value of a secret one from the order of the results. Any other `name` or `direction`, including one that is not a string, throws an error whose `code` is `ORM.ARGUMENT_INVALID` before the query runs.
+- A scope that needs a value is a function that returns a scope, as `ownedBy` below shows. A scope for every model with a `deletedAt` field is how you share a soft-delete filter.
+
+#### Examples
+
+##### A filter for every model with a `userId` field (PostgreSQL)
+
+```typescript title="src/scopes.ts"
+import { field } from '@prisma/orm-postgres/contract-builder';
+
+const ownedBy = (userId: string) =>
+  db.orm.scope({ userId: field.uuidNative() }, (rows) => rows.where((r) => r.userId.eq(userId)));
+
+const posts = await db.orm.public.Post.apply(ownedBy(userId)).all();
+const tasks = await db.orm.public.Task.apply(ownedBy(userId)).all();
+await db.orm.public.Tag.apply(ownedBy(userId)).all(); // type error: Tag has no userId
+```
+
+##### A shared selection for one model (PostgreSQL)
+
+```typescript title="src/scopes.ts"
+import type { CollectionRowOf } from '@prisma/orm-postgres/orm-client';
+
+const summary = db.orm.public.Post.scope((posts) => posts.select('id', 'title').include('user'));
+type PostSummary = CollectionRowOf<ReturnType<typeof summary>>;
+
+const mine = await db.orm.public.Post.where({ userId }).apply(summary).all();
+```
+
+##### Sort by a field from a request (PostgreSQL)
+
+```typescript title="src/routes/posts.ts"
+import { orderByField } from '@prisma/orm-postgres/orm-client';
+
+const posts = await db.orm.public.Post
+  .orderBy(orderByField(db.orm.public.Post, input.orderBy, input.direction, ['title', 'createdAt']))
+  .all();
 ```
 
 ## Write methods [#mutation-terminals]
@@ -941,7 +996,7 @@ For Prisma ORM 7 users: `createMany` is `createAndCount()`, which returns the co
 To catch one of the errors named below, wrap the call in `try` and `catch`, then compare `error.code` with the string given here. For a task-oriented walkthrough, see [Writing data](/orm/fundamentals/writing-data). On MongoDB, a write method rejects a chain that already has `orderBy()`, `limit()`, or `offset()` on it, and every write except `updateAll()` and `deleteAll()` also rejects `include()`. Both throw an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. For grouping several writes into one unit, see [Transactions](/orm/fundamentals/transactions).
 
 :::warning[Filter before you update or delete]
-Always call `where()` before an update or a delete. On MongoDB the six update and delete methods and `upsert()` check for a filter and throw an error whose `code` is `ORM.WHERE_MISSING`, with a message naming the method you called, such as `updateAll() requires a .where() filter. Call .where() before .updateAll()`. On PostgreSQL, these methods do not compile without a `where()`, but nothing checks at run time. If a call without a filter does reach the database, `update()` and `delete()` change a single row and you cannot predict which one, and `updateAll()` and `deleteAll()` change every row.
+Always call `where()` before an update or a delete. On MongoDB the six update and delete methods and `upsert()` check for a filter and throw an error whose `code` is `ORM.WHERE_MISSING`, with a message naming the method you called, such as `updateAll() requires a .where() filter. Call .where() before .updateAll()`. On PostgreSQL, these methods do not compile without a `where()`, and neither do they on a collection filtered on some code paths only, such as `search ? db.orm.public.Post.where({ title: search }) : db.orm.public.Post`. Nothing checks for the filter at run time. If a call without a filter does reach the database, `update()` and `delete()` change a single row and you cannot predict which one, and `updateAll()` and `deleteAll()` change every row.
 :::
 
 The examples below use `aliceId`, `bobId`, `carolId`, `postId`, `tagId`, `tutorialId`, and `userId` for the ids of rows that already exist. Substitute your own.
@@ -1109,7 +1164,7 @@ const inserted = await db.orm.public.Tag.createAndCount([{ label: 'epsilon' }, {
 ```
 
 ```typescript tab="MongoDB"
-const inserted = await db.orm.posts.variant('Tutorial').createAndCount([
+const inserted = await db.orm.posts.variant('tutorial').createAndCount([
   {
     title: 'Variant createAndCount',
     content: 'body',
@@ -1138,7 +1193,8 @@ Update the matched row and return it, or `null` if none matches.
   ```
 
 - Take care on PostgreSQL: `update()` takes an object of field values only, and passing a function instead writes nothing, reports nothing, and returns `null`.
-- On PostgreSQL, `update()` can also relink related rows. `connect()` points the foreign key at a different row, and `disconnect()` removes a many-to-many link without deleting either row.
+- On PostgreSQL, `update()` can also relink related rows. `connect()` points the foreign key at a different row, and `disconnect()` removes a many-to-many link without deleting either row. An update with such a relation callback finds its row by the filter alone, so it throws an error whose `code` is `ORM.ARGUMENT_INVALID` on a collection with an `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()`.
+- On PostgreSQL, `update()` changes the row `first()` would return, so `orderBy()`, `offset()`, `cursor()`, `distinct()`, and `distinctOn()` choose it. After `limit(0)` it changes nothing and returns `null`.
 - Returns `null` when no row matches. On PostgreSQL it also returns `null` when the object you pass is empty and has no keys at all. An object whose values already match the row is different: that update runs and returns the row.
 - On PostgreSQL, [`select()`](#select) and [`include()`](#include) before `.update()` choose which fields and relations come back on the returned row. They change nothing about what is written.
 
@@ -1211,6 +1267,7 @@ Update every matching row and collect the results.
 
 - Available for PostgreSQL and MongoDB. Call `where()` first. Without a filter this changes every row. See the warning at the top of this section.
 - On PostgreSQL, `updateAll()` runs as one statement, so every matching row changes together.
+- On PostgreSQL, a `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()` on the collection makes this method throw an error whose `code` is `ORM.ARGUMENT_INVALID`, because it changes every matching row and cannot apply them. An `orderBy()` is accepted. To change only some of the matching rows, read their ids first, then filter on them, as [Writing data](/orm/fundamentals/writing-data#update-or-delete-a-limited-number-of-rows) shows.
 - On MongoDB, `updateAll()` is not a single operation, and two things follow. If a document begins matching your filter while the call is running, it is updated but not included in the returned rows. If someone else changes a matched document while the call is running, you get their version back, not yours.
 - Prisma ORM has no `db.transaction()` on MongoDB, so you cannot avoid this from the client. To control it, share one `MongoClient` with the MongoDB driver and group the writes in one of the driver's own sessions, shown under [Transactions on MongoDB](/orm/fundamentals/transactions#transactions-on-mongodb).
 
@@ -1247,6 +1304,7 @@ Update every matching row and return the count.
 
 - Available for PostgreSQL and MongoDB. Call `where()` first. Without a filter this changes every row. See the warning at the top of this section.
 - On MongoDB the count leaves out documents that already held the new values. On PostgreSQL it counts every matched row.
+- On PostgreSQL, a `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()` on the collection makes this method throw an error whose `code` is `ORM.ARGUMENT_INVALID`, because it changes every matching row and cannot apply them. An `orderBy()` is accepted. To change only some of the matching rows, read their ids first, then filter on them, as [Writing data](/orm/fundamentals/writing-data#update-or-delete-a-limited-number-of-rows) shows.
 
 #### Options
 
@@ -1279,6 +1337,7 @@ Remove the matched row and return it, or `null` if none matches.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB. Requires a prior `where()` (see the section warning above). Returns `null` when no row matches.
+- On PostgreSQL, `delete()` deletes the row `first()` would return, so `orderBy()`, `offset()`, `cursor()`, `distinct()`, and `distinctOn()` choose it. After `limit(0)` it deletes nothing and returns `null`.
 
 #### Options
 
@@ -1318,6 +1377,7 @@ Remove every matching row and collect the results.
 
 - Available for PostgreSQL and MongoDB. Call `where()` first. Without a filter this deletes every row. See the warning at the top of this section.
 - Every matching row is deleted before the first row reaches you. Stopping the loop early does not save any of them.
+- On PostgreSQL, a `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()` on the collection makes this method throw an error whose `code` is `ORM.ARGUMENT_INVALID`, because it changes every matching row and cannot apply them. An `orderBy()` is accepted. To change only some of the matching rows, read their ids first, then filter on them, as [Writing data](/orm/fundamentals/writing-data#update-or-delete-a-limited-number-of-rows) shows.
 
 #### Options
 
@@ -1348,6 +1408,7 @@ Remove every matching row and return the count.
 #### Remarks
 
 - Available for PostgreSQL and MongoDB. Call `where()` first. Without a filter this deletes every row. See the warning at the top of this section. Returns `0` when no row matches.
+- On PostgreSQL, a `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()` on the collection makes this method throw an error whose `code` is `ORM.ARGUMENT_INVALID`, because it changes every matching row and cannot apply them. An `orderBy()` is accepted. To change only some of the matching rows, read their ids first, then filter on them, as [Writing data](/orm/fundamentals/writing-data#update-or-delete-a-limited-number-of-rows) shows.
 
 #### Options
 
@@ -1444,7 +1505,7 @@ const user = await db.orm.users.where({ email: 'newperson@example.com' }).upsert
 
 ```typescript
 const post = await db.orm.posts
-  .variant('Tutorial')
+  .variant('tutorial')
   .where({ _id: tutorialId })
   .upsert({
     create: {
@@ -2075,13 +2136,13 @@ const moved = await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60002' }).upda
 
 ```typescript
 const incremented = await db.orm.posts
-  .variant('Tutorial')
+  .variant('tutorial')
   .where({ _id: '6650f1c2a1b2c3d4e5f60003' })
   // @ts-expect-error duration is a Tutorial field, not a Post field
   .update((u) => [u.duration.inc(10)]);
 
 const multiplied = await db.orm.posts
-  .variant('Tutorial')
+  .variant('tutorial')
   .where({ _id: '6650f1c2a1b2c3d4e5f60003' })
   // @ts-expect-error duration is a Tutorial field, not a Post field
   .update((u) => [u.duration.mul(3)]);

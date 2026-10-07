@@ -111,9 +111,12 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | --- | --- | --- | --- |
 | `createSchema` | `schema` | `CREATE SCHEMA IF NOT EXISTS "app"` | additive |
 | `createTable` | `schema`, `table`, `columns`, `constraints?` | `CREATE TABLE "public"."post" (...)` | additive |
+| `renameTable` | `schema?`, `table`, `to` | `ALTER TABLE "public"."userProfile" RENAME TO "UserProfile"` | widening |
 | `dropTable` | `schema`, `table` | `DROP TABLE "public"."post"` | destructive |
 
 `columns` is a list of [`col(...)`](#column-and-constraint-helpers) calls and `constraints` a list of `primaryKey(...)`, `unique(...)`, `foreignKey(...)`, and `checkExpression(...)` calls, all rendered inside the `CREATE TABLE` statement. That section shows a full `createTable` call and the SQL it produces.
+
+`renameTable` renames a table and keeps its rows. It also renames each primary key, unique constraint, foreign key, index and check whose name `migration plan` derived from the old table name, so it returns a list of operations: spread it into the list, as in `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. It reads the names from the migration's start and end contracts. Change the table name in your contract (the model name, or its `@@map`), and run `prisma contract emit`. `migration plan` plans the change as a dropped table and a new one: replace that pair with the `renameTable` call, or write the call in an empty migration from [`prisma migration new`](/cli/migration-new). Pass `schema` only when more than one schema has a table of that name. When the start contract has no such table, or the end contract has no table named `to`, it fails with [`MIGRATION.TABLE_RENAME_UNMATCHED`](/orm/reference/error-reference#MIGRATION.TABLE_RENAME_UNMATCHED). On SQLite, `renameTable` takes `table` and `to`.
 
 ### Columns
 
@@ -124,10 +127,10 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | `alterColumnType` | `schema`, `table`, `column`, `options` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint USING "views"::bigint` | destructive |
 | `setNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" SET NOT NULL` | destructive |
 | `dropNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" DROP NOT NULL` | widening |
-| `setDefault` | `schema`, `table`, `column`, `defaultSql`, `operationClass?` | `ALTER TABLE "public"."user" ALTER COLUMN "name" SET DEFAULT 'anonymous'` | additive |
+| `setDefault` | `schema`, `table`, `column`, `operationClass?` | `ALTER TABLE "public"."user" ALTER COLUMN "name" SET DEFAULT 'anonymous'` | additive |
 | `dropDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" DROP DEFAULT` | destructive |
 
-`addColumn` takes a `col(...)` call as `column`. The other methods take the column's name as a string.
+`addColumn` and `setDefault` take a `col(...)` call as `column`. The other methods take the column's name as a string.
 
 `alterColumnType` takes the new type in `options`, which has four fields:
 
@@ -161,7 +164,7 @@ PostgreSQL spells most types the way you wrote them. These are the common ones i
 
 `text`, `integer`, `bigint`, `numeric(10,2)`, `jsonb`, `uuid`, `date`, `bytea`, and `citext` are spelled the same in both places.
 
-`setDefault` runs `SET` followed by whatever you pass as `defaultSql`, so include the keyword: `defaultSql: "DEFAULT 'anonymous'"`, or `defaultSql: 'DEFAULT now()'`. When the column already has a default and you are replacing it, set `operationClass: 'widening'`, which only changes how the CLI reports the operation.
+`setDefault` takes the column with its new default, and Prisma ORM writes the `DEFAULT` clause: `column: col('name', 'text', { default: lit('anonymous'), codecRef: { codecId: 'pg/text@1' } })`, or `column: col('createdAt', 'timestamptz', { default: fn('now()') })`. With a `codecRef`, the column's codec checks a literal default first, and a value it refuses fails with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID). A `migration.ts` that still passes `defaultSql`, written before `8.0.0-rc.15`, stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED); rewrite the call this way. Its `ops.json` still applies. When the column already has a default and you are replacing it, set `operationClass: 'widening'`, which only changes how the CLI reports the operation.
 
 `setNotNull` has an extra precheck that fails while the column still holds a `NULL`, so backfill the column with a `dataTransform` first. [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows the three steps.
 
@@ -175,6 +178,7 @@ PostgreSQL spells most types the way you wrote them. These are the common ones i
 | `dropConstraint` | `schema`, `table`, `constraint`, `kind?` | `ALTER TABLE "public"."user" DROP CONSTRAINT "user_name_key"` | destructive |
 | `addCheckConstraint` | `schema`, `table`, `constraint`, `expression` | `ALTER TABLE "public"."post" ADD CONSTRAINT "post_title_len" CHECK (length("title") > 0)` | additive |
 | `renameCheckConstraint` | `schema`, `table`, `from`, `to` | `ALTER TABLE "public"."post" RENAME CONSTRAINT "post_title_len" TO "post_title_nonempty"` | widening |
+| `renameConstraint` | `schema?`, `table`, `kind`, `from`, `to` | `ALTER TABLE "public"."user" RENAME CONSTRAINT "user_pkey" TO "account_pkey"` | widening |
 | `dropCheckConstraint` | `schema`, `table`, `constraint` | `ALTER TABLE "public"."post" DROP CONSTRAINT "post_title_nonempty"` | destructive |
 
 In these calls, `constraint` is the name to give the constraint, or the name of the one to drop, and `columns` is the list of column names it covers:
@@ -198,11 +202,13 @@ this.addForeignKey({
 }),
 ```
 
+`renameConstraint` renames a constraint of any `kind`: `'primaryKey'`, `'unique'`, `'foreignKey'`, or `'checkConstraint'`. `renameCheckConstraint` is the same call with `kind: 'checkConstraint'`.
+
 `dropConstraint` removes a primary key, unique, or foreign key constraint by name. Pass its kind as `kind`, one of `'primaryKey'`, `'unique'`, or `'foreignKey'`. `kind` is recorded in `ops.json` for reporting only and does not change the SQL; it defaults to `'unique'`. A check constraint has its own `dropCheckConstraint`.
 
 `addCheckConstraint` adds a check to a table that already exists; `checkExpression(...)`, listed under [helpers](#column-and-constraint-helpers), is the same thing inside a `createTable`. In both, `expression` is SQL and goes into the statement as you wrote it, so quote column names yourself: `'length("title") > 0'`.
 
-There is no method that renames a table or a column. [Raw SQL](#raw-sql) shows a column rename; a table rename is the same shape around `ALTER TABLE ... RENAME TO`.
+There is no method that renames a column. [Raw SQL](#raw-sql) shows a column rename. To rename a table, use [`renameTable`](#schemas-and-tables).
 
 ### Indexes
 
@@ -363,7 +369,7 @@ this.dataTransform(endContract, 'backfill-user-displayName', {
 | --- | --- | --- |
 | `rawSql(operation)` | an operation object you write in full | the `operationClass` you set |
 
-Use `rawSql` for a statement that has no method on this page, such as a rename or `COMMENT ON`. `db migrate` checks the database against the end contract after applying a migration, so a raw change has to match a change in your contract: to rename a column, rename the field in `contract.prisma`, run `migration plan`, and replace the `dropColumn` and `addColumn` it writes with one `rawSql`. Pass it an object with these fields:
+Use `rawSql` for a statement that has no method on this page, such as a column rename or `COMMENT ON`. `db migrate` checks the database against the end contract after applying a migration, so a raw change has to match a change in your contract: to rename a column, rename the field in `contract.prisma`, run `migration plan`, and replace the `dropColumn` and `addColumn` it writes with one `rawSql`. Pass it an object with these fields:
 
 | Field | What it is |
 | --- | --- |
