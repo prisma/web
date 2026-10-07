@@ -1,16 +1,39 @@
 ---
-title: Deploy on push
-description: Graduate a Composer app from manual deploys to a Git workflow, with production deploys on push and an isolated preview environment per branch.
+title: Preview and staging environments per Git branch (deploy on push)
+description: Test a new version of your app on its own URL without replacing production. With deploy on push, every branch you push other than the default one gets its own preview environment, and the default branch deploys to production.
 url: /compute/deploy-on-push
-metaTitle: Deploy on push | Prisma Compute
-metaDescription: Connect a GitHub repository and deploy a Prisma Composer app from GitHub Actions with prisma/cloud-deploy-action - production on the default branch, isolated preview stages per branch, automatic teardown.
+metaTitle: Preview and staging environments per Git branch | Prisma Compute
+metaDescription: Test a new version without replacing production. Every non-default branch you push gets a preview with its own URL, services and, optionally, its own database; a branch you keep works as staging, and the default branch deploys to production.
 ---
 
-You have a [Composer](/composer) app that you deploy by running `deploy module.ts` in a terminal. In this guide you connect its GitHub repository and add a deploy workflow, so pushing replaces that manual step: a push to the default branch updates production, every other branch gets an isolated preview environment, and deleting a branch cleans its preview up.
+To test a new version of your app without replacing the one your users have, push it to a Git branch other than the default one. Once deploy on push is set up, Prisma Compute deploys that branch as a preview environment with its own URL, its own services and its own databases, and the workflow deploys production only when you push to the default branch. A branch you keep, such as `staging`, works as a long-lived staging environment, and deleting a branch removes its preview.
+
+This guide sets that up for a [Prisma Composer](/composer) app that you deploy today by running `deploy module.ts` in a terminal. Composer is in [Early Access](/console/more/feature-maturity#early-access), so its commands can change between releases. You connect the app's GitHub repository and add a deploy workflow, and from then on a push replaces that manual step.
+
+## Host a test version without replacing production
+
+When the workflow from this guide runs, each Git branch you push, other than the default one, becomes its own environment next to production. The preview gets the following, separate from production:
+
+- **Its own deployment and URL.** The deploy action deploys the branch as a preview named after it, and the workflow run prints the preview's URL in its deploy report. Custom domains attach to production only, so a preview is reached at its generated URL.
+- **The whole app, not only the frontend.** Every service your module declares, such as a frontend and an API, runs in the preview as its own service. The code is the only thing a preview shares with production.
+- **Preview environment variables.** Every preview reads the preview-scoped values, and a branch override changes a value for one branch; production values are used only by production. See [Environment variables](/compute/environment-variables).
+- **Its own databases.** Each Prisma Postgres database your module declares is created for the branch, so what you write in the preview stays out of the production database. Don't assume production data is copied into it. If the app reads its connection string from a variable such as `DATABASE_URL` instead, the preview is only as separate as that value, so set a preview-scoped `DATABASE_URL` that points at a non-production database.
+- **Production stays on the default branch.** The workflow deploys production only from the default branch, so a push to any other branch never touches production. If a production deploy goes wrong, `npx prisma service version rollback <service>` puts the previous version back without a rebuild; see [Deployments](/compute/deployments#promote-and-roll-back).
+- **Teardown with the branch.** Deleting the Git branch removes the preview's services, databases and buckets. Automated cleanup never touches production or the default branch.
+
+### A long-lived staging environment
+
+A Git branch you keep, such as `staging`, works as a staging environment. Every push to it updates the same preview in place, and branch overrides give it staging values for the variables that differ. Variables are read at deploy time, so an override applies from the next push:
+
+```npm
+npx prisma project env add API_BASE_URL=https://staging-api.example.com --branch staging
+```
+
+When a release is ready, merge `staging` into the default branch, and that push updates production. On Compute, the staging services cost money only while they do work, such as serving traffic, because creating a preview branch is free and an idle app scales to zero; see [Compute pricing](/compute/pricing#what-is-not-billed-separately). Without GitHub, `npx prisma deploy module.ts --stage staging` deploys the same kind of persistent staging environment from your terminal or another CI system, as [Deploying](/composer/deploying#production-and-stages) shows.
 
 ## How it works
 
-Push-to-deploy has two parts, and you set up both:
+Push-to-deploy needs a repository connection and a deploy workflow, and you set up both:
 
 1. **The repository connection.** [`git connect`](/cli/git) installs the Prisma GitHub App and registers the repository with your project. This lets workflow runs authenticate: a job exchanges its GitHub OIDC token for a Prisma workspace token that expires after 30 minutes, so the workflow needs no repository secrets. The connection also subscribes the project to branch events, which is what tears a preview down when its Git branch is deleted.
 2. **The deploy workflow.** [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) runs in your repository's GitHub Actions. On each push it installs dependencies, runs your build, and runs the [`deploy` command](/cli/deploy) against production or a stage named after the branch.
