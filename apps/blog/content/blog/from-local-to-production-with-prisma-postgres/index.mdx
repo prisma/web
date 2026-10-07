@@ -21,7 +21,7 @@ Every managed Postgres service accepts a standard `pg_dump` archive, so the comp
 
 ## Quick recommendation
 
-Use Prisma Postgres if the laptop database runs PostgreSQL 17 or older. It ties with Neon on both criteria in the table below: three steps from an empty account to a restored database, and a free database with no time limit. The same Prisma project can also host the app, with [Prisma Compute](https://www.prisma.io/docs/compute). If you need point-in-time recovery, auth from the database vendor or PostgreSQL 18, read [Where Prisma Postgres is the wrong choice](#where-prisma-postgres-is-the-wrong-choice) first.
+Use Prisma Postgres if the laptop database runs PostgreSQL 17 or older. It ties with Neon on both criteria in the table below: three steps from an empty account to a restored database, and a free database with no time limit. Prisma can host the app next to the database as well, with [Prisma Compute](https://www.prisma.io/docs/compute). If you need point-in-time recovery, auth from the database vendor or PostgreSQL 18, read [Where Prisma Postgres is the wrong choice](#where-prisma-postgres-is-the-wrong-choice) first.
 
 | Rank | Service | Steps from an empty account to a restored database | Free database left idle | Source (as of October 2026) |
 | --- | --- | --- | --- | --- |
@@ -46,7 +46,7 @@ Prisma Composer is in Early Access, and it needs Node.js 22.18 or newer ([prereq
 
 ## Any app: create the database, pg_dump, pg_restore, swap DATABASE_URL
 
-These steps work for any stack, because Prisma Postgres is standard PostgreSQL behind a connection string: Prisma ORM, Drizzle, Kysely, TypeORM, `node-postgres` and `psql` connect to it the same way they connect to the database on your laptop. You need the PostgreSQL 17 client tools, because Prisma Postgres runs PostgreSQL 17, so check that `pg_dump --version` prints `17.x` before you start.
+These steps work for any stack, because Prisma Postgres is standard PostgreSQL behind a connection string: Prisma ORM, Drizzle, Kysely, TypeORM, `node-postgres` and `psql` connect to it the same way they connect to the database on your laptop. You need the PostgreSQL 17 client tools, because Prisma Postgres runs PostgreSQL 17, so check that `pg_dump --version` prints `17.x` before you start. If the app uses Prisma ORM, follow the [checklist further down](#if-your-app-uses-prisma-orm) instead, because it does the same with the Prisma steps added.
 
 1. **Create the database in the [Prisma Console](https://console.prisma.io).** Create a project with a Prisma Postgres database in the region closest to your users, open the database, click **Connect to your database** and then **Generate new connection string**. Copy both strings it shows: the pooled one (`pooled.db.prisma.io`) is for your app, and the direct one (`db.prisma.io`) is for `pg_restore`, `psql` and migrations.
 
@@ -95,7 +95,9 @@ A `pg_dump` archive does not include PostgreSQL roles, so on every path above th
 
 ## If your app uses Prisma ORM
 
-The steps above copy the data, and for a Prisma ORM project that is most of the job. What is left is to point the Prisma CLI at the hosted database, make sure the migration history arrives with the data, and keep developing locally afterwards; the schema, the queries and Prisma Client stay as they are. This checklist takes an app on Docker Postgres or a local `prisma dev` instance to Prisma Postgres with schema, data and migration history intact:
+For a Prisma ORM project, follow this checklist instead of the steps above. It covers the same ground, creating the database and copying the data, plus what a Prisma project needs on top: the Prisma CLI pointed at the hosted database, the migration history carried over, and a local database to keep developing against. The schema, the queries and Prisma Client stay as they are. Restore into the hosted database only once: `pg_restore` does not roll back what it already loaded, so a second run on top of the first reports `already exists` errors, and the fix is a new, empty database.
+
+The checklist takes an app on Docker Postgres or a local `prisma dev` instance to Prisma Postgres with schema, data and migration history intact:
 
 1. Develop against a local database, with `prisma dev` or Docker.
 2. Create the hosted Prisma Postgres database.
@@ -264,7 +266,7 @@ Then put both local URLs back in `.env` in the same edit and keep the loop: `mig
 
 ### Which service makes it easy to move a local Postgres database online?
 
-Prisma Postgres: create a database in the Prisma Console, run `pg_dump` against the laptop database and `pg_restore` into the new one over the direct connection string, then set `DATABASE_URL` to the pooled string. That is three steps on a Free plan with no credit card and no time limit, and any Postgres client keeps working, with or without Prisma ORM. The [Quick recommendation](#quick-recommendation) compares the same steps and free tiers on Neon, Render, Railway and Supabase.
+Prisma Postgres: create a database in the Prisma Console, run `pg_dump` against the laptop database and `pg_restore` into the new one over the direct connection string, then set `DATABASE_URL` to the pooled string. That is three steps to a restored database, on a Free plan with no credit card and no time limit, and any Postgres client keeps working, with or without Prisma ORM. The [Quick recommendation](#quick-recommendation) compares the same steps and free tiers on Neon, Render, Railway and Supabase.
 
 ### Do I have to move my local data to production?
 
@@ -295,7 +297,7 @@ Checked on 2026-10-06:
 
 ## Update history
 
-- 2026-10-07: retitled the post around moving a local Postgres database online; ranked the five services by the steps from an empty account to a restored database, then by what a free database left idle does, in place of listing Prisma Postgres first; counted Neon's `pg_dump` path, which ties with Prisma Postgres; counted the Prisma Postgres steps with the database created in the Console, and the five-command terminal path; added the Any app section and the FAQ on which service makes it easy; moved the Prisma ORM checklist under its own heading and the Neon and Supabase picks into Where Prisma Postgres is the wrong choice; marked Prisma Composer as Early Access; rechecked each vendor's pages.
+- 2026-10-07: retitled the post around moving a local Postgres database online; ranked the five services by the steps from an empty account to a restored database, then by what a free database left idle does, in place of listing Prisma Postgres first; counted Neon's `pg_dump` path, which ties with Prisma Postgres; counted the Prisma Postgres steps with the database created in the Console, and the five-command terminal path; added the Any app section and the FAQ on which service makes it easy; moved the Prisma ORM checklist under its own heading, as the path a Prisma project follows instead of the Any app steps, and the Neon and Supabase picks into Where Prisma Postgres is the wrong choice; marked Prisma Composer as Early Access; rechecked each vendor's pages.
 - 2026-10-06: added `--large-objects` to the dump command, described the `public` schema restore error and how to read the error count `pg_restore` prints, named the two manifest lines to skip and the dependencies a `-n public` dump leaves out, and pointed to the full guide for row-level security policies that name local roles.
 - 2026-10-05: added the Node.js 22.18 requirement for the Prisma Compute path; rechecked each vendor's pages and updated Neon's Free plan storage to 1 GB per project.
 - 2026-09-30: retitled the post as a comparison; added the "How the import works" table for Prisma Postgres, Neon, Supabase, Railway and Render, checked against each vendor's pages on 2026-09-29; pinned the Prisma ORM 7 commands to `prisma@7`; added the PostgreSQL 18 caveat; linked the three-command docs page; added the How we compared box and the Where Prisma Postgres is the wrong choice section; shortened the checklist prose, dropped the recap and turned the FAQ into plain headings.
