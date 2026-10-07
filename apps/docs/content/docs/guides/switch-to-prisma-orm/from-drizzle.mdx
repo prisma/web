@@ -37,7 +37,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 Migrate this Drizzle project to Prisma ORM without changing the database.
 
 1. Run `npx prisma@latest orm init --target postgres` in the project root, choose PSL and the default schema path. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Keep the existing `DATABASE_URL` in `.env`; Drizzle and Prisma ORM use the same connection string format.
-2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), replace every `Timestamptz` field type with `TimestamptzString`, and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
+2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
 3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. All three must succeed before you touch application code.
 4. Replace the Drizzle queries one route at a time following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-drizzle.md: import `db` from `src/prisma/db.ts`, use `db.orm.public.<Model>` with `.include(...)`, `.create(...)`, `.where(...).update(...)` and `.where(...).delete(...)`. Run each route with curl before and after, and show me the responses.
 5. When no file imports `drizzle-orm` any more, remove `src/db/`, `drizzle.config.ts` and the Drizzle packages, and confirm `next build` passes.
@@ -263,11 +263,11 @@ namespace public {
   }
 
   model Users {
-    id        Int           @id(map: "users_pkey") @default(autoincrement())
-    email     String        @unique(map: "users_email_unique")
+    id        Int               @id(map: "users_pkey") @default(autoincrement())
+    email     String            @unique(map: "users_email_unique")
     name      String?
-    role      pg.enum(Role) @default("USER")
-    createdAt Timestamptz   @default(now()) @map("created_at")
+    role      pg.enum(Role)     @default("USER")
+    createdAt TimestamptzString @default(now()) @map("created_at")
     posts     Posts[]
     profiles  Profiles?
 
@@ -280,7 +280,7 @@ namespace public {
     content           String?
     published         Boolean             @default(false)
     authorId          Int                 @map("author_id")
-    createdAt         Timestamptz         @default(now()) @map("created_at")
+    createdAt         TimestamptzString   @default(now()) @map("created_at")
     postsToCategories PostsToCategories[]
     author            Users               @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
 
@@ -320,36 +320,24 @@ Here is how each part of the Drizzle schema came through:
 - **Names.** Model names are PascalCase versions of the table names, so they are plural (`Users`, `Posts`); `@@map` keeps the real table name. Snake case columns become camelCase fields with `@map`, so `created_at` is `createdAt`.
 - **Constraints and defaults.** Primary keys, unique constraints and foreign keys keep their database names through `map:`. `serial` columns become `Int @id @default(autoincrement())`. The `default(false)` and `defaultNow()` calls come back as `@default(false)` and `@default(now())`.
 - **Enum.** The `pgEnum("role", ...)` type is a `native_enum Role` block with `@@map("role")`, and the column uses it as `pg.enum(Role) @default("USER")`. The TypeScript type of the field is `'USER' | 'ADMIN'`.
-- **Timestamps.** `timestamp(..., { withTimezone: true })` columns are typed `Timestamptz`. You change this in the next step.
+- **Timestamps.** `timestamp(..., { withTimezone: true })` columns are typed `TimestamptzString`. The column stays `timestamptz`, and your code gets each value as the text PostgreSQL returns. Drizzle gave you a `Date` here, so a JSON response changes from `"2026-09-10T15:32:51.298Z"` to `"2026-09-10 21:32:51.298482+06"`. If a client depends on the ISO form, convert with `new Date(value).toISOString()` at the edge.
 - **Relations.** Each `.references(...)` is an `@relation(...)` on the side that holds the foreign key, with `onDelete: Cascade` carried over. `index: false` records that Drizzle created no separate index for the foreign key. The list side (`posts Posts[]`) is derived for you; the `relations(...)` helpers in `schema.ts` have no equivalent because the contract already knows both directions.
 - **One-to-one.** The unique `user_id` on `profiles` came through as `profiles Profiles?` on `Users` and `user Users` on `Profiles`.
 - **Many-to-many.** The join table is an explicit `PostsToCategories` model with a composite `@@id`, and `Posts` and `Categories` each hold a list of the join model, not of each other. Prisma ORM has no implicit many-to-many; the [many-to-many section](#many-to-many-relations-in-prisma-8) below shows how to add the direct traversal.
 
 ## 3. Review the contract
 
-Inference is a starting point. Make three edits before you emit.
+Inference is a starting point. Make two edits before you emit.
 
 ### 3.1. Singularize the model names
 
 Rename the models to singular PascalCase and keep every `@@map`, so the table names do not change: `Categories` becomes `Category`, `Users` becomes `User`, `Posts` becomes `Post`, `Profiles` becomes `Profile`, and `PostsToCategories` becomes `PostToCategory`. Update the relation field types to match, and rename the `profiles` field on `User` to `profile`.
 
-### 3.2. Use string timestamps
-
-Change both `Timestamptz` fields to `TimestamptzString`. `Timestamptz` reads and writes through the `Temporal` API, which Node.js does not ship yet; with the inferred type, the first query that touches a timestamp fails:
-
-```text no-copy
-Error [StructuredError]: Codec 'pg/timestamptz-temporal@1' cannot decode a value because this runtime has no global Temporal implementation.
-  code: 'RUNTIME.TEMPORAL_UNAVAILABLE',
-  fix: "Run on a runtime with Temporal available, install a Temporal polyfill before creating the client, or author the column with its *String type to read and write PostgreSQL's own text instead."
-```
-
-`TimestamptzString` keeps the `timestamptz` column exactly as it is and hands your code the value as a string. Drizzle gave you a `Date` here, so a JSON response changes from `"2026-09-10T15:32:51.298Z"` to `"2026-09-10 21:32:51.298482+06"`. If a client depends on the ISO form, convert with `new Date(value).toISOString()` at the edge.
-
-### 3.3. Add direct many-to-many fields
+### 3.2. Add direct many-to-many fields
 
 Add `categories Category[]` to `Post` and `posts Post[]` to `Category`, next to the existing `postsToCategories` lists. The join model stays, and the two new fields resolve through it, so `Post` can include its categories directly. This is a contract-only change: the storage hash stays the same and no migration is needed.
 
-After the three edits the contract looks like this:
+After the two edits the contract looks like this:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
@@ -498,7 +486,7 @@ export async function GET() {
 }
 ```
 
-The response has the same shape as before; the only visible change is the timestamp format from step 3.2:
+The response has the same shape as before; the only visible change is the timestamp format, which step 2 explains:
 
 ```bash
 curl http://localhost:3000/api/users
@@ -551,7 +539,7 @@ export async function GET() {
 }
 ```
 
-With the `categories` field you added in step 3.3, Prisma ORM includes the categories directly and drops the join records from the result:
+With the `categories` field you added in step 3.2, Prisma ORM includes the categories directly and drops the join records from the result:
 
 ```typescript title="src/app/api/posts/route.ts"
 import { NextResponse } from "next/server";
@@ -770,7 +758,7 @@ model PostToCategory {
 
 The implicit form from Prisma ORM 7, list fields on both sides with no join model, is not supported: the contract compiler rejects it and asks for an explicit join model. If you are coming from Prisma ORM 7 and expected a hidden `_CategoryToPost` table, there is none; the join table you already have is the model.
 
-What you can do is add direct list fields on both sides next to the join model, as step 3.3 did. The contract records the relation as many-to-many through the join table's columns, the storage hash does not change, and the direct fields unlock three query shapes:
+What you can do is add direct list fields on both sides next to the join model, as step 3.2 did. The contract records the relation as many-to-many through the join table's columns, the storage hash does not change, and the direct fields unlock three query shapes:
 
 ```typescript
 // Categories nested directly under each post, without the join records
@@ -808,11 +796,10 @@ await db.orm.public.Post.where({ id: postId }).update({
 
 :::warning
 
-If you edit the contract after signing, `db verify` fails with `CONTRACT.MARKER_MISMATCH` (`Contract storageHash does not match database marker`). When the database still matches the new contract, as with a type change from `Timestamptz` to `TimestamptzString`, run `contract emit` and then `db sign` again; the signature moves from the old hash to the new one. When the change needs new columns or tables, use `db update` or `migration plan` instead of re-signing.
+If you edit the contract after signing, `db verify` fails with `CONTRACT.MARKER_MISMATCH` (`Contract storageHash does not match database marker`). When the database still matches the new contract, as with a type change from `TimestamptzString` to `Timestamptz`, run `contract emit` and then `db sign` again; the signature moves from the old hash to the new one. When the change needs new columns or tables, use `db update` or `migration plan` instead of re-signing.
 
 :::
 
-- Inferred `Timestamptz` fields fail at query time with `RUNTIME.TEMPORAL_UNAVAILABLE` on Node.js. Change them to `TimestamptzString` before you emit, as in step 3.2.
 - `.count()` is only valid inside an `.include(...)` callback. To count rows, use `.aggregate((a) => ({ total: a.count() }))`.
 - In a long-running server, do not call `db.close()` in route handlers; the connection pool is shared across requests. Close it only on process shutdown, and never in a Next.js route.
 - Bare `.update()` and `.delete()` need a `.where(...)` and touch one row. Use `.updateAll(...)` and `.deleteAll()` for many rows.

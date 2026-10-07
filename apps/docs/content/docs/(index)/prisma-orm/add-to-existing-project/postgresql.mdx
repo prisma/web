@@ -101,12 +101,12 @@ The command replaces the example contract from step 2. For a database with a `us
 
 namespace public {
   model User {
-    id        Int         @id(map: "user_pkey") @default(autoincrement())
-    email     String      @unique(map: "user_email_key")
+    id        Int               @id(map: "user_pkey") @default(autoincrement())
+    email     String            @unique(map: "user_email_key")
     name      String?
-    role      String      @default("member")
+    role      String            @default("member")
     age       Int?
-    createdAt Timestamptz @default(now()) @map("created_at")
+    createdAt TimestamptzString @default(now()) @map("created_at")
     posts     Post[]
 
     @@check(expression: "(age >= 0)", map: "user_age_check")
@@ -136,7 +136,7 @@ namespace public {
 }
 ```
 
-Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `namespace public` holds the models of the tables in the PostgreSQL schema `public`. Where Prisma ORM 7 wrote `DateTime @db.Timestamptz`, the contract writes `Timestamptz`, and `String @db.VarChar(200)` becomes `VarChar(200)`. In the policy block, `roles = [public]` is the PostgreSQL role `PUBLIC`, not the schema.
+Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `namespace public` holds the models of the tables in the PostgreSQL schema `public`. Where Prisma ORM 7 wrote `DateTime @db.Timestamptz`, the contract writes `TimestamptzString`, and `String @db.VarChar(200)` becomes `VarChar(200)`. In the policy block, `roles = [public]` is the PostgreSQL role `PUBLIC`, not the schema.
 
 `contract infer` reads these parts of the database and writes each one into the contract:
 
@@ -153,23 +153,11 @@ Review the file before you go on. You can rename models, and you can remove the 
 
 A table without a model stays in your database, and later migrations leave it alone. Do not remove the model of a table that has row-level security policies, though. If you do, `db sign` in step 6 fails, because it finds policies that the contract does not declare.
 
-### Date and time columns on Node.js 24 and older
+### Date and time columns
 
-`contract infer` gives a `timestamptz` column the type `Timestamptz`, and a `timestamp` column the type `Timestamp`. Prisma ORM returns the values of these columns as `Temporal` objects. `Temporal` is the new date and time API of JavaScript. Node.js 26 has it built in. Node.js 24 and older do not, and there the first query that reads such a column fails with `RUNTIME.TEMPORAL_UNAVAILABLE`.
+`contract infer` gives a `timestamptz` column the type `TimestamptzString`, a `timestamp` column `TimestampString`, a `date` column `DateString`, and a `time` column `TimeString`. Your code reads and writes these fields as the text PostgreSQL returns, such as `2026-09-30 07:36:38.60182+02`. Where your code needs a JavaScript `Date`, `new Date(value)` turns a `TimestamptzString` value into one.
 
-On Node.js 24 or older, install the `temporal-polyfill` package:
-
-```npm
-npm install temporal-polyfill
-```
-
-Then add this line at the top of `src/prisma/db.ts`:
-
-```typescript title="src/prisma/db.ts"
-import "temporal-polyfill/global";
-```
-
-If you would rather not add the package, change the type of each such field in the contract: `Timestamptz` becomes `TimestamptzString`, and `Timestamp` becomes `TimestampString`. The field then holds the text that PostgreSQL returns, such as `2026-09-30 07:36:38.60182+02`, and needs no `Temporal`. The column in the database stays as it is.
+If you would rather get `Temporal` objects, the new date and time API of JavaScript, change the type of the field in the contract: `TimestamptzString` becomes `Timestamptz`, and `TimestampString` becomes `Timestamp`. The column in the database stays as it is. Node.js 26 has `Temporal` built in. Node.js 24 and older do not, and there the first query that reads a `Temporal` field fails with `RUNTIME.TEMPORAL_UNAVAILABLE` unless you install the `temporal-polyfill` package and add `import "temporal-polyfill/global";` at the top of `src/prisma/db.ts`.
 
 ### Tables in other PostgreSQL schemas
 
