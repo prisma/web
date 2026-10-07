@@ -145,7 +145,7 @@ On PostgreSQL, the date and time types reach your code as `Temporal` values: `Da
 - `@@check(expression: "total >= 0", name: "order_total_positive")` adds a check constraint of your own to the table. See [Check constraints](#check-constraints).
 - `@@control(observed)` says how far Prisma ORM manages the table. See [Control policy](#control-policy).
 
-A field can be a list on PostgreSQL: `tags String[]` is a `text[]` column, and the same works for `Int[]` and the other scalar types. Prisma ORM adds a check constraint to a list column so it cannot hold a `NULL` element. To leave that constraint out, for example when the column already exists without it, add `@noCheck(elementNotNull)` to the field. Lists of enums and of named types are not supported; a list of a value object is, as [Value objects](#value-objects) shows.
+A field can be a list on PostgreSQL: `tags String[]` is a `text[]` column, and the same works for `Int[]` and the other scalar types. Prisma ORM adds a check constraint to a list column so it cannot hold a `NULL` element. To allow `NULL` elements, put the `?` on the element type: `String?[]` allows `null` elements, `String[]?` allows a `null` list, and `String?[]?` allows both. In your code, `String?[]` is a `ReadonlyArray<string | null>` and `String[]?` is a `ReadonlyArray<string> | null`. To leave the check constraint out of a list that does not allow `NULL` elements, for example when the column already exists without it, add `@noCheck(elementNotNull)` to the field. The field's type does not change. A list of an enum or of a named type works the same way, and so does a list of a value object, as [Value objects](#value-objects) shows.
 
 `@updatedAt` is gone, so write `temporal.updatedAt()` where the field's type would go:
 
@@ -175,7 +175,7 @@ On PostgreSQL the primary key is an ordinary column, so pick its type and defaul
 
 ### Default values
 
-Write each default in a form its column can hold. A quoted string is text, for example, so it cannot be the default of a JSON, decimal, or floating-point column. When a default does not fit its column, `contract emit` fails with `PSL_DEFAULT_TYPE_INCOMPATIBLE` and names the types the column accepts. The examples below show the form for each kind of column:
+Write each default in a form its column can hold. A quoted string is text, for example, so it cannot be the default of a JSON, decimal, or floating-point column. When a default does not fit its column, `contract emit` fails with `PSL_VALUE_TYPE_INCOMPATIBLE` and names the types the column accepts. A single value on a list field fails with `PSL_DEFAULT_LIST_EXPECTED`, and text that is not a valid value of its kind, such as a `json` literal that is not a JSON document, fails with `PSL_INVALID_LITERAL`. The examples below show the form for each kind of column:
 
 ```prisma title="src/prisma/contract.prisma (excerpt)"
 model Account {
@@ -197,6 +197,8 @@ model Account {
 - `NaN`, `Infinity`, and `-Infinity` are written without quotes, and so are `true` and `false`.
 - A text default is a quoted string, and so is a fixed date or time, as `startsOn` shows. A `DateTime` default is a point in time with a UTC offset, such as `"2024-01-01T00:00:00Z"`, and a `Timestamp` default has no offset, such as `"2024-01-01 00:00:00"`.
 - `contract emit` stores a fixed date or time default in one canonical text for each value, however you write it. `@default("2024-01-01T01:00:00+01:00")` on a `DateTime` field is stored as `"2024-01-01T00:00:00Z"`, the same instant in UTC, and `@default("2024-01-01 12:34:56.500")` on a `Timestamp` field is stored as `"2024-01-01T12:34:56.5"`. `contract infer` and `contract print` write date and time defaults in the same form.
+- A `Bytes` default is a quoted string of base64 text, such as `@default("aGVsbG8=")`, or of PostgreSQL hex text, which starts with `\x`.
+- Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `VarChar(n)` or `Char(n)` takes, a number a `Numeric(p, s)` would round, an integer outside the range of `Int` or `SmallInt`, or text that is not a UUID on a `Uuid` field.
 - A date or time default that the field's type does not hold makes `contract emit` fail with `PSL_INVALID_DEFAULT_LITERAL`, and the message shows a text the field takes. That includes an offset on a `Timestamp`, `Date`, or `Time` default, a missing offset on a `DateTime`, `Timestamptz`, or `Timetz` default, more than six digits after the decimal point (three on SQLite), and a date or time that does not exist, such as `2024-02-30`. The CLI checks these defaults on Node.js 24 too, which has no built-in `Temporal`.
 - On a field typed with an `enum` block, the default is the member's name without quotes, as in `@default(Low)`. On a `pg.enum(...)` field, it is the value the member stores, in quotes, as in `@default("admin")`. [Enums](#enums) covers both.
 - Any other SQL expression is a `sql` tagged literal, and it goes into the column default exactly as written. Write the current time as `now()` and a sequence as `autoincrement()`, not as `` sql`now()` `` or `` sql`autoincrement()` ``, which are refused.
@@ -528,7 +530,7 @@ model Bug {
 
 Field and model names are written bare, as `type` and `Task` are, while table names and discriminator values are quoted, as `"task"` and `"bug"` are. Rows whose `type` column holds `"bug"` are `Bug` records. A variant reuses its base model's fields, so a `Bug` has `id`, `title`, and `type` as well as `severity` and `stepsToRepro`. The base model can be declared before or after its variants. A variant does not declare an `@id` of its own: it takes the base model's primary key.
 
-You query a variant through the base model: `db.orm.public.Task.variant('Bug')` returns the `Bug` rows only, and `public` here is the PostgreSQL schema. Writing a row of a variant starts with the same `variant('Bug')` call. See [`variant()`](/orm/reference/orm-client#variant).
+You query a variant through the base model: `db.orm.public.Task.variant('bug')` returns the `Bug` rows only, and `public` here is the PostgreSQL schema. `variant()` takes the discriminator value from `@@base`, not the model name. Writing a row of a variant starts with the same `variant('bug')` call. See [`variant()`](/orm/reference/orm-client#variant).
 
 On a variant, `@@map` does more than rename: on PostgreSQL it chooses between two storage layouts. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
 

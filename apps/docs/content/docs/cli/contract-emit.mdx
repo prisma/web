@@ -33,14 +33,24 @@ The command emits:
 - `contract.json`, the canonical machine-readable contract
 - `contract.d.ts`, the generated TypeScript contract declarations
 
-Do not edit these files by hand. Re-run `contract emit` after changing the contract source or extension pack list. The first emit after you upgrade from a release before `8.0.0-rc.12` reorders the entries in `contract.d.ts` to follow the order in `contract.json`, which needs no change to your code. The first emit after you upgrade from a release before `8.0.0-rc.13` renames two keys in `contract.json`: each generated default under `execution.mutations.defaults` names its target as `entry` and `field` instead of `table` and `column`. The client refuses a contract that has the old keys, so run `contract emit` after you upgrade. `contract emit` does not rewrite the contracts stored under `migrations/`, such as the snapshots in `migrations/snapshots/`. To rename the keys in them, download the [`rename-execution-ref-keys` script](https://github.com/prisma/orm/blob/v8.0.0-rc.14/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.12-to-8.0.0-rc.13/scripts/execution-ref-entry-field/rename-execution-ref-keys.ts) into your project root and run it there:
+Do not edit these files by hand. Re-run `contract emit` after changing the contract source or extension pack list. The first emit after you upgrade from a release before `8.0.0-rc.12` reorders the entries in `contract.d.ts` to follow the order in `contract.json`, which needs no change to your code. The first emit after you upgrade from a release before `8.0.0-rc.13` renames two keys in `contract.json`: each generated default under `execution.mutations.defaults` names its target as `entry` and `field` instead of `table` and `column`. The client refuses a contract that has the old keys, so run `contract emit` after you upgrade. `contract emit` does not rewrite the contracts stored under `migrations/`, such as the snapshots in `migrations/snapshots/`. To rename the keys in them, download the [`rename-execution-ref-keys` script](https://github.com/prisma/orm/blob/v8.0.0-rc.15/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.12-to-8.0.0-rc.13/scripts/execution-ref-entry-field/rename-execution-ref-keys.ts) into your project root and run it there:
 
 ```bash title="Terminal"
-curl -O https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.14/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.12-to-8.0.0-rc.13/scripts/execution-ref-entry-field/rename-execution-ref-keys.ts
+curl -O https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.15/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.12-to-8.0.0-rc.13/scripts/execution-ref-entry-field/rename-execution-ref-keys.ts
 npx tsx rename-execution-ref-keys.ts
 ```
 
 The script renames `table` to `entry` and `column` to `field` in each `ref` under `execution.mutations.defaults`, in every `.json` and `.d.ts` file under a `migrations/` folder. It leaves each `executionHash` as it is, and a second run changes nothing. Pass `--check` to list the files it would change without writing them.
+
+Since `8.0.0-rc.15`, each SQL column in `contract.json` stores its data type id, such as `"dataType": "pg/text"`, in place of `nativeType`, and the client refuses a contract in the old format. When you upgrade from a release before `8.0.0-rc.15`, upgrade every extension that ships migrations, such as pgvector and PostGIS, in the same step. Then, before the first emit, run the [`data-type-in-contract` script](https://github.com/prisma/orm/blob/v8.0.0-rc.15/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.14-to-8.0.0-rc.15/scripts/data-type-in-contract/data-type-in-contract.ts) in your project root, and sign every database with [`db sign`](/cli/db-sign):
+
+```bash title="Terminal"
+curl -O https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.15/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.14-to-8.0.0-rc.15/scripts/data-type-in-contract/data-type-in-contract.ts
+node data-type-in-contract.ts
+npx prisma db sign --db "$DATABASE_URL"
+```
+
+The script needs Node 24 or later. It rewrites every contract, snapshot, migration, ref, `migration.ts`, and `contract.d.ts` in the project, and every storage hash changes once. Until a database is signed, `db migrate` refuses with `MIGRATION.MARKER_MISMATCH`. Commit your work before you run it, so you can review its changes.
 
 When the contract source cannot be read, the command fails with `CONTRACT.SOURCE_LOAD_FAILED` and prints each finding, meaning each problem it found in the source, with the file and line where it knows them. In `--json` output, the findings are the entries of the `envelope.diagnostics` array in the final `result` event, next to `envelope.error`. Each entry has a `code`, a `summary`, and, where known, `where.path` and `where.line`. If an entry's `code` is `CONTRACT.SOURCE_DIAGNOSTIC`, the code of the specific problem, such as `PSL_NO_OPTED_IN_SCHEMA_FILES`, is in its `meta.code`.
 

@@ -33,7 +33,7 @@ export const db = postgres<Contract>({
   contractJson,
   url: process.env['DATABASE_URL']!,
   middleware: [
-    createCacheMiddleware({ maxEntries: 1_000 }),
+    createCacheMiddleware(),
     lints(),
     budgets({ maxRows: 10_000, maxLatencyMs: 1_000 }),
   ],
@@ -79,11 +79,11 @@ You write only the hooks you care about, and Prisma ORM skips the ones you leave
 
 **A row query** is anything that returns rows. On the ORM API that is every call except `createAndCount`, `updateAndCount`, and `deleteAndCount`, so `create`, `update`, and `delete` are row queries too. It is also what you get from `db.runtime().query(plan)`. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces. A row query calls your hooks in this order:
 
-`beforeCompile` → `beforeQuery` → `interceptQuery` → `onRow` (once per row) → `afterQuery`
+`beforeCompile` → `beforeQuery` → `interceptQuery` → `onRow` (once per row) → `afterQuery` → `afterTransaction`
 
 **A non-returning write** is a statement that reports how many rows it affected rather than returning them. On the ORM API those are `createAndCount`, `updateAndCount`, and `deleteAndCount`, and with the SQL query builder it is whatever you hand to `db.runtime().execute(plan)`. These run a shorter sequence:
 
-`beforeCompile` → `beforeExecute` → `interceptExecute` → `afterExecute`
+`beforeCompile` → `beforeExecute` → `interceptExecute` → `afterExecute` → `afterTransaction`
 
 `beforeQuery` never runs for a non-returning write, and `beforeExecute` never runs for a row query, so a middleware that has to cover reads and writes both needs a hook in each sequence. In practice that means writing the check once and calling it from `beforeQuery` and from `beforeExecute`:
 
@@ -229,6 +229,14 @@ After a row query, `afterQuery` receives `result.rowCount`, how many rows came b
 After a non-returning write, `afterExecute` receives the same `result.completed`, `result.latencyMs`, and `result.source`, and on a run that completed it also gets the number of rows the statement changed, in `result.stats.affectedRows`. There is no `result.rowCount` on this one, and there is no `result.stats` on a write that failed, so read the count only when `result.completed` is `true`.
 
 Timing, logging, and latency budgets all belong in these two hooks.
+
+### afterTransaction: act once the effects are final
+
+`afterTransaction(plan, result, ctx)` is the last hook of every query, of both kinds. It runs once, when the query's effects are final. For a query inside `db.transaction(...)`, that is after the transaction commits or rolls back, so each query of the transaction gets its call then, not when the query itself finished. For a query outside a transaction, it runs when the query ends.
+
+`result.outcome` says what happened: `'committed'` when the transaction committed, or the query outside a transaction completed; `'rolled-back'` when the transaction rolled back; and `'unknown'` when Prisma ORM cannot tell, for example when a query outside a transaction failed, or a query inside a committed transaction failed. Use this hook for work that must not happen for a write that did not last, such as publishing an event or removing a cache entry.
+
+Inside a transaction, the hooks run while the transaction's connection is still checked out, so keep them short. Do not send a query on that connection, and do not wait on another query through the same client: if every connection of the pool is busy, it never finishes. Prisma ORM logs an error thrown from `afterTransaction` and does not pass it to your code.
 
 ## What ships built in
 
