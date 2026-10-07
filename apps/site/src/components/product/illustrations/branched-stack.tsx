@@ -2,9 +2,11 @@ import { AppWindow, Database, GitBranch } from "@/components/icons/forma";
 import { cn } from "@/lib/utils";
 import { Bar, CardChrome, SurfaceCard } from "./parts";
 
-// "Branch your stack per PR" — production above, a PR branch below, and both
-// halves of the stack peeling off together. The pairing is the point, so app and
-// database always appear as one row, never as two independent things.
+// "A preview per pushed branch": production above, a pushed branch's preview
+// below, and both halves of the stack appearing together. The pairing is the
+// point, so app and database always appear as one row, never as two
+// independent things. Nothing here says the preview's data comes from
+// production, because it does not.
 
 function StackRow({ label, accent }: { label: string; accent?: boolean }) {
   const chip = cn(
@@ -32,7 +34,7 @@ function StackRow({ label, accent }: { label: string; accent?: boolean }) {
 
 export function BranchedStack() {
   return (
-    <SurfaceCard label="Illustration of per-PR branching on Prisma Compute: a production stack and a pull request stack, each pairing an app with its own database branched from production">
+    <SurfaceCard label="Illustration of a preview per pushed branch on Prisma Compute: a production stack and a branch's preview stack, each pairing an app with its own database">
       <CardChrome file="environments" />
       <div className="flex flex-1 flex-col justify-center gap-3 px-4 py-3 text-[0.625rem] leading-none">
         <div className="rounded-lg border border-border/80 bg-card p-3">
@@ -52,7 +54,7 @@ export function BranchedStack() {
 
         <p className="flex items-center gap-1.5 font-mono text-[0.625rem] text-prism-cyan-700">
           <GitBranch className="size-2.5 shrink-0" />
-          branched from production
+          its own app and database
           <Bar className="ml-auto w-10" />
         </p>
       </div>

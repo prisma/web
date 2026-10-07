@@ -89,21 +89,34 @@ function applyCliNamingStandard(body) {
   return replaceInProse(applyVersionNamingStandard(body), /\bManagement API\b/g, "REST API");
 }
 
+const ORM_PAGE = "[Prisma ORM error reference](/orm/reference/error-reference)";
+const CLI_PAGE = "[CLI error reference](/cli/error-reference)";
+
 export const TARGETS = {
   orm: {
     sourceRepo: "prisma/orm",
     output: join(HERE, "../content/docs/orm/reference/error-reference.mdx"),
     applyNamingStandard: applyOrmNamingStandard,
     hostedIntro:
-      "Each code anchors as `#<CODE>` — the exact fragment every emitted error carries in its " +
-      "`docsUrl`. This page is generated from the canonical reference in the `prisma/orm` " +
-      "repository, whose CI requires every code in production source to be documented before it ships.",
+      "When an error prints a `docsUrl`, that link opens the code's entry on this page. " +
+      "This page is generated from the `prisma/orm` repository.",
+    scope:
+      "This page lists the codes from the Prisma ORM commands, which start with `prisma contract`, " +
+      "`prisma db`, `prisma migration`, and `prisma orm`, and the codes your app can raise at runtime, " +
+      `including from extensions. Every other \`prisma\` command has its codes on the ${CLI_PAGE}.`,
+    sharedCliNamespace:
+      "One exception: some `CLI.*` codes come from the command-line layer that every `prisma` command " +
+      "runs through, for its arguments, for loading `prisma.config.ts`, for prompts, and for consent. " +
+      `Those are on the ${CLI_PAGE} even when you ran a Prisma ORM command. ` +
+      "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
+      "The `CLI.*` codes on this page are the ones the Prisma ORM commands raise themselves. " +
+      "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
 title: Error reference
-description: Every structured error code Prisma ORM can emit, by namespace, with the condition that raises it.
+description: The structured error codes of the Prisma ORM commands, runtime, and extensions, by namespace, with the condition that raises each one.
 url: /orm/reference/error-reference
 metaTitle: Prisma ORM error reference
-metaDescription: Every structured error code Prisma ORM can emit, by namespace, with the condition that raises it.
+metaDescription: The structured error codes of the Prisma ORM commands, runtime, and extensions, by namespace, with the condition that raises each one.
 ---
 `,
   },
@@ -112,15 +125,25 @@ metaDescription: Every structured error code Prisma ORM can emit, by namespace, 
     output: join(HERE, "../content/docs/cli/error-reference.mdx"),
     applyNamingStandard: applyCliNamingStandard,
     hostedIntro:
-      "Each code anchors as `#<CODE>` — the fragment an emitted error's `docsUrl` resolves to. " +
-      "This page is generated from the canonical registry in the `prisma/prisma-cli` repository, " +
-      "whose CI requires every code in production source to be documented before it ships.",
+      "When an error prints a `docsUrl`, that link opens the code's entry on this page. " +
+      "This page is generated from the `prisma/prisma-cli` repository.",
+    scope:
+      "This page lists the codes from every `prisma` command except the Prisma ORM ones. The codes " +
+      "from `prisma contract`, `prisma db`, `prisma migration`, and `prisma orm`, and the codes your " +
+      `app can raise at runtime, are on the ${ORM_PAGE}.`,
+    sharedCliNamespace:
+      "One exception: the `CLI.*` codes on this page come from the command-line layer that every " +
+      "`prisma` command runs through, for its arguments, for loading `prisma.config.ts`, for prompts, " +
+      "and for consent. They are on this page even when you ran a Prisma ORM command. " +
+      "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
+      `The Prisma ORM commands also raise \`CLI.*\` codes of their own, and those are on the ${ORM_PAGE}. ` +
+      "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
 title: Error reference
-description: Every structured error code the unified Prisma CLI can emit, by namespace, with the condition that raises it.
+description: The structured error codes of the Prisma CLI platform commands, by namespace, with the condition that raises each one.
 url: /cli/error-reference
 metaTitle: Error reference | Prisma CLI
-metaDescription: Every structured error code the unified Prisma CLI can emit, by namespace, with the condition that raises it.
+metaDescription: The structured error codes of the Prisma CLI platform commands, by namespace, with the condition that raises each one.
 ---
 `,
   },
@@ -159,6 +182,72 @@ function assertMdxSafe(markdown) {
   }
 }
 
+const SOURCE_SCOPE_SENTENCE = "This page lists every published code.";
+
+// Each page covers a subset of the CLI's commands, so the source's claims to
+// list every code are replaced with the target's scope and a link to the
+// other page.
+function addScope(body, target, warnings) {
+  body = body.replace(", and this page lists every code the CLI can emit.", ".");
+  if (body.includes(SOURCE_SCOPE_SENTENCE)) {
+    return body.replace(SOURCE_SCOPE_SENTENCE, target.scope);
+  }
+  warnings.push(
+    `The source no longer contains ${JSON.stringify(SOURCE_SCOPE_SENTENCE)}. ` +
+      "The scope sentence was inserted after the first paragraph instead.",
+  );
+  const firstParagraphEnd = body.search(/\n\s*\n/);
+  if (firstParagraphEnd === -1) return `${body.trimEnd()}\n\n${target.scope}\n`;
+  return `${body.slice(0, firstParagraphEnd)}\n\n${target.scope}${body.slice(firstParagraphEnd)}`;
+}
+
+/** Fumadocs' heading slug (github-slugger) for the heading shapes the sources use. */
+function headingSlug(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    .replace(/\s/g, "-");
+}
+
+const SOURCE_NAMESPACE_TABLE = /^Namespaces:\n\n((?:\|.*\|\n)+)\n?/m;
+
+// The source's own namespace table can fall behind its `##` sections, so the
+// list is rebuilt from the sections. The table still supplies each
+// namespace's description.
+function replaceNamespaceList(body, target) {
+  const descriptions = new Map();
+  const table = body.match(SOURCE_NAMESPACE_TABLE);
+  if (table) {
+    body = body.replace(SOURCE_NAMESPACE_TABLE, "");
+    for (const row of table[1].split("\n")) {
+      const cells = row.split("|").map((cell) => cell.trim());
+      const namespace = cells[1]?.match(/^`([^`]+)`$/)?.[1];
+      if (namespace && cells[2]) descriptions.set(namespace, cells[2]);
+    }
+  }
+
+  const namespaces = [...body.matchAll(/^## (.+)$/gm)].map((match) => match[1].trim());
+  if (namespaces.length === 0) return body;
+  const items = namespaces.map((namespace) => {
+    const description = descriptions.get(namespace);
+    const link = `[\`${namespace}\`](#${headingSlug(namespace)})`;
+    return description ? `- ${link}: ${description}` : `- ${link}`;
+  });
+  const list = ["Namespaces on this page:", "", ...items, ""];
+
+  const firstSection = body.search(/^## /m);
+  body = `${body.slice(0, firstSection)}${list.join("\n")}\n${body.slice(firstSection)}`;
+  if (!namespaces.includes("CLI")) return body;
+
+  // The note answers the reader who arrived with a CLI.* code, so it sits
+  // directly under the paragraph that holds the scope sentence.
+  const scopeAt = body.indexOf(target.scope);
+  const from = scopeAt === -1 ? 0 : scopeAt;
+  const paragraphEnd = body.slice(from).search(/\n\s*\n/);
+  const at = paragraphEnd === -1 ? body.length : from + paragraphEnd;
+  return `${body.slice(0, at)}\n\n${target.sharedCliNamespace}${body.slice(at)}`;
+}
+
 export function transform(target, markdown) {
   assertMdxSafe(markdown);
 
@@ -172,6 +261,10 @@ export function transform(target, markdown) {
     /It is the canonical source for the hosted reference at[\s\S]*?missing from this page\./,
     target.hostedIntro,
   );
+
+  const warnings = [];
+  body = addScope(body, target, warnings);
+  body = replaceNamespaceList(body, target);
 
   // Repo-relative links point at files that only exist in the source repo.
   const blobBase = `https://github.com/${target.sourceRepo}/blob/main/docs/reference/`;
@@ -207,11 +300,11 @@ export function transform(target, markdown) {
   const header = `${target.frontmatter}
 {/* Generated by scripts/generate-error-reference.mjs from
     https://github.com/${target.sourceRepo}/blob/main/docs/reference/error-reference.md
-    Do not edit by hand — changes are overwritten by the sync workflow. */}
+    Do not edit by hand. The sync workflow overwrites changes. */}
 
 `;
 
-  return { mdx: header + body, codeCount: codes.length };
+  return { mdx: header + body, codeCount: codes.length, warnings };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -222,7 +315,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       `Unknown --target ${JSON.stringify(targetName)}. Known: ${Object.keys(TARGETS).join(", ")}`,
     );
   }
-  const { mdx, codeCount } = transform(target, await loadSource(target));
+  const { mdx, codeCount, warnings } = transform(target, await loadSource(target));
+  for (const warning of warnings) console.warn(`Warning: ${warning}`);
   writeFileSync(target.output, mdx);
   console.log(`Wrote ${target.output} with ${codeCount} error codes.`);
 }

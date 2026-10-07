@@ -118,8 +118,20 @@ test("the user-agent condition covers every token the runtime check accepts", ()
     "Claude-User/1.0",
     "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
     "Cursor/1.0",
+    // The user-triggered fetchers, as their vendors document them.
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-User/1.0; +https://docs.mistral.ai/robots)",
+    // Meta documents both forms.
+    "meta-externalfetcher/1.1 (+/documentation/sharing/webmasters/web-crawlers)",
+    "meta-externalfetcher/1.1",
+    "Mozilla/5.0 (compatible; Google-Gemini-CLI/1.0; +https://github.com/google-gemini/gemini-cli)",
   ]) {
     assert.ok(matcher.test(userAgent), `${userAgent} should reach the proxy`);
+    assert.equal(
+      getAgentMarkdownSignal(new Headers({ "user-agent": userAgent })),
+      "user-agent",
+      `${userAgent} should still be rewritten`,
+    );
   }
 });
 
@@ -131,6 +143,18 @@ test("the user-agent condition does not fire for ordinary browsers and crawlers"
     "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
     "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
     "curl/8.7.1",
+    "",
+    // Index, training and ads crawlers from the vendors whose user-triggered
+    // fetchers are on the list. They get the HTML like any other crawler.
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; OAI-AdsBot/1.0; +https://openai.com/bot)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-Index/1.0; +https://docs.mistral.ai/robots)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-Training/1.0; +https://docs.mistral.ai/robots)",
+    "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "meta-webindexer/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "meta-externalads/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "Google-Agent/1.0",
+    "Google-GeminiNotebook/1.0",
   ]) {
     assert.ok(!matcher.test(userAgent), `${userAgent} should not reach the proxy`);
     assert.equal(getAgentMarkdownSignal(new Headers({ "user-agent": userAgent })), undefined);

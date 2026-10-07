@@ -7,6 +7,15 @@ const DOCS_BASE_PATH = "/docs";
  * matcher in `src/proxy.ts` — `proxy-matcher.test.ts` asserts the two agree,
  * because Next.js requires the middleware `config` export to be a literal and
  * so the matcher cannot import from here.
+ *
+ * The last four are user-triggered fetchers (a person asked about the page):
+ * Perplexity-User, MistralAI-User, meta-externalfetcher and Google-Gemini-CLI,
+ * as their vendors documented them on 2026-10-06. The same vendors' index,
+ * training and ads crawlers (MistralAI-Index, MistralAI-Training,
+ * meta-externalagent, meta-webindexer, meta-externalads, facebookexternalhit,
+ * Googlebot) are deliberately not listed and must not match. Same list as
+ * apps/site/src/lib/agent-markdown.ts, which names the source pages; keep the
+ * two in step.
  */
 export const AGENT_USER_AGENT_TOKENS = [
   "chatgpt-user",
@@ -15,6 +24,10 @@ export const AGENT_USER_AGENT_TOKENS = [
   "claude-user",
   "perplexitybot",
   "cursor",
+  "perplexity-user",
+  "mistralai-user",
+  "meta-externalfetcher",
+  "google-gemini-cli",
 ] as const;
 
 const AGENT_USER_AGENT_PATTERNS = AGENT_USER_AGENT_TOKENS.map((token) => new RegExp(token, "i"));

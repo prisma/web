@@ -253,8 +253,8 @@ const securityHeaders = [
 
 /**
  * The marketing pages that also have a Markdown rendition. Mirrors
- * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts and the matcher in
- * src/proxy.ts; src/lib/agent-markdown.test.ts asserts the three agree.
+ * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts;
+ * src/lib/agent-markdown.test.ts asserts the two agree.
  */
 const agentMarkdownPaths = [
   "/",
@@ -324,6 +324,52 @@ const config = {
   transpilePackages: ["@prisma/eclipse"],
   async redirects() {
     return [
+      // Search Console 404s: published docs URLs missing the /docs base path.
+      // Exact mappings preserve the /orm marketing page and unknown-path 404s.
+      { source: "/ai/mcp-tools", destination: "/docs/ai/mcp-tools", permanent: true },
+      {
+        source: "/orm/v6/prisma-client/queries/pagination",
+        destination: "/docs/orm/v6/prisma-client/queries/pagination",
+        permanent: true,
+      },
+      {
+        source: "/orm/reference/migration-api",
+        destination: "/docs/orm/reference/migration-api",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/more/ai-tools/github-copilot",
+        destination: "/docs/orm/v6/more/ai-tools/github-copilot",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/overview/databases/sqlite",
+        destination: "/docs/orm/v6/overview/databases/sqlite",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/prisma-client/client-extensions/shared-extensions/permit-rbac",
+        destination: "/docs/orm/v6/prisma-client/client-extensions/shared-extensions/permit-rbac",
+        permanent: true,
+      },
+      {
+        source:
+          "/orm/v6/prisma-client/debugging-and-troubleshooting/troubleshooting-binary-size-issues",
+        destination:
+          "/docs/orm/v6/prisma-client/debugging-and-troubleshooting/troubleshooting-binary-size-issues",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/prisma-client/deployment/deploy-migrations-from-a-local-environment",
+        destination:
+          "/docs/orm/v6/prisma-client/deployment/deploy-migrations-from-a-local-environment",
+        permanent: true,
+      },
+      {
+        source: "/orm/v6/prisma-client/deployment/edge/deploy-to-cloudflare",
+        destination: "/docs/orm/v6/prisma-client/deployment/edge/deploy-to-cloudflare",
+        permanent: true,
+      },
       // 2026 rebrand: old-site URLs whose content moved in the redesign IA.
       { source: "/about", destination: "/company", permanent: true },
       { source: "/careers", destination: "/company/careers", permanent: true },
@@ -363,12 +409,38 @@ const config = {
         destination: "https://www.prisma.io/:path*",
         permanent: true,
       },
+      // The www. variants are separate entries on purpose: a host value is
+      // matched as an anchored pattern (^value$), so the bare-host entry above
+      // never matches the www. variant, and a literal value can be checked at
+      // a glance where a pattern cannot.
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.prismagraphql.com",
+          },
+        ],
+        destination: "https://www.prisma.io/:path*",
+        permanent: true,
+      },
       {
         source: "/:path*",
         has: [
           {
             type: "host",
             value: "prisma.sh",
+          },
+        ],
+        destination: "https://www.prisma.io/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.prisma.sh",
           },
         ],
         destination: "https://www.prisma.io/:path*",
@@ -619,11 +691,13 @@ const config = {
         destination: "/data-platform/:any*",
         permanent: true,
       },
-      // Point straight at the final 200 destination: /accelerate and /optimize
-      // are themselves redirected to / by vercel.json, and /pulse to /postgres.
+      // Point straight at the final 200 destination, matching vercel.json:
+      // Accelerate keeps its docs until it retires on December 1, 2026, and
+      // Optimize was replaced by Query Insights (there is no /optimize page in
+      // apps/docs). /pulse goes to /postgres.
       {
         source: "/data-platform/accelerate",
-        destination: "/",
+        destination: "/docs/accelerate",
         permanent: true,
       },
       {
@@ -633,7 +707,7 @@ const config = {
       },
       {
         source: "/data-platform/optimize",
-        destination: "/",
+        destination: "/docs/query-insights",
         permanent: true,
       },
       {
@@ -643,7 +717,7 @@ const config = {
       },
       {
         source: "/optimise",
-        destination: "/",
+        destination: "/docs/query-insights",
         permanent: true,
       },
       {

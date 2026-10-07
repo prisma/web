@@ -7,8 +7,9 @@ import { TESTIMONIALS, type Testimonial } from "./testimonials-data";
 // the page reads as one system. Hovering anywhere on the strip pauses both
 // rows; reduced-motion swaps the drift for plain scrollable rows.
 // Quotes sourced verbatim (trimmed) from prisma.io customer case studies
-// (Bucket, Solin, Grover, Invisible, Poppy, Pearly Plan) and the showcase's
-// community quotes (Cal.com, Gamma, Stellate, Trunk, Memberstack, Instatus).
+// (Bucket, Grover, Invisible, Poppy, Pearly Plan), the showcase's community
+// quotes (Cal.com, Gamma, Stellate, Trunk, Memberstack, Instatus) and the
+// former homepage's testimonials (Fluidwave); see testimonials-data.ts.
 // Client logos are the real brand marks (/logos/customers/*.png) where a
 // square mark exists; the rest use letter chips.
 
@@ -23,7 +24,7 @@ const ROWS: { items: Testimonial[]; reverse?: boolean; durationClass: string }[]
     items: [
       TESTIMONIALS[0], // Bucket
       TESTIMONIALS[6], // Cal.com
-      TESTIMONIALS[1], // Solin
+      TESTIMONIALS[1], // Fluidwave
       TESTIMONIALS[8], // Stellate
       TESTIMONIALS[2], // Grover
       TESTIMONIALS[10], // Memberstack

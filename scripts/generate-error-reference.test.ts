@@ -87,3 +87,77 @@ test("a duplicate undotted code is rejected", () => {
     /Duplicate error codes in source: PSL_PRESET_CONFLICT/,
   );
 });
+
+const intro = "Every error is a structured envelope. This page lists every published code.";
+
+function sourceWith({ intro: firstParagraph = intro, namespaces = ["AUTH", "CLI"] }: { intro?: string; namespaces?: string[] } = {}) {
+  const sections = namespaces.map(
+    (namespace) => `## ${namespace}\n\n### ${namespace}.FAILED\n\nIt failed.\n`,
+  );
+  return [
+    "# Error reference",
+    "",
+    firstParagraph,
+    "",
+    "Match on `error.code`.",
+    "",
+    "Namespaces:",
+    "",
+    "| Namespace | Covers |",
+    "| --- | --- |",
+    "| `AUTH` | Workspace authentication |",
+    "",
+    ...sections,
+  ].join("\n");
+}
+
+test("the source's claim to list every code becomes the target's scope with a link to the other page", () => {
+  const { mdx, warnings } = transform(TARGETS.orm, sourceWith());
+
+  assert.ok(mdx.includes(`Every error is a structured envelope. ${TARGETS.orm.scope}`));
+  assert.ok(mdx.includes("[CLI error reference](/cli/error-reference)"));
+  assert.ok(!mdx.includes("This page lists every published code."));
+  assert.deepEqual(warnings, []);
+});
+
+test("the namespace list comes from the source's sections and keeps the table's descriptions", () => {
+  const { mdx } = transform(TARGETS.cli, sourceWith({ namespaces: ["AUTH", "PROJECT"] }));
+
+  assert.ok(
+    mdx.includes(
+      "Namespaces on this page:\n\n- [`AUTH`](#auth): Workspace authentication\n- [`PROJECT`](#project)\n",
+    ),
+  );
+  assert.ok(!mdx.includes("| Namespace | Covers |"));
+  assert.ok(mdx.indexOf("Namespaces on this page:") < mdx.indexOf("## AUTH"));
+});
+
+test("the shared CLI namespace is explained only when the source has a CLI section", () => {
+  const withCli = transform(TARGETS.cli, sourceWith({ namespaces: ["AUTH", "CLI"] })).mdx;
+  const withoutCli = transform(TARGETS.cli, sourceWith({ namespaces: ["AUTH"] })).mdx;
+
+  assert.ok(withCli.includes(TARGETS.cli.sharedCliNamespace));
+  assert.ok(withCli.indexOf(TARGETS.cli.sharedCliNamespace) < withCli.indexOf("Namespaces on this page:"));
+  assert.ok(!withoutCli.includes("One exception:"));
+});
+
+test("a reworded source intro still gets the scope sentence after its first paragraph, with a warning", () => {
+  const { mdx, warnings } = transform(
+    TARGETS.orm,
+    sourceWith({ intro: "Every error is a structured envelope." }),
+  );
+
+  assert.ok(
+    mdx.includes(
+      `Every error is a structured envelope.\n\n${TARGETS.orm.scope}\n\n${TARGETS.orm.sharedCliNamespace}\n\nMatch on`,
+    ),
+  );
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /This page lists every published code/);
+});
+
+test("the frontmatter descriptions do not claim to list every code", () => {
+  for (const target of Object.values(TARGETS)) {
+    assert.doesNotMatch(target.frontmatter, /\bevery\b/i);
+  }
+});

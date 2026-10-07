@@ -53,22 +53,46 @@ test("known agent user agents are a signal", () => {
     "Mozilla/5.0 (compatible; Claude-User/1.0; +Claude-User@anthropic.com)",
     "Mozilla/5.0 (compatible; PerplexityBot/1.0)",
     "Cursor/1.0",
+    // The user-triggered fetchers, as their vendors document them.
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-User/1.0; +https://docs.mistral.ai/robots)",
+    // Meta documents both forms.
+    "meta-externalfetcher/1.1 (+/documentation/sharing/webmasters/web-crawlers)",
+    "meta-externalfetcher/1.1",
+    "Mozilla/5.0 (compatible; Google-Gemini-CLI/1.0; +https://github.com/google-gemini/gemini-cli)",
   ]) {
-    assert.equal(getAgentMarkdownSignal(headers({ "user-agent": userAgent })), "user-agent");
+    assert.equal(
+      getAgentMarkdownSignal(headers({ "user-agent": userAgent })),
+      "user-agent",
+      `${userAgent} should be a signal`,
+    );
   }
 });
 
-test("an ordinary browser user agent is not a signal", () => {
-  assert.equal(
-    getAgentMarkdownSignal(
-      headers({
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
-      }),
-    ),
-    undefined,
-  );
-  assert.equal(getAgentMarkdownSignal(headers({ "user-agent": "Googlebot/2.1" })), undefined);
+test("browsers, search engines and the vendors' other crawlers are not a signal", () => {
+  for (const userAgent of [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    "",
+    // Index, training and ads crawlers from the vendors whose user-triggered
+    // fetchers are on the list. They get the HTML like any other crawler.
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; OAI-AdsBot/1.0; +https://openai.com/bot)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-Index/1.0; +https://docs.mistral.ai/robots)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-Training/1.0; +https://docs.mistral.ai/robots)",
+    "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "meta-webindexer/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "meta-externalads/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "Google-Agent/1.0",
+    "Google-GeminiNotebook/1.0",
+  ]) {
+    assert.equal(
+      getAgentMarkdownSignal(headers({ "user-agent": userAgent })),
+      undefined,
+      `${userAgent || "(empty user agent)"} should not be a signal`,
+    );
+  }
 });
 
 test("Accept wins over the user agent when both are present", () => {
@@ -162,28 +186,13 @@ test("getAgentMarkdownPath normalises to a member of AGENT_MARKDOWN_PATHS", () =
   assert.equal(getAgentMarkdownPath("/nope"), undefined);
 });
 
-// --- the three places the page list is spelled out have to agree ---------
+// --- the two places the page list is spelled out have to agree -----------
+//
+// The proxy is no longer a third: its matcher covers every page for Agent
+// Front, and the nine-page boundary is `getAgentMarkdownRewritePathname`
+// itself. `proxy-matcher.test.ts` checks that the proxy honours it.
 
 const siteRoot = new URL("../..", import.meta.url).pathname;
-
-test("the proxy matcher covers exactly AGENT_MARKDOWN_PATHS", () => {
-  // config.matcher has to be a statically analysable literal, so it cannot be
-  // derived from AGENT_MARKDOWN_PATHS. Read it back out of the source instead.
-  const proxySource = readFileSync(join(siteRoot, "src/proxy.ts"), "utf8");
-  const matcher = proxySource.match(/matcher:\s*\[([\s\S]*?)\]/)?.[1];
-  assert.ok(matcher, "expected a matcher array in src/proxy.ts");
-  assert.ok(matcher.includes('"/"'), "the proxy matcher should cover the homepage");
-
-  const alternation = matcher.match(/"\/:page\(([^)]+)\)"/)?.[1];
-  assert.ok(alternation, "expected a /:page(...) matcher source in src/proxy.ts");
-
-  const matched = new Set(["/", ...alternation.split("|").map((page) => `/${page}`)]);
-  assert.deepEqual(
-    [...matched].sort(),
-    [...AGENT_MARKDOWN_PATHS].sort(),
-    "src/proxy.ts matcher and AGENT_MARKDOWN_PATHS disagree",
-  );
-});
 
 test("next.config.mjs sends Vary/Link for exactly AGENT_MARKDOWN_PATHS", () => {
   const configSource = readFileSync(join(siteRoot, "next.config.mjs"), "utf8");

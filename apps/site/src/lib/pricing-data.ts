@@ -114,7 +114,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
     subtitle: "Perfect for that weekend idea",
     points: [
       "<b>200,000</b> operations<span>*</span> included",
-      "<b>500 MB</b> storage",
+      "<b>1.01 GB</b> storage",
       "<b>50</b> databases",
       "No credit card required",
     ],
@@ -309,7 +309,10 @@ export const comparisonSections: Array<{
     ],
   },
   {
-    title: "Global Cache",
+    // Accelerate, and its cache with it, retires on December 1, 2026 and bills
+    // until then, so the rows stay; the title carries the date. The switch
+    // guide is /docs/postgres/database/switch-from-accelerate.
+    title: "Accelerate cache (retires December 1, 2026)",
     rows: [
       [
         "Cache tag invalidations",

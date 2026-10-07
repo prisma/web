@@ -1,10 +1,85 @@
 ---
-title: FAQ
-description: Quick answers to common questions about Prisma Compute.
+title: "Should I use Prisma Compute? FAQ"
+description: Who Prisma Compute is built for, what it does well, where it has trade-offs, how it compares with Railway, Render, Fly.io and Vercel, and quick answers to common questions.
 url: /compute/faq
-metaTitle: FAQ | Prisma Compute
-metaDescription: Answers to common questions about Prisma Compute, the unified Prisma CLI, branches, environment variables, and domains.
+metaTitle: "Should I use Prisma Compute? FAQ | Prisma Compute"
+metaDescription: Who Prisma Compute is built for, its trade-offs (one region per service, no WebSocket servers, Bun runtime, no cron), how it compares with Railway, Render, Fly.io and Vercel, and quick answers on deploys, branches, variables and domains.
 ---
+
+Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/postgres) on one plan. It has been generally available since August 2026, and the Free plan runs an app and a database with no credit card and no usage billing. It is not a fit for a WebSocket server, an API written in Python or Go, an app that needs more than one region, a frontend that needs a global CDN above all, or a database that needs point-in-time recovery today; Railway, Render, Fly.io, Vercel with Prisma Postgres, and Neon or Supabase fit there. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute. The sections below are for the decision, and the questions that come up once you deploy follow them.
+
+## Who Prisma Compute is built for
+
+Compute is built for apps whose server code is TypeScript and whose database is Postgres, deployed from one GitHub repository:
+
+- A TypeScript frontend, a Node.js, Bun or Next.js API and a Postgres database that you want hosted together, on one plan, with one deploy.
+- A small production app on one bill: Starter is a $10 a month base plus metered compute, with 5M requests and 1M database operations included; [Is Prisma Compute free?](#is-prisma-compute-free) has the Free plan numbers.
+- A repository you already have. You add a [Prisma Composer](/composer) declaration next to your server code instead of rewriting it; see [Should I use Prisma Compute for an existing GitHub repo?](#should-i-use-prisma-compute-for-an-existing-github-repo).
+- Work driven by CI or a coding agent. Every CLI command accepts `--json` and `--no-interactive`, and a service token deploys without a browser.
+
+[Where it has trade-offs](#where-it-has-trade-offs) is the full list of what it does not do. For the cases the opening paragraph rules out, Railway, Render and Fly.io run WebSocket servers and Python or Go APIs, Fly.io runs one app in several regions, Vercel with Prisma Postgres puts the frontend on a global CDN, and a Postgres provider with point-in-time restore covers the last: as of September 2026, [Neon](https://neon.com/docs/introduction/branch-restore) has instant restore with a history window set by the plan, and [Supabase](https://supabase.com/docs/guides/platform/backups) sells it as an add-on on Pro and above.
+
+## What it does well
+
+- One deploy for the app and its database. With [Prisma Composer](/composer) you describe each service and the databases it depends on in TypeScript; `npx prisma dev module.ts` runs it on your laptop, and `npx prisma deploy module.ts` provisions the services on Compute, the databases on Prisma Postgres and the authenticated connections between them.
+- A preview per branch, with its own database. Once [deploy on push](/compute/deploy-on-push) is set up, a push to any non-default branch deploys a stage named after it, with its own services, databases and URL, and deleting the branch tears it down.
+- Nothing to pay while idle. An app scales to zero when idle and costs nothing while it is scaled to zero; deployments and preview branch creation are not billed on their own, and the Free plan has no usage billing at all.
+- Standard Postgres underneath. Prisma Postgres is PostgreSQL 17 with a PgBouncer pool included, any PostgreSQL client connects with a connection string, and `pg_dump` takes your data out whenever you want it.
+- Streaming and background work inside the limits. Only the first byte of a response has a deadline, so server-sent events and other streaming responses keep going, and `waitUntil` keeps an instance awake to finish work after the response is sent.
+- One CLI for people, CI and agents. Every command accepts `--json`, `--format markdown` and `--no-interactive`, a service token authenticates CI, and the [Console](https://pris.ly/pdp) shows the same resources.
+
+## Where it has trade-offs
+
+This is the full list of what Compute and Prisma Postgres do not do today.
+
+- One region per service, chosen from six (`us-east-1`, `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1` or `ap-southeast-1`), with no multi-region deployments; keep the app and its database in the same region.
+- No WebSocket servers. Streaming responses and server-sent events work, but a connection your server has to hold open does not, and `waitUntil` and `KeepAwakeGuard` only stop an instance from scaling to zero.
+- 60 seconds to the first byte. A request that has sent nothing back after 60 seconds gets `504 Gateway Time-out`, while a response that has started streaming is not cut off; move longer work out of the request, as [Request timeout](/compute/request-timeout) shows.
+- Bun runtime. Compute runs TypeScript services on Bun, declared with Composer's `node` or `nextjs` build adapter for Node.js, Bun and Next.js apps; it does not run Python, Go or Docker images.
+- A Composer declaration for existing repos. An app you already have needs a `service.ts` per server and one `module.ts`; the server code stays, but the port comes from `service.port()` and `process.env` reads become service input. `deploy` does not build for you, so you run your build first; see Composer's [limitations](/composer/limitations) before committing to a design.
+- Deploy on push has two parts. Connecting the repository deploys nothing; pushes deploy through the `prisma/cloud-deploy-action` workflow you add, GitHub is the only supported provider, and other CI deploys with a service token.
+- No cron scheduling and no persistent filesystem. Compute runs HTTP services, so a scheduled trigger has to come from outside, and files you need to keep go to [Object Store](/compute/object-storage) or the database.
+- No point-in-time recovery on Prisma Postgres. Paid plans take daily snapshots, kept 7 days on Starter and Pro and 30 days on Business; the Free plan has no backups, and restoring to an arbitrary moment is not available yet. `pg_dump` over a direct connection makes your own copies; see [Backups](/postgres/database/backups).
+- No query cache. Prisma Postgres includes connection pooling but has no query cache of its own.
+- Previews are not copies of production. A preview branch gets its own database with no production data in it; the deploy applies your `migrations/` to a Composer `postgres()` database before the service starts, and a `rawPostgres()` database is yours to migrate.
+- Custom domains are production-only. They attach to the default branch by CNAME, the service needs a promoted version first, and each service can have up to 3.
+
+[Known limitations](/compute/limitations) lists the same items with the CLI, environment variable, GitHub and log details.
+
+## How it stacks up
+
+The table compares Prisma Compute with Railway, Render, Fly.io and Vercel on the eight questions that decide most hosting choices. The Prisma column comes from these docs; every other vendor named on this page was checked against its own documentation and pricing pages as of September 2026, and each competitor cell links to the page it rests on. Vendors change these often, so re-check the row you rely on. We make Prisma Compute and Prisma Postgres, so the honest rows are the ones where the others do things Compute does not: WebSocket servers, more than one region, cron jobs and disks.
+
+| | Prisma Compute | Railway | Render | Fly.io | Vercel |
+| --- | --- | --- | --- | --- | --- |
+| Runtimes | TypeScript services on Bun: Node.js, Bun or Next.js apps ([limitations](/compute/limitations#frameworks-and-runtimes)) | Any language Railpack detects (Node, Python, Go, Ruby, Rust and more) or a Dockerfile ([Railpack](https://docs.railway.com/reference/railpack), [builds](https://docs.railway.com/guides/builds)) | Native runtimes for Node.js and Bun, Python, Ruby, Go, Rust and Elixir, plus Docker ([native runtimes](https://render.com/docs/native-runtimes)) | Any Docker image; guides for JavaScript, Python, Go, Rust and more ([languages and frameworks](https://docs.fly.io/languages-and-frameworks/)) | Functions in Node.js, Bun, Python, Go, Ruby, Rust and Wasm, plus container images ([runtimes](https://vercel.com/docs/functions/runtimes)) |
+| Managed Postgres on the same bill | Prisma Postgres: PostgreSQL 17 with PgBouncer pooling included, on every plan including Free ([Prisma Postgres](/postgres)) | A Postgres template you deploy and maintain yourself, with backups you turn on ([PostgreSQL](https://docs.railway.com/guides/postgresql)) | Render Postgres, managed; the free database holds 1 GB and expires after 30 days ([Postgres](https://render.com/docs/postgresql), [free tier](https://render.com/docs/free)) | Fly Managed Postgres, priced as its own plan on the same account, from $38 a month plus storage ([Managed Postgres](https://docs.fly.io/mpg/)) | No Vercel-run Postgres; Neon, Supabase, Prisma Postgres or AWS Aurora through the Marketplace, billed on the Vercel invoice ([Marketplace storage](https://vercel.com/docs/marketplace-storage)) |
+| Deploy on push from GitHub | The repository connection plus the `prisma/cloud-deploy-action` workflow in your repo; the connection alone deploys nothing ([Deploy on push](/compute/deploy-on-push)) | The Railway GitHub app deploys each push to the connected branch ([GitHub autodeploys](https://docs.railway.com/guides/github-autodeploys)) | Auto-deploys each push to the connected branch from GitHub, GitLab or Bitbucket ([deploys](https://render.com/docs/deploys)) | A GitHub Actions workflow you add, running `flyctl` with a `FLY_API_TOKEN` secret ([continuous deployment](https://docs.fly.io/launch/continuous-deployment-with-github-actions/)) | The Git integration deploys every push from GitHub, GitLab, Bitbucket or Azure DevOps ([Git](https://vercel.com/docs/git)) |
+| Preview per branch | Once deploy on push is set up, every pushed branch gets its own services and databases, built from your migrations, and is torn down with the branch ([Deploy on push](/compute/deploy-on-push#6-preview-a-branch)) | An environment per pull request, deleted when the PR merges or closes ([environments](https://docs.railway.com/guides/environments)) | An environment per pull request; database copies start without production data; needs a Pro workspace or higher ([preview environments](https://render.com/docs/preview-environments)) | Review apps per pull request through the `fly-pr-review-apps` action; databases are yours to add in the workflow ([review apps](https://docs.fly.io/blueprints/review-apps-guide/)) | A preview deployment for every push to a non-production branch; a preview database depends on the provider ([environments](https://vercel.com/docs/deployments/environments)) |
+| Regions | One region per service, chosen from six; no multi-region deployments ([limitations](/compute/limitations#runtime)) | Four regions (US West, US East, EU West, Southeast Asia); multi-region replicas available ([regions](https://docs.railway.com/reference/deployment-regions), [scaling](https://docs.railway.com/reference/scaling)) | Five regions (Oregon, Ohio, Virginia, Frankfurt, Singapore); one region per service ([regions](https://render.com/docs/regions)) | More than a dozen regions, and one app can run Machines in several at once ([regions](https://docs.fly.io/reference/regions/)) | Functions run in one region by default (`iad1`); Hobby is single-region, Pro up to five, Enterprise all ([regions](https://vercel.com/docs/functions/configuring-functions/region)) |
+| WebSocket servers | No; streaming responses work ([limitations](/compute/limitations#runtime)) | Yes; WebSocket connections are exempt from request timeouts ([specs and limits](https://docs.railway.com/networking/public-networking/specs-and-limits)) | Yes; web services accept inbound WebSocket connections ([WebSockets](https://render.com/docs/websocket)) | Yes; the app runs as an ordinary server ([WebSockets with Next.js](https://fly.io/javascript-journal/websockets-with-nextjs/)) | Yes, in beta, on Fluid compute; a connection closes when the function reaches its maximum duration ([WebSockets](https://vercel.com/docs/functions/websockets)) |
+| Cron jobs and persistent disk | Neither: no cron scheduling and no persistent filesystem ([limitations](/compute/limitations#runtime)) | Cron jobs and volumes, one volume per service ([cron jobs](https://docs.railway.com/reference/cron-jobs), [volumes](https://docs.railway.com/reference/volumes)) | Cron jobs and persistent disks; a disk pins the service to one instance ([cron jobs](https://render.com/docs/cronjobs), [disks](https://render.com/docs/disks)) | Scheduled Machines or a Cron Manager app, and Fly Volumes tied to one Machine ([task scheduling](https://docs.fly.io/blueprints/task-scheduling/), [volumes](https://docs.fly.io/volumes/overview/)) | Cron jobs; functions get a read-only filesystem with a 500 MB `/tmp` ([cron jobs](https://vercel.com/docs/cron-jobs), [runtimes](https://vercel.com/docs/functions/runtimes)) |
+| Free plan and lowest paid plan | Free: 1M requests, 360 GB-hours of memory, 4 vCPU-hours, 10 GB of bandwidth, 200k database operations, 500 MB of storage, 50 databases, no usage billing, no credit card. Starter: $10 a month base with 5M requests and 1M operations included, then metered ([pricing](https://www.prisma.io/pricing), [Compute pricing](/compute/pricing)) | Free plan with $1 of credit a month; Hobby is $5 a month including $5 of usage ([plans](https://docs.railway.com/reference/pricing/plans)) | Hobby workspace with no monthly fee; free web services spin down after 15 minutes idle. Pro workspace is $25 a month plus compute ([free tier](https://render.com/docs/free), [pricing](https://render.com/pricing)) | No free plan; pay as you go with no plan fee, and the smallest Machine is about $2 a month ([pricing](https://docs.fly.io/about/pricing/)) | Hobby is free for non-commercial use; Pro is $20 a month including one seat and $20 of usage credit ([Hobby](https://vercel.com/docs/plans/hobby), [Pro](https://vercel.com/docs/plans/pro-plan)) |
+
+### Should I use Prisma Compute for an Express or Hono API?
+
+Yes, when it runs on Node.js or Bun: you declare the server with `compute()` and the `node` build adapter and read the port from `service.port()`, as the [porting page](/composer/porting-an-app) shows, and `npx prisma deploy module.ts` puts it live next to its database, as the [Hono guide](/guides/frameworks/hono) does. Each request has 60 seconds to send its first byte and the API cannot hold WebSocket connections open, so long jobs go through `waitUntil` or a queue and realtime goes through server-sent events or a separate host.
+
+### Should I use Prisma Compute for a Next.js app?
+
+Yes: the `nextjs` build adapter deploys a Next.js app built with `output: 'standalone'`, pages that read runtime config need `export const dynamic = 'force-dynamic'`, and the [Next.js guide](/guides/frameworks/nextjs) covers the setup. Compute is not a CDN or edge platform, so the app renders in one region; if a globally cached frontend matters more than keeping it next to the database, run the frontend on Vercel and point it at Prisma Postgres.
+
+### Should I use Prisma Compute for a SaaS backend with Postgres?
+
+Yes, for a backend whose API is TypeScript and whose data fits Postgres: Starter is a $10 a month base that includes 1M database operations, 10 GB of storage, PgBouncer pooling, daily backups kept 7 days, a spend limit and 5M Compute requests, with memory, active CPU and bandwidth metered on top. There is no point-in-time recovery yet and no backups on the Free plan, so if you must be able to restore to a moment in time today, keep the database on [Neon](https://neon.com/docs/introduction/branch-restore) or on [Supabase](https://supabase.com/docs/guides/platform/backups) with its PITR add-on, and host the API here.
+
+### Should I use Prisma Compute for an existing GitHub repo?
+
+Yes, with one addition: a [Prisma Composer](/composer) declaration, one `service.ts` per server and a `module.ts` that composes them, placed next to the code you already have, and the [porting page](/composer/porting-an-app) has a prompt a coding agent can write it from. `npx prisma deploy module.ts` deploys it from your terminal or CI; deploying on every push needs the repository connection plus the `prisma/cloud-deploy-action` workflow, and only then does each pushed branch get a preview with its own database.
+
+### Should I use Prisma Compute for a WebSocket server?
+
+Not today: WebSocket servers are not supported on Compute, and `waitUntil` only keeps an instance awake without changing how long a connection can live. Railway, Render and Fly.io all run WebSocket servers, as the table above shows, so put the socket server on one of them and keep the rest of the app and the database here if that split suits you.
 
 ## Which package do I install?
 
@@ -30,11 +105,11 @@ A branch is an isolated environment for one line of work. It usually matches a G
 
 ## Does `git connect` deploy my app?
 
-No, it links a project to a GitHub repository, lets that repository's GitHub Actions runs authenticate, and keeps platform branches in sync when Git branches are created or deleted. It does not deploy anything, on connect or on push. Deploys come from a workflow you add; see [Deploy on push](/compute/deploy-on-push). To set the connection up, see the [GitHub integration docs](/compute/github).
+No, it links a project to a GitHub repository, lets that repository's GitHub Actions runs authenticate, and keeps platform branches in sync when Git branches are created or deleted; it deploys nothing, on connect or on push. Deploys come from a workflow you add; see [Deploy on push](/compute/deploy-on-push), and the [GitHub integration docs](/compute/github) for setting the connection up.
 
 ## What does a GitHub push do?
 
-The platform does not handle pushes; your repository's workflow deploys them. Once you [set up deploy on push](/compute/deploy-on-push), each push runs [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action), which builds and deploys to production or to an isolated preview named after the branch. Without that workflow, a push deploys nothing.
+Nothing without a workflow, because the platform does not handle pushes. Once you [set up deploy on push](/compute/deploy-on-push), each push runs [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action), which builds and deploys to production or to an isolated preview named after the branch.
 
 ## Why can't I read my environment variable values back?
 
@@ -50,7 +125,7 @@ npx prisma project env update DATABASE_URL=postgresql://new --role production
 
 ## Does changing a variable redeploy my app?
 
-No. Variables resolve at deploy time, so you need to redeploy for the app to pick up a new value.
+No, variables resolve at deploy time, so the app picks up a new value only after you redeploy.
 
 ## How do I run the CLI from CI?
 
@@ -83,28 +158,36 @@ Add the CNAME record the command returns at your DNS provider. To learn more, se
 
 ## Can preview branches have custom domains?
 
-No. Custom domains are production-only, so they cannot be attached to preview branches.
+No, custom domains are production-only, so they cannot be attached to preview branches.
 
 ## Does Prisma clone my production database for previews?
 
-You should not assume it does. These docs cover app deployment and runtime configuration only, so pass database URLs through [environment variables](/compute/environment-variables) and manage data and migrations yourself.
+No, a preview's databases are provisioned for that branch with no production data in them. For a Composer `postgres()` database the deploy applies your `migrations/` before the service starts; a `rawPostgres()` database, or one you point at through [environment variables](/compute/environment-variables), is yours to migrate. See [Where it has trade-offs](#where-it-has-trade-offs).
 
 ## Do I need Prisma Postgres to use Compute?
 
-No. Your app connects to a database through a connection string you set as an environment variable, such as `DATABASE_URL`. Running [Prisma Postgres](/postgres) with Compute keeps your app next to your database.
+No, your app connects to a database through a connection string you set as an environment variable, such as `DATABASE_URL`. Running [Prisma Postgres](/postgres) with Compute keeps your app next to your database.
+
+## Do I need Prisma ORM to use Compute?
+
+No, Prisma ORM is optional: Compute pairs with it for data access, and Prisma Postgres accepts any PostgreSQL client, so Kysely, Drizzle, `node-postgres` or `psql` work the same way.
 
 ## Can I use the Console instead?
 
-Yes. Use it to inspect projects, branches, services, deployments, integrations, environment variable names, and domain status.
+Yes, use it to inspect projects, branches, services, deployments, integrations, environment variable names, and domain status.
 
 ## Is Prisma Compute free?
 
-You can run apps for free: each month, the Free plan includes 1M requests, 360 GB-hours of provisioned memory, 4 active vCPU-hours, and 10 GB of outbound bandwidth, with no usage billing. Paid plans include from 5M to 100M requests a month, then bill `$1 per million`; provisioned memory, active CPU, and outbound bandwidth are billed per use. See [Pricing](https://pris.ly/pricing-compute) for the rates, included usage by plan, worked examples, and what is not billed separately. For how those rates compare to Vercel's for the same workload, see [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing?utm_source=docs).
+Yes, within the Free plan's monthly limits: 1M requests, 360 GB-hours of provisioned memory, 4 active vCPU-hours and 10 GB of outbound bandwidth, with no usage billing. Paid plans include from 5M to 100M requests a month, then bill `$1 per million`, and bill provisioned memory, active CPU and outbound bandwidth per use. See [Pricing](https://pris.ly/pricing-compute) for the rates, included usage by plan, worked examples and what is not billed separately, and [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing?utm_source=docs) for how those rates compare to Vercel's for the same workload.
 
 ## Why does my service return `504 Gateway Time-out` from openresty?
 
 Your service took more than 60 seconds to start responding, so Compute's ingress answered the client and cancelled the request. Your service is not crashing. The cancellation happens outside it, so no timeout appears in your logs, though the Console does report the 504. Start responding within 60 seconds and move the rest of the work into the background or a queue. See [Request timeout](/compute/request-timeout).
 
+## Is Prisma Compute related to Prisma Cloud?
+
+No, Prisma Compute is unrelated to Palo Alto Networks' Prisma Cloud, which is a cloud security product. `@prisma/composer-prisma-cloud`, the package Composer apps import `compute()` and `rawPostgres()` from, deploys to Prisma Compute and Prisma Postgres and has nothing to do with that product.
+
 ## What are the current limits?
 
-See [Known limitations](/compute/limitations) for what Compute can and can't do.
+[Where it has trade-offs](#where-it-has-trade-offs) above is the list; [Known limitations](/compute/limitations) adds the CLI, environment variable, GitHub, domain and log details.

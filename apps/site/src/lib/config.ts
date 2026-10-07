@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: "Prisma",
   description:
-    "Prisma is the data platform for modern applications — ORM, Postgres, and the tools to build with data.",
+    "Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute: a type-safe ORM for TypeScript, managed Postgres, and hosting for TypeScript apps next to their database on one plan.",
   url: "https://www.prisma.io",
   ogImage: "/og.png",
   // The hero proof line, shared by the homepage and /contact so the numbers
@@ -9,7 +9,6 @@ export const siteConfig = {
   // entry is rendered as "Trusted by <stat> <label>".
   proof: [
     { stat: "500,000+", label: "developers" },
-    { stat: "28%", label: "of the TypeScript ORM market" },
     { stat: "46,500+", label: "GitHub stars" },
   ],
   // Routes per design-ref/sitemap.md (Phase 1)
@@ -68,6 +67,7 @@ export const siteConfig = {
       { label: "Terms", href: "/legal/terms" },
       { label: "SLA", href: "/legal/sla" },
       { label: "Security & Compliance", href: "/legal/security-and-compliance" },
+      { label: "Report Abuse", href: "mailto:abuse@prisma.io" },
     ],
   },
   social: {

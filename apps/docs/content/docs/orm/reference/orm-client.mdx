@@ -955,7 +955,8 @@ Insert a single row and return it.
 - Available for PostgreSQL and MongoDB.
 - On PostgreSQL, you may leave out any field your contract gives a default, including the id. Passing an explicit id is accepted. Nullable fields can be left out too. Every other field is required.
 - On MongoDB, `_id` is the only field you can leave out. Give every other field a value, and write `null` for a field you want empty.
-- On MongoDB, `create()` returns the values you passed plus the `_id` the server assigned, not the stored document. Read the row back if you need a value the database filled in. On PostgreSQL the returned row is read from the database already.
+- On MongoDB, `create()` returns the document as it is stored, with the `_id` the server assigned, and converts its values the same way a read does. It does not query the database again to do this. On PostgreSQL the returned row is read from the database already.
+- On MongoDB, `create()` fails with an error whose `code` is `RUNTIME.ENCODE_FAILED`, before anything is written, when a value does not fit its field: a value of the wrong type, a fraction or an out-of-range number for an `Int32` field, a value that is not one of the field's enum values, or `null` for a field that is not optional. The error names the field.
 - On PostgreSQL, `create()` can create or link related rows in the same transaction. Nest `create()` on the side that does not hold the foreign key, and `connect()` on the side that does.
 - Nested `create()` and `connect()` are not available on MongoDB.
 
@@ -1382,6 +1383,7 @@ Insert a row if none matches, otherwise update the existing row.
 - For a unique constraint on several columns together, name every one of those columns, as in `conflictOn: { orgId: '', email: '' }`. The set you name has to match one `@@unique` constraint.
 - When a row is inserted on PostgreSQL, the `create` side is used as you wrote it.
 - When a row is inserted on MongoDB, a field that appears in both `create` and `update` takes the `update` value.
+- On MongoDB, a field that has an update default, such as `temporal.updatedAt()`, keeps the value you give it in `create` when a document is inserted, and still gets the current time when a document is updated. An upsert whose `create` sets such a field cannot also `pull()` by a match document in its update. That throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`.
 - On MongoDB, the `update` side takes an object of field values or a field-operations callback.
 - On PostgreSQL, `upsert()` does not work on a variant stored in its own table, the same restriction as [`createAndCount()`](#createandcount). It throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`, with the message `upsert() is not supported for MTI variant "Bug" on model "Task". Use createAll() instead.`
 - There is no upsert for such a variant. Read the row with `first()`, then call `create()` or `update()`.
@@ -1957,6 +1959,9 @@ Helpers that build one MongoDB filter condition. Use them for anything other tha
 - `of(field, operator, value)`: pass the MongoDB operator as a string, including the `$`, for example `'$regex'`. Use it for operators the named helpers do not cover, such as `MongoFieldFilter.of('tags', '$size', 3)` on an array field `tags`. A misspelled operator such as `'$regexp'` is not caught until the query runs.
 - `isNull(field)` matches documents where the field is `null` and documents where the field is missing. `isNotNull(field)` matches everything else. To test only whether a field is present, use `MongoExistsExpr.exists(field)` or `MongoExistsExpr.notExists(field)`. Those two are all `MongoExistsExpr` offers.
 - There is no `regex`, `elemMatch`, `all`, or `size` helper. Write those operators through `of`.
+- A filter you pass to the ORM's `where()` converts each value through the field's type, the same way a write does. Pass the value your code reads from that field: a `bigint` for an `Int64` field, decimal text for a `Decimal128` field, a hex string or an `ObjectId` for an `ObjectId` field, and an integer in the 32-bit range for an `Int32` field. A value the field's type refuses throws an error whose `code` is `RUNTIME.ENCODE_FAILED` before the query runs.
+- The helpers accept strings, numbers, booleans, `null`, `Date` values, and arrays and plain objects of these. Put any other value, such as a `bigint` or an `ObjectId`, in a `MongoParamRef` from `@prisma/orm-mongo/value`: `MongoFieldFilter.gt('views', new MongoParamRef(5n))`.
+- The pipeline builder's [`match()`](/orm/reference/pipeline-builder#match) does not convert values. It sends each value as you give it.
 
 #### Options
 
