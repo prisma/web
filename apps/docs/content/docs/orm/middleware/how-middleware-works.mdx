@@ -206,13 +206,13 @@ Check `entry.codecId` before you call `replaceValue`, as the example does. Write
 
 These hooks let you answer a query yourself, so the database never sees it. Return `{ rows }` from `interceptQuery`, or `{ stats }` from `interceptExecute`, and that is what your caller gets back, but return `undefined` and the query carries on to the database as usual. The `stats` you return is the count that statement reports, for example `{ stats: { affectedRows: 0 } }`.
 
-The rows you return are plain objects, keyed by the column aliases in the SQL, holding the values in the form the database driver hands them over: numbers for integers, strings for text and timestamps. A read that selects `id`, `email`, and `createdAt` produces rows like this one:
+The rows you return are plain objects, keyed by the column aliases in the SQL, holding the values in the form the database driver hands them over. On PostgreSQL every value is the text the database printed, so integers are strings, as are text and timestamps. A read that selects `id`, `email`, and `createdAt` produces rows like this one:
 
 ```ts
-{ id: 3, email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
+{ id: '3', email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
 ```
 
-So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: 1, email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database. So if you return a `createdAt` as a string, a caller on the ORM API gets a `Temporal.Instant`, which is the type of a `DateTime` field.
+So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: '1', email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database. So if you return a `createdAt` as a string, a caller on the ORM API gets a `Temporal.Instant`, which is the type of a `DateTime` field.
 
 Before-hooks still run on a query that an intercept hook answers, because every middleware's before-hooks run before any intercept hook, whatever order you list the middleware in. So in the setup at the top of this page, where the cache comes first in the array, `lints` still checks every query before the cache answers it.
 

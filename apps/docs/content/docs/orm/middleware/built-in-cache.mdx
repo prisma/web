@@ -250,13 +250,13 @@ export const store: CacheStore<unknown, CachedRows> = {
   async unset({ keys, meta }) {
     if (meta !== undefined) throw new Error('This store does not index meta');
     for (const key of keys ?? []) {
-      await redis.multi().del(`value:${key}`).incr(`version:${key}`).pexpire(`version:${key}`, 60_000).exec();
+      await redis.multi().del(`value:${key}`).incr(`version:${key}`).exec();
     }
   },
 };
 ```
 
-Keep a version for at least as long as a read can take, as the `pexpire` above does. A version that falls back to 0 too early lets an overlapping read store old rows.
+The version keys never expire. A version that falls back to 0 while a read is still running lets that read store old rows, and nothing bounds how long a read takes.
 
 A store that indexes `meta` can group entries, for example by tag. Annotate the reads with `cacheAnnotation({ meta: { tags: ['users'] } })`, and `cache.invalidate({ meta: { tags: ['users'] } })` passes the `meta` to the store's `unset`, which removes every entry with that tag. The cache never reads `meta` itself: the store decides what a `meta` means. Keep secrets out of `meta`, because other middleware can read annotations.
 
