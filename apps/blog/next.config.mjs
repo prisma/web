@@ -206,6 +206,35 @@ const securityHeaders = [
   },
 ];
 
+/**
+ * `Link` headers that point agents at the blog's Markdown, the way apps/docs
+ * and apps/site point at theirs. Every page names /blog/llms.txt, and a post
+ * also names its own `.md` rendition. When two rules set `Link` on the same
+ * path, Next.js keeps the later one, so the post rule repeats the llms.txt
+ * entry.
+ */
+const llmsTxtHeader = {
+  key: "Link",
+  value: '</blog/llms.txt>; rel="llms-txt"',
+};
+
+const postMarkdownHeaders = [
+  {
+    key: "Link",
+    value:
+      '</blog/:slug.md>; rel="alternate"; type="text/markdown", </blog/llms.txt>; rel="llms-txt"',
+  },
+];
+
+/**
+ * A post URL: one path segment of letters, digits, `-` and `_` that is not one
+ * of the blog's other routes. Keep it in step with `getPostSlug` and
+ * `RESERVED_SEGMENTS` in src/lib/agent-markdown.ts; post-markdown-headers.test.ts
+ * checks that the two agree.
+ */
+export const POST_HEADER_SOURCE =
+  "/:slug((?!(?:api|author|blog-static|llms|monitoring|og|page|series|sitemap|tag)$)[A-Za-z0-9_-]+)";
+
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
@@ -355,7 +384,11 @@ const config = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders,
+        headers: [...securityHeaders, llmsTxtHeader],
+      },
+      {
+        source: POST_HEADER_SOURCE,
+        headers: postMarkdownHeaders,
       },
     ];
   },

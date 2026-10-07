@@ -7,6 +7,7 @@ import {
   buildLlmsYearContent,
   formatPostLink,
   formatPostMarkdown,
+  getPostSlugs,
   getPostYears,
   LATEST_POST_COUNT,
   type LlmsPost,
@@ -14,6 +15,7 @@ import {
 } from "./llms";
 
 const BASE_URL = "https://www.prisma.io";
+const POST_SLUGS = new Set(["hello", "bare"]);
 
 function post(overrides: Partial<LlmsPost> & { path: string }): LlmsPost {
   return {
@@ -112,6 +114,7 @@ test("a post's Markdown opens with its URL and dates, and skips empty fields", (
     }),
     "\nBody text.\n",
     BASE_URL,
+    POST_SLUGS,
   );
 
   assert.equal(
@@ -131,7 +134,12 @@ test("a post's Markdown opens with its URL and dates, and skips empty fields", (
     ].join("\n"),
   );
 
-  const bare = formatPostMarkdown(post({ path: "/bare", authors: [] }), "Body.", BASE_URL);
+  const bare = formatPostMarkdown(
+    post({ path: "/bare", authors: [] }),
+    "Body.",
+    BASE_URL,
+    POST_SLUGS,
+  );
   assert.ok(!bare.includes("Updated:"));
   assert.ok(!bare.includes("Authors:"));
   assert.ok(!bare.includes("Tags:"));
@@ -153,4 +161,32 @@ test("the full file orders posts newest first whatever order they arrive in", ()
   assert.ok(content.includes("3 posts"));
   assert.ok(content.indexOf("Newest body.") < content.indexOf("Middle body."));
   assert.ok(content.indexOf("Middle body.") < content.indexOf("Oldest body."));
+});
+
+test("post slugs come from the post paths", () => {
+  assert.deepEqual(
+    [...getPostSlugs([post({ path: "/hello" }), post({ path: "/bare/" })])],
+    ["hello", "bare"],
+  );
+});
+
+test("the full file makes links between posts absolute and flattens components", () => {
+  const content = buildLlmsFullContent(
+    [
+      {
+        post: post({ path: "/first", date: new Date("2026-01-01T00:00:00Z") }),
+        body: '<Accordions>\n  <Accordion title="Where next?">\n    Read [the second post](/second).\n  </Accordion>\n</Accordions>',
+      },
+      { post: post({ path: "/second" }), body: "See the [docs](/docs/compute)." },
+    ],
+    BASE_URL,
+  );
+
+  assert.ok(
+    content.includes(
+      "### Where next?\n\nRead [the second post](https://www.prisma.io/blog/second).",
+    ),
+  );
+  assert.ok(content.includes("See the [docs](https://www.prisma.io/docs/compute)."));
+  assert.ok(!content.includes("<Accordion"));
 });
