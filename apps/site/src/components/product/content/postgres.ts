@@ -134,7 +134,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "How do I move a Postgres database from my laptop online?",
       answer:
-        "Three commands: create a database with npx prisma postgres create, dump the local one with pg_dump, and load it with pg_restore over the direct connection string. Prisma Postgres runs PostgreSQL 17, so use the PostgreSQL 17 command-line tools. pg_dump does not copy roles, so recreate roles and the policies that name them by hand. The Free plan covers 500 MB and 200k operations a month with no credit card, and any Postgres client keeps working. The import guide in the docs has the exact commands.",
+        "Three steps: create a database in Prisma Console, dump the local one with pg_dump, and load it with pg_restore over the direct connection string. From a terminal, creating the database takes three commands (npx prisma auth login, npx prisma project create and npx prisma postgres create). Prisma Postgres runs PostgreSQL 17, so use the PostgreSQL 17 command-line tools. pg_dump does not copy roles, so recreate roles and the policies that name them by hand. The Free plan includes 200k operations a month with no credit card and no time limit, and any Postgres client keeps working. The import guide in the docs has the exact commands.",
     },
     {
       question: "Do I need Prisma ORM to use Prisma Postgres?",
