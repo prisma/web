@@ -18,8 +18,9 @@ const MARKDOWN_CONTENT_TYPE = "text/plain; charset=utf-8";
 /**
  * The same case-insensitive recovery as the post page (see `@/lib/slug-fallback`),
  * so a mis-cased legacy slug gets one permanent redirect instead of a 404. It
- * always goes to the canonical post URL: src/proxy.ts serves an agent the
- * Markdown there, and anyone else gets the page.
+ * always goes to the canonical `.md` URL, so a plain `.md` request keeps getting
+ * Markdown (the contract /blog/llms.txt documents) and an agent that src/proxy.ts
+ * rewrote here gets the same Markdown in one hop.
  *
  * This route is static (`revalidate = false`), so it must not read
  * `request.headers`: in a production build that throws DYNAMIC_SERVER_USAGE
@@ -35,7 +36,7 @@ function redirectToCanonicalSlug(slug: string[] | undefined) {
   if (!canonicalSlug) return;
 
   // Unlike a page, a route handler's redirect does not get the base path added.
-  permanentRedirect(withBlogBasePath(`/${canonicalSlug}`));
+  permanentRedirect(withBlogBasePath(`/${canonicalSlug}.md`));
 }
 
 export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[...slug]]">) {
