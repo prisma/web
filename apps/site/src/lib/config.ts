@@ -9,7 +9,6 @@ export const siteConfig = {
   // entry is rendered as "Trusted by <stat> <label>".
   proof: [
     { stat: "500,000+", label: "developers" },
-    { stat: "28%", label: "of the TypeScript ORM market" },
     { stat: "46,500+", label: "GitHub stars" },
   ],
   // Routes per design-ref/sitemap.md (Phase 1)

@@ -58,6 +58,12 @@ export const commonQueries: LLMsLink[] = [
       "Prisma changes frequently. Fetch this machine-readable changelog before implementing any Prisma feature to check for breaking changes, API updates, or new conventions.",
   },
   {
+    title: "Start a TypeScript app with Postgres on Prisma for free",
+    href: "/full-stack-tutorial",
+    description:
+      "Scaffold an app with a Prisma Postgres database, run it locally, and deploy it to Prisma Compute. Lists what the Free plan includes.",
+  },
+  {
     title: "Start a new Prisma ORM project",
     href: "/getting-started",
     description:

@@ -25,7 +25,10 @@ export const sidebarSectionGroups: SidebarSectionGroup[] = [
     sections: [
       { url: "/" },
       { url: "/prisma-compute/deploy", title: "Deploy your first app" },
-      { url: "/full-stack-tutorial", title: "Deploy the full Prisma stack" },
+      {
+        url: "/full-stack-tutorial",
+        title: "Start a TypeScript app with Postgres on Prisma for free",
+      },
     ],
   },
   {

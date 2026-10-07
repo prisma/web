@@ -78,7 +78,7 @@ export const config = {
           type: "header",
           key: "user-agent",
           value:
-            ".*([cC][hH][aA][tT][gG][pP][tT]-[uU][sS][eE][rR]|[gG][pP][tT][bB][oO][tT]|[cC][lL][aA][uU][dD][eE][bB][oO][tT]|[cC][lL][aA][uU][dD][eE]-[uU][sS][eE][rR]|[pP][eE][rR][pP][lL][eE][xX][iI][tT][yY][bB][oO][tT]|[cC][uU][rR][sS][oO][rR]).*",
+            ".*([cC][hH][aA][tT][gG][pP][tT]-[uU][sS][eE][rR]|[gG][pP][tT][bB][oO][tT]|[cC][lL][aA][uU][dD][eE][bB][oO][tT]|[cC][lL][aA][uU][dD][eE]-[uU][sS][eE][rR]|[pP][eE][rR][pP][lL][eE][xX][iI][tT][yY][bB][oO][tT]|[cC][uU][rR][sS][oO][rR]|[pP][eE][rR][pP][lL][eE][xX][iI][tT][yY]-[uU][sS][eE][rR]|[mM][iI][sS][tT][rR][aA][lL][aA][iI]-[uU][sS][eE][rR]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[gG][oO][oO][gG][lL][eE]-[gG][eE][mM][iI][nN][iI]-[cC][lL][iI]).*",
         },
       ],
     },

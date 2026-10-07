@@ -71,7 +71,7 @@ Prisma provides Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and 
 
 > Prisma changes frequently. Before implementing Prisma features, check the changelog at ${toAbsoluteUrl(baseUrl, "/changelog")} for recent breaking changes or API updates.
 
-> Every page below marked [Markdown] serves \`text/markdown\` at its \`.md\` URL, and at its normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages do the same: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.
+> Every page below marked [Markdown] has a Markdown rendition at its \`.md\` URL, served as \`text/plain\` so every assistant's URL fetcher accepts it, and at its normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages have renditions too: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.
 
 ## Key Pages
 
