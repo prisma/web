@@ -124,6 +124,47 @@ test("an agent asking for a marketing page is rewritten to its Markdown", async 
   assert.equal(response.headers.get("x-prisma-agent-markdown"), "accept");
 });
 
+test("an agent user agent on a marketing page is rewritten to its Markdown", async () => {
+  for (const userAgent of [
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+    "Mozilla/5.0 (compatible; Claude-User/1.0; +Claude-User@anthropic.com)",
+    // The user-triggered fetchers, as their vendors document them.
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-User/1.0; +https://docs.mistral.ai/robots)",
+    // Meta documents both forms.
+    "meta-externalfetcher/1.1 (+/documentation/sharing/webmasters/web-crawlers)",
+    "meta-externalfetcher/1.1",
+    "Mozilla/5.0 (compatible; Google-Gemini-CLI/1.0; +https://github.com/google-gemini/gemini-cli)",
+  ]) {
+    const response = await proxy(request("/pricing", { "user-agent": userAgent }), event);
+    const rewrite = response.headers.get("x-middleware-rewrite");
+    assert.ok(rewrite, `${userAgent} should be rewritten`);
+    assert.equal(new URL(rewrite, "https://www.prisma.io").pathname, "/llms.mdx/pricing");
+    assert.equal(response.headers.get("x-prisma-agent-markdown"), "user-agent", userAgent);
+  }
+});
+
+test("browsers, search engines and the vendors' other crawlers get the HTML", async () => {
+  for (const userAgent of [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    "",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; OAI-AdsBot/1.0; +https://openai.com/bot)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-Index/1.0; +https://docs.mistral.ai/robots)",
+    "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "meta-externalads/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "Google-Agent/1.0",
+  ]) {
+    const response = await proxy(request("/pricing", { "user-agent": userAgent }), event);
+    const label = userAgent || "(empty user agent)";
+    assert.equal(response.headers.get("x-middleware-next"), "1", label);
+    assert.equal(response.headers.get("x-middleware-rewrite"), null, label);
+    assert.equal(response.headers.get("vary"), "Accept", label);
+  }
+});
+
 test("a browser on a marketing page passes through with Vary: Accept", async () => {
   const response = await proxy(request("/pricing", { accept: "text/html" }), event);
   assert.equal(response.headers.get("x-middleware-next"), "1");

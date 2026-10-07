@@ -57,7 +57,10 @@ ${entryLines}
 
   return new Response(content, {
     headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
+      // text/plain, not text/markdown: ChatGPT's fetcher rejects text/markdown,
+      // and /llms.txt and /llms-full.txt send agents here. See
+      // src/app/llms.mdx/[[...slug]]/route.ts.
+      "Content-Type": "text/plain; charset=utf-8",
     },
   });
 }

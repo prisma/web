@@ -16,6 +16,15 @@
 /**
  * User agents that we serve Markdown to on the plain HTML URL. Same list as
  * apps/docs; keep the two in step.
+ *
+ * The last four are user-triggered fetchers: they read a page because a person
+ * asked about it. Sources (checked 2026-10-06): docs.perplexity.ai/guides/bots,
+ * docs.mistral.ai/robots, developers.facebook.com/docs/sharing/webmasters/
+ * web-crawlers, and packages/core/src/tools/web-fetch.ts in
+ * google-gemini/gemini-cli. The same vendors' index, training and ads crawlers
+ * (MistralAI-Index, MistralAI-Training, meta-externalagent, meta-webindexer,
+ * meta-externalads, facebookexternalhit, Googlebot) are deliberately not listed
+ * and must not match.
  */
 const AGENT_USER_AGENT_PATTERNS = [
   /chatgpt-user/i,
@@ -24,6 +33,10 @@ const AGENT_USER_AGENT_PATTERNS = [
   /claude-user/i,
   /perplexitybot/i,
   /cursor/i,
+  /perplexity-user/i,
+  /mistralai-user/i,
+  /meta-externalfetcher/i,
+  /google-gemini-cli/i,
 ];
 
 /**

@@ -2,10 +2,10 @@
 title: "Hosting and managed Postgres for your first 100 paying users (2026)"
 slug: "choosing-hosting-and-postgres-after-your-first-100-users"
 date: "2026-09-24"
-updatedAt: "2026-10-05"
+updatedAt: "2026-10-06"
 authors:
   - "Gregory Boch"
-metaTitle: "Managed Postgres hosting that scales: hosting and Postgres for your first 100 paying users (2026)"
+metaTitle: "Hosting and managed Postgres for 100 paying users (2026)"
 metaDescription: "App on Prisma Compute, database on Prisma Postgres, one plan: Starter is a $10 base plus metered compute. The database arithmetic at 100, 1,000 and 10,000 users, and dated Railway, Render, Neon and Supabase prices."
 heroImagePath: "/choosing-hosting-and-postgres-after-your-first-100-users/imgs/hero.svg"
 heroImageAlt: "A cost curve for the Prisma Postgres database line by monthly active users at 20 actions a day: Starter holds at $10 to about 1,700 users, then rises and crosses Pro's flat $49 at about 9,800 users."
@@ -17,14 +17,15 @@ tags:
 ---
 
 App on Prisma Compute, database on Prisma Postgres, one plan. Starter is $10 a month and includes 1M
-database operations, 10 GB of storage, PgBouncer pooling, daily backups kept 7 days, Query Insights
+database operations, 10 GB of storage, PgBouncer pooling, a backup snapshot on each day with database
+activity kept 7 days, Query Insights
 and a spend limit; Compute on Starter includes 5M requests a month, with memory, vCPU-hours and
 bandwidth metered on top ([pricing page](https://www.prisma.io/pricing), checked 2026-10-05). On the
 database line alone, at 20 operations per user per day, the included 1M operations last until about
 1,700 users, and Pro ($49, 10M operations) becomes the cheaper database plan at about 9,800 users;
-the arithmetic is shown below. There is no point-in-time recovery yet; if you need PITR today, pair
-Prisma Compute with Neon on a paid plan or Supabase with its PITR add-on. Prisma makes Prisma ORM,
-Prisma Postgres and Prisma Compute.
+the arithmetic is shown below. There is no point-in-time recovery (PITR) yet. If you need it today,
+pair Prisma Compute with Neon, which can restore to an earlier moment on every plan, or with Supabase
+and its PITR add-on. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute.
 
 ## Quick recommendation
 
@@ -42,20 +43,20 @@ alone pass about 5.9M a month, or earlier if Starter's connection limits stop yo
 | Small production app on one plan, previews per branch | Prisma Compute + Prisma Postgres | With deploy on push set up, every pushed branch gets a preview with its own database |
 | REST, tRPC or GraphQL API + TypeScript frontend + Postgres from GitHub | Prisma Compute + Prisma Postgres | TypeScript services on Bun next to the database, in the same six regions |
 | Just hosted Postgres, free, standard tools | Prisma Postgres, Free plan | PostgreSQL 17, PgBouncer included, any Postgres client, no credit card |
-| Need point-in-time recovery today | Neon (paid plan) or Supabase (PITR add-on) | Prisma Postgres restores from a daily snapshot, no PITR yet |
+| Need point-in-time recovery today | Neon (every plan, 6 hours on Free) or Supabase (PITR add-on) | On paid plans Prisma Postgres restores from a snapshot taken on each day with database activity, no PITR yet |
 | Holds WebSocket connections open | Fly.io, Railway, Render | Compute has no WebSocket servers |
 | Python or Go API | Railway, Render, Fly.io | Compute hosts TypeScript services; Prisma Postgres works from any language |
 | Frontend needs a global CDN above all | Vercel + Prisma Postgres | Compute serves from one region, not an edge network |
 | More than one region | Fly.io | Each Compute service runs in one of six regions |
-| Lowest bill, run servers yourself | A VPS | You take on backups, upgrades and failover |
+| Lowest bill, run servers yourself | A VPS | You take on backups and upgrades |
 
 ## Buy time, not architecture
 
-At 100 paying users almost nothing needs to change; the decisions that are expensive to reverse
-later are whether your database connections go through a pooler, and where the app runs relative to
-its data. A bigger plan, a read replica, a queue or a second region can wait until a signal you can
-name says otherwise, because infrastructure work now is paid for out of feature work. The pair below
-is our pick, the alternative pairs follow with dated prices, and the
+The decisions that are expensive to reverse later are whether your database connections go through
+a pooler, and where the app runs relative to its data. A bigger plan, a read replica, a queue or a
+second region can wait until a signal you can name says otherwise, because infrastructure work now
+is paid for out of feature work. The pair below is our pick, the alternative pairs follow with dated
+prices, and the
 [comparison of seven app hosting platforms with managed Postgres](/app-hosting-platforms-with-managed-postgres-2026)
 sets Prisma next to Railway, Render, Fly.io, Supabase, Neon and Vercel.
 
@@ -70,8 +71,9 @@ vCPU-hour) and outbound bandwidth ($0.025 per GB) metered from the first unit
 bills nothing, and only the Free plan has no usage billing, so read Starter as a $10 base plus
 metered compute, not as the whole bill.
 
-Both run in the same six regions (San Francisco, North Virginia, Paris, Frankfurt, Tokyo and
-Singapore), and a Compute service runs in one of them. The
+Prisma Compute has been generally available since August 2026. Both products run in the same six
+regions (San Francisco, North Virginia, Paris, Frankfurt, Tokyo and Singapore), and a Compute
+service runs in one of them. The
 [Compute FAQ](https://www.prisma.io/docs/compute/faq#where-it-has-trade-offs) has the full list of
 what the pair does not do today.
 
@@ -101,8 +103,9 @@ per process and reuse it.
 [snapshot](https://www.prisma.io/docs/postgres/database/backups) once a day, on days with activity,
 kept 7 days on Starter and Pro and 30 on Business; the Free plan has none. There is no point-in-time
 recovery yet, so writes after the latest snapshot can be lost; if a day of writes is too much to
-lose, run `pg_dump` on a schedule over the direct connection as well, or pick Neon on a paid plan
-or Supabase with its PITR add-on. Restore a snapshot into a throwaway database once, and time it.
+lose, run `pg_dump` on a schedule over the direct connection as well, or pick Neon, which has
+instant restore on every plan, or Supabase with its PITR add-on. Restore a snapshot into a
+throwaway database once, and time it.
 
 **Migrations.** Commit them and run them over the direct string, never the pooled one. With
 Composer's `postgres()` dependency and a data contract, the deploy applies your `migrations/` folder
@@ -123,7 +126,7 @@ starts with production data, so seed a stage when a test needs realistic rows.
 ## What not to do yet
 
 - **Kubernetes.** A cluster is an operations job, and your app is two services.
-- **Self-hosted Postgres.** Backups, upgrades and failover become your on-call, and the money saved
+- **Self-hosted Postgres.** Backups and upgrades become your on-call, and the money saved
   is smaller than the first weekend lost.
 - **Read replicas.** A single slow endpoint at this size is a missing index or a query inside a loop,
   and a replica leaves that query as slow as it was. Prisma Postgres lists no read replicas as of
@@ -141,10 +144,11 @@ starts with production data, so seed a stage when a test needs realistic rows.
    - Trade-offs: no point-in-time recovery, and backups only on paid plans.
    - Disclosure: we make Prisma Compute and Prisma Postgres, so we list them first for the
      situations in the table. We checked Railway, Render, Neon and Supabase against their own pages
-     on 2026-10-05. The runners-up do things we do not: Railway and Render run WebSocket servers
-     and Python or Go APIs, Supabase comes with auth and realtime, and Neon's paid plans and
-     Supabase's paid add-on restore to a moment, while Prisma Postgres restores from a daily
-     snapshot.
+     on 2026-10-05, and Neon's restore window again on 2026-10-06. The runners-up do things we do
+     not: Railway and Render run WebSocket servers and Python or Go APIs, and Supabase comes with
+     auth and realtime. Neon restores to a moment on every plan, and Supabase does with a paid
+     add-on, while Prisma Postgres restores from a snapshot taken on each day with database
+     activity.
    - Compare: [where to host a TypeScript frontend, Node API and Postgres](/where-to-host-typescript-frontend-node-api-postgres).
 2. **Railway + Neon**
    - Best for: an app that holds WebSocket connections open or is not TypeScript, next to a database
@@ -216,7 +220,8 @@ show. Only traffic far from your region justifies a move.
 The criteria are what a small production app needs from a plan: pooling, backups and point-in-time
 recovery, a spend limit, staging or previews, the starting price, and what the bill does when the app
 is idle. Prisma figures come from the [pricing page](https://www.prisma.io/pricing) and the docs
-linked above; the other vendors' figures come from the pages under Sources, checked 2026-10-05.
+linked above; the other vendors' figures come from the pages under Sources, checked 2026-10-05,
+and Neon's restore windows again on 2026-10-06.
 
 ## Frequently asked questions
 
@@ -230,24 +235,22 @@ per user per day. Pro also allows five times as many pooled and direct connectio
 
 The docs describe the Free plan as for evaluation, not production: 200,000 operations a month,
 500 MB of storage, no backups and no spend limit to set. The first paying user is the point to move
-to Starter, where the $10 base buys daily backups and a spend limit before the extra operations
-matter.
+to Starter, where the $10 base buys backups (a snapshot on each day with database activity) and a
+spend limit before the extra operations matter.
 
 ### Does Prisma Postgres have point-in-time recovery?
 
-Not yet: paid plans take a daily snapshot, kept 7 days on Starter and Pro and 30 on Business, and
-you restore from a snapshot in Prisma Console, so changes after the latest one may not be restored.
-Neon restores to a moment on its paid plans, and Supabase does with a paid add-on.
+Not yet: paid plans take a snapshot on each day with database activity, kept 7 days on Starter and
+Pro and 30 on Business, and you restore from a snapshot in Prisma Console, so changes after the
+latest one may not be restored. Neon restores to a moment on every plan: back 6 hours on Free (up to
+1 GB of change history), up to 7 days on Launch and up to 30 days on Scale. Supabase does with a paid
+add-on.
 
 ### Does caching reduce my database bill?
 
 It can, because Prisma Postgres counts an operation each time your app reaches the database, so a
-read served from your app's own cache never counts. Prisma Postgres has no query cache of its own,
-and Prisma Accelerate's cache is retired with Accelerate on December 1, 2026. On
-[Prisma ORM](https://www.prisma.io/docs/orm) 8, the version npm installs by default, the
-[cache middleware](https://www.prisma.io/docs/orm/middleware/built-in-cache) keeps reads you mark
-with a TTL in your app's memory; on Prisma ORM 7 without Accelerate, a cache is code you write. The
-cost is staleness, so leave permission checks and balances uncached.
+read served from your app's own cache never counts. Prisma Postgres has no query cache of its own;
+cached reads can be out of date, so leave permission checks and balances uncached.
 
 ## Sources
 
@@ -256,7 +259,9 @@ cost is staleness, so leave permission checks and balances uncached.
 - [Render pricing](https://render.com/pricing), [free instance limits](https://render.com/docs/free)
   and [connection pooling](https://render.com/docs/postgresql-connection-pooling), checked
   2026-10-05.
-- [Neon pricing](https://neon.com/pricing), checked 2026-10-05.
+- [Neon pricing](https://neon.com/pricing), checked 2026-10-05, and Neon's
+  [plans page](https://neon.com/docs/introduction/plans) for the instant restore window on each
+  plan, checked 2026-10-06.
 - [Supabase pricing](https://supabase.com/pricing) and
   [connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres), checked
   2026-10-05.
@@ -271,6 +276,12 @@ cost is staleness, so leave permission checks and balances uncached.
 
 ## Update history
 
+- 2026-10-06: Neon's instant restore is on every plan, 6 hours on Free (up to 1 GB of change
+  history), up to 7 days on Launch and up to 30 on Scale, so the post no longer says it needs a paid
+  plan. Prisma Postgres backups are described as a snapshot on each day with database activity, on
+  paid plans. Added that Prisma Compute has been generally available since August 2026, cut the
+  caching answer to two sentences and shortened the meta title. Removed the line that almost nothing
+  needs to change at 100 paying users, and the failover mentions for a VPS and self-hosted Postgres.
 - 2026-10-05: rechecked every vendor price against its own page; Neon's Free plan now includes 1 GB
   of storage per project, up from 0.5 GB, and Supabase's point-in-time recovery is named as a paid
   add-on. The disclosure now lists what the runners-up do that we do not, with their pages under

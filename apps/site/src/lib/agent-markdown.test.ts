@@ -53,22 +53,46 @@ test("known agent user agents are a signal", () => {
     "Mozilla/5.0 (compatible; Claude-User/1.0; +Claude-User@anthropic.com)",
     "Mozilla/5.0 (compatible; PerplexityBot/1.0)",
     "Cursor/1.0",
+    // The user-triggered fetchers, as their vendors document them.
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-User/1.0; +https://docs.mistral.ai/robots)",
+    // Meta documents both forms.
+    "meta-externalfetcher/1.1 (+/documentation/sharing/webmasters/web-crawlers)",
+    "meta-externalfetcher/1.1",
+    "Mozilla/5.0 (compatible; Google-Gemini-CLI/1.0; +https://github.com/google-gemini/gemini-cli)",
   ]) {
-    assert.equal(getAgentMarkdownSignal(headers({ "user-agent": userAgent })), "user-agent");
+    assert.equal(
+      getAgentMarkdownSignal(headers({ "user-agent": userAgent })),
+      "user-agent",
+      `${userAgent} should be a signal`,
+    );
   }
 });
 
-test("an ordinary browser user agent is not a signal", () => {
-  assert.equal(
-    getAgentMarkdownSignal(
-      headers({
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
-      }),
-    ),
-    undefined,
-  );
-  assert.equal(getAgentMarkdownSignal(headers({ "user-agent": "Googlebot/2.1" })), undefined);
+test("browsers, search engines and the vendors' other crawlers are not a signal", () => {
+  for (const userAgent of [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    "",
+    // Index, training and ads crawlers from the vendors whose user-triggered
+    // fetchers are on the list. They get the HTML like any other crawler.
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; OAI-AdsBot/1.0; +https://openai.com/bot)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-Index/1.0; +https://docs.mistral.ai/robots)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MistralAI-Training/1.0; +https://docs.mistral.ai/robots)",
+    "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "meta-webindexer/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "meta-externalads/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/web-crawlers)",
+    "Google-Agent/1.0",
+    "Google-GeminiNotebook/1.0",
+  ]) {
+    assert.equal(
+      getAgentMarkdownSignal(headers({ "user-agent": userAgent })),
+      undefined,
+      `${userAgent || "(empty user agent)"} should not be a signal`,
+    );
+  }
 });
 
 test("Accept wins over the user agent when both are present", () => {
