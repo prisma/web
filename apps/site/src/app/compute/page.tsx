@@ -10,10 +10,13 @@ import { Faq } from "@/components/sections/faq";
 
 export const metadata = createPageMetadata({
   title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
-  // The entity wording shared with the homepage, /postgres and the docs, kept
-  // verbatim. lib/markdown-pages.ts repeats it for the .md rendition.
+  // The entity wording shared with the homepage, /postgres and the docs, except
+  // that the first sentence defines Compute as a platform-as-a-service (PaaS)
+  // and drops "on one plan", which read as one flat price: Starter is a $10
+  // base and Compute usage is metered on top. lib/markdown-pages.ts repeats it
+  // verbatim for the .md rendition.
   description:
-    "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
+    "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
   path: "/compute",
   ogKicker: "Prisma Compute",
   ogAccent: "red",
