@@ -34,8 +34,8 @@ const BULLETS = [
     rest: ", so your bill never surprises you",
   },
   {
-    lead: "Unlimited data transfer included",
-    rest: ", no bandwidth bill-shock",
+    lead: "Unlimited database data transfer included",
+    rest: ", no database egress bill-shock",
   },
   {
     lead: "Prisma ORM is free, always",
@@ -73,7 +73,7 @@ const SCENARIOS: Scenario[] = [
     ],
     prisma: [
       "No credit card required",
-      "Data transfer included",
+      "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ],
   },
@@ -87,7 +87,11 @@ const SCENARIOS: Scenario[] = [
       "Data transfer billed per GB",
       "Spend limits not standard",
     ],
-    prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
+    prisma: [
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ],
   },
   {
     tab: "At scale",
@@ -99,7 +103,11 @@ const SCENARIOS: Scenario[] = [
       "Data transfer billed per GB",
       "Spend limits not standard",
     ],
-    prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
+    prisma: [
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ],
   },
 ];
 
@@ -273,8 +281,8 @@ export function PricingScale() {
               <p className="mt-5 max-w-[54ch] text-pretty leading-relaxed text-muted-foreground">
                 Start free with the ORM, which will always be free. Prisma Postgres has a free tier
                 with a hard cap, so you can build without a credit card. When you outgrow it,
-                you&apos;re on operation-based pricing with spend limits, and data transfer is
-                always included.
+                you&apos;re on operation-based pricing with spend limits, and database data transfer
+                is always included.
               </p>
             </Reveal>
 
