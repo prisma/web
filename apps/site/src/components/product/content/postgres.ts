@@ -71,7 +71,7 @@ export const postgresContent: ProductPageContent = {
     // of prose that mostly restated the hero, so the second paragraph's point
     // now lives in the hero tour's captions and the platform section.
     body: [
-      "When your database and your hosting come from separate vendors, the things that should be automatic — preview environments with real data, end-to-end test setups, single-config deploys — turn into work you have to do.",
+      "When your database and your hosting come from separate vendors, the things that should be automatic — a database for every preview, end-to-end test setups, single-config deploys — turn into work you have to do.",
     ],
     outcomes: [
       { icon: "gitBranch", label: "A preview database per pushed branch" },

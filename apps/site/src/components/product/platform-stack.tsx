@@ -107,15 +107,15 @@ const LAYERS: Layer[] = [
       {
         name: "Prisma Postgres",
         prisma: true,
-        note: "Branches with your app per PR, one config declares both halves, and it's standard Postgres underneath.",
+        note: "A preview database for each pushed branch, one config declares both halves, and it's standard Postgres underneath.",
       },
       {
         name: "Supabase",
-        note: "Still works — Prisma ORM targets any Postgres. You wire the connection yourself, and branching stops travelling with your deploys.",
+        note: "Still works — Prisma ORM targets any Postgres. You wire the connection yourself, and previews stop getting their own database from the deploy.",
       },
       {
         name: "Neon",
-        note: "Still works. Point the datasource at Neon and your schema and client are unchanged; branching becomes two systems to keep in step.",
+        note: "Still works. Point the datasource at Neon and keep your schema and client; Neon's database branches and your deploy previews become two systems to keep in step.",
       },
       {
         name: "Amazon RDS",
@@ -138,7 +138,7 @@ const LAYERS: Layer[] = [
       {
         name: "Prisma Compute",
         prisma: true,
-        note: "App and database branch and deploy as one unit, co-located, with no cross-vendor hop between them.",
+        note: "App and database deploy as one unit, co-located, with a preview for each pushed branch.",
       },
       {
         name: "Vercel",
@@ -146,7 +146,7 @@ const LAYERS: Layer[] = [
       },
       {
         name: "Railway",
-        note: "Still works. Deploy anywhere that runs Node or Bun; app and database stop branching together.",
+        note: "Still works. Deploy anywhere that runs Node or Bun; previews stop getting their own database from the deploy.",
       },
       {
         name: "your own host",
@@ -159,7 +159,7 @@ const LAYERS: Layer[] = [
 const AGENTS = ["Claude Code", "Codex", "Cursor", "Windsurf"];
 
 const GOLDEN_NOTE =
-  "Everything wired for you: one config, per-PR branching across app and database, and no network hop between them.";
+  "Everything wired for you: one config, a preview with its own database for each pushed branch, and the app next to its database.";
 
 /** Seconds the agent row holds each name. */
 const AGENT_HOLD = 2.2;

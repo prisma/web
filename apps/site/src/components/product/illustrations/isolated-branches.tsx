@@ -1,16 +1,17 @@
 import { Database, GitBranch, XCircle } from "@/components/icons/forma";
 import { CardChrome, SurfaceCard } from "./parts";
 
-// "Branch with your app" — the contrast the copy draws: a dedicated,
-// fully-isolated database per preview, rather than one shared test DB that
-// "lies about how production behaves".
+// "A database per preview" — the contrast the copy draws: with deploy on push,
+// each pushed branch's preview gets its own new database, rather than every
+// preview sharing one test DB. Production data is not copied into it
+// (docs compute/deploy-on-push.mdx).
 
 const PREVIEWS = ["pr-214", "pr-207"];
 
 export function IsolatedBranches() {
   return (
-    <SurfaceCard label="Illustration contrasting a shared test database with Prisma Postgres giving every preview environment its own fully-isolated database">
-      <CardChrome file="branches" />
+    <SurfaceCard label="Illustration contrasting a shared test database with Prisma Postgres giving each pushed branch's preview its own new database beside production">
+      <CardChrome file="previews" />
       <div className="flex flex-1 flex-col justify-center gap-2 px-4 py-3 text-[0.625rem] leading-none">
         {/* what it replaces */}
         <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-muted/30 p-2">
@@ -35,7 +36,7 @@ export function IsolatedBranches() {
               <GitBranch className="size-3 shrink-0 text-prism-cyan-600" />
               <span className="font-mono text-prism-cyan-900">{name}</span>
               <span className="ml-auto rounded border border-prism-cyan-200 bg-card px-1.5 py-0.5 text-[0.5625rem] font-semibold text-prism-cyan-800">
-                isolated
+                own db
               </span>
             </div>
           </div>
