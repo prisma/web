@@ -38,7 +38,7 @@ Migrate this Mongoose app to Prisma ORM against the same MongoDB database, follo
 1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
 2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma contract emit`.
 3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
-4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive --confirm <database name from DATABASE_URL>`, then run `npx prisma db verify`.
+4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive`, then run `npx prisma db verify`.
 ```
 
 </AgentPrompt>
@@ -549,13 +549,13 @@ db.runCommand({ collMod: "users", validator: {"$jsonSchema":{"additionalProperti
 ℹ This is a dry run. No changes were applied.
 ```
 
-Adding a validator to a populated collection counts as destructive, so `db update` asks you to type the database name before applying it. The name is the one in `DATABASE_URL`, here `blog`. Apply the validators:
+A validator applies only to later writes, so adding one loses no data, and `db update` applies it without asking. Apply the validators:
 
 ```npm
 npx prisma db update
 ```
 
-Type `blog` when the command asks. In CI, or with `--no-interactive`, where the command cannot ask, pass the name as `--confirm blog` instead. `db update` applies the three validators and records in the database that it matches the contract. Then verify it:
+`db update` applies the three validators and records in the database that it matches the contract. Then verify it:
 
 ```npm
 npx prisma db verify

@@ -23,6 +23,9 @@ npx prisma db update --db "$DATABASE_URL"
 | `--db <url>` | Connects to the database. |
 | `--dry-run` | Shows planned operations without applying them. |
 | `--to <contract>` | Updates to a specific contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). It refuses `@contract`, `@db`, and `@empty` with the error code `MIGRATION.REF_WRONG_GRAMMAR`. To update to the contract in `contract.json`, leave out `--to`. |
+| `--rename <old>:<new>` | Renames a model or a field and keeps its rows, instead of dropping and creating its table or column. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the update lose the data of a model, a field, or a table no model stores. Repeatable. |
+| `--allow <Model>` | Lets one operation widen who can read or write the model's rows. Repeatable. |
 | `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-command contract hash. Without it, `db update` advances `db` when `--db` is omitted, and advances nothing when `--db` is passed. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
@@ -37,13 +40,26 @@ Run without `--db`, `db update` takes the connection from `db.connection` in `pr
 
 The `db` ref is what [`migration plan`](/cli/migration-plan) uses as its starting point when you do not pass `--from`. Passing `--db` only suppresses the advancement; it never removes a `db` ref that already exists. So a loop that always passes `--db` without `--advance-ref db` leaves the ref wherever it was last set, and the next `migration plan` starts from that stale contract. If the ref was never created, `migration plan` plans from an empty database while `migrations/app/` is empty, and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist on disk.
 
-## Destructive changes need consent
+## Renames and data loss [#renames-and-data-loss]
 
-An operation that would destroy data is applied only with your consent: the command asks you to type the database name. In a CI job or a run with `--no-interactive`, where the command cannot ask, pass the consent as `--confirm <database>` instead:
+Before it applies anything, `db update` asks one question for each model, field or table whose data the update would lose, such as a dropped column or a type change that can change values. Answer each one on the command line:
+
+- `--delete <subject>` lets the data go. A subject is `Model`, `Model.field`, or, for data no model stores, its storage name, such as `public.audit_log`.
+- `--rename <old>:<new>` keeps the data. The update renames the table or column, and the constraints and indexes named after it, instead of dropping and creating it. Each side is `Model`, `namespace.Model`, `Model.field` or `namespace.Model.field`, and a field's model is named as the new contract names it: `--rename Profile:User --rename User.name:User.fullName`.
+
+It also asks before each operation that widens who can read or write a model's rows, such as dropping a row-level-security policy or disabling row-level security. Answer each with `--allow <Model>`; two such operations on one model take `--allow User --allow User`.
 
 ```npm
-npx prisma db update --db "$DATABASE_URL" --no-interactive --confirm appdb
+npx prisma db update --db "$DATABASE_URL" --no-interactive --delete Legacy --rename User.name:User.fullName
 ```
+
+In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with `CLI.CONSENT_REQUIRED` instead. The error's `meta.unanswered[]` names each subject and the flags that answer it, and its `nextActions` give the flags to add. A `--delete` or `--allow` that answers no question fails the run with `CLI.CONSENT_UNUSED`. To list the questions without applying anything, run with `--dry-run --json` and read `dataLoss` and `accessWidening`. `--confirm` answers none of these questions.
+
+Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type loses no data, so the update asks nothing about it.
+
+`db update` names each subject by model and field from the contract the database was last updated to, which it stores when it advances a ref. With `--db`, pass `--advance-ref <name>` so that contract is stored for the next run. Without it, each subject is its storage name, and a rename cannot be resolved.
+
+On MongoDB, renames are refused in this release, so only `--delete` is offered. To keep a collection's documents, rename the collection in `mongosh` before you run the update.
 
 ## Recommended flow
 

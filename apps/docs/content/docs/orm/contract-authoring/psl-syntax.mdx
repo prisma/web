@@ -318,6 +318,8 @@ In `pg/text@1`, `pg` is PostgreSQL, `text` is the column type, and `@1` is the v
 
 `@@type` is optional, and when you leave it out Prisma ORM picks the type from the member values: bare member names and string values give the database's text type, and integer values give its integer type. Give every member the same kind of value, because a mix of string and integer values throws an error whose `code` is `PSL_ENUM_CANNOT_INFER_TYPE`. A `@default` names the member, as in `priority Priority @default(Low)`, even where the member stores a different value.
 
+Write each member as the database prints it, because a query reads it back in that form. On `pg/numeric@1`, write `"1.5"`, not `"01.5"` or `"-0"`; on `pg/inet@1`, write `"10.0.0.1"`, not `"10.0.0.1/32"`. `contract emit` refuses another spelling with `PSL_EXTENSION_INVALID_VALUE`, and the message says what to write. An enum compares a value read from the database with its members, so it cannot use a type whose values never equal a member: `pg/json@1` (use `pg/jsonb@1`), `pg/bytea@1`, `pg/tsquery@1`, `pg/timestamp-string@1` and `pg/timestamptz-string@1` (use `pg/timestamp-temporal@1` or `pg/timestamptz-temporal@1`). At runtime, `db.enums` holds each member as a query returns it, such as a `bigint` for `pg/int8@1`.
+
 An `enum` block is not a PostgreSQL `enum` type: the column is text or an integer. For a PostgreSQL `enum` type, declare it in a `native_enum` block and type the field `pg.enum(Role)`:
 
 ```prisma
@@ -384,6 +386,8 @@ model User {
   edited Post[] @relation("Edited")
 }
 ```
+
+On a SQL database, each relation's foreign key gets an index on its columns, so that deleting or updating a referenced row can find the rows that point at it. If the model already has a plain index, a unique constraint or a primary key on exactly those columns, that one serves instead and no second index is created. A partial index, or one with a non-default `type` or `options`, does not count. To use an index whose first columns are the foreign key's, name it on the relation with `index: "<name>"`, using the `name` or `map` you gave it; to have no index at all, write `index: false`. An unnamed `@@index` on exactly the columns of a unique constraint or the primary key is left out of the contract, because the unique one already serves its lookups.
 
 When two relations join the same two models, as `Authored` and `Edited` do here, give each pair the same `@relation("Name")` on both ends so Prisma ORM can tell which list belongs to which foreign key; otherwise `npx prisma contract emit` fails with an error whose `code` is `PSL_AMBIGUOUS_BACKRELATION`. For a one-to-one, make the other side singular instead of a list, so `User` declares `profile Profile?`, and put `@unique` on the foreign-key field:
 
@@ -488,7 +492,7 @@ On MongoDB, `@@index` and `@@unique` take a list of fields, each with an optiona
 ```prisma
 model Post {
   @@index([authorId])
-  @@index([createdAt(sort: Desc), authorId])
+  @@index([sort(createdAt, Desc), authorId])
   @@index([expiresAt], expireAfterSeconds: 3600, sparse: true)
   @@index([title], filter: "{ \"kind\": \"article\" }")
   @@index([location], type: "2dsphere")
@@ -501,7 +505,7 @@ model User {
 }
 ```
 
-`sort: Asc` or `sort: Desc` on a field sets its direction; this form is MongoDB only. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), `default_language` and `languageOverride` for a `type: "text"` index, `include` or `exclude` for a wildcard index, and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options. There is no `name:` on MongoDB; MongoDB names the index from its keys.
+`sort(field, Asc)` or `sort(field, Desc)` in the field list sets a field's direction; this form is MongoDB only. Since `8.0.0-rc.17` the earlier `field(sort: Desc)` form is refused. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), `default_language` and `languageOverride` for a `type: "text"` index, `include` or `exclude` for a wildcard index, and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options. There is no `name:` on MongoDB; MongoDB names the index from its keys.
 
 A wildcard index covers every field under a path, which is how you index documents whose keys you do not know in advance. Write `wildcard()` in the field list to cover the whole document, or `wildcard(meta)` to cover the fields under `meta`; the key becomes `$**` or `meta.$**`. `include` and `exclude` are lists of field names, quoted, that narrow what the index covers; give one or the other, and only with `wildcard()`. An index can hold one `wildcard()`, and it cannot be an `@@unique`, take `expireAfterSeconds`, or set a `type:` such as `"hashed"`.
 

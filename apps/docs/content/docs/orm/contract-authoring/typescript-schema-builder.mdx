@@ -227,6 +227,8 @@ The second argument says how each member is stored, as the `codecId` the full ex
 
 Each `member(name, storedValue)` pairs the TypeScript-visible name with the value stored in the column. Fields reference the enum with `field.namedType(Priority)`, and defaults reference a member as `Priority.members.Low`. Include the enum in the returned `enums` map so it reaches the two files.
 
+Write each member as the database prints it, because a query reads it back in that form. On `pg/numeric@1`, write `"1.5"`, not `"01.5"` or `"-0"`; on `pg/inet@1`, write `"10.0.0.1"`, not `"10.0.0.1/32"`. `defineContract` refuses another spelling with `CONTRACT.ENUM_INVALID`, and the message says what to write. An enum compares a value read from the database with its members, so it cannot use a type whose values never equal a member: `pg/json@1` (use `pg/jsonb@1`), `pg/bytea@1`, `pg/tsquery@1`, `pg/timestamp-string@1` and `pg/timestamptz-string@1` (use `pg/timestamp-temporal@1` or `pg/timestamptz-temporal@1`). At runtime, `db.enums` holds each member as a query returns it, such as a `bigint` for `pg/int8@1`.
+
 Members are stored in whatever column type you name here, `text` above. For a real PostgreSQL `enum` type, declare it with `nativeEnum` and type the field with `pg.enum`, both exported by `@prisma/orm-postgres/contract-builder`. The type is created in the database under the name you give it:
 
 ```typescript
