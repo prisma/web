@@ -23,7 +23,7 @@ Say `migrations/app/` has no migrations yet, the `db` ref is set, and `migration
 
 `db migrate` never applies the baseline to a database that already records which contract it matches, such as one you ran `db sign` on. It applies only the migrations after the contract that database records.
 
-The baseline only creates things, because it is planned from an empty database, so it never removes data. The second migration can remove data. `migration plan` writes it without asking, and the command's output marks each destructive operation in it and warns that it may cause data loss. Review that migration before you apply it.
+The baseline only creates things, because it is planned from an empty database, so it never removes data. The second migration can remove data, and `migration plan` asks about it before it writes either one, as [Renames and data loss](#renames-and-data-loss) describes.
 
 If a migration already starts from the contract the `db` ref points at, `migration plan` writes a second migration that starts from the same contract, so the [migration history](/orm/migrations/the-migration-graph) splits into two branches. This happens, for example, after `db migrate` without `--advance-ref db`, which applies migrations but leaves the `db` ref where it was. `migration plan` still writes the migration and prints a warning. A database that has already run the existing migration then has no migration leading to your new contract, so `db migrate` on that database fails with `MIGRATION.PATH_UNREACHABLE`. To build on the newest migration instead, delete the directory this run wrote and plan again with `--from` set to the newest migration's directory name.
 
@@ -42,12 +42,40 @@ npx prisma migration plan --name add_users_table
 | `--name <slug>` | Sets the migration directory name suffix. |
 | `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
+| `--rename <old>:<new>` | Renames a model or a field and keeps its rows, instead of dropping and creating its table or column. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the migration lose the data of a model, a field, or a table no model stores. Repeatable. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
 ### Contract references [#contract-references]
 
 A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. `@empty` names the empty database, before any migration. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+
+## Renames and data loss [#renames-and-data-loss]
+
+Before it writes anything, `migration plan` asks one question for each model, field or table whose data the migration would lose: dropping a table, a column or a collection, or a type change that can change values. Answer each one on the command line:
+
+- `--delete <subject>` lets the data go. A subject is `Model`, `Model.field`, or, for data no model stores, its storage name.
+- `--rename <old>:<new>` keeps the data. The migration renames the table or column, and the constraints and indexes named after it, instead of dropping and creating it. Each side is `Model`, `namespace.Model`, `Model.field` or `namespace.Model.field`, and a field's model is named as the new contract names it: `--rename Profile:User --rename User.name:User.fullName`. A rename on the command line is planned from the start, so the drop it replaces is never asked about.
+
+```npm
+npx prisma migration plan --name rename_full_name --rename User.name:User.fullName
+```
+
+In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with `CLI.CONSENT_REQUIRED` instead, and the error's `nextActions` give the flags to add. `--rename` is offered only for a model or field the new contract no longer has, so a field whose type changes is answered with `--delete`. `--confirm` answers none of these questions.
+
+Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type, and setting `NOT NULL`, lose no data, so the command asks nothing about them.
+
+On MongoDB, renames are refused in this release, so only `--delete` is offered. To keep a collection's documents, rename the collection in `mongosh` before a migration that drops it is applied.
+
+## When nothing in the database changes [#no-database-change]
+
+If the contract changed but the database needs no change, `migration plan` writes nothing and fails with `MIGRATION.PLANNING_FAILED`. This happens after a Prisma upgrade that changes how `contract.json` records values, after you change how a field's values are written in `contract.json` while its database type stays the same, or after you change a control policy. The message gives the next step:
+
+- If you deploy with migrations, run `prisma migration new --from <hash>`, with the hash from the message, to write a migration with no operations, then `prisma db migrate`.
+- If you manage the database with `db init` or `db update`, run [`prisma db sign`](/cli/db-sign) on each database instead.
+
+If you expected the database to change, report it with the output of `prisma migration plan --json`.
 
 ## Recommended flow
 

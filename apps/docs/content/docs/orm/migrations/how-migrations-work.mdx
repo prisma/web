@@ -127,11 +127,11 @@ Say `"user"` already has a `phone` column of another type. The postcheck only as
 Each operation also has an `operationClass`, which says what kind of change the operation makes to the database and which you choose yourself when you write a raw SQL operation:
 
 - **Additive**: adds something new, like a column.
-- **Widening**: loosens a constraint or lets a type accept more values, like dropping `NOT NULL` from a column.
-- **Destructive**: removes or changes something that exists, like dropping a column, and can lose data.
+- **Widening**: changes a structure without losing rows or values, like dropping `NOT NULL` from a column, dropping an index or a constraint, or setting `NOT NULL`, which fails on a `NULL` rather than losing it.
+- **Destructive**: can lose rows or values, like dropping a column or a type change that can change values.
 - **Data**: changes rows, not structure.
 
-Destructive operations are the only class that gets a warning, and it is only a warning: nothing stops and waits for your answer. `migration plan` prints `This migration contains destructive operations that may cause data loss.` when it writes the migration, and `npx prisma migration show <dir>` prints it for any migration on disk, so you see it while reviewing. `db migrate` runs those operations without asking and prints the warning again afterwards.
+Destructive operations are the only class that `migration plan` asks about: it writes nothing until you answer each one with `--delete` or `--rename`, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes. It prints `This migration contains destructive operations that may cause data loss.` when it writes the migration, and `npx prisma migration show <dir>` prints it for any migration on disk, so you see it while reviewing. `db migrate` runs those operations without asking and prints the warning again afterwards.
 
 Those checks are also what ends a run early when the database isn't in the state your migration assumed, because a precheck stops the run before the change is made, for example when a migration sets `NOT NULL` on a column that still holds `NULL`. The error names the operation and the check that failed, so you know exactly which assumption was wrong. [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) covers what a stopped run leaves behind on each database and how to pick up from it.
 

@@ -768,6 +768,42 @@ const bugs = await db.orm.public.Task.variant('bug').all();
 const tutorials = await db.orm.posts.variant('tutorial').all();
 ```
 
+### Row locking: `forUpdate()`, `forNoKeyUpdate()`, `forShare()`, `forKeyShare()` [#row-locking]
+
+Lock the rows a read selects until the transaction ends.
+
+#### Remarks
+
+- PostgreSQL only. Each method exists only when the contract records that your packages support it, under these keys: `sql.forUpdate`, `postgres.forNoKeyUpdate`, `sql.forShare`, or `postgres.forKeyShare`, and also `sql.lockOf`, because the ORM always locks only the model's own table (`FOR UPDATE OF "job"`). A contract emitted before `8.0.0-rc.17` has none of them: run `prisma contract emit` again to get them. See [what your packages support](/orm/contract-authoring/capabilities).
+- A lock lasts until the transaction ends, so call these methods on `tx.orm` inside `db.transaction(...)`.
+- A lock cannot be combined with `include()`, `groupBy()`, `aggregate()`, `distinct()`, `distinctOn()`, or a write method, and cannot be called inside an `include()` refinement. Each of these throws [`ORM.LOCK_INCOMPATIBLE`](/orm/reference/error-reference#ORM.LOCK_INCOMPATIBLE).
+
+#### Options
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `nowait` | `boolean` | No | Fail at once when another transaction holds a lock on a selected row. Needs the `sql.lockNowait` key in the contract. |
+| `skipLocked` | `boolean` | No | Leave out rows another transaction has locked. Needs the `sql.lockSkipLocked` key in the contract. Cannot be combined with `nowait`. |
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `Collection` | `tx.orm.public.Job.where({ state: 'queued' }).forUpdate()` | The same collection, which locks the rows it reads. |
+
+#### Examples
+
+##### Take the next queued job (PostgreSQL)
+
+```typescript
+await db.transaction(async (tx) => {
+  const job = await tx.orm.public.Job.where({ state: 'queued' })
+    .orderBy((j) => j.createdAt.asc())
+    .forUpdate({ skipLocked: true })
+    .first();
+});
+```
+
 ## Read methods [#read-terminals]
 
 A read method runs the query and gives you the rows. `all()` and `first()` are available on both databases, while `aggregate()` and `groupBy()` are PostgreSQL only and are documented under [Grouped aggregates](#grouped-aggregates).
@@ -901,7 +937,7 @@ On PostgreSQL you can subclass `Collection` to add your own methods to a model, 
 - A method that returns `this.variant('bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
 - Your methods stay available after `where()`, `orderBy()`, `limit()`, `offset()`, `include()`, `distinct()`, `distinctOn()`, and `cursor()`, because each of them returns the collection's own class. `tasks.Task.where({ title }).bugs()` compiles.
 - To override one of those chaining methods, or a method that returns rows, give the override a type parameter for the receiver and a `this` parameter of that type, and call the base method with `call`: `override limit<Self>(this: Self, n: number): Self { return super.limit.call<Self, [number], Self>(this, Math.min(n, 100)); }`.
-- `apply` and `scope` are methods of every collection, so a member of your own with either name and another signature does not compile. See [Scopes](#scopes).
+- `with` and `fragment` are methods of every collection, so a member of your own with either name and another signature does not compile. See [Query fragments](#query-fragments).
 
 #### Examples
 
@@ -937,19 +973,20 @@ const features = await tasks.Task.features().all();
 const recentBugs = await tasks.Task.orderBy((t) => t.id.desc()).limit(10).bugs().all();
 ```
 
-### Scopes
+### Query fragments [#query-fragments]
 
-A scope is a function from a collection to a collection, a piece of a query you share between places. `apply(scope)` runs one on a collection and returns its result: `db.orm.public.Post.apply((posts) => posts.where({ userId }))` has the same type as `db.orm.public.Post.where({ userId })`. Two helpers make the scopes TypeScript cannot type on its own, and a third turns a sort field from a request into an order.
+A query fragment is a function from a collection to a collection, a piece of a query you share between places. `with(fragment)` runs one on a collection and returns its result: `db.orm.public.Post.with((posts) => posts.where({ userId }))` has the same type as `db.orm.public.Post.where({ userId })`. A fragment that only filters, such as a soft-delete filter, is called a scope. Two helpers make the fragments TypeScript cannot type on its own, and a third turns a sort field from a request into an order.
 
 #### Remarks
 
 - PostgreSQL only.
-- `db.orm.scope(fields, body)` makes a scope for every model that has the given fields. Declare each field with the `field` builders from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `apply` does not compile.
-- `db.orm.public.Post.scope(body)` makes a scope for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`.
-- A scope that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. A scope that orders returns `Ordered<C>`, so `cursor()` compiles after it.
-- `CollectionRowOf<C>` is the row type a collection returns, including the relations `include()` adds. `CollectionTypeStateOf<C>` is what the collection's type records, such as `hasWhere` and `hasOrderBy`. Import these types, `Filtered`, and `Ordered` from `@prisma/orm-postgres/orm-client`.
+- `db.orm.fragment(fields, body)` makes a fragment for every model that has the given fields. Declare each field with the `field` builders from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `with` does not compile.
+- `db.orm.public.Post.fragment(body)` makes a fragment for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`.
+- A fragment that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. A fragment that orders returns `Ordered<C>`, so `cursor()` compiles after it.
+- `CollectionRowOf<C>` is the row type a collection returns, including the relations `include()` adds. `CollectionTypeStateOf<C>` is what the collection's type records, such as `hasWhere` and `hasOrderBy`. The types of fragments are `Fragment`, `FieldFragment`, and `FragmentFacts`. Import these types, `Filtered`, and `Ordered` from `@prisma/orm-postgres/orm-client`.
 - `orderByField(collection, name, direction, allowed)` returns an `orderBy()` selector for a field named in a request. `direction` is `'asc'` or `'desc'`, and `undefined` means `'asc'`. `allowed` lists the fields a request may sort by. It is required, because sorting by any field lets a request learn the value of a secret one from the order of the results. Any other `name` or `direction`, including one that is not a string, throws an error whose `code` is `ORM.ARGUMENT_INVALID` before the query runs.
-- A scope that needs a value is a function that returns a scope, as `ownedBy` below shows. A scope for every model with a `deletedAt` field is how you share a soft-delete filter.
+- A fragment that needs a value is a function that returns a fragment, as `ownedBy` below shows. A scope for every model with a `deletedAt` field is how you share a soft-delete filter.
+- If your contract has a namespace named `fragment`, `db.orm.fragment` is that namespace, and the client has no method to make a fragment for every model with given fields. Use `collection.fragment(body)` on each model instead.
 
 #### Examples
 
@@ -959,22 +996,22 @@ A scope is a function from a collection to a collection, a piece of a query you 
 import { field } from '@prisma/orm-postgres/contract-builder';
 
 const ownedBy = (userId: string) =>
-  db.orm.scope({ userId: field.uuidNative() }, (rows) => rows.where((r) => r.userId.eq(userId)));
+  db.orm.fragment({ userId: field.uuidNative() }, (rows) => rows.where((r) => r.userId.eq(userId)));
 
-const posts = await db.orm.public.Post.apply(ownedBy(userId)).all();
-const tasks = await db.orm.public.Task.apply(ownedBy(userId)).all();
-await db.orm.public.Tag.apply(ownedBy(userId)).all(); // type error: Tag has no userId
+const posts = await db.orm.public.Post.with(ownedBy(userId)).all();
+const tasks = await db.orm.public.Task.with(ownedBy(userId)).all();
+await db.orm.public.Tag.with(ownedBy(userId)).all(); // type error: Tag has no userId
 ```
 
 ##### A shared selection for one model (PostgreSQL)
 
-```typescript title="src/scopes.ts"
+```typescript title="src/fragments.ts"
 import type { CollectionRowOf } from '@prisma/orm-postgres/orm-client';
 
-const summary = db.orm.public.Post.scope((posts) => posts.select('id', 'title').include('user'));
+const summary = db.orm.public.Post.fragment((posts) => posts.select('id', 'title').include('user'));
 type PostSummary = CollectionRowOf<ReturnType<typeof summary>>;
 
-const mine = await db.orm.public.Post.where({ userId }).apply(summary).all();
+const mine = await db.orm.public.Post.where({ userId }).with(summary).all();
 ```
 
 ##### Sort by a field from a request (PostgreSQL)
