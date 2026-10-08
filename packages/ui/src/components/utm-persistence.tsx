@@ -39,6 +39,12 @@ interface UtmPersistenceProps {
   fallbackConsoleRef?: (pathname: string) => string;
 }
 
+/**
+ * Reads the visitor's first- and last-touch attribution: stored touches merged
+ * with whatever campaign params are on the current URL. Persists and announces
+ * a touch only when it actually changed, and drops ad click IDs when analytics
+ * consent is absent. Returns `undefined` for a visitor with no attribution.
+ */
 export function getActiveAttribution(storageKey: string) {
   const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search), {
     // Click IDs are advertising identifiers. Without analytics consent nothing
@@ -96,6 +102,13 @@ export function getActiveAttribution(storageKey: string) {
   return attribution;
 }
 
+/**
+ * Document-level attribution carrier. On every route change it captures campaign
+ * params into storage; on every link click it rewrites the target so internal
+ * links keep the last touch and Console links also receive the first touch.
+ * With `fallbackConsoleRef`, Console links clicked by a visitor with no
+ * attribution at all get a `ref` naming the page that sent them.
+ */
 export function UtmPersistence({
   basePath,
   proxiedPaths = [],
@@ -117,6 +130,7 @@ export function UtmPersistence({
   }, [pathname, storageKey]);
 
   useEffect(() => {
+    /** Rewrites the clicked anchor's href with attribution before navigation. */
     function handleClick(event: MouseEvent) {
       if (event.defaultPrevented || event.button !== 0) {
         return;

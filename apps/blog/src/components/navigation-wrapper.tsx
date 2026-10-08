@@ -17,6 +17,7 @@ interface NavigationWrapperProps {
 // on console links, stamped at click time by the document-level UtmPersistence
 // listener; see `syncFallbackRef` in @prisma-docs/ui for why that is `ref` and
 // not a UTM.
+/** Appends the visitor's own `utm_*` params to an internal or absolute link. */
 function buildHref(base: string, utm?: UtmParams) {
   if (!utm) return base;
   const isAbsolute = base.startsWith("http");
@@ -29,6 +30,7 @@ function buildHref(base: string, utm?: UtmParams) {
   return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
+/** Builds a Console login or sign-up link carrying only the visitor's own `utm_*` params. */
 function buildConsoleHref(pathname: "/login" | "/sign-up", utm?: UtmParams) {
   if (!utm) return `https://console.prisma.io${pathname}`;
 
@@ -43,6 +45,7 @@ function buildConsoleHref(pathname: "/login" | "/sign-up", utm?: UtmParams) {
   return href.toString();
 }
 
+/** Blog header with nav, logo, and Console links that preserve the visitor's UTMs. */
 export function NavigationWrapper({ links }: NavigationWrapperProps) {
   const [mounted, setMounted] = useState(false);
 
