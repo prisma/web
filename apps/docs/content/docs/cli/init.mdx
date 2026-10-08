@@ -3,7 +3,7 @@ title: init
 description: Prepare a repository for Prisma development.
 url: /cli/init
 metaTitle: init | Prisma CLI
-metaDescription: Learn how prisma init prepares a repository for Prisma development with a skills-sync postinstall hook and a scaffolded prisma.config.ts.
+metaDescription: Learn how prisma init prepares a repository for Prisma development with a skills-sync postinstall hook, a prisma dev dependency, and a scaffolded prisma.config.ts.
 ---
 
 `init` prepares the current directory for Prisma development. It runs locally and calls no platform API. It does not scaffold the ORM: use [`orm init`](/cli/orm-init) to add the Prisma ORM config, contract, and runtime files to a project.
@@ -11,11 +11,11 @@ metaDescription: Learn how prisma init prepares a repository for Prisma developm
 `init` does four things:
 
 1. Adds a `postinstall` script to `package.json` (`prisma skills sync || exit 0`), so the [Prisma agent skills](/cli/skills) resync on every install and upgrade.
-2. Adds `prisma` to `devDependencies` in `package.json`, pinned to the CLI's version. It does not install it.
+2. Adds `prisma` to `devDependencies` in `package.json`, pinned to the CLI's version, unless it is already listed. It does not install it.
 3. Scaffolds a `prisma.config.ts` recording which agents to install skills for, in the [`skills` config section](/cli/configuration#agent-skills).
 4. Runs [`skills sync`](/cli/skills) once.
 
-It never prompts, always exits 0, and is safe to rerun: each step reports what is already done. A `prisma.config.ts` or `postinstall` script that already exists is never edited. If `package.json` already has a different `postinstall` script, `init` reports it and tells you what to append instead of chaining or replacing it.
+It never prompts, always exits 0, and is safe to rerun: each step reports what is already done. A `prisma.config.ts`, `postinstall` script, or `prisma` entry that already exists is never edited. If `package.json` already has a different `postinstall` script, `init` reports it and tells you what to append instead of chaining or replacing it.
 
 ## Usage
 
@@ -24,7 +24,7 @@ npx prisma@latest init
 npm install
 ```
 
-Run the install straight after `init`, so the `prisma` package it added is in `node_modules`.
+If `init` added `prisma`, run the install straight after, so the package is in `node_modules`.
 
 ## Options
 
@@ -56,6 +56,6 @@ export default definePrismaConfig({
 });
 ```
 
-The `prisma/config` import resolves from your project's `node_modules`. Until you install the `prisma` dev dependency that `init` added, commands that read this file stop at `CLI.CONFIG_UNREADABLE`. See [Configuration](/cli/configuration).
+The `prisma/config` import resolves from your project's `node_modules`. Until `prisma` is installed, commands that read this file stop at `CLI.CONFIG_UNREADABLE`. See [Configuration](/cli/configuration).
 
-Only `init` writes the `postinstall` hook and the `prisma` dev dependency. No other command edits `package.json`; [`skills sync`](/cli/skills) itself never touches it.
+Only `init` writes the `postinstall` hook. [`orm init`](/cli/orm-init) also adds `prisma` to `devDependencies`. [`skills sync`](/cli/skills) never touches `package.json`.
