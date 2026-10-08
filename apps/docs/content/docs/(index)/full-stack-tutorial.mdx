@@ -80,7 +80,7 @@ Check the versions first: `node --version` must print 22.18 or newer (on the 24 
 1. Scaffold: `npm create prisma@latest -- my-app --template hono --provider postgres --yes`. Then run `npx prisma@latest init` in `my-app` to confirm the Prisma agent skills the scaffold installed are current, and use them.
 2. Read `module.ts` and `service.ts` first: the Composer module provisions the database and the service, and it is what `dev` and `deploy` operate on.
 3. Build and run locally: `npm run build`, then start `npx prisma dev module.ts` in the background and wait until it prints the local URL. This provisions a local Prisma Postgres database and applies the contract; no DATABASE_URL is needed. Sample users are seeded on the app's first query. Verify with curl that the local URL's /users endpoint returns the seeded users, then stop `dev`.
-4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). The scaffold already wrote the baseline migration under `migrations/app/`; note its directory name, which ends in `_init`. The scaffold's `prisma-composer.config.ts` already sets the deploy region, so do not add one. Then run `npx prisma deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
+4. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login` (it opens a browser). The scaffold already wrote the baseline migration under `migrations/app/`; note its directory name, which ends in `_init`. The `composer` section of the scaffold's `prisma.config.ts` already sets the deploy region, so do not add one. Then run `npx prisma deploy module.ts` and verify the live URL's /users endpoint with curl. The deploy creates the project and provisions the database from the module declaration; do not pass a DATABASE_URL.
 5. Evolve the schema: add `role String @default("member")` to the User model in `src/prisma/contract.prisma`, run `npx prisma contract emit`, add `"role"` to the typed select and the returned object in `src/prisma/users.ts`, and plan the migration with `npx prisma migration plan --name add-user-role --from <the init migration directory>`. Then run `npm run build` and `npx prisma deploy module.ts` again, and verify the live /users now returns `role: "member"` with the same createdAt values as before.
 ```
 
@@ -104,7 +104,7 @@ If you work with a coding agent, run [`npx prisma@latest init`](/cli/init) once.
 
 ## 2. The Composer app
 
-Start with the declaration, because it is what every later command operates on. The scaffold declares the whole app in two files and adds a third for deploys. `module.ts` is the app: it provisions a Prisma Postgres database and the service, and wires one to the other:
+Start with the declaration, because it is what every later command operates on. The scaffold declares the whole app in two files, and `prisma.config.ts` holds the deploy config. `module.ts` is the app: it provisions a Prisma Postgres database and the service, and wires one to the other:
 
 ```ts title="module.ts"
 import { module } from "@prisma/composer";
@@ -145,20 +145,35 @@ export default compute({
 });
 ```
 
-`prisma-composer.config.ts` is the deploy config, which only the CLI reads and your app never imports. It already names the region the first deploy needs to create your project, `us-east-1`, so there is nothing to set before you deploy. To deploy somewhere else, change the region here before the first deploy; the region ids are listed under [Limitations](/compute/limitations).
+`prisma.config.ts` is this project's Prisma config: the Prisma CLI reads it, and your app never imports it. Its `orm` section points Prisma ORM at your contract and database, its `skills` section lists the agents you chose at the prompt, and the deploy config is its `composer` section: the extensions that deploy your app and the store that keeps deploy state. The `composer` section already names the region the first deploy needs to create your project, `us-east-1`, so there is nothing to set before you deploy. To deploy somewhere else, change the region here before the first deploy; the region ids are listed under [Limitations](/compute/limitations).
 
-```ts title="prisma-composer.config.ts"
-import { defineConfig } from "@prisma/composer/config";
+The file below is shown for Prisma schema authoring with Claude Code picked for agent skills. Your `skills` list holds the agents you picked, and TypeScript authoring points `contract` at `contract.ts` and adds an `output` path.
+
+```ts title="prisma.config.ts"
+import { definePrismaConfig } from "prisma/config";
+import { defineConfig as ormConfig } from "@prisma/orm-postgres/config";
+import { defineConfig as composer } from "@prisma/composer/config";
 import { nodeBuild } from "@prisma/composer/node/control";
 import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
 
-export default defineConfig({
-  extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
-  state: prismaState(),
+export default definePrismaConfig({
+  skills: {
+    agents: ["claude"],
+  },
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    db: {
+      connection: process.env.DATABASE_URL!,
+    },
+  }),
+  composer: composer({
+    extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
+    state: prismaState(),
+  }),
 });
 ```
 
-Notice there is no connection string anywhere. The database is a declared dependency, typed by your contract, and Composer injects the connection wherever the app runs. The declaration is ordinary TypeScript: `npx tsc --noEmit` checks the wiring, and mistakes fail the compile instead of a deploy. [Composer](/composer) covers the model in full: modules, services, dependencies, and the first-party building blocks.
+Notice there is no connection string in the declaration. The database is a declared dependency, typed by your contract, and Composer injects the connection wherever the app runs. The `DATABASE_URL` in the `orm` section is used only by the ORM commands that connect to a database directly, such as the `db:*` scripts at the end of [step 4](#4-run-it-locally-on-prisma-postgres); `prisma dev` and `prisma deploy` do not need it. The declaration is ordinary TypeScript: `npx tsc --noEmit` checks the wiring, and mistakes fail the compile instead of a deploy. [Composer](/composer) covers the model in full: modules, services, dependencies, and the first-party building blocks.
 
 ## 3. The Prisma ORM data model
 
@@ -218,7 +233,7 @@ npm run build
 npx prisma deploy module.ts
 ```
 
-Composer creates a project named after your module, in the region from `prisma-composer.config.ts`, provisions the Prisma Postgres database declared in `module.ts`, connects it to the service, and starts the app. There is no environment file to pass, because the deployed database comes from the declaration exactly as the local one did. When everything is up, the deploy prints what it made, each part of your app next to the platform resource it became, along with the public URL:
+Composer creates a project named after your module, in the region from the `composer` section of `prisma.config.ts`, provisions the Prisma Postgres database declared in `module.ts`, connects it to the service, and starts the app. There is no environment file to pass, because the deployed database comes from the declaration exactly as the local one did. When everything is up, the deploy prints what it made, each part of your app next to the platform resource it became, along with the public URL:
 
 ```text no-copy
 my-app
