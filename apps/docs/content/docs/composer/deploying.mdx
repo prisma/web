@@ -120,16 +120,53 @@ When the PR closes, tear the stage down with the `destroy` operation, targeting 
 
 One extra step applies if your app binds input fields with `envSecret` or `envParam` (see [Service input](/composer/service-input)). Each stage stores its own copy of those platform variables. The deploying shell only seeds them. A fresh stage, such as a new `pr-42`, starts with none of them, so CI must export the values alongside the two credential variables. The first deploy then copies any missing values from the shell up to the stage. If a name is absent from both the platform and the shell, the deploy fails early and names the missing variable.
 
-## When a deploy stops on an effect version conflict
+## When prisma.config.ts fails on an effect version conflict
 
-Before doing anything else, every Composer command verifies that the installed dependency tree gives the deploy engine the exact `effect` version `@prisma/composer` pins. When it does not, the command stops immediately:
+The deploy engine Composer drives needs the exact `effect` version `@prisma/composer` pins. The extensions in your `composer` section import that engine, so when your installed tree gives it a different `effect`, evaluating `prisma.config.ts` fails before any command runs:
 
 ```text no-copy
-Error: Dependency conflict: alchemy resolves effect@<found>, but
-@prisma/composer requires effect@<required>.
+CLI.CONFIG_UNREADABLE  /path/to/prisma.config.ts could not be evaluated:
+Cannot find module '.../node_modules/effect/dist/unstable/http/FetchHttpClient.js'
 ```
 
-This happens when your app, or another dependency of it, pins a different `effect` than `@prisma/composer` does and your package manager hoists that copy where the deploy engine resolves it. A plain Composer app never hits it: `@prisma/composer` and `@prisma/composer-prisma-cloud` pin every `effect`-family package the engine would otherwise float, so a fresh install resolves a single `effect`. The fix is to use the same `effect` as Composer: match your own `effect` dependency to the exact version the error names (`dependencies.effect` in `@prisma/composer`), or, when a dependency you cannot change pins another version, force Composer's with an `overrides` entry for `effect` in your `package.json` (`resolutions` in Yarn, under `"pnpm"` for pnpm) and reinstall. The pin goes stale when you upgrade `@prisma/composer`; the error names the new version each time.
+The message after the colon is the module error from inside the engine, and it varies with the versions involved: a missing `effect` module, or an `effect` export that is not a function. The command exits with code 2. Commands that do not read the config, such as `prisma --version`, still run.
+
+This happens when your app, or another dependency of it, pins a different `effect` than `@prisma/composer` does and your package manager hoists that copy where the deploy engine resolves it. A plain Composer app never hits it: `@prisma/composer` and `@prisma/composer-prisma-cloud` pin every `effect`-family package the engine would otherwise float, so a fresh install resolves a single `effect`. The fix is to use the same `effect` as Composer: match your own `effect` dependency to `@prisma/composer`'s exact pin (see its `dependencies.effect`), or, when a dependency you cannot change pins another version, force Composer's with your package manager's override setting and reinstall. Each one takes the version in `@prisma/composer`'s `dependencies.effect`.
+
+npm reads `overrides` in `package.json`:
+
+```json title="package.json"
+"overrides": {
+  "effect": "<the version in @prisma/composer's dependencies.effect>"
+}
+```
+
+pnpm 11 and later read `overrides` in `pnpm-workspace.yaml` and ignore the `"pnpm"` field of `package.json`:
+
+```yaml title="pnpm-workspace.yaml"
+overrides:
+  effect: "<the version in @prisma/composer's dependencies.effect>"
+```
+
+pnpm 10 and earlier read `overrides` under `"pnpm"` in `package.json`:
+
+```json title="package.json"
+"pnpm": {
+  "overrides": {
+    "effect": "<the version in @prisma/composer's dependencies.effect>"
+  }
+}
+```
+
+Yarn reads `resolutions` in `package.json`:
+
+```json title="package.json"
+"resolutions": {
+  "effect": "<the version in @prisma/composer's dependencies.effect>"
+}
+```
+
+The setting only takes effect when the tree is rebuilt, and it goes stale when you upgrade `@prisma/composer`, so update it with each upgrade.
 
 ## When a deploy stops on a missing connection value
 
@@ -146,10 +183,10 @@ Fix it at whichever end is wrong: add the name to the outputs the producer retur
 
 Behavior you will run into once the app is deployed, and what to do about it:
 
-- **Compute scales to zero, and idle database connections get closed.** A long-lived client that treats a dropped connection as fatal will crash-loop through 502s. Keep the pool small and reconnect-friendly, and do not let an async error kill the process:
+- **Compute scales to zero, and idle database connections get closed.** A long-lived client that treats a dropped connection as fatal will crash-loop through 502s. Keep the pool small and reconnect-friendly, turn off named prepared statements so a reconnect against the local `prisma dev` database does not fail with `prepared statement "..." already exists`, and do not let an async error kill the process:
 
   ```ts
-  const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10 });
+  const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10, prepare: false });
   process.on('uncaughtException', (err) => console.error('uncaughtException', err));
   process.on('unhandledRejection', (err) => console.error('unhandledRejection', err));
   ```
