@@ -6,12 +6,11 @@ import type { SegmentUseCaseContent } from "@/components/use-case/segment/types"
 // The Prisma Stack page. Every string is transcribed verbatim from the Notion
 // card "Stack- Copy", toggle V1 — nothing added, tightened or reworded. Icons
 // are decorative, not copy.
-
-export const meta = {
-  title: "The Prisma Stack",
-  description:
-    "An integrated TypeScript stack where your ORM, Postgres database, and app hosting share one workflow, so developers and coding agents can ship without coordinating between separate vendors.",
-};
+//
+// Kept React-free (types are imported with `import type`, so nothing from the
+// component files survives compilation) so both the page and its Markdown
+// rendition (`@/lib/markdown/stack`) read the same copy. The one inline-code
+// span in the copy is written in backticks; page.tsx sets it in <code>.
 
 export const hero: SegmentUseCaseContent["hero"] = {
   headline: "One platform, from schema to production",
@@ -26,7 +25,7 @@ export const hero: SegmentUseCaseContent["hero"] = {
   secondaryCta: { label: "See pricing", href: "/pricing" },
 };
 
-export const stack: StackBentoContent = {
+export const stack = {
   orm: {
     body: "A declarative, type-safe schema that gives your app, your team, and your agent one shared contract across the stack.",
     bullets: [
@@ -59,16 +58,9 @@ export const stack: StackBentoContent = {
     body: "Visual data browser and editor built into the Console. Inspect your data, see what your agent changed, and collaborate with teammates without writing SQL for every check.",
   },
   cli: {
-    body: (
-      <>
-        The agent interface for the full platform. Structured output and{" "}
-        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.8125em]">--json</code>{" "}
-        modes help agents create, deploy, inspect, fix, and redeploy through the same Prisma
-        workflow.
-      </>
-    ),
+    body: "The agent interface for the full platform. Structured output and `--json` modes help agents create, deploy, inspect, fix, and redeploy through the same Prisma workflow.",
   },
-};
+} satisfies StackBentoContent;
 
 export const comparison: ComparisonContent = {
   headline: "Prisma Stack vs. assembling your own backend stack",
