@@ -63,7 +63,7 @@ export const computeContent: ProductPageContent = {
     // sentences. The page's meta description (app/compute/page.tsx) repeats
     // the last three verbatim and words the first one as a PaaS definition.
     subheadline:
-      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan.",
+      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres in one project.",
     benefits: [
       "Set up deploy on push, and every pushed branch gets a preview with its own database",
       "Your app runs next to Prisma Postgres, in one of six regions",
@@ -135,7 +135,7 @@ export const computeContent: ProductPageContent = {
       {
         name: "App and database on one platform",
         description:
-          "Your app runs next to Prisma Postgres, in the same project and on the same plan, with PgBouncer pooling included. Any Postgres client works, and Prisma ORM is optional.",
+          "Your app runs next to Prisma Postgres, in the same project, with PgBouncer pooling included. Any Postgres client works, and Prisma ORM is optional.",
         illustration: "coLocated",
       },
       {
