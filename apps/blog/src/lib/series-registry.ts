@@ -23,6 +23,7 @@ export const seriesRegistry = {
     description:
       "The story of Prisma Compute: TypeScript app hosting that runs on the same infrastructure as your database. From the public beta launch to the runtime engineering underneath.",
     featured: true,
+    listingOrder: "newest-first",
     docsUrl: "https://docs.prisma.io/docs/compute",
     docsLabel: "Read the Prisma Compute docs",
     relatedSeries: ["agentic-engineering", "prisma-8"],
@@ -32,6 +33,7 @@ export const seriesRegistry = {
     description:
       "Follow the journey of Prisma 8, the next evolution of Prisma ORM. From the announcement and roadmap to TypeScript migrations, the extension API, and Early Access.",
     featured: true,
+    listingOrder: "newest-first",
     relatedSeries: ["agentic-engineering", "prisma-compute"],
   },
   "rust-to-typescript-migration-journey": {
@@ -90,6 +92,7 @@ export const seriesRegistry = {
     title: string;
     description?: string;
     featured?: boolean;
+    listingOrder?: "newest-first";
     docsUrl?: string;
     docsLabel?: string;
     relatedSeries?: readonly string[];
@@ -102,6 +105,7 @@ export type SeriesMetadata = {
   title: string;
   description?: string;
   featured?: boolean;
+  listingOrder?: "newest-first";
   docsUrl?: string;
   docsLabel?: string;
   relatedSeries?: readonly string[];
