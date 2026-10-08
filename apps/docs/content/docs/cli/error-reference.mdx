@@ -166,6 +166,12 @@ The config file's `$prismaConfig` marker declares a version other than the one t
 
 A consent prompt was reached under `--yes` or in a non-interactive session. Consent has no default answer and `--yes` does not grant it, so there is nothing for the run to assume. When the consent declares a token, the message and next action say to pass `--confirm <token>`, and the token travels in meta; without a token, the only path is running the command interactively. Meta: `consentToken` (only when the consent declares a token).
 
+A statement prompt (`ctx.prompt.statement` or `ctx.prompt.statements`) raises the same code when no statement flag on the command line answers it. One error lists every question still unanswered: the summary names the subjects, `why` carries the questions, and the next actions give one flag to pass per verb, such as `--delete Legacy` or `--rename 'Legacy:<new name>'`. `why` also lists every given statement flag that names none of the questions' subjects, and any `--confirm` token, which answers no statement, so a misspelled flag is reported before anyone answers a prompt. Meta: `unanswered` (a list of `{ subject, verbs }`), plus `subject` and `verbs` when exactly one question is unanswered; `unmatched` (a list of `{ verb, values }`) and `confirm` (the tokens) when any.
+
+### CLI.CONSENT_UNUSED [#CLI.CONSENT_UNUSED]
+
+A consent flag was given but answered nothing: a statement flag such as `--delete Legacy`, or a `--confirm` token. The summary says why for each flag: no statement prompt asked about that subject and no `ctx.statements.take` took it (usually a mistyped subject), the question about it was already answered by another flag (a flag given twice, or two verbs for one subject), or no consent in the run asked for that `--confirm` token. The `--confirm` case applies only to a command that declares statements, where such a token is certainly a mistake; elsewhere a leftover `--confirm` is still ignored until [prisma/prisma-cli#339](https://github.com/prisma/prisma-cli/issues/339) lands. `why` lists the subjects the run asked about. Raised when the handler returns from a run that would otherwise have succeeded, so a run that failed for another reason reports that reason only; or earlier, as soon as `ctx.prompt.statements(questions, { last: true })` has answered its questions, before the command acts. Exits 2. Meta: `unused` (a list of `{ verb, values }`), `confirm` (the unused `--confirm` tokens, when any), `asked` (the subjects asked about, when any).
+
 ### CLI.CREDENTIALS_LOCKED [#CLI.CREDENTIALS_LOCKED]
 
 The advisory lock on the stored-credentials file was held by another prisma process for longer than the wait timeout, so this run's credential mutation gave up; the fix is to wait for the other command and retry. Raised by the auth state file's lock helper in `packages/cli`. Meta: none.
@@ -188,7 +194,7 @@ A bug, not a user error: a non-structured throw from a handler, an engine invari
 
 ### CLI.INVALID_ARGUMENTS [#CLI.INVALID_ARGUMENTS]
 
-The invocation's arguments did not parse or contradict each other. Raise sites: stricli's argument-parse failure mapped at the adapter boundary (its usage text becomes summary and `why`), `--config=` given an empty value, `prisma init --skills` given `none` combined with agent names or an unknown agent name, and `prisma skills sync` given both `--disable` and `--enable`. Exits 2 as a usage error. Meta: none.
+The invocation's arguments did not parse or contradict each other. Raise sites: stricli's argument-parse failure mapped at the adapter boundary (its usage text becomes summary and `why`), `--config=` given an empty value, a statement flag (such as `--delete`) given the wrong number of values for its declared arity or an empty value, `prisma init --skills` given `none` combined with agent names or an unknown agent name, and `prisma skills sync` given both `--disable` and `--enable`. Exits 2 as a usage error. Meta: none.
 
 ### CLI.MISSING_DEPENDENCY [#CLI.MISSING_DEPENDENCY]
 
@@ -200,11 +206,11 @@ A `ctx.packages` operation (an install, or running a package through the manager
 
 ### CLI.PROMPT_CANCELLED [#CLI.PROMPT_CANCELLED]
 
-The user cancelled a prompt: EOF on stdin at a line-rendered prompt, a clack cancel (Ctrl-C at the prompt UI), an abort during a browserWait poll, Ctrl-C at the `prisma auth login` paste prompt, or — via the service commands' `userCancelledError` — consent declined interactively. Settles with exit 3, the cancellation code, instead of 2. Meta: none.
+The user cancelled a prompt: EOF on stdin at a line-rendered prompt, a clack cancel (Ctrl-C at the prompt UI), a SIGINT or SIGTERM delivered while a prompt waits for input, an abort during a browserWait poll, Ctrl-C at the `prisma auth login` paste prompt, or — via the service commands' `userCancelledError` — consent declined interactively. Settles with exit 3, the cancellation code, instead of 2; a SIGTERM that cancels a waiting prompt settles 143 instead, because it ends the run as a delivered signal, while a SIGINT is the user declining, like Ctrl-C. After a signal has cancelled a prompt, every later prompt in the run is cancelled at once and a further signal force-exits. Meta: none.
 
 ### CLI.PROMPT_INVALID [#CLI.PROMPT_INVALID]
 
-An answer could not be interpreted: not a yes/no for a confirm, not one of a select's options with no default to fall back to, or a consent token typed wrong where re-prompting is impossible (scripted answers or piped stdin — the interactive clack renderer re-prompts instead). Meta: `consentToken` (token-mismatch raise only).
+An answer could not be interpreted: not a yes/no for a confirm, not one of a select's options with no default to fall back to, a consent token typed wrong where re-prompting is impossible (scripted answers or piped stdin — the interactive clack renderer re-prompts instead), or a statement answer the command rejected. A statement answer is rejected when a verb flag's value fails the command's check (re-prompting cannot correct a flag), or when a typed answer does not start with one of the verbs or fails the check where re-prompting is impossible; the summary carries the command's reason. Meta: `consentToken` (token-mismatch raise only).
 
 ### CLI.PROMPT_REQUIRED [#CLI.PROMPT_REQUIRED]
 
