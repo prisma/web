@@ -145,7 +145,7 @@ const tree: DecisionTreeData = {
       id: "fleet-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "Operations are metered account-wide across up to 1,000 databases on one plan, so a fleet of small databases shares one allowance.",
+      why: "Operations are metered account-wide across up to 1,000 databases in a workspace, so a fleet of small databases shares one allowance.",
       caveat:
         "Prisma publishes this guide; the account-wide metering claim is from our pricing page.",
     },
