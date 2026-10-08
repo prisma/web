@@ -210,8 +210,8 @@ export function PricingComparison() {
             <Reveal delay={0.1}>
               <p className="mx-auto mt-6 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
                 Prisma charges per operation: each query your app runs against your database counts
-                as one. No seats. No egress fees. And every paid plan includes a hard spend limit so
-                there are no surprises.
+                as one. No seats. No database egress fees. And every paid plan includes a hard spend
+                limit so there are no surprises.
               </p>
             </Reveal>
             <Reveal delay={0.15}>
@@ -220,7 +220,7 @@ export function PricingComparison() {
                 <strong className="font-semibold text-foreground">
                   Prisma Pro can cost up to 5x less than a typical Neon + Vercel setup
                 </strong>
-                , with one bill, included data transfer, and spend limits on by default.
+                , with one bill, included database data transfer, and spend limits on by default.
               </p>
             </Reveal>
 
