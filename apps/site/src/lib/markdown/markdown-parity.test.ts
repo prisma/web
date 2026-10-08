@@ -12,9 +12,10 @@ const baseUrl = "https://www.prisma.io";
  * The component files that render each page's headings.
  *
  * The renditions of /orm, /postgres and /compute are generated from the same
- * `ProductPageContent` objects the pages render from, so their copy cannot
- * drift; what can drift is the framing text that is literal JSX in the shared
- * product sections, which is why those files are listed here too.
+ * `ProductPageContent` objects the pages render from, and /stack from its
+ * `app/stack/content.ts`, so their copy cannot drift; what can drift is the
+ * framing text that is literal JSX in the shared sections, which is why those
+ * files are listed here too.
  *
  * For the pages whose copy is literal JSX, this list is the drift alarm: the
  * test below pulls every literal `<h1>`/`<h2>` out of these files and fails if
@@ -67,7 +68,15 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/sections/compare-links.tsx",
   ],
   "/studio": ["src/app/studio/page.tsx"],
-  "/stack": ["src/app/stack/page.tsx", "src/components/sections/stack-bento.tsx"],
+  "/stack": [
+    "src/app/stack/page.tsx",
+    "src/components/product/product-hero.tsx",
+    "src/components/sections/stack-bento.tsx",
+    "src/components/use-case/segment/comparison-table.tsx",
+    "src/components/use-case/segment/sections.tsx",
+    "src/app/stack/best-for.tsx",
+    "src/components/sections/cta-burst.tsx",
+  ],
   "/enterprise": ["src/app/enterprise/page.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
@@ -87,6 +96,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
  * The three product pages sit at 1 on purpose: every heading on them except
  * the platform section's comes from the page's `ProductPageContent`, so it is
  * an expression in the JSX and the content-object test below is what covers it.
+ * /stack is the same: StackBento's own h2 is its only literal heading.
  */
 const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/": 6,
@@ -95,7 +105,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/compute": 1,
   "/pricing": 5,
   "/studio": 3,
-  "/stack": 2,
+  "/stack": 1,
   "/enterprise": 3,
   "/mcp": 4,
 };
@@ -256,6 +266,52 @@ test("the product pages inherit their copy from the page's own content object", 
       );
     }
   }
+});
+
+test("/stack inherits its copy from the page's own content module", async () => {
+  // Same idea as the product pages: every string page.tsx hands its sections
+  // comes from app/stack/content.ts, so assert each one reaches the markdown.
+  const { bestFor, comparison, cta, hero, stack, when } = await import("@/app/stack/content");
+  const document = renderMarkdownDocument(markdownPages["/stack"], baseUrl);
+  const expect = (text: string, what: string) =>
+    assert.ok(document.includes(text), `/stack: ${what} missing: ${text}`);
+
+  expect(hero.headline, "hero headline");
+  expect(hero.subheadline, "hero subheadline");
+  for (const benefit of hero.benefits) expect(benefit, "hero benefit");
+  for (const link of [hero.primaryCta, hero.secondaryCta]) {
+    expect(`[${link.label}](${link.href})`, "hero CTA");
+  }
+
+  for (const product of [stack.orm, stack.postgres, stack.compute]) {
+    expect(product.body, "stack product lede");
+    for (const bullet of product.bullets) expect(bullet, "stack product bullet");
+  }
+  expect(stack.studio.body, "Studio description");
+  expect(stack.cli.body, "CLI description");
+
+  expect(comparison.headline, "comparison headline");
+  for (const row of comparison.rows) {
+    expect(`| ${row.point} | ${row.assembled} | ${row.prisma} |`, "comparison row");
+  }
+
+  expect(when.headline, "when-to-use headline");
+  expect(when.intro, "when-to-use intro");
+  for (const item of when.items) {
+    expect(item.title, "when-to-use card");
+    expect(item.body, "when-to-use card copy");
+  }
+
+  expect(bestFor.headline, "best-for headline");
+  expect(bestFor.intro, "best-for intro");
+  for (const item of bestFor.items) {
+    expect(item.title, "audience");
+    expect(item.body, "audience copy");
+  }
+
+  expect(cta.headline, "closing CTA headline");
+  expect(cta.body, "closing CTA body");
+  for (const check of cta.checks) expect(check.label, "closing CTA check");
 });
 
 test("llms.txt lists every rendition and links its .md URL", async () => {
