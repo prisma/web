@@ -9,7 +9,7 @@ import { CompareLinks } from "@/components/sections/compare-links";
 import { Faq } from "@/components/sections/faq";
 
 export const metadata = createPageMetadata({
-  title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+  title: "Prisma Compute | Host TypeScript apps (Node.js, Bun or Next.js) next to Postgres",
   // The entity wording shared with the homepage, /postgres and the docs, except
   // that the first sentence defines Compute as a platform-as-a-service (PaaS)
   // and drops "on one plan", which read as one flat price: Starter is a $10

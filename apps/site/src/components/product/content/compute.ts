@@ -102,7 +102,7 @@ export const computeContent: ProductPageContent = {
   problem: {
     headline: "One platform can ship features two never could",
     body: [
-      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (branching, preview environments, end-to-end test data) don't exist. You wire them together yourself, or you do without.",
+      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (per-branch previews with their own database, end-to-end test data) don't exist. You wire them together yourself, or you do without.",
       "Prisma Compute exists to change that.",
     ],
     outcomes: [
@@ -196,7 +196,7 @@ export const computeContent: ProductPageContent = {
     benefits: [
       "Built to host the agents you're building, not just the apps",
       "A preview per pushed branch, app and database together",
-      "App next to its database, on one plan",
+      "App next to its database, in one project",
       TRUST_LINE,
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },

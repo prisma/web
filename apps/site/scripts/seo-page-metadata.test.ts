@@ -58,7 +58,10 @@ const PAGES: PageCopy[] = [
   },
   {
     path: "/compute",
-    title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+    // Changed on purpose on 2026-10-08: the title names the app types the
+    // Compute docs list (Node.js, Bun or Next.js) instead of "on Bun", which
+    // is only the runtime deployed apps run on.
+    title: "Prisma Compute | Host TypeScript apps (Node.js, Bun or Next.js) next to Postgres",
     // Changed on purpose in the 2026-09-30 claims pass: the audit copy said
     // "long-lived" and "long-running", which the Compute docs do not back. The
     // description is the positioning wording shared with the homepage,
