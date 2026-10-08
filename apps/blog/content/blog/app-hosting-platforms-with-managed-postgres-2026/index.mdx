@@ -47,7 +47,7 @@ Rows in alphabetical order; we make Prisma Compute and Prisma Postgres.
 | | App + DB in one project | Preview / staging per branch | Idle cost | Same-region networking | Pooling | Backups / PITR | Postgres extensions | Price at small scale | Exit path |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Fly.io** | Yes, Managed Postgres | Per pull request via GitHub Actions; no database in the guide | Autostop; no CPU or RAM charge while stopped | Per organization | Included | Automated backups; point-in-time restore with `fly mpg restore --pitr-time` | pgvector; PostGIS if enabled at provisioning | $1.94 Machine + $38 Managed Postgres a month ([Fly.io pricing](https://fly.io/pricing), as of September 2026) | `pg_dump` |
-| **Neon** | Backend functions next to the database (Neon Functions, four AWS regions); UI on another host | Copy-on-write branch with the parent's data | Scales to zero after 5 minutes; no base fee | Depends on your app host | PgBouncer, `-pooler` string | Instant restore on every plan, window set by plan | pgvector, PostGIS, TimescaleDB (Apache-2 features) and more | Free $0; Launch $0.106 per CU-hour, plus your app host ([Neon pricing](https://neon.com/pricing), as of October 2026) | `pg_dump` |
+| **Neon** | Backend functions next to the database (Neon Functions, four AWS regions); UI on another host | Copy-on-write branch with the parent's data | Scales to zero after 5 minutes; no base fee | Functions in the database's region; UI depends on its host | PgBouncer, `-pooler` string | Instant restore on every plan, window set by plan | pgvector, PostGIS, TimescaleDB (Apache-2 features) and more | Free $0; Launch $0.106 per CU-hour, plus your app host ([Neon pricing](https://neon.com/pricing), as of October 2026) | `pg_dump` |
 | **Prisma Compute + Prisma Postgres** | Yes; TypeScript on Bun, no WebSocket servers | Per pushed branch once deploy on push is set up: its own services and a new database for each one the module declares; production data not copied | App scales to zero; database per operation | One of six regions per service | PgBouncer included | Daily snapshots on paid plans, 7 or 30 days; no PITR | pgvector, pg_search, pg_trgm and other standard extensions; no PostGIS or TimescaleDB | Free: app and database, no usage billing. Starter $10 base, 5M requests and 1M operations included, memory, active vCPU and bandwidth metered ([Prisma pricing](https://www.prisma.io/pricing), as of September 2026) | `pg_dump`; the Composer module is a TypeScript file in your repo, not a runtime |
 | **Railway** | Yes, a Postgres template Railway maintains; backups, PITR, HA and pooling opt-in | Per pull request | Sleeps 5 to 10 minutes after last outbound traffic with Serverless enabled; otherwise runs all month | Per environment | PgBouncer add-on you enable on the Postgres service | Scheduled volume backups; opt-in PITR for Postgres, about 4 weeks | None added to the default template; pgvector, PostGIS and TimescaleDB as separate templates | Hobby $5 with $5 of usage, then $10 per GB RAM and $20 per vCPU a month ([Railway pricing](https://railway.com/pricing) and [plan reference](https://docs.railway.com/reference/pricing/plans), as of September 2026) | `pg_dump` |
 | **Render** | Yes, managed | Per pull request on the Pro workspace ($25 a month); no data copied | Free spins down after 15 minutes; paid runs all month | Per region | PgBouncer on paid databases | PITR on paid databases, 3 or 7 days | pgvector, PostGIS, TimescaleDB (no Community features) and more | $7 web service + $6 Postgres a month ([Render pricing](https://render.com/pricing), as of September 2026) | `pg_dump` |
@@ -68,11 +68,11 @@ Each entry has the same headings, and each competitor ends with how it compares 
 
 **Pricing:** a shared-cpu-1x 256 MB Machine at $1.94 a month plus Managed Postgres Basic at $38, Machines billed by the second. [Fly.io pricing](https://fly.io/pricing), as of September 2026.
 
-**Trade-offs:** no free database tier, and the review-apps guide creates an app per pull request but no database. Managed Postgres restores to a point in time with [`fly mpg restore --pitr-time`](https://fly.io/docs/flyctl/mpg-restore/).
+**Trade-offs:** Managed Postgres plans start at $38 a month, and the review-apps guide creates an app per pull request but no database. Managed Postgres restores to a point in time with [`fly mpg restore --pitr-time`](https://fly.io/docs/flyctl/mpg-restore/).
 
 **Compare:** [Fly.io vs Prisma Compute](/where-to-host-typescript-frontend-node-api-postgres#4-flyio).
 
-**vs Prisma Compute + Prisma Postgres:** Fly.io runs Machines in more than one region, holds WebSocket connections open and runs any language, and its Managed Postgres includes high availability and pooling on every plan plus point-in-time restore; Prisma Compute + Prisma Postgres starts on a Free plan for the app and the database, where Fly Managed Postgres starts at $38 a month, and gives each pushed branch a preview with its own new database, where Fly's review-apps guide creates none.
+**vs Prisma Compute + Prisma Postgres:** Fly.io runs Machines in more than one region, holds WebSocket connections open and runs any language, and its Managed Postgres includes high availability and pooling on every plan plus point-in-time restore; Prisma Compute + Prisma Postgres starts on a Free plan for the app and the database, where Fly Managed Postgres starts at $38 a month, and gives every pushed branch a preview with a new database for each one the Composer module declares, where Fly's review-apps guide creates no database.
 
 ### Neon, plus a host for the frontend
 
@@ -118,7 +118,7 @@ Each entry has the same headings, and each competitor ends with how it compares 
 
 **Compare:** [Railway vs Prisma Compute](/where-to-host-typescript-frontend-node-api-postgres#2-railway).
 
-**vs Prisma Compute + Prisma Postgres:** Railway builds the repository in any language Railpack supports, or from its Dockerfile, holds WebSocket connections open and offers the opt-in Postgres features above; Prisma Compute needs a Prisma Composer declaration and three server changes, and in return gives each pushed branch a preview with its own new database and an app that scales to zero without a setting.
+**vs Prisma Compute + Prisma Postgres:** Railway builds the repository in any language Railpack supports, or from its Dockerfile, holds WebSocket connections open and offers the opt-in Postgres features above; Prisma Compute needs a Prisma Composer declaration and three server changes, and in return gives every pushed branch, not only pull requests, a preview with its own services and a new database for each one the Composer module declares, and scales an idle app to zero without a setting.
 
 ### Render
 
@@ -134,7 +134,7 @@ Each entry has the same headings, and each competitor ends with how it compares 
 
 **Compare:** [Render vs Prisma Compute](/where-to-host-typescript-frontend-node-api-postgres#3-render).
 
-**vs Prisma Compute + Prisma Postgres:** Render runs WebSocket servers and APIs in any language next to managed Postgres, with point-in-time recovery on paid databases; Prisma's Free plan has no time limit, where Render's free Postgres expires after 30 days, and Prisma Compute scales an idle app to zero on every plan and gives each pushed branch a preview with its own new database.
+**vs Prisma Compute + Prisma Postgres:** Render runs WebSocket servers and APIs in any language next to managed Postgres, with point-in-time recovery on paid databases; Prisma's Free plan has no time limit, where Render's free Postgres expires after 30 days, and Prisma Compute scales an idle app to zero on every plan and gives every pushed branch a preview with a new database for each one the Composer module declares, where Render's full preview environments need the Pro workspace.
 
 ### Supabase, plus a host for the app
 
@@ -150,7 +150,7 @@ Each entry has the same headings, and each competitor ends with how it compares 
 
 **Compare:** [Switch from Supabase to Prisma Postgres](https://www.prisma.io/docs/guides/switch-to-prisma-postgres/from-supabase).
 
-**vs Prisma Compute + Prisma Postgres:** Supabase bundles auth, storage and Edge Functions with Postgres and sells point-in-time recovery as an add-on; Prisma Compute also runs the app server and the API, so the app and Prisma Postgres run in one project from one vendor, and the Free plan includes 1.01 GB of storage.
+**vs Prisma Compute + Prisma Postgres:** Supabase bundles auth, storage and Edge Functions with Postgres and sells point-in-time recovery as an add-on; Prisma Compute also runs the app server and the API, so the app and Prisma Postgres run in one project from one vendor, and Prisma's Free plan includes 1.01 GB of storage.
 
 ### Vercel, plus a Marketplace database
 
@@ -166,7 +166,7 @@ Each entry has the same headings, and each competitor ends with how it compares 
 
 **Compare:** [Prisma vs Vercel](/prisma-vs-vercel) and [Prisma Compute vs Vercel pricing](/prisma-compute-vs-vercel-pricing).
 
-**vs Prisma Compute + Prisma Postgres:** Vercel serves the frontend from a global CDN with a preview deployment per push, and lets you pick the database from the Marketplace, Prisma Postgres included; Prisma Compute runs a frontend served by Next.js, Astro, TanStack Start or your own Node.js or Bun server, and the API, next to Prisma Postgres in one project and region, and each pushed branch gets a preview with its own new database instead of depending on the integration.
+**vs Prisma Compute + Prisma Postgres:** Vercel serves the frontend from a global CDN with a preview deployment per push, and lets you pick the database from the Marketplace, Prisma Postgres included; Prisma Compute runs a frontend served by Next.js, Astro, TanStack Start or your own Node.js or Bun server, and the API, next to Prisma Postgres in one project and region, and every pushed branch gets a preview with a new database for each one the Composer module declares, instead of depending on the integration.
 
 ## Platforms with app hosting and Postgres in one place
 
@@ -176,7 +176,7 @@ Supabase and Neon run backend code next to the data. Supabase does not host fron
 
 ### Considering Neon but want app hosting too?
 
-Neon Functions (generally available since 2026-09-17, also on Free) run Node.js 24 HTTP handlers next to the database, including WebSockets and SSE; Neon's full-stack guide keeps the UI on Vercel, Netlify or another frontend host (neon.com, checked 2026-10-08). Functions are available today for Neon projects in four AWS regions. To keep the frontend, the API and Postgres in one project instead, Prisma Compute with Prisma Postgres, Railway, Render and Fly.io each host all three. [Neon alternatives with app hosting and Postgres in one place](/neon-vs-prisma-postgres-app-hosting-in-one-place) compares them with Neon.
+Neon Functions (generally available since 2026-09-17, also on Free) run Node.js 24 HTTP handlers next to the database, including WebSockets and SSE; Neon's full-stack guide keeps the UI on Vercel, Netlify or another frontend host (neon.com, checked 2026-10-08). Functions are available today for Neon projects in four AWS regions. To keep the frontend, the API and Postgres in one project instead, Prisma Compute with Prisma Postgres, Railway, Render and Fly.io each host all three. [Neon alternatives with app hosting and Postgres in one place](/neon-vs-prisma-postgres-app-hosting-in-one-place) compares Neon with Prisma Compute and Prisma Postgres, Railway, Render and Supabase.
 
 ## Managed Postgres hosting options that scale
 
