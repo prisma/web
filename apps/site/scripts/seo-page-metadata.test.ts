@@ -66,8 +66,9 @@ const PAGES: PageCopy[] = [
     // "long-lived" and "long-running", which the Compute docs do not back. The
     // description is the positioning wording shared with the homepage,
     // /postgres and the docs Compute index, except that since 2026-10-07 its
-    // first sentence calls Compute a platform-as-a-service (PaaS) and no longer
-    // says "on one plan".
+    // first sentence calls Compute a platform-as-a-service (PaaS) and carries
+    // no plan or project wording (the shared wording said "on one plan" then
+    // and says "in one project" since 2026-10-08).
     description:
       "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
   },
