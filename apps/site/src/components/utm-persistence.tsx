@@ -1,7 +1,7 @@
 "use client";
 
 import { UtmPersistence as SharedUtmPersistence } from "@prisma-docs/ui/components/utm-persistence";
-import { UTM_ATTRIBUTION_STORAGE_KEY } from "@prisma-docs/ui/lib/utm";
+import { UTM_ATTRIBUTION_STORAGE_KEY, buildSiteRef } from "@prisma-docs/ui/lib/utm";
 import { CROSS_ZONE_PATHS } from "@/lib/zones";
 
 export function UtmPersistence() {
@@ -9,6 +9,7 @@ export function UtmPersistence() {
     <SharedUtmPersistence
       storageKey={UTM_ATTRIBUTION_STORAGE_KEY}
       proxiedPaths={CROSS_ZONE_PATHS}
+      fallbackConsoleRef={buildSiteRef}
     />
   );
 }

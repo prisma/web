@@ -1,8 +1,14 @@
 "use client";
 
 import { UtmPersistence as SharedUtmPersistence } from "@prisma-docs/ui/components/utm-persistence";
-import { UTM_ATTRIBUTION_STORAGE_KEY } from "@prisma-docs/ui/lib/utm";
+import { UTM_ATTRIBUTION_STORAGE_KEY, buildSiteRef } from "@prisma-docs/ui/lib/utm";
 
 export function UtmPersistence() {
-  return <SharedUtmPersistence storageKey={UTM_ATTRIBUTION_STORAGE_KEY} basePath="/blog" />;
+  return (
+    <SharedUtmPersistence
+      storageKey={UTM_ATTRIBUTION_STORAGE_KEY}
+      basePath="/blog"
+      fallbackConsoleRef={buildSiteRef}
+    />
+  );
 }
