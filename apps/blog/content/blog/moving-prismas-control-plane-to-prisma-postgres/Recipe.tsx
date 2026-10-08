@@ -6,8 +6,16 @@ const STEPS = [
     id: "publication",
     title: "Publish the tables by name",
     file: "01-publication.sql",
-    body: "On the source, as the role that owns the tables. The migration history table is left out on purpose: the target already has it. A dedicated login does the reading, so no application password ever lives on the new side.",
+    body: "On the source, as the role that owns the tables. Check first that every table has a primary key, which logical replication needs to match rows for updates and deletes. The migration history table is left out of the publication on purpose: the target already has it. A dedicated login does the reading, so no application password ever lives on the new side.",
     code: `-- RDS, as the owner of the tables
+SELECT c.relname AS table_without_primary_key
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind = 'r'
+  AND NOT EXISTS (SELECT 1 FROM pg_index i
+                  WHERE i.indrelid = c.oid AND i.indisprimary);
+-- expect no rows
+
 CREATE ROLE migration_repl WITH LOGIN PASSWORD '<password>';
 GRANT rds_replication TO migration_repl;
 GRANT USAGE ON SCHEMA public TO migration_repl;
@@ -31,8 +39,15 @@ WHERE pubname = 'app_migration';   -- 82`,
     id: "subscription",
     title: "Subscribe and start the copy",
     file: "02-subscription.sql",
-    body: "On the target. This creates the replication slot on the source and starts the initial copy. From here Postgres does the work; our job is to watch it.",
+    body: "On the target. Prove the network path and the login first with a dblink query, the Postgres extension that lets one database run a query on another. Then create the subscription, which creates the replication slot on the source and starts the initial copy. From here Postgres does the work; our job is to watch it.",
     code: `-- Prisma Postgres
+CREATE EXTENSION IF NOT EXISTS dblink;
+
+SELECT n FROM dblink(
+  'host=<rds host> port=5432 dbname=app user=migration_repl password=<password> sslmode=require',
+  'SELECT count(*) FROM "Project"') AS t(n bigint);
+-- a number means the path and the grants work
+
 CREATE SUBSCRIPTION app_migration
   CONNECTION 'host=<rds host> port=5432 dbname=app
               user=migration_repl password=<password>
@@ -70,7 +85,7 @@ ORDER BY 1;`,
     id: "verify",
     title: "Compare every table in one query",
     file: "04-verify.sql",
-    body: "ANALYZE first, so the planner has statistics for the freshly copied rows. Then count every table on both sides through dblink and return only the mismatches. An empty result is the answer you want.",
+    body: "ANALYZE first, because the initial copy leaves no planner statistics behind and later queries would plan badly. Then count every table on both sides through dblink and return only the mismatches. An empty result is the answer you want.",
     code: `-- Prisma Postgres
 ANALYZE;
 

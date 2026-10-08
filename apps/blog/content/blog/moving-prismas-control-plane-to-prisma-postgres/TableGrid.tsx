@@ -185,8 +185,11 @@ const STEPS = [
     body: (
       <p>
         Creating the subscription starts the initial copy, and each table moves through waiting,
-        copying, catch-up, and ready. We watched the state counts, the error counters, and the WAL
-        pinned on the source, and all 82 tables reached ready the same day with zero errors.
+        copying, catch-up, and ready. We watched the per-table states in{" "}
+        <code>pg_subscription_rel</code>, the error counters in{" "}
+        <code>pg_stat_subscription_stats</code>, and the WAL the slot was holding on the source in{" "}
+        <code>pg_replication_slots</code>. All 82 tables reached ready the same day with zero
+        errors.
       </p>
     ),
   },
@@ -196,8 +199,9 @@ const STEPS = [
     body: (
       <p>
         One query counted every table on both databases and returned only the mismatches, and it
-        returned nothing. Full-row hashes matched on the tables that change slowly and differed on
-        the two that are written on every login, because the two runs were seconds apart.
+        returned nothing. An md5 hash over the full rows matched on the tables that change slowly
+        and differed on the two that are written on every login, because the two hash queries ran
+        seconds apart.
       </p>
     ),
   },

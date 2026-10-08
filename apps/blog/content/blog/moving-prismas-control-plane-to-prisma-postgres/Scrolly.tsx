@@ -26,6 +26,23 @@ type Props = {
 export function Scrolly({ label, steps, visual }: Props) {
   const [active, setActive] = useState(0);
   const stepRefs = useRef<(HTMLElement | null)[]>([]);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const visualRef = useRef<HTMLDivElement | null>(null);
+
+  // On narrow layouts the visual sticks above the steps, so the step list is
+  // padded by the visual's height; otherwise the figure covers the last step.
+  useEffect(() => {
+    const section = sectionRef.current;
+    const visual = visualRef.current;
+    if (!section || !visual || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      section.style.setProperty("--cp-visual-h", `${visual.offsetHeight}px`);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(visual);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     let frame = 0;
@@ -52,9 +69,9 @@ export function Scrolly({ label, steps, visual }: Props) {
   }, [steps.length]);
 
   return (
-    <section className="cp-scrolly-wrap not-prose" aria-label={label}>
+    <section ref={sectionRef} className="cp-scrolly-wrap not-prose" aria-label={label}>
       <div className="cp-scrolly">
-        <div className="cp-scrolly-visual">
+        <div ref={visualRef} className="cp-scrolly-visual">
           <div className="cp-scrolly-visual-inner">{visual(active)}</div>
         </div>
         <ol className="cp-scrolly-steps">

@@ -14,87 +14,100 @@ const SERVICES = [
 type Stream = "forward" | "none" | "reverse";
 
 type Frame = {
-  moved: number; // how many services sit on Prisma Postgres
+  /** How many services write to Prisma Postgres. */
+  moved: number;
   stream: Stream;
-  bookmark: boolean;
+  streamLabel: string;
+  slot: boolean;
+  rdsStatus: string;
+  ppgStatus: string;
   rdsStopped: boolean;
+  when: string;
   caption: string;
-  streamLabel?: string;
-  rdsNote?: string;
 };
 
 const FRAMES: Frame[] = [
   {
     moved: 0,
     stream: "forward",
-    bookmark: false,
+    streamLabel: "every write copied",
+    slot: false,
+    rdsStatus: "production",
+    ppgStatus: "replica, following RDS",
     rdsStopped: false,
-    caption: "Every service writes to RDS, and logical replication keeps Prisma Postgres in sync.",
-    streamLabel: "forward replication",
+    when: "days before",
+    caption:
+      "Every service writes to RDS, and logical replication copies each write to Prisma Postgres.",
   },
   {
     moved: 0,
     stream: "forward",
-    bookmark: true,
+    streamLabel: "every write copied",
+    slot: true,
+    rdsStatus: "production",
+    ppgStatus: "replica, following RDS",
     rdsStopped: false,
-    caption: "Minutes before the merge, a rollback slot on Prisma Postgres starts retaining WAL.",
-    streamLabel: "forward replication",
+    when: "minutes before",
+    caption:
+      "A rollback slot on Prisma Postgres starts keeping every write it receives from now on.",
   },
   {
     moved: SERVICES.length,
     stream: "forward",
-    bookmark: true,
+    streamLabel: "last RDS writes copied",
+    slot: true,
+    rdsStatus: "last writes draining",
+    ppgStatus: "production",
     rdsStopped: false,
+    when: "merge",
     caption:
-      "One merge, six deploys. Writes that still land on RDS keep flowing across the stream.",
-    streamLabel: "forward replication, apply errors stay at 0",
+      "One merge, six deploys. Each service switches to Prisma Postgres as its deploy finishes.",
   },
   {
     moved: SERVICES.length,
     stream: "none",
-    bookmark: true,
+    streamLabel: "",
+    slot: true,
+    rdsStatus: "quiet, no writes",
+    ppgStatus: "production",
     rdsStopped: false,
+    when: "+7 min",
     caption: "RDS has gone quiet, so the forward subscription is dropped.",
-    rdsNote: "no application traffic",
   },
   {
     moved: SERVICES.length,
     stream: "reverse",
-    bookmark: true,
+    streamLabel: "app writes sent back",
+    slot: true,
+    rdsStatus: "replica, ready for rollback",
+    ppgStatus: "production",
     rdsStopped: false,
+    when: "+30 min",
     caption:
-      "RDS now subscribes to Prisma Postgres from the rollback slot, so rollback is a config revert.",
-    streamLabel: "reverse replication, origin = none",
-    rdsNote: "live replica, ready for rollback",
+      "RDS subscribes to Prisma Postgres from the rollback slot without copying data, so rolling back is a config revert.",
   },
   {
     moved: SERVICES.length,
     stream: "none",
-    bookmark: false,
+    streamLabel: "",
+    slot: false,
+    rdsStatus: "stopped",
+    ppgStatus: "production",
     rdsStopped: true,
+    when: "+1 week",
     caption: "A week later the reverse stream is dropped and RDS is stopped.",
-    rdsNote: "final snapshot taken",
   },
 ];
 
 function Flow({ step }: { step: number }) {
   const f = FRAMES[step];
+  const writesRds = f.moved < SERVICES.length;
+  const writesPpg = f.moved > 0;
   return (
     <figure className="cp-flow-figure">
       <div className="cp-flow" data-stream={f.stream} role="img" aria-label={f.caption}>
-        <div className="cp-flow-col" data-stopped={f.rdsStopped ? "true" : undefined}>
-          <span className="cp-flow-col-label">RDS</span>
-          {f.rdsNote ? <span className="cp-flow-col-note">{f.rdsNote}</span> : null}
-        </div>
-        <div className="cp-flow-col cp-flow-col-target">
-          <span className="cp-flow-col-label">Prisma Postgres</span>
-          <span className="cp-flow-bookmark" data-on={f.bookmark ? "true" : undefined}>
-            rollback slot
-          </span>
-        </div>
-        <div className="cp-flow-stream" aria-hidden="true">
-          <span className="cp-flow-arrow" />
-        </div>
+        <div className="cp-flow-row-label">Six services on Cloudflare Workers</div>
+
         <ul className="cp-flow-services">
           {SERVICES.map((name, i) => (
             <li
@@ -107,9 +120,48 @@ function Flow({ step }: { step: number }) {
             </li>
           ))}
         </ul>
+
+        <div className="cp-flow-writes" aria-hidden="true">
+          <span className="cp-flow-write" data-db="rds" data-on={writesRds ? "true" : undefined}>
+            <span>writes</span>
+          </span>
+          <span className="cp-flow-write" data-db="ppg" data-on={writesPpg ? "true" : undefined}>
+            <span>writes</span>
+          </span>
+        </div>
+
+        <div className="cp-flow-dbs">
+          <div
+            className="cp-flow-db"
+            data-db="rds"
+            data-stopped={f.rdsStopped ? "true" : undefined}
+          >
+            <span className="cp-flow-db-name">RDS</span>
+            <span className="cp-flow-db-status">{f.rdsStatus}</span>
+          </div>
+          <div className="cp-flow-stream" aria-hidden="true">
+            <span className="cp-flow-arrow" />
+          </div>
+          <div className="cp-flow-db" data-db="ppg">
+            <span className="cp-flow-db-name">Prisma Postgres</span>
+            <span className="cp-flow-db-status">{f.ppgStatus}</span>
+            <span className="cp-flow-bookmark" data-on={f.slot ? "true" : undefined}>
+              rollback slot
+            </span>
+          </div>
+        </div>
+
         <span className="cp-flow-stream-label" aria-hidden="true">
-          {f.streamLabel ?? ""}
+          {f.streamLabel}
         </span>
+
+        <ol className="cp-flow-timeline" aria-hidden="true">
+          {FRAMES.map((frame, i) => (
+            <li key={frame.when} data-state={i < step ? "past" : i === step ? "now" : "future"}>
+              {frame.when}
+            </li>
+          ))}
+        </ol>
       </div>
       <figcaption className="cp-grid-caption">
         <span>{f.caption}</span>
@@ -131,7 +183,7 @@ const STEPS = [
     ),
   },
   {
-    id: "bookmark",
+    id: "slot",
     title: "Create the rollback slot",
     body: (
       <p>
@@ -146,7 +198,7 @@ const STEPS = [
     title: "Merge once, deploy six services",
     body: (
       <p>
-        The merge carries the new connection binding and the new secrets together, so within each
+        The merge carries the new Hyperdrive binding and the new secrets together, so within each
         service both database paths switch in the same deployment. Between services there is a skew
         of a few minutes while the deploy jobs run, and the forward stream stays up through that
         window to carry the last RDS writes across. The apply error counter, which would have caught
@@ -159,10 +211,10 @@ const STEPS = [
     title: "Wait for RDS to go quiet",
     body: (
       <p>
-        We watched the number of active application sessions on RDS fall to zero and the newest row
-        timestamps stop advancing there. Seven minutes after the merge the last statement ran on
-        RDS, a later sixty-second sample of its write counters showed nothing, and only then did we
-        drop the forward subscription.
+        We watched the application sessions in <code>pg_stat_activity</code> on RDS fall to zero and
+        the newest row timestamps stop advancing there. Seven minutes after the merge the last
+        statement ran on RDS, a later sixty-second sample of its write counters showed nothing, and
+        only then did we drop the forward subscription.
       </p>
     ),
   },
@@ -171,10 +223,12 @@ const STEPS = [
     title: "Reverse the stream",
     body: (
       <p>
-        RDS now subscribes to Prisma Postgres from the rollback slot without copying data, since it
-        already holds every row. With <code>origin = none</code> the subscription skips the rows
-        that arrived through forward replication and sends back only what the application wrote, and
-        the two directions never run at the same time.
+        RDS now subscribes to Prisma Postgres from the rollback slot with{" "}
+        <code>copy_data = false</code>, since it already holds every row. With{" "}
+        <code>origin = none</code> the subscription skips the rows that arrived through forward
+        replication and sends back only what the application wrote. The two directions never run at
+        the same time, and nothing is lost in the gap between them, because the slot has been
+        retaining writes since before the merge.
       </p>
     ),
   },
@@ -183,10 +237,10 @@ const STEPS = [
     title: "Hold for a week, then let go",
     body: (
       <p>
-        For a week, rollback meant reverting one commit and a handful of secrets. After a final
-        parity check on the key tables we dropped the reverse subscription, took a snapshot, and
-        stopped the RDS instances. Past that point there is no rollback that keeps data, so that is
-        the moment to be sure.
+        For a week, rollback meant reverting one commit and deleting a handful of secrets. After a
+        final parity check on the key tables we dropped the reverse subscription, took a snapshot,
+        and stopped the RDS instances. Past that point there is no rollback that keeps data, so that
+        is the moment to be sure.
       </p>
     ),
   },
