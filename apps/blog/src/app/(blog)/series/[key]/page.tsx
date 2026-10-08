@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 
 import { blog } from "@/lib/source";
 import { getSeriesPosts } from "@/lib/series";
+import { getPostTime } from "@/lib/post-card-item";
 import { getSeriesMetadata, isKnownSeriesKey, seriesRegistry } from "@/lib/series-registry";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
 import { BlogGrid, type BlogCardItem } from "@/components/BlogGrid";
@@ -18,6 +19,10 @@ interface SeriesPageParams {
 
 function buildCardItems(seriesKey: string): BlogCardItem[] {
   const posts = getSeriesPosts(seriesKey);
+  if (getSeriesMetadata(seriesKey).listingOrder === "newest-first") {
+    posts.sort((a, b) => getPostTime(b) - getPostTime(a));
+  }
+
   return posts.map((post) => {
     const data = post.data as {
       title?: string;
