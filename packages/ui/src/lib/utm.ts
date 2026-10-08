@@ -209,6 +209,42 @@ export function syncUtmAttribution(
   return updated;
 }
 
+/**
+ * The `ref` stamped on Console links for visitors who carry no campaign
+ * attribution: the prisma.io page that handed them off, e.g. `prisma.io/postgres`.
+ * The homepage is `prisma.io`. Shaped like the referrer domains partners already
+ * send in `ref` (`producthunt`, `laconsole.dev`), so it reads naturally next to
+ * them in the console's `signup_first_ref` / `signup_last_ref`.
+ */
+export function buildSiteRef(pathname: string) {
+  return `prisma.io${pathname === "/" ? "" : pathname}`;
+}
+
+/**
+ * Stamps `ref` on a Console link that carries no attribution at all.
+ *
+ * This is the fallback for organic and direct visitors. It deliberately uses
+ * `ref` and not `utm_source`: PostHog treats `utm_*` and ad click IDs as
+ * campaign parameters and freezes the first value it sees into the person's
+ * `$initial_utm_source`, which is what the removed `utm_source=website` default
+ * used to pollute. `ref` is not a campaign parameter, so the console still
+ * records it on the signup while the person's first-touch channel stays whatever
+ * it really was.
+ *
+ * A link that already carries any captured key or first-touch key is left
+ * alone: real attribution always wins over the fallback.
+ */
+export function syncFallbackRef(url: URL, ref: string) {
+  for (const key of url.searchParams.keys()) {
+    if (isCapturedKey(key) || key.startsWith("first_")) {
+      return false;
+    }
+  }
+
+  url.searchParams.set("ref", ref);
+  return true;
+}
+
 export function readStoredUtmAttribution(storageKey: string) {
   if (typeof window === "undefined") {
     return undefined;
