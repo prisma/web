@@ -1,12 +1,14 @@
 ---
-title: Migrate a local Postgres database to a managed Postgres service (Prisma Postgres)
-description: "Copy a PostgreSQL database from your laptop into Prisma Postgres in three steps: create the database in the Console, pg_dump, pg_restore. Every Postgres client you already use keeps working."
+title: Migrate a local Postgres database to the cloud (Prisma Postgres)
+description: "Move a local or hosted PostgreSQL database to Prisma Postgres in three steps: create the database, pg_dump, pg_restore."
 url: /postgres/import-from-existing-database
-metaTitle: Migrate a local Postgres database to Prisma Postgres, a managed Postgres service, in three steps
-metaDescription: Create a Prisma Postgres database in the Console, pg_dump the local database, pg_restore it over the direct connection. Free plan with no credit card, PostgreSQL 17, connection pooling included, and any Postgres client keeps working.
+metaTitle: Migrate a local Postgres database to the cloud (Prisma Postgres)
+metaDescription: "Move a local or hosted PostgreSQL database to Prisma Postgres in three steps: create the database, pg_dump, pg_restore. The Free plan holds 1.01 GB and 200,000 operations a month, with no credit card."
 ---
 
 Prisma Postgres takes a PostgreSQL database from your laptop in three steps: create the database in the [Prisma Console](https://console.prisma.io), `pg_dump` the source, `pg_restore` the file. This page creates the database in the Console because that needs nothing installed; to stay in a terminal, [create the database from a terminal](#create-the-database-from-a-terminal) instead, which turns the first step into three commands. Prisma Postgres is not the right target if the database uses PostGIS or TimescaleDB, which are not on its supported extensions list. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute.
+
+The Free plan holds 1.01 GB and 200,000 operations a month, with no credit card.
 
 1. **Create the database.** In the Console, create a project with a Prisma Postgres database, open the database, click **Connect to your database** and then **Generate new connection string**. Copy both strings it shows. They have the same credentials and a different host: `pooled.db.prisma.io` for the application, and `db.prisma.io` for `pg_restore`, `psql` and migrations.
 2. **Dump the local database.** This writes a compressed archive of the local database `mydb`; add `-h`, `-p` and `-U` if it does not run on the default socket.
@@ -73,7 +75,7 @@ The dump is a snapshot of the source at the moment `pg_dump` runs, so stop or dr
 
 ## Put the app online too
 
-[Prisma Compute](/compute) hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres. An existing repository adds a [Prisma Composer](/composer) declaration, a `service.ts` and a `module.ts`; Composer is in Early Access, and the [porting page](/composer/porting-an-app) has a prompt your coding agent can write the files from. Then run your build, and `npx prisma deploy module.ts` provisions the service. To deploy on push, connect the repository and add the `prisma/cloud-deploy-action` workflow as shown in [Deploy on push](/compute/deploy-on-push). From then on a push to the default branch updates production, and every other branch gets a preview with its own database, built from your migrations. The [Compute FAQ](/compute/faq#where-it-has-trade-offs) lists what Compute does not do yet.
+[Prisma Compute](/compute) hosts TypeScript apps built for Node.js, Bun or Next.js next to Prisma Postgres; deployed apps run on Bun. An existing repository adds a [Prisma Composer (Early Access)](/composer) declaration, which is a `service.ts` per server and one `module.ts`, and the server itself needs three changes: read the port from `service.port()` and bind `0.0.0.0`, turn its other `process.env` reads into service inputs or dependencies, and build the Postgres client from the injected `db.url`. The [porting page](/composer/porting-an-app) has a prompt your coding agent can make these changes from. Then run your build, and `npx prisma deploy module.ts` provisions the service. To deploy on push, connect the repository and add the `prisma/cloud-deploy-action` workflow as shown in [Deploy on push](/compute/deploy-on-push). From then on a push to the default branch updates production, and every other pushed branch gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied. If the app reads `DATABASE_URL`, the preview is only as separate as that value. The [Compute FAQ](/compute/faq#where-it-has-trade-offs) lists what Compute does not do yet.
 
 ## Do I need to change my ORM?
 
