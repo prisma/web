@@ -21,6 +21,16 @@ export function normalize(urlOrPath: string) {
 
 export const BLOG_PREFIX = "/blog";
 
+/** `https://www.prisma.io/` + `/docs/llms.txt` -> `https://www.prisma.io/docs/llms.txt`. */
+export function toAbsoluteUrl(baseUrl: string, path: string): string {
+  return `${baseUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/** A blog path as the content source reports it (`/my-post`) -> `https://www.prisma.io/blog/my-post`. */
+export function toAbsoluteBlogUrl(baseUrl: string, path: string): string {
+  return toAbsoluteUrl(baseUrl, withBlogBasePath(path));
+}
+
 export function withBlogBasePath(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
