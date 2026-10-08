@@ -16,38 +16,39 @@ type Props = {
 };
 
 /**
- * Sticky visual on one side, scrolling steps on the other. The step nearest
- * the vertical centre of the viewport is the active one; the visual re-renders
- * from that index. Everything degrades to a plain list of steps plus the
- * visual's initial state when IntersectionObserver is unavailable.
+ * Sticky visual on one side, scrolling steps on the other. The active step is
+ * the last one whose top edge has crossed the vertical centre of the viewport,
+ * so scrolling down advances the visual exactly as each step reaches the
+ * middle of the screen, and scrolling up winds it back the same way. Without
+ * JavaScript the page shows a plain list of steps plus the visual's initial
+ * state.
  */
 export function Scrolly({ label, steps, visual }: Props) {
   const [active, setActive] = useState(0);
   const stepRefs = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const ratios = new Map<number, number>();
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const idx = Number((entry.target as HTMLElement).dataset.stepIndex);
-          ratios.set(idx, entry.isIntersecting ? entry.intersectionRatio : 0);
-        }
-        let best = -1;
-        let bestRatio = 0;
-        for (const [idx, ratio] of ratios) {
-          if (ratio > bestRatio) {
-            best = idx;
-            bestRatio = ratio;
-          }
-        }
-        if (best >= 0) setActive(best);
-      },
-      { rootMargin: "-35% 0px -35% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
-    );
-    for (const el of stepRefs.current) if (el) obs.observe(el);
-    return () => obs.disconnect();
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const line = window.innerHeight * 0.5;
+      let next = 0;
+      stepRefs.current.forEach((el, i) => {
+        if (el && el.getBoundingClientRect().top <= line) next = i;
+      });
+      setActive((prev) => (prev === next ? prev : next));
+    };
+    const schedule = () => {
+      if (frame === 0) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame !== 0) window.cancelAnimationFrame(frame);
+    };
   }, [steps.length]);
 
   return (
@@ -72,7 +73,10 @@ export function Scrolly({ label, steps, visual }: Props) {
                 className="cp-step-title"
                 onClick={() => {
                   setActive(i);
-                  stepRefs.current[i]?.scrollIntoView({ block: "center", behavior: "smooth" });
+                  const el = stepRefs.current[i];
+                  if (!el) return;
+                  const top = window.scrollY + el.getBoundingClientRect().top;
+                  window.scrollTo({ top: top - window.innerHeight * 0.4, behavior: "smooth" });
                 }}
               >
                 <span className="cp-step-num" aria-hidden="true">

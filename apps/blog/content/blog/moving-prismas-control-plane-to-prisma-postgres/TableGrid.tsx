@@ -12,7 +12,14 @@ const MIGRATIONS = TABLE_COUNT - 1;
 const HASH_EQUAL = new Set([33, 52]);
 const HASH_LIVE = new Set([44, 67]);
 
-type SquareState = "source" | "excluded" | "waiting" | "copying" | "ready" | "verified" | "live";
+type SquareState =
+  | "source"
+  | "excluded"
+  | "published"
+  | "copying"
+  | "replicated"
+  | "verified"
+  | "live";
 
 const COPY_ORDER: number[] = (() => {
   // Small tables first, the two wide ones last, in a fixed pseudo-random order
@@ -31,23 +38,33 @@ const COPY_ORDER: number[] = (() => {
 function stateFor(index: number, step: number, readyCount: number): SquareState {
   if (index === MIGRATIONS) return step === 0 ? "source" : "excluded";
   if (step === 0) return "source";
-  if (step === 1) return "waiting";
+  if (step === 1) return "published";
   if (step === 2) {
     const pos = COPY_ORDER.indexOf(index);
-    if (pos < readyCount) return "ready";
+    if (pos < readyCount) return "replicated";
     if (pos < readyCount + 2) return "copying";
-    return "waiting";
+    return "published";
   }
   if (HASH_EQUAL.has(index)) return "verified";
   if (HASH_LIVE.has(index)) return "live";
-  return "ready";
+  return "replicated";
 }
 
 const CAPTIONS = [
   "83 tables on RDS",
-  "82 tables in the publication; the migrations table stays out",
+  "82 tables in the publication, migrations table left out",
   "Initial copy, two tables at a time",
-  "Row counts equal on every table; row hashes checked on four",
+  "Counts equal everywhere, hashes checked on four",
+];
+
+const LEGEND: Array<{ state: SquareState; label: string; from: number }> = [
+  { state: "source", label: "on RDS", from: 0 },
+  { state: "excluded", label: "left out", from: 1 },
+  { state: "published", label: "published, waiting", from: 1 },
+  { state: "copying", label: "copying", from: 2 },
+  { state: "replicated", label: "replicated", from: 2 },
+  { state: "verified", label: "hash equal", from: 3 },
+  { state: "live", label: "written every login", from: 3 },
 ];
 
 function Grid({ step }: { step: number }) {
@@ -79,22 +96,33 @@ function Grid({ step }: { step: number }) {
   for (let i = 0; i < TABLE_COUNT; i += 1) {
     const state = stateFor(i, step, readyCount);
     const wide = i === WEBHOOK_EVENTS || i === USAGE_MEASUREMENTS;
+    const label =
+      i === WEBHOOK_EVENTS
+        ? "webhook log"
+        : i === USAGE_MEASUREMENTS
+          ? "usage"
+          : i === MIGRATIONS
+            ? "migrations"
+            : undefined;
     squares.push(
       <span
         key={i}
         className="cp-sq"
         data-state={state}
         data-wide={wide ? "true" : undefined}
+        data-labelled={label ? "true" : undefined}
         title={
           i === WEBHOOK_EVENTS
-            ? "GithubWebhookEvent, about 50 GB"
+            ? "GitHub webhook log, the largest table"
             : i === USAGE_MEASUREMENTS
-              ? "UsageResourceMeasurement, about 6.5 GB"
+              ? "Usage measurements, the second largest table"
               : i === MIGRATIONS
                 ? "_prisma_migrations, not replicated"
                 : undefined
         }
-      />,
+      >
+        {label ? <small>{label}</small> : null}
+      </span>,
     );
   }
 
@@ -102,32 +130,28 @@ function Grid({ step }: { step: number }) {
 
   return (
     <figure className="cp-grid-figure">
+      <div className="cp-grid-head" data-active={step < 2 ? "rds" : "ppg"} aria-hidden="true">
+        <span className="cp-grid-side" data-side="rds">
+          RDS
+        </span>
+        <span className="cp-grid-arrow" />
+        <span className="cp-grid-side" data-side="ppg">
+          Prisma Postgres
+        </span>
+      </div>
       <div className="cp-grid" role="img" aria-label={CAPTIONS[step]}>
         {squares}
       </div>
       <figcaption className="cp-grid-caption">
         <span>{CAPTIONS[step]}</span>
-        {step >= 2 ? <span className="cp-grid-count">{ready} / 82 ready</span> : null}
+        {step >= 2 ? <span className="cp-grid-count">{ready} / 82 replicated</span> : null}
       </figcaption>
       <div className="cp-legend" aria-hidden="true">
-        <span>
-          <i data-state="source" /> on RDS
-        </span>
-        <span>
-          <i data-state="copying" /> copying
-        </span>
-        <span>
-          <i data-state="ready" /> replicated
-        </span>
-        <span>
-          <i data-state="verified" /> hash equal
-        </span>
-        <span>
-          <i data-state="live" /> written every login
-        </span>
-        <span>
-          <i data-state="excluded" /> left out
-        </span>
+        {LEGEND.map((item) => (
+          <span key={item.state} data-dim={item.from > step ? "true" : undefined}>
+            <i data-state={item.state} /> {item.label}
+          </span>
+        ))}
       </div>
     </figure>
   );
@@ -136,42 +160,42 @@ function Grid({ step }: { step: number }) {
 const STEPS = [
   {
     id: "source",
-    title: "Start with what is there",
+    title: "83 tables on RDS",
     body: (
       <p>
         The control plane schema had 83 tables and 204 applied migrations. Two of those tables held
-        most of the bytes, which the migration spec had not accounted for. More on that below.
+        most of the bytes, which the migration spec had not accounted for.
       </p>
     ),
   },
   {
     id: "publish",
-    title: "Publish 82 of the 83",
+    title: "Publish 82 of them",
     body: (
       <p>
-        The one table we left out of the publication was Prisma&rsquo;s own migration history. CI
-        had already applied every migration to the new database, so copying that table would have
-        failed on duplicate keys. Everything else went in by name.
+        The one table we left out of the publication was Prisma&rsquo;s own migration history,
+        because CI had already applied every migration to the new database and copying it would have
+        failed on duplicate keys. Everything else went into the publication by name.
       </p>
     ),
   },
   {
     id: "copy",
-    title: "Let Postgres copy, two tables at a time",
+    title: "Copy, two tables at a time",
     body: (
       <p>
-        Creating the subscription starts the initial copy. Each table moves through waiting,
+        Creating the subscription starts the initial copy, and each table moves through waiting,
         copying, catch-up, and ready. We watched the state counts, the error counters, and the WAL
-        pinned on the source. All 82 tables reached ready the same day with zero errors.
+        pinned on the source, and all 82 tables reached ready the same day with zero errors.
       </p>
     ),
   },
   {
     id: "verify",
-    title: "Count every row on both sides",
+    title: "Compare every table",
     body: (
       <p>
-        One query counted every table on both databases and returned only the mismatches. It
+        One query counted every table on both databases and returned only the mismatches, and it
         returned nothing. Full-row hashes matched on the tables that change slowly and differed on
         the two that are written on every login, because the two runs were seconds apart.
       </p>

@@ -2177,9 +2177,12 @@ g[data-top="true"] .vector-demo-point {
 
 .cp-scrolly {
   --cp-ppg: var(--color-foreground-ppg);
-  --cp-ppg-weak: color-mix(in srgb, var(--color-foreground-ppg) 18%, transparent);
-  --cp-ppg-mid: color-mix(in srgb, var(--color-foreground-ppg) 48%, transparent);
   --cp-neutral: var(--color-stroke-neutral);
+  --cp-rds: var(--color-prism-yellow-500);
+  --cp-ok: var(--color-foreground-lime);
+  --cp-live: var(--color-foreground-purple);
+  --cp-slot: var(--color-foreground-purple);
+  --cp-out: var(--color-prism-red-500);
   --cp-mono: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
@@ -2292,6 +2295,49 @@ g[data-top="true"] .vector-demo-point {
   background: var(--color-background-default);
 }
 
+.cp-grid-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+  font-family: var(--cp-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-foreground-neutral-weak);
+}
+
+.cp-grid-side {
+  transition: color 300ms ease;
+}
+
+.cp-grid-head[data-active="rds"] .cp-grid-side[data-side="rds"] {
+  color: var(--cp-rds);
+}
+
+.cp-grid-head[data-active="ppg"] .cp-grid-side[data-side="ppg"] {
+  color: var(--cp-ppg);
+}
+
+.cp-grid-arrow {
+  flex: 1 1 auto;
+  height: 1px;
+  max-width: 5rem;
+  background: var(--cp-neutral);
+  position: relative;
+}
+
+.cp-grid-arrow::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  border: 3.5px solid transparent;
+  border-left: 5px solid var(--cp-neutral);
+  border-right: 0;
+}
+
 .cp-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -2307,43 +2353,90 @@ g[data-top="true"] .vector-demo-point {
   background: var(--cp-neutral);
   border: 1px solid transparent;
   position: relative;
+  overflow: hidden;
   transition:
-    background-color 300ms ease,
-    border-color 300ms ease,
     opacity 300ms ease,
     transform 300ms ease;
 }
 
 .cp-sq[data-wide="true"] {
-  grid-column: span 2;
+  grid-column: span 3;
   grid-row: span 2;
+  aspect-ratio: auto;
 }
 
+.cp-sq small {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  font-family: var(--cp-mono);
+  font-size: 0.5625rem;
+  line-height: 1.1;
+  text-align: center;
+  color: #ffffff;
+  opacity: 0.95;
+  pointer-events: none;
+  transition: color 300ms ease;
+}
+
+.cp-sq[data-state="source"] small {
+  color: var(--color-foreground-neutral);
+}
+
+.cp-sq[data-state="excluded"] small {
+  color: var(--cp-out);
+}
+
+.cp-sq[data-state="published"] small {
+  color: var(--cp-rds);
+}
+
+.cp-sq[data-labelled="true"]:not([data-wide="true"]) small {
+  display: none;
+}
+
+/* on RDS, untouched */
+.cp-sq[data-state="source"],
+.cp-legend i[data-state="source"] {
+  background: var(--cp-neutral);
+}
+
+/* left out of the publication */
 .cp-sq[data-state="excluded"],
 .cp-legend i[data-state="excluded"] {
-  background: transparent;
-  border: 1px dashed var(--color-foreground-neutral-weak);
-  opacity: 0.6;
+  background: color-mix(in srgb, var(--cp-out) 8%, transparent);
+  border: 1px dashed var(--cp-out);
 }
 
-.cp-sq[data-state="waiting"],
-.cp-legend i[data-state="waiting"] {
-  background: var(--cp-ppg-weak);
+/* in the publication, waiting for its turn */
+.cp-sq[data-state="published"],
+.cp-legend i[data-state="published"] {
+  background: color-mix(in srgb, var(--cp-rds) 18%, transparent);
+  border-color: color-mix(in srgb, var(--cp-rds) 60%, transparent);
 }
 
+/* initial copy in flight */
 .cp-sq[data-state="copying"],
 .cp-legend i[data-state="copying"] {
-  background: var(--cp-ppg-mid);
-  animation: cp-pulse 900ms ease-in-out infinite alternate;
+  background: var(--cp-rds);
+  border-color: var(--cp-ppg);
+  box-shadow: inset 0 0 0 1px var(--cp-ppg);
+  animation: cp-pulse 700ms ease-in-out infinite alternate;
 }
 
-.cp-sq[data-state="ready"],
-.cp-sq[data-state="verified"],
-.cp-sq[data-state="live"],
-.cp-legend i[data-state="ready"],
-.cp-legend i[data-state="verified"],
-.cp-legend i[data-state="live"] {
+/* every row on Prisma Postgres */
+.cp-sq[data-state="replicated"],
+.cp-legend i[data-state="replicated"] {
   background: var(--cp-ppg);
+}
+
+/* full-row hash matched */
+.cp-sq[data-state="verified"],
+.cp-legend i[data-state="verified"] {
+  background: var(--cp-ok);
 }
 
 .cp-sq[data-state="verified"]::after,
@@ -2355,16 +2448,18 @@ g[data-top="true"] .vector-demo-point {
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3 3 7-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
+/* written on every login, hash differs by design */
 .cp-sq[data-state="live"],
 .cp-legend i[data-state="live"] {
+  background: var(--cp-live);
   box-shadow:
     inset 0 0 0 2px var(--color-background-default),
-    inset 0 0 0 3px var(--cp-ppg);
+    inset 0 0 0 3px var(--cp-live);
 }
 
 @keyframes cp-pulse {
   from {
-    opacity: 0.55;
+    opacity: 0.6;
   }
   to {
     opacity: 1;
@@ -2402,6 +2497,11 @@ g[data-top="true"] .vector-demo-point {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
+  transition: opacity 300ms ease;
+}
+
+.cp-legend span[data-dim="true"] {
+  opacity: 0.35;
 }
 
 .cp-legend i {
@@ -2426,26 +2526,38 @@ g[data-top="true"] .vector-demo-point {
   border: 1px dashed var(--cp-neutral);
   border-radius: var(--radius-square);
   position: relative;
-  transition: opacity 400ms ease;
+  transition:
+    opacity 400ms ease,
+    border-color 400ms ease,
+    background-color 400ms ease;
 }
 
 .cp-flow-col:first-child {
   grid-column: 1;
+  border-color: color-mix(in srgb, var(--cp-rds) 55%, var(--cp-neutral));
+  background: color-mix(in srgb, var(--cp-rds) 5%, transparent);
 }
 
 .cp-flow-col-target {
   grid-column: 2;
-  border-color: color-mix(in srgb, var(--cp-ppg) 45%, var(--cp-neutral));
-  background: color-mix(in srgb, var(--cp-ppg) 4%, transparent);
+  border-color: color-mix(in srgb, var(--cp-ppg) 55%, var(--cp-neutral));
+  background: color-mix(in srgb, var(--cp-ppg) 5%, transparent);
 }
 
 .cp-flow-col[data-stopped="true"] {
-  opacity: 0.35;
+  opacity: 0.45;
+  border-color: var(--cp-neutral);
+  background: transparent;
+}
+
+.cp-flow-col[data-stopped="true"] .cp-flow-col-label {
+  color: var(--color-foreground-neutral-weak);
 }
 
 .cp-flow-col[data-stopped="true"] .cp-flow-col-label::after {
   content: " · stopped";
   font-weight: 400;
+  color: var(--cp-out);
 }
 
 .cp-flow-col-label {
@@ -2457,22 +2569,36 @@ g[data-top="true"] .vector-demo-point {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-foreground-neutral-weak);
+  color: var(--cp-rds);
+  transition: color 400ms ease;
 }
 
 .cp-flow-col-target .cp-flow-col-label {
   color: var(--cp-ppg);
 }
 
+.cp-flow-col-note {
+  position: absolute;
+  inset: 2.25rem 0.75rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--cp-mono);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--color-foreground-neutral-weak);
+}
+
 .cp-flow-bookmark {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.625rem;
+  right: 0.625rem;
   padding: 2px 7px;
   border-radius: 999px;
-  border: 1px solid var(--cp-ppg);
-  background: var(--color-background-default);
-  color: var(--cp-ppg);
+  border: 1px solid var(--cp-slot);
+  background: color-mix(in srgb, var(--cp-slot) 10%, var(--color-background-default));
+  color: var(--cp-slot);
   font-family: var(--cp-mono);
   font-size: 0.625rem;
   opacity: 0;
@@ -2503,8 +2629,8 @@ g[data-top="true"] .vector-demo-point {
   grid-column: 1;
   padding: 0.375rem 0.625rem;
   border-radius: var(--radius-square-low);
-  border: 1px solid var(--cp-neutral);
-  background: var(--color-background-neutral);
+  border: 1px solid color-mix(in srgb, var(--cp-rds) 55%, var(--cp-neutral));
+  background: color-mix(in srgb, var(--cp-rds) 16%, var(--color-background-default));
   color: var(--color-foreground-neutral);
   font-family: var(--cp-mono);
   font-size: 0.75rem;
@@ -2519,7 +2645,7 @@ g[data-top="true"] .vector-demo-point {
 
 .cp-flow-service[data-side="ppg"] {
   transform: translateX(calc(100% + 3rem));
-  background: var(--cp-ppg-weak);
+  background: color-mix(in srgb, var(--cp-ppg) 16%, var(--color-background-default));
   border-color: color-mix(in srgb, var(--cp-ppg) 55%, var(--cp-neutral));
 }
 
@@ -2539,7 +2665,8 @@ g[data-top="true"] .vector-demo-point {
   position: relative;
   transition:
     transform 400ms ease,
-    opacity 300ms ease;
+    opacity 300ms ease,
+    background-color 300ms ease;
 }
 
 .cp-flow-arrow::after {
@@ -2550,10 +2677,16 @@ g[data-top="true"] .vector-demo-point {
   border: 5px solid transparent;
   border-left: 7px solid var(--cp-ppg);
   border-right: 0;
+  transition: border-color 300ms ease;
 }
 
 .cp-flow[data-stream="reverse"] .cp-flow-arrow {
   transform: rotate(180deg);
+  background: var(--cp-slot);
+}
+
+.cp-flow[data-stream="reverse"] .cp-flow-arrow::after {
+  border-left-color: var(--cp-slot);
 }
 
 .cp-flow[data-stream="none"] .cp-flow-arrow {
@@ -2569,7 +2702,13 @@ g[data-top="true"] .vector-demo-point {
   font-family: var(--cp-mono);
   font-size: 0.6875rem;
   color: var(--cp-ppg);
-  transition: opacity 300ms ease;
+  transition:
+    opacity 300ms ease,
+    color 300ms ease;
+}
+
+.cp-flow[data-stream="reverse"] .cp-flow-stream-label {
+  color: var(--cp-slot);
 }
 
 .cp-flow[data-stream="none"] .cp-flow-stream-label {
@@ -2584,6 +2723,10 @@ g[data-top="true"] .vector-demo-point {
 
   .cp-flow-service[data-side="ppg"] {
     transform: translateX(calc(100% + 1.75rem));
+  }
+
+  .cp-sq small {
+    font-size: 0.5rem;
   }
 }
 
@@ -2640,7 +2783,12 @@ g[data-top="true"] .vector-demo-point {
   .cp-flow-col,
   .cp-flow-service,
   .cp-flow-bookmark,
-  .cp-flow-arrow {
+  .cp-flow-arrow,
+  .cp-flow-arrow::after,
+  .cp-flow-col-label,
+  .cp-flow-stream-label,
+  .cp-grid-side,
+  .cp-sq small {
     transition: none !important;
     animation: none !important;
   }
