@@ -1,6 +1,5 @@
 import { blogPosts } from "../../.source/server";
-import { type InferPageType, loader, multiple } from "fumadocs-core/source";
-import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
+import { type InferPageType, loader } from "fumadocs-core/source";
 import { toFumadocsSource } from "fumadocs-mdx/runtime/server";
 
 export const blog = loader({
@@ -17,12 +16,23 @@ export function getPageImage() {
   };
 }
 
-export async function getLLMText(page: InferPageType<typeof blog>) {
-  const processed = await page.data.getText("processed");
+export type BlogPage = InferPageType<typeof blog>;
 
-  return `# ${page.data.title}
+/** Posts that are not marked `draft: true` in their frontmatter. */
+export function getPublishedPages(): BlogPage[] {
+  return blog.getPages().filter((page) => page.data.draft !== true);
+}
 
-${processed}`;
+/** A post's publication time, or 0 when the date is missing or unparsable. */
+export function getPageTime(page: BlogPage): number {
+  const { date } = page.data;
+  const time = date instanceof Date ? date.getTime() : new Date(date ?? "").getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+/** Newest first. The sort is stable, so equal dates keep the source order. */
+export function sortPagesNewestFirst(pages: BlogPage[]): BlogPage[] {
+  return [...pages].sort((a, b) => getPageTime(b) - getPageTime(a));
 }
 
 export const getCardImageSrc = (post: any) => {
