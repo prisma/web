@@ -10,14 +10,11 @@ Prisma Postgres routes application traffic through a tenant-isolated PgBouncer i
 
 ## Connection limits
 
-|                        | Free | Starter | Pro  | Business |
-| ---------------------- | ---- | ------- | ---- | -------- |
-| **Pooled connections** | 10   | 100     | 500  | 1,000    |
-| **Direct connections** | 10   | 10      | 50   | 100      |
+For each plan's pooled and direct connection limits, see the [pricing page](https://www.prisma.io/pricing).
 
-These are concurrent connection limits per plan. 5 direct connections are reserved for platform operations (maintenance, monitoring) and are not available to your workload.
+These are concurrent connection limits, and they apply to each database separately, not to the workspace as a whole. 5 direct connections are reserved for platform operations (maintenance, monitoring) and are not available to your workload.
 
-Idle pooled connections are closed after 60 minutes. Compare plans on the [Prisma pricing page](https://www.prisma.io/pricing).
+Idle pooled connections are closed after an idle timeout. For its value, see the [pricing page](https://www.prisma.io/pricing).
 
 ## How the pooler works
 
@@ -48,6 +45,34 @@ Because PgBouncer operates in transactional mode:
 
 Getting this wrong has asymmetric failure modes. Running migrations through the pooler produces clear errors (lock failures, session state errors). Running application traffic over direct connections works fine at low concurrency but causes silent connection exhaustion under load, the kind of issue that only surfaces in production.
 
+The plan limits in [Connection limits](#connection-limits) apply to the `pooled.db.prisma.io` and `db.prisma.io` connection strings. A hosted Accelerate connection string (`prisma+postgres://accelerate.prisma-data.net`) has its own connection limit, set by your plan: 10 on Free and Starter, 40 on Pro and Business. You can't change it in Console for a Prisma Postgres database. See [Accelerate troubleshooting](/accelerate/more/troubleshoot#connection-limit-stays-at-10).
+
+## Networking
+
+### TLS and SNI
+
+Connections must use TLS (`sslmode=require`). Your client must also send the server hostname during the TLS handshake (Server Name Indication, SNI), because Prisma Postgres reads it to route the connection to your database. Standard Postgres drivers send SNI when you connect by hostname. Connecting to an IP address, or through a tunnel or proxy that strips the hostname, fails.
+
+### IP addresses and DNS
+
+The IP addresses behind `db.prisma.io` and `pooled.db.prisma.io` are not fixed and can change without notice. Prisma does not publish an IP range, so you can't allowlist Prisma Postgres by IP. If your network restricts outbound traffic, allow `*.db.prisma.io` on port 5432.
+
+DNS records for these hostnames have a 300-second TTL. Resolve the hostname again when you open new connections instead of caching an IP address, and make sure long-running processes and proxies honor the TTL.
+
+### Running your own PgBouncer
+
+You can run your own PgBouncer (or another pooler) in front of Prisma Postgres, for example inside your private network. Point it at `pooled.db.prisma.io` or `db.prisma.io` by hostname, with TLS and SNI enabled for its server connections, and let it re-resolve DNS. Your pooler's connections to Prisma Postgres count toward your plan's limits.
+
+### Recommended client timeouts
+
+- **Connect timeout**: about 10 seconds. With `pg` (node-postgres) this is `connectionTimeoutMillis: 10000`. It covers TLS setup and a database waking up after an idle period.
+- **Idle timeout**: shorter than the Prisma Postgres idle connection timeout listed on the [pricing page](https://www.prisma.io/pricing), so your client closes idle connections before Prisma Postgres does. With `pg`, set `idleTimeoutMillis` accordingly.
+- **Retries**: retry failed connection attempts with exponential backoff instead of immediately.
+
+:::warning[TODO(support-docs)]
+**Needs an answer (product/engineering):** What maximum connection lifetime should customers configure in their client pool (for example `maxLifetimeSeconds` in `pg`), and are there other pool settings Prisma recommends? No recommendation exists yet; this needs a decision.
+:::
+
 ## Troubleshooting
 
 ### "Too many connections" or connection limit errors
@@ -69,3 +94,14 @@ This is expected behavior in transactional pool mode. The pooler returns the bac
 ### Query killed after 10 minutes
 
 Pooled connections enforce a 10-minute query timeout. Break the query into smaller batches, or run it over a direct connection where no timeout is enforced.
+### `08P01 server conn crashed?`
+
+The pooler lost its connection to the database while your query was using it, and returned SQLSTATE `08P01` to your client. Your query did not complete. If it was a write, check whether it took effect before you retry it, or make the write safe to repeat.
+
+Retry with backoff. If the error repeats over several minutes, check the [status page](https://www.prisma-status.com) and see [Availability and maintenance](/postgres/database/availability-and-maintenance#when-your-database-is-unreachable).
+
+### `server_login_retry`
+
+An error that mentions `server_login_retry` (for example `server login has been failing, try again later (server_login_retry)`) means the pooler failed to open a new connection to your database and is waiting before it tries again. During that wait it rejects new client connections right away instead of retrying each one.
+
+The error clears on its own once the pooler can log in to the database again. Retry with backoff. If it lasts more than a few minutes, check the [status page](https://www.prisma-status.com) and the Console for a [block](/console/billing/usage-limits-and-blocks), then contact [support](/console/more/support) with the UTC times of the errors.

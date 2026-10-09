@@ -1,0 +1,76 @@
+---
+title: Regions
+description: The regions where you can create a Prisma Postgres database, how to choose one for low latency, and how to move a database to another region.
+url: /postgres/database/regions
+metaTitle: Regions in Prisma Postgres
+metaDescription: The regions where you can create a Prisma Postgres database, how to choose one for low latency, and how to move a database to another region.
+---
+
+Every Prisma Postgres database runs in one region, which you pick when you create it. Each query travels from your application to that region and back, so the region you choose sets the minimum latency your application sees.
+
+## Available regions
+
+| Region code      | Location       |
+| ---------------- | -------------- |
+| `us-west-1`      | San Francisco  |
+| `us-east-1`      | North Virginia |
+| `eu-west-3`      | Paris          |
+| `eu-central-1`   | Frankfurt      |
+| `ap-northeast-1` | Tokyo          |
+| `ap-southeast-1` | Singapore      |
+
+The REST API returns the current list from the [Get Prisma Postgres regions](/rest-api/endpoints/misc/get-regions-postgres) endpoint.
+
+Regions are the same for every workspace. Prisma can't enable an extra region for a single account. To ask for a new region, reach out on [Discord](https://pris.ly/discord).
+
+## Choose a region
+
+Pick the region closest to where your application runs, not to where your users are. Your application server or serverless functions make the database queries, and a request that runs several queries in sequence pays the round trip to the database region for each one.
+
+For example, a Vercel project that deploys functions to `sin1` (Singapore) should use a database in `ap-southeast-1`. If the application and the database are on different continents, a single query can take a few hundred milliseconds even when the database itself answers quickly.
+
+You choose the region in these places:
+
+- **Console**: when you create a database in the [Prisma Console](https://console.prisma.io).
+- **Prisma CLI**: with the `--region` flag of `prisma postgres create`. See [Migrate a local Postgres database to Prisma Postgres](/postgres/import-from-existing-database#create-the-database-from-a-terminal).
+- **`create-db`**: with the `--region` flag. Without it, `create-db` picks the closest region to you. See [create-db](/postgres/npx-create-db).
+
+## Move a database to another region
+
+You can't change the region of an existing database. To move your data, create a new database in the target region and copy the data across with `pg_dump` and `pg_restore`:
+
+1. Create a new Prisma Postgres database in the target region and generate its connection strings.
+2. Dump the old database over its direct connection:
+
+   ```bash
+   pg_dump -Fc -d "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require" -f old.dump
+   ```
+
+3. Restore the dump into the new database over its direct connection:
+
+   ```bash
+   pg_restore --no-owner --no-privileges -d "postgres://NEW_USER:NEW_PASSWORD@db.prisma.io:5432/postgres?sslmode=require" old.dump
+   ```
+
+4. Point your application at the new connection strings and redeploy.
+5. Delete the old database once you've confirmed the new one has all your data.
+
+Writes that reach the old database after you start `pg_dump` are not copied. Pause writes, or plan a short maintenance window in your application, for the duration of the copy. [Migrate a local Postgres database to Prisma Postgres](/postgres/import-from-existing-database) covers `pg_dump` and `pg_restore` options and how to verify the copy. The new database starts with no snapshots of its own; see [Backups](/postgres/database/backups).
+
+## Common questions
+
+### Can you add a region in Australia (or another location) for my account?
+
+Regions are platform-wide, so Prisma can't enable one for a single account. The closest region to Australia today is `ap-southeast-1` (Singapore). Region requests are welcome on [Discord](https://pris.ly/discord).
+
+### Can I change the region of my existing database?
+
+No. Create a new database in the target region and copy your data with `pg_dump` and `pg_restore`, as described in [Move a database to another region](#move-a-database-to-another-region).
+
+### Why are my queries slow even though the database is fast?
+
+Every query makes a round trip between your application and the database region. Run your application in or near the database's region, and reduce the number of queries per request. With Prisma ORM, the `relationJoins` preview feature turns relation queries into a single SQL query.
+
+### Does my data stay in the EU if I pick an EU region?
+
+Pick `eu-central-1` (Frankfurt) or `eu-west-3` (Paris) for the database itself.

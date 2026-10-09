@@ -143,6 +143,42 @@ You can also use [TypedSQL](/orm/v7/prisma-client/using-raw-sql/typedsql) for ty
 
 If you need an extension that is not listed, [request an extension](https://pris.ly/i-want-extensions).
 
+You can enable only the extensions on this list. Prisma Postgres doesn't let you install your own extensions.
+
+## PostGIS is not supported
+
+Prisma Postgres does not support PostGIS, and `CREATE EXTENSION postgis` fails. There is no release date for PostGIS support yet.
+
+For distance and radius queries on latitude and longitude, use the supported [`cube`](https://www.postgresql.org/docs/current/cube.html) and [`earthdistance`](https://www.postgresql.org/docs/current/earthdistance.html) extensions instead. Enable both, since `earthdistance` depends on `cube`:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS cube;
+CREATE EXTENSION IF NOT EXISTS earthdistance;
+```
+
+This example finds places within 5 km of a point. It assumes a `"Place"` table with `latitude` and `longitude` columns of type `double precision`:
+
+```ts
+const lat = 48.8566;
+const lng = 2.3522;
+const radiusInMeters = 5000;
+
+const places = await prisma.$queryRaw`
+  SELECT id, name
+  FROM "Place"
+  WHERE earth_box(ll_to_earth(${lat}, ${lng}), ${radiusInMeters}) @> ll_to_earth(latitude, longitude)
+    AND earth_distance(ll_to_earth(${lat}, ${lng}), ll_to_earth(latitude, longitude)) < ${radiusInMeters}
+`;
+```
+
+`earth_box` narrows the search with a bounding box, and `earth_distance` keeps only the rows inside the exact radius. To make the bounding-box check fast on large tables, add an index:
+
+```sql
+CREATE INDEX place_location_idx ON "Place" USING gist (ll_to_earth(latitude, longitude));
+```
+
+`earthdistance` treats the Earth as a perfect sphere, so distances are approximate. It doesn't cover polygons, geometry types, or spatial joins, which need PostGIS.
+
 ## Limitations
 
 - **Prisma Studio** does not support tables that use custom types from extensions (e.g., `VECTOR`). Queries against those tables will return a deserialization error.

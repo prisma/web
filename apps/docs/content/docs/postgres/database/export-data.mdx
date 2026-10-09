@@ -1,0 +1,86 @@
+---
+title: Export your data
+description: Export a Prisma Postgres database with pg_dump to leave Prisma, move to another workspace or region, switch between Vercel and Prisma billing, or get data out of a blocked Free database.
+url: /postgres/database/export-data
+metaTitle: Export your data from Prisma Postgres
+metaDescription: Export a Prisma Postgres database with pg_dump to leave Prisma, move to another workspace or region, switch between Vercel and Prisma billing, or get data out of a blocked Free database.
+---
+
+Export a Prisma Postgres database to a file with `pg_dump`, then import it anywhere that runs Postgres. You own your data, and exporting it works the same on every plan.
+
+Export your data when you want to:
+
+- stop using Prisma Postgres,
+- move a database to another workspace, project, or region,
+- switch a workspace between Vercel Marketplace billing and direct Prisma billing (see [Change or cancel your plan](/console/billing/change-or-cancel-plan)),
+- keep your own copy, for example on the Free plan, which has no [backups](/postgres/database/backups).
+
+Prisma support can't export a database for you. Run the export yourself while the database accepts connections.
+
+## Prerequisites
+
+- PostgreSQL command-line tools version 17 (`pg_dump` and `pg_restore`). Prisma Postgres runs Postgres 17. See [Install PostgreSQL command-line tools](/postgres/database/backups#1-install-postgresql-command-line-tools).
+- A connection string for the database. Generate one in the [Prisma Console](https://console.prisma.io) under your database's connection strings. See [Connecting to your database](/postgres/database/connecting-to-your-database).
+- A workspace that isn't blocked. A blocked database accepts no connections, including `pg_dump`. See [Export from a blocked Free database](#export-from-a-blocked-free-database).
+
+## 1. Export the database
+
+Run `pg_dump` with your connection string. The custom format (`-Fc`) is compressed and can be restored selectively with `pg_restore`:
+
+```bash
+pg_dump -Fc --dbname="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require" -f ./mydatabase.dump
+```
+
+When it finishes, `mydatabase.dump` is in the current directory. If you want a plain SQL file you can read or edit, leave out `-Fc` and write to a `.sql` file instead.
+
+## 2. Check the export
+
+List the contents of the dump to confirm your tables are in it:
+
+```bash
+pg_restore --list ./mydatabase.dump
+```
+
+You should see a line for each table, for example `TABLE DATA public User`.
+
+## 3. Import it into the new database
+
+Restore the dump into the target database with its connection string:
+
+```bash
+pg_restore --no-owner --no-acl --dbname="postgres://USER:PASSWORD@HOST:5432/?sslmode=require" ./mydatabase.dump
+```
+
+`--no-owner` and `--no-acl` skip the roles from the source database, which don't exist in the target. To import into another Prisma Postgres database, use that database's connection string. For more on importing, see [Import from an existing database](/postgres/import-from-existing-database).
+
+## Export from a blocked Free database
+
+A Free workspace that reaches its monthly usage limit is blocked, and its databases accept no connections until the block lifts. To export, first lift the block in one of these ways:
+
+1. **Restore access for 24 hours.** In the Console, select the blocked workspace and choose **Restore access for 24 hours** in the query limit warning. This works once per workspace. Run your export during those 24 hours.
+2. **Upgrade to a paid plan.** If you've already used the 24-hour restore, upgrade to Starter under **Workspace Settings > Billing**, run your export, and then cancel. The cancellation takes effect at the end of the billing period, and that month's Starter plan fee is charged. See [Change or cancel your plan](/console/billing/change-or-cancel-plan).
+3. **Wait for the next month.** The Free allowance resets at 00:00 UTC on the 1st, and the block lifts.
+
+Support can't lift a block or grant extra time to export. See [Usage limits and blocks](/console/billing/usage-limits-and-blocks).
+
+## Common questions
+
+### How do I download my data from Prisma Postgres?
+
+Run `pg_dump` with a connection string for the database, as shown in [Export the database](#1-export-the-database). There's no export button in the Console.
+
+### My Free database is blocked. How do I get my data out?
+
+Use **Restore access for 24 hours** in the Console and export during that window. If you've already used it, upgrade to Starter, export, and cancel, or wait until the 1st of next month when the block lifts.
+
+### Can support export my database for me?
+
+No. Exports are self-service with `pg_dump`.
+
+### Can I export a database from a deleted project or workspace?
+
+A deleted database accepts no connections, so export it before you delete it. See [Delete your account](/console/account/delete-account).
+
+### How do I move a database to another workspace or region?
+
+Export it, create a database in the target workspace or region, and import the dump there. To move a whole project between workspaces, see [Workspace members](/console/workspaces/members).
