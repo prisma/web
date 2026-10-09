@@ -44,11 +44,24 @@ export function Scrolly({ label, steps, visual }: Props) {
     return () => ro.disconnect();
   }, []);
 
+  // Where a step has to reach before it becomes the active one. Readers like
+  // the text they are reading near the top of the screen, so on the wide
+  // layout the line sits level with the top of the sticky figure plus a
+  // little, and on the stacked layout just below the figure.
+  const readingLine = () => {
+    const visual = visualRef.current;
+    const section = sectionRef.current;
+    const stacked = !!section && section.clientWidth <= 760;
+    if (stacked && visual) return visual.getBoundingClientRect().bottom + 56;
+    const top = visual ? visual.getBoundingClientRect().top : 0;
+    return Math.max(top, 0) + 48;
+  };
+
   useEffect(() => {
     let frame = 0;
     const update = () => {
       frame = 0;
-      const line = window.innerHeight * 0.5;
+      const line = readingLine();
       let next = 0;
       stepRefs.current.forEach((el, i) => {
         if (el && el.getBoundingClientRect().top <= line) next = i;
@@ -92,8 +105,15 @@ export function Scrolly({ label, steps, visual }: Props) {
                   setActive(i);
                   const el = stepRefs.current[i];
                   if (!el) return;
+                  // Land the step title just under the reading line, so the
+                  // text sits at the top of the screen beside the figure
+                  // instead of in the middle.
                   const top = window.scrollY + el.getBoundingClientRect().top;
-                  window.scrollTo({ top: top - window.innerHeight * 0.4, behavior: "smooth" });
+                  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+                  window.scrollTo({
+                    top: top - readingLine() + 40,
+                    behavior: reduce ? "auto" : "smooth",
+                  });
                 }}
               >
                 <span className="cp-step-num" aria-hidden="true">
