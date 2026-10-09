@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSiteRef,
+  getUtmParams,
   mergeUtmAttribution,
   syncFallbackRef,
   syncUtmAttribution,
@@ -114,4 +115,25 @@ test("never overrides a Console link that already carries attribution", () => {
     assert.equal(syncFallbackRef(url, "prisma.io"), false, tagged);
     assert.equal(url.toString(), before, tagged);
   }
+});
+
+test("captures the ChatGPT ads click id like other ad click ids and forwards it to the console", () => {
+  const query = new URLSearchParams("oppref=chatgpt-click&utm_source=chatgpt&utm_medium=paid");
+  assert.equal(getUtmParams(query).oppref, "chatgpt-click");
+  assert.equal(getUtmParams(query, { includeClickIds: false }).oppref, undefined);
+
+  const attribution = mergeUtmAttribution(
+    undefined,
+    getUtmParams(query),
+    "2026-10-09T10:00:00.000Z",
+  );
+  assert.ok(attribution);
+  const internal = new URL("https://www.prisma.io/pricing");
+  syncUtmParams(internal, attribution.last);
+  assert.equal(internal.searchParams.get("oppref"), null);
+  const console = new URL("https://console.prisma.io/sign-up");
+  syncUtmAttribution(console, attribution, { includeFirstTouch: true });
+  assert.equal(console.searchParams.get("oppref"), "chatgpt-click");
+  assert.equal(console.searchParams.get("first_oppref"), "chatgpt-click");
+  assert.equal(console.searchParams.get("first_utm_source"), "chatgpt");
 });

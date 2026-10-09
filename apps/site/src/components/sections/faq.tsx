@@ -5,6 +5,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Reveal } from "@/components/motion/reveal";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 
 export type FaqItem = { question: string; answer: React.ReactNode };
 
@@ -48,15 +49,27 @@ const faqs: FaqItem[] = [
 
 // Defaults are the homepage set; pass `items` and `heading` to reuse the
 // accordion on another page (see /pricing).
+//
+// Pass `id` to make the section itself a deep-link target: /postgres passes
+// "faq" so /postgres#faq scrolls to the heading. Other callers leave it off
+// so the id stays scoped to the page that opted in.
+//
+// String answers are passed through `renderFaqAnswer`, which recognises a
+// tiny inline markup (links `[text](/path)`, inline code with backticks) so
+// product-page FAQ items can store rich answers in a plain string that also
+// feeds the FAQPage JSON-LD. ReactNode answers (the homepage set) are rendered
+// as-is.
 export function Faq({
   heading = "FAQ",
   items = faqs,
+  id,
 }: {
   heading?: string;
   items?: readonly FaqItem[];
+  id?: string;
 } = {}) {
   return (
-    <section className="px-6 py-24 lg:px-8">
+    <section id={id} className="px-6 py-24 lg:px-8">
       <div className="mx-auto max-w-site">
         <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
@@ -72,7 +85,7 @@ export function Faq({
                   {faq.question}
                 </AccordionTrigger>
                 <AccordionContent className="text-base leading-relaxed text-muted-foreground">
-                  {faq.answer}
+                  {typeof faq.answer === "string" ? renderFaqAnswer(faq.answer) : faq.answer}
                 </AccordionContent>
               </AccordionItem>
             ))}

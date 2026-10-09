@@ -27,6 +27,7 @@ const CLICK_ID_KEYS = new Set([
   "gclid", // Google Ads
   "wbraid", // Google Ads, web-to-app, iOS
   "gbraid", // Google Ads, app-to-web, iOS
+  "oppref", // ChatGPT ads (OpenAI); the pixel keeps it in its own cookie too
   "msclkid", // Microsoft Advertising
   "fbclid", // Meta
   "li_fat_id", // LinkedIn

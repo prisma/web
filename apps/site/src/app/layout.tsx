@@ -15,6 +15,7 @@ import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { BuildersDayBanner } from "@/components/builders-day-banner";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
+import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
 import "./globals.css";
 
@@ -105,6 +106,8 @@ export default function RootLayout({
           data-cookieyes-category="analytics"
         />
         <GoogleTagManager section="website" />
+        {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
+        <OpenAiPixel />
         <JsonLd id="site-structured-data" data={siteStructuredData} />
       </head>
       <body className="antialiased">
