@@ -129,8 +129,8 @@ export function PricingCalculator() {
               <div className="mt-auto flex items-center gap-2.5 border-t border-black/[0.06] pt-5">
                 <CheckBold className="size-4 shrink-0 text-prism-cyan-500" aria-hidden />
                 <p className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Data transfer</span> — unlimited,
-                  included free
+                  <span className="font-semibold text-foreground">Database data transfer</span> —
+                  unlimited, included free
                 </p>
               </div>
             </div>
