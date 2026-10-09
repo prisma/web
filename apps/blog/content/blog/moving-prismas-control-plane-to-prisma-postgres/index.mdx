@@ -6,8 +6,8 @@ authors:
   - "Kristof Siket"
   - "Ankur Datta"
 metaTitle: "Zero-Downtime Postgres Migration from RDS to Prisma Postgres"
-metaDescription: "How Prisma moved its 83-table, 74 GB control plane from Amazon RDS to Prisma Postgres with logical replication and no downtime, including the rollback replica and the schema-change trap."
-excerpt: "Eighty-three tables, one merge, and a week where we could still change our minds. The decisions that made a zero-downtime database move safe, and one thing logical replication does not carry: schema changes."
+metaDescription: "How Prisma migrated 83 tables and 74 GB from Amazon RDS to Prisma Postgres with zero downtime using logical replication, a week-long rollback, and schema-change guards."
+excerpt: "How we migrated 83 tables and 74 GB of production data from Amazon RDS to Prisma Postgres with zero downtime. Learn how we used logical replication to keep services running, made rollback possible for a week, and handled the schema changes that could have broken the migration."
 heroImagePath: "/moving-prismas-control-plane-to-prisma-postgres/imgs/hero.svg"
 heroImageAlt: "The Amazon RDS icon on the left, an arrow pointing right, and the Prisma logo on the right."
 metaImagePath: "/moving-prismas-control-plane-to-prisma-postgres/imgs/meta.png"
@@ -19,14 +19,17 @@ tags:
 import { TableGrid } from "./TableGrid";
 import { Recipe } from "./Recipe";
 import { CutoverFlow } from "./CutoverFlow";
+import { TryPostgres } from "./TryPostgres";
 
-Seven minutes after we merged the pull request that moved Prisma's control plane to [Prisma Postgres](https://www.prisma.io/docs/postgres), the last statement ran on the old database. Fifty-two minutes after the cutover, a colleague merged a migration that quietly broke our rollback. Nobody outside the team noticed either event.
+Seven minutes after we merged the pull request that moved Prisma's control plane to [Prisma Postgres](https://www.prisma.io/docs/postgres), the last statement ran on the old database. Fifty-two minutes after the cutover, a colleague merged a migration that quietly broke our rollback.
 
-The control plane is the database behind the Console, the one that holds every workspace, project, and API key. This is the story of how its **83 tables and 74 GB** moved from Amazon RDS with logical replication, with no maintenance window and a week in which we could still have gone back.
+This post is a step-by-step account of a zero-downtime Postgres migration between providers. In September 2026 we moved the control plane, the database behind the Console that holds every workspace, project, and API key, from Amazon RDS to Prisma Postgres, Prisma's managed Postgres, using [Postgres logical replication](https://www.postgresql.org/docs/current/logical-replication.html): **83 tables and 74 GB**, no maintenance window, and a week in which we could still have gone back.
 
 The replication itself turned out to be the easy part. What made the move safe were two decisions about its edges: cutting over in a *single merge* so every service switched together, and keeping the old database as a *live replica* so that changing our minds would cost a config revert rather than a restore.
 
 The thing that did bite us is something logical replication does not carry: **schema changes**. That is the lesson we most want you to take away.
+
+<TryPostgres />
 
 ## Why we could not pause writes
 
@@ -140,8 +143,25 @@ We took a final snapshot and stopped the production and preview RDS instances ra
 
 **Measure before you move.** Know which tables hold the bytes and why. A retention policy written before the copy is a copy you do not have to wait for.
 
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Does Postgres logical replication replicate schema changes?">
+No, logical replication carries only row changes (inserts, updates, and deletes) from publisher to subscriber. It does not replicate `ALTER TABLE` or other DDL, and it does not replicate sequence values. A migration applied on one side has to be applied on the other side by hand or by CI, or the apply worker fails on the first row that needs the new column and retries it in a loop.
+  </Accordion>
+  <Accordion title="How do you roll back a Postgres migration done with logical replication?">
+Keep the old database as a live replica of the new one. Create a replication slot on the new database minutes before the cutover, and once the old database has stopped receiving writes, subscribe it to the new database from that slot with `copy_data = false` and, on Postgres 16 or later, `origin = none`. Rolling back is then a config change back to the old database, with no data lost. The rollback stops working the moment a schema change reaches only one side.
+  </Accordion>
+  <Accordion title="Do you need to pause writes to migrate a Postgres database to a new provider?">
+Not with logical replication, because the new database copies each table once and then follows the old one in near real time, so the application keeps writing to the old database until the cutover. Prisma's control plane, 83 tables and 74 GB, had its last write on Amazon RDS seven minutes after the merge that switched services to Prisma Postgres, with no maintenance window. A dump and restore, by contrast, needs writes paused for the whole copy.
+  </Accordion>
+  <Accordion title="How do you verify the data after logical replication finishes?">
+Count every table on both databases in one query through `dblink` and return only the tables whose counts differ; an empty result means every table matches. Then compare an md5 hash over the full rows of the tables that change slowly. Tables written on every request will hash differently because the two queries run seconds apart, which is expected.
+  </Accordion>
+</Accordions>
+
 ## What made it work
 
-There was no status page entry, no error spike, and no support ticket. The control plane that issues every Prisma Postgres connection now runs on Prisma Postgres.
+Nobody outside the team noticed the migration: there was no status page entry, no error spike, and no support ticket. The control plane that issues every Prisma Postgres connection now runs on Prisma Postgres.
 
 The replication itself is plain Postgres, and the two Prisma-specific parts were leaving out the migrations table and keeping a sleeping instance awake during the copy. Postgres did what the documentation says it does. The work was in *packaging the switch* and in *keeping the way back open*, and the second of those needs the same care as the first.
