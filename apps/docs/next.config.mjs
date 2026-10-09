@@ -16,6 +16,7 @@ const ContentSecurityPolicy = `
     https://tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzrcdn.openai.com
     https://widget.kapa.ai
     https://www.google.com
     https://www.gstatic.com
@@ -62,6 +63,7 @@ const ContentSecurityPolicy = `
 
   img-src 'self' data:
     https://www.googletagmanager.com
+    https://bzr.openai.com
     https://cdn.sanity.io
     https://prismalens.vercel.app
     https://api.producthunt.com
@@ -100,6 +102,8 @@ const ContentSecurityPolicy = `
     https://*.tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzr.openai.com
+    https://bzrcdn.openai.com
     https://www.google.com
     https://www.gstatic.com
     https://kapa-widget-proxy-la7dkmplpq-uc.a.run.app
