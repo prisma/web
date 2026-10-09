@@ -12,7 +12,10 @@ test("captures the current click when consent arrives, preserves its time, and s
     configurable: true,
     value: {
       location: { search: "?gclid=landing-click&utm_source=google" },
-      getCkyConsent: () => ({ isUserActionCompleted: true, categories: { analytics: granted } }),
+      getCkyConsent: () => ({
+        isUserActionCompleted: true,
+        categories: { analytics: true, advertisement: granted },
+      }),
       localStorage: {
         getItem: (key: string) => storage.get(key) ?? null,
         setItem: (key: string, value: string) => storage.set(key, value),

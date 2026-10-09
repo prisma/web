@@ -16,6 +16,10 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
   api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   capture_pageview: "history_change",
   defaults: "2025-11-30",
+  // ChatGPT ad clicks land with `oppref` and no UTM params. Treating it as a
+  // campaign param puts it on every event and freezes `$initial_oppref` on
+  // the person, like `gclid`, so an ad-acquired person stays identifiable.
+  custom_campaign_params: ["oppref"],
   // GDPR/ePrivacy: no cookies, storage, or persistent identifiers until the
   // visitor grants analytics consent via CookieYes. Opt-in is handled below.
   // Until then (banner ignored or analytics rejected) visitors are counted

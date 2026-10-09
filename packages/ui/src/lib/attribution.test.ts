@@ -65,3 +65,15 @@ test("forwards click IDs to Console and removes stale attribution there", () => 
   assert.equal(consoleUrl.searchParams.has("msclkid"), false);
   assert.equal(consoleUrl.searchParams.has("first_msclkid"), false);
 });
+test("classifies a ChatGPT ads click as openai_ads", () => {
+  const paid = mergeUtmAttribution(
+    undefined,
+    { oppref: "chatgpt-click", utm_campaign: "compute-launch" },
+    firstTime,
+  );
+  const properties = paidProperties(paid);
+  assert.equal(properties.setOnce.first_paid_source, "openai_ads");
+  assert.equal(properties.setOnce.first_paid_click_id_param, "oppref");
+  assert.equal(properties.setOnce.first_paid_click_id, "chatgpt-click");
+  assert.equal(properties.setOnce.first_paid_campaign, "compute-launch");
+});
