@@ -2,7 +2,7 @@
 title: "Serverless Postgres: How It Works and How to Choose a Provider"
 slug: "serverless-postgres"
 date: "2026-07-09"
-updatedAt: "2026-10-07"
+updatedAt: "2026-10-08"
 authors:
   - "Martin Janse van Rensburg"
 tags:
@@ -39,7 +39,7 @@ Walk the tree, or read the guidance beneath it.
 - **Spiky or scheduled workloads (cron jobs, internal tools, dev/test fleets):** compute-time billing with scale-to-zero was built for this. Neon, or Aurora if you're already on AWS and can tolerate ~15-second resumes.
 - **User-facing apps that go idle but have latency-sensitive users:** this is where cold starts hurt. Either keep the database always ready and pay per query (Prisma Postgres), disable auto-suspend on Neon, or run a small always-on instance on PlanetScale ($5) or paid Supabase ($25). The [cost comparison](#the-cost-crossover) below shows how to pick between them.
 - **Steady, high-throughput production:** always-on dedicated capacity wins on price-per-query at sustained load. PlanetScale (from $5 single node, $50 Metal), or Aurora sized for the load.
-- **Many small databases (per-tenant, per-user, per-AI-agent):** account-level metering across a fleet beats per-database pricing. Prisma Postgres meters operations across all databases on one plan; Neon's per-project free allowance also stretches far.
+- **Many small databases (per-tenant, per-user, per-AI-agent):** account-level metering across a fleet beats per-database pricing. Prisma Postgres meters operations across all databases in a workspace; Neon's per-project free allowance also stretches far.
 - **You want more than a database:** for auth, storage, and realtime out of the box, Supabase. For app hosting alongside the database, Prisma pairs Prisma Postgres with [Prisma Compute](https://www.prisma.io/docs/compute) (TypeScript app hosting, generally available since August 2026) and the ORM as one platform.
 
 ## The two decisions that matter
@@ -89,7 +89,7 @@ Managed Postgres on unikernels in microVMs, designed so databases are always rea
 - **Bills for:** operations, defined on the [pricing page](https://www.prisma.io/pricing) as "each time you interact with your database, no matter the compute time. We count the Prisma ORM queries you make, not the SQL statements you run." Check the pricing docs for how non-ORM queries count.
 - **Idle behaviour:** no scale-to-zero and no cold starts; databases stay ready.
 - **Free / entry:** 200,000 operations, 1.01 GB, and 50 databases, no card; paid from $10/mo (1M operations, 10 GB, then $0.008 per 1,000) to $129/mo (50M operations). Allowances are account-wide, not per database.
-- **Watch out for:** no database branching yet (separate databases are the substitute); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).
+- **Watch out for:** no copy-on-write database copies yet (separate databases are the substitute: on Prisma Compute, every pushed branch gets a preview with its own services and, for databases declared in the Prisma Composer module, its own new database; production data is not copied); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).
 
 ### Neon
 
@@ -144,7 +144,7 @@ Below that crossover, operation billing keeps you off always-on costs; above it,
 
 Beyond billing and idle behavior, a production choice touches a few more things. They rarely decide the shortlist, but they can break a tie:
 
-- **Branching.** Copy-on-write storage lets several providers fork a database like a Git branch for previews or migration tests. Neon includes 10 branches per project free; Supabase bills $0.01344 per branch-hour; PlanetScale runs each branch as its own billed cluster. Prisma Postgres has no branching yet (its substitute is separate databases: 50 free, 1,000 on paid).
+- **Branching.** Copy-on-write storage lets several providers fork a database like a Git branch for previews or migration tests. Neon includes 10 branches per project free; Supabase bills $0.01344 per branch-hour; PlanetScale runs each branch as its own billed cluster. Prisma Postgres has no copy-on-write copies yet; its substitute is separate databases (50 free, 1,000 on paid).
 - **Connection pooling.** Serverless functions open connections fast, and Postgres tolerates a limited number. Prisma Postgres, Neon, and Supabase build in a pooler. On Aurora the answer is RDS Proxy, a separately billed service that holds connections open and, as a result, prevents auto-pause from ever engaging.
 - **Ecosystem.** Aurora buys into the full AWS stack; Supabase bundles auth, storage, and realtime; PlanetScale brings its Vitess and Metal operational heritage.
 
