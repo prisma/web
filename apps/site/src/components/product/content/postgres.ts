@@ -11,9 +11,16 @@ import type { ProductPageContent } from "../types";
 //    feature. A standing guardrail says not to promote it to a headline claim,
 //    so it is deliberately absent from the illustrations.
 //  - The review asked the first screen to answer "why Prisma Postgres and not
-//    any other Postgres?". The hero tour is that answer: branching, Studio and
-//    Query Insights are the three things a bare managed Postgres doesn't give
-//    you, so they lead rather than sitting in feature cards further down.
+//    any other Postgres?". The hero tour is that answer: a database per
+//    preview, Studio and Query Insights are the three things a bare managed
+//    Postgres doesn't give you, so they lead rather than sitting in feature
+//    cards further down.
+//
+// Deviation (2026-10-08): the preview and pricing lines say what the docs
+// state. With deploy on push, each pushed branch's preview gets a new database
+// and production data is not copied (docs compute/deploy-on-push.mdx); pricing
+// is per operation with a hard spend limit on paid plans (/pricing). The FAQ
+// says "in one project" with the Starter base, as /compute's FAQ does.
 const CONSOLE = "https://console.prisma.io/sign-up";
 const PRICING = "/pricing";
 
@@ -29,10 +36,10 @@ export const postgresContent: ProductPageContent = {
     // and answer engines meet one description of the product everywhere.
     // Check the CTA still clears the fold at 1440x800 when the copy changes.
     subheadline:
-      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
+      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres in one project. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
     benefits: [
-      "Branch your database alongside your app, free, per PR",
-      "Autoscaling that handles spikes without capacity planning",
+      "A preview database per pushed branch, free",
+      "Billed per operation, with a hard spend limit on paid plans",
       "Predictable pricing with spend limits, no surprise bills",
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },
@@ -42,7 +49,7 @@ export const postgresContent: ProductPageContent = {
       {
         label: "Database",
         caption:
-          "A production Postgres in seconds, with a per-PR branch beside it that carries its own isolated data.",
+          "A production Postgres in seconds, and, with deploy on push, a new database for each pushed branch's preview; production data is not copied.",
         illustration: "databasePanel",
       },
       {
@@ -64,17 +71,17 @@ export const postgresContent: ProductPageContent = {
     // of prose that mostly restated the hero, so the second paragraph's point
     // now lives in the hero tour's captions and the platform section.
     body: [
-      "When your database and your hosting come from separate vendors, the things that should be automatic — preview environments with real data, end-to-end test setups, single-config deploys — turn into work you have to do.",
+      "When your database and your hosting come from separate vendors, the things that should be automatic — a database for every preview, end-to-end test setups, single-config deploys — turn into work you have to do.",
     ],
     outcomes: [
-      { icon: "gitBranch", label: "Branch with your app, per PR" },
+      { icon: "gitBranch", label: "A preview database per pushed branch" },
       { icon: "shield", label: "Predictable pricing with spend limits" },
-      { icon: "swap", label: "Autoscaling without capacity planning" },
+      { icon: "swap", label: "Per-operation billing with spend limits" },
       { icon: "database", label: "Standard Postgres, no lock-in" },
     ],
   },
   features: {
-    headline: "Branches, deploys, and config that come with the app",
+    headline: "Previews, deploys and config that come with the app",
     bridge:
       "Prisma Postgres runs on the same platform as Compute, so the features below come from one platform doing what two vendors can't.",
     items: [
@@ -84,9 +91,9 @@ export const postgresContent: ProductPageContent = {
       // out (branch names, the config file, the spend cap, the compliance
       // list, the pg_dump path).
       {
-        name: "Branch with your app",
+        name: "A database per preview",
         description:
-          "When Compute branches a deploy, Prisma Postgres branches with it — every preview gets a dedicated, fully-isolated database.",
+          "With deploy on push, every pushed branch gets a preview with its own services and, for databases declared in the Composer module, its own new database. Production data is not copied.",
         illustration: "isolatedBranches",
       },
       {
@@ -144,7 +151,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Can I host the app next to the database?",
       answer:
-        "Yes. Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan, and it has been generally available since August 2026. Declare the app with Prisma Composer, a service.ts per service and one module.ts, which a coding agent can write from the prompt on the docs porting page, then run npx prisma deploy module.ts. To deploy on push, connect the GitHub repository and add the prisma/cloud-deploy-action workflow; from then on every pushed branch gets a preview with its own database, built from your migrations. Each service runs in one region, and Compute does not serve WebSocket servers.",
+        "Yes. Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres in one project; Starter is a $10 base with Compute usage metered on top. Compute has been generally available since August 2026. Declare the app with Prisma Composer, a service.ts per service and one module.ts, which a coding agent can write from the prompt on the docs porting page, then run npx prisma deploy module.ts. To deploy on push, connect the GitHub repository and add the prisma/cloud-deploy-action workflow; from then on every pushed branch gets a preview with its own database, built from your migrations. Each service runs in one region, and Compute does not serve WebSocket servers.",
     },
     {
       question: "Is Prisma Postgres related to Prisma Cloud?",
@@ -159,10 +166,10 @@ export const postgresContent: ProductPageContent = {
   ],
   cta: {
     headline: "Postgres that ships with the rest of your stack",
-    body: "Prisma Postgres is the data half of a TypeScript platform. Use it on its own with any ORM and any host, or pair it with Compute and your app and database become one deploy, one config, one branched preview environment per PR.",
+    body: "Prisma Postgres is the data half of a TypeScript platform. Use it on its own with any ORM and any host, or pair it with Compute and your app and database become one deploy and one config, with a preview and its own database for each pushed branch.",
     benefits: [
-      "Free branching that travels with your app",
-      "Predictable pricing with spend limits and autoscaling",
+      "Free preview databases that come with your app's previews",
+      "Predictable pricing with spend limits",
       "Standard Postgres underneath, no lock-in",
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },

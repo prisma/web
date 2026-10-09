@@ -63,7 +63,7 @@ export const computeContent: ProductPageContent = {
     // sentences. The page's meta description (app/compute/page.tsx) repeats
     // the last three verbatim and words the first one as a PaaS definition.
     subheadline:
-      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan.",
+      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres in one project.",
     benefits: [
       "Set up deploy on push, and every pushed branch gets a preview with its own database",
       "Your app runs next to Prisma Postgres, in one of six regions",
@@ -102,7 +102,7 @@ export const computeContent: ProductPageContent = {
   problem: {
     headline: "One platform can ship features two never could",
     body: [
-      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (branching, preview environments, end-to-end test data) don't exist. You wire them together yourself, or you do without.",
+      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (per-branch previews with their own database, end-to-end test data) don't exist. You wire them together yourself, or you do without.",
       "Prisma Compute exists to change that.",
     ],
     outcomes: [
@@ -135,7 +135,7 @@ export const computeContent: ProductPageContent = {
       {
         name: "App and database on one platform",
         description:
-          "Your app runs next to Prisma Postgres, in the same project and on the same plan, with PgBouncer pooling included. Any Postgres client works, and Prisma ORM is optional.",
+          "Your app runs next to Prisma Postgres, in the same project, with PgBouncer pooling included. Any Postgres client works, and Prisma ORM is optional.",
         illustration: "coLocated",
       },
       {
@@ -196,7 +196,7 @@ export const computeContent: ProductPageContent = {
     benefits: [
       "Built to host the agents you're building, not just the apps",
       "A preview per pushed branch, app and database together",
-      "App next to its database, on one plan",
+      "App next to its database, in one project",
       TRUST_LINE,
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },

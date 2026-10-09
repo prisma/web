@@ -3,9 +3,13 @@ import { ThreeDSlot } from "@/components/brand/three-d-slot";
 import { Bar, CardChrome, HeroPanel, SectionLabel } from "./parts";
 
 // The /postgres hero abstraction: a managed database that is already wired to
-// something. Real: the postgres:// connection-string shape, the region, and the
-// branch names. Abstracted: the credentials and every measured value — no
-// capacity or latency figures are invented.
+// something. Real: the postgres:// connection-string shape, the region, the
+// included connection pool, and the Git branch names. Abstracted: the
+// credentials and every measured value — no capacity or latency figures are
+// invented. With deploy on push, each pushed branch's preview gets a new
+// database, not a copy of production's (docs compute/deploy-on-push.mdx), so
+// the rows below are previews, not database branches. The pool chip replaces
+// a scaling claim the docs do not make.
 
 const BRANCHES = [
   { name: "main", primary: true },
@@ -15,7 +19,7 @@ const BRANCHES = [
 
 export function DatabasePanel() {
   return (
-    <HeroPanel label="Illustration of a Prisma Postgres database: a primary database with autoscaling on, its connection string, and per-pull-request branches alongside the main branch">
+    <HeroPanel label="Illustration of a Prisma Postgres database: the production database with its connection string and included connection pool, and a preview database for each pushed branch beside it">
       <CardChrome
         file="database"
         right={
@@ -30,7 +34,9 @@ export function DatabasePanel() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <Database className="size-3.5 shrink-0 text-foreground" />
-            <span className="text-[0.8125rem] font-semibold text-foreground">Primary database</span>
+            <span className="text-[0.8125rem] font-semibold text-foreground">
+              Production database
+            </span>
             <span className="ml-auto font-mono text-[0.625rem] text-muted-foreground">
               us-west-1
             </span>
@@ -48,15 +54,15 @@ export function DatabasePanel() {
           <div className="flex items-center gap-2 rounded-lg border border-prism-cyan-200 bg-prism-cyan-50/40 px-3 py-2">
             <Swap className="size-3 shrink-0 text-prism-cyan-700" />
             <span className="text-[0.625rem] font-semibold text-prism-cyan-800">
-              Autoscaling on
+              Connection pool included
             </span>
             <Bar className="ml-auto w-12" />
           </div>
         </div>
 
-        {/* branches travelling with the app */}
+        {/* a preview database per pushed branch, beside production */}
         <div className="flex flex-col gap-2.5">
-          <SectionLabel>Branches</SectionLabel>
+          <SectionLabel>Environments</SectionLabel>
           {BRANCHES.map(({ name, primary }) => (
             <div key={name} className="flex items-center gap-2">
               <GitBranch
@@ -69,11 +75,11 @@ export function DatabasePanel() {
               <span className="font-mono text-[0.625rem] text-muted-foreground">{name}</span>
               {primary ? (
                 <span className="rounded border border-border/80 bg-card px-1.5 py-0.5 text-[0.5625rem] font-semibold text-muted-foreground">
-                  primary
+                  production
                 </span>
               ) : (
                 <span className="rounded border border-prism-cyan-200 bg-prism-cyan-50 px-1.5 py-0.5 text-[0.5625rem] font-semibold text-prism-cyan-800">
-                  isolated
+                  own db
                 </span>
               )}
               <Bar className="ml-auto h-1 w-12" />
