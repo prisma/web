@@ -1,0 +1,652 @@
+From e7f05a5a32c81eceb07587e0f572766e111d1f16 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Fri, 9 Oct 2026 14:18:11 +0000
+Subject: [PATCH 2/3] Add reusable FAQPage structured data for Data Guide
+ articles
+
+Pages with a visible FAQ section can now opt into FAQPage schema.org
+structured data by setting `faq: true` in frontmatter. The MDX body is
+parsed once per build to lift the questions and answers out of the
+'## Frequently asked questions' (or '## FAQ') section, and the SEO
+component emits them as JSON-LD inside the article '@graph'.
+
+- src/utils/extractFaq.ts: tolerant Markdown parser that handles both the
+  H3-pair FAQ shape and the <details>/<summary> shape, with a plain-text
+  helper that strips Markdown links and inline code so answers match the
+  visible page copy word for word (what Google's FAQPage schema wants).
+- src/utils/structuredData.ts: new faqStructuredDataNode helper and an
+  optional faqs argument on articleStructuredData that appends FAQPage to
+  the article '@graph' only when entries are present.
+- gatsby-node.ts: reads the raw MDX for pages with faq: true, extracts
+  the Q/A pairs, and passes them through page context. Panics on build
+  if a page opts in but has no FAQ section, so the flag can't rot.
+- src/components/seo.tsx, src/templates/docs.tsx,
+  src/interfaces/Layout.interface.ts: thread the faqs through from page
+  context to the <script type="application/ld+json"> tag.
+- scripts/check-faq-jsonld.mjs: utility to print the FAQPage JSON-LD a
+  page will emit, for eyeball review against the visible page text.
+
+Tests cover the plain-text transform, both FAQ shapes, the empty-page
+fallback, the article-graph append, and the real 5-ways-to-host MDX.
+---
+ gatsby-node.ts                     |  25 +++++
+ scripts/check-faq-jsonld.mjs       |  22 ++++
+ src/components/seo.tsx             |  41 +++++---
+ src/interfaces/Layout.interface.ts |   2 +
+ src/templates/docs.tsx             |   3 +-
+ src/utils/extractFaq.test.ts       | 124 ++++++++++++++++++++++
+ src/utils/extractFaq.ts            | 158 +++++++++++++++++++++++++++++
+ src/utils/structuredData.test.ts   |  38 ++++++-
+ src/utils/structuredData.ts        |  29 +++++-
+ 9 files changed, 423 insertions(+), 19 deletions(-)
+ create mode 100644 scripts/check-faq-jsonld.mjs
+ create mode 100644 src/utils/extractFaq.test.ts
+ create mode 100644 src/utils/extractFaq.ts
+
+diff --git a/gatsby-node.ts b/gatsby-node.ts
+index 4abd09f..14bbc3e 100644
+--- a/gatsby-node.ts
++++ b/gatsby-node.ts
+@@ -7,8 +7,10 @@ import {
+ } from './src/utils/socialCards'
+ import { getThemedTopic } from './src/utils/topicThemes'
+ import type { SocialImage } from './src/utils/socialMetadata'
++import { extractFaqEntries } from './src/utils/extractFaq'
+ 
+ const path = require('path')
++const fs = require('fs')
+ const publicationPolicy = require('./plugins/publication-policy.cjs')
+ const verificationManifest = require('./content-verification.json')
+ 
+@@ -30,6 +32,10 @@ exports.createSchemaCustomization = ({ actions }: any) => {
+       index: Boolean
+       search: Boolean
+       export: Boolean
++      # Opt in to FAQPage structured data (schema.org) for this page.
++      # The FAQ section (## Frequently asked questions or ## FAQ) is parsed
++      # at build time and emitted as JSON-LD. See src/utils/extractFaq.ts.
++      faq: Boolean
+     }
+   `)
+ }
+@@ -96,6 +102,7 @@ exports.createPages = async ({ graphql, actions, reporter }: any) => {
+             index
+             search
+             export
++            faq
+           }
+           internal {
+             contentFilePath
+@@ -156,6 +163,23 @@ exports.createPages = async ({ graphql, actions, reporter }: any) => {
+     // Verification records are for maintainers; pages don't show them
+     if (!verificationManifest.articles.some((entry: any) => entry.file === file))
+       reporter.panicOnBuild(`Missing article verification disposition: ${file}`)
++    // FAQPage structured data (schema.org) is opt-in via `faq: true` in a
++    // page's frontmatter. The MDX body is parsed once per build to lift the
++    // visible FAQ section's questions and answers into page context, which
++    // the SEO component then emits as JSON-LD inside the article `@graph`.
++    let faqs: { question: string; answer: string }[] | undefined
++    if (node.frontmatter.faq) {
++      const mdx = fs.readFileSync(node.internal.contentFilePath, 'utf8')
++      const entries = extractFaqEntries(mdx)
++      if (entries.length === 0) {
++        reporter.panicOnBuild(
++          `${file}: frontmatter sets faq: true but no FAQ section was found. ` +
++            `Add a '## Frequently asked questions' or '## FAQ' section, or remove the flag.`
++        )
++      }
++      faqs = entries
++    }
++
+     createPage({
+       path: pagePath(node),
+       component: `${path.resolve('./src/templates/docs.tsx')}?__contentFilePath=${node.internal.contentFilePath}`,
+@@ -166,6 +190,7 @@ exports.createPages = async ({ graphql, actions, reporter }: any) => {
+         metaImage: node.frontmatter.metaImage || '',
+         socialImage: socialImages.get(node.id),
+         publication: publicationPolicy(node.frontmatter),
++        ...(faqs && { faqs }),
+       },
+     })
+   })
+diff --git a/scripts/check-faq-jsonld.mjs b/scripts/check-faq-jsonld.mjs
+new file mode 100644
+index 0000000..ac455f8
+--- /dev/null
++++ b/scripts/check-faq-jsonld.mjs
+@@ -0,0 +1,22 @@
++// One-off script to print the FAQPage JSON-LD that the Data Guide will emit
++// for the 5-ways-to-host-postgresql page, so a reviewer can eyeball the
++// shape and confirm every answer matches the visible page text.
++//
++// Run with: node --experimental-strip-types scripts/check-faq-jsonld.mjs
++import { readFileSync } from 'node:fs'
++import { fileURLToPath } from 'node:url'
++import { dirname, resolve } from 'node:path'
++import { extractFaqEntries } from '../src/utils/extractFaq.ts'
++import { faqStructuredDataNode } from '../src/utils/structuredData.ts'
++
++const here = dirname(fileURLToPath(import.meta.url))
++const mdxPath = resolve(here, '../content/04-postgresql/03-5-ways-to-host-postgresql.mdx')
++const mdx = readFileSync(mdxPath, 'utf8')
++const faqs = extractFaqEntries(mdx)
++
++const url = 'https://www.prisma.io/dataguide/postgresql/5-ways-to-host-postgresql'
++const name = '5 ways to host PostgreSQL databases'
++
++const node = faqStructuredDataNode(url, name, faqs)
++process.stdout.write(JSON.stringify({ '@context': 'https://schema.org', ...node }, null, 2))
++process.stdout.write('\n')
+diff --git a/src/components/seo.tsx b/src/components/seo.tsx
+index f51cd1e..a5182de 100644
+--- a/src/components/seo.tsx
++++ b/src/components/seo.tsx
+@@ -9,6 +9,7 @@ import {
+   articleStructuredData,
+   serializeJsonLd,
+   websiteStructuredData,
++  type FaqEntry,
+ } from '../utils/structuredData'
+ 
+ type SEOProps = {
+@@ -29,6 +30,10 @@ type SEOProps = {
+     // Parent sections, as paths within the Data Guide
+     breadcrumbs: { name: string; path: string }[]
+   }
++  // Optional FAQPage structured data, generated from the page's FAQ section.
++  // See src/utils/extractFaq.ts; opted into per page via `faq: true` in MDX
++  // frontmatter and wired through gatsby-node createPages context.
++  faqs?: FaqEntry[]
+ }
+ 
+ const SEO = ({
+@@ -40,6 +45,7 @@ const SEO = ({
+   hasMarkdown,
+   noindex,
+   article,
++  faqs,
+ }: SEOProps) => {
+   const { site } = useStaticQuery(query)
+   const {
+@@ -69,22 +75,25 @@ const SEO = ({
+   const siteRoot = `${siteUrl}${pathPrefix}`
+   const markdownUrl = canonicalUrl === siteRoot ? `${siteRoot}/index.md` : `${canonicalUrl}.md`
+   const structuredData = article
+-    ? articleStructuredData({
+-        type: article.type,
+-        url: canonicalUrl,
+-        title: article.headline,
+-        description,
+-        image: metaImageURL,
+-        authors: article.authors,
+-        dateModified: article.dateModified,
+-        breadcrumbs: [
+-          { name: oSite, url: siteRoot },
+-          ...article.breadcrumbs.map((crumb) => ({
+-            name: crumb.name,
+-            url: `${siteRoot}${crumb.path}`,
+-          })),
+-        ],
+-      })
++    ? articleStructuredData(
++        {
++          type: article.type,
++          url: canonicalUrl,
++          title: article.headline,
++          description,
++          image: metaImageURL,
++          authors: article.authors,
++          dateModified: article.dateModified,
++          breadcrumbs: [
++            { name: oSite, url: siteRoot },
++            ...article.breadcrumbs.map((crumb) => ({
++              name: crumb.name,
++              url: `${siteRoot}${crumb.path}`,
++            })),
++          ],
++        },
++        faqs
++      )
+     : websiteStructuredData(oSite, siteRoot, description)
+ 
+   return (
+diff --git a/src/interfaces/Layout.interface.ts b/src/interfaces/Layout.interface.ts
+index dcfbdc5..d51038a 100644
+--- a/src/interfaces/Layout.interface.ts
++++ b/src/interfaces/Layout.interface.ts
+@@ -1,4 +1,5 @@
+ import type { SocialImage } from '../utils/socialMetadata'
++import type { FaqEntry } from '../utils/structuredData'
+ 
+ export interface HeaderProps {
+   logoLink: string
+@@ -33,5 +34,6 @@ export interface CreatePageContext {
+       navigable: boolean
+       exported: boolean
+     }
++    faqs?: FaqEntry[]
+   }
+ }
+diff --git a/src/templates/docs.tsx b/src/templates/docs.tsx
+index 74aeea0..a9a8a62 100644
+--- a/src/templates/docs.tsx
++++ b/src/templates/docs.tsx
+@@ -85,7 +85,7 @@ export default ArticleLayout
+ export const Head = ({
+   data,
+   location,
+-  pageContext: { seoTitle, seoDescription, metaImage, socialImage, publication },
++  pageContext: { seoTitle, seoDescription, metaImage, socialImage, publication, faqs },
+ }: ArticleLayoutProps) => {
+   const { allMdx } = useAllArticlesQuery()
+   const {
+@@ -121,6 +121,7 @@ export const Head = ({
+       hasMarkdown={hasMarkdown}
+       noindex={publication?.indexed === false}
+       article={article}
++      faqs={faqs}
+     />
+   )
+ }
+diff --git a/src/utils/extractFaq.test.ts b/src/utils/extractFaq.test.ts
+new file mode 100644
+index 0000000..43c079b
+--- /dev/null
++++ b/src/utils/extractFaq.test.ts
+@@ -0,0 +1,124 @@
++import { test } from 'node:test'
++import assert from 'node:assert/strict'
++import { readFileSync } from 'node:fs'
++import { fileURLToPath } from 'node:url'
++import { dirname, resolve } from 'node:path'
++import { extractFaqEntries, toPlainText } from './extractFaq.ts'
++
++const here = dirname(fileURLToPath(import.meta.url))
++const fiveWaysPath = resolve(here, '../../content/04-postgresql/03-5-ways-to-host-postgresql.mdx')
++
++test('toPlainText keeps the words readers see and drops markup', () => {
++  assert.equal(
++    toPlainText('A [free Postgres database](https://www.prisma.io/postgres) with `npx create-db`.'),
++    'A free Postgres database with npx create-db.'
++  )
++  assert.equal(toPlainText('**bold** and *italic* and _em_ and __b2__'), 'bold and italic and em and b2')
++  assert.equal(toPlainText('plain &amp; &quot;quoted&quot; &nbsp;spaced'), 'plain & "quoted" spaced')
++  assert.equal(toPlainText('leading <PostgresCallout /> component'), 'leading component')
++  assert.equal(toPlainText('fenced ```not shown``` tail'), 'fenced tail')
++})
++
++test('extractFaqEntries parses an H3-style FAQ section into Q/A pairs', () => {
++  const mdx = [
++    '---',
++    'title: Example',
++    '---',
++    '',
++    '## Intro',
++    '',
++    'Body copy.',
++    '',
++    '## Frequently asked questions',
++    '',
++    '### First question?',
++    '',
++    'First answer with a [link](https://example.com) and `code`.',
++    '',
++    '### Second question?',
++    '',
++    'Second answer.',
++    '',
++    '## Next section',
++    '',
++    'Should not be included.',
++    '',
++  ].join('\n')
++
++  const entries = extractFaqEntries(mdx)
++  assert.deepEqual(entries, [
++    { question: 'First question?', answer: 'First answer with a link and code.' },
++    { question: 'Second question?', answer: 'Second answer.' },
++  ])
++})
++
++test('extractFaqEntries parses a details/summary FAQ section', () => {
++  const mdx = [
++    '## FAQ',
++    '',
++    '<details>',
++    '<summary>What is X?</summary>',
++    '',
++    'X is a thing.',
++    '',
++    '</details>',
++    '',
++    '<details>',
++    '<summary>What is Y?</summary>',
++    '',
++    'Y is another thing.',
++    '',
++    '</details>',
++    '',
++    '## Next',
++    '',
++  ].join('\n')
++
++  const entries = extractFaqEntries(mdx)
++  assert.deepEqual(entries, [
++    { question: 'What is X?', answer: 'X is a thing.' },
++    { question: 'What is Y?', answer: 'Y is another thing.' },
++  ])
++})
++
++test('extractFaqEntries returns [] when no FAQ section is present', () => {
++  assert.deepEqual(extractFaqEntries('## Only one section\n\nBody.\n'), [])
++})
++
++test('the 5-ways-to-host-postgresql FAQ parses to the expected visible answers', () => {
++  const mdx = readFileSync(fiveWaysPath, 'utf8')
++  const entries = extractFaqEntries(mdx)
++
++  // Spot-check structural expectations rather than every answer verbatim.
++  assert.ok(entries.length >= 6, `expected at least 6 FAQ entries, got ${entries.length}`)
++
++  const questions = entries.map((entry) => entry.question)
++  assert.deepEqual(questions, [
++    'Is there a free way to host PostgreSQL?',
++    "What's the best PostgreSQL hosting for serverless or edge apps?",
++    'Do I need a separate connection pooler?',
++    'How are backups handled?',
++    'Can I develop locally and deploy to a hosted database?',
++    'Can I host the app and Postgres in one place?',
++    'Is managed PostgreSQL production-ready?',
++  ])
++
++  const free = entries.find((e) => e.question.startsWith('Is there a free way'))!
++  assert.equal(
++    free.answer,
++    'Yes. For development, a local install or Docker container is free aside from your own machine\'s resources. For a hosted database, several managed providers offer a free tier. Prisma Postgres gives you a free Postgres database in seconds with npx create-db, no credit card needed, and you move to a paid plan when you outgrow it.'
++  )
++
++  const backups = entries.find((e) => e.question === 'How are backups handled?')!
++  assert.equal(
++    backups.answer,
++    "With self-managed PostgreSQL, backups are your responsibility to schedule, store, and test. Most managed services automate backups on paid plans. With Prisma Postgres, backups come with paid plans; the Free plan doesn't include them. Confirm retention and restore options match your needs."
++  )
++
++  // No raw Markdown markup should leak into any answer.
++  for (const entry of entries) {
++    assert.ok(!entry.answer.includes('['), `markdown left in: ${entry.answer}`)
++    assert.ok(!entry.answer.includes('`'), `backtick left in: ${entry.answer}`)
++    assert.ok(!entry.answer.includes('](') , `markdown link left in: ${entry.answer}`)
++  }
++})
+diff --git a/src/utils/extractFaq.ts b/src/utils/extractFaq.ts
+new file mode 100644
+index 0000000..a6a6fe2
+--- /dev/null
++++ b/src/utils/extractFaq.ts
+@@ -0,0 +1,158 @@
++// Parse an MDX article body's FAQ section into { question, answer } pairs
++// suitable for FAQPage structured data (schema.org).
++//
++// Supported FAQ shapes (both are already used across the Data Guide):
++//   1. H3 pairs under an H2 heading:
++//        ## Frequently asked questions
++//        ### Question text
++//        Answer paragraph(s)...
++//        ### Next question
++//        ...
++//   2. <details>/<summary> pairs under an H2 heading:
++//        ## FAQ
++//        <details>
++//        <summary>Question text</summary>
++//        Answer paragraph(s)...
++//        </details>
++//
++// Answers are flattened to plain text, matching the visible page text word
++// for word with Markdown link and code markup stripped to their words. This
++// is what Google's FAQPage schema expects as the acceptedAnswer `text`.
++
++export type FaqEntry = { question: string; answer: string }
++
++const FAQ_HEADING_RE = /^## +(?:Frequently\s+asked\s+questions|FAQ)\s*$/im
++const NEXT_H2_RE = /^## +/m
++
++/**
++ * Flatten MDX / Markdown prose to plain text, preserving the words the
++ * reader sees but dropping link URLs, code fences, HTML tags, and MDX
++ * components. Intended for FAQPage acceptedAnswer.text values.
++ */
++export function toPlainText(input: string): string {
++  let text = input
++
++  // Drop fenced code blocks (``` ... ``` and ~~~ ... ~~~). Google's FAQ
++  // schema wants a short plain-text answer, not literal code.
++  text = text.replace(/```[\s\S]*?```/g, ' ').replace(/~~~[\s\S]*?~~~/g, ' ')
++
++  // Drop MDX / JSX components (self-closing and paired). We leave common
++  // inline HTML (<a>, <strong>, <br/>) to the HTML-tag strip below so their
++  // text content survives.
++  text = text.replace(/<([A-Z][A-Za-z0-9]*)\b[^>]*\/>/g, ' ')
++  text = text.replace(/<([A-Z][A-Za-z0-9]*)\b[^>]*>[\s\S]*?<\/\1>/g, ' ')
++
++  // Markdown links: [text](url) -> text. Supports absolute and relative URLs.
++  text = text.replace(/\[([^\]]+)\]\((?:[^()\s]+|\([^)]*\))\)/g, '$1')
++
++  // Reference-style link definitions on their own line: [id]: url
++  text = text.replace(/^\[[^\]]+\]:\s+\S+.*$/gm, ' ')
++
++  // Images: ![alt](url) -> alt (usually empty inside FAQ answers)
++  text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
++
++  // Inline code: `code` -> code
++  text = text.replace(/`([^`]+)`/g, '$1')
++
++  // Bold / italic markers (**x**, __x__, *x*, _x_) around visible words
++  text = text.replace(/\*\*([^*]+)\*\*/g, '$1')
++  text = text.replace(/__([^_]+)__/g, '$1')
++  text = text.replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1$2')
++  text = text.replace(/(^|[\s(])_([^_\n]+)_/g, '$1$2')
++
++  // HTML entities we see in Data Guide copy
++  text = text
++    .replace(/&nbsp;/g, ' ')
++    .replace(/&amp;/g, '&')
++    .replace(/&quot;/g, '"')
++    .replace(/&#39;|&apos;/g, "'")
++    .replace(/&lt;/g, '<')
++    .replace(/&gt;/g, '>')
++
++  // Strip remaining HTML tags, keep their text content
++  text = text.replace(/<[^>]+>/g, ' ')
++
++  // Collapse whitespace
++  text = text.replace(/\s+/g, ' ').trim()
++
++  return text
++}
++
++/**
++ * Strip the YAML frontmatter block (--- ... ---) from the top of an MDX file
++ * so the parser only sees the body.
++ */
++function stripFrontmatter(mdx: string): string {
++  if (!mdx.startsWith('---')) return mdx
++  const end = mdx.indexOf('\n---', 3)
++  if (end === -1) return mdx
++  return mdx.slice(end + 4).replace(/^\r?\n/, '')
++}
++
++/**
++ * Locate the FAQ section (## Frequently asked questions or ## FAQ) within a
++ * stripped MDX body and return its content, excluding the heading itself.
++ * Returns null when no FAQ section is present.
++ */
++function findFaqSection(body: string): string | null {
++  const match = FAQ_HEADING_RE.exec(body)
++  if (!match) return null
++  const start = match.index + match[0].length
++  const rest = body.slice(start)
++  const nextH2 = NEXT_H2_RE.exec(rest)
++  const sectionEnd = nextH2 ? nextH2.index : rest.length
++  return rest.slice(0, sectionEnd)
++}
++
++/**
++ * Parse H3-headed Q/A pairs out of an FAQ section.
++ * Each `### question` is followed by its answer until the next `###` or end.
++ */
++function parseH3Faqs(section: string): FaqEntry[] {
++  const entries: FaqEntry[] = []
++  const parts = section.split(/^### +/m)
++  // parts[0] is pre-first-H3 text; skip it.
++  for (let i = 1; i < parts.length; i++) {
++    const chunk = parts[i]
++    const newline = chunk.indexOf('\n')
++    const question = (newline === -1 ? chunk : chunk.slice(0, newline)).trim()
++    const answer = newline === -1 ? '' : chunk.slice(newline + 1)
++    const q = toPlainText(question)
++    const a = toPlainText(answer)
++    if (q && a) entries.push({ question: q, answer: a })
++  }
++  return entries
++}
++
++/**
++ * Parse <details><summary>Q</summary>A</details> pairs out of an FAQ section.
++ */
++function parseDetailsFaqs(section: string): FaqEntry[] {
++  const entries: FaqEntry[] = []
++  const detailsRe = /<details>([\s\S]*?)<\/details>/g
++  let match: RegExpExecArray | null
++  while ((match = detailsRe.exec(section)) !== null) {
++    const inner = match[1]
++    const summaryRe = /<summary>([\s\S]*?)<\/summary>/
++    const summary = summaryRe.exec(inner)
++    if (!summary) continue
++    const question = toPlainText(summary[1])
++    const answer = toPlainText(inner.replace(summaryRe, ' '))
++    if (question && answer) entries.push({ question, answer })
++  }
++  return entries
++}
++
++/**
++ * Extract an article's FAQ entries from its raw MDX source. Returns an empty
++ * array when the page has no FAQ section (so callers can safely skip adding
++ * FAQPage structured data).
++ */
++export function extractFaqEntries(mdx: string): FaqEntry[] {
++  const body = stripFrontmatter(mdx)
++  const section = findFaqSection(body)
++  if (section === null) return []
++  const h3 = parseH3Faqs(section)
++  if (h3.length > 0) return h3
++  return parseDetailsFaqs(section)
++}
+diff --git a/src/utils/structuredData.test.ts b/src/utils/structuredData.test.ts
+index 9ea8262..7284d01 100644
+--- a/src/utils/structuredData.test.ts
++++ b/src/utils/structuredData.test.ts
+@@ -1,6 +1,11 @@
+ import { test } from 'node:test'
+ import assert from 'node:assert/strict'
+-import { articleStructuredData, serializeJsonLd, websiteStructuredData } from './structuredData.ts'
++import {
++  articleStructuredData,
++  faqStructuredDataNode,
++  serializeJsonLd,
++  websiteStructuredData,
++} from './structuredData.ts'
+ 
+ const article = {
+   url: 'https://www.prisma.io/dataguide/postgresql/benefits-of-postgresql',
+@@ -62,3 +67,34 @@ test('serialized data cannot close the script tag', () => {
+   assert.equal(json.includes('</script>'), false)
+   assert.equal(JSON.parse(json).title, '</script><script>alert(1)</script>')
+ })
++
++test('faq entries are only appended to the article graph when present', () => {
++  const graphWithout = articleStructuredData(article)['@graph'] as any[]
++  assert.equal(graphWithout.length, 2)
++
++  const graphWith = articleStructuredData(article, [
++    { question: 'Q1?', answer: 'A1.' },
++    { question: 'Q2?', answer: 'A2.' },
++  ])['@graph'] as any[]
++  assert.equal(graphWith.length, 3)
++  const faq = graphWith[2]
++  assert.equal(faq['@type'], 'FAQPage')
++  assert.equal(faq['@id'], `${article.url}#faq`)
++  assert.equal(faq.url, article.url)
++  assert.equal(faq.mainEntity.length, 2)
++  assert.deepEqual(faq.mainEntity[0], {
++    '@type': 'Question',
++    name: 'Q1?',
++    acceptedAnswer: { '@type': 'Answer', text: 'A1.' },
++  })
++})
++
++test('faqStructuredDataNode shapes a standalone FAQPage node', () => {
++  const node = faqStructuredDataNode('https://example.com/x', 'Example', [
++    { question: 'What?', answer: 'Why.' },
++  ])
++  assert.equal(node['@type'], 'FAQPage')
++  assert.equal(node['@id'], 'https://example.com/x#faq')
++  assert.equal(node.name, 'Example')
++  assert.equal(node.mainEntity[0].acceptedAnswer.text, 'Why.')
++})
+diff --git a/src/utils/structuredData.ts b/src/utils/structuredData.ts
+index 51e0ed3..286d804 100644
+--- a/src/utils/structuredData.ts
++++ b/src/utils/structuredData.ts
+@@ -23,7 +23,7 @@ const publisher = {
+   url: 'https://www.prisma.io',
+ }
+ 
+-export const articleStructuredData = (article: ArticleData) => ({
++export const articleStructuredData = (article: ArticleData, faqs?: FaqEntry[]) => ({
+   '@context': 'https://schema.org',
+   '@graph': [
+     {
+@@ -50,6 +50,9 @@ export const articleStructuredData = (article: ArticleData) => ({
+         })
+       ),
+     },
++    ...(faqs && faqs.length > 0
++      ? [faqStructuredDataNode(article.url, article.title, faqs)]
++      : []),
+   ],
+ })
+ 
+@@ -62,5 +65,29 @@ export const websiteStructuredData = (name: string, url: string, description?: s
+   publisher,
+ })
+ 
++export interface FaqEntry {
++  question: string
++  answer: string
++}
++
++/**
++ * FAQPage node (schema.org) to merge into an article's `@graph`. The caller
++ * supplies plain-text answers that match the visible page copy word for word.
++ */
++export const faqStructuredDataNode = (url: string, name: string, faqs: FaqEntry[]) => ({
++  '@type': 'FAQPage',
++  '@id': `${url}#faq`,
++  name,
++  url,
++  mainEntity: faqs.map((faq) => ({
++    '@type': 'Question',
++    name: faq.question,
++    acceptedAnswer: {
++      '@type': 'Answer',
++      text: faq.answer,
++    },
++  })),
++})
++
+ // JSON for a <script> tag: `<` is escaped, so content can't close the tag
+ export const serializeJsonLd = (data: object) => JSON.stringify(data).replace(/</g, '\\u003c')
+-- 
+2.43.0
+
