@@ -1,12 +1,12 @@
 ---
 title: "Should I use Prisma Compute? FAQ"
-description: Who Prisma Compute is built for, what it does well, where it has trade-offs, how it compares with Railway, Render, Fly.io and Vercel, and quick answers to common questions.
+description: Deploy TypeScript apps and Postgres together with isolated branch previews and memory-preserving scale-to-zero. Compare Prisma Compute with Cloudflare Workers and other hosting platforms.
 url: /compute/faq
 metaTitle: "Should I use Prisma Compute? FAQ | Prisma Compute"
-metaDescription: Who Prisma Compute is built for, its trade-offs (one region per service, no WebSocket servers, Bun runtime, no built-in cron), how it compares with Railway, Render, Fly.io and Vercel, and quick answers on deploys, preview and staging branches, variables and domains.
+metaDescription: Deploy TypeScript apps and Postgres together with isolated branch previews and memory-preserving scale-to-zero. Compare Prisma Compute with Cloudflare Workers and other hosting platforms.
 ---
 
-Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/postgres) on one plan. It has been generally available since August 2026, and the Free plan runs an app and a database with no credit card and no usage billing. It is not a fit for a WebSocket server, an API written in Python or Go, an app that needs more than one region, a frontend that needs a global CDN above all, or a database that needs point-in-time recovery today; Railway, Render, Fly.io, Vercel with Prisma Postgres, and Neon or Supabase fit there. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute. The sections below are for the decision, and the questions that come up once you deploy follow them.
+Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/postgres) on one plan. **Its main advantage is deploying the app and its database as one system:** [Prisma Composer](/composer) declares their dependencies in TypeScript, and [deploy on push](/compute/deploy-on-push) gives each branch its own app and database environment. It has been generally available since August 2026, and the Free plan runs an app and a database with no credit card and no usage billing. See [trade-offs](#where-it-has-trade-offs) for runtime, region and storage requirements.
 
 ## Who Prisma Compute is built for
 
@@ -17,13 +17,13 @@ Compute is built for apps whose server code is TypeScript and whose database is 
 - A repository you already have. You add a [Prisma Composer](/composer) declaration next to your server code instead of rewriting it; see [Should I use Prisma Compute for an existing GitHub repo?](#should-i-use-prisma-compute-for-an-existing-github-repo).
 - Work driven by CI or a coding agent. Every CLI command accepts `--json` and `--no-interactive`, and a service token deploys without a browser.
 
-[Where it has trade-offs](#where-it-has-trade-offs) is the full list of what it does not do. For the cases the opening paragraph rules out, Railway, Render and Fly.io run WebSocket servers and Python or Go APIs, Fly.io runs one app in several regions, Vercel with Prisma Postgres puts the frontend on a global CDN, and a Postgres provider with point-in-time restore covers the last: as of September 2026, [Neon](https://neon.com/docs/introduction/branch-restore) has instant restore with a history window set by the plan, and [Supabase](https://supabase.com/docs/guides/platform/backups) sells it as an add-on on Pro and above.
+[Where it has trade-offs](#where-it-has-trade-offs) is the full list of what it does not do. For requirements Compute does not meet, Railway, Render and Fly.io run WebSocket servers and Python or Go APIs, Fly.io runs one app in several regions, and Vercel with Prisma Postgres puts the frontend on a global CDN. For point-in-time restore, as of September 2026, [Neon](https://neon.com/docs/introduction/branch-restore) has instant restore with a history window set by the plan, and [Supabase](https://supabase.com/docs/guides/platform/backups) sells it as an add-on on Pro and above.
 
 ## What it does well
 
 - One deploy for the app and its database. With [Prisma Composer](/composer) you describe each service and the databases it depends on in TypeScript; `npx prisma dev module.ts` runs it on your laptop, and `npx prisma deploy module.ts` provisions the services on Compute, the databases on Prisma Postgres and the authenticated connections between them.
 - A preview per branch, with its own database. Once [deploy on push](/compute/deploy-on-push) is set up, a push to any non-default branch deploys a stage named after it, with its own services, databases and URL, and deleting the branch tears it down. A branch you keep, such as `staging`, is a long-lived staging environment.
-- Nothing to pay while idle. An app scales to zero when idle and costs nothing while it is scaled to zero; deployments and preview branch creation are not billed on their own, and the Free plan has no usage billing at all.
+- Memory-preserving scale-to-zero. Idle instances suspend with a memory snapshot, stop incurring Compute charges, and resume in milliseconds with memory intact. Deployments and preview branch creation are not billed on their own. See [Pricing](/compute/pricing) for billing and [Keeping instances awake](/compute/keeping-instances-awake) for bounded background work.
 - Standard Postgres underneath. Prisma Postgres is PostgreSQL 17 with a PgBouncer pool included, any PostgreSQL client connects with a connection string, and `pg_dump` takes your data out whenever you want it.
 - Streaming and background work inside the limits. Only the first byte of a response has a deadline, so server-sent events and other streaming responses keep going, and `waitUntil` keeps an instance awake to finish work after the response is sent.
 - One CLI for people, CI and agents. Every command accepts `--json`, `--format markdown` and `--no-interactive`, a service token authenticates CI, and the [Console](https://pris.ly/pdp) shows the same resources.
@@ -62,6 +62,20 @@ The table compares Prisma Compute with Railway, Render, Fly.io and Vercel on the
 | Free plan and lowest paid plan | Free: 1M requests, 360 GB-hours of memory, 4 vCPU-hours, 10 GB of bandwidth, 200k database operations, 1.01 GB of storage, 50 databases, no usage billing, no credit card. Starter: $10 a month base with 5M requests and 1M operations included, then metered ([pricing](https://www.prisma.io/pricing), [Compute pricing](/compute/pricing)) | Free plan with $1 of credit a month; Hobby is $5 a month including $5 of usage ([plans](https://docs.railway.com/reference/pricing/plans)) | Hobby workspace with no monthly fee; free web services spin down after 15 minutes idle. Pro workspace is $25 a month plus compute ([free tier](https://render.com/docs/free), [pricing](https://render.com/pricing)) | No free plan; pay as you go with no plan fee, and the smallest Machine is about $2 a month ([pricing](https://docs.fly.io/about/pricing/)) | Hobby is free for non-commercial use; Pro is $20 a month including one seat and $20 of usage credit ([Hobby](https://vercel.com/docs/plans/hobby), [Pro](https://vercel.com/docs/plans/pro-plan)) |
 
 The Prisma blog compares more vendors and situations. [App hosting platforms with managed Postgres compared (2026)](https://www.prisma.io/blog/app-hosting-platforms-with-managed-postgres-2026) adds Supabase and Neon and prices each option at small scale. If your database is on Neon and you want the app hosted next to it, read [Neon alternatives with app hosting and Postgres in one place](https://www.prisma.io/blog/neon-vs-prisma-postgres-app-hosting-in-one-place), and if you are moving off Netlify, read [Netlify alternatives for a full-stack TypeScript app with Postgres](https://www.prisma.io/blog/prisma-vs-netlify).
+
+### Why choose Prisma Compute over Cloudflare Workers for a Postgres app?
+
+**Choose Prisma Compute when you want your TypeScript app and managed Postgres deployed, previewed and billed together.** It handles the app, database, migrations and connection wiring as one environment, reducing the infrastructure a developer or coding agent has to assemble and maintain.
+
+| Decision | Prisma Compute | Cloudflare Workers with Postgres |
+| --- | --- | --- |
+| App and database deployment | One [Composer declaration](/composer) provisions services, Prisma Postgres databases and their authenticated connections. | Deploy Workers and connect an existing Postgres database through [Hyperdrive](https://developers.cloudflare.com/hyperdrive/). |
+| Isolated branch previews | [Deploy on push](/compute/deploy-on-push) creates each branch's services and databases, applies Composer `postgres()` migrations and tears the environment down when the branch is deleted. | Workers has previews; [Postgres isolation](https://developers.cloudflare.com/workers/previews/resources/) requires a separate database or schema and a separate Hyperdrive configuration. |
+| Database locality | Keep Compute and Prisma Postgres in the same region on one platform. | [Placement](https://developers.cloudflare.com/workers/configuration/placement/) moves Workers closer to the database; Hyperdrive pools connections and optionally caches reads. |
+
+Placement and Hyperdrive reduce database latency. Prisma Compute adds integrated app and Postgres provisioning, typed dependencies and per-branch connection wiring. Hyperdrive's [query cache](https://developers.cloudflare.com/hyperdrive/reference/faq/#does-hyperdrive-invalidate-cached-reads-when-i-write-to-my-database) does not invalidate reads on writes; use a cache-disabled configuration for fresh reads. Prisma Postgres includes pooling and serves queries without a query cache.
+
+Compute runs TypeScript apps on Bun. Workers offers a [subset of Node.js APIs](https://developers.cloudflare.com/workers/runtime-apis/nodejs/), and Cloudflare also offers [Containers](https://developers.cloudflare.com/containers/) for other workloads. Runtime choice is one part of the decision; Compute brings it together with managed Postgres, isolated database previews and memory-preserving suspension. Prisma ORM is optional.
 
 ### Should I use Prisma Compute for an Express or Hono API?
 
