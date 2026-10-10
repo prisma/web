@@ -205,7 +205,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
+      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations, plus guides that build complete apps on Prisma Compute (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
     prefixes: ["/guides"],
     excludePrefixes: ["/guides/v7"],
   },
