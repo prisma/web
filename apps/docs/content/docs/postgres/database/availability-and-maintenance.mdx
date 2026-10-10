@@ -1,0 +1,60 @@
+---
+title: Availability and maintenance
+description: What to check when a Prisma Postgres database is unreachable, where to find the status page, how idle databases wake up, what "Failed to connect to upstream database" means, and how maintenance works.
+url: /postgres/database/availability-and-maintenance
+metaTitle: Availability and maintenance in Prisma Postgres
+metaDescription: What to check when a Prisma Postgres database is unreachable, where to find the status page, how idle databases wake up, what "Failed to connect to upstream database" means, and how maintenance works.
+---
+
+When a Prisma Postgres database stops answering, the cause is usually one of three things: a platform incident, a block on the workspace, or your application running out of connections. This page shows how to tell them apart, and covers idle databases and maintenance.
+
+## Status page
+
+Prisma posts incidents and scheduled maintenance on its [status page](https://www.prisma-status.com), under the **Prisma Postgres** component. Check it first when a database that was working starts failing.
+
+To get notified, click **Subscribe to Updates** on the status page. You can subscribe by email, text message, Slack, webhook, or RSS/Atom feed.
+
+## When your database is unreachable
+
+Work through these checks in order:
+
+1. **Check the status page.** Look for an open incident in your database's region. If there is one, Prisma is working on it, and your database comes back without any action from you. Several users seeing the same error at the same time usually means an incident, even before the status page shows it.
+2. **Check for a block.** Open the workspace in the [Prisma Console](https://console.prisma.io) and look for a banner about the monthly plan limit, the spending limit, or an unpaid invoice. A block stops queries until you resolve its cause. It does not delete your database or your data. See [Usage limits and blocks](/console/billing/usage-limits-and-blocks).
+3. **Check your connection limits.** Errors such as `too many connections` or timeouts while waiting for a connection mean your application opens more connections than your plan allows. See [Limits](/postgres/database/limits#connections) and [Connection pooling](/postgres/database/connection-pooling#too-many-connections-or-connection-limit-errors).
+4. **Check the connection string.** Authentication errors after a change usually mean a deleted or rotated credential. See [Roles and credentials](/postgres/database/roles-and-credentials).
+
+If none of these explain the failure, contact [support](/console/more/support) with the exact error text, the UTC time it started, the database's region, and whether you use the pooled or direct connection string.
+
+## "Failed to connect to upstream database"
+
+Your client reached Prisma Postgres, but the Prisma connection endpoint could not open a connection to your database behind it. The problem is between Prisma's endpoint and your database, not in your network or your credentials.
+
+This error usually comes from a platform incident in the database's region. Check the status page, and retry with backoff. If the error continues and the status page shows nothing, check for a block, then contact support with the details listed above.
+
+## Common questions
+
+### Was my database deleted?
+
+Probably not. Blocks for the Free plan limit, a spending limit, or an unpaid invoice make a database refuse connections, which can look like a deleted database, but a block never deletes data. Check the Console for a banner and see [Usage limits and blocks](/console/billing/usage-limits-and-blocks).
+
+### Why does Console show my database as live when my application can't connect?
+
+Console can show a database as live during an incident that affects connections to it. Errors such as "Failed to connect to upstream database" while Console shows the database as live usually mean a platform incident; check the [status page](https://www.prisma-status.com).
+
+### Why is the first query after a quiet period slow?
+
+The database went into standby after about 5 seconds without activity and had to wake up, which adds a short delay to the first connection.
+
+### Will I get notice before maintenance?
+
+Prisma announces maintenance on the [status page](https://www.prisma-status.com), sometimes shortly before it starts. Subscribe there to get notified.
+
+### Is there an uptime SLA?
+
+Yes, on the Pro, Business, and Enterprise plans. The [Service Level Agreement](https://www.prisma.io/legal/sla) commits to at least 99.95% monthly uptime for generally available services. If uptime falls below that, you can claim a service credit on future payments: 10% of the monthly charge for uptime between 99% and 99.95%, and 25% below 99%. The Free and Starter plans have no SLA and no service credits.
+
+To claim a credit, open a support ticket in the [Prisma Console](https://console.prisma.io) with the category **Billing** and the title **SLA Credit Request**, within two billing cycles of the incident. Include the dates and times of the downtime, the affected service URLs, and redacted request logs that show the errors.
+
+### My database was down. What happened?
+
+Check the [status page](https://www.prisma-status.com) for an incident in your region during that time. If there is none, contact [support](/console/more/support) with the UTC times and the error text you saw.

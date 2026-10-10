@@ -52,7 +52,7 @@ If the application is receiving very high traffic and there are not a sufficient
 
 **Suggested solution**: Review and possibly increase the `connection_limit` specified in the connection string parameter when setting up Accelerate in a platform environment. This limit should match your database's maximum number of connections.
 
-By default, the connection limit is set to 10 unless a different `connection_limit` is specified in your database connection string.
+By default, the connection limit is set to 10 unless a different `connection_limit` is specified in your database connection string. For a Prisma Postgres database, the limit is set by your plan instead; see [Connection limit stays at 10](#connection-limit-stays-at-10).
 
 #### Long-running queries
 
@@ -167,6 +167,43 @@ Certain processes, such as bulk data imports, ETL operations, or extended CRON j
 
 - Use batching or chunking techniques to break large operations into smaller parts.
 - Establish throttling or scheduling to distribute the load more evenly.
+
+## `P6000` and Cloudflare error 1102
+
+`P6000` (`ServerError`) is a generic Accelerate error. When it comes with Cloudflare error 1102, `Worker exceeded resource limits`, the edge worker handling the request hit its per-request CPU limit or was recycled by Cloudflare. These errors are transient, are not specific to your project, and have no configuration fix.
+
+### Possible causes for `P6000` with error 1102
+
+#### Large queries or responses
+
+The worker's CPU use grows with the size of the query and its response. Queries that fetch many rows or deeply nested relations are more likely to hit the limit. The time your own function has been running does not cause 1102, and a missing index shows up as [`P6004`](#p6004-querytimeout) rather than 1102.
+
+**Suggested solution:**
+
+- Retry the query with exponential backoff, starting at 1 to 2 seconds.
+- Retry writes only if repeating them is safe, or check whether the first attempt took effect before you retry.
+- Fetch smaller pages with [pagination](/orm/v7/prisma-client/queries/pagination) and select fewer fields and relations.
+
+#### Moving off Accelerate
+
+The hosted Accelerate connection retires on December 1, 2026. A pooled TCP connection doesn't run queries on edge workers, so it doesn't produce error 1102. See [Connect to Prisma Postgres without Accelerate](/postgres/database/switch-from-accelerate).
+
+## Connection limit stays at 10
+
+For a Prisma Postgres database, you can't change the Accelerate connection limit. Console shows it as **Managed by Prisma Postgres**, and adding `connection_limit` to the Accelerate connection string does not raise it. The limit follows your plan:
+
+| Plan     | Accelerate connection limit |
+| -------- | --------------------------- |
+| Free     | 10                          |
+| Starter  | 10                          |
+| Pro      | 40                          |
+| Business | 40                          |
+
+If your application waits for connections or hits [`P6004`](#p6004-querytimeout) under load, upgrade the workspace, or [switch to a pooled TCP connection](/postgres/database/switch-from-accelerate).
+
+For a database hosted outside Prisma, set the limit in the Accelerate settings of the database in the [Prisma Console](https://console.prisma.io): choose a value under **Connection pool size** and click **Update**. Values go up in steps of 10, up to 10 on Free and Starter, 100 on Pro, and 1,000 on Business.
+
+The pooled connection limits listed for each Prisma Postgres plan apply to the `pooled.db.prisma.io` connection string, not to the hosted Accelerate connection. See [Limits](/postgres/database/limits#connections).
 
 ## Other errors
 
