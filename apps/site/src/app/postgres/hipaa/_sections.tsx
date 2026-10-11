@@ -813,6 +813,127 @@ export function HipaaPlans() {
   );
 }
 
+// Simplified monochrome marks of the three competitors' public logos; the
+// shapes trace the paths published on each vendor's pricing / brand page
+// (fetched 11 Oct 2026). They render in a muted grey so the comparison reads
+// as neutral rather than branded.
+function PrismaLogoMark({ className }: { className?: string }) {
+  // Official Prisma mark (same shape as the logo in /logo/black.svg), rendered
+  // in currentColor so the comparison can print it monochrome grey.
+  return (
+    <svg viewBox="0 0 32 40" fill="currentColor" aria-hidden className={className}>
+      <path d="M30.676 29.558 17.388.973C17.051.254 16.33-.129 15.572.038a1.705 1.705 0 0 0-1.254.95L1.098 29.17a1.814 1.814 0 0 0 .35 2.006l13.726 13.726c.666.666 1.737.666 2.403 0l13.064-13.064a1.814 1.814 0 0 0 .035-2.28ZM16.064 4.56l10.78 23.202-10.78 10.78L5.58 27.838 16.064 4.561Z" />
+    </svg>
+  );
+}
+
+function SupabaseLogoMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 109 113" fill="currentColor" aria-hidden className={className}>
+      <path d="M63.708 110.284c-2.86 3.6-8.657 1.628-8.726-2.97l-1.008-67.252h45.22c8.19 0 12.758 9.46 7.665 15.874l-43.151 54.348Z" />
+      <path d="M45.317 2.071c2.86-3.6 8.657-1.628 8.726 2.97l.442 67.252H9.831C1.64 72.293-2.928 62.832 2.166 56.418L45.317 2.071Z" />
+    </svg>
+  );
+}
+
+function RenderLogoMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 96 96" fill="currentColor" aria-hidden className={className}>
+      <path d="M62.6 24c-6.3-.3-11.5 4.2-12.4 10.2-1.5 8.6-8.1 13.6-15.8 13.8s-7.9-3.2-8.3-1.6v25.6h24v-18c0-3.3 2.7-6 6-6h6c6.8 0 12.3-5.6 12-12.5-.2-6.2-5.2-11.2-11.4-11.5Z" />
+    </svg>
+  );
+}
+
+export function HipaaStartups() {
+  const cards: {
+    name: string;
+    logo: React.ReactNode;
+    price: string;
+    detail: React.ReactNode;
+    highlight?: boolean;
+  }[] = [
+    {
+      name: "Prisma Postgres",
+      logo: <PrismaLogoMark className="size-7 text-foreground" />,
+      price: "From $129 a month",
+      detail: (
+        <>
+          Business plan, signed BAA included. <PendingBadge />
+        </>
+      ),
+      highlight: true,
+    },
+    {
+      name: "Supabase",
+      logo: <SupabaseLogoMark className="h-7 w-auto text-muted-foreground/70" />,
+      price: "From $599 a month",
+      detail: <>Team plan plus a HIPAA add-on.</>,
+    },
+    {
+      name: "Render",
+      logo: <RenderLogoMark className="size-7 text-muted-foreground/70" />,
+      price: "From $499 a month",
+      detail: <>Scale plan plus 20% on HIPAA workspace usage.</>,
+    },
+  ];
+
+  return (
+    <section
+      className="bg-white px-4 pb-24 sm:px-8 sm:pb-32"
+      aria-labelledby="startups"
+    >
+      <div className="mx-auto max-w-site">
+        <div className="mx-auto max-w-3xl text-center max-md:text-left">
+          <h2
+            id="startups"
+            className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]"
+          >
+            HIPAA without an enterprise budget
+          </h2>
+          <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
+            Most managed databases put HIPAA behind enterprise plans. Prisma Postgres includes a
+            signed BAA on Business, so early stage healthcare startups can be compliant from day
+            one.
+          </p>
+        </div>
+        <div className="mx-auto mt-14 grid max-w-5xl gap-4 md:grid-cols-3">
+          {cards.map((card) => (
+            <div
+              key={card.name}
+              className={cn(
+                "flex h-full flex-col gap-5 rounded-2xl border p-6 sm:p-7",
+                card.highlight
+                  ? "border-prism-cyan-300 bg-prism-cyan-50/40 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]"
+                  : "border-black/[0.06] bg-white",
+              )}
+            >
+              <div className="flex h-7 items-center">{card.logo}</div>
+              <div>
+                <p className="text-base font-semibold text-foreground">{card.name}</p>
+                <p className="mt-1 text-[1.0625rem] font-semibold text-foreground">{card.price}</p>
+                <p className="mt-2 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+                  {card.detail}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mx-auto mt-5 max-w-5xl text-center text-sm text-muted-foreground">
+          Prices from public pricing pages, checked October 2026. Excludes usage and compute.{" "}
+          <a href="https://supabase.com/pricing" className={INLINE_LINK}>
+            Supabase pricing
+          </a>
+          ,{" "}
+          <a href="https://render.com/pricing" className={INLINE_LINK}>
+            Render pricing
+          </a>
+          .
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export function HipaaBaaSteps() {
   const steps = [
     {

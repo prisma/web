@@ -14,6 +14,7 @@ import {
   HipaaPlans,
   HipaaResources,
   HipaaResponsibility,
+  HipaaStartups,
   HipaaTrustStrip,
 } from "./_sections";
 
@@ -129,6 +130,7 @@ export default function PostgresHipaaPage() {
       <HipaaFeatures />
       <HipaaResponsibility />
       <HipaaPlans />
+      <HipaaStartups />
       <HipaaBaaSteps />
       <HipaaResources />
       <HipaaFaq />
