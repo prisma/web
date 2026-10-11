@@ -103,7 +103,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
     // version that puts a small "Pending" badge next to the $500k option
     // (see FAQ_ANSWER_OVERRIDES in _sections.tsx).
     answer:
-      "Yes. The standard BAA includes a liability cap of $250,000. You can raise it to $500,000 for $200 a month in total for the Business plan with the higher cap (an extra $71 a month).",
+      "Yes. The standard BAA includes a liability cap of $250,000. You can raise it to $500,000 for an extra $70 a month, $199 a month in total with the Business plan.",
     confidence: "confirmed",
   },
   {

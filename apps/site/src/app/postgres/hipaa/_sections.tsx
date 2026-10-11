@@ -316,7 +316,8 @@ export function HipaaGlance() {
       label: "BAA liability cap",
       value: (
         <>
-          $250,000 standard; raise to $500,000 for $200 a month in total <PendingBadge size="sm" />
+          $250,000 standard; raise to $500,000 for an extra $70 a month{" "}
+          <PendingBadge size="sm" />
         </>
       ),
     },
@@ -1179,8 +1180,8 @@ const FAQ_ANSWER_OVERRIDES: Record<string, React.ReactNode> = {
   "Is there a liability cap in the BAA?": (
     <>
       Yes. The standard BAA includes a liability cap of $250,000. You can raise it to $500,000{" "}
-      <PendingBadge size="sm" /> for $200 a month in total for the Business plan with the higher
-      cap (an extra $71 a month).
+      <PendingBadge size="sm" /> for an extra $70 a month, $199 a month in total with the Business
+      plan.
     </>
   ),
 };
