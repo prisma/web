@@ -80,9 +80,9 @@ export function HipaaHero() {
                 HIPAA compliant Postgres for <GlassGlide>healthcare apps</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Managed Postgres you can store protected health information in, covered by a signed
-                Business Associate Agreement. Keep patient data encrypted and isolated, and run your
-                TypeScript app right next to it on Prisma.
+                A HIPAA compliant Postgres database for healthcare apps. Prisma Postgres comes with
+                a signed Business Associate Agreement on the Business plan, encrypts your patient
+                data, and runs your TypeScript app right next to it.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <PrismButton href={`#${HIPAA_BAA_ANCHOR}`} size="lg">
