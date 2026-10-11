@@ -88,6 +88,12 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
     confidence: "pending",
   },
   {
+    question: "Is there a liability cap in the BAA?",
+    answer:
+      "Yes. The standard BAA includes a liability cap of USD 250,000. Higher liability coverage is available for an additional fee; [contact us](/contact) to discuss.",
+    confidence: "confirmed",
+  },
+  {
     question: "Where can I find SOC 2, ISO 27001 and other audit reports?",
     answer:
       "In the [Prisma Trust Center](https://trust.prisma.io), which holds audit reports, policies and control details. HIPAA, SOC 2 Type II and ISO 27001 are included with the Business plan, and GDPR applies on every plan.",

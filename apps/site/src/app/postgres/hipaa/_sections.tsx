@@ -285,6 +285,10 @@ export function HipaaGlance() {
     { label: "Backups", value: "Daily, kept 30 days on Business" },
     { label: "Regions", value: "6, including 2 in the US" },
     {
+      label: "BAA liability cap",
+      value: "USD 250,000 standard, higher coverage available for an additional fee",
+    },
+    {
       label: "Audit reports",
       value: (
         <a href={TRUST_URL} className={INLINE_LINK}>
