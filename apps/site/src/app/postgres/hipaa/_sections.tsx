@@ -18,6 +18,7 @@ import { CtaBurst } from "@/components/sections/cta-burst";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 import {
+  BAA_COMPLIANCE_EMAIL,
   BAA_HTML_PATH,
   BAA_SAMPLE_PDF,
   CONSOLE_SIGN_UP_URL,
@@ -27,7 +28,11 @@ import {
   HIPAA_PLAN_ROWS,
   HIPAA_RESOURCES,
   TRUST_URL,
+  baaComplianceMailto,
 } from "./_content";
+
+// Prefilled mailto for every link on /postgres/hipaa.
+const BAA_MAILTO = baaComplianceMailto("/postgres/hipaa");
 
 // Yellow review badge visible on every unconfirmed claim. The page is noindex
 // behind a draft PR, so these are deliberately in production markup to help
@@ -277,8 +282,11 @@ export function HipaaGlance() {
       heading: "How do I get a BAA?",
       body: (
         <>
-          Sign up for Prisma, upgrade your workspace to Business, then open Settings, then
-          Compliance in the Console and request your BAA from there. Prisma sends it for
+          Read or download the BAA, sign up and upgrade your workspace to Business, then email{" "}
+          <a href={BAA_MAILTO} className={INLINE_LINK}>
+            compliance@prisma.io
+          </a>{" "}
+          from your account email with your company and signatory details. Prisma sends it for
           e-signature, usually within 2 business days.
         </>
       ),
@@ -1029,45 +1037,60 @@ export function HipaaStartups() {
 }
 
 export function HipaaBaaSteps() {
-  // The BAA is requested inside Console (Settings, then Compliance), never
-  // from a form on the marketing page. The steps are the real path a
-  // customer walks today.
+  // The BAA request flow is email based: customers write to compliance@prisma.io
+  // from their account email with their company and signatory details, and
+  // Prisma sends the agreement for e-signature. The marketing page does not
+  // take requests.
   const steps: {
     title: string;
     body: React.ReactNode;
     badge?: "pending" | "placeholder";
   }[] = [
     {
-      title: "Download and review the sample",
+      title: "Read or download the BAA",
       body: (
         <>
-          Share the{" "}
+          Open the{" "}
+          <Link href={BAA_HTML_PATH} className={INLINE_LINK}>
+            standard BAA
+          </Link>{" "}
+          or{" "}
           <a href={BAA_SAMPLE_PDF} className={INLINE_LINK}>
-            sample BAA
+            download the PDF
           </a>{" "}
-          with your legal and compliance team so you know what you are agreeing to before you
-          sign.
+          and share it with your legal and compliance team so you know what you are agreeing to
+          before you sign.
         </>
       ),
     },
     {
-      title: "Sign up for Prisma",
-      body: "Create a Prisma account and workspace from the Console. It takes about a minute, no credit card.",
-    },
-    {
-      title: "Upgrade to Business",
+      title: "Sign up and upgrade to Business",
       body: (
         <>
-          Upgrade the workspace to the Business plan from the Console. <PendingBadge size="sm" />
+          Create a Prisma account from the Console and upgrade your workspace to the Business
+          plan. <PendingBadge size="sm" />
         </>
       ),
     },
     {
-      title: "Request your BAA",
+      title: "Email compliance@prisma.io",
       body: (
         <>
-          Open Settings, then Compliance in the Console and request your BAA. Prisma sends it
-          for e-signature, usually within 2 business days. <PendingBadge size="sm" />
+          Write to{" "}
+          <a href={BAA_MAILTO} className={INLINE_LINK}>
+            compliance@prisma.io
+          </a>{" "}
+          from your account email with your company name, address, workspace, and signatory name
+          and email.
+        </>
+      ),
+    },
+    {
+      title: "Sign the BAA",
+      body: (
+        <>
+          Prisma sends the agreement for e-signature, usually within 2 business days.{" "}
+          <PendingBadge size="sm" />
         </>
       ),
     },
@@ -1098,8 +1121,12 @@ export function HipaaBaaSteps() {
           <div className="mx-auto mt-10 flex max-w-3xl items-start gap-3 rounded-xl border border-prism-cyan-300/60 bg-prism-cyan-50/60 px-4 py-3.5 text-[0.9375rem] leading-relaxed text-foreground sm:px-5">
             <Shield className="mt-0.5 size-4 shrink-0 text-prism-cyan-700" aria-hidden />
             <p>
-              <span className="font-semibold">After you sign up, upgrade to Business,</span>{" "}
-              then open Settings, then Compliance in the Console to request your BAA.
+              <span className="font-semibold">After you sign up and upgrade to Business,</span>{" "}
+              email{" "}
+              <a href={BAA_MAILTO} className={INLINE_LINK}>
+                {BAA_COMPLIANCE_EMAIL}
+              </a>{" "}
+              from your account email with your company and signatory details to request your BAA.
             </p>
           </div>
 

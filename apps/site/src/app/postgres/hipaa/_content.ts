@@ -25,6 +25,29 @@ export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CONSOLE_URL = "https://console.prisma.io";
 export const TRUST_URL = "https://trust.prisma.io";
 export const BAA_SAMPLE_PDF = "/legal/prisma-hipaa-baa-sample.pdf";
+// The BAA request flow is email based: customers write to compliance@prisma.io
+// with their company and signatory details and Prisma sends the agreement for
+// e-signature. The mailto carries a canned subject the compliance mailbox
+// filters on, plus a prefilled body template so the request lands with every
+// field the signing workflow needs.
+export const BAA_COMPLIANCE_EMAIL = "compliance@prisma.io";
+
+const BAA_MAIL_SUBJECT = "Web BAA Request";
+const BAA_MAIL_BODY_FIELDS = [
+  "Company name:",
+  "Company address:",
+  "Account email:",
+  "Workspace:",
+  "Signatory name:",
+  "Signatory email:",
+].join("\n");
+
+export function baaComplianceMailto(fromPath: "/postgres/hipaa" | "/legal/baa"): string {
+  const body = `${BAA_MAIL_BODY_FIELDS}\n\nSent from prisma.io${fromPath}`;
+  return `mailto:${BAA_COMPLIANCE_EMAIL}?subject=${encodeURIComponent(
+    BAA_MAIL_SUBJECT,
+  )}&body=${encodeURIComponent(body)}`;
+}
 // HTML version of the standard BAA. The buttons on /postgres/hipaa deep-link
 // here instead of straight to the PDF: it gives readers a key-terms summary
 // and plain-English notes alongside the legal text, with the PDF one click
@@ -67,7 +90,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Does Prisma sign a BAA, and how do I get one?",
     answer:
-      "Yes. Prisma signs a BAA with customers on the Business plan. Sign up for Prisma, upgrade the workspace to Business, then open Settings, then Compliance in the Console and request your BAA from there. Prisma sends the agreement for e-signature, usually within 2 business days. The marketing page does not take requests.",
+      "Yes. Prisma signs a BAA with customers on the Business plan. Read or download the BAA, sign up for Prisma and upgrade your workspace to Business, then email compliance@prisma.io from your account email with your company name, address, workspace and signatory name and email. Prisma sends the agreement for e-signature, usually within 2 business days.",
     confidence: "pending",
   },
   {
