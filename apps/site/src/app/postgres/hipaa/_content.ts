@@ -13,10 +13,18 @@
 //   - No em dashes or en dashes.
 
 export const HIPAA_PATH = "/postgres/hipaa";
+// Deep-link id for the "How do I sign a BAA" section. The id stays
+// `request-a-baa` so historical links keep resolving, but the heading itself
+// is now "How do I get a BAA from Prisma?" because the BAA is requested
+// inside the Console, not from a form on this page.
 export const HIPAA_BAA_ANCHOR = "request-a-baa";
 export const BUSINESS_PRICE_USD = "129";
+// Same href the site header's "Get Started" button uses (components/header.tsx
+// -> siteConfig.consoleSignUpUrl via the shared PrismButton pattern).
+export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CONSOLE_URL = "https://console.prisma.io";
 export const TRUST_URL = "https://trust.prisma.io";
+export const BAA_SAMPLE_PDF = "/legal/prisma-hipaa-baa-sample.pdf";
 
 export type Confidence = "confirmed" | "pending" | "placeholder";
 
@@ -52,9 +60,9 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
     confidence: "pending",
   },
   {
-    question: "Does Prisma sign a BAA, and how do I request one?",
+    question: "Does Prisma sign a BAA, and how do I get one?",
     answer:
-      "Yes. Prisma signs a BAA with customers on the Business plan. Upgrade to Business, then use the request form to send your company details and signatory. Prisma sends the agreement for e-signature, usually within 2 business days.",
+      "Yes. Prisma signs a BAA with customers on the Business plan. Sign up for Prisma, upgrade the workspace to Business, then open Settings, then Compliance in the Console and request your BAA from there. Prisma sends the agreement for e-signature, usually within 2 business days. The marketing page does not take requests.",
     confidence: "pending",
   },
   {

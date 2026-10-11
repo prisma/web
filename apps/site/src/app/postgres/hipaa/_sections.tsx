@@ -18,7 +18,8 @@ import { CtaBurst } from "@/components/sections/cta-burst";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 import {
-  CONSOLE_URL,
+  BAA_SAMPLE_PDF,
+  CONSOLE_SIGN_UP_URL,
   HIPAA_BAA_ANCHOR,
   HIPAA_FAQ,
   HIPAA_PLAN_COLUMNS,
@@ -101,27 +102,33 @@ export function HipaaHero() {
                 HIPAA compliant Postgres for <GlassGlide>healthcare apps</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                A HIPAA compliant Postgres database for healthcare apps. Prisma Postgres comes with
-                a signed Business Associate Agreement on the Business plan, encrypts your patient
-                data, and runs your TypeScript app right next to it.
+                Prisma Postgres comes with a signed Business Associate Agreement on the Business
+                plan, encrypts your patient data, and runs your TypeScript app right next to it.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
-                <PrismButton href={`#${HIPAA_BAA_ANCHOR}`} size="lg">
-                  Request a BAA
+                {/* Primary CTA goes to the same console sign-up URL the site
+                    header's "Get Started" uses, keeping conversion tracking
+                    on the single canonical destination. */}
+                <PrismButton href={CONSOLE_SIGN_UP_URL} size="lg">
+                  Get started
                 </PrismButton>
-                <PrismButtonOutline href="/postgres" size="lg">
-                  Explore Prisma Postgres
+                <PrismButtonOutline href={BAA_SAMPLE_PDF} size="lg">
+                  Download the BAA
                 </PrismButtonOutline>
               </div>
               {/* Microline carries the price (the one place in the top of the
-                  page it's allowed to live). "Pending confirmation" sits here
-                  until live pricing is updated to match. */}
+                  page it's allowed to live) plus a discreet "sample" marker
+                  on the BAA download. */}
               <p className="mt-3.5 text-sm text-muted-foreground">
                 Available on the Business plan, $129 a month.{" "}
                 <Link href="/pricing" className={INLINE_LINK}>
                   Compare plans
                 </Link>{" "}
-                <PendingBadge />
+                <PendingBadge size="sm" />
+                <span className="mx-2 text-muted-foreground/50" aria-hidden>
+                  &bull;
+                </span>
+                Sample PDF, not for signature.
               </p>
               <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
                 {[
@@ -274,9 +281,9 @@ export function HipaaGlance() {
       heading: "How do I get a BAA?",
       body: (
         <>
-          Upgrade your workspace to Business, then request a BAA with your company details and
-          signatory. Prisma checks your plan and sends the agreement for e-signature, usually within
-          2 business days.
+          Sign up for Prisma, upgrade your workspace to Business, then open Settings, then
+          Compliance in the Console and request your BAA from there. Prisma sends it for
+          e-signature, usually within 2 business days.
         </>
       ),
       badge: "pending",
@@ -1006,12 +1013,12 @@ export function HipaaStartups() {
           </div>
           <div className="flex flex-col items-start gap-4 border-t border-black/[0.08] bg-white px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7">
             <p className="max-w-xl text-[0.9375rem] leading-relaxed text-muted-foreground">
-              Start on the Business plan, sign a BAA and ship to patients, without an enterprise
-              contract.
+              Start on the Business plan, get your BAA and ship to patients, without an
+              enterprise contract.
             </p>
             <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
-              <PrismButton href={`#${HIPAA_BAA_ANCHOR}`}>Request a BAA</PrismButton>
-              <PrismButtonOutline href="/pricing">See pricing</PrismButtonOutline>
+              <PrismButton href={CONSOLE_SIGN_UP_URL}>Get started</PrismButton>
+              <PrismButtonOutline href={BAA_SAMPLE_PDF}>Download the BAA</PrismButtonOutline>
             </div>
           </div>
         </div>
@@ -1021,24 +1028,47 @@ export function HipaaStartups() {
 }
 
 export function HipaaBaaSteps() {
-  const steps = [
+  // The BAA is requested inside Console (Settings, then Compliance), never
+  // from a form on the marketing page. The steps are the real path a
+  // customer walks today.
+  const steps: {
+    title: string;
+    body: React.ReactNode;
+    badge?: "pending" | "placeholder";
+  }[] = [
     {
-      title: "Choose Business",
-      body: "Create a workspace on the Business plan, or upgrade an existing one in the Console.",
+      title: "Download and review the sample",
+      body: (
+        <>
+          Share the{" "}
+          <a href={BAA_SAMPLE_PDF} className={INLINE_LINK}>
+            sample BAA
+          </a>{" "}
+          with your legal and compliance team so you know what you are agreeing to before you
+          sign.
+        </>
+      ),
     },
     {
-      title: "Request a BAA",
-      body: "Send your company name and address, workspace and signatory through the short request form.",
-      badge: "placeholder" as const,
+      title: "Sign up for Prisma",
+      body: "Create a Prisma account and workspace from the Console. It takes about a minute, no credit card.",
     },
     {
-      title: "Sign electronically",
-      body: "Prisma checks your plan and sends the BAA for e-signature, usually within 2 business days.",
-      badge: "pending" as const,
+      title: "Upgrade to Business",
+      body: (
+        <>
+          Upgrade the workspace to the Business plan from the Console. <PendingBadge size="sm" />
+        </>
+      ),
     },
     {
-      title: "Store PHI",
-      body: "Once both sides have signed, you can store PHI in covered services. Keep a copy for your records.",
+      title: "Request your BAA",
+      body: (
+        <>
+          Open Settings, then Compliance in the Console and request your BAA. Prisma sends it
+          for e-signature, usually within 2 business days. <PendingBadge size="sm" />
+        </>
+      ),
     },
   ];
 
@@ -1051,14 +1081,28 @@ export function HipaaBaaSteps() {
         <div className="relative mx-auto max-w-site px-4 py-20 sm:px-8 sm:py-24">
           <div className="mx-auto max-w-3xl text-center max-md:text-left">
             <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-              How do I sign a BAA with Prisma?
+              How do I get a BAA from Prisma?
             </h2>
             <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-              A Business Associate Agreement is the contract HIPAA requires before a vendor handles
-              PHI for you. With Prisma it takes four steps and a few minutes of your time.
+              A Business Associate Agreement is the contract HIPAA requires before a vendor
+              handles PHI for you. With Prisma it takes four steps and a few minutes of your
+              time.
             </p>
           </div>
-          <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+          {/* Callout: the single sentence that answers "where do I actually
+              do this?" for a reader who skimmed the four cards. Styled as a
+              quiet info bar rather than a card so it reads as orientation,
+              not as a fifth step. */}
+          <div className="mx-auto mt-10 flex max-w-3xl items-start gap-3 rounded-xl border border-prism-cyan-300/60 bg-prism-cyan-50/60 px-4 py-3.5 text-[0.9375rem] leading-relaxed text-foreground sm:px-5">
+            <Shield className="mt-0.5 size-4 shrink-0 text-prism-cyan-700" aria-hidden />
+            <p>
+              <span className="font-semibold">After you sign up, upgrade to Business,</span>{" "}
+              then open Settings, then Compliance in the Console to request your BAA.
+            </p>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, i) => (
               <div key={step.title} className="h-full">
                 <div className="flex h-full flex-col items-start gap-4 rounded-xl border border-black/[0.06] bg-white p-6">
@@ -1068,23 +1112,15 @@ export function HipaaBaaSteps() {
                   <h3 className="text-lg leading-snug">{step.title}</h3>
                   <p className="text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
                     {step.body}
-                    {step.badge ? (
-                      <>
-                        {" "}
-                        <PendingBadge variant={step.badge} />
-                      </>
-                    ) : null}
                   </p>
                 </div>
               </div>
             ))}
           </div>
+
           <div className="mt-10 flex flex-wrap items-center justify-start gap-3 sm:justify-center">
-            {/* The request form itself is still a placeholder; link to the
-                Console as a safe default and flag it. */}
-            <PrismButton href={CONSOLE_URL}>Request a BAA</PrismButton>
-            <PrismButtonOutline href={CONSOLE_URL}>Open the Console</PrismButtonOutline>
-            <PendingBadge variant="placeholder" />
+            <PrismButton href={CONSOLE_SIGN_UP_URL}>Get started</PrismButton>
+            <PrismButtonOutline href={BAA_SAMPLE_PDF}>Download the BAA</PrismButtonOutline>
           </div>
         </div>
       </div>
@@ -1213,8 +1249,8 @@ export function HipaaCloser() {
       ]}
       // Headline, body and primary CTA deliberately avoid the price — see the
       // SEO brief: price is kept out of the title, meta, H1 and closer.
-      primaryCta={{ label: "Request a BAA", href: `#${HIPAA_BAA_ANCHOR}` }}
-      secondaryCta={{ label: "See pricing", href: "/pricing" }}
+      primaryCta={{ label: "Get started", href: CONSOLE_SIGN_UP_URL }}
+      secondaryCta={{ label: "Download the BAA", href: BAA_SAMPLE_PDF }}
     />
   );
 }
