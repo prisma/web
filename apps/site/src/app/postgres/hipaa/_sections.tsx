@@ -30,10 +30,31 @@ import {
 // Yellow review badge visible on every unconfirmed claim. The page is noindex
 // behind a draft PR, so these are deliberately in production markup to help
 // reviewers eyeball what still needs sign-off. Remove before launch.
-export function PendingBadge({ variant = "pending" }: { variant?: "pending" | "placeholder" }) {
+export function PendingBadge({
+  variant = "pending",
+  size = "default",
+}: {
+  variant?: "pending" | "placeholder";
+  // "sm" prints a quieter version — smaller, less saturated, lower-case label.
+  // Use inside tightly-set type (e.g. the comparison table) where the
+  // regular badge is too loud against the surrounding content.
+  size?: "default" | "sm";
+}) {
+  const label = variant === "pending" ? "Pending confirmation" : "Placeholder";
+  if (size === "sm") {
+    return (
+      <span
+        className="ml-1 inline-flex items-center gap-1 whitespace-nowrap rounded-sm bg-[#FFF4A8] px-1.5 py-px align-middle text-[10px] font-semibold leading-none text-[#6B5A00]"
+        title={label}
+      >
+        <span aria-hidden className="size-1 shrink-0 rounded-full bg-[#C9A800]" />
+        {variant === "pending" ? "Pending" : "Placeholder"}
+      </span>
+    );
+  }
   return (
     <span className="ml-1 inline-block whitespace-nowrap rounded-md bg-[#FFE34D] px-[7px] py-[5px] align-middle text-[10px] font-bold uppercase leading-none tracking-[0.06em] text-[#4a3d00]">
-      {variant === "pending" ? "Pending confirmation" : "Placeholder"}
+      {label}
     </span>
   );
 }
@@ -813,68 +834,64 @@ export function HipaaPlans() {
   );
 }
 
-// Simplified monochrome marks of the three competitors' public logos; the
-// shapes trace the paths published on each vendor's pricing / brand page
-// (fetched 11 Oct 2026). They render in a muted grey so the comparison reads
-// as neutral rather than branded.
-function PrismaLogoMark({ className }: { className?: string }) {
-  // Official Prisma mark (same shape as the logo in /logo/black.svg), rendered
-  // in currentColor so the comparison can print it monochrome grey.
-  return (
-    <svg viewBox="0 0 32 40" fill="currentColor" aria-hidden className={className}>
-      <path d="M30.676 29.558 17.388.973C17.051.254 16.33-.129 15.572.038a1.705 1.705 0 0 0-1.254.95L1.098 29.17a1.814 1.814 0 0 0 .35 2.006l13.726 13.726c.666.666 1.737.666 2.403 0l13.064-13.064a1.814 1.814 0 0 0 .035-2.28ZM16.064 4.56l10.78 23.202-10.78 10.78L5.58 27.838 16.064 4.561Z" />
-    </svg>
-  );
-}
+// Logos: Prisma uses the same /logo/full-color.svg asset the site header
+// renders (see components/logo.tsx). Supabase and Render are the official
+// black wordmarks shipped in their public brand kits, committed under
+// /public/postgres/hipaa/logos/; the PR body carries the source URLs.
+// Supabase SVG: 581x113. Render SVG: 2909x1200. Prisma SVG: 264x67.
+const VENDOR_LOGOS = {
+  prisma: { src: "/logo/full-color.svg", alt: "Prisma", aspect: 264 / 67 },
+  supabase: {
+    src: "/postgres/hipaa/logos/supabase-wordmark.svg",
+    alt: "Supabase",
+    aspect: 581 / 113,
+  },
+  render: {
+    src: "/postgres/hipaa/logos/render-wordmark.svg",
+    alt: "Render",
+    // The viewBox is tightened to the mark + wordmark bbox (the brand kit
+    // ships with ~400px safe-area padding on each side), so the aspect is
+    // computed from the trimmed box, not the raw 2909x1200.
+    aspect: 2112 / 410,
+  },
+} as const;
 
-function SupabaseLogoMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 109 113" fill="currentColor" aria-hidden className={className}>
-      <path d="M63.708 110.284c-2.86 3.6-8.657 1.628-8.726-2.97l-1.008-67.252h45.22c8.19 0 12.758 9.46 7.665 15.874l-43.151 54.348Z" />
-      <path d="M45.317 2.071c2.86-3.6 8.657-1.628 8.726 2.97l.442 67.252H9.831C1.64 72.293-2.928 62.832 2.166 56.418L45.317 2.071Z" />
-    </svg>
-  );
-}
+type StartupRow = {
+  label: string;
+  cells: readonly [React.ReactNode, React.ReactNode, React.ReactNode];
+};
 
-function RenderLogoMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 96 96" fill="currentColor" aria-hidden className={className}>
-      <path d="M62.6 24c-6.3-.3-11.5 4.2-12.4 10.2-1.5 8.6-8.1 13.6-15.8 13.8s-7.9-3.2-8.3-1.6v25.6h24v-18c0-3.3 2.7-6 6-6h6c6.8 0 12.3-5.6 12-12.5-.2-6.2-5.2-11.2-11.4-11.5Z" />
-    </svg>
-  );
-}
+const STARTUP_ROWS: StartupRow[] = [
+  { label: "Signed BAA", cells: ["Included", "Yes", "Yes"] },
+  {
+    label: "Plan required",
+    cells: [
+      <>
+        Business <PendingBadge size="sm" />
+      </>,
+      "Team plus HIPAA add-on",
+      "Scale",
+    ],
+  },
+  { label: "Starting price per month", cells: ["$129", "$599", "$499"] },
+  { label: "Extra HIPAA fees", cells: ["None", "HIPAA add-on", "Plus 20% on usage"] },
+];
 
+// Builds the "HIPAA without an enterprise budget" section. The structure
+// mirrors the comparison table idiom used on /pricing (semantic <table>,
+// row-label scope="row", muted-foreground on labels, foreground on values),
+// with the Prisma column separated out as a visually emphasised column via
+// a cyan top accent bar and a soft tinted background that stops at the panel
+// edge.
 export function HipaaStartups() {
-  const cards: {
+  const vendors: {
+    key: keyof typeof VENDOR_LOGOS;
     name: string;
-    logo: React.ReactNode;
-    price: string;
-    detail: React.ReactNode;
-    highlight?: boolean;
+    accent?: boolean;
   }[] = [
-    {
-      name: "Prisma Postgres",
-      logo: <PrismaLogoMark className="size-7 text-foreground" />,
-      price: "From $129 a month",
-      detail: (
-        <>
-          Business plan, signed BAA included. <PendingBadge />
-        </>
-      ),
-      highlight: true,
-    },
-    {
-      name: "Supabase",
-      logo: <SupabaseLogoMark className="h-7 w-auto text-muted-foreground/70" />,
-      price: "From $599 a month",
-      detail: <>Team plan plus a HIPAA add-on.</>,
-    },
-    {
-      name: "Render",
-      logo: <RenderLogoMark className="size-7 text-muted-foreground/70" />,
-      price: "From $499 a month",
-      detail: <>Scale plan plus 20% on HIPAA workspace usage.</>,
-    },
+    { key: "prisma", name: "Prisma Postgres", accent: true },
+    { key: "supabase", name: "Supabase" },
+    { key: "render", name: "Render" },
   ];
 
   return (
@@ -896,39 +913,108 @@ export function HipaaStartups() {
             one.
           </p>
         </div>
-        <div className="mx-auto mt-14 grid max-w-5xl gap-4 md:grid-cols-3">
-          {cards.map((card) => (
-            <div
-              key={card.name}
-              className={cn(
-                "flex h-full flex-col gap-5 rounded-2xl border p-6 sm:p-7",
-                card.highlight
-                  ? "border-prism-cyan-300 bg-prism-cyan-50/40 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]"
-                  : "border-black/[0.06] bg-white",
-              )}
-            >
-              <div className="flex h-7 items-center">{card.logo}</div>
-              <div>
-                <p className="text-base font-semibold text-foreground">{card.name}</p>
-                <p className="mt-1 text-[1.0625rem] font-semibold text-foreground">{card.price}</p>
-                <p className="mt-2 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
-                  {card.detail}
-                </p>
-              </div>
+
+        <div className="mx-auto mt-14 max-w-5xl overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse" style={{ minWidth: "40rem" }}>
+              <thead>
+                <tr>
+                  <th scope="col" className="w-[26%] px-5 py-7 text-left align-bottom sm:px-7">
+                    <span className="sr-only">Feature</span>
+                  </th>
+                  {vendors.map((v) => {
+                    const logo = VENDOR_LOGOS[v.key];
+                    return (
+                      <th
+                        key={v.key}
+                        scope="col"
+                        className={cn(
+                          "relative px-4 py-7 text-center align-bottom sm:px-6",
+                          v.accent && "bg-prism-cyan-50/50",
+                        )}
+                      >
+                        {v.accent ? (
+                          <span
+                            aria-hidden
+                            className="absolute inset-x-0 top-0 h-1"
+                            style={{
+                              background:
+                                "linear-gradient(90deg, var(--color-prism-cyan-400), var(--color-prism-cyan-500))",
+                            }}
+                          />
+                        ) : null}
+                        <span className="mx-auto flex h-8 items-center justify-center">
+                          {/* Plain <img>: these are brand wordmarks with
+                              very different aspect ratios; next/image's
+                              `width`/`height` constraints would scale them
+                              inconsistently. The height is driven by CSS and
+                              the width follows the file's intrinsic ratio. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={logo.src}
+                            alt={logo.alt}
+                            style={{ height: 28, width: 28 * logo.aspect }}
+                            className={cn(v.accent ? "" : "opacity-80 [filter:grayscale(1)]")}
+                          />
+                        </span>
+                        <span
+                          className={cn(
+                            "mt-2 block text-[0.75rem] font-semibold uppercase tracking-[0.08em]",
+                            v.accent ? "text-prism-cyan-800" : "text-muted-foreground",
+                          )}
+                        >
+                          {v.name}
+                        </span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {STARTUP_ROWS.map((row, i) => (
+                  <tr
+                    key={row.label}
+                    className={i === 0 ? "border-t border-black/[0.08]" : "border-t border-black/[0.06]"}
+                  >
+                    <th
+                      scope="row"
+                      className="px-5 py-5 text-left text-[0.9375rem] font-semibold text-foreground sm:px-7"
+                    >
+                      {row.label}
+                    </th>
+                    {row.cells.map((cell, j) => {
+                      const vendor = vendors[j];
+                      const accent = vendor?.accent;
+                      return (
+                        <td
+                          key={j}
+                          className={cn(
+                            "px-4 py-5 text-center text-[0.9375rem] sm:px-6",
+                            accent
+                              ? "bg-prism-cyan-50/50 font-semibold text-foreground"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {cell}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-col items-start gap-4 border-t border-black/[0.08] bg-white px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <p className="max-w-xl text-[0.9375rem] leading-relaxed text-muted-foreground">
+              Start on the Business plan, sign a BAA and ship to patients, without an enterprise
+              contract.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
+              <PrismButton href={`#${HIPAA_BAA_ANCHOR}`}>Request a BAA</PrismButton>
+              <PrismButtonOutline href="/pricing">See pricing</PrismButtonOutline>
             </div>
-          ))}
+          </div>
         </div>
-        <p className="mx-auto mt-5 max-w-5xl text-center text-sm text-muted-foreground">
-          Prices from public pricing pages, checked October 2026. Excludes usage and compute.{" "}
-          <a href="https://supabase.com/pricing" className={INLINE_LINK}>
-            Supabase pricing
-          </a>
-          ,{" "}
-          <a href="https://render.com/pricing" className={INLINE_LINK}>
-            Render pricing
-          </a>
-          .
-        </p>
       </div>
     </section>
   );
