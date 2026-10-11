@@ -25,6 +25,11 @@ export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CONSOLE_URL = "https://console.prisma.io";
 export const TRUST_URL = "https://trust.prisma.io";
 export const BAA_SAMPLE_PDF = "/legal/prisma-hipaa-baa-sample.pdf";
+// HTML version of the standard BAA. The buttons on /postgres/hipaa deep-link
+// here instead of straight to the PDF: it gives readers a key-terms summary
+// and plain-English notes alongside the legal text, with the PDF one click
+// away from the top of the page.
+export const BAA_HTML_PATH = "/legal/baa";
 
 export type Confidence = "confirmed" | "pending" | "placeholder";
 

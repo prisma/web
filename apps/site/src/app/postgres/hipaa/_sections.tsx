@@ -18,6 +18,7 @@ import { CtaBurst } from "@/components/sections/cta-burst";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 import {
+  BAA_HTML_PATH,
   BAA_SAMPLE_PDF,
   CONSOLE_SIGN_UP_URL,
   HIPAA_BAA_ANCHOR,
@@ -112,23 +113,18 @@ export function HipaaHero() {
                 <PrismButton href={CONSOLE_SIGN_UP_URL} size="lg">
                   Get started
                 </PrismButton>
-                <PrismButtonOutline href={BAA_SAMPLE_PDF} size="lg">
-                  Download the BAA
+                <PrismButtonOutline href={BAA_HTML_PATH} size="lg">
+                  Read the BAA
                 </PrismButtonOutline>
               </div>
               {/* Microline carries the price (the one place in the top of the
-                  page it's allowed to live) plus a discreet "sample" marker
-                  on the BAA download. */}
+                  page it's allowed to live). */}
               <p className="mt-3.5 text-sm text-muted-foreground">
                 Available on the Business plan, $129 a month.{" "}
                 <Link href="/pricing" className={INLINE_LINK}>
                   Compare plans
                 </Link>{" "}
                 <PendingBadge size="sm" />
-                <span className="mx-2 text-muted-foreground/50" aria-hidden>
-                  &bull;
-                </span>
-                Sample PDF, not for signature.
               </p>
               <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
                 {[
@@ -1023,7 +1019,7 @@ export function HipaaStartups() {
             </p>
             <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
               <PrismButton href={CONSOLE_SIGN_UP_URL}>Get started</PrismButton>
-              <PrismButtonOutline href={BAA_SAMPLE_PDF}>Download the BAA</PrismButtonOutline>
+              <PrismButtonOutline href={BAA_HTML_PATH}>Read the BAA</PrismButtonOutline>
             </div>
           </div>
         </div>
@@ -1125,7 +1121,7 @@ export function HipaaBaaSteps() {
 
           <div className="mt-10 flex flex-wrap items-center justify-start gap-3 sm:justify-center">
             <PrismButton href={CONSOLE_SIGN_UP_URL}>Get started</PrismButton>
-            <PrismButtonOutline href={BAA_SAMPLE_PDF}>Download the BAA</PrismButtonOutline>
+            <PrismButtonOutline href={BAA_HTML_PATH}>Read the BAA</PrismButtonOutline>
           </div>
         </div>
       </div>
@@ -1273,7 +1269,7 @@ export function HipaaCloser() {
       // Headline, body and primary CTA deliberately avoid the price — see the
       // SEO brief: price is kept out of the title, meta, H1 and closer.
       primaryCta={{ label: "Get started", href: CONSOLE_SIGN_UP_URL }}
-      secondaryCta={{ label: "Download the BAA", href: BAA_SAMPLE_PDF }}
+      secondaryCta={{ label: "Read the BAA", href: BAA_HTML_PATH }}
     />
   );
 }
