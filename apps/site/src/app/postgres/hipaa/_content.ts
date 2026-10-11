@@ -66,7 +66,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Where is my data stored?",
     answer:
-      "In the region you choose when you create each database. Prisma Postgres runs in six regions: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1), so you can keep US patient data in a US region. See the [Prisma Postgres FAQ](/docs/postgres/faq).",
+      "In the region you choose when you create each database. Prisma Postgres runs in six regions: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1), so you can keep US patient data in a US region. See the [full list of regions](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in).",
     confidence: "pending",
   },
   {

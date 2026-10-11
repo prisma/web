@@ -458,7 +458,7 @@ export function HipaaFeatures() {
         </>
       ),
       badge: "pending",
-      href: "/docs/postgres/faq",
+      href: "/docs/postgres/faq#what-regions-is-prisma-postgres-available-in",
       linkLabel: "See all regions",
       photo: "/brand/feature-postgres.jpg",
       photoPosition: "50% 55%",
