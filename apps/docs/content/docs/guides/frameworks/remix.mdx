@@ -1,0 +1,196 @@
+---
+title: Remix 3
+description: 'Add Prisma ORM to a Remix 3 app, seed a PostgreSQL database, and render users from a controller.'
+url: /guides/frameworks/remix
+metaTitle: How to use Prisma ORM with Remix 3
+metaDescription: 'Create a Remix 3 app with Prisma ORM and PostgreSQL, define your schema, seed users, and render database records with a Remix controller and component.'
+---
+
+## Introduction
+
+This guide shows you how to use Prisma ORM in a [Remix 3](https://remix.run/) app. You create a project, seed a PostgreSQL database, and render users on the home page.
+
+In Remix 3, a controller handles requests and passes database results to a component that renders the page. See the [Remix 3 release candidate announcement](https://remix.run/blog/remix-3-release-candidate) for an overview of the new framework. For apps built with Remix 2, see the [React Router guide](/guides/frameworks/react-router-7).
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) 24.3 or newer
+- A PostgreSQL connection string. Use your own database, or run `npx create-db@latest` to create a [Prisma Postgres](/postgres) database.
+
+## 1. Create a Remix app
+
+Create a project with the [Remix CLI](https://guides.remix.run/start-here/) and install its dependencies:
+
+```npm
+npx remix@latest new my-app
+cd my-app
+npm install
+```
+
+The starter defines routes in `app/routes.ts` and handles the home page in `app/actions/controller.tsx`.
+
+## 2. Add Prisma ORM
+
+Add Prisma ORM to the existing project with [`orm init`](/cli/orm-init), using `--yes` to accept the default prompts:
+
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+```
+
+The command selects PostgreSQL and writes your schema in Prisma Schema Language (`psl`). It installs Prisma ORM and creates `src/prisma/contract.prisma` for your schema, `src/prisma/db.ts` for the database client, and `prisma.config.ts` for the CLI.
+
+Create a `.env` file at the project root with your PostgreSQL connection string. If you used `create-db`, copy the connection string it prints, and open its separate claim URL in your browser to save the database in your Prisma account before it expires after 24 hours:
+
+```bash title=".env"
+DATABASE_URL="postgres://user:password@localhost:5432/mydb"
+```
+
+Both the CLI and the database client load this file automatically.
+
+## 3. Define and initialize the database
+
+Prisma ORM calls your schema a contract. Replace the starter schema with a user model, keeping the `// use prisma-8` directive that selects the Prisma 8 schema syntax:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+}
+```
+
+Generate the TypeScript types for your queries, then create the database table:
+
+```npm
+npx prisma contract emit
+npx prisma db init
+```
+
+Your existing database client in `src/prisma/db.ts` imports the generated files for you. The database now has a `User` table with unique emails.
+
+## 4. Seed users
+
+Create a script that adds sample users and skips existing emails when you run it again. `db.orm` is the client's query API; `db.orm.public.User` queries the `User` table in PostgreSQL's `public` schema:
+
+```ts title="src/prisma/seed.ts"
+import { db } from "./db.ts";
+
+try {
+  for (const user of [
+    { email: "alice@prisma.io", name: "Alice" },
+    { email: "bob@prisma.io", name: "Bob" },
+  ]) {
+    const existing = await db.orm.public.User.where({ email: user.email }).first();
+    if (!existing) await db.orm.public.User.create(user);
+  }
+  console.log("Seeded Alice and Bob");
+} finally {
+  await db.close();
+}
+```
+
+Run it from the project root:
+
+```bash
+node src/prisma/seed.ts
+```
+
+```text no-copy
+Seeded Alice and Bob
+```
+
+## 5. Render users on the home page
+
+Replace `app/actions/home-page.tsx` with a [Remix component](https://guides.remix.run/rendering-ui/) that displays the queried users. Remix passes each component a `Handle` object with its props at `handle.props`; return a function containing the JSX as shown below. The starter's `Document` component supplies the page's HTML document:
+
+```tsx title="app/actions/home-page.tsx"
+import type { Handle } from "remix/component";
+import { Document } from "./document.tsx";
+
+type User = { email: string; name: string | null };
+
+export function HomePage(handle: Handle<{ users: User[] }>) {
+  return () => (
+    <Document title="Prisma + Remix">
+      <main>
+        <h1>Users</h1>
+        <ul>
+          {handle.props.users.map((user) => (
+            <li key={user.email}>
+              {user.name ?? "Anonymous"} ({user.email})
+            </li>
+          ))}
+        </ul>
+      </main>
+    </Document>
+  );
+}
+```
+
+Replace the home page controller so it reads users with Prisma ORM and passes them to the component. Keep the `assets` import from `../assets.ts` and the `async assets(context)` handler shown below; they serve the JavaScript files the browser needs.
+
+The `actions` object maps the `home` and `assets` route names from `app/routes.ts` to request handlers. Remix passes each handler a `context` object with the request and `context.render(...)` for returning an HTML response:
+
+```tsx title="app/actions/controller.tsx"
+import { createController } from "remix/router";
+import { db } from "../../src/prisma/db.ts";
+import { assets } from "../assets.ts";
+import { routes } from "../routes.ts";
+import { HomePage } from "./home-page.tsx";
+
+export default createController(routes, {
+  actions: {
+    async assets(context) {
+      return (await assets.fetch(context.request)) ?? new Response("Not Found", { status: 404 });
+    },
+    async home(context) {
+      const users = await db.orm.public.User.orderBy((user) => user.id.asc()).all();
+      return context.render(<HomePage users={users} />);
+    },
+  },
+});
+```
+
+Import `db` in `controller.tsx`; don't import it in `home-page.tsx` or files served to the browser. Don't call `db.close()` in a controller; the connection pool is shared across requests.
+
+## 6. Run and verify
+
+Check the types, then start the development server:
+
+```npm
+npm run typecheck
+npm run dev
+```
+
+Open [http://localhost:44100](http://localhost:44100) to see the seeded users:
+
+```text no-copy
+Users
+Alice (alice@prisma.io)
+Bob (bob@prisma.io)
+```
+
+You can also check the rendered HTML with `curl http://localhost:44100`. If the port is already in use, run `PORT=44101 npm run dev` and open [http://localhost:44101](http://localhost:44101).
+
+## Use with your agent
+
+<AgentPrompt>
+
+```text
+Create a Remix 3 app with Prisma ORM and render database users, following https://www.prisma.io/docs/guides/frameworks/remix.md.
+
+1. Run `npx remix@latest new my-app`, enter the project, and run `npm install`. Add Prisma ORM with `npx prisma@latest orm init --yes --target postgres --authoring psl`.
+2. Use the PostgreSQL connection string I provide, or create a Prisma Postgres database with `npx create-db@latest` and show me its claim URL to open in a browser before the database expires after 24 hours. Set DATABASE_URL in .env to the separate PostgreSQL connection string it prints.
+3. Define the User model and run `npx prisma contract emit`, `npx prisma db init`, and the seed script from the guide.
+4. Update the home page component and controller from the guide. Run `npm run typecheck`, start `npm run dev`, and verify http://localhost:44100 renders Alice and Bob. Stop the server after verification.
+```
+
+</AgentPrompt>
+
+## Next steps
+
+- [Query your data](/orm/fundamentals/reading-data): filtering, sorting, and pagination.
+- [Update your schema](/guides/database/schema-changes) as your app grows.
+- [Remix routing and controllers](https://guides.remix.run/routing-and-controllers/) for more pages and actions.
