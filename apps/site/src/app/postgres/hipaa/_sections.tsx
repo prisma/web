@@ -314,7 +314,11 @@ export function HipaaGlance() {
     { label: "Regions", value: "6, including 2 in the US" },
     {
       label: "BAA liability cap",
-      value: "USD 250,000 standard, higher coverage available for an additional fee",
+      value: (
+        <>
+          $250,000 standard; raise to $500,000 for $200 a month in total <PendingBadge size="sm" />
+        </>
+      ),
     },
     {
       label: "Audit reports",
@@ -1166,6 +1170,21 @@ export function HipaaResources() {
   );
 }
 
+// Per-question visible overrides, keyed by the exact `question` string in
+// HIPAA_FAQ. The plain-string answer in _content.ts still feeds the FAQPage
+// JSON-LD so the two copies cannot drift semantically; the override only
+// exists where the visible rendering needs inline React the mini-markup can't
+// carry (an inline PendingBadge, for example).
+const FAQ_ANSWER_OVERRIDES: Record<string, React.ReactNode> = {
+  "Is there a liability cap in the BAA?": (
+    <>
+      Yes. The standard BAA includes a liability cap of $250,000. You can raise it to $500,000{" "}
+      <PendingBadge size="sm" /> for $200 a month in total for the Business plan with the higher
+      cap (an extra $71 a month).
+    </>
+  ),
+};
+
 export function HipaaFaq() {
   return (
     <section id="faq" className="px-6 py-24 lg:px-8">
@@ -1177,26 +1196,29 @@ export function HipaaFaq() {
           {/* Reused shared accordion so answers are present in the server HTML
               (forceMount + inert on closed items, see ui/accordion.tsx). */}
           <Accordion type="single" collapsible defaultValue="item-0">
-            {HIPAA_FAQ.map((faq, i) => (
-              <AccordionItem key={faq.question} value={`item-${i}`}>
-                <AccordionTrigger className="text-left text-base hover:no-underline">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-base leading-relaxed text-muted-foreground">
-                  <Fragment>
-                    {renderFaqAnswer(faq.answer)}
-                    {faq.confidence !== "confirmed" ? (
-                      <>
-                        {" "}
-                        <PendingBadge
-                          variant={faq.confidence === "placeholder" ? "placeholder" : "pending"}
-                        />
-                      </>
-                    ) : null}
-                  </Fragment>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
+            {HIPAA_FAQ.map((faq, i) => {
+              const override = FAQ_ANSWER_OVERRIDES[faq.question];
+              return (
+                <AccordionItem key={faq.question} value={`item-${i}`}>
+                  <AccordionTrigger className="text-left text-base hover:no-underline">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-base leading-relaxed text-muted-foreground">
+                    <Fragment>
+                      {override ?? renderFaqAnswer(faq.answer)}
+                      {faq.confidence !== "confirmed" ? (
+                        <>
+                          {" "}
+                          <PendingBadge
+                            variant={faq.confidence === "placeholder" ? "placeholder" : "pending"}
+                          />
+                        </>
+                      ) : null}
+                    </Fragment>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
           </Accordion>
         </div>
       </div>

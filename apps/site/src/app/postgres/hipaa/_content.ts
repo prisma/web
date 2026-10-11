@@ -97,8 +97,13 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   },
   {
     question: "Is there a liability cap in the BAA?",
+    // The $250k standard cap is already in the executed BAA; the $500k /
+    // $200 a month option is Martin's new policy. JSON-LD carries this
+    // string verbatim; the visible accordion renders a slightly richer
+    // version that puts a small "Pending" badge next to the $500k option
+    // (see FAQ_ANSWER_OVERRIDES in _sections.tsx).
     answer:
-      "Yes. The standard BAA includes a liability cap of USD 250,000. Higher liability coverage is available for an additional fee; [contact us](/contact) to discuss.",
+      "Yes. The standard BAA includes a liability cap of $250,000. You can raise it to $500,000 for $200 a month in total for the Business plan with the higher cap (an extra $71 a month).",
     confidence: "confirmed",
   },
   {
