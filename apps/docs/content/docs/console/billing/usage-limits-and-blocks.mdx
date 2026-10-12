@@ -1,0 +1,155 @@
+---
+title: Usage limits and blocks
+description: Why a Prisma workspace or Prisma Postgres database is blocked or stops accepting queries, how to tell a Free plan limit, spend limit, and unpaid invoice block apart, and how to lift each one.
+url: /console/billing/usage-limits-and-blocks
+metaTitle: Usage limits and blocks | Prisma Console
+metaDescription: Why a Prisma workspace or Prisma Postgres database is blocked or stops accepting queries, how to tell a Free plan limit, spend limit, and unpaid invoice block apart, and how to lift each one.
+---
+
+A blocked workspace is one where Prisma has paused usage for a billing reason. Your Prisma Postgres databases stop accepting queries, which from your application can look like the database is down, unreachable, or deleted.
+
+A block doesn't delete data. Your databases and everything in them stay in place, and queries work again as soon as the block lifts.
+
+There are three kinds of block, each with its own cause and its own way out. If your database stops responding and the [status page](https://www.prisma-status.com) shows no incident, check the Console for one of these first.
+
+## Which block do you have?
+
+| Block                 | Applies to | Console message                                                                                              | Lifts when                                                            |
+| --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| Free plan usage limit | Free plan  | "Database queries are blocked because this workspace reached its monthly plan limit."                        | You upgrade to a paid plan, or the next calendar month starts.        |
+| Spend limit           | Paid plans | "Usage blocked: your workspace has reached its spending limit."                                              | You raise or remove the spend limit above your current usage charges. |
+| Unpaid invoice        | Paid plans | "Your Workspace is blocked due to an unpaid invoice. Pay your outstanding balance to unlock this Workspace." | The invoice that failed is paid successfully.                         |
+
+The database list in the Console shows a matching tooltip on each blocked database:
+
+| Block                 | Database list tooltip                                                               |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| Free plan usage limit | "You've exhausted your included monthly usage. Upgrade to a paid plan to continue." |
+| Spend limit           | "Usage blocked: Spending limit reached. Increase limit to continue."                |
+| Unpaid invoice        | "Your usage is blocked due to overdue payment. Contact us for more information"     |
+
+Your database client may also return an error naming the block, such as `planLimitReached`. For the Free plan usage limit, Prisma Client and Accelerate can return the error code `P6003` (`PlanLimitReached`).
+
+## What keeps working during a block
+
+While a workspace is blocked, you can still sign in to the Console, see your projects and databases, and use the billing pages to upgrade, raise a spend limit, or pay an invoice. Your Prisma Postgres databases stop accepting read and write queries.
+
+A workspace blocked for an unpaid invoice has two extra restrictions until the invoice is paid: you can't change its plan, and you can't delete it.
+
+On the Free plan, Prisma Compute has its own monthly limits; reaching those stops your Free Compute apps separately (see [Prisma Compute pricing](/compute/pricing)).
+
+Every connection to a blocked database stops, including `pg_dump`. To export from a blocked Free database, see [Export your data](/postgres/database/export-data#export-from-a-blocked-free-database).
+
+## Free plan usage limit
+
+The Free plan includes a fixed number of Prisma Postgres operations each calendar month, shared across every database in the workspace. For the Free plan allowance, see the [pricing page](https://www.prisma.io/pricing). Paid plans have no equivalent block; usage beyond what a paid plan includes is billed instead.
+
+### When it triggers
+
+Prisma checks Free workspaces once an hour. The block lands at the first check after the workspace goes over its allowance, so usually within about an hour of crossing it. Prisma emails you with the subject "Action Required: Upgrade Now to Maintain Uninterrupted Service".
+
+### How it lifts
+
+You have two ways out:
+
+- **Upgrade to a paid plan.** Upgrade under **Workspace Settings > Billing**. The block lifts automatically, usually within a minute, and there's nothing else to do. See [Change or cancel your plan](/console/billing/change-or-cancel-plan).
+- **Wait for the next month.** The allowance resets and the block expires at 00:00 UTC on the 1st of the next calendar month. It doesn't follow the date you signed up.
+
+A workspace that's also blocked for an unpaid invoice can't change plan, so pay that invoice first.
+
+### Restore access for 24 hours to export your data
+
+If you need to export your data, or need more time before upgrading, you can lift the limit for 24 hours:
+
+1. Open the [Prisma Console](https://console.prisma.io) and select the blocked workspace.
+2. In the warning about your query limit, select **Restore access for 24 hours**.
+
+This lifts the limit for every Prisma Postgres database in the workspace. You can use it once per workspace, and it doesn't renew each month.
+
+If you've already used the grace period, you can upgrade to Starter, export your data, and then cancel. Cancellation takes effect at the end of the billing period, so you keep access until then. The Starter plan fee for that month is charged.
+
+Support can't lift the block or grant extra time to export. See [Export your data](/postgres/database/export-data).
+
+### A paid workspace showing a Free plan limit block
+
+Paid plans have no operations limit, so a paid workspace shouldn't show this block. If yours does, [contact support](/console/more/support) with the workspace name and a screenshot of the message.
+
+## Spend limit block
+
+A spend limit is an optional cap you set on a paid workspace's usage charges. When usage charges reach it, the workspace is blocked.
+
+The spend limit counts every usage charge, including Prisma Compute.
+
+You get a warning email at 75% of the limit and a block email at 100%. To lift the block, raise the limit with **Set Limit** or remove it with **Clear Limit** under **Workspace Settings > Billing**, typing the workspace name to confirm. The block lifts as soon as you confirm, but only if the new limit is above the usage charges you've already accrued this month; a limit at or below them re-blocks the workspace within minutes.
+
+If you don't change the limit, the block lifts on its own at 00:00 UTC on the 1st of the next month.
+
+Paying an invoice doesn't lift a spend-limit block. See [Spend limits](/console/billing/spend-limits) for the full details.
+
+## Unpaid invoice block
+
+When a payment for an invoice fails, the workspace goes through two stages.
+
+### 1. At risk
+
+As soon as the payment fails, the Console shows the banner "Your last invoice was not paid. Pay your outstanding balance to avoid this Workspace being blocked." You get an email with the subject "Action Required: Payment Required to Maintain Uninterrupted Service", and another after each further failed payment attempt. Your databases keep working during this stage.
+
+### 2. Blocked
+
+If the invoice is still unpaid 15 days after the failed payment, the workspace is blocked at 16:00 UTC that day. If that day is a Friday, Saturday, or Sunday, the block moves to the following Monday. You get an email with the subject "Action Required: Payment Required to Restore Service". The Console shows the banner "Your Workspace is blocked due to an unpaid invoice. Pay your outstanding balance to unlock this Workspace."
+
+### How it lifts
+
+Pay the invoice that failed, or update your payment method so the payment can go through. See [Invoices and payments](/console/billing/invoices-and-payments). When the payment succeeds, the block lifts automatically and you get an email with the subject "Your payment has been received".
+
+For workspaces billed through the Vercel Marketplace, you pay the invoice in Vercel, and the 15 days count from the invoice date. See [Vercel Marketplace billing](/console/billing/vercel-marketplace#unpaid-vercel-invoices).
+
+## Still blocked after paying
+
+The unpaid-invoice block is tied to the specific invoice that failed. It doesn't lift on its own in these cases:
+
+- **Your payment is still processing.** Some payment methods take several days to settle. The workspace stays blocked until the payment succeeds, even if the invoice already looks paid to you. [Contact support](/console/more/support), and support can remove the block while the payment settles. If the payment later fails, the invoice is open again and the workspace will be blocked again.
+- **You paid a replacement invoice.** If the original invoice was closed after repeated payment failures and you paid a replacement that support sent you, reply to support once you've paid so they can lift the block.
+- **The original invoice was voided.** Voiding an invoice doesn't lift the block. Contact support.
+
+Before you contact support, check which block you have. A spend-limit block looks similar and doesn't lift when you pay: you need to raise the limit instead. When you write to support, include the workspace name, the invoice number, and a screenshot of the Console message.
+
+If the Console no longer shows a block but your database client still returns a block error, contact support with the error text.
+
+:::danger
+Prisma support never asks you to pay a third party, send cryptocurrency, or "activate a wallet" to restore a workspace. If someone asks you to, in Discord or anywhere else, they are not Prisma.
+:::
+
+## What a block does to your data
+
+No block deletes a database or its data. The Free plan has no backups, so a Free database that you delete yourself can't be restored. See [Backups](/postgres/database/backups).
+
+## Common questions
+
+### My database was deleted. Can you restore it?
+
+If you didn't delete it yourself, it's most likely blocked rather than deleted. Check the Console for one of the three messages in [Which block do you have?](#which-block-do-you-have), and follow the steps for that block.
+
+### Why did my database stop working with `planLimitReached`?
+
+Your Free workspace used its monthly operations allowance. Prisma Client and Accelerate can report this as error `P6003`. Upgrade to a paid plan to restore access, usually within a minute, or wait until 00:00 UTC on the 1st of next month.
+
+### I'm on the Free plan and need to export my data before I leave. What can I do?
+
+Select **Restore access for 24 hours** in the Console warning, once per workspace, and export during that window. If you've already used it, upgrade to Starter, export, and then cancel.
+
+### I upgraded but my database is still blocked. Why?
+
+An upgrade normally lifts the Free plan block within a minute. Check that **Workspace Settings > Billing** shows the paid plan; if you upgraded through Vercel, check the plan in Vercel. If the paid plan is showing and you're still blocked, contact support.
+
+### I paid my invoice but my workspace is still blocked. What now?
+
+Your payment may still be processing, or you paid a replacement invoice. Contact support with the workspace name and invoice number so they can lift the block. If the message is about a spending limit, raise the limit instead.
+
+### When does an unpaid invoice block my workspace?
+
+At 16:00 UTC, about 15 days after the payment fails. If that day is a Friday, Saturday, or Sunday, the block moves to the following Monday. Paying before then avoids the block.
+
+### Does a block delete my data?
+
+No. A block pauses queries, and your data stays as it was.

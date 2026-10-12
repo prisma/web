@@ -256,3 +256,40 @@ Typed projects should report removed Accelerate APIs during type checking. Untyp
 8. Deploy the replacement connection to production and confirm that the runtime no longer receives `prisma+postgres://accelerate.prisma-data.net`.
 
 Keep the old Accelerate credential available temporarily as a rollback path. After the replacement connection is stable in production, revoke the old credential and remove the remaining Accelerate configuration.
+
+## After switching: slower queries
+
+Some applications get slower after they move off Accelerate. Accelerate ran each Prisma Client query close to the database, so one query cost your application one round trip. With a pooled TCP connection or the serverless driver, each SQL statement travels from your application to the database region and back. An application far from its database, or one that runs many queries in sequence per request, notices the difference most.
+
+### Run the application near the database
+
+Moving the application into or next to the database's region helps more than any driver setting. For example, if your database is in `ap-southeast-1` (Singapore), deploy your serverless functions to a Singapore region. See [Regions](/postgres/database/regions#choose-a-region).
+
+### Enable `relationJoins`
+
+The `relationJoins` preview feature makes Prisma Client load relations (`include` and nested `select`) with database joins in one SQL statement, instead of one statement per relation. That removes round trips. See [relation load strategies](/orm/v7/prisma-client/queries/relation-queries#relation-load-strategies-preview) for details.
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["relationJoins"]
+}
+```
+
+Run `npx prisma generate` after the change, then measure again.
+
+### Measure the right thing
+
+When you compare timings before and after the switch, record:
+
+- whether the request was warm or cold
+- whether the time covers the whole request or the database calls alone
+- how many queries run in sequence per request
+- where the application runs and which region the database is in
+
+If your application runs near the database with `relationJoins` enabled and is still much slower than on Accelerate, contact [support](/console/more/support) with these numbers and the versions of `prisma`, `@prisma/client`, and the driver adapter you use.
+
+### Error 1102 before you switch
+
+While your application still uses Accelerate, a query can fail with Cloudflare error 1102, `Worker exceeded resource limits`. It means the edge worker handling that request hit its CPU limit, which grows with the size of the query and its response. It is not caused by how long your own function has been running. Until you switch, fetch smaller pages and flatter `select` shapes. After you move to a pooled TCP connection, this error no longer occurs. See [Accelerate troubleshooting](/accelerate/more/troubleshoot#p6000-and-cloudflare-error-1102).
