@@ -170,8 +170,9 @@ The first GitHub run passed the Composer build/smoke test, all five Vercel
 previews, and the docs/Eclipse browser tests. The Links workflow failed in its
 version check: npm's current `prisma` was 8.0.0-rc.22 with CLI engine 0.7.0,
 while 16 current documentation references still used the previous versions.
-Those current examples were updated; the upgrade guide's original test version
-remains explicitly historical. No validation was weakened or skipped.
+Those current examples and the upgrade guide's historical-version clarification
+are in [PR #8464](https://github.com/prisma/web/pull/8464), which must merge before
+this Composer PR. No validation was weakened or skipped.
 
 CodeQL and CodeRabbit identified the new workflow's default token permissions
 and persisted checkout credentials. The Composer workflow now grants only
