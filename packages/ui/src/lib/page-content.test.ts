@@ -6,6 +6,7 @@ test("lazy content keeps frontmatter and resolves the body only when requested",
   let loaded = false;
   const page = {
     title: "Guide",
+    getText: async (format: string) => `${format} article`,
     load: async () => {
       loaded = true;
       return { body: "article", toc: ["heading"] };
@@ -17,6 +18,7 @@ test("lazy content keeps frontmatter and resolves the body only when requested",
   assert.equal(content.title, "Guide");
   assert.equal(content.body, "article");
   assert.deepEqual(content.toc, ["heading"]);
+  assert.equal(await content.getText("processed"), "processed article");
 });
 
 test("eager content is returned without copying or changing its shape", async () => {

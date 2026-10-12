@@ -108,8 +108,8 @@ export function redirect(
   headers = new Headers(),
 ) {
   return (
-    siteRedirect(url) ??
+    siteRedirect(url, headers) ??
     siteNext?.(url, headers) ??
-    (route(url.pathname).zone === "docs" ? docsRedirect(url) : undefined)
+    (route(url.pathname).zone === "docs" ? docsRedirect(url, headers) : undefined)
   );
 }

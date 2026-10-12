@@ -88,9 +88,37 @@ test("Next's internal trailing-slash redirect uses its compiled regex", () => {
   );
 });
 
+test("conditional redirects require matching headers and cookies and honor missing conditions", async () => {
+  const gateway = createGateway(origins, async () => new Response("no redirect"), [
+    {
+      source: "/docs/conditional",
+      destination: "/docs/:audience",
+      has: [
+        { type: "header", key: "x-audience", value: "(?<audience>team|public)" },
+        { type: "cookie", key: "session", value: "active" },
+      ],
+      missing: [{ type: "header", key: "x-preview" }],
+    },
+  ]);
+  const url = "https://web.example/docs/conditional";
+  const headers = { "x-audience": "team", cookie: "other=value; session=active" };
+  const response = await gateway(new Request(url, { headers }));
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get("location"), "https://web.example/docs/team");
+  for (const unmatched of [
+    { ...headers, "x-audience": "unknown" },
+    { ...headers, cookie: "other=value" },
+    { ...headers, "x-preview": "1" },
+  ]) {
+    assert.equal((await gateway(new Request(url, { headers: unmatched }))).status, 200);
+  }
+});
+
 test("TLS termination preserves HTTPS in gateway redirects", async () => {
   const gateway = createGateway(origins);
-  const response = await gateway(new Request("http://web.example/accelerate", { headers: { "x-forwarded-proto": "https" } }));
+  const response = await gateway(
+    new Request("http://web.example/accelerate", { headers: { "x-forwarded-proto": "https" } }),
+  );
   assert.equal(response.headers.get("location"), "https://web.example/docs/accelerate");
 });
 

@@ -163,3 +163,20 @@ representative concurrent and sustained requests, integration credentials,
 public build settings, gateway host/CSRF behavior, and cold starts in a preview
 stage. Then connect the public domain and deployment automation to the gateway.
 Vercel remains the existing deployment path while that work is done.
+
+## PR validation follow-up
+
+The first GitHub run passed the Composer build/smoke test, all five Vercel
+previews, and the docs/Eclipse browser tests. The Links workflow failed in its
+version check: npm's current `prisma` was 8.0.0-rc.22 with CLI engine 0.7.0,
+while 16 current documentation references still used the previous versions.
+Those current examples were updated; the upgrade guide's original test version
+remains explicitly historical. No validation was weakened or skipped.
+
+CodeQL and CodeRabbit identified the new workflow's default token permissions
+and persisted checkout credentials. The Composer workflow now grants only
+`contents: read` and disables credential persistence. The lazy-content test also
+verifies preservation of `getText("processed")`. Header/cookie conditions already
+worked for the generated Next redirect table; the same request headers are now
+passed to both imported Vercel tables, with a conditional-redirect regression
+test. Neither imported Vercel table currently contains header/cookie conditions.
