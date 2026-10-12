@@ -43,7 +43,7 @@ export const postgresContent: ProductPageContent = {
     subheadline:
       "Managed Postgres for TypeScript and AI apps, with Prisma Compute to host your app (Node.js, Bun or Next.js) next to it in one project. Any Postgres client works; Prisma ORM is optional. Start on the free plan, no credit card.",
     benefits: [
-      "A preview database per pushed branch with deploy on push, free",
+      "Free preview databases per pushed branch, for the ones you declare",
       "Billed per operation, with a hard spend limit on paid plans",
       "Predictable pricing with spend limits, no surprise bills",
     ],
