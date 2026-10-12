@@ -20,7 +20,7 @@ import "./support.css";
 export const metadata = createPageMetadata({
   title: "Prisma Support | Get Help, Report Bugs, and Request Features",
   description:
-    "Find an answer in the docs, ask the community, or reach our support team. Where you go depends on your plan and what you need.",
+    "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.",
   path: "/support",
   ogKicker: "Support",
 });

@@ -9,10 +9,14 @@ import { ProductProblem } from "./product-problem";
 import type { ProductPageContent } from "./types";
 
 // The standard product page shape, for routes whose approved copy doesn't add
-// sections beyond it. Pages that do — /orm carries two extra top-level sections
-// in V4 — compose these same section components directly instead; see
-// app/orm/page.tsx.
-export function ProductPage({ content }: { content: ProductPageContent }) {
+// sections beyond it. Pages that do (for example, /orm carries two extra
+// top-level sections in V4) compose these same section components directly
+// instead; see app/orm/page.tsx.
+//
+// `faqId` makes the FAQ section a deep-link target: /postgres sets "faq" so
+// /postgres#faq scrolls to the heading. It is page-scoped, so other product
+// pages leave it off and their FAQ sections stay without an id.
+export function ProductPage({ content, faqId }: { content: ProductPageContent; faqId?: string }) {
   return (
     <>
       <ProductHero name={content.name} accent={content.accent} hero={content.hero} />
@@ -23,7 +27,7 @@ export function ProductPage({ content }: { content: ProductPageContent }) {
           between the platform section and the testimonials, and the Markdown
           rendition (lib/markdown/product.ts) mirrors that order. */}
       {content.compare ? <CompareLinks intro={content.compare.intro} /> : null}
-      {content.faq ? <Faq items={content.faq} /> : null}
+      {content.faq ? <Faq items={content.faq} id={faqId} /> : null}
       <TestimonialsReveal heading="Trusted by 500K+ TypeScript developers" />
       <ProductCta cta={content.cta} />
     </>

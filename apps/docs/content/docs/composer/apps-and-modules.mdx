@@ -19,7 +19,7 @@ A service declares everything about itself in one `compute()` call. It is pure d
 ```ts
 compute({
   name: 'auth',                  // the service's name in the app graph
-  deps: { db: postgres() },      // what it needs         -> read via service.load()
+  deps: { db: rawPostgres() },   // what it needs         -> read via service.load()
   input: authInput,              // its incoming config   -> read via service.input()
   build: node({ module: import.meta.url, entry: '../dist/server.mjs' }),
   expose: { rpc: authContract }, // what it offers to other services
@@ -60,7 +60,7 @@ A Module declares its boundary (what it needs, what it offers) in the second arg
 
 ```ts title="src/auth/module.ts"
 import { module, secret } from '@prisma/composer';
-import { postgres } from '@prisma/composer-prisma-cloud';
+import { rawPostgres } from '@prisma/composer-prisma-cloud';
 import { authContract } from './contract.ts';
 import authService from './service.ts';
 
@@ -68,7 +68,7 @@ export default module(
   'auth',
   { secrets: { signingKey: secret() }, expose: { rpc: authContract } },
   ({ secrets, provision }) => {
-    const db = provision(postgres({ name: 'database' }));
+    const db = provision(rawPostgres({ name: 'database' }));
     const service = provision(authService, {
       id: 'service',
       deps: { db },

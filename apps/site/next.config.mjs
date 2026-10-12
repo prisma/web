@@ -55,6 +55,7 @@ const ContentSecurityPolicy = `
     https://tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzrcdn.openai.com
     https://widget.kapa.ai
     https://www.google.com
     https://www.gstatic.com
@@ -97,6 +98,7 @@ const ContentSecurityPolicy = `
   img-src 'self' data:
     http://localhost:3002 http://127.0.0.1:3002
     https://www.googletagmanager.com
+    https://bzr.openai.com
     https://www.prisma.io https://prisma.io
     https://cdn.sanity.io
     https://prisma.io
@@ -139,6 +141,8 @@ const ContentSecurityPolicy = `
     https://*.tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzr.openai.com
+    https://bzrcdn.openai.com
     https://www.google.com
     https://www.gstatic.com
     https://kapa-widget-proxy-la7dkmplpq-uc.a.run.app
@@ -1025,7 +1029,7 @@ const config = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'none'; script-src 'self' https://www.googletagmanager.com; connect-src https://*.google-analytics.com https://*.analytics.google.com https://*.doubleclick.net https://www.google.com https://www.google.es; img-src https:; frame-ancestors https://console.prisma.io; base-uri 'none'; form-action 'none'",
+              "default-src 'none'; script-src 'self' https://www.googletagmanager.com https://bzrcdn.openai.com; connect-src https://*.google-analytics.com https://*.analytics.google.com https://*.doubleclick.net https://www.google.com https://www.google.es https://bzr.openai.com https://bzrcdn.openai.com; img-src https:; frame-ancestors https://console.prisma.io; base-uri 'none'; form-action 'none'",
           },
           { key: "Referrer-Policy", value: "origin" },
           { key: "X-Robots-Tag", value: "noindex, nofollow" },

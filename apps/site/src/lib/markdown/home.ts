@@ -218,13 +218,13 @@ export function renderHomeMarkdown(): string {
     paragraphs(
       "Start free with the ORM, which will always be free. Prisma Postgres has a free tier with " +
         "a hard cap, so you can build without a credit card. When you outgrow it, you're on " +
-        "operation-based pricing with spend limits, and data transfer is always included.",
+        "operation-based pricing with spend limits, and database data transfer is always included.",
     ),
     ctaList([{ label: "See pricing", href: "/pricing" }]),
     bulletList([
       "**Free Postgres tier** with a hard cap, no credit card required",
       "**Spend limits on every paid tier**, so your bill never surprises you",
-      "**Unlimited data transfer included**, no bandwidth bill-shock",
+      "**Unlimited database data transfer included**, no database egress bill-shock",
       "**Prisma ORM is free, always**",
       "**Per-branch databases included**, no surcharge",
       "**SOC2, HIPAA, ISO 27001, and GDPR** at the Business tier",
@@ -241,7 +241,7 @@ export function renderHomeMarkdown(): string {
     paragraphs("Prisma: $0 per month"),
     bulletList([
       "No credit card required",
-      "Data transfer included",
+      "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ]),
     heading(3, "Growing SaaS (~50K MAU)"),
@@ -252,7 +252,11 @@ export function renderHomeMarkdown(): string {
       "Spend limits not standard",
     ]),
     paragraphs("Prisma: $70-90 per month"),
-    bulletList(["One bill, one platform", "Data transfer included", "Spend limits on by default"]),
+    bulletList([
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ]),
     heading(3, "At scale (~500K MAU)"),
     paragraphs("Typical stack (Neon + Vercel): $2,800-3,400 per month"),
     bulletList([
@@ -261,7 +265,11 @@ export function renderHomeMarkdown(): string {
       "Spend limits not standard",
     ]),
     paragraphs("Prisma: $640-780 per month"),
-    bulletList(["One bill, one platform", "Data transfer included", "Spend limits on by default"]),
+    bulletList([
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ]),
 
     // ---- TestimonialsReveal (testimonials-reveal.tsx) ----
     // Shared renderer: the section is reused on other pages, and it already
