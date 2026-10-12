@@ -1,15 +1,15 @@
 ---
-title: "Serverless Postgres: How It Works and How to Choose a Provider"
+title: "Serverless Postgres compared (2026): Neon, Supabase, Amazon RDS/Aurora and Prisma Postgres"
 slug: "serverless-postgres"
 date: "2026-07-09"
-updatedAt: "2026-10-08"
+updatedAt: "2026-10-12"
 authors:
   - "Martin Janse van Rensburg"
 tags:
   - "prisma-postgres"
   - "platform"
-metaTitle: "Serverless Postgres: How It Works and Who Offers It (2026)"
-metaDescription: "Serverless Postgres separates compute from storage and bills for usage instead of provisioned servers. How scale-to-zero, cold starts, and the three pricing models compare across Neon, Prisma Postgres, Supabase, Aurora, and PlanetScale."
+metaTitle: "Serverless Postgres compared (2026): Neon, Supabase, Amazon RDS/Aurora and Prisma Postgres"
+metaDescription: "Serverless and managed Postgres compared for 2026: Neon, Supabase, Amazon RDS and Aurora Serverless v2, Prisma Postgres and PlanetScale on billing, scale-to-zero, cold starts, free tiers and what each adds as an app grows."
 metaImagePath: "/serverless-postgres/imgs/meta.png"
 heroImagePath: "/serverless-postgres/imgs/hero.svg"
 heroImageAlt: "A compute usage curve that suspends after five minutes idle and wakes a few hundred milliseconds later, drawn under a flat always ready line."
@@ -17,17 +17,34 @@ heroImageAlt: "A compute usage curve that suspends after five minutes idle and w
 
 Serverless Postgres is PostgreSQL you never provision or manage: the platform allocates compute on demand and bills you for usage, not for a server size you picked up front. One label, though, covers very different products, and they differ on two things that decide your cost and your latency: **what they bill for**, and **whether compute sleeps when idle**.
 
-This guide leads with the comparison and a way to choose, then explains the reasoning. It compares serverless behavior and pricing only; a production decision should also weigh extensions, read replicas, backups, regions, and compliance, which are out of scope here. Every price and behavior was checked against the provider's own pages in July 2026, and vendor claims (including Prisma's) are labeled as such. Neon's Free plan figures were re-checked on 2026-10-05, after Neon raised the storage limit.
+We make Prisma Postgres. This guide leads with the comparison and a way to choose, then explains the reasoning. It compares serverless behavior and pricing, plus a by-stage table of free tiers, backups, restore options, read replicas and high availability as each vendor documents them. Extensions, regions and compliance stay out of scope. The two tables were checked against each provider's own pages and price lists on 2026-10-12, and the rest of the guide, including the provider profiles, in July 2026 unless dated. Vendor claims (including Prisma's) are labeled as such. Neon's Free plan figures were re-checked on 2026-10-05, after Neon raised the storage limit.
 
 ## The providers at a glance
 
+Rows in alphabetical order; checked 2026-10-12; we make Prisma Postgres.
+
 | | Bills for | Scale-to-zero | Cold start | Free tier | Paid entry |
 |---|---|---|---|---|---|
-| **Prisma Postgres** | Operations (queries) | No (stays ready) | None (by design; vendor claim) | 200k ops, 1.01 GB, 50 DBs | $10/mo (1M ops, 10 GB) |
-| **Neon** | Compute-hours | After 5 min idle | A few hundred ms | 100 CU-hrs and 1 GB per project, 100 projects, 20 GB total | Pay-as-you-go, $0.106/CU-hr |
-| **Aurora Serverless v2** | Compute-seconds | Optional (0 ACU min) | ~15 s | None | Per ACU-second + storage |
-| **Supabase** | Instance + usage | Free tier only | None on paid; restore on free | 2 projects, 500 MB | $25/mo |
-| **PlanetScale Postgres** | Instance per branch | No (always-on) | None (never sleeps) | None | $5/mo (single node) |
+| **Amazon Aurora Serverless v2** | ACU-hours, billed per second, plus storage and I/O | Optional: with a 0-ACU minimum, pauses after 5 min to 1 day idle | ~15 s; 30 s or more after a day paused | AWS Free plan credits (new accounts): up to 4 ACUs, 1 GiB per cluster | $0.12 per ACU-hour + $0.10/GB-month storage, US East |
+| **Amazon RDS for PostgreSQL** (provisioned, not serverless) | Instance hours + storage | No: the instance bills while it runs | Not applicable (provisioned instance) | AWS Free plan credits (new accounts): db.t3.micro or db.t4g.micro | db.t4g.micro $0.016/hour (~$11.68/month) + $0.115/GB-month, US East |
+| **Neon** | CU-hours | After 5 min idle; fixed on Free | A few hundred ms | 100 CU-hours and 1 GB per project, 100 projects, 20 GB total | Launch: pay as you go, no monthly minimum, $0.106/CU-hour |
+| **PlanetScale Postgres** | Cluster size + storage, backups, egress | Not documented | Not documented | None listed | $5/month single node |
+| **Prisma Postgres** | Operations (queries) | No (stays ready; vendor claim) | None (by design; vendor claim) | 200k operations, 1.01 GB, 50 databases | $10/month (1M operations, 10 GB) |
+| **Supabase** | Plan + compute billed hourly per project | Free projects pause after 1 week idle; paid never pause | None on paid; a paused Free project must be restored from the dashboard | 2 active projects, 500 MB | $25/month Pro, with $10 compute credits |
+
+## By stage: prototype, first paying users, growth
+
+What each provider documents as an app moves from a free prototype to its first paid plan and then grows. Each cell comes from the vendor's own pricing page or docs; nothing is inferred.
+
+Rows in alphabetical order; checked 2026-10-12; we make Prisma Postgres.
+
+| | Prototype (free tier, idle rule) | First paying users (entry paid plan, backups, pooling) | Growth (restore options, read replicas, high availability, as documented) |
+|---|---|---|---|
+| **Amazon Aurora Serverless v2** | Free plan credits for new AWS accounts: up to 4 ACUs, 1 GiB per cluster; with a 0-ACU minimum it pauses when idle, ~15 s to resume | $0.12 per ACU-hour + storage; continuous backups kept 1–35 days; pooling through RDS Proxy ($0.015 per ACU-hour, 8-ACU minimum), which stops auto-pause | Restore to any point in retention; up to 15 Aurora Replicas; automatic failover to a reader in another AZ |
+| **Amazon RDS for PostgreSQL** | Free plan credits for new AWS accounts on db.t3.micro or db.t4g.micro; no idle pause, the instance bills while it runs | db.t4g.micro $0.016/hour, Single-AZ; automated backups kept up to 35 days (7 by default in the console); pooling through RDS Proxy ($0.015 per vCPU-hour, 2-vCPU minimum) | Restore to any point in retention (logs every 5 min); asynchronous read replicas; Multi-AZ with one or two standbys |
+| **Neon** | Free: 100 CU-hours and 1 GB per project; scales to zero after 5 min, fixed on Free | Launch: pay as you go, no monthly minimum, $0.106/CU-hour; restore window up to 7 days; pooling on every plan | Scale: restore window up to 30 days; read replicas on every plan, billed as CU-hours; multi-AZ storage on every plan, uptime SLA on Scale |
+| **Prisma Postgres** | Free: 200k operations, 1.01 GB, 50 databases, no backups | Starter $10: 1M operations, 10 GB, PgBouncer pooling, daily snapshots kept 7 days; Pro $49: 10M operations, 50 GB, snapshots kept 7 days | Business: snapshots kept 30 days. Point-in-time recovery is not available yet. Prisma Postgres docs list neither read replicas nor high availability (checked 2026-10-12) |
+| **Supabase** | Free: 2 active projects, 500 MB; paused after 1 week of inactivity | Pro from $25 (8 GB disk, $10 compute credits); daily backups kept 7 days; shared pooler on every plan, dedicated pooler on paid plans | PITR add-on, $100/month per 7 days (needs Small compute or larger); asynchronous read replicas; high availability not listed on the pricing page, uptime SLAs on Enterprise only |
 
 ## Choose by workload
 
@@ -108,7 +125,7 @@ AWS's elastic Postgres (and MySQL), billing capacity in ACU-seconds within a ran
 - **Best for:** teams already deep in AWS who need its ecosystem (IAM, VPC peering, global databases).
 - **Bills for:** ACU-seconds (1 ACU ≈ 2 GB RAM), per second, varying by region; model it on the [AWS pricing page](https://aws.amazon.com/rds/aurora/pricing/).
 - **Idle behaviour:** optional scale-to-zero at a 0-ACU minimum (since late 2024); resume "approximately 15 seconds," 30+ after a 24-hour pause, per [AWS's docs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html).
-- **Free / entry:** no free tier; standard AWS billing.
+- **Free / entry:** new AWS accounts get a credits-based Free plan that includes Aurora PostgreSQL serverless with up to 4 ACUs and 1 GiB of storage per cluster (checked 2026-10-12); otherwise standard AWS billing.
 - **Watch out for:** an attached RDS Proxy, logical replication, or being the writer in a global database each silently keeps instances awake and defeats auto-pause.
 
 ### Supabase
@@ -160,7 +177,7 @@ The five above cover the main shapes. Most of the rest of the managed-Postgres m
 
 **Managed instances (not serverless):** DigitalOcean (from $15.15/mo), Render (from $6/mo, billed per second), and Heroku Postgres (from $5/mo) all sell instance sizes you pick and resize yourself: no autoscaling, no scale-to-zero, and none of them calls the product serverless. Railway is the edge case: it bills usage per minute and offers opt-in sleep for idle services, though its docs don't say whether volume-backed Postgres can sleep.
 
-**Hyperscalers:** Aurora Serverless v2 (above) is the only hyperscaler Postgres that auto-suspends. Google Cloud SQL and AlloyDB, and Azure Database for PostgreSQL Flexible Server (from ~$12/mo), all use fixed compute with manual stop at most, and none is branded serverless by its own vendor.
+**Hyperscalers:** Aurora Serverless v2 (above) is the only hyperscaler Postgres that auto-suspends. Amazon RDS for PostgreSQL is provisioned managed Postgres: you pick an instance class and pay by the hour it runs, with automated backups and point-in-time restore inside a 0–35 day window, read replicas and Multi-AZ standbys (checked 2026-10-12). Google Cloud SQL and AlloyDB, and Azure Database for PostgreSQL Flexible Server (from ~$12/mo), all use fixed compute with manual stop at most, and none is branded serverless by its own vendor.
 
 The test that sorts the field: if you pick an instance size and the vendor never suspends it for you, that's managed Postgres, which may be exactly what you need.
 
