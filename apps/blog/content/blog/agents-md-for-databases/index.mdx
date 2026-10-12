@@ -2,6 +2,7 @@
 title: "What to Put in Your AGENTS.md So Your Agent Handles the Database Right"
 slug: "agents-md-for-databases"
 date: "2026-07-17"
+updatedAt: "2026-10-12"
 authors:
   - "Nurul Sundarani"
 metaTitle: "AGENTS.md for Databases: Rules for Safe, Fast Coding Agents"
@@ -16,7 +17,7 @@ tags:
 
 A coding agent with no database instructions falls back on its training-data habits: mocked data layers, SQLite shortcuts, tests pointed at whatever connection string it finds. This post gives the agent your workflow instead, as five copy-pasteable database rules for [AGENTS.md](https://agents.md), the markdown file in a project's root that gives AI coding agents standing instructions: where scratch databases come from (throwaway instances of [Prisma Postgres](https://www.prisma.io/docs/postgres), a fully managed PostgreSQL service), which commands need a human, how migrations get rehearsed, when to use `--json` output, and where connection strings live.
 
-The rules work in Codex, Cursor, and Claude Code (the last through a one-line import, covered below), and they build on the provisioning workflow from [our ephemeral database post](/give-your-agent-a-database). The full block to copy is [below](#the-complete-block-to-copy); the sections before it explain why each line is there.
+The rules work in Codex, Cursor, and Claude Code (the last sometimes needs a one-line import, covered below), and they build on the provisioning workflow from [our ephemeral database post](/give-your-agent-a-database). The full block to copy is [below](#the-complete-block-to-copy); the sections before it explain why each line is there.
 
 ## Why your agent needs database rules
 
@@ -36,7 +37,7 @@ Prototypes, bug reproductions, and test runs want a clean database that nobody e
 npx create-db@latest --json
 ```
 
-One command provisions a temporary Prisma Postgres database: real PostgreSQL, no account, no Docker daemon, deleted automatically after 24 hours. The `--json` flag makes the output parseable, so the agent takes `connectionString`, sets it as `DATABASE_URL` for the task at hand, and gets to work. The output also includes a `claimUrl`; if the result turns out to matter, opening it converts the database into a permanent instance for free. You can pin one of six regions with `--region`; when the flag is omitted, the CLI picks the region closest to you, falling back to `us-east-1`.
+One command provisions a temporary Prisma Postgres database: real PostgreSQL, no account, no Docker daemon, deleted automatically after 24 hours. The `--json` flag makes the output parseable, so the agent takes `connectionString`, sets it as `DATABASE_URL` for the task at hand, and gets to work. The output also includes a `claimUrl`; if the result turns out to matter, claim it with a free Prisma account to keep it as a permanent database. You can pin one of six regions with `--region`; when the flag is omitted, the CLI picks the region closest to you, falling back to `us-east-1`.
 
 The rule tells the agent this is the default, not a fallback: when a task needs a database, create one, instead of borrowing whichever one is lying around in `.env`.
 
@@ -100,19 +101,19 @@ Five rules, none longer than a few short lines. Rules files are context the agen
 
 AGENTS.md emerged from a collaboration across the agent ecosystem, including OpenAI's Codex team, and has become the closest thing to a cross-tool standard: Codex reads it natively, and [Cursor reads a project-root `AGENTS.md`](https://www.prisma.io/docs/ai/tools/cursor) alongside its own Project Rules format.
 
-Claude Code is the notable exception: it reads `CLAUDE.md`, not `AGENTS.md`. The fix is a one-line `CLAUDE.md` containing an import:
+Claude Code doesn't always read `AGENTS.md`, for example when your project also has a `CLAUDE.md`. Add the line `@AGENTS.md` to a `CLAUDE.md` next to your `AGENTS.md` so Claude Code imports these rules:
 
 ```markdown
 @AGENTS.md
 ```
 
-Claude Code resolves the `@` import and pulls the whole file in. A symlink from `CLAUDE.md` to `AGENTS.md` works too. Either way, keep one source of truth and point the other files at it; two hand-maintained copies of the same rules will drift apart.
+Claude Code resolves the `@` import and pulls the whole file in. If you don't need Claude-specific instructions, a symlink from `CLAUDE.md` to `AGENTS.md` works too. If you or anyone who clones the repo works on Windows, use the import instead: symlinks there need Administrator privileges or Developer Mode, and Git for Windows checks them out as plain text files by default, so a clone's `CLAUDE.md` holds just the path to `AGENTS.md`, not your rules. Either way, keep one source of truth and point the other files at it; two hand-maintained copies of the same rules will drift apart.
 
 ## Beyond the rules file
 
 A rules file tells the agent what to do with the tools it already has. The [Prisma MCP server](https://www.prisma.io/docs/ai/tools/mcp-server) extends what those tools are: connected to `https://mcp.prisma.io/mcp`, an agent can manage the databases in your Prisma workspace, execute SQL, introspect schemas, create and restore backups, and [search the Prisma docs](/search-prisma-docs-from-your-coding-agent) through one endpoint, with structured input and output on every call.
 
-The two compose. The rules file carries your team's judgment: what needs confirmation, where scratch work happens, how migrations get validated. The MCP server carries the capabilities those judgments govern. Start with the rules file, because it costs five minutes and, with the one-line import for Claude Code, covers all three tools; add the MCP server when your agent's database work outgrows the CLI.
+The two compose. The rules file carries your team's judgment: what needs confirmation, where scratch work happens, how migrations get validated. The MCP server carries the capabilities those judgments govern. Start with the rules file, because it costs five minutes and, with the one-line import where Claude Code needs it, covers all three tools; add the MCP server when your agent's database work outgrows the CLI.
 
 ## Frequently asked questions
 
@@ -121,7 +122,7 @@ The two compose. The rules file carries your team's judgment: what needs confirm
 AGENTS.md is a markdown file in a project's root that gives AI coding agents project-specific instructions: conventions, commands, and rules the agent should follow. The format came out of a cross-vendor collaboration, OpenAI's Codex team among the contributors, and is read natively by tools including Codex and Cursor. It is plain markdown with no required structure; see [agents.md](https://agents.md) for the spec.
   </Accordion>
   <Accordion title="Does Claude Code read AGENTS.md?">
-Not directly. Claude Code reads `CLAUDE.md`. To share one rules file across tools, create a `CLAUDE.md` whose content is the single line `@AGENTS.md`; Claude Code resolves the import and loads the file. A symlink from `CLAUDE.md` to `AGENTS.md` achieves the same result.
+Claude Code doesn't always read `AGENTS.md`, for example when your project also has a `CLAUDE.md`. To share one rules file across tools, add the line `@AGENTS.md` to a `CLAUDE.md` next to your `AGENTS.md` so Claude Code imports it. If you don't need Claude-specific instructions, a symlink from `CLAUDE.md` to `AGENTS.md` achieves the same result. If you or anyone who clones the repo works on Windows, use the import instead: symlinks there need Administrator privileges or Developer Mode, and Git for Windows checks them out as plain text files by default.
   </Accordion>
   <Accordion title="Can a rules file stop an agent from wiping my database?">
 Not by itself: a rules file is prose, not enforcement. Prisma ORM adds an enforcement layer on top: since version 6.15.0, the CLI detects popular AI agents and blocks destructive commands like `prisma migrate reset --force` until the user's explicit consent is passed back via an environment variable. Neither layer stops raw SQL such as `DROP TABLE`, so give agents disposable databases for risky work and keep production credentials out of their reach.

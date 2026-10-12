@@ -313,8 +313,8 @@ export function renderHomeMarkdown(): string {
     ),
     heading(3, "What about Prisma 7 / Prisma ORM users today?"),
     paragraphs(
-      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now the current " +
-        "release, is a separate, opinionated product built for agentic workflows, not a forced " +
+      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now a release " +
+        "candidate, is a separate, opinionated product built for agentic workflows, not a forced " +
         "upgrade. When you are ready to move, the Prisma 8 docs include an upgrade guide from " +
         "Prisma 7.",
     ),
