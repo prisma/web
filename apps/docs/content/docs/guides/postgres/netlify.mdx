@@ -1,9 +1,9 @@
 ---
 title: Netlify
-description: Learn how to create Prisma Postgres databases via the official Netlify extension and deploy your applications with it
+description: Learn how to connect Prisma Postgres to your Netlify sites with the official Netlify extension and deploy your applications with it
 url: /guides/postgres/netlify
 metaTitle: Prisma Postgres via Netlify Extension
-metaDescription: Learn how to create Prisma Postgres databases via the official Netlify extension and deploy your applications with it.
+metaDescription: Learn how to connect Prisma Postgres to your Netlify sites with the official Netlify extension and deploy your applications with it.
 ---
 
 :::note[This guide uses Prisma ORM 7]
@@ -12,12 +12,12 @@ The commands and code on this page target Prisma ORM 7, which remains fully supp
 
 :::
 
-The [Netlify extension for Prisma Postgres](https://www.netlify.com/integrations/prisma) connects your Netlify sites with Prisma Postgres instances. Once connected, the extension will automatically set the `DATABASE_URL` environment variable on your deployed Netlify sites.
+The [Netlify extension for Prisma Postgres](https://www.netlify.com/integrations/prisma) connects your Netlify sites with Prisma Postgres instances. Once connected, the extension stores two Prisma Postgres connection strings on your Netlify site: `DATABASE_URL`, the direct one, and `DATABASE_URL_POOLED`, the pooled one.
 
 ## Features
 
-- Automatic generation of Prisma Postgres connection strings for production and preview environments.
-- Simplified environment configuration for your Netlify site.
+- Creates Prisma Postgres connection strings for production, and a second set that Deploy Previews, branch deploys and local development share.
+- Stores them as secret site environment variables: `DATABASE_URL` (direct connection) and `DATABASE_URL_POOLED` (pooled connection). Netlify masks the production values in its UI, CLI and API. Netlify does not apply its secrets policy to local development values, and the extension sets the **Preview environment** connection strings as the local development values. Those strings, which Deploy Previews and branch deploys also use, stay readable in the Netlify UI, CLI and API.
 
 ## Usage
 
@@ -33,7 +33,7 @@ Perform the following steps _once_ to connect your Netlify team with a Prisma Pl
 2. Select the workspace you want to connect to Netlify.
 3. Navigate to the **Integrations** menu in the left-hand sidebar.
 4. Follow the prompts to create a new Netlify integration token and copy the token value.
-5. Paste the token into the **Integration Token** field above. The workspace ID will be automatically filled in.
+5. Paste the token into the **Integration token** field on the extension page.
 6. Click **Save** to complete the setup.
 
 Once this setup is complete, your Netlify team is connected to your Prisma workspace. You can now configure individual Netlify sites to use Prisma Postgres.
@@ -47,20 +47,27 @@ Perform the following steps _for every Netlify site_ in which you want to use Pr
 3. Configure the environment for your **Production environment**.
 4. Configure the environment for your **Preview environment**.
 5. Click **Save** to complete the site setup.
-6. The extension will automatically create a Prisma Postgres instance and store its connection URL in the `DATABASE_URL` environment variable.
+6. The extension creates connection strings for the selected environments and stores them in the `DATABASE_URL` and `DATABASE_URL_POOLED` environment variables. Production deploys use the environment you chose for **Production environment**. Deploy Previews, branch deploys and local development with the Netlify CLI use the one you chose for **Preview environment**.
 
 ## Additional considerations
 
-### Ensure your project uses the `DATABASE_URL` environment variable
+### Use `DATABASE_URL` and `DATABASE_URL_POOLED` in your project
 
-The extension sets `DATABASE_URL` to a Prisma Postgres [connection string](/postgres/database/connecting-to-your-database) that starts with `postgres://`. Netlify Functions run on a conventional Node.js runtime, so use the pooled connection string for application queries and the direct connection string for Prisma CLI commands:
+The extension sets two Prisma Postgres [connection strings](/postgres/database/connecting-to-your-database), both starting with `postgres://`:
+
+- `DATABASE_URL` is the direct connection (host `db.prisma.io`). Use it for Prisma CLI commands such as migrations, and for Prisma Studio.
+- `DATABASE_URL_POOLED` is the pooled connection (host `pooled.db.prisma.io`). Netlify Functions run on a conventional Node.js runtime, so use it for application queries.
+
+These names differ from the `DATABASE_URL` and `DIRECT_URL` pair in [Connecting to your database](/postgres/database/connecting-to-your-database): on a Netlify site, `DATABASE_URL` is the direct connection string.
+
+To use the same variables locally, add both values to your `.env` file:
 
 ```bash title=".env"
-# Application queries
-DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
-
 # Prisma CLI commands, which bypass the connection pooler
-DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+DATABASE_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+
+# Application queries
+DATABASE_URL_POOLED="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
 ```
 
 :::warning[Accelerate retirement]
@@ -69,7 +76,7 @@ Hosted Prisma Postgres `prisma+postgres://accelerate.prisma-data.net` connection
 
 :::
 
-Ensure that the data source in your `prisma.config.ts` file is configured to use the `DIRECT_URL` environment variable:
+Ensure that the data source in your `prisma.config.ts` file is configured to use the `DATABASE_URL` environment variable:
 
 ```ts title="prisma.config.ts"
 import "dotenv/config";
@@ -78,12 +85,22 @@ import { defineConfig, env } from "prisma/config";
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: env("DIRECT_URL"),
+    url: env("DATABASE_URL"),
   },
 });
 ```
 
-Set `DIRECT_URL` in your Netlify site's environment variables too, so that Prisma CLI commands that run during a deploy, such as the `postinstall` script below, can resolve it.
+In your application code, pass `DATABASE_URL_POOLED` to the driver adapter:
+
+```ts title="src/db.ts"
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client"; // path follows the generator output
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL_POOLED });
+export const prisma = new PrismaClient({ adapter });
+```
+
+The extension makes both variables available to builds as well as functions, so Prisma CLI commands that run during a deploy, such as the `postinstall` script below, can resolve `DATABASE_URL`.
 
 ### Generate Prisma Client in a `postinstall` script in `package.json`
 
@@ -129,7 +146,7 @@ Next, set up a Prisma Postgres instance:
 1. Click the **Create project** button.
 1. Click the **Connect to your Database** button
 1. Generate a connection string and copy both the pooled value (host `pooled.db.prisma.io`) and the direct value (host `db.prisma.io`). Both start with `postgres://`.
-1. Save both values, you'll need them in the next section: the pooled value becomes `DATABASE_URL`, the direct value becomes `DIRECT_URL`.
+1. Save both values, you'll need them in the next section: the direct value becomes `DATABASE_URL`, the pooled value becomes `DATABASE_URL_POOLED`, the same names the extension uses.
 
 ### 3. Locally add Prisma Postgres to the project
 
@@ -178,29 +195,14 @@ npx prisma init
    } // [!code ++]
    ```
 
-1. Open the newly created `.env` file and add the pooled connection string as `DATABASE_URL` and the direct connection string as `DIRECT_URL`, as shown [above](#ensure-your-project-uses-the-database_url-environment-variable). Prisma Client uses the pooled value, the Prisma CLI uses the direct one.
-1. Open the newly created `prisma.config.ts` file and point the datasource at `DIRECT_URL`. `prisma init` generates it with `DATABASE_URL`, which would send the migration and Studio commands below through the connection pooler:
-
-   ```ts title="prisma.config.ts"
-   import "dotenv/config";
-   import { defineConfig, env } from "prisma/config";
-
-   export default defineConfig({
-     schema: "prisma/schema.prisma",
-     datasource: {
-       url: env("DATABASE_URL"), // [!code --]
-       url: env("DIRECT_URL"), // [!code ++]
-     },
-   });
-   ```
-
+1. Open the newly created `.env` file and add the direct connection string as `DATABASE_URL` and the pooled connection string as `DATABASE_URL_POOLED`, as shown [above](#use-database_url-and-database_url_pooled-in-your-project). The Prisma CLI uses the direct value, Prisma Client uses the pooled one. The config file that `prisma init` creates already reads `DATABASE_URL`, so the migration and Studio commands below bypass the connection pooler.
 1. Run your first migration to map the `User` model to the database:
 
 ```npm
 npx prisma migrate dev --name init
 ```
 
-5. Create (at least) one `User` record in the database with Prisma Studio:
+4. Create (at least) one `User` record in the database with Prisma Studio:
 
 ```npm
 npx prisma studio
@@ -216,7 +218,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL_POOLED,
 });
 const prisma = new PrismaClient({ adapter });
 

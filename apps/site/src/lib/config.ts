@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: "Prisma",
   description:
-    "Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute: a type-safe ORM for TypeScript, managed Postgres, and hosting for TypeScript apps next to their database on one plan.",
+    "Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute: a type-safe ORM for TypeScript, managed Postgres, and hosting for TypeScript apps next to their database in one project.",
   url: "https://www.prisma.io",
   ogImage: "/og.png",
   // The hero proof line, shared by the homepage and /contact so the numbers
