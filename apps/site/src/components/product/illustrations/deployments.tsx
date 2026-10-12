@@ -41,7 +41,7 @@ function Pair({ accent }: { accent?: boolean }) {
 
 export function Deployments() {
   return (
-    <HeroPanel label="Illustration of Prisma Compute deployments: a production deploy and a preview deploy for a pushed branch, each pairing an app with its own database, deployed with one command">
+    <HeroPanel label="Illustration of Prisma Compute deployments: a production deploy and a preview deploy for a feature branch, each pairing an app with its own database, deployed with one command">
       <CardChrome
         file="deployments"
         right={

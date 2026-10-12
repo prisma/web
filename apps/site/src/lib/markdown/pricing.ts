@@ -411,7 +411,7 @@ export function renderPricingMarkdown(): string {
     bulletList([
       "Database operations per month — 1 query = 1 operation",
       "Storage in gigabytes",
-      "Data transfer — unlimited, included free",
+      "Database data transfer — unlimited, included free",
     ]),
     definitionList(CALCULATOR_PLAN_TERMS),
     paragraphs("Hard spend limit, on by default — never a surprise bill."),
@@ -419,10 +419,10 @@ export function renderPricingMarkdown(): string {
     heading(2, "See how Prisma compares at scale"),
     paragraphs([
       "Prisma charges per operation: each query your app runs against your database counts as " +
-        "one. No seats. No egress fees. And every paid plan includes a hard spend limit so there " +
+        "one. No seats. No database egress fees. And every paid plan includes a hard spend limit so there " +
         "are no surprises.",
       "At around 50K monthly active users, Prisma Pro can cost up to 5x less than a typical " +
-        "Neon + Vercel setup, with one bill, included data transfer, and spend limits on by " +
+        "Neon + Vercel setup, with one bill, included database data transfer, and spend limits on by " +
         "default.",
       // The badge on the Prisma Pro column; its multiple is derived from the
       // costs in the table below.

@@ -27,6 +27,8 @@ import type { ProductPageContent } from "../types";
 //    changes": superlatives and latency figures nothing in the docs states.
 //  - "every PR", "branched from production", "branched together": previews are
 //    per pushed branch and need deploy on push set up first
+//  - "pushed branch": the default branch deploys production, so user-facing copy
+//    says "feature branch" (any branch except the default) for previews
 //    (compute/deploy-on-push.mdx), and production data is not copied into them
 //    (compute/limitations.mdx, "Databases and migrations").
 //  - "deploy it as it is", "long-running", "durable memory": an existing app
@@ -63,9 +65,9 @@ export const computeContent: ProductPageContent = {
     // sentences. The page's meta description (app/compute/page.tsx) repeats
     // the last three verbatim and words the first one as a PaaS definition.
     subheadline:
-      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan.",
+      "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres in one project.",
     benefits: [
-      "Set up deploy on push, and every pushed branch gets a preview with its own database",
+      "Set up deploy on push, and every feature branch gets a preview with its own declared databases",
       "Your app runs next to Prisma Postgres, in one of six regions",
       "Streams responses and scales to zero when idle, for agents as well as apps",
     ],
@@ -88,7 +90,7 @@ export const computeContent: ProductPageContent = {
       {
         label: "Live",
         caption:
-          "Production, plus a preview per pushed branch with its own services and database once deploy on push is set up.",
+          "Production, plus a preview per feature branch with its own services and declared databases once deploy on push is set up.",
         illustration: "deployments",
       },
       {
@@ -102,11 +104,11 @@ export const computeContent: ProductPageContent = {
   problem: {
     headline: "One platform can ship features two never could",
     body: [
-      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (branching, preview environments, end-to-end test data) don't exist. You wire them together yourself, or you do without.",
+      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (per-branch previews with their own database, end-to-end test data) don't exist. You wire them together yourself, or you do without.",
       "Prisma Compute exists to change that.",
     ],
     outcomes: [
-      { icon: "gitBranch", label: "A preview per pushed branch" },
+      { icon: "gitBranch", label: "A preview per feature branch" },
       { icon: "rocket", label: "Ship app and database in one deploy" },
       { icon: "bot", label: "Host streaming agents natively" },
       { icon: "settings", label: "One module.ts for app and database" },
@@ -127,15 +129,15 @@ export const computeContent: ProductPageContent = {
         illustration: "agentHosting",
       },
       {
-        name: "A preview per pushed branch",
+        name: "A preview per feature branch",
         description:
-          "Once deploy on push is set up, every pushed branch gets its own services and its own database, and deleting the branch tears them down. A database typed by a Prisma ORM contract gets your migrations applied on deploy; one declared with rawPostgres() keeps your own migration step. No shared test DB that passes tests production fails.",
+          "Once deploy on push is set up, every feature branch (any branch except the default) gets its own services and a new database for each one the Composer module declares, and deleting the branch tears them down. A database typed by a Prisma ORM contract gets your migrations applied on deploy; one declared with rawPostgres() keeps your own migration step. No shared test DB that passes tests production fails.",
         illustration: "branchedStack",
       },
       {
         name: "App and database on one platform",
         description:
-          "Your app runs next to Prisma Postgres, in the same project and on the same plan, with PgBouncer pooling included. Any Postgres client works, and Prisma ORM is optional.",
+          "Your app runs next to Prisma Postgres, in the same project, with PgBouncer pooling included. Any Postgres client works, and Prisma ORM is optional.",
         illustration: "coLocated",
       },
       {
@@ -167,7 +169,7 @@ export const computeContent: ProductPageContent = {
     {
       question: "Can I host my existing GitHub repo with a TypeScript frontend and Node API here?",
       answer:
-        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts); the porting guide in the docs has a prompt your coding agent can write it from. Run your build, then deploy with npx prisma deploy module.ts. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every pushed branch gets a preview with its own database.",
+        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts); the porting guide in the docs has a prompt your coding agent can write it from. Run your build, then deploy with npx prisma deploy module.ts. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every feature branch gets a preview with its own declared databases.",
     },
     {
       question: "What does Prisma Compute not do?",
@@ -195,8 +197,8 @@ export const computeContent: ProductPageContent = {
     body: "Compute is part of a TypeScript stack where hosting and the database travel as a unit: preview them together, deploy them together, debug them together.",
     benefits: [
       "Built to host the agents you're building, not just the apps",
-      "A preview per pushed branch, app and database together",
-      "App next to its database, on one plan",
+      "A preview per feature branch, app and database together",
+      "App next to its database, in one project",
       TRUST_LINE,
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },

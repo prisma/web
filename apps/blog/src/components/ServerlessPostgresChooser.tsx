@@ -85,9 +85,9 @@ const tree: DecisionTreeData = {
     {
       id: "r-planetscale",
       title: "PlanetScale",
-      why: "Always-on dedicated clusters from $5/month (single node) or $50/month on Metal, prorated to the millisecond. At sustained load, paying for every hour beats metering.",
+      why: "Dedicated clusters from $5/month (single node) or $50/month on Metal, billed for the time they run, prorated to the millisecond. At sustained load, paying by the hour beats metering.",
       caveat:
-        "There is no free tier and nothing scales to zero; a quiet month still bills the instance.",
+        "There is no free tier, and its docs don't describe scale-to-zero; a cluster bills for the time it runs.",
     },
     {
       id: "latency",
@@ -128,7 +128,7 @@ const tree: DecisionTreeData = {
     },
     {
       id: "x-alwayson",
-      title: "An always-on instance",
+      title: "A dedicated instance",
       why: "Neon with auto-suspend disabled runs about $77/month per CU ($0.106 × 730 hours); PlanetScale starts at $5/month single node or $50/month Metal; paid Supabase is $25/month with a Micro covered.",
       caveat:
         "No per-query component. The worked example in the pricing-models section shows the ~24M crossover against the $49 operations plan.",
@@ -139,13 +139,13 @@ const tree: DecisionTreeData = {
       accent: true,
       why: "$1 per million operations at the top tier ($129/month with 50M included), always ready with no cold starts (our own claim).",
       caveat:
-        "Compare against the always-on options at your exact query count. Prisma publishes this guide.",
+        "Compare against the dedicated-instance options at your exact query count. Prisma publishes this guide.",
     },
     {
       id: "fleet-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "Operations are metered account-wide across up to 1,000 databases on one plan, so a fleet of small databases shares one allowance.",
+      why: "Operations are metered account-wide across up to 1,000 databases in a workspace, so a fleet of small databases shares one allowance.",
       caveat:
         "Prisma publishes this guide; the account-wide metering claim is from our pricing page.",
     },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { observeAnimationActivity } from "@/lib/animation-activity";
 
 const PATTERN = "/brand/pattern.svg";
 const RADIUS = 120; // cursor influence radius (viewBox units)
@@ -27,7 +28,7 @@ export function Pattern({ className = "", scale }: { className?: string; scale?:
     if (!container || !host) return;
     let cancelled = false;
     let raf = 0;
-    let removeMove = () => {};
+    let stopActivity = () => {};
 
     fetch(PATTERN)
       .then((r) => r.text())
@@ -66,35 +67,28 @@ export function Pattern({ className = "", scale }: { className?: string; scale?:
         const cy = new Float32Array(n);
         const dx = new Float32Array(n);
         const dy = new Float32Array(n);
-        paths.forEach((p, i) => {
-          const b = p.getBBox();
-          const tile = p.closest("g[data-ox]");
-          const ox = tile ? Number(tile.getAttribute("data-ox")) : 0;
-          const oy = tile ? Number(tile.getAttribute("data-oy")) : 0;
-          cx[i] = b.x + b.width / 2 + ox;
-          cy[i] = b.y + b.height / 2 + oy;
-          p.style.transformBox = "fill-box";
-          p.style.transformOrigin = "center";
-        });
-
-        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (reduced) return;
-
+        let initialized = false;
+        let pointerInside = false;
         const mouse = { x: -9999, y: -9999 };
 
         const onMove = (e: MouseEvent) => {
-          const m = svgEl.getScreenCTM();
-          if (!m) return;
-          const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
-          mouse.x = pt.x;
-          mouse.y = pt.y;
-
           const rect = container.getBoundingClientRect();
           const inside =
             e.clientX >= rect.left &&
             e.clientX <= rect.right &&
             e.clientY >= rect.top &&
             e.clientY <= rect.bottom;
+          if (!inside && !pointerInside) return;
+          pointerInside = inside;
+          if (inside) {
+            const m = svgEl.getScreenCTM();
+            if (!m) return;
+            const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+            mouse.x = pt.x;
+            mouse.y = pt.y;
+          } else {
+            mouse.x = mouse.y = -9999;
+          }
           if (glow) {
             glow.style.opacity = inside ? "1" : "0";
             if (inside) {
@@ -102,12 +96,13 @@ export function Pattern({ className = "", scale }: { className?: string; scale?:
               glow.style.top = `${((e.clientY - rect.top) / rect.height) * 100}%`;
             }
           }
+          if (!raf) raf = requestAnimationFrame(tick);
         };
-        window.addEventListener("mousemove", onMove, { passive: true });
-        removeMove = () => window.removeEventListener("mousemove", onMove);
 
         const r2 = RADIUS * RADIUS;
         const tick = () => {
+          raf = 0;
+          let unsettled = false;
           for (let i = 0; i < n; i++) {
             const vx = cx[i] - mouse.x;
             const vy = cy[i] - mouse.y;
@@ -126,6 +121,7 @@ export function Pattern({ className = "", scale }: { className?: string; scale?:
             const moved = Math.abs(ndx - dx[i]) > 0.01 || Math.abs(ndy - dy[i]) > 0.01;
             dx[i] = ndx;
             dy[i] = ndy;
+            unsettled ||= Math.abs(tx - ndx) > 0.02 || Math.abs(ty - ndy) > 0.02;
             if (moved) {
               paths[i].style.transform =
                 Math.abs(ndx) < 0.02 && Math.abs(ndy) < 0.02
@@ -133,16 +129,53 @@ export function Pattern({ className = "", scale }: { className?: string; scale?:
                   : `translate(${ndx.toFixed(2)}px, ${ndy.toFixed(2)}px)`;
             }
           }
-          raf = requestAnimationFrame(tick);
+          if (unsettled) raf = requestAnimationFrame(tick);
         };
-        raf = requestAnimationFrame(tick);
+        stopActivity = observeAnimationActivity(
+          container,
+          (active) => {
+            if (active) {
+              if (!initialized) {
+                // Read all geometry before writing styles to avoid a layout
+                // flush for every cube in the pattern.
+                paths.forEach((p, i) => {
+                  const b = p.getBBox();
+                  const tile = p.closest("g[data-ox]");
+                  const ox = tile ? Number(tile.getAttribute("data-ox")) : 0;
+                  const oy = tile ? Number(tile.getAttribute("data-oy")) : 0;
+                  cx[i] = b.x + b.width / 2 + ox;
+                  cy[i] = b.y + b.height / 2 + oy;
+                });
+                paths.forEach((p) => {
+                  p.style.transformBox = "fill-box";
+                  p.style.transformOrigin = "center";
+                });
+                initialized = true;
+              }
+              window.addEventListener("mousemove", onMove, { passive: true });
+            } else {
+              window.removeEventListener("mousemove", onMove);
+              cancelAnimationFrame(raf);
+              raf = 0;
+              pointerInside = false;
+              mouse.x = mouse.y = -9999;
+              if (glow) glow.style.opacity = "0";
+              paths.forEach((p, i) => {
+                if (dx[i] || dy[i]) p.style.transform = "";
+              });
+              dx.fill(0);
+              dy.fill(0);
+            }
+          },
+          "(prefers-reduced-motion: no-preference) and (pointer: fine)",
+        );
       })
       .catch(() => {});
 
     return () => {
       cancelled = true;
       if (raf) cancelAnimationFrame(raf);
-      removeMove();
+      stopActivity();
     };
   }, [scale]);
 

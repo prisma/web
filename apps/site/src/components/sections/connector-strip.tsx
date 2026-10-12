@@ -39,6 +39,7 @@ export function ConnectorStrip({
     const clamp = (v: number) => Math.min(1, Math.max(0, v));
     let raf = 0;
     const tick = () => {
+      raf = 0;
       const focus = window.innerHeight * 0.6;
       // progress of the reading line through the whole strip (plus a lead-in
       // margin so the draw starts just before the strip reaches the line);
@@ -49,10 +50,18 @@ export function ConnectorStrip({
       fills.forEach((f, i) => {
         f.style.transform = `scaleY(${clamp(p * 2 - i)})`;
       });
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
   }, []);
 
   return (

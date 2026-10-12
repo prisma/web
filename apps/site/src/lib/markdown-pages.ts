@@ -85,16 +85,16 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   },
   "/postgres": {
     path: "/postgres",
-    title: "Prisma Postgres | Serverless PostgreSQL for TypeScript Apps",
+    title: "Prisma Postgres | Free Postgres database for TypeScript and AI",
     description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+      "Managed Postgres, part of Prisma's infrastructure for TypeScript and AI apps. Create a free database in seconds with npx create-db. No credit card.",
     h1: productH1(postgresContent),
     subheadline: productSubheadline(postgresContent),
     renderBody: () => renderProductMarkdown({ content: postgresContent }),
   },
   "/compute": {
     path: "/compute",
-    title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+    title: "Prisma Compute | Host TypeScript apps (Node.js, Bun or Next.js) next to Postgres",
     // The meta description, verbatim from app/compute/page.tsx.
     description:
       "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
