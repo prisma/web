@@ -1,0 +1,575 @@
+---
+title: "We closed 330 of your most-requested issues with Prisma ORM 8"
+slug: "prisma-orm-8-closes-330-most-requested-issues"
+date: "2026-10-12"
+authors:
+  - "Ankur Datta"
+metaTitle: "We closed 330 of your most-requested issues with Prisma ORM 8"
+metaDescription: "Prisma ORM 8 resolves 330 open GitHub issues carrying about 8,922 upvotes, the oldest from 2019: typed JSON, polymorphism, partial unique indexes, PostGIS, pgvector, TypeScript migrations and more."
+excerpt: "Prisma ORM 8 resolves 330 open issues from the prisma/orm repository, together carrying about 8,922 upvotes. Here are the 10 most-upvoted, with before and after, and the complete list grouped by theme."
+heroImagePath: "/prisma-orm-8-closes-330-most-requested-issues/imgs/hero.svg"
+heroImageAlt: "330 issues closed, set in large type on a light paper surface with a cyan prism wash"
+metaImagePath: "/prisma-orm-8-closes-330-most-requested-issues/imgs/meta.png"
+tags:
+  - "orm"
+  - "announcement"
+series: prisma-8
+seriesIndex: 17
+---
+
+[Prisma ORM 8](https://www.prisma.io/docs/orm) resolves 330 open issues from the prisma/orm GitHub repository. Together they carry about 8,922 upvotes, and the oldest of them has been open since 2019.
+
+Prisma 8 changed a lot at once: a pure TypeScript runtime with no Rust engine, [a data contract](https://www.prisma.io/docs/orm/contract-authoring/the-data-contract) instead of a schema plus a generated client, [TypeScript migrations](/typescript-migrations-in-prisma-next), and [an extension system](/prisma-next-call-for-extension-authors). Most of what we have written so far covers those headline changes. What has had less attention is that many of the requests you have been filing for years are answered by them.
+
+We are publishing this list because we keep meeting developers who hit one of these issues on Prisma 5, 6 or 7, worked around it, and do not know it is fixed. 
+
+_If you have ever upvoted an issue about JSON typing, polymorphism, partial unique indexes, `prisma generate` in a monorepo, or an engine binary that would not load, this post is for you._
+
+:::info[Checked against 8.0.0-rc.16]
+Prisma 8 is a release candidate and we expect it to be Generally Available later this year. Every item below was checked against 8.0.0-rc.16, released on October 7, 2026, using the reference docs in the prisma/orm repository and the published packages. Upvote counts are GitHub reactions as of October 8, 2026.
+:::
+
+Some issues are resolved because the feature now exists. Others are resolved because the part of Prisma that caused the problem, such as the engine binaries or the generated client, no longer exists.
+
+## Before we dive in
+
+_Every issue on this list started with a developer taking the time to share a problem or suggest an improvement._
+
+Many of the changes in Prisma ORM 8, from TypeScript migrations to the new contract artifact, were shaped by your feedback and discussions on GitHub.
+
+If you tried Prisma before and moved on because of one of these issues, [give Prisma 8 another try](https://www.prisma.io/docs/orm). If you're already on Prisma 7, our [upgrade guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql) will help you make the move.
+
+And if something still doesn't work the way you'd like, [join us on Discord](https://pris.ly/discord), [open a GitHub issue](https://github.com/prisma/orm/issues/new/choose), or upvote an existing one. We use those votes to help prioritize what to build next, and this list shows why your feedback matters.
+
+:::info[There's more to Prisma than the ORM]
+You can use [Prisma Postgres](https://www.prisma.io/postgres) as your database and [Prisma Compute](https://www.prisma.io/compute) to deploy your application alongside it, all on one platform. [Try both in the Prisma Console](https://console.prisma.io/).
+:::
+
+Now, let’s see the list…
+
+## The 10 most-upvoted issues we resolved
+
+### [#3219](https://github.com/prisma/orm/issues/3219) Define type of content of Json field (799 upvotes)
+
+**Before:** A `Json` field was typed as `JsonValue`. The shape of the data lived in your head and in a cast at every read site, and nothing stopped a write from storing something else.
+
+**After:** Prisma 8 adds value objects. A `type Address { ... }` block in the contract becomes a typed field, stored as `jsonb` on PostgreSQL and as an embedded document on MongoDB, and it reads back as that exact TypeScript shape. For JSON that needs runtime validation, [`@prisma/orm-extension-arktype-json`](https://www.prisma.io/docs/orm/extensions/using-extensions) stores an arktype-validated column and rejects payloads that fail the schema on decode. See [value objects in PSL](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax).
+
+```prisma
+type Address {
+  street  String
+  city    String
+  zip     String?
+  country String
+}
+
+model User {
+  id      String   @id @default(uuid())
+  email   String
+  address Address?
+}
+```
+
+### [#2789](https://github.com/prisma/orm/issues/2789) PostGIS/GIS support (669 upvotes)
+
+**Before:** A geometry column had to be declared `Unsupported("geometry")`, which made it invisible to Prisma Client. Every spatial read, write and index went through raw SQL.
+
+**After:** [`@prisma/orm-extension-postgis`](https://github.com/prisma/orm/tree/main/packages/3-extensions/postgis#readme) makes geometry a column type, `postgis.Geometry(srid)`, with GeoJSON values at runtime and seven typed operations: `distance`, `distanceSphere`, `dwithin`, `contains`, `within`, `intersects` and `intersectsBbox`. 
+
+They work as predicates in the ORM and as projections in the SQL builder, and `prisma db init` enables the PostGIS server extension before the first migration runs. Even better, all this functionality is provided [by a small extension](https://www.prisma.io/extensions/postgis). 
+
+If you have a feature you wish Prisma supported, ask your favorite agent to implement it as an extension, just like this one. 
+
+See [using extensions](https://www.prisma.io/docs/orm/extensions/using-extensions) or the [guide to build one](/prisma-next-call-for-extension-authors).
+
+```typescript
+const plan = db.sql.public.cafe
+  .select('id', 'name')
+  .select('meters', (f, fns) => fns.distanceSphere(f.location, point))
+  .orderBy((f, fns) => fns.distanceSphere(f.location, point), { direction: 'asc' })
+  .limit(10)
+  .build();
+const nearby = await db.runtime().query(plan);
+```
+
+### [#2505](https://github.com/prisma/orm/issues/2505) Support for a Union type (462 upvotes)
+
+**Before:** A feed of videos, photos and posts could not be modeled as one thing. You either kept separate models and merged the results in application code, or flattened everything into one model full of nullable columns.
+
+**After:** A base model declares `@@discriminator(type)` and each variant declares `@@base(Content, "video")`. A variant without `@@map` shares the base table; a variant with its own `@@map` gets its own table joined by primary key. Querying the base returns every variant as a union type, and `.variant()` narrows to one. Polymorphism is in the experimental tier. See [relational data modeling](https://www.prisma.io/docs/orm/data-modeling/relational-databases).
+
+```prisma
+model Content {
+  id    Int    @id @default(autoincrement())
+  title String
+  type  String
+
+  @@discriminator(type)
+}
+
+model Video {
+  videoUrl String
+  duration Int
+
+  @@base(Content, "video")
+}
+
+model Photo {
+  imageUrl String
+  caption  String?
+
+  @@base(Content, "photo")
+}
+
+model Post {
+  body String
+
+  @@base(Content, "post")
+}
+```
+
+### [#1644](https://github.com/prisma/orm/issues/1644) Support for Polymorphic Associations (373 upvotes)
+
+**Before:** A `Vote` that could belong to a `Post` or a `Comment` meant two models, `PostVote` and `CommentVote`, or two nullable foreign keys and a hand-maintained type column.
+
+**After:** Relate `Vote` to the base model. The relation is typed as the union of its variants, `.include()` returns whichever variant the row is, and `.variant()` narrows when you need one. It is the same `@@discriminator` / `@@base` mechanism as the union type above, so one feature answers both requests. See [relational data modeling](https://www.prisma.io/docs/orm/data-modeling/relational-databases).
+
+### [#4228](https://github.com/prisma/orm/issues/4228) Support distinct in count() (313 upvotes)
+
+**Before:** The `count()` method had no `distinct` option, so a paginated page of distinct rows needed raw SQL for its total.
+
+**After:** Collections have `.distinct(...fields)` and `.distinctOn(...fields)`, and since rc.5 `.aggregate()` reduces over exactly the rows the chain describes, including `distinct`, `cursor`, `take` and `skip`. A distinct count is one query. See [`distinct()`](https://www.prisma.io/docs/orm/reference/orm-client) and the [rc.5 release notes](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.5).
+
+```typescript
+const { authors } = await db.orm.public.Post
+  .distinct('authorId')
+  .aggregate((a) => ({ authors: a.count() }));
+```
+
+### [#18442](https://github.com/prisma/orm/issues/18442) Support for pg_vector (242 upvotes)
+
+**Before:** Embeddings needed `Unsupported("vector")` in the schema and raw SQL for every similarity search.
+
+**After:** [`@prisma/orm-extension-pgvector`](https://www.prisma.io/docs/orm/extensions/using-extensions) adds `pgvector.Vector(1536)` as a column type (a `number[]` at runtime, `Vector<1536>` in `contract.d.ts`), `fns.cosineDistance(f.embedding, queryVector)` in `select` and `orderBy`, and a baseline migration that runs `CREATE EXTENSION IF NOT EXISTS vector`.
+
+```typescript
+const plan = db.sql.public.document
+  .select('id', 'title')
+  .select('distance', (f, fns) => fns.cosineDistance(f.embedding, queryVector))
+  .orderBy((f, fns) => fns.cosineDistance(f.embedding, queryVector), { direction: 'asc' })
+  .limit(5)
+  .build();
+const matches = await db.runtime().query(plan);
+```
+
+### [#4688](https://github.com/prisma/orm/issues/4688) Imperative Migrations with a TypeScript DSL (214 upvotes)
+
+**Before:** Migrations were SQL files that Prisma generated. Anything the schema could not express, such as a custom index or a data backfill, was hand-written SQL appended to a generated file, and data migrations lived in separate scripts with no transaction in common.
+
+**After:** Every migration is a `migration.ts`. `prisma migration plan` renders one from the contract diff and `prisma migration new` scaffolds an empty one. Operations are typed methods such as `this.addColumn` and `this.createIndex`, `rawSql` is the escape hatch, and `this.dataTransform` runs typed queries as a data step inside the same transaction. See [how migrations work](https://www.prisma.io/docs/orm/migrations/how-migrations-work) and [editing a migration](https://www.prisma.io/docs/orm/migrations/editing-a-migration).
+
+### [#15423](https://github.com/prisma/orm/issues/15423) Named aggregations allowing multiple aggregations per field in one query (205 upvotes)
+
+**Before:** `_count` could appear once per relation, so "total posts and published posts" was two queries and a merge.
+
+**After:** Inside `.include()`, a relation branch can be filtered and reduced with `count()`, `sum()`, `avg()`, `min()` or `max()`, and `combine()` returns several named sub-views of one relation in a single query. See [`include()`](https://www.prisma.io/docs/orm/reference/orm-client)[ and ](https://www.prisma.io/docs/orm/reference/orm-client)[`combine()`](https://www.prisma.io/docs/orm/reference/orm-client).
+
+```typescript
+const users = await db.orm.public.User
+  .include('posts', (posts) =>
+    posts.combine({
+      total: posts.count(),
+      published: posts.where((p) => p.publishedAt.isNotNull()).count(),
+      recent: posts.orderBy((p) => p.createdAt.desc()).limit(3),
+    }),
+  )
+  .all();
+// users[0].posts → { total: number; published: number; recent: Post[] }
+```
+
+### [#3387](https://github.com/prisma/orm/issues/3387) Support @unique on nullable fields for databases that support it (199 upvotes)
+
+**Before:** `@unique` on a nullable column was all or nothing. PostgreSQL can enforce uniqueness only among non-null rows with a partial unique index, but the schema had no way to say so, so the index lived outside Prisma and fought drift detection.
+
+**After:** `@@index` takes `where:` and `unique:`, so a partial unique index is declared in the contract and planned like any other change. `contract infer` adopts partial indexes that already exist. See [PSL syntax](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax).
+
+```prisma
+model User {
+  id    Int     @id @default(autoincrement())
+  email String?
+
+  @@index([email], where: "email IS NOT NULL", unique: true, name: "users_email_unique")
+}
+```
+
+### [#4954](https://github.com/prisma/orm/issues/4954) Allow arbitrary enum values (179 upvotes)
+
+**Before:** Enum members had to be valid identifiers, so values like `1st` or `"Apt."` needed `@map`, and nothing exposed the mapped value at runtime.
+
+**After:** Enum members are written `Name = "stored value"` with a declared codec, stored as a plain column with a generated `CHECK` constraint. The TypeScript type is the union of stored values, `db.enums` exposes the members at runtime, and `@noCheck(membership)` keeps the type while dropping database enforcement. See [enums in PSL](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax).
+
+```prisma
+enum Place {
+  @@type("pg/text@1")
+  First  = "1st"
+  Second = "2nd"
+  Third  = "3rd"
+}
+```
+
+## The complete list of issues resolved
+
+The remaining 320 issues, grouped by theme and ordered by upvotes. Each entry links to the GitHub issue and, where it helps, to the docs. That brings the total to 330 distinct issues.
+
+### Querying and aggregation (51)
+
+- **[#4246](https://github.com/prisma/orm/issues/4246) Add option to skip unnecessary SELECT after create() (165 upvotes):** A SQL builder `insert()` run through `execute()` resolves `{ affectedRows }` with no read-back, `.returning(...)` makes a single `INSERT ... RETURNING`, and the ORM has `createAndCount()`. See [the SQL query builder](https://www.prisma.io/docs/orm/reference/sql-query-builder).
+- **[#13517](https://github.com/prisma/orm/issues/13517) SQL joins without relations/foreign keys/raw query (110 upvotes):** The SQL builder does explicit, typed `innerJoin(...)` on any predicate, with aliases and typed projections, no relation or foreign key required. See [advanced queries](https://www.prisma.io/docs/orm/fundamentals/advanced-queries).
+- **[#3197](https://github.com/prisma/orm/issues/3197) Compound unique with a nullable field should allow null (104 upvotes):** There is no generated compound-unique input type; a lookup is a predicate, so `.where((t) => and(t.name.eq(x), t.label.isNull())).first()` treats a null member as an ordinary condition.
+- **[#15594](https://github.com/prisma/orm/issues/15594) Support query cancellation with AbortController / AbortSignal (101 upvotes):** `runtime.execute(plan, { signal })` takes a per-query `AbortSignal`, and cancellation surfaces as `RUNTIME.ABORTED` with the phase it hit. See [transactions and runtime](https://www.prisma.io/docs/orm/reference/transactions-and-runtime).
+- **[#5761](https://github.com/prisma/orm/issues/5761) Access to raw sql functions using Prisma APIs. (94 upvotes):** `fns.raw`...`.returns(codec)` embeds a native SQL function inside a typed query, decoded through the named codec. See [raw queries](https://www.prisma.io/docs/orm/reference/raw-queries).
+- **[#6252](https://github.com/prisma/orm/issues/6252) Select none in update() (92 upvotes):** A SQL builder `update()` run through `execute()` resolves `{ affectedRows }` with no read-back, and the ORM `.select('id').update(...)` narrows what comes back.
+- **[#6570](https://github.com/prisma/orm/issues/6570) Filtered relation count aggregate (62 upvotes):** An `include` branch composes `.where(...)` and then a reducer such as `count()`, so the filtered count lands as a typed field on each parent. See [`include()`](https://www.prisma.io/docs/orm/reference/orm-client).
+- **[#3796](https://github.com/prisma/orm/issues/3796) More elegant select API by listing fields as array (61 upvotes):** `.select(...)` takes field names as variadic strings, and nested selection composes on `include` branches.
+- **[#10866](https://github.com/prisma/orm/issues/10866) Select _avg from relation and also return the parent entity (49 upvotes):** An `include` reducer returns the parent row with the relation replaced by its `avg()`, and `count`, `sum`, `min`, `max` and `combine()` work the same way.
+- **[#19159](https://github.com/prisma/orm/issues/19159) Improve cursor pagination to tolerate hard deletes and avoid looking up the row at the cursor (43 upvotes):** `.orderBy(...).cursor({ field: lastValue })` is a keyset comparison on the sort columns and never looks up the cursor row, so a deleted cursor row is fine. See [reading data](https://www.prisma.io/docs/orm/fundamentals/reading-data).
+- **[#5683](https://github.com/prisma/orm/issues/5683) Support Unsupported Types inside Prisma Client (not just Prisma Migrate) (41 upvotes):** Extension-typed scalars such as `pgvector.Vector` and `postgis.Geometry` are first-class columns with typed reads and operators, and you can author your own codecs. See [using extensions](https://www.prisma.io/docs/orm/extensions/using-extensions).
+- **[#22631](https://github.com/prisma/orm/issues/22631) Support aggregations _sum on nested relations (39 upvotes):** An `include` reducer returns the per-parent `sum()` in the same query; `count`, `avg`, `min`, `max` and the lossless bigint variants work the same way.
+- **[#5617](https://github.com/prisma/orm/issues/5617) support subqueries (37 upvotes):** The example in the issue, the latest open start per todo, is a filtered `include` reducer in one query, and `fns.raw` covers other scalar subselects.
+- **[#13596](https://github.com/prisma/orm/issues/13596) Return affected rows from deleteMany() operation (33 upvotes):** A SQL builder `.delete().where(...).returning(...)` yields the removed rows in one statement, and a non-returning delete resolves `{ affectedRows }`. See [the SQL query builder](https://www.prisma.io/docs/orm/reference/sql-query-builder).
+- **[#12279](https://github.com/prisma/orm/issues/12279) raw SQL expressions (31 upvotes):** `fns.raw` fragments typed by codec work inside `.select(...)` and `.where(...)`, and `db.raw.sql` runs a whole statement with a declared row shape. See [raw queries](https://www.prisma.io/docs/orm/reference/raw-queries).
+- **[#1984](https://github.com/prisma/orm/issues/1984) Optimize SQL queries for "fluent API" (28 upvotes):** The fluent API is gone; relation loading is `.include()`, which the Postgres adapter lowers to one `LATERAL` + `json_agg` statement instead of one query per traversal.
+- **[#26546](https://github.com/prisma/orm/issues/26546) First class Vector support (28 upvotes):** `pgvector.Vector(n)` is a column type with `cosineDistance` on the field proxy and in the SQL builder, and PostGIS `distanceSphere` covers the geo part of the request. See [using extensions](https://www.prisma.io/docs/orm/extensions/using-extensions).
+- **[#7181](https://github.com/prisma/orm/issues/7181) Concat 2 columns while searching (24 upvotes):** A `fns.raw` fragment typed `pg/bool@1` is a valid `where()` predicate, so `CONCAT(...) ILIKE ...` runs inside the typed builder. See [raw queries](https://www.prisma.io/docs/orm/reference/raw-queries).
+- **[#24241](https://github.com/prisma/orm/issues/24241) Runtime error that occurs in findUnique() when unique constraint is composed of one field (24 upvotes):** There is no generated `WhereUniqueInput` or compound-unique naming; a lookup is `.first({ pk })` or `.where({ field }).first()`, typed from the contract.
+- **[#23564](https://github.com/prisma/orm/issues/23564) Support cursor with relationLoadStrategy: join (23 upvotes):** `.cursor()` and `.include()` are methods on the same immutable collection, and includes are single-statement `LATERAL` joins, so cursor pagination never falls back to N+1.
+- **[#13024](https://github.com/prisma/orm/issues/13024) Using RANK() OVER(...) (21 upvotes):** Window functions belong to the SQL builder lane: a typed `fns.raw` projection with `.returns(codec)` sits next to model fields. See [the SQL query builder](https://www.prisma.io/docs/orm/reference/sql-query-builder).
+- **[#5044](https://github.com/prisma/orm/issues/5044) Pass falsy values to disconnect a relation (20 upvotes):** ORM writes take foreign-key scalars directly, so `update({ personalTeamId: null })` clears an optional relation with no checked/unchecked split and no `P2017`.
+- **[#29407](https://github.com/prisma/orm/issues/29407) adapter-pg: PgTransaction.performIO called concurrently on single pg Client during update with multiple include relations, triggering deprecation warning (20 upvotes):** The Prisma 7 interpreter fan-out is gone: includes lower to one `LATERAL` statement and the Postgres driver serializes queries per pinned client ([#29839](https://github.com/prisma/orm/pull/29839)).
+- **[#13017](https://github.com/prisma/orm/issues/13017) SQL Query Builder (19 upvotes):** A typed SQL builder lane, `db.sql.<ns>.<table>`, ships beside the ORM with explicit joins, aliases, computed projections, window functions and `RETURNING`. See [the SQL query builder](https://www.prisma.io/docs/orm/reference/sql-query-builder).
+- **[#19030](https://github.com/prisma/orm/issues/19030) Add support for SQL functions in filter conditions (19 upvotes):** SQL builder `where()` callbacks receive `fns`, and a `fns.raw` fragment with `.returns('pg/bool@1')` expresses any SQL function such as `TRIM`. See [raw queries](https://www.prisma.io/docs/orm/reference/raw-queries).
+- **[#2652](https://github.com/prisma/orm/issues/2652) Get column name from field name (for @map) + referenced table and column name from relation field (via @relation and then field) (17 upvotes):** `db.sql.<ns>.<table>` is a typed builder over the physical table, and `contract.json` carries every field's column name under `storage`. See [the contract artifact](https://www.prisma.io/docs/orm/contract-authoring/the-contract-artifact).
+- **[#27047](https://github.com/prisma/orm/issues/27047) Expected object, got object error with queryCompiler selecting relations (17 upvotes):** Fixed in 6.9, and Prisma 8 has no `queryCompiler` preview: nested includes lower to one `LATERAL` + `json_agg` query.
+- **[#13004](https://github.com/prisma/orm/issues/13004) @Transactions decorator, Expose and accept a transaction object (16 upvotes):** `db.transaction(async (tx) => ...)` hands you a `tx` context with the same `orm` and `sql` surfaces, which you can pass to any helper. See [transactions](https://www.prisma.io/docs/orm/fundamentals/transactions).
+- **[#14978](https://github.com/prisma/orm/issues/14978) Type error in IN clause in postgreSQL using $queryRaw when upgrading to v4 (13 upvotes):** The cast in 4.x was intentional; in Prisma 8 the ORM `.in([...])` and the SQL builder are typed by the column codec, and the raw lane binds parameters through declared codecs.
+- **[#21648](https://github.com/prisma/orm/issues/21648) Postgres: too many bind variables in prepared statement on findMany() (13 upvotes):** Relations load via `LATERAL` + `json_agg` in one query; parent ids are never expanded into an `IN` list, so the 32,767 bind-variable cap is never reached.
+- **[#8417](https://github.com/prisma/orm/issues/8417) Being able to do a create() query for Unsupported types (11 upvotes):** Extension-typed scalars are first-class typed fields you pass to `create()`; there is no `Unsupported()` escape hatch to work around.
+- **[#16979](https://github.com/prisma/orm/issues/16979) Allow use of multiple compound ids in deleteMany() or findMany() (11 upvotes):** Writes are predicate-driven, so `.where(or(and(...), and(...))).delete()` runs one `DELETE` over every compound key, and `.all()` with the same predicate reads them.
+- **[#20721](https://github.com/prisma/orm/issues/20721) Unclear error: Cannot select both '$scalars: true' and a specific scalar field (11 upvotes):** There is no engine-side query validation; `include()` takes only relation names typed from `contract.d.ts`, so an unknown name is a TypeScript error.
+- **[#15263](https://github.com/prisma/orm/issues/15263) $queryRaw's unknown return type is too broad (7 upvotes):** `db.raw.sql` declares a codec per column in its row spec, so raw rows come back typed instead of `unknown`. See [raw queries](https://www.prisma.io/docs/orm/reference/raw-queries).
+- **[#15708](https://github.com/prisma/orm/issues/15708) Nested Queries: Filter fields of 1-to-1 relations with where (4 upvotes):** `include('profilePicture', (p) => p.where(...))` works on to-one relations, and a refined to-one include is typed nullable because the refinement can exclude the row.
+- **[#8560](https://github.com/prisma/orm/issues/8560) Cursor-based pagination not working as expected (only works if cursor actually exists) (3 upvotes):** `cursor({ field: value })` is value-based keyset pagination, so the cursor row does not need to exist.
+- **[#17276](https://github.com/prisma/orm/issues/17276) groupBy() typings seem to be broken when inlined into a $transaction (3 upvotes):** There is no array-form `$transaction`; `groupBy` is a fluent chain typed from the contract and runs inside `db.transaction` like any other call.
+- **[#17297](https://github.com/prisma/orm/issues/17297) Prisma.GroupByArgs not matching the arguments of the groupBy method (3 upvotes):** There is no `Prisma.XGroupByArgs`; grouping is a fluent chain, and a reusable predicate is typed with `ShorthandWhereFilter`.
+- **[#14918](https://github.com/prisma/orm/issues/14918) Triggers not working properly with Prisma: [ERROR] Query '' is required to return data, but found no record(s). (2 upvotes):** `create` runs `INSERT ... RETURNING` and hands back the inserted row, so a trigger that rewrites the key does not break a follow-up `SELECT` by the original id.
+- **[#15710](https://github.com/prisma/orm/issues/15710) Prisma is not using LIMIT for cursor based pagination. (2 upvotes):** Keyset pagination is `.orderBy(...).cursor({ field: lastValue }).limit(n)`: a value predicate plus `LIMIT`, with no `order_cmp` subquery.
+- **[#18153](https://github.com/prisma/orm/issues/18153) Setting to Change Cursor Behavior when Cursor Record Doesn't Exist (2 upvotes):** `cursor({ field: value })` is value-based, so a missing cursor record simply yields the next rows after that value.
+- **[#23666](https://github.com/prisma/orm/issues/23666) Update relation only if exists (2 upvotes):** Updates are predicate-based and return the affected rows; a predicate that matches nothing updates nothing and does not throw.
+- **[#15205](https://github.com/prisma/orm/issues/15205) Raw bulk insert failing (1 upvotes):** Bulk insert with returned rows is first class in the SQL builder: `insert()` takes an array and `returning()` picks the columns.
+- **[#23737](https://github.com/prisma/orm/issues/23737) upsert() for single item using primary key returns row count always as 0 even when update happens (1 upvotes):** ORM `upsert` returns the row, typed by the create branch, and `select().upsert()` narrows it; no code path answers with a count.
+- **[#10117](https://github.com/prisma/orm/issues/10117) Incorrect error message on type mismatch in filter (0 upvotes):** Filter type mismatches are compile-time errors on typed field proxies; the engine runtime validator and its "Did you mean" messages are gone.
+- **[#11454](https://github.com/prisma/orm/issues/11454) $queryRaw template not working with Jest (0 upvotes):** No generated client exists for Jest to load twice, so the `Prisma.sql` instanceof check across module copies cannot fail; raw SQL is a tagged template on the `db` instance.
+- **[#11859](https://github.com/prisma/orm/issues/11859) Query wants a string when given an int, wants an int when given a string (0 upvotes):** `contract.json` and `contract.d.ts` are emitted together and predicates are typed from that one contract, so a mistyped literal is a compile error, not contradictory engine messages.
+- **[#12063](https://github.com/prisma/orm/issues/12063) An undefined value inside OR block generates different SQL when wraps with an additional AND (0 upvotes):** Filter objects with `undefined` keys no longer exist; `or`, `and` and `not` take typed lambda predicates, so an undefined branch fails to compile instead of changing the SQL.
+- **[#18339](https://github.com/prisma/orm/issues/18339) Same query can type-check/validate or not depending on the presence of an unrelated model (0 upvotes):** There are no shared generated `<Model>RelationFilter` input types; relation predicates (`.some`, `.none`, `.every`) are lambdas typed per model from the contract.
+- **[#20356](https://github.com/prisma/orm/issues/20356) update() -> where: Type 'Object' is not assignable to type 'UserWhereUniqueInput' (0 upvotes):** `update` takes any predicate through `.where(...).update({...})`; there is no `WhereUniqueInput` type and no single-row restriction.
+- **[#29744](https://github.com/prisma/orm/issues/29744) Nested upsert generates WHERE clause referring to column from different table (0 upvotes):** The bad `WHERE` came from the Rust query compiler; Prisma 8 has no query compiler and its `upsert` rejects nested relation callbacks (rc.9), so this shape cannot occur.
+
+### Schema and data modeling (23)
+
+- **[#12735](https://github.com/prisma/orm/issues/12735) Support for row-level security (RLS) (166 upvotes):** Row-level security is authored in the contract with `@@rls` and `policy_select` / `policy_insert` / `policy_update` / `policy_delete` blocks, planned by `migration plan` and checked by `db verify`. See the [Supabase example](https://github.com/prisma/orm/tree/main/examples/supabase).
+- **[#10243](https://github.com/prisma/orm/issues/10243) Use better column names in join table for implicit m-n relations (51 upvotes):** Implicit many-to-many is rejected; you declare the join model yourself with any table and column names and the ORM traverses it. See [relations and joins](https://www.prisma.io/docs/orm/fundamentals/relations-and-joins).
+- **[#2504](https://github.com/prisma/orm/issues/2504) Add support for Indexes on Expressions (48 upvotes):** `@@index` accepts `expression:`, `where:`, `unique:`, `type:` and `name:`, and `contract infer` captures existing expression, partial and unique indexes. See [PSL syntax](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax).
+- **[#4301](https://github.com/prisma/orm/issues/4301) Simplify requirements for relation tables (35 upvotes):** Implicit many-to-many and its `A`/`B` relation-table convention are gone; you declare the join model with any names and the ORM traverses it.
+- **[#17319](https://github.com/prisma/orm/issues/17319) Add one-of-two not null constraint (via check constraint) (34 upvotes):** `@@check(expression: "...", name: "...")` declares the constraint in the contract and the planner migrates it; `contract infer` adopts existing ones under `map:`.
+- **[#13417](https://github.com/prisma/orm/issues/13417) Partial unique indexes are being recreated on every migration with prisma migrate (29 upvotes):** `@@index([...], unique: true, where: "...", name: "...")` is first class and wire-named indexes compare by name, so Postgres reprinting the predicate never reads as drift.
+- **[#13719](https://github.com/prisma/orm/issues/13719) Add ignore attribute on an index (20 upvotes):** Expression, partial and custom-access-method indexes are authorable and adopted by `contract infer`; `db verify` tolerates extras by default, and `@@control` keeps unowned tables out of DDL.
+- **[#7209](https://github.com/prisma/orm/issues/7209) Prisma Generator Attributes Concept [WIP] (17 upvotes):** There are no generators and no DMMF; extension packs contribute namespaced constructors and attributes, and the contract IR is the shared protocol.
+- **[#8424](https://github.com/prisma/orm/issues/8424) Migration doesn't work when adding new value to enum and using new value as default, New enum values must be committed before they can be used. (16 upvotes):** Contract enums are text columns with a generated `CHECK` constraint, so adding a value and defaulting to it is one ordinary transactional migration.
+- **[#15731](https://github.com/prisma/orm/issues/15731) A migration that drops an enum value and creates a new table with the same enum will fail (14 upvotes):** Enums are text plus `CHECK`, so dropping a value is a constraint change with no `_new`/`_old` type rename; native Postgres enums are opt-in and user-managed.
+- **[#20663](https://github.com/prisma/orm/issues/20663) BTREE index for Json sub-property paths (14 upvotes):** `@@index(expression: "...", name: "...")` declares an expression index on a JSON path in the contract, planned and introspected at full fidelity.
+- **[#2117](https://github.com/prisma/orm/issues/2117) Make shortId available in @default (12 upvotes):** `nanoid()` is a mutation-default generator usable as `@default(nanoid())` on a `String` column.
+- **[#7081](https://github.com/prisma/orm/issues/7081) Specify the Typescript type for a column, specifically a String column (12 upvotes):** Enums are text columns with a generated `CHECK`, and `@noCheck(membership)` keeps the TypeScript union while dropping database enforcement, so values change without a migration.
+- **[#16275](https://github.com/prisma/orm/issues/16275) After a migration that added a GIN, all subsequent migrations drop and recreate this index (4 upvotes):** `@@index` takes `type:` (`gin` is a registered access method) and `name:`, identity is by name, and `migration plan` diffs contract snapshots offline.
+- **[#29289](https://github.com/prisma/orm/issues/29289) generates migration drop index for manually-created partial indexes (3 upvotes):** Partial indexes are declared with `@@index([...], where: ...)` and `contract infer` adopts existing ones, so a plan never drops them.
+- **[#1370](https://github.com/prisma/orm/issues/1370) Successful introspection removes comments from schema.prisma (1 upvotes):** `contract.prisma` is the source of truth and `contract infer` is a one-shot bootstrap, so nothing ever rewrites your comments.
+- **[#29566](https://github.com/prisma/orm/issues/29566) [PostGIS] Using geometry type for column causes schema validation error (1 upvotes):** PostGIS is a first-class extension, so `postgis.Geometry` column types come from the registered pack instead of tripping schema validation. See [using extensions](https://www.prisma.io/docs/orm/extensions/using-extensions).
+- **[#3449](https://github.com/prisma/orm/issues/3449) Better error message when Enum Error Due To "Connector" (0 upvotes):** The Rust validator message is gone; contract enums are text plus `CHECK` on Postgres, and contract diagnostics are dotted codes with a why and a fix.
+- **[#8320](https://github.com/prisma/orm/issues/8320) Error: P1012 Introspection failed as your current Prisma schema file is invalid when space is added after \{ (0 upvotes):** `contract infer` writes a fresh `contract.prisma` instead of validating and merging into an existing file, and the Rust parser is gone.
+- **[#9386](https://github.com/prisma/orm/issues/9386) Losing Schema Attribute @default(cuid()) When Pulling Schema (0 upvotes):** Prisma-side defaults are not in the database and Prisma 8 never re-pulls; the contract is the source of truth and `infer` runs once.
+- **[#11480](https://github.com/prisma/orm/issues/11480) prisma format adds unnecessary relation on (invalid) 1:1 relationships (0 upvotes):** The engine formatter that inserted back-relation fields is gone; you declare the relation on the owning side and the framework derives the back-reference.
+- **[#14972](https://github.com/prisma/orm/issues/14972) Improve error message on missing enum member (0 upvotes):** Enum fields are typed as a TypeScript union from the contract, so an unknown member is a compile error at the call site.
+- **[#29545](https://github.com/prisma/orm/issues/29545) disable "missing index" warning on VSCode (0 upvotes):** `relationMode = "prisma"` and its missing-index lint do not exist; Postgres relations always use real foreign keys.
+
+### Migrations (40)
+
+- **[#11810](https://github.com/prisma/orm/issues/11810) Prisma Migrate: Allow data transformations through code (in addition to SQL) (73 upvotes):** Migrations are TypeScript, and `this.dataTransform(contract, name, { check, run })` runs typed query plans as a data step next to the schema operations. See [editing a migration](https://www.prisma.io/docs/orm/migrations/editing-a-migration).
+- **[#20628](https://github.com/prisma/orm/issues/20628) JS support for migrations (61 upvotes):** Every migration is a TypeScript `migration.ts`; `dataTransform` runs typed query plans and `rawSql` runs arbitrary SQL. See [how migrations work](https://www.prisma.io/docs/orm/migrations/how-migrations-work).
+- **[#19513](https://github.com/prisma/orm/issues/19513) Adding JS execution before and after migrations to allow for easier data migrations (59 upvotes):** `migration.ts` is TypeScript, so `dataTransform` and `rawSql` steps sit before or after DDL in the same operations list and run in the same transaction on Postgres.
+- **[#11184](https://github.com/prisma/orm/issues/11184) Running prisma migrate dev --create-only actually applies previous (non-deployed) migrations (49 upvotes):** `migration plan` only writes a migration package on disk; applying is the separate `db migrate` step, so planning never touches earlier pending migrations. See [generating a migration](https://www.prisma.io/docs/orm/migrations/generating-a-migration).
+- **[#6635](https://github.com/prisma/orm/issues/6635) Dry run for db push (43 upvotes):** `db update` (the `db push` equivalent) has `-dry-run`, which prints the plan without executing, and `-json` exposes each operation's class. See [`db update`](https://www.prisma.io/docs/cli/db-update).
+- **[#12463](https://github.com/prisma/orm/issues/12463) Environment dependent seeding (41 upvotes):** There is no seed command; seeding is a TypeScript script you own, so per-environment branching is ordinary code.
+- **[#15295](https://github.com/prisma/orm/issues/15295) Migration with transaction fails without good error message (37 upvotes):** `db migrate` runs the whole run in one native transaction and reports structured `MIGRATION.*` errors with a why and a fix.
+- **[#13235](https://github.com/prisma/orm/issues/13235) Support seeding in apps with missing/shared package.json (e.g. NX) (29 upvotes):** There is no `package.json` `prisma.seed` hook; seeding is any script you invoke, so NX layouts without a per-app `package.json` are unaffected.
+- **[#8080](https://github.com/prisma/orm/issues/8080) Add an option to add transaction (BEGIN and COMMIT) around migrations when generating them for PostgreSQL (22 upvotes):** One `db migrate` run is one Postgres transaction: a single `BEGIN`, every pending migration, one `COMMIT`, and `ROLLBACK` on any failure. See [applying a migration](https://www.prisma.io/docs/orm/migrations/applying-a-migration).
+- **[#19100](https://github.com/prisma/orm/issues/19100) Drift detected: Your database schema is not in sync with your migration history - every migration on Supabase (22 upvotes):** There is no shadow database and no reset; `db verify` tolerates extras unless `-strict`, the Supabase pack marks platform objects external, and `@@control` keeps unmanaged objects out of DDL.
+- **[#17744](https://github.com/prisma/orm/issues/17744) prisma migrate resolve --rolled-back ... should be optional for fixing a failed migration that should be rerun (21 upvotes):** A failed `db migrate` run rolls back as one transaction with the marker untouched; fix the package, self-emit and re-run. There is no resolve step. See [rollbacks and recovery](https://www.prisma.io/docs/orm/migrations/rollbacks-and-recovery).
+- **[#11194](https://github.com/prisma/orm/issues/11194) Data migration (20 upvotes):** `migration.ts` carries `this.dataTransform(...)`, TypeScript data migrations that run in the same transaction as the DDL.
+- **[#6206](https://github.com/prisma/orm/issues/6206) Add option to generate empty migration files even when changes are detected (19 upvotes):** `prisma migration new --name` renders an empty migration package you fill by hand, including `rawSql` operations, without diffing anything. See [`migration new`](https://www.prisma.io/docs/cli/migration-new).
+- **[#25889](https://github.com/prisma/orm/issues/25889) RFC: prisma migrate commit (19 upvotes):** `db update` is the push-style dev loop, and the first `migration plan` chains from the `db` ref and emits baseline plus delta, with no database reset. See [the migration graph](https://www.prisma.io/docs/orm/migrations/the-migration-graph).
+- **[#6267](https://github.com/prisma/orm/issues/6267) Add option to migrate up to a specific version (15 upvotes):** `db migrate --to <ref-or-hash>` navigates the database to a chosen graph node, and `migration status --to` previews the path. See [applying a migration](https://www.prisma.io/docs/orm/migrations/applying-a-migration).
+- **[#6579](https://github.com/prisma/orm/issues/6579) migrate dev --create-only with empty schema but existing database schema detects drift and warns about deleting all data (14 upvotes):** `migration plan` is offline (no shadow database, never resets anything), and applying destructive changes requires typing the database name or `-confirm`.
+- **[#10050](https://github.com/prisma/orm/issues/10050) A system to modify data according to the changed schema after each migration (data migrations) (14 upvotes):** Every migration is a TypeScript `migration.ts`, and the planner leaves `dataTransform(...)` slots you fill with typed queries, applied by `db migrate`.
+- **[#18214](https://github.com/prisma/orm/issues/18214) Installing extension pg_cron in shadow db migration fails (11 upvotes):** There is no shadow database; `migration plan` diffs contract snapshots offline, an extension install is an `installExtension` operation, and `@@control` keeps foreign objects out of DDL.
+- **[#17558](https://github.com/prisma/orm/issues/17558) prisma migrate resolve --applied not working on new project, migration ... could not be found. when using PowerShell on Windows (9 upvotes):** There is no `migrate resolve`; an existing database is adopted with `contract infer` plus `db sign` and packages are framework-rendered. SQL Server, the reporter's database, is not yet a Prisma 8 target.
+- **[#9114](https://github.com/prisma/orm/issues/9114) Too EASY to DELETE ALL database (8 upvotes):** A destructive `db update` is applied only after you type the database name interactively or pass `-confirm <database>`; `-yes` never grants consent, and there is no `migrate reset`.
+- **[#10575](https://github.com/prisma/orm/issues/10575) Provide better error message when migrate is unable to find shadow database in Supabase (8 upvotes):** There is no shadow database at all; `migration plan` diffs contract snapshots offline and `db update` diffs against the live database directly.
+- **[#14762](https://github.com/prisma/orm/issues/14762) migrate resolve: The migration could not be found (7 upvotes):** There is no `migrate resolve` and no hand-placed `migration.sql`; packages are rendered by the planner and an existing database is adopted with `contract infer` plus `db sign`. See [`contract infer`](https://www.prisma.io/docs/cli/contract-infer).
+- **[#27201](https://github.com/prisma/orm/issues/27201) npx prisma migrate reset removes terminal cursor (4 upvotes):** There is no `migrate reset` and no built-in seed runner, so the path that hid the terminal cursor is gone.
+- **[#8940](https://github.com/prisma/orm/issues/8940) Dummy foreign keys changes for every generated migration sql (3 upvotes):** `migration plan` diffs two contract snapshots deterministically, and implicit many-to-many tables do not exist because a join model is required.
+- **[#24541](https://github.com/prisma/orm/issues/24541) prisma migrate dev fails with Error: P1017 (prisma > 5.9.1) (3 upvotes):** There is no schema engine binary and no shadow database; `db update` diffs the live database through the pg driver and `migration plan` diffs contract snapshots offline.
+- **[#29062](https://github.com/prisma/orm/issues/29062) Prisma migrate diff flaky Error in Schema engine (3 upvotes):** There is no schema engine child process; `migration plan` is an offline TypeScript diff, and `db migrate --show` previews the path offline too.
+- **[#23033](https://github.com/prisma/orm/issues/23033) After adding new models to my schema, the migration SQL attempted to update a field on table before creating the table (1 upvotes):** The Rust migration engine ordering bug is gone; enums are text plus a `CHECK` constraint with no `ALTER TYPE` rewrite, and plans are reviewed before they run.
+- **[#27329](https://github.com/prisma/orm/issues/27329) prisma db execute does not load schema from package.json (1 upvotes):** `prisma db execute` and the `package.json` schema key do not exist; the CLI reads `prisma.config.ts`, and ad hoc SQL goes through `db.raw.sql`.
+- **[#27403](https://github.com/prisma/orm/issues/27403) Prisma Migrate fails when using @prisma/adapter-pg through prisma.config.ts (1 upvotes):** Migrations run through Prisma 8's own node-postgres control driver with no schema engine or adapter describer, so the column-type deserialization failure has no code path.
+- **[#29452](https://github.com/prisma/orm/issues/29452) crash in (1 upvotes):** There is no schema engine to panic; `contract infer` is TypeScript over node-postgres and fails with a structured diagnostic instead.
+- **[#29635](https://github.com/prisma/orm/issues/29635) Schema engine panics introspecting PostgreSQL 18: NOT NULL constraints (contype 'n') fail constraint_type parsing (1 upvotes):** There is no Rust schema engine or WASM describer; `contract infer` and `db schema` are TypeScript over node-postgres, so this panic path does not exist.
+- **[#7108](https://github.com/prisma/orm/issues/7108) Undeletable migration files during development causes problems when wanting to fetch upstream changes (0 upvotes):** Nothing writes migration files on a branch switch; `db update` writes no migration directory and `migration plan` is an explicit command.
+- **[#14950](https://github.com/prisma/orm/issues/14950) prisma migrate diff can not determine connector -> misleading missing migration_lock.toml error when given a non existing path for the migrations directory (0 upvotes):** `migrate diff` and `migration_lock.toml` do not exist; diffs come from `migration plan --from` and `db migrate --show --from --to` over a content-hashed migration graph.
+- **[#15881](https://github.com/prisma/orm/issues/15881) Reproduce potential Wasm bundling issue on prisma migrate deploy (0 upvotes):** The CLI ships no WASM modules; migrations run through `@prisma/cli-engine` in TypeScript.
+- **[#20500](https://github.com/prisma/orm/issues/20500) Error: Invalid string length, COPY ... FROM stdin; errors for bulk input (0 upvotes):** `prisma db execute` and the schema-engine stdin bridge do not exist; bulk SQL streams through `psql`, and schema-affecting SQL lives in a `rawSql` migration operation.
+- **[#22668](https://github.com/prisma/orm/issues/22668) Prisma is misinterpreting migration instructions (0 upvotes):** There is no shadow-database drift detection and no `migrate resolve`; a database is adopted with `contract infer` plus `db sign`, and drift is checked against a content-hashed marker by `db verify`.
+- **[#27227](https://github.com/prisma/orm/issues/27227) Migration failed, no detailed error is shown (0 upvotes):** A failed apply returns a structured error with `code`, `why`, `fix` and `nextActions`, and rolls back in one transaction; no reset-the-database prompt hides the cause.
+- **[#28756](https://github.com/prisma/orm/issues/28756) Schema Engine Error in Prisma 7.0 (0 upvotes):** There is no schema engine and no shadow database; `migration plan` diffs contracts offline and `db migrate` applies through the pg driver.
+- **[#29600](https://github.com/prisma/orm/issues/29600) Prisma migrate deploy fails with P1011 on macOS but works on Linux (0 upvotes):** There is no Rust schema engine; migrations run through node-postgres, so the macOS Secure Transport TLS 1.3 failure cannot occur.
+- **[#30198](https://github.com/prisma/orm/issues/30198) prisma migrate deploy exits 0 without applying migrations when schema.prisma contains invalid UTF-8 (0 upvotes):** The CLI parses the contract in TypeScript and fails with a structured error and a non-zero exit; `db migrate` reads emitted `contract.json` only.
+
+### Types, generated code and tooling (79)
+
+- **[#18628](https://github.com/prisma/orm/issues/18628) Ability to extend PrismaClient class w/ Client Extensions before instantiation (72 upvotes):** There is no `PrismaClient` class and no `$extends`; `db` is a value returned by the `postgres()` factory with a middleware array, so NestJS wraps it as an ordinary provider. See [how middleware works](https://www.prisma.io/docs/orm/middleware/how-middleware-works).
+- **[#28581](https://github.com/prisma/orm/issues/28581) [Prisma 7.0.0] TypeScript TS2742 errors with pnpm monorepo - cannot resolve @prisma/client-runtime-utils types (68 upvotes):** There is no generated client; `prisma contract emit` writes `contract.d.ts` next to the contract source and your code imports `Contract` from it, so nothing resolves through `.pnpm`. See [the contract artifact](https://www.prisma.io/docs/orm/contract-authoring/the-contract-artifact).
+- **[#5233](https://github.com/prisma/orm/issues/5233) upsert() where is defined as number | undefined but does not allow undefined to not select anything (55 upvotes):** `upsert({ create, update })` is typed by the create branch and keyed on conflict columns, not a `where` object, so the `where: { id: undefined }` trap does not exist.
+- **[#12504](https://github.com/prisma/orm/issues/12504) Importing enum in browsers results in Error resolving module specifier “.prisma/client/index-browser”. (46 upvotes):** There is no generated client, no `.prisma/client` and no `index-browser` entry; enum members are string unions in the emitted `contract.d.ts`, imported type-only.
+- **[#9816](https://github.com/prisma/orm/issues/9816) Add the opportunity to specify a prefix/postfix for generated prisma models (38 upvotes):** There are no bare generated model types; everything lives under the `Models` namespace from `contract.d.ts`, so persistence types cannot collide with app types. See [the ORM client reference](https://www.prisma.io/docs/orm/reference/orm-client).
+- **[#3390](https://github.com/prisma/orm/issues/3390) 1st vs. repeated run experience of prisma generate (33 upvotes):** `prisma generate` and its post-run banner no longer exist.
+- **[#20738](https://github.com/prisma/orm/issues/20738) Support extended Prisma Clients on TransactionClient type (31 upvotes):** There are no client extensions; `tx` carries the same `orm` and `sql` surfaces as `db` and middleware applies to both, so no extended-versus-transaction type split exists.
+- **[#15614](https://github.com/prisma/orm/issues/15614) __dirname is not defined when generating PrismaClient to custom location, w/ SvelteKit (30 upvotes):** The runtime is pure TypeScript ESM with no generated client and no engine path lookup via `__dirname`; types come from the colocated `contract.d.ts`.
+- **[#5413](https://github.com/prisma/orm/issues/5413) Conditional Generators (29 upvotes):** `generators` do not exist; `contract emit` is the single artifact step, run by the CLI, a prebuild script or the Vite plugin.
+- **[#17162](https://github.com/prisma/orm/issues/17162) generate output relative to node_modules/@prisma/client (28 upvotes):** There is no `prisma generate`; each contract space emits `contract.json` and `contract.d.ts` beside its source, and several contract spaces per monorepo are first class.
+- **[#20627](https://github.com/prisma/orm/issues/20627) Computed fields (via Client Extensions) are producing non-POJOs (28 upvotes):** Client extensions and their result proxies do not exist; derived fields are ordinary TypeScript over the fetched row, typed with `Shape` or `Scalars` plus an intersection.
+- **[#13672](https://github.com/prisma/orm/issues/13672) Module '"@prisma/client"' has no exported member 'PrismaClient'.ts(2305) (27 upvotes):** Nothing is generated into `node_modules`; `contract emit` writes `contract.d.ts` next to your source and `db.ts` imports it by relative path, so pnpm hoisting is irrelevant.
+- **[#27028](https://github.com/prisma/orm/issues/27028) [6.7.0] Get a list of model fields without Prisma.dmmf (26 upvotes):** The emitted `contract.json` is a public artifact your `db.ts` already imports; models and fields live under `domain.namespaces`, physical tables under `storage.namespaces`. See [the contract artifact](https://www.prisma.io/docs/orm/contract-authoring/the-contract-artifact).
+- **[#14722](https://github.com/prisma/orm/issues/14722) prisma generate, typings not updating in VSCode unless IDE is restarted. (24 upvotes):** Types are one `contract.d.ts` colocated in `src/prisma`, written atomically and re-emitted on save by the Vite plugin; type-check passes without restarting the IDE.
+- **[#18570](https://github.com/prisma/orm/issues/18570) Prisma not working with sst monorepo (21 upvotes):** There is no engine binary and no `__filename`based engine path resolution; the packages are plain ESM that any bundler can trace.
+- **[#29519](https://github.com/prisma/orm/issues/29519) [v7 prisma-client] Non-existent fields in select do not produce a TypeScript error (21 upvotes):** `.select()` is typed against the contract's field names; an unknown name is a compile error, never a silent `never`.
+- **[#8765](https://github.com/prisma/orm/issues/8765) prisma generate fails in yarn2 / yarn3 workspaces (20 upvotes):** There is no `prisma generate` and no auto npm install of a client; `prisma contract emit` only writes `contract.json` and `contract.d.ts` next to the source.
+- **[#28627](https://github.com/prisma/orm/issues/28627) Prisma Client 7 generated code breaks when bundling with Webpack (ESM .js import issue) (20 upvotes):** There is no generated client code; the only emitted artifacts are `contract.json` and `contract.d.ts`, and every package ships as ESM.
+- **[#8984](https://github.com/prisma/orm/issues/8984) Enums from Prisma schema are compiled to TypeScript enums (16 upvotes):** An enum field types as the union of its members (string literals), not a generated TypeScript enum object.
+- **[#11388](https://github.com/prisma/orm/issues/11388) Provide an option to turn off generation of unchecked types (16 upvotes):** One `CreateInput` per model, no checked/unchecked XOR pair, so the confusing `Unchecked` fallback never appears.
+- **[#3288](https://github.com/prisma/orm/issues/3288) Add the @map value to the DMMF structure for model fields (14 upvotes):** `contract.json` is the canonical IR and its `storage` section carries each field's column name, native type and codec, replacing DMMF. See [the contract artifact](https://www.prisma.io/docs/orm/contract-authoring/the-contract-artifact).
+- **[#11457](https://github.com/prisma/orm/issues/11457) Prefix Prisma models during client generation with e.g. Db (14 upvotes):** Model types live under the `Models` namespace (`Models.public_User`), so they never collide with your domain types.
+- **[#12806](https://github.com/prisma/orm/issues/12806) Conditional running of generators (14 upvotes):** There is no generator pipeline; `contract emit` writes `contract.json` and `contract.d.ts`, and community tooling consumes the contract as an ordinary library you call when you choose.
+- **[#24653](https://github.com/prisma/orm/issues/24653) Client extensions cannot support Fluent API (14 upvotes):** There is neither a fluent relation API nor client extensions; relations load through `.include()` and middleware sees the compiled SQL plan.
+- **[#25259](https://github.com/prisma/orm/issues/25259) ESM (.mjs) modules of TypedSQL client use CommonJS imports when generating to a non-default location (14 upvotes):** TypedSQL and the generator do not exist; types come from `contract.d.ts` and a reusable query is `db.prepare(...)`.
+- **[#27079](https://github.com/prisma/orm/issues/27079) [6.7.0] NextJS - Prisma (14 upvotes):** There is no `prisma generate` and no generated client files to break under Turbopack; `contract emit` writes `contract.d.ts` and a prebuild script keeps it current.
+- **[#20756](https://github.com/prisma/orm/issues/20756) Add Unsupported columns to DMMF (13 upvotes):** DMMF and `Unsupported` are gone; extension types like `pgvector.Vector` are first-class fields and `contract.json` carries every column.
+- **[#25168](https://github.com/prisma/orm/issues/25168) TypedSql not considering COALESCE in query output (13 upvotes):** TypedSQL is not implemented; aggregates are typed from the target codec with honest nullability, and the raw lane types columns from codecs you declare.
+- **[#28838](https://github.com/prisma/orm/issues/28838) Generated Prisma 7 code breaks Playwright tests (11 upvotes):** There is no generated runtime client, only the emitted `contract.d.ts` and ESM-only published packages, so the `__dirname` shim line does not exist.
+- **[#2359](https://github.com/prisma/orm/issues/2359) Code completion / auto imports / CTRL clicking to props breaks in .beta 4 for webstorm (9 upvotes):** The `node_modules/.prisma/client` re-export indirection is gone; types live in `contract.d.ts` next to the source, so navigation lands in a real declaration file.
+- **[#9553](https://github.com/prisma/orm/issues/9553) "Field does not exist on enclosing type" / Relation tables bug (9 upvotes):** There is no embedded DMMF, no engine validation and no `node_modules/.prisma/client` cache to go stale; `contract emit` rewrites the colocated artifacts atomically.
+- **[#25512](https://github.com/prisma/orm/issues/25512) prisma generate --sql does not read env vars in AWS (9 upvotes):** `prisma generate` and TypedSQL do not exist; `contract emit` reads `prisma.config.ts` and the contract source, `db.connection` is optional, and repeated raw SQL is `db.prepare` or `db.raw.sql`.
+- **[#22551](https://github.com/prisma/orm/issues/22551) Argument type ... is not assignable to parameter type `SelectSubset<...>` (8 upvotes):** The generated client and its `SelectSubset` types are gone; `create()` takes a plain `CreateInput<Contract, 'Model'>` derived from `contract.d.ts`.
+- **[#27304](https://github.com/prisma/orm/issues/27304) pnpm prisma init fails with "Cannot find module '@prisma/cli-init'" in Prisma 6.8.2 (7 upvotes):** `prisma orm init` is part of the unified CLI and scaffolds config, contract, `db.ts` and dependencies itself; nothing is downloaded on the fly. See [`orm init`](https://www.prisma.io/docs/cli/orm-init).
+- **[#19392](https://github.com/prisma/orm/issues/19392) Replace generated Prisma.dmmf export with public reflection API. (6 upvotes):** `contract.json` is the documented, content-hashed contract IR read by planner, runtime and `db verify`, and the runtime exposes the validated contract object.
+- **[#23778](https://github.com/prisma/orm/issues/23778) Error - "PrismaClient is unable to be run in the browser" with extension in next.js application (6 upvotes):** `$extends` and the browser stub do not exist; the client is a server-only `db.ts` with middleware, imported from server modules.
+- **[#25487](https://github.com/prisma/orm/issues/25487) Can't use prisma in nextjs turborepo (6 upvotes):** `@prisma/client` is replaced by ordinary packages such as `@prisma/orm-postgres` imported from `db.ts`; there is no monorepo workaround plugin for the runtime.
+- **[#26697](https://github.com/prisma/orm/issues/26697) Too Many prisma.$extends() cause "Type Instantiation is Excessively Deep..." TS2589 Error Due to Recursive Type Limitations (6 upvotes):** `$extends` chains do not exist; cross-cutting behaviour is a flat middleware array and model logic is plain TypeScript, so the recursive type ceiling cannot be hit.
+- **[#29549](https://github.com/prisma/orm/issues/29549) prisma-client generator: TS4094 declaration emit errors persist with native #private fields (TypeScript 6) (6 upvotes):** There is no generator emitting classes with `#private` fields; types are the emitted `contract.d.ts`, a declaration file.
+- **[#9520](https://github.com/prisma/orm/issues/9520) Missing schema.prisma in AWS Lambda layer (5 upvotes):** Nothing looks up `schema.prisma` at runtime; the contract is an imported JSON artifact and the factory connects lazily.
+- **[#20326](https://github.com/prisma/orm/issues/20326) Cannot type extended client in function arguments (5 upvotes):** There are no client extensions and no `Prisma.TransactionClient`; `db` is the typed return of `postgres<Contract>()` and `tx` carries the same surfaces.
+- **[#26658](https://github.com/prisma/orm/issues/26658) Prisma CLI Is Hoisted in a PNPM/Turborepo Monorepo and Tries to Auto-Install @prisma/client in the Root, Causing a Failure (5 upvotes):** There is no auto-install of `@prisma/client` and no generate; the CLI resolves `prisma.config.ts` from the package and the runtime is an ordinary dependency.
+- **[#26928](https://github.com/prisma/orm/issues/26928) Prisma Types Errors - Declaration emit for this file requires using private name 'RequestError' from module. An explicit type annotation may unblock declaration emit. (5 upvotes):** There is no generated client that re-exports private runtime names; types are the emitted `contract.d.ts` plus published packages.
+- **[#16391](https://github.com/prisma/orm/issues/16391) Generate cant handle large schemas (4 upvotes):** There is no `prisma generate`, DMMF or napi string transfer; `contract emit` is a TypeScript provider writing `contract.json` and `contract.d.ts`.
+- **[#20702](https://github.com/prisma/orm/issues/20702) __dirname is not defined in ES module scope, Error Only In hooks.server.ts in SvelteKit (4 upvotes):** Pure ESM runtime with no `__dirname`based engine lookup; `db.ts` imports `contract.json` with an import attribute and locates no engine file at import time.
+- **[#21066](https://github.com/prisma/orm/issues/21066) NestJS: Error: Cannot find module './generated/client' when importing Prisma Client when using custom output path (4 upvotes):** There is no generated client directory; NestJS imports `db.ts`, which imports `contract.json` next to the contract source.
+- **[#23319](https://github.com/prisma/orm/issues/23319) Error when using multiple prisma clients generated under @prisma/client/app-name in nx monorepo on prisma v5.9 + (4 upvotes):** No generated client under `node_modules`; each package owns a contract space (its own `prisma.config.ts`, `contract.json` and `db.ts`), so several databases are several `db.ts` modules.
+- **[#26693](https://github.com/prisma/orm/issues/26693) Long $extends chain with $allModels extension causes type instantiation error (ts(2589)) (4 upvotes):** There is no `$extends` chain; cross-cutting logic is middleware plus plain TypeScript helpers.
+- **[#11862](https://github.com/prisma/orm/issues/11862) Wrong error message when updating a nested relationship and prisma switches to unchecked (3 upvotes):** There is no checked/unchecked input switch; inputs are typed by `CreateInput` and `MutationUpdateInput`, so a wrong scalar type is a compile error on that field.
+- **[#13164](https://github.com/prisma/orm/issues/13164) Abnormal behavior of schema.prisma outside the main folder (3 upvotes):** There is no `prisma generate` and no auto-install; the project shape comes from `prisma.config.ts` at the repo root and every command resolves paths relative to it.
+- **[#13259](https://github.com/prisma/orm/issues/13259) Client's runtime validation gives a confusing error (3 upvotes):** No checked/unchecked duality; the foreign-key column is an ordinary field typed by `MutationUpdateInput`, and structured `ORM.*` errors replace this validation path.
+- **[#19522](https://github.com/prisma/orm/issues/19522) Your schema.prisma1 could not be found, even when using @prisma/nextjs-monorepo-workaround-plugin webpack plugin (3 upvotes):** The runtime imports `contract.json` as a JSON module and needs no `schema.prisma` or engine file at runtime, so nothing is looked up by path inside the bundle.
+- **[#27104](https://github.com/prisma/orm/issues/27104) Prisma custom output uses the generates with an absolute path? (3 upvotes):** There is no generated `index.js`; `contract emit` writes `contract.json` and `contract.d.ts` next to the source and the runtime imports them by relative path.
+- **[#29308](https://github.com/prisma/orm/issues/29308) Incremental prisma generate — only regenerate changed models (235s on 530 models is blocking active development) (3 upvotes):** There is no `prisma generate` or DMMF client codegen; `contract emit` writes `contract.json` and `contract.d.ts` and the runtime derives types from them.
+- **[#5911](https://github.com/prisma/orm/issues/5911) Evolve prisma init suggested workflow (2 upvotes):** `prisma orm init` is a new scaffold with explicit greenfield (`db init`) and brownfield (`contract infer`, `db sign`) paths. See [`orm init`](https://www.prisma.io/docs/cli/orm-init).
+- **[#17630](https://github.com/prisma/orm/issues/17630) Error: ENOENT: no such file or directory, open '/.../workspaces/server/dist/schema.prisma' in NestJS server app in yarn monorepo/workspaces (2 upvotes):** The runtime imports `contract.json` as a JSON module; no `schema.prisma` copy is looked up under `dist`.
+- **[#23913](https://github.com/prisma/orm/issues/23913) Prisma 5.12 client for edge runtime disabled the [Prisma.dmmf] property for wasm client (2 upvotes):** `contract.json` is the canonical, fully introspectable contract IR that the runtime loads on every platform; there is no trimmed edge build that strips it.
+- **[#23973](https://github.com/prisma/orm/issues/23973) Type inference broken for aggregation queries when extension is turned on. (2 upvotes):** `$extends` does not exist; aggregates are typed from the target codec and there is no extension layer to break inference.
+- **[#24829](https://github.com/prisma/orm/issues/24829) Incorrect type inferred when using conditional include on 1:N relation field (2 upvotes):** A conditional include is a branch between two collection values; declare the return as the union of `Scalars<M>` and `Shape<M, ...>` and the compiler checks it.
+- **[#27284](https://github.com/prisma/orm/issues/27284) @prisma/client postinstall hook fails to run prisma generate due to bad exports in prisma (2 upvotes):** `@prisma/orm-postgres` has no postinstall hook that runs `prisma generate`; types come from an explicit `contract emit`.
+- **[#28126](https://github.com/prisma/orm/issues/28126) Getting Dynamic require of "node:path" is not supported for esbuild + Prisma 6.16.2 + prisma-client generator + engineType = "client" (2 upvotes):** The generated `@prisma/client` runtime with its CJS/ESM export map is gone; Prisma 8 packages are ESM-only and the app imports them like any package.
+- **[#10163](https://github.com/prisma/orm/issues/10163) Deploying Prisma with Nest.js to Google App Engine (GAE): @prisma/client did not initialize yet. (1 upvotes):** There is no generated client under `node_modules/.prisma`; the runtime is built from `contract.json` and `contract.d.ts` in `src`, so pruning `node_modules` loses nothing.
+- **[#13289](https://github.com/prisma/orm/issues/13289) Error: @prisma/client did not initialize yet, another variant (1 upvotes):** There is no generated client and no `@prisma/client` import path to get wrong; `db.ts` constructs the runtime from the emitted contract.
+- **[#23153](https://github.com/prisma/orm/issues/23153) Next.js: using Prisma.sql errors after upgrading to 5.9.1 (from 5.8.1) (1 upvotes):** There is no generated client and no `index-browser.js` stub; raw SQL is `db.raw.sql` on the runtime client.
+- **[#1737](https://github.com/prisma/orm/issues/1737) generate: Usage instructions should be directly below ✔ Generated ... of generator (0 upvotes):** There is no `prisma generate` and no generator pipeline, so there are no per-generator usage instructions to reorder.
+- **[#10564](https://github.com/prisma/orm/issues/10564) Packaged CLI cannot be used to generate the JS client (0 upvotes):** There is no generator subprocess for a packaged CLI to spawn; `prisma contract emit` writes the artifacts itself.
+- **[#19183](https://github.com/prisma/orm/issues/19183) Prisma, PNPM, Esbuild - Schema path issues with multiple schemas (0 upvotes):** The runtime never resolves `schema.prisma` at run time; each package is its own contract space and its `db.ts` imports its own `contract.json` as a JSON module.
+- **[#22510](https://github.com/prisma/orm/issues/22510) Prisma client not found in a Turborepo repo with nextjs >13.1.1 with Prisma (0 upvotes):** There is no `.prisma/client` to resolve and no engine to copy, so the monorepo workaround plugin has nothing to do; Next.js needs only a prebuild `contract emit`.
+- **[#23093](https://github.com/prisma/orm/issues/23093) 5.9.1 regression: ReadonlyDeep_2 indirectly exported (0 upvotes):** `Prisma.dmmf` and `BaseDMMF` do not exist; schema metadata is the emitted `contract.json`, and model types are named exports of `contract.d.ts`.
+- **[#23538](https://github.com/prisma/orm/issues/23538) Cannot find module '[...]/node_modules/@prisma/client/ultron' (0 upvotes):** There is no generated client output path; contract artifacts are emitted next to the contract source and imported by relative path.
+- **[#24199](https://github.com/prisma/orm/issues/24199) When using pnpm and deploying Prisma Client to Heroku, it fails at runtime with Cannot find module '.prisma/client' (0 upvotes):** There is no generated `.prisma/client` package for pnpm to hide; `contract.json` and `contract.d.ts` are emitted next to the source.
+- **[#26111](https://github.com/prisma/orm/issues/26111) Miss matching type in datamodel (0 upvotes):** `getDMMF` and the DMMF datamodel no longer exist; `contract.json` is the canonical content-hashed IR and `contract.d.ts` exports named model types.
+- **[#26946](https://github.com/prisma/orm/issues/26946) Type error in Next.js 15.2.x - 15.3.x: Prisma generated file missing type properties (TransactionIsolationLevel, PostScalarFieldEnum, etc.) (0 upvotes):** There is no generated client directory and no `edge.js`; types come from `contract.d.ts` emitted by `prisma contract emit`.
+- **[#27295](https://github.com/prisma/orm/issues/27295) sveltekit Error: Cannot find module '/tmp/@prisma/cli-init@latest-.../@prisma/cli-init/dist/index.js' (0 upvotes):** `prisma init` no longer downloads `@prisma/cli-init` into `TMPDIR`; `prisma orm init` installs dependencies into the project and scaffolds config, contract and `db.ts`.
+- **[#27349](https://github.com/prisma/orm/issues/27349) v6.9.0 + driverAdapters (SQLite) = empty Prisma.dmmf.datamodel.enums (0 upvotes):** `contract.json` carries every model, field, enum and value object, readable by any tool; no DMMF or generator hook is needed for programmatic schema access.
+- **[#27555](https://github.com/prisma/orm/issues/27555) EPERM: operation not permitted when using custom Prisma client output on non-C:\ drive (Windows) (0 upvotes):** There is no `prisma generate` and no generated client directory with engine binaries; `contract.d.ts` is a plain emitted file next to the source.
+- **[#28130](https://github.com/prisma/orm/issues/28130) mjs imports fail when using engineType = "client" (0 upvotes):** There is no generated client and no `query_compiler_bg` WASM import; the runtime is an ordinary ESM npm package that bundlers resolve.
+- **[#28717](https://github.com/prisma/orm/issues/28717) Prisma Generate TypedSQL Fails on V7 with Pooling (0 upvotes):** There is no `prisma generate --sql` and no TypedSQL; typed reusable SQL is `db.prepare` or `db.raw.sql`, neither needing a generation step or a direct URL.
+- **[#29025](https://github.com/prisma/orm/issues/29025) Cannot find module '@prisma/client-xxxxxxxxxxxxxxxx'. (0 upvotes):** There is no `prisma generate` and no hashed generated client package; the runtime is a plain npm package and types come from `contract.d.ts`.
+
+### Configuration, environment and connections (33)
+
+- **[#7869](https://github.com/prisma/orm/issues/7869) Dynamic Connection Settings (88 upvotes):** Bring your own driver: the `pg:` binding takes a `pg.Pool` you construct, and node-postgres accepts an async password function, so credentials are computed per new connection. See [transactions and runtime](https://www.prisma.io/docs/orm/reference/transactions-and-runtime).
+- **[#3865](https://github.com/prisma/orm/issues/3865) Switch .env file based on NODE_ENV (80 upvotes):** The CLI no longer loads `.env` itself; `prisma.config.ts` is TypeScript and loads env through `import 'dotenv/config'`, so a per-`NODE_ENV` file is a one-line change. See [configuration](https://www.prisma.io/docs/cli/configuration).
+- **[#2559](https://github.com/prisma/orm/issues/2559) Support manipulating strings in datasource configuration (79 upvotes):** `prisma.config.ts` is TypeScript, so `db.connection` is any string expression; assembling the URL from separate env vars is ordinary code.
+- **[#3226](https://github.com/prisma/orm/issues/3226) Add Support for More .env Files (68 upvotes):** `prisma.config.ts` loads env itself (`import 'dotenv/config'` is user code), so `.env.local` or any loader is a one-line swap.
+- **[#6587](https://github.com/prisma/orm/issues/6587) Support IAM Authentication to AWS RDS (59 upvotes):** Pass your own `pg.Pool` via the `pg:` binding; node-postgres accepts an async password function, so an RDS IAM token is minted per new connection. MySQL is not yet a Prisma 8 target.
+- **[#28590](https://github.com/prisma/orm/issues/28590) DATABASE_URL is required for prisma generate in v7 (53 upvotes):** `prisma contract emit` (the `generate` equivalent) reads the config and writes `contract.json` and `contract.d.ts` without connecting; `db.connection` is optional and the runtime connects lazily.
+- **[#15620](https://github.com/prisma/orm/issues/15620) @prisma/client magically loading .env file (and mutating process.env in the process) (27 upvotes):** Nothing reads `.env` implicitly; the only read is the explicit `import 'dotenv/config'` in `prisma.config.ts`, and the runtime takes the URL you pass to `postgres({ url })`.
+- **[#3724](https://github.com/prisma/orm/issues/3724) Allow environment expressions inside the Prisma Schema (23 upvotes):** Configuration moved out of the schema into `prisma.config.ts`, a TypeScript file where any expression or env lookup works.
+- **[#1255](https://github.com/prisma/orm/issues/1255) Switch environment file with -e flag (20 upvotes):** Env file choice is user code in `prisma.config.ts` (dotenv with a path), which the CLI executes for every command.
+- **[#9726](https://github.com/prisma/orm/issues/9726) Provide a way to disable env conflicts warning (20 upvotes):** Prisma 8 never loads `.env` itself; env loading is the `import 'dotenv/config'` line you own, so there is no conflict warning to silence.
+- **[#11050](https://github.com/prisma/orm/issues/11050) Support multiple .env files natively (20 upvotes):** Env loading is user code in `prisma.config.ts`; dotenv with a path, or any loader, works without a `dotenv-cli` wrapper.
+- **[#12535](https://github.com/prisma/orm/issues/12535) Root .env variables aren't available to prisma in monorepo (20 upvotes):** Env loading is user code in `prisma.config.ts`, so a monorepo root `.env` is a one-line choice.
+- **[#20015](https://github.com/prisma/orm/issues/20015) Interactive transaction maxWait is inconsistent vs. pool_timeout & suppresses/bypasses connection pool limit error (17 upvotes):** There is no engine pool, `maxWait` or `pool_timeout`; one `pg.Pool` with `poolOptions.connectionTimeoutMillis` governs connection acquisition for queries and `db.transaction` alike.
+- **[#12153](https://github.com/prisma/orm/issues/12153) Add $destroy to the client, so they client cannot be reused (15 upvotes):** `db.close()` is terminal and idempotent; any later `runtime()`, `connect()`, `transaction()` or `prepare()` rejects with "client is closed" and nothing reconnects silently.
+- **[#26885](https://github.com/prisma/orm/issues/26885) Add ability to pass driver instance for Prisma Driver Adapters as before v6.6.0 (15 upvotes):** The Postgres facade takes a pre-built `pg.Pool` or `pg.Client` through the `pg:` binding (Mongo takes `mongoClient:`), so one pool is shared with other libraries and you own its lifecycle. See [transactions and runtime](https://www.prisma.io/docs/orm/reference/transactions-and-runtime).
+- **[#7120](https://github.com/prisma/orm/issues/7120) API calls failing with Error querying the database: db error: FATAL: remaining connection slots are reserved for non-replication superuser connections (12 upvotes):** The engine pool and `connection_limit` URL parameter are gone; Prisma 8 runs on `pg.Pool` with `poolOptions`, or a pool you construct and size yourself.
+- **[#21514](https://github.com/prisma/orm/issues/21514) Maybe change pgbouncer option name to something like pooler? (12 upvotes):** There is no `pgbouncer` URL flag; the connection is a plain node-postgres URL or your own `pg.Pool`, so pooler interop is the driver's concern.
+- **[#15681](https://github.com/prisma/orm/issues/15681) Change the default filename for loading environment variables to .env.local (11 upvotes):** Nothing reads `.env` on its own; the explicit dotenv import in `prisma.config.ts` is user code, so `.env.local` or any loader works.
+- **[#2817](https://github.com/prisma/orm/issues/2817) Allow SSL parameters to be passed directly (10 upvotes):** TLS is node-postgres's job; construct your own `pg.Pool` with an `ssl` object holding inline PEM strings and pass it through the `pg:` binding.
+- **[#13514](https://github.com/prisma/orm/issues/13514) Unable to connect to GCP Postgres with SSL enabled (4 upvotes):** TLS is handled by node-postgres, not the Rust native-tls path; SSL options go on the `pg.Pool` you pass through the `pg:` binding.
+- **[#27153](https://github.com/prisma/orm/issues/27153) Environment variable resolution issue: env("DATABASE_URL") fails while custom-named variables and hardcoded URLs work correctly (3 upvotes):** There is no `env()` in a schema file; the connection string is read from `process.env` in your own `prisma.config.ts` and `db.ts`.
+- **[#11171](https://github.com/prisma/orm/issues/11171) Can't connect to Cloud SQL Postgres using socket (1 upvotes):** The engine that forced TLS and appended `:5432` is gone; a `pg.Pool` whose host is the `/cloudsql` socket path is passed via the `pg:` binding.
+- **[#21732](https://github.com/prisma/orm/issues/21732) Invalid connection string parameter **_**value**_** leads to general The provided database string is invalid. The provided arguments are not supported in database URL. error message (1 upvotes):** Engine URL parameters such as `pool_timeout` do not exist; pool tuning is `poolOptions` or your own `pg.Pool`, and a wrong value is a type error.
+- **[#22568](https://github.com/prisma/orm/issues/22568) Prisma Client QE openssl-3.0.x errors with Error opening a TLS connection when connecting to GCP PostgreSQL using an SSL certificate (1 upvotes):** The Rust engine OpenSSL/pkcs12 TLS stack is gone; TLS is Node native through node-postgres, configured with `ssl` `ca`/`cert`/`key` on a pool passed via `pg:`.
+- **[#3318](https://github.com/prisma/orm/issues/3318) Connection URL error message shows wrong snippet when using url in PrismaClient constructor (0 upvotes):** No datasource `url` in the schema to misquote; the connection lives in `prisma.config.ts` and `db.ts`, and failures are structured errors with a why and a fix.
+- **[#7823](https://github.com/prisma/orm/issues/7823) Log the expected location for ssl cert (0 upvotes):** The engine-side cert lookup relative to `schema.prisma` no longer exists; SSL is configured on the node-postgres pool you construct, so the path is yours.
+- **[#9576](https://github.com/prisma/orm/issues/9576) Supabase: db error: ERROR: unexpected response from login query (0 upvotes):** The Rust engine login through the 6543 transaction pooler is gone; Prisma 8 documents the session pooler as the Supabase default and needs no shadow database.
+- **[#23124](https://github.com/prisma/orm/issues/23124) Extension's $connect method is not used by Prisma query methods unless it's invoked explicitly (0 upvotes):** Client extensions are gone; the runtime connects lazily on the first query and exposes `db.connect()` explicitly.
+- **[#27198](https://github.com/prisma/orm/issues/27198) Allow not validating env vars in schema.prisma (0 upvotes):** `contract.prisma` has no `env()` and no datasource block; `db.connection` in `prisma.config.ts` is optional, so `contract emit` never requires `DATABASE_URL`.
+- **[#27252](https://github.com/prisma/orm/issues/27252) Connection pool not reusing connections after upgrade to Prisma 6.4.1 (0 upvotes):** There is no Rust engine pool; the runtime uses `pg.Pool` with `poolOptions`, or a pool you construct, so reuse behaviour is node-postgres's.
+- **[#27253](https://github.com/prisma/orm/issues/27253) Error validating datasource db: the URL must start with the protocol prisma:// or prisma+postgres:// (0 upvotes):** There is no `prisma generate --no-engine` and no engine-less Accelerate-only client; the runtime always connects through the node driver with a plain `postgresql://` URL.
+- **[#27420](https://github.com/prisma/orm/issues/27420) Prisma Fails to Connect via TLS/SSL on Windows to Ubicloud Managed Postgres (Error: os error -2146893018) (0 upvotes):** There is no Rust engine on Windows; connections go through node-postgres, the path the reporter confirmed works.
+- **[#30366](https://github.com/prisma/orm/issues/30366) Prisma 7.x removes url from schema but prisma init still generates schema with url field (0 upvotes):** The contract file carries no datasource block at all, and `prisma orm init` writes `prisma.config.ts` with `db.connection` read from `DATABASE_URL`.
+
+### Dates, numbers and JSON (20)
+
+- **[#7570](https://github.com/prisma/orm/issues/7570) PostgreSQL: Int type should be able to be mapped to @db.BigInt (int8) (87 upvotes):** The `BigIntNumber` type stores `int8` and reads and writes a JS `number`, throwing a structured error outside the safe-integer range instead of rounding. See [the error reference](https://www.prisma.io/docs/orm/reference/error-reference).
+- **[#13864](https://github.com/prisma/orm/issues/13864) Error: Failed to convert rust String into napi string (68 upvotes):** There is no Rust engine and no napi bridge; TypeScript codecs decode rows one at a time, so this conversion cannot fail. Very large result sets should still be paginated.
+- **[#4355](https://github.com/prisma/orm/issues/4355) Allow shorter date format for native date type (53 upvotes):** A Postgres `Date` column maps to `Temporal.PlainDate` (no time, no zone), and `DateString` carries the plain `YYYY-MM-DD` text.
+- **[#5769](https://github.com/prisma/orm/issues/5769) Retrieve date (only) column as plain string without added time information (or custom type, in general) (49 upvotes):** A Postgres date column authored as `DateString` reads and writes PostgreSQL's own `YYYY-MM-DD` text; `Date` gives `Temporal.PlainDate`, never a JS `Date`.
+- **[#25827](https://github.com/prisma/orm/issues/25827) Option to return @db.Date fields as ISO date strings (37 upvotes):** `DateString` (and `TimestampString`, `TimestamptzString`, `TimeString`) columns carry Postgres text; `Date` maps to `Temporal.PlainDate`.
+- **[#20615](https://github.com/prisma/orm/issues/20615) Improve how Prisma works with non-UTC dates (30 upvotes):** On Postgres, `Date`, `Timestamp`, `Timestamptz` and `Time` map to `Temporal.PlainDate`, `PlainDateTime`, `Instant` and `PlainTime` (never JS `Date`), with `String` text variants; no engine UTC coercion exists.
+- **[#19860](https://github.com/prisma/orm/issues/19860) Allow to map db.Decimal(X, 0) to JS bigint (24 upvotes):** The `UnboundedInt` type stores an unconstrained `numeric` column and reads and writes a JavaScript `bigint`, exact at any magnitude.
+- **[#7158](https://github.com/prisma/orm/issues/7158) Bring your own Decimal.js implementation (20 upvotes):** Numeric values decode as exact decimal strings and integers as `bigint` or `number`; no decimal.js is bundled, so you pick your own decimal library.
+- **[#21900](https://github.com/prisma/orm/issues/21900) Drop support for Decimal.js, replace with "Bring your own library" approach (18 upvotes):** Prisma 8 has no decimal.js; `numeric` values travel as exact decimal strings, and aggregates over `numeric` return a decimal string too.
+- **[#9516](https://github.com/prisma/orm/issues/9516) DateTime doesn't support ISO string with offset (14 upvotes):** `Timestamptz` columns read and write `Temporal.Instant`, which accepts offset-aware ISO input; `TimestamptzString` keeps the Postgres text.
+- **[#13451](https://github.com/prisma/orm/issues/13451) Remove/Opt out of Decimal JS (14 upvotes):** No Decimal.js; `numeric` columns and decimal aggregates decode to exact decimal strings.
+- **[#21471](https://github.com/prisma/orm/issues/21471) Huge RSS usage retained (suspect JSONB fields) (4 upvotes):** JSON columns are decoded by JavaScript codecs (`pg/jsonb@1`) in-process; there is no Rust engine holding `serde_json` values inside a shared library.
+- **[#10053](https://github.com/prisma/orm/issues/10053) Prisma should return time as XX:XX:XX instead of full datetime string (1 upvotes):** A Postgres `Time` column reads and writes `Temporal.PlainTime`, and `TimeString` returns the raw `08:00:00` text; nothing is wrapped in a 1970-01-01 `DateTime`.
+- **[#27200](https://github.com/prisma/orm/issues/27200) Prisma is no longer using Decimal.js when selecting an output directory (1 upvotes):** There is no bundled Decimal.js; a Postgres `numeric` column reads as its exact decimal string.
+- **[#21049](https://github.com/prisma/orm/issues/21049) Error Could not convert argument value Object to ArgumentValue when writing bigint value (0 upvotes):** `UnboundedInt` maps an unconstrained `numeric` column to a JS `bigint` that stays exact beyond 64 bits, and a wrong value is a structured `RUNTIME.ENCODE_FAILED`.
+- **[#23480](https://github.com/prisma/orm/issues/23480) Prisma.Decimal is missing methods in Cloudflare environment (0 upvotes):** There is no `Prisma.Decimal` class to break; `numeric` values are exact decimal strings, and Workers run the serverless facade under `nodejs_compat`.
+- **[#24129](https://github.com/prisma/orm/issues/24129) ::INET column type not supported when creating (0 upvotes):** The Rust-side `AddrParseError` is gone; Postgres has a `pg/inet@1` codec behind the `Inet` type, written through the pg driver as text.
+- **[#29582](https://github.com/prisma/orm/issues/29582) Regression in 7.8.0: @db.Date overlap queries (lt/gt) return false positives that worked on 7.7.0 (0 upvotes):** `Date` columns take `Temporal.PlainDate` (or `DateString` text), not a JS `Date` with a time component, so `lt`/`gt` comparisons cannot be skewed by time of day.
+- **[#29662](https://github.com/prisma/orm/issues/29662) Skipping timezone when building queries for a db.Timestamptz column in Postgresql (0 upvotes):** `Timestamptz` columns read and write `Temporal.Instant`, and `TimestamptzString` keeps Postgres's own offset-bearing text; no timezone-stripping compiler step exists.
+- **[#30151](https://github.com/prisma/orm/issues/30151) adapter-pg: timestamps with extended (>4-digit) years silently deserialize to Invalid Date (0 upvotes):** Postgres temporal codecs never produce a JS `Date`; `Timestamp` maps to `Temporal.PlainDateTime` and `TimestampString` carries Postgres's own text, so no ISO normalisation rejects a five-digit year.
+
+### Errors, middleware and observability (18)
+
+- **[#3165](https://github.com/prisma/orm/issues/3165) Query caching (83 upvotes):** `@prisma/orm-extension-middleware-cache` is an opt-in per-query cache (`cacheAnnotation({ ttl, key })`), in-memory LRU by default, with a `CacheStore` interface for Redis-style backends. See [the built-in cache](https://www.prisma.io/docs/orm/middleware/built-in-cache).
+- **[#4072](https://github.com/prisma/orm/issues/4072) Postgres: Deleting a record that doesn't exist gives a bad error (63 upvotes):** `delete` is a predicate mutation with no engine "Query interpretation error" text; the SQL builder reports a plain `affectedRows` of 0, and `ORM.MUTATION_ROW_MISSING` covers only create/upsert read-back.
+- **[#9082](https://github.com/prisma/orm/issues/9082) A Prisma error that covers all possible errors as mentioned in Errors reference (35 upvotes):** Every CLI and runtime error is a structured envelope with a stable dotted code; recognise it with `isStructuredError` from `@prisma/orm-postgres/utils/structured-error` and match on `error.code`. See [the error reference](https://www.prisma.io/docs/orm/reference/error-reference).
+- **[#7596](https://github.com/prisma/orm/issues/7596) Context propagation for query logging (31 upvotes):** Query observation is an in-process `afterQuery` middleware that receives `plan.sql`, `latencyMs` and `rowCount`, so the caller's async context is still live. See [authoring custom middleware](https://www.prisma.io/docs/orm/middleware/authoring-custom-middleware).
+- **[#4217](https://github.com/prisma/orm/issues/4217) Custom identifiers to queries and middlewares (17 upvotes):** Queries take per-call meta annotations (`meta.annotate(...)`) that middleware reads, for example a cache TTL or a read-only intent. See [the built-in cache](https://www.prisma.io/docs/orm/middleware/built-in-cache).
+- **[#20789](https://github.com/prisma/orm/issues/20789) query extensions: let extension know if it is running in transaction (17 upvotes):** Middleware hooks receive a `ctx` whose `scope` is not `'runtime'` inside `db.transaction()` or on a pinned connection; the cache middleware uses exactly this to bypass.
+- **[#9353](https://github.com/prisma/orm/issues/9353) ESLint rules / middlewares / settings to prevent SELECT * (15 upvotes):** The lints middleware has a `selectStar` severity (`warn` or `error`) next to `noLimit`, `deleteWithoutWhere` and `updateWithoutWhere`. See [built-in lints](https://www.prisma.io/docs/orm/middleware/built-in-lints).
+- **[#12128](https://github.com/prisma/orm/issues/12128) Unable to issue instanceof Prisma.PrismaClientValidationError on known caught PrismaClientValidationError (12 upvotes):** Errors are structured envelopes with stable dotted codes; you recognise them with `isStructuredError` and match on `error.code`, never on class identity.
+- **[#19271](https://github.com/prisma/orm/issues/19271) feature request: condensed telemetry (9 upvotes):** `PrismaInstrumentation` and dataloader-batched `findUnique` do not exist; an `include` runs as one SQL statement and observation is a custom `afterQuery` middleware, one hook per statement.
+- **[#23072](https://github.com/prisma/orm/issues/23072) prisma errors should return message as message, not whole stack trace (4 upvotes):** Runtime errors are structured envelopes with `code`, `category`, `severity`, `message` and `details`; `message` is plain text, not a pretty-printed call site.
+- **[#11385](https://github.com/prisma/orm/issues/11385) Failed queries not returning error details (3 upvotes):** Runtime errors are structured envelopes, and SQL driver errors expose `sqlState`, `constraint`, `table` and `column`.
+- **[#13579](https://github.com/prisma/orm/issues/13579) Preview feature feedback: Prisma Metrics (metrics) (3 upvotes):** The metrics preview was retired; Prisma 8 observability is an `afterQuery` middleware with `latencyMs` and `rowCount` plus `db.runtime().telemetry()`.
+- **[#17228](https://github.com/prisma/orm/issues/17228) Error "P2000" does not behave as expected (1 upvotes):** `P2000` and its meta do not exist; a driver failure surfaces as `SqlQueryError` carrying `sqlState`, `table`, `column` and `detail` exactly as Postgres reports them.
+- **[#7247](https://github.com/prisma/orm/issues/7247) When using connectOrCreate with an array and the create fails, wrong error shows up (0 upvotes):** Create inputs are TypeScript-typed so a missing field fails at compile time, and runtime relation failures are structured envelopes.
+- **[#10230](https://github.com/prisma/orm/issues/10230) Raw queries exception error message do not include "code snippet" (0 upvotes):** The generated-client proxy stack that hid raw-query call sites is gone; the raw lane is an ordinary query plan, and driver failures surface as `SqlQueryError` with identical fields on every lane.
+- **[#11533](https://github.com/prisma/orm/issues/11533) prisma error \{"clientVersion":"3.8.1"\} in app engine (0 upvotes):** The bare `{"clientVersion"}` engine error is gone; runtime failures are structured envelopes, and a missing `DATABASE_URL` fails lazily with a clear error.
+- **[#21070](https://github.com/prisma/orm/issues/21070) Metrics: Histograms are only initialized after one value was written to them (0 upvotes):** The engine metrics preview does not exist; observability is an `afterQuery` middleware you write plus `db.runtime().telemetry()`.
+- **[#29528](https://github.com/prisma/orm/issues/29528) Prisma CLI: Error: Error in Schema engine: thrown without any error message after colon (0 upvotes):** There is no schema engine subprocess; every CLI failure is a structured envelope with a stable code, why, fix and next actions.
+
+### Platforms, runtimes and the engine (48)
+
+- **[#28845](https://github.com/prisma/orm/issues/28845) Prisma 7 performance is actually worse than Prisma 6 (73 upvotes):** The Prisma 7 regression is moot on the pure TypeScript Prisma 8 runtime; the team re-ran the public benchmarks on the release candidate and saw improvements over Prisma 6.
+- **[#9184](https://github.com/prisma/orm/issues/9184) EPERM: operation not permitted, unlink '...node_modules\prisma\query_engine-windows.dll.node' (39 upvotes):** There is no query engine DLL to download or unlink; the CLI and runtime are pure TypeScript.
+- **[#19488](https://github.com/prisma/orm/issues/19488) Cloudflare Workers: Use direct TCP connect() API to connect directly to the database / Support Hyperdrive (39 upvotes):** The serverless facade on Cloudflare Workers with Hyperdrive, over pg's `connect()`, is the primary tested path with a worked example. See [Cloudflare Workers](https://www.prisma.io/docs/guides/deployment/cloudflare-workers).
+- **[#26565](https://github.com/prisma/orm/issues/26565) After upgrading the Nuxt3 project to the latest version, an error occurred during the build (Nuxt 3.16.0 with Nitro 2.11.6 build) (39 upvotes):** Nothing lives under `node_modules/.prisma` or `@prisma/client`'s exports map; the runtime is plain ESM and the artifacts sit next to your contract.
+- **[#21241](https://github.com/prisma/orm/issues/21241) Bun: Can't prisma generate on Docker (33 upvotes):** There is no engine download and no `prisma generate` step; Bun 1.2+ is a supported runtime. See [Bun](https://www.prisma.io/docs/guides/runtimes/bun).
+- **[#17869](https://github.com/prisma/orm/issues/17869) Intermittent failures of CLI commands for large schemas (M2 Mac - 4.10.1) (25 upvotes):** The CLI and runtime are pure TypeScript; there is no WASM or native engine binary to abort on Apple Silicon.
+- **[#14398](https://github.com/prisma/orm/issues/14398) Support local DB connections while using the Accelerate/Data Proxy and/or edge client when developing Cloudflare Workers with wrangler (23 upvotes):** The serverless facade connects with pg under `nodejs_compat` on Workers, and `wrangler dev` points the Hyperdrive binding at a local Postgres; no data proxy.
+- **[#7678](https://github.com/prisma/orm/issues/7678) The ConnectorError cached plan must not change result type periodically appears (Postgres). (17 upvotes):** There is no engine statement cache; the Postgres driver discards a stale prepared handle and retries with a fresh one, raising `DRIVER.PREPARE_FAILED` only if the retry also fails.
+- **[#15267](https://github.com/prisma/orm/issues/15267) Allow binaryTargets as a CLI option (17 upvotes):** Prisma 8 ships no engine binaries and has no `binaryTargets` or `prisma generate`; the build artifacts are `contract.json` and `contract.d.ts`.
+- **[#27936](https://github.com/prisma/orm/issues/27936) PrismaClientUnknownRequestError after updating from 6.10 to 6.11 (and 6.14) (15 upvotes):** There is no Rust query engine or Node-API library; queries go straight through the pg driver, so "Engine is not yet connected" cannot occur.
+- **[#3091](https://github.com/prisma/orm/issues/3091) Provide precompiled binaries for FreeBSD (14 upvotes):** The runtime and CLI are pure TypeScript, so no precompiled engine is needed on any OS.
+- **[#8626](https://github.com/prisma/orm/issues/8626) Prototype WebAssembly Engine in Prisma CLI (14 upvotes):** The CLI is pure TypeScript on `@prisma/cli-engine` with no engine binaries and no WASM modules to prototype.
+- **[#18577](https://github.com/prisma/orm/issues/18577) Prisma crashes with promise rejections (among others in Vitest) (12 upvotes):** There is no Rust query engine or Node-API addon, so the engine use-after-free behind the segfaults cannot happen in the pure TypeScript runtime.
+- **[#21277](https://github.com/prisma/orm/issues/21277) bunx prisma generate breaking (12 upvotes):** There is no `prisma generate` and no Node-API engine to load; `contract emit` is pure TypeScript and Bun is a supported package manager and runtime.
+- **[#28076](https://github.com/prisma/orm/issues/28076) Prisma 6.16.0 fails to run in Bitbucket Pipelines (12 upvotes):** No WASM engine or `query_engine_bg` files exist; `contract emit` writes only `contract.json` and `contract.d.ts`. MySQL, which the reporter used, is not yet a target.
+- **[#26842](https://github.com/prisma/orm/issues/26842) Prisma 6.6.0 with Vercel/Neon/React Router throwing a dependency error (11 upvotes):** There are no engine binaries or `binaryTargets` to copy into a deployment; the runtime is a TypeScript package plus the pg driver.
+- **[#6859](https://github.com/prisma/orm/issues/6859) Unable to deploy AWS Lambda function due to huge size on dependencies (5 upvotes):** There are no engine binaries or duplicated engine files; the runtime is TypeScript plus the pg driver, with a per-request serverless facade for Lambda.
+- **[#15306](https://github.com/prisma/orm/issues/15306) Provide precompiled binaries for Windows on ARM (4 upvotes):** There are no precompiled engines; pure TypeScript on Node.js runs on any platform Node supports, Windows on ARM included.
+- **[#18937](https://github.com/prisma/orm/issues/18937) Add PRISMA_ENGINE_DISTRO to override linux distro detection. (3 upvotes):** There is no platform or distro detection and no engine download.
+- **[#29660](https://github.com/prisma/orm/issues/29660) Per-request PrismaClient leaks WASM query compiler → OOM in long-lived Workers / wrangler dev isolate (driver adapters, v7.8) (3 upvotes):** There is no WASM query compiler; the documented Workers pattern is module-scope construction of the serverless facade with a per-request runtime.
+- **[#20572](https://github.com/prisma/orm/issues/20572) prisma generate fails in Deno Fresh project, error: Uncaught ReferenceError: module is not define (2 upvotes):** There is no `prisma generate` step and nothing is written into `node_modules`; Deno 2 is a supported runtime. See [Deno](https://www.prisma.io/docs/guides/runtimes/deno).
+- **[#20905](https://github.com/prisma/orm/issues/20905) Nix: When generating the client, prisma:get-platform step infers incorrect libssl version in github action under ubuntu-latest (2 upvotes):** There is no engine download, libssl detection or `binaryTargets`.
+- **[#28503](https://github.com/prisma/orm/issues/28503) Generating the Prisma Client still requires binaries w/ Rust-free engine (2 upvotes):** There is no `prisma generate` and no engine download; types come from `prisma contract emit` writing `contract.d.ts` next to the contract.
+- **[#29646](https://github.com/prisma/orm/issues/29646) DeprecationWarning with @prisma/adapter-pg v7.8.0 (2 upvotes):** `@prisma/adapter-pg` is not used; the runtime drives node-postgres directly from a URL or a `pg.Pool` you pass in.
+- **[#24678](https://github.com/prisma/orm/issues/24678) Postinstall fails in Bun environment using bun prisma generate, bun x prisma generate, etc. (1 upvotes):** There is no postinstall engine download and no `prisma generate`, so the Bun postinstall failure has nothing left to run.
+- **[#26976](https://github.com/prisma/orm/issues/26976) Query engine not found Serverless AWS Lambda (1 upvotes):** There is no query engine binary and no `binaryTargets`; the runtime is node-postgres, and the serverless facade opens one connection per invocation.
+- **[#27236](https://github.com/prisma/orm/issues/27236) Probable bug with "queryCompiler" in Gitalb CI environment (1 upvotes):** Nothing is downloaded from `binaries.prisma.sh` at any point, so a network-restricted CI job never fetches an engine.
+- **[#29774](https://github.com/prisma/orm/issues/29774) Possible memory leak in query compiler (1 upvotes):** There is no WASM query compiler; queries are planned in plain TypeScript, so a `query_compiler_bg` retention pattern cannot occur.
+- **[#9968](https://github.com/prisma/orm/issues/9968) Provide binaries for Andriod (0 upvotes):** There are no native binaries; the CLI and runtime are pure TypeScript, so Android/Termux only needs Node. MySQL, which this issue used, is not yet a Prisma 8 target.
+- **[#10860](https://github.com/prisma/orm/issues/10860) Prisma does not work on 32-bit Windows (0 upvotes):** No pre-built engine binaries exist to download or spawn; Prisma 8 is pure TypeScript, so 32-bit Windows needs only a Node runtime.
+- **[#11781](https://github.com/prisma/orm/issues/11781) Installation error using Node 32-bit (0 upvotes):** There is no Node-API engine and no `engineType = "binary"` fallback; Prisma 8 runs on any Node build.
+- **[#12702](https://github.com/prisma/orm/issues/12702) serverless nextjs config needs official support/documentation (0 upvotes):** Prisma 8 ships no binaries to copy into Lambda bundles and has a per-invocation serverless Postgres facade.
+- **[#14248](https://github.com/prisma/orm/issues/14248) Prisma Panic Error (0 upvotes):** The panic came from the Rust engine's parser on an oversized `take`; Prisma 8 has no Rust engine, and `limit(n)` is a typed number. MySQL is not yet a target.
+- **[#17173](https://github.com/prisma/orm/issues/17173) vercel/pkg into binary failed and throw "prebuild-install WARN install No prebuilt binaries found" (0 upvotes):** There is no native Node-API engine library to embed in a `pkg` snapshot.
+- **[#17635](https://github.com/prisma/orm/issues/17635) Replit: ERR_DLOPEN_FAILED: libssl.so.1.1: cannot open shared object file: No such file or directory (0 upvotes):** There is no engine shared library, so nothing links against `libssl.so.1.1` on Replit.
+- **[#18123](https://github.com/prisma/orm/issues/18123) npm generate fails in Docker on M1 MBP (0 upvotes):** There are no engine binaries to download for `linux-musl-arm64` or any other platform.
+- **[#18207](https://github.com/prisma/orm/issues/18207) UND_ERR_SOCKET after upgrade to 4.10.1 on ARM (engine type = binary) (0 upvotes):** The binary engine type and its HTTP socket are gone; Postgres runs on the pg driver with a `pg.Pool` you can own.
+- **[#19143](https://github.com/prisma/orm/issues/19143) User questions: Bundler warning (0 upvotes):** The engine-not-found bundler questionnaire has no subject; there is no query engine file to locate or copy next to a bundle.
+- **[#20766](https://github.com/prisma/orm/issues/20766) generate tries to access /lib64, resulting in EACCES in Zone Cloud: Error: EACCES: permission denied, scandir '/lib64' (0 upvotes):** There is no engine download and no OS or distro resolution that scans `/lib64`; emit is pure TypeScript.
+- **[#22008](https://github.com/prisma/orm/issues/22008) prisma 5.6.0 libquery_engine-darwin-arm64.dylib.node regression (0 upvotes):** There is no `libquery_engine` dylib to locate; the runtime imports `contract.json` and talks to Postgres through the pg driver.
+- **[#25521](https://github.com/prisma/orm/issues/25521) Cannot find libssl error when querying database locally (0 upvotes):** There is no Rust engine library, so no libssl or OpenSSL dependency exists; queries run in TypeScript over node-postgres.
+- **[#27159](https://github.com/prisma/orm/issues/27159) BUG: Prisma Client crash on a query. (0 upvotes):** The `coerce.rs` panic came from the Rust engine decoding relation JSON; Prisma 8 decodes includes in TypeScript and reports a structured `RUNTIME.DECODE_FAILED` instead of panicking.
+- **[#27833](https://github.com/prisma/orm/issues/27833) Amplify Gen 2 Function errors (0 upvotes):** There is no query engine binary and no `binaryTargets`, so nothing platform-specific has to be copied next to the Lambda bundle; the serverless facade connects per invocation.
+- **[#28041](https://github.com/prisma/orm/issues/28041) prisma generate freezes on Windows and never finishes (0 upvotes):** There is no `prisma generate` and no `query_engine-windows.dll.node` download; `contract emit` is pure TypeScript.
+- **[#28210](https://github.com/prisma/orm/issues/28210) Bug Report: Prisma Query Engine Crash in Next.js 15 Dev Mode (0 upvotes):** There is no library query engine; queries run in TypeScript over a `pg.Pool` shared by a module-level singleton, so "Response from the Engine was empty" cannot occur.
+- **[#29464](https://github.com/prisma/orm/issues/29464) ARM64 Prisma generate not working in docker image node:25-slim/alpine (0 upvotes):** There is no `prisma generate`, no WASM `getDmmf` step and no engine binaries; `contract emit` is pure TypeScript and platform independent.
+- **[#29642](https://github.com/prisma/orm/issues/29642) PANIC: called Option::unwrap() on a None value at query-compiler/core/src/query_document/selection.rs:218 (batched concurrent findUnique, client engine 7.8.0) (0 upvotes):** There is no Rust or WASM query compiler and no dataloader batching of `findUnique`; each call lowers in TypeScript and invalid input surfaces as a structured error, never a PANIC.
+- **[#30182](https://github.com/prisma/orm/issues/30182) Binary engine fails to restart after a crash once its datamodel temp file is gone — subsequent queries hang forever (classic client 6.x) (0 upvotes):** There is no binary engine, no datamodel temp file and no engine respawn; the runtime is in-process and reads `contract.json` at import time.
+
+### MongoDB (8)
+
+- **[#7305](https://github.com/prisma/orm/issues/7305) MongoDB: (Data) Migration Support (13 upvotes):** Mongo migrations are first-class packages with `createIndex` / `createCollection` / `setValidation` operations, `dataTransform({ check, run })` backfills, markers and `db verify`. See [how migrations work](https://www.prisma.io/docs/orm/migrations/how-migrations-work).
+- **[#14871](https://github.com/prisma/orm/issues/14871) Performance issues with MongoDB (12 upvotes):** Engine-generated Mongo query plans are gone; the Mongo facade drives `MongoClient` through a typed pipeline builder. See [MongoDB data modeling](https://www.prisma.io/docs/orm/data-modeling/mongodb).
+- **[#16504](https://github.com/prisma/orm/issues/16504) Prisma Client with MongoDB returns ConnectorError/RawDatabaseError "Broken pipe (os error 32)" (4 upvotes):** The Mongo target runs on the official `MongoClient` driver (yours via `mongoClient:`, or one the facade builds from a URL); the Rust connector that emitted "Broken pipe" no longer exists.
+- **[#28423](https://github.com/prisma/orm/issues/28423) MongoDB rust free client adapter (4 upvotes):** `@prisma/orm-mongo` is pure TypeScript on the official `mongodb` driver; there is no Rust binary. See [MongoDB data modeling](https://www.prisma.io/docs/orm/data-modeling/mongodb).
+- **[#8305](https://github.com/prisma/orm/issues/8305) MongoDB "Cannot create namespace" on Mongo 4.2 (0 upvotes):** Collections are created by `db init` or migrations from the contract, and single ORM writes are not wrapped in a multi-document transaction, so the create-namespace-in-transaction path is gone.
+- **[#13901](https://github.com/prisma/orm/issues/13901) MongoDB embedding shows a wrong error type (0 upvotes):** The Rust Mongo connector and its misleading validation messages are gone; embedded documents are value-object fields typed from the contract, and runtime failures are structured envelopes.
+- **[#15197](https://github.com/prisma/orm/issues/15197) Command failed (AtlasError): Pipeline length greater than 50 not supported) (0 upvotes):** The Rust engine emitted one `$set` pipeline stage per field; Prisma 8 Mongo updates go through the MongoDB driver as a plain `$set` document or typed field operations.
+- **[#17287](https://github.com/prisma/orm/issues/17287) Error in migration engine. Reason: [psl/builtin-connectors/src/mongodb.rs:125:9] not yet implemented (0 upvotes):** There is no Rust migration engine to panic; the Mongo interpreter rejects `@db.*` attributes with a diagnostic instead.
+
+## Thanks for reading
+
+If you made it all the way to the end, thanks for sticking around.
+
+You're awesome!
