@@ -1,3 +1,4 @@
+import { composerNextConfig } from "../../composer/next-config.mjs";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import { createMDX } from "fumadocs-mdx/next";
 
@@ -245,6 +246,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   async redirects() {
     return [
       {
@@ -766,6 +768,7 @@ const config = {
 
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
+    ...composerNextConfig.experimental,
     globalNotFound: true,
   },
   // No Cache-Control here, deliberately. The SEO audit's TTFB finding invited a

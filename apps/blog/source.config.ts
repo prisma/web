@@ -13,6 +13,7 @@ import { rehypeCodeOptions } from "@prisma-docs/ui/mdx/rehype-code-options";
 
 export const blogPosts = defineCollections({
   type: "doc",
+  async: process.env.COMPOSER_BUILD === "1",
   dir: "content/blog",
   schema: frontmatterSchema.extend({
     authors: z.array(z.string()),

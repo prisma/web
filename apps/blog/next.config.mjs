@@ -1,3 +1,4 @@
+import { composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -246,6 +247,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   reactCompiler: true,
   async redirects() {
     const tagSlugs = [
@@ -382,6 +384,7 @@ const config = {
   images: { unoptimized: true },
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
+    ...composerNextConfig.experimental,
     globalNotFound: true,
   },
   async headers() {
