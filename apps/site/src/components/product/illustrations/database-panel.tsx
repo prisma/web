@@ -19,7 +19,7 @@ const BRANCHES = [
 
 export function DatabasePanel() {
   return (
-    <HeroPanel label="Illustration of a Prisma Postgres database: the production database with its connection string and included connection pool, and a preview database for each pushed branch beside it">
+    <HeroPanel label="Illustration of a Prisma Postgres database: the production database with its connection string and included connection pool, and a preview database for each feature branch beside it">
       <CardChrome
         file="database"
         right={
@@ -60,7 +60,7 @@ export function DatabasePanel() {
           </div>
         </div>
 
-        {/* a preview database per pushed branch, beside production */}
+        {/* a preview database per feature branch, beside production */}
         <div className="flex flex-col gap-2.5">
           <SectionLabel>Environments</SectionLabel>
           {BRANCHES.map(({ name, primary }) => (

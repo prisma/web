@@ -10,7 +10,7 @@ const PREVIEWS = ["pr-214", "pr-207"];
 
 export function IsolatedBranches() {
   return (
-    <SurfaceCard label="Illustration contrasting a shared test database with Prisma Postgres giving each pushed branch's preview its own new database beside production">
+    <SurfaceCard label="Illustration contrasting a shared test database with Prisma Postgres giving each feature branch's preview its own new database beside production">
       <CardChrome file="previews" />
       <div className="flex flex-1 flex-col justify-center gap-2 px-4 py-3 text-[0.625rem] leading-none">
         {/* what it replaces */}

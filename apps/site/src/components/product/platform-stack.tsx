@@ -107,7 +107,7 @@ const LAYERS: Layer[] = [
       {
         name: "Prisma Postgres",
         prisma: true,
-        note: "A preview database for each pushed branch, one config declares both halves, and it's standard Postgres underneath.",
+        note: "A preview database for each feature branch, one config declares both halves, and it's standard Postgres underneath.",
       },
       {
         name: "Supabase",
@@ -138,7 +138,7 @@ const LAYERS: Layer[] = [
       {
         name: "Prisma Compute",
         prisma: true,
-        note: "App and database deploy as one unit, co-located, with a preview for each pushed branch.",
+        note: "App and database deploy as one unit, co-located, with a preview for each feature branch.",
       },
       {
         name: "Vercel",
@@ -159,7 +159,7 @@ const LAYERS: Layer[] = [
 const AGENTS = ["Claude Code", "Codex", "Cursor", "Windsurf"];
 
 const GOLDEN_NOTE =
-  "Everything wired for you: one config, a preview with its own database for each pushed branch, and the app next to its database.";
+  "Everything wired for you: one config, a preview with its own declared databases for each feature branch, and the app next to its database.";
 
 /** Seconds the agent row holds each name. */
 const AGENT_HOLD = 2.2;

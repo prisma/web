@@ -43,7 +43,7 @@ export const postgresContent: ProductPageContent = {
     subheadline:
       "Managed Postgres for TypeScript and AI apps, with Prisma Compute to host your app (Node.js, Bun or Next.js) next to it in one project. Any Postgres client works; Prisma ORM is optional. Start on the free plan, no credit card.",
     benefits: [
-      "Free preview databases per pushed branch, for the ones you declare",
+      "Free preview databases per feature branch, for the ones you declare",
       "Billed per operation, with a hard spend limit on paid plans",
       "Predictable pricing with spend limits, no surprise bills",
     ],
@@ -54,7 +54,7 @@ export const postgresContent: ProductPageContent = {
       {
         label: "Database",
         caption:
-          "A production Postgres in seconds, and, with deploy on push, a new database for each pushed branch's preview; production data is not copied.",
+          "A production Postgres in seconds, and, with deploy on push, new databases for each feature branch's preview (the ones your Composer module declares); production data is not copied.",
         illustration: "databasePanel",
       },
       {
@@ -79,7 +79,7 @@ export const postgresContent: ProductPageContent = {
       "When your database and your hosting come from separate vendors, the things that should be automatic (a database for every preview, end-to-end test setups, single-config deploys) turn into work you have to do.",
     ],
     outcomes: [
-      { icon: "gitBranch", label: "A preview database per pushed branch" },
+      { icon: "gitBranch", label: "A preview database per feature branch" },
       { icon: "shield", label: "Predictable pricing with spend limits" },
       { icon: "swap", label: "Per-operation billing with spend limits" },
       { icon: "database", label: "Standard Postgres, no lock-in" },
@@ -98,7 +98,7 @@ export const postgresContent: ProductPageContent = {
       {
         name: "A database per preview",
         description:
-          "With deploy on push, every pushed branch gets a preview with its own services and, for databases declared in the Composer module, its own new database. Production data is not copied.",
+          "With deploy on push, every feature branch (any branch except the default) gets a preview with its own services and, for databases declared in the Composer module, its own new database. Production data is not copied.",
         illustration: "isolatedBranches",
       },
       {
@@ -200,7 +200,7 @@ export const postgresContent: ProductPageContent = {
   ],
   cta: {
     headline: "Postgres that ships with the rest of your stack",
-    body: "Prisma Postgres is the data half of a TypeScript platform. Use it on its own with any ORM and any host, or pair it with Compute and your app and database become one deploy and one config, with a preview and its own database for each pushed branch.",
+    body: "Prisma Postgres is the data half of a TypeScript platform. Use it on its own with any ORM and any host, or pair it with Compute and your app and database become one deploy and one config, with a preview and its own declared databases for each feature branch.",
     benefits: [
       "Free preview databases that come with your app's previews",
       "Predictable pricing with spend limits",
