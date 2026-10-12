@@ -50,10 +50,15 @@ const PAGES: PageCopy[] = [
     llmsBlock: true,
   },
   {
+    // Changed on purpose in the 2026-10-08 /postgres SEO pass (VP-approved):
+    // the title now leads with "Free Postgres database for TypeScript and AI"
+    // so the page can answer the real search question, and the description
+    // sells npx create-db instead of the generic feature-dump the audit copy
+    // was.
     path: "/postgres",
-    title: "Prisma Postgres | Serverless PostgreSQL for TypeScript Apps",
+    title: "Prisma Postgres | Free Postgres database for TypeScript and AI",
     description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+      "Managed Postgres, part of Prisma's infrastructure for TypeScript and AI apps. Create a free database in seconds with npx create-db. No credit card.",
     llmsBlock: true,
   },
   {

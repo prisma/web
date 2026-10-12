@@ -1,0 +1,230 @@
+---
+title: "Prisma Compute is now GA"
+slug: "prisma-compute-generally-available"
+date: "2026-08-26"
+authors:
+  - "Søren Bramer Schmidt"
+metaTitle: "Prisma Compute is now generally available"
+metaDescription: "Prisma Compute is GA: deploy a TypeScript app and its Prisma Postgres database together, with a preview and an isolated database for every branch you push. What changed since the beta, what it costs, and how to start."
+excerpt: "Prisma Compute is generally available. Deploy your TypeScript app and its Prisma Postgres database together, test changes in a preview with its own database for every branch you push, and pay for what the app runs."
+heroImagePath: "/prisma-compute-generally-available/imgs/hero.svg"
+heroImageAlt: "A branch table for one Prisma Compute project: main is live in production, and the usage-warning and fix-duplicate-email branches are live previews, each with its own storefront app and Postgres database"
+metaImagePath: "/prisma-compute-generally-available/imgs/meta.png"
+pinned: true
+series: prisma-compute
+seriesIndex: 12
+tags:
+  - "announcement"
+  - "platform"
+---
+
+**[Prisma Compute](https://www.prisma.io/docs/compute) is generally available today.** It hosts your TypeScript app next to its [Prisma Postgres](https://www.prisma.io/docs/postgres) database, so you deploy the two together, get a preview environment for every Git branch you push, and manage the running app from one dashboard, one CLI, and one bill.
+
+Getting an application in front of users takes more than the code. The app needs somewhere to run, a database it can reach, credentials that connect the two, and a way to try a change before it reaches production. On most stacks those pieces come from different vendors, and keeping them in agreement is work of its own, repeated for every environment you add.
+
+Compute puts the app and its database into one deployment: one deploy creates both, and every environment, from your laptop to a preview to production, gets its own pair.
+
+The [public beta](/launching-prisma-compute-public-beta) that opened on June 8 is over, so usage is now billed, and GA also changes how builds run and what you can see about a deployment.
+
+## Your app and its database should deploy together
+
+Take a small storefront: a TypeScript API that reads products and customers from Postgres. On a laptop it is one process and one database, and deploying it is where the pieces multiply. You pick a host, create a database somewhere else, copy the connection string into the host's settings, decide where the staging copy lives, and repeat the arrangement when a teammate wants an environment of their own.
+
+Compute and Prisma Postgres are built as one platform: a *project* holds the app's *services*, the deployable processes such as the API, together with its databases, every plan covers both, and running them in the same region keeps queries local. The database is ordinary PostgreSQL, so any client works and Prisma ORM is optional.
+
+The part that matters most for everyday work is how the two connect. Instead of copying a connection string into each environment, **you declare that the API depends on a database, and each deploy hands the API that environment's own URL.** Production gets production's database, and a preview gets one of its own.
+
+You write that declaration in TypeScript with Prisma Composer, and the next two sections show what it buys you and what it looks like.
+
+## Every branch you push can have a place to test it
+
+Say the storefront has a bug: two customers can sign up with the same email address. The fix adds a unique constraint, a schema change you want to try somewhere other than production first.
+
+Once you have connected the repository and set up deployment on push, the fix goes like this:
+
+1. **You push a `fix-duplicate-email` branch.** A GitHub Actions run in your repository builds the app and deploys the branch as a preview with its own URL, its own API service, and its own Prisma Postgres database, created for that branch.
+2. **The preview database gets your schema.** If your schema is managed by Prisma ORM, the deploy applies your migrations before the service starts, so the new constraint is in place when you open the preview. With another client, running migrations against the preview database is yours to do.
+3. **The preview runs with its own settings.** Environment variables have separate production and preview values, set in the Prisma Console (the web dashboard) or with the CLI, so the preview can use test credentials rather than production ones.
+4. **You merge when the fix holds**, and the push to the default branch deploys production the same way.
+5. **You delete the branch**, and the preview and its database go with it.
+
+Two boundaries matter here: *a preview database starts without production data*, so test data is yours to seed, and *the database is created per branch because your app declares it*, so an app that instead reads a connection string from a `DATABASE_URL` variable gets no automatic database, and its preview is only as isolated as the preview value you set.
+
+GitHub is the only Git provider today, and from another CI system the CLI deploys the same kind of isolated environment, as the next section shows. A branch you keep, such as `staging`, works as a long-lived staging environment, and the [deploy on push guide](https://www.prisma.io/docs/compute/deploy-on-push) walks through all of it.
+
+**Setting this up from the Console is one pull request:** pick the repository, merge the pull request the Console opens, which adds the deploy workflow file to the repository, and push. GitHub authenticates each run for you, so there is no deployment secret to store, and the builds run in your repository's GitHub Actions rather than on Prisma's servers.
+
+## Describe the app and its database in TypeScript
+
+The previews above work because the app says what it needs, and that is the job of [Prisma Composer](https://www.prisma.io/docs/composer): a small TypeScript declaration next to your server code that names each service, what it depends on, and how it is built. Whether you deploy from the CLI, from a GitHub push, or from the Console, what gets deployed is this declaration, which Composer calls a *module*.
+
+For the storefront, the declaration is a service, a database, and a module that creates both and wires them together. The server reads its port and its database URL from the declaration instead of from `process.env`:
+
+```ts tab="module.ts"
+import { module } from "@prisma/composer";
+import { rawPostgres } from "@prisma/composer-prisma-cloud";
+import apiService from "./src/api/service.ts";
+
+export default module("storefront", ({ provision }) => {
+  const db = provision(rawPostgres({ name: "database" }));
+  provision(apiService, { deps: { db } });
+});
+```
+
+```ts tab="src/api/service.ts"
+import node from "@prisma/composer/node";
+import { compute, rawPostgres } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "api",
+  deps: { db: rawPostgres() },
+  build: node({ module: import.meta.url, entry: "../../dist/api/server.mjs" }),
+});
+```
+
+```ts tab="src/api/server.ts"
+import { SQL } from "bun";
+import service from "./service.ts";
+
+const { db } = service.load();
+const sql = new SQL({ url: db.url, idleTimeout: 10, prepare: false });
+
+Bun.serve({
+  port: service.port(),
+  hostname: "0.0.0.0",
+  fetch: async () => Response.json(await sql`select now()`),
+});
+```
+
+```ts tab="prisma.config.ts"
+import { defineConfig as composer } from "@prisma/composer/config";
+import { nodeBuild } from "@prisma/composer/node/control";
+import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
+import { definePrismaConfig } from "prisma/config";
+
+export default definePrismaConfig({
+  composer: composer({
+    extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
+    state: prismaState(),
+  }),
+});
+```
+
+The module provisions a database and the API service and passes the database in as a dependency. `rawPostgres()` appears twice: with options in the module it creates the database, and bare in the service it declares what the service needs.
+
+In the server, `service.load()` returns the database URL for whichever environment the code is running in. **The same file works on your laptop, in a preview, and in production without a connection string in any settings page**, and a dependency you forgot to wire is a type error. The `prisma.config.ts` file is read only by the CLI and names the extensions that deploy to Prisma and where deploy state is kept.
+
+A build script such as `bun build src/api/server.ts --target=bun --outfile dist/api/server.mjs` produces the file the service points at. The `node` build adapter is for Node.js-style servers, and Compute runs the output on Bun, so an Express or Hono server is declared the same way and runs through Bun's Node.js compatibility.
+
+The `prisma` CLI you know from the ORM runs and deploys it, once the build has run:
+
+- `npx prisma dev module.ts` runs the whole app on your machine against a local Postgres.
+- `npx prisma deploy module.ts` provisions the real service and database, and running it again applies only what changed.
+- `npx prisma deploy module.ts --stage <name>` deploys an isolated copy of the whole app, which is what the GitHub Action does for each preview branch.
+
+The example uses `rawPostgres()`, which hands your server a connection URL for whatever client you already use and leaves migrations to you. If your schema is managed by Prisma ORM 8, declare the database with `postgres()` and the data contract the ORM compiles from your schema instead: the server gets a client typed by that schema, and each deploy applies your migrations, which is what gives every preview database your schema from the start.
+
+The two extra options on the SQL client are there for the two places this code runs. `idleTimeout` drops idle connections so an instance that Compute paused for lack of traffic does not resume with dead ones, and `prepare: false` avoids a prepared-statement collision on the local database that `prisma dev` runs, so copy both.
+
+The [Composer databases page](https://www.prisma.io/docs/composer/databases) covers both kinds of database, and the [porting guide](https://www.prisma.io/docs/composer/porting-an-app) brings an existing Node.js, Bun, or Next.js app over, with a prompt your coding agent can follow.
+
+## What changed since the public beta
+
+Three things changed since the beta that may need something from you, and the rest you get without doing anything.
+
+**Usage is now billed.** The rates are unchanged from the ones we published with the beta, and the next section walks through them. Every paid plan has a hard spend limit, on by default, which you can change in the Console, and the Free plan has no usage billing.
+
+**Builds moved into your GitHub Actions.** During the beta, Prisma built your app on its own servers when you pushed. Those builds are deprecated, and a beta project still using them shows a notice in the Console with its cutoff date and a button that opens the setup pull request, which you need to *merge before the cutoff*. For a new project, the Console opens that pull request as part of connecting the repository.
+
+**The SLA covers Compute.** Prisma's [SLA](https://www.prisma.io/legal/sla) commits to 99.95% monthly uptime on the Pro, Business, and Enterprise plans and excludes features that are not generally available. With GA, Compute serving your app's traffic is no longer excluded, subject to the other exclusions the SLA page lists, and the Free and Starter plans remain outside the SLA.
+
+Everything else needs no action, starting with how an app gets in.
+
+**You can import a GitHub repository from the Console**, and the [framework guides](https://www.prisma.io/docs/guides) cover Next.js, Nuxt, Astro, Hono, NestJS, TanStack Start, and Elysia.
+
+**A [Deploy Button](https://www.prisma.io/docs/compute/deploy-button) in a README gives whoever clicks it a running copy of your app**, with its own database, in their own workspace, the account a Prisma plan belongs to, and the [Prisma apps directory](https://www.prisma.io/apps) lists open-source starters that deploy the same way.
+
+**Every build has a page in the Console** naming the deployment and database it touched, and a build that has not reported back after 30 minutes is flagged instead of staying pending. If your app is unreachable after a deploy, the boot log says why in the two common cases: the server bound to `localhost`, or it listens on the wrong port.
+
+**A deploy that breaks production can be rolled back** to an earlier version from the Console or with `npx prisma service version rollback api`, with no rebuild in between.
+
+**The platform's [REST API](https://www.prisma.io/docs/rest-api), previously called the Management API, now covers Compute**: services, deployments, builds, and paginated logs are all in its [OpenAPI spec](https://api.prisma.io/v1/swagger-editor). A CI job can authenticate with a short-lived token instead of a stored secret, and every platform command in the CLI takes `--json`, so an agent can read logs and deployment state in a form it can act on.
+
+**Compute runs in six regions** across the US, Europe, and Asia-Pacific, and every project can create S3-compatible [Object Store](https://www.prisma.io/docs/storage) buckets for files, though bucket pricing is not published yet. Compute usage appears on the Console's Usage page, not in the API yet.
+
+## You pay for what your app runs
+
+The bill counts what your app ran, not how many times you deployed it or how many people did the deploying. We explained the reasoning in [Price the Work, Not the Workflow](/price-the-work-not-the-workflow): when an agent deploys a preview ten times while it fixes a bug, the bill should reflect what those previews served, not the ten deploys.
+
+Compute meters four things: requests beyond your plan's allowance at $1 per million, memory while an instance is running at $0.006 per GB-hour, CPU only for the time your code is on the processor at $0.064 per vCPU-hour, and outbound bandwidth at $0.025 per GB sent to the internet. Every plan covers Compute and Prisma Postgres together:
+
+| Plan     | Price a month | Compute requests | Prisma Postgres operations | Memory, CPU, and bandwidth                                   |
+| -------- | ------------- | ---------------- | -------------------------- | ------------------------------------------------------------ |
+| Free     | $0            | 1 million        | 200,000                    | 360 GB-hours, 4 vCPU-hours, and 10 GB included; never billed |
+| Starter  | $10           | 5 million        | 1 million                  | Billed from the first unit                                   |
+| Pro      | $49           | 20 million       | 10 million                 | Billed from the first unit                                   |
+| Business | $129          | 100 million      | 50 million                 | Billed from the first unit                                   |
+
+**The Free plan needs no credit card and is never billed.** When a Free workspace passes one of its limits, its apps pause until the next month or until you upgrade, so on the Free plan the cost of a traffic spike is downtime rather than a charge.
+
+**Paid plans bill instead of pausing.** Requests beyond the allowance cost $1 per million, and the spend limit caps what you can be charged in a billing cycle. Moving to a paid plan also drops the included memory, CPU, and bandwidth: those three meters are billed from the first unit.
+
+The fee pays for the larger request and database-operation allowances and for daily backups, and on Pro and Business, the SLA. Enterprise plans are priced on request, and the [pricing page](https://www.prisma.io/pricing) lists Prisma Postgres storage and overage rates.
+
+To make the step from Free to Starter concrete: the Free plan's 360 GB-hours equal 512 MB of memory held for a whole 30-day month. The same instance on Starter costs $2.16 a month in memory, plus its CPU time and the $10 fee. The [Compute pricing docs](https://www.prisma.io/docs/compute/pricing) work through example bills for a preview, an agent workload, and a bandwidth-heavy app.
+
+**Memory is billed only while the app is awake.** When traffic stops, Compute pauses the instance with a snapshot of its memory, billing stops with it, and the next request resumes it in milliseconds with memory intact, so a preview nobody is using costs nothing for compute.
+
+The one exception is Composer's `cron` block, which adds a scheduler service that never pauses, so a schedule costs one always-on instance in every environment it is deployed to.
+
+**Deployments, preview branch creation, and seats are not billed.** Builds run in your own GitHub Actions, so on a private repository they count against your GitHub plan's minutes. The Usage page in the [Console](https://console.prisma.io/?utm_source=blog&utm_medium=blog&utm_campaign=compute-ga&utm_content=ga-post) breaks requests, memory, CPU, and bandwidth down by day, by app, and by response status.
+
+## Where Compute fits, and when to choose something else
+
+Price is one input to the decision, and fit is the larger one. What sets Compute apart is that the app and its database are one deployment on one plan, and every branch can get its own copy of both.
+
+Other platforms have other strengths: Vercel and Netlify serve frontends from a global network, Cloudflare runs code in hundreds of cities, AWS has a service for almost any workload, and Railway, Render, and Fly.io run long-lived servers with WebSockets, disks, and cron jobs. On most of them Postgres comes from a second product or a second company, and a database per preview depends on what that provider offers. If a frontend needs a global CDN above everything else, it can stay on Vercel and use Prisma Postgres as its database.
+
+Whether Compute fits comes down to a handful of decisions about the app:
+
+- **Where your users are relative to your data.** Each service runs in one region, and there is no built-in CDN. Keep the database in the same region and queries stay local, while a user far from that region pays the distance once per request, and static files are served by your app like any other request.
+- **How your server talks to its clients.** Streaming responses and server-sent events work, but WebSocket servers are not supported, so a socket server has to run elsewhere while the rest of the app stays here. A request has 60 seconds to send its first byte, after which the client gets a `504`; a response that has started streaming is not cut off.
+- **What the code runs on.** Compute runs TypeScript services on Bun, whose Node.js compatibility is broad but not complete, and it does not run Python, Go, or Docker images.
+- **Work that outlives a request.** The `waitUntil` function from the `@prisma/compute` package keeps an instance awake while background work finishes, on a best-effort basis: a restart or a new deployment ends it, and failures are not retried. Jobs that must finish belong in a database row or a queue, processed in steps. Compute has no built-in cron; Composer's `cron` block provides one, at the cost of the always-on instance described above.
+- **Where files and backups live.** There is no persistent filesystem, so files you need to keep go to the database or to Object Store. Paid Prisma Postgres plans take daily backups, and restoring to an arbitrary moment is not available yet.
+
+The [Compute FAQ](https://www.prisma.io/docs/compute/faq) goes through each of these, with a table comparing Compute to Railway, Render, Fly.io, and Vercel.
+
+## Deploy your first app
+
+Where you start depends on what you have:
+
+- **A new project in the Console** starts from a starter app, a GitHub repository, or an empty project, and the repository path opens the pull request that sets up deployment on push.
+- **An app you already have** gets the Composer declaration added around its existing server code by following the [porting guide](https://www.prisma.io/docs/composer/porting-an-app).
+- **The storefront example above** goes to a live URL with the commands below.
+
+You need Node.js 22.18 or newer, because Composer hands your TypeScript entry file straight to Node and older versions stop with `ERR_UNKNOWN_FILE_EXTENSION`, and Bun, because the example uses Bun's server and SQL client. Once the files are written, install the Composer packages, plus `prisma` as a dev dependency because `prisma.config.ts` imports from it, mark the package as an ES module, add the build script, then sign in once, build, and deploy, and the deploy ends by printing the API's public URL:
+
+```bash
+npm install @prisma/composer @prisma/composer-prisma-cloud
+npm install -D prisma typescript @types/bun
+npm pkg set type=module
+npm pkg set scripts.build="bun build src/api/server.ts --target=bun --outfile dist/api/server.mjs"
+npx prisma auth login
+npm run build
+npx prisma deploy module.ts
+```
+
+With the `tsconfig.json` from the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), `typescript` and `@types/bun` let `npx tsc --noEmit` check the wiring.
+
+[Deploy your first app](https://www.prisma.io/docs/prisma-compute/deploy) walks through the same setup in full, and the [Compute getting-started guide](https://www.prisma.io/docs/compute/getting-started) continues from there to connecting GitHub.
+
+If a coding agent does your deploying, run `npx prisma init` once, right after installing the packages; with Composer installed, it copies the Composer agent skill, a set of instructions about Composer's API, into the directories your agent reads.
+
+Compute is open to everyone on the Free plan.
+
+<Button asChild variant="ink" size="2xl">
+  <a href="https://console.prisma.io/?utm_source=blog&utm_medium=blog&utm_campaign=compute-ga&utm_content=ga-post">Deploy on Prisma Compute</a>
+</Button>
+
+Tell us what you build, and what gets in the way, in the `prisma-compute` channel on the [Prisma Discord](https://pris.ly/discord).

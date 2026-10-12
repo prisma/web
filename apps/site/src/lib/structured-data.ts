@@ -17,16 +17,23 @@ function absoluteUrl(pathOrUrl: string): string {
 }
 
 function toPlainText(value: string): string {
-  return value
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;quot;/g, '"')
-    .replace(/&amp;#39;|&amp;apos;/g, "'")
-    .replace(/&amp;nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    value
+      .replace(/<[^>]+>/g, " ")
+      // The product-page FAQ (lib/faq-answer.tsx) carries a tiny inline syntax
+      // the FAQPage JSON-LD must not inherit: links keep the anchor words, code
+      // chips keep their contents, both drop their markup.
+      .replace(/\[((?:[^[\]\\`]|`[^`]*`)+)\]\((?:\/[^\s)]*|https?:\/\/[^\s)]+)\)/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/&amp;quot;/g, '"')
+      .replace(/&amp;#39;|&amp;apos;/g, "'")
+      .replace(/&amp;nbsp;/g, " ")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 export function createSiteStructuredData() {
