@@ -12,7 +12,7 @@ import {
   writeStoredUtmAttribution,
 } from "../lib/utm";
 import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
-import { hasAnalyticsConsent } from "../lib/consent";
+import { hasAdvertisingConsent } from "../lib/consent";
 
 interface UtmPersistenceProps {
   /**
@@ -42,17 +42,19 @@ interface UtmPersistenceProps {
 /**
  * Reads the visitor's first- and last-touch attribution: stored touches merged
  * with whatever campaign params are on the current URL. Persists and announces
- * a touch only when it actually changed, and drops ad click IDs when analytics
- * consent is absent. Returns `undefined` for a visitor with no attribution.
+ * a touch only when it actually changed, and drops ad click IDs when
+ * advertising consent is absent. Returns `undefined` for a visitor with no
+ * attribution.
  */
 export function getActiveAttribution(storageKey: string) {
+  // Click IDs are advertising identifiers, so they follow the CookieYes
+  // advertisement category, the same gate as the ad pixels that consume them.
+  const includeClickIds = hasAdvertisingConsent();
   const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search), {
-    // Click IDs are advertising identifiers. Without analytics consent nothing
-    // downstream records them, so there is no reason to hold one.
-    includeClickIds: hasAnalyticsConsent(),
+    includeClickIds,
   });
   let stored = readStoredUtmAttribution(storageKey);
-  if (stored && !hasAnalyticsConsent()) {
+  if (stored && !includeClickIds) {
     const previous = stored;
     stored = mergeUtmAttribution(
       undefined,

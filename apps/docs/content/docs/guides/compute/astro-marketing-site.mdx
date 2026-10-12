@@ -1,0 +1,375 @@
+---
+title: Build a marketing site with Astro
+description: 'Build a static marketing site with Astro, serve it from a Node server, and deploy it to Prisma Compute with Prisma Composer.'
+url: /guides/compute/astro-marketing-site
+metaTitle: How to build and deploy an Astro marketing site on Prisma Compute
+metaDescription: 'Build a static Astro marketing site, add the Node adapter so Prisma Compute has a server to run, declare it with Prisma Composer, and deploy it, with tested commands.'
+---
+
+## Introduction
+
+This guide builds a small marketing site with [Astro](https://astro.build) (a home page, a pricing page, and an about page) and deploys it to [Prisma Compute](/compute). Every page is rendered to static HTML at build time, so the site needs no database and no Prisma ORM.
+
+Compute runs a server process, not a folder of files. The one Astro-specific step is adding the Node adapter, which keeps your pages static and adds a small server that serves them.
+
+Every command below was run end to end, including the deploy.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) 24 or later
+- A [Prisma Data Platform account](https://pris.ly/pdp), free to create. You only need it for the deploy step.
+
+## 1. Scaffold the site
+
+Create an Astro project from the minimal template:
+
+```npm
+npm create astro@latest -- marketing-site --template minimal --install --no-git --yes
+cd marketing-site
+```
+
+```text no-copy
+      ✔  Project initialized!
+         ■ Template copied
+         ■ Dependencies installed
+
+  next   Liftoff confirmed. Explore your project!
+```
+
+The template gives you one page, `src/pages/index.astro`, and an empty `astro.config.mjs`.
+
+## 2. Build the pages
+
+Add a shared layout with the header and navigation every page uses:
+
+```astro title="src/layouts/Base.astro"
+---
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <header>
+      <a href="/">Acme</a>
+      <nav>
+        <a href="/pricing">Pricing</a>
+        <a href="/about">About</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>© Acme</footer>
+  </body>
+</html>
+
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+  }
+  nav a {
+    margin-left: 1rem;
+  }
+</style>
+```
+
+Replace the home page and add the other two pages:
+
+```astro title="src/pages/index.astro"
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Acme: ship faster" description="Acme helps your team ship faster.">
+  <h1>Ship faster with Acme</h1>
+  <p>Everything your team needs to go from idea to production.</p>
+  <a href="/pricing">See pricing</a>
+</Base>
+```
+
+```astro title="src/pages/pricing.astro"
+---
+import Base from "../layouts/Base.astro";
+
+const plans = [
+  { name: "Starter", price: "$0", blurb: "For side projects." },
+  { name: "Team", price: "$29", blurb: "For growing teams." },
+];
+---
+
+<Base title="Pricing | Acme" description="Simple pricing for every team.">
+  <h1>Pricing</h1>
+  <ul>
+    {plans.map((plan) => (
+      <li>
+        <strong>{plan.name}</strong> {plan.price}/month: {plan.blurb}
+      </li>
+    ))}
+  </ul>
+</Base>
+```
+
+```astro title="src/pages/about.astro"
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="About | Acme" description="The team behind Acme.">
+  <h1>About Acme</h1>
+  <p>We build tools for teams that ship.</p>
+</Base>
+```
+
+Run `npm run dev` and open [http://localhost:4321](http://localhost:4321) to check the pages, then stop the dev server.
+
+## 3. Add the Node adapter
+
+Compute needs a server entrypoint to run. A plain Astro build only produces HTML files, so add the Node adapter in standalone mode:
+
+```npm
+npx astro add node --yes
+```
+
+```js title="astro.config.mjs"
+// @ts-check
+import { defineConfig } from 'astro/config';
+
+import node from '@astrojs/node';
+
+// https://astro.build/config
+export default defineConfig({
+  adapter: node({
+    mode: 'standalone'
+  })
+});
+```
+
+Leave `output` unset. It defaults to `"static"`, so every page is still rendered at build time. The adapter adds a server that serves those files. Build to confirm:
+
+```npm
+npm run build
+```
+
+```text no-copy
+[build] output: "static"
+[build] mode: "server"
+[build] adapter: @astrojs/node
+[build] Building server entrypoints...
+
+ prerendering static routes
+  ├─ /about/index.html (+7ms)
+  ├─ /pricing/index.html (+3ms)
+  ├─ /index.html (+4ms)
+✓ Completed in 50ms.
+
+[build] Server built in 815ms
+[build] Complete!
+```
+
+The pages land in `dist/client/` and the server lands in `dist/server/entry.mjs`. Compute runs that server.
+
+## 4. Declare the app with Prisma Composer
+
+[Prisma Composer](/composer) describes what to deploy. Install it, plus the Prisma CLI as a dev dependency:
+
+```npm
+npm install @prisma/composer @prisma/composer-prisma-cloud
+npm install -D prisma
+```
+
+Declare the service and point it at the Astro server entry. `dir` is the build output directory, and `entry` is the server file inside it:
+
+```ts title="service.ts"
+import node from "@prisma/composer/node";
+import { compute } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "web",
+  deps: {},
+  build: node({ module: import.meta.url, dir: "./dist", entry: "server/entry.mjs" }),
+});
+```
+
+The root module is the app. Its name becomes the project name on Compute:
+
+```ts title="module.ts"
+import { module } from "@prisma/composer";
+import web from "./service.ts";
+
+export default module("marketing-site", ({ provision }) => {
+  provision(web);
+});
+```
+
+The deploy config tells the CLI where to deploy. The `region` applies when the first deploy creates the project:
+
+```ts title="prisma.config.ts"
+import { defineConfig as composer } from "@prisma/composer/config";
+import { nodeBuild } from "@prisma/composer/node/control";
+import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
+import { definePrismaConfig } from "prisma/config";
+
+export default definePrismaConfig({
+  composer: composer({
+    extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
+    state: prismaState(),
+  }),
+});
+```
+
+Composer writes local state to `.alchemy/` and `.prisma-composer/`. Add both to `.gitignore`:
+
+```bash title=".gitignore"
+/.alchemy
+/.prisma-composer
+```
+
+## 5. Run it locally
+
+Run the built site the way Compute will. No account is needed:
+
+```npm
+npm run build
+npx prisma dev module.ts
+```
+
+```text no-copy
+[dev] compute emulator ready at http://127.0.0.1:4300
+...
+{"kind":"endpoint","name":"web","url":"http://localhost:3032"}
+```
+
+Check each route against the URL `dev` printed (your port may differ):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3032/pricing
+```
+
+```text no-copy
+200
+```
+
+Composer hands the server its port, so you do not set `PORT` or `HOST` yourself. Stop `dev` with `Ctrl+C`.
+
+## 6. Deploy to Prisma Compute
+
+Sign in once. It opens your browser:
+
+```npm
+npx prisma auth login
+```
+
+Then build and deploy:
+
+```npm
+npm run build
+npx prisma deploy module.ts
+```
+
+```text no-copy
+Plan: 4 to create, 1 tasks
+...
+marketing-site
+└─ web   compute-service cps_abc123
+         https://abc123.ewr.prisma.build
+...
+Done: 5 succeeded (16.8s)
+```
+
+The deploy creates a project named `marketing-site` in your workspace and prints the live URL. If a project with that name already exists and its deploy state cannot be verified, the deploy stops with `HostedStateBootstrapError`; rename the module in `module.ts` or pass `--name <unique-name>`.
+
+Verify the live site:
+
+```bash
+curl -s https://abc123.ewr.prisma.build/ | grep -o '<h1>.*</h1>'
+```
+
+```text no-copy
+<h1>Ship faster with Acme</h1>
+```
+
+## 7. Ship a change
+
+Edit a page, then build and deploy again:
+
+```astro title="src/pages/index.astro"
+<h1>Ship faster with Acme</h1> // [!code --]
+<h1>Ship faster with Acme, now on Prisma Compute</h1> // [!code ++]
+```
+
+```npm
+npm run build
+npx prisma deploy module.ts
+```
+
+```text no-copy
+Plan: 2 to update, 1 to replace, 1 tasks
+...
+marketing-site
+└─ web   compute-service cps_abc123
+         https://abc123.ewr.prisma.build
+```
+
+The deploy reuses the project and keeps the URL. Fetch it again and you get the new heading. To deploy on every push instead of from your terminal, see [Deploy on push](/compute/deploy-on-push).
+
+## Common gotchas
+
+**`ASSEMBLE.BUILD_FAILED`: no built entry at `dist/server/entry.mjs`.** Either the Node adapter is missing, so the build only wrote HTML files, or you ran `dev` or `deploy` before `npm run build`. Add the adapter (step 3), build, and run the command again. Composer never runs your build for you, so always build before `deploy`; otherwise it ships whatever is already in `dist/`.
+
+**Setting `output: "server"`.** You don't need it for a marketing site. It renders every page per request instead of serving prebuilt HTML. Leave `output` at its static default, and opt a single page into request-time rendering with `export const prerender = false` when you need one.
+
+## Use with your agent
+
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Build a static Astro marketing site and deploy it to Prisma Compute. Follow https://www.prisma.io/docs/guides/compute/astro-marketing-site.md.
+
+1. Scaffold: `npm create astro@latest -- marketing-site --template minimal --install --no-git --yes`, then work in `marketing-site`.
+2. Build the pages I describe (default: a shared layout in `src/layouts/Base.astro` plus home, pricing, and about pages). Keep every page static; do not set `output: "server"`.
+3. Run `npx astro add node --yes` so `astro.config.mjs` uses `node({ mode: "standalone" })`. Run `npm run build` and confirm `dist/server/entry.mjs` exists.
+4. Install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and `prisma` as a dev dependency. Add `service.ts`, `module.ts`, and `prisma.config.ts` exactly as the guide shows, and add `/.alchemy` and `/.prisma-composer` to `.gitignore`.
+5. Run `npx prisma dev module.ts` in the background, curl each page at the printed URL and confirm a 200, then stop it.
+6. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy module.ts`, and curl the printed URL to confirm the home page renders.
+```
+
+</AgentPrompt>
+
+Install the [Prisma Compute agent skill](/ai/tools/skills) so your agent knows the deploy workflow:
+
+```npm
+npx skills add prisma/skills --skill prisma-compute
+```
+
+Prompts that map to this guide:
+
+- "Add a blog to my Astro marketing site and redeploy it to Prisma Compute."
+- "Put my Prisma Compute site on a custom domain."
+- "Set up deploy on push for this site."
+
+## Next steps
+
+- [Add a custom domain](/compute/domains) to the deployed site.
+- [Deploy on push](/compute/deploy-on-push) so every Git push deploys, with a preview for every branch.
+- [Use Prisma ORM with Astro](/guides/frameworks/astro) when the site needs data, like a waitlist form backed by Prisma Postgres.
