@@ -10,7 +10,7 @@
  * content source. `llms-source.ts` maps the source's pages onto `LlmsPost`.
  */
 import { normalizePostMarkdown } from "./llm-markdown";
-import { withBlogBasePath } from "./url";
+import { toAbsoluteBlogUrl, toAbsoluteUrl } from "./url";
 
 export type LlmsPost = {
   title: string;
@@ -54,17 +54,30 @@ function singleLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-export function toAbsoluteBlogUrl(baseUrl: string, path: string): string {
-  return `${baseUrl.replace(/\/$/, "")}${withBlogBasePath(path)}`;
+/**
+ * Link text for a Markdown link. Titles go in a code span, which keeps any
+ * bracket inside them literal. A title that already contains a backtick cannot
+ * be wrapped, so its brackets are escaped instead.
+ */
+export function formatLinkLabel(title: string): string {
+  const text = singleLine(title);
+  return text.includes("`") ? text.replace(/[[\]]/g, "\\$&") : `\`${text}\``;
+}
+
+/** Post count per year, for the years that have at least one post. */
+export function countPostsByYear(posts: LlmsPost[]): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const post of posts) {
+    if (!post.date) continue;
+    const year = post.date.getUTCFullYear();
+    counts.set(year, (counts.get(year) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /** Years that have at least one post, newest first. */
 export function getPostYears(posts: LlmsPost[]): number[] {
-  const years = new Set<number>();
-  for (const post of posts) {
-    if (post.date) years.add(post.date.getUTCFullYear());
-  }
-  return [...years].sort((a, b) => b - a);
+  return [...countPostsByYear(posts).keys()].sort((a, b) => b - a);
 }
 
 export function getPostsForYear(posts: LlmsPost[], year: number): LlmsPost[] {
@@ -76,15 +89,16 @@ export function getPostsForYear(posts: LlmsPost[], year: number): LlmsPost[] {
  * judge how current the post is before fetching it.
  */
 export function formatPostLink(post: LlmsPost, baseUrl: string): string {
-  // A title that already contains a backtick cannot be wrapped in a code span.
-  const label = post.title.includes("`") ? post.title : `\`${post.title}\``;
   const details = [formatDate(post.date), singleLine(post.description)].filter(Boolean).join(". ");
-  return `- [${label}](${toAbsoluteBlogUrl(baseUrl, post.path)}): ${details}`;
+  return `- [${formatLinkLabel(post.title)}](${toAbsoluteBlogUrl(baseUrl, post.path)}): ${details}`;
 }
 
 function freshnessNotice(baseUrl: string): string {
-  const root = baseUrl.replace(/\/$/, "");
-  return `> Blog posts describe Prisma as it was on the date shown and are not kept current. Before implementing from a post, check the documentation index at ${root}/docs/llms.txt and the changelog at ${root}/changelog.md.`;
+  return `> Blog posts describe Prisma as it was on the date shown and are not kept current. Before implementing from a post, check the documentation index at ${toAbsoluteUrl(baseUrl, "/docs/llms.txt")} and the changelog at ${toAbsoluteUrl(baseUrl, "/changelog.md")}.`;
+}
+
+function indexPointer(baseUrl: string): string {
+  return `> For an index of every post, fetch ${toAbsoluteBlogUrl(baseUrl, "/llms.txt")}.`;
 }
 
 function markdownNotice(baseUrl: string): string {
@@ -97,13 +111,12 @@ export function buildLlmsIndexContent(
   baseUrl: string,
 ): string {
   const ordered = sortNewestFirst(posts);
-  const root = baseUrl.replace(/\/$/, "");
 
   const seriesList = series
     .filter((entry) => entry.postCount > 0)
     .map(
       (entry) =>
-        `- [\`${entry.title}\`](${toAbsoluteBlogUrl(baseUrl, `/series/${entry.key}`)}): ${singleLine(entry.description)} (${entry.postCount} ${entry.postCount === 1 ? "post" : "posts"})`,
+        `- [${formatLinkLabel(entry.title)}](${toAbsoluteBlogUrl(baseUrl, `/series/${entry.key}`)}): ${singleLine(entry.description)} (${entry.postCount} ${entry.postCount === 1 ? "post" : "posts"})`,
     )
     .join("\n");
 
@@ -112,11 +125,12 @@ export function buildLlmsIndexContent(
     .map((post) => formatPostLink(post, baseUrl))
     .join("\n");
 
-  const yearList = getPostYears(ordered)
-    .map((year) => {
-      const count = getPostsForYear(ordered, year).length;
-      return `- [${year}](${toAbsoluteBlogUrl(baseUrl, `/llms/${year}.txt`)}): ${count} ${count === 1 ? "post" : "posts"}`;
-    })
+  const yearList = [...countPostsByYear(ordered)]
+    .sort(([a], [b]) => b - a)
+    .map(
+      ([year, count]) =>
+        `- [${year}](${toAbsoluteBlogUrl(baseUrl, `/llms/${year}.txt`)}): ${count} ${count === 1 ? "post" : "posts"}`,
+    )
     .join("\n");
 
   return `# Prisma Blog
@@ -143,8 +157,8 @@ ${yearList}
 
 - [Full blog content](${toAbsoluteBlogUrl(baseUrl, "/llms-full.txt")})
 - [RSS feed](${toAbsoluteBlogUrl(baseUrl, "/rss.xml")})
-- [Documentation index](${root}/docs/llms.txt)
-- [Website index](${root}/llms.txt)
+- [Documentation index](${toAbsoluteUrl(baseUrl, "/docs/llms.txt")})
+- [Website index](${toAbsoluteUrl(baseUrl, "/llms.txt")})
 `;
 }
 
@@ -177,6 +191,9 @@ export function getPostSlugs(posts: Pick<LlmsPost, "path">[]): Set<string> {
  * One post as Markdown: the title, a metadata block, then the body. Served on
  * its own at the post's `.md` URL and concatenated into `llms-full.txt`.
  *
+ * A `standalone` post also carries the freshness notice and a pointer to the
+ * index, which the full file states once in its header instead.
+ *
  * The body is the processed MDX. `normalizePostMarkdown` turns its components
  * into Markdown and makes its links absolute, which needs every post slug to
  * tell a link to a post from a link to the rest of the site.
@@ -186,6 +203,7 @@ export function formatPostMarkdown(
   body: string,
   baseUrl: string,
   postSlugs: ReadonlySet<string>,
+  { standalone = false }: { standalone?: boolean } = {},
 ): string {
   const published = formatDate(post.date);
   const updated = formatDate(post.updatedAt);
@@ -200,20 +218,27 @@ export function formatPostMarkdown(
     description && `Description: ${description}`,
   ].filter(Boolean);
 
+  const notices = standalone ? `${freshnessNotice(baseUrl)}\n\n${indexPointer(baseUrl)}\n\n` : "";
+
   return `# ${post.title}
 
 ${metadata.join("\n")}
 
-${normalizePostMarkdown(body, { baseUrl, postSlugs })}`;
+${notices}${normalizePostMarkdown(body, { baseUrl, postSlugs })}`;
 }
 
+/**
+ * `postSlugs` tells a link to a post from a link to the rest of the site. It
+ * defaults to the given entries, but the caller passes every post's slug when
+ * some posts (drafts) are left out of the file yet still have a page.
+ */
 export function buildLlmsFullContent(
   entries: Array<{ post: LlmsPost; body: string }>,
   baseUrl: string,
+  postSlugs: ReadonlySet<string> = getPostSlugs(entries.map((entry) => entry.post)),
 ): string {
   const byPath = new Map(entries.map((entry) => [entry.post.path, entry.body]));
   const ordered = sortNewestFirst(entries.map((entry) => entry.post));
-  const postSlugs = getPostSlugs(ordered);
   const count = ordered.length;
 
   const header = `# Prisma Blog: full content
@@ -222,7 +247,7 @@ export function buildLlmsFullContent(
 
 ${freshnessNotice(baseUrl)}
 
-> For a short index of the same posts, fetch ${toAbsoluteBlogUrl(baseUrl, "/llms.txt")}.`;
+${indexPointer(baseUrl)}`;
 
   return [
     header,

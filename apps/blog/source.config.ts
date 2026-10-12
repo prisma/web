@@ -24,6 +24,8 @@ export const blogPosts = defineCollections({
     series: z.string().optional(),
     seriesIndex: z.number().int().positive().optional(),
     pinned: z.boolean().optional(),
+    /** Kept out of the agent-facing text files. The HTML page still renders. */
+    draft: z.boolean().optional(),
     prev: z.string().optional(),
     next: z.string().optional(),
     tags: z
