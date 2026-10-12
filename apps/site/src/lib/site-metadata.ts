@@ -16,7 +16,7 @@ export const SITE_HOME_TITLE = `${SITE_NAME} | ${SITE_HOME_TAGLINE}`;
 // every surface describes the same product in the same words. The /compute
 // meta description words its first sentence as a PaaS definition instead.
 export const SITE_HOME_DESCRIPTION =
-  "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres on one plan. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute.";
+  "Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to Prisma Postgres in one project. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute.";
 
 /**
  * The Organization and WebSite nodes in the site's structured data
@@ -25,4 +25,4 @@ export const SITE_HOME_DESCRIPTION =
  * with the Prisma Compute positioning sentence.
  */
 export const SITE_ORGANIZATION_DESCRIPTION =
-  "Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute: a TypeScript ORM, a managed Postgres database, and hosting for TypeScript apps next to that database on one plan.";
+  "Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute: a TypeScript ORM, a managed Postgres database, and hosting for TypeScript apps next to that database in one project.";

@@ -6,13 +6,13 @@ metaTitle: "Should I use Prisma Compute? FAQ | Prisma Compute"
 metaDescription: Who Prisma Compute is built for, its trade-offs (one region per service, no WebSocket servers, Bun runtime, no built-in cron), how it compares with Railway, Render, Fly.io and Vercel, and quick answers on deploys, preview and staging branches, variables and domains.
 ---
 
-Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/postgres) on one plan. It has been generally available since August 2026, and the Free plan runs an app and a database with no credit card and no usage billing. It is not a fit for a WebSocket server, an API written in Python or Go, an app that needs more than one region, a frontend that needs a global CDN above all, or a database that needs point-in-time recovery today; Railway, Render, Fly.io, Vercel with Prisma Postgres, and Neon or Supabase fit there. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute. The sections below are for the decision, and the questions that come up once you deploy follow them.
+Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/postgres) in one project. It has been generally available since August 2026, and the Free plan runs an app and a database with no credit card and no usage billing. It is not a fit for a WebSocket server, an API written in Python or Go, an app that needs more than one region, a frontend that needs a global CDN above all, or a database that needs point-in-time recovery today; Railway, Render, Fly.io, Vercel with Prisma Postgres, and Neon or Supabase fit there. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute. The sections below are for the decision, and the questions that come up once you deploy follow them.
 
 ## Who Prisma Compute is built for
 
 Compute is built for apps whose server code is TypeScript and whose database is Postgres, deployed from one GitHub repository:
 
-- A TypeScript frontend, a Node.js, Bun or Next.js API and a Postgres database that you want hosted together, on one plan, with one deploy.
+- A TypeScript frontend, a Node.js, Bun or Next.js API and a Postgres database that you want hosted together, in one project, with one deploy.
 - A small production app on one bill: Starter is a $10 a month base plus metered compute, with 5M requests and 1M database operations included; [Is Prisma Compute free?](#is-prisma-compute-free) has the Free plan numbers.
 - A repository you already have. You add a [Prisma Composer](/composer) declaration next to your server code instead of rewriting it; see [Should I use Prisma Compute for an existing GitHub repo?](#should-i-use-prisma-compute-for-an-existing-github-repo).
 - Work driven by CI or a coding agent. Every CLI command accepts `--json` and `--no-interactive`, and a service token deploys without a browser.
@@ -103,7 +103,7 @@ A project groups the resources for one product or codebase. An app is a single H
 
 ## What's a branch?
 
-A branch is an isolated environment for one line of work. It usually matches a Git branch name, but in Prisma it is a real resource that owns its own apps and databases. To learn more, see the [Branching docs](/compute/branching).
+A branch is an isolated environment for one line of work. It usually matches a Git branch name, but in Prisma it is a real resource that owns its own apps and databases. To learn more, see the [Environments docs](/compute/branching).
 
 ## Does `git connect` deploy my app?
 
@@ -116,6 +116,10 @@ Nothing without a workflow, because the platform does not handle pushes. Once yo
 ## How do I test a new feature without replacing the version customers use?
 
 Push the feature to its own Git branch: once [deploy on push](/compute/deploy-on-push) is set up, every branch other than the default one deploys as a preview that has its own URL, services and databases and uses the preview environment variables, while production keeps serving the default branch. When the preview works, merge the branch, and the push to the default branch updates production; deleting the feature branch removes its preview. A branch you keep, such as `staging`, works as a long-lived staging environment, as [A long-lived staging environment](/compute/deploy-on-push#a-long-lived-staging-environment) explains.
+
+## Can my coding assistant deploy a test version without touching production?
+
+Yes, if it pushes a feature branch instead of the default one. Once [deploy on push](/compute/deploy-on-push) is set up, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied. If the app reads `DATABASE_URL`, the preview is only as separate as that value. A push to the default branch deploys production without asking, so protect that branch in GitHub and have the assistant open pull requests. An [enrolled agent](/prisma-compute/agent-enrollment) gets its own Prisma credential that works on preview branches and asks you before it changes production through the Prisma API. See [If a coding assistant is building the feature](/compute/deploy-on-push#if-a-coding-assistant-is-building-the-feature).
 
 ## Why can't I read my environment variable values back?
 
