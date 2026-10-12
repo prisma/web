@@ -252,3 +252,69 @@ No website content or Vercel configuration changed in this routing fix.
 These local macOS samples remain subject to the sustained-load and production
 concurrency follow-up above. The blog artifact has about 52 MB left before the
 repository's 900 MB guardrail, so media offload remains the first size improvement.
+
+## Reusable OSS proxy from Vercel routing exports
+
+A reusable Composer gateway component is feasible. Vercel already publishes
+[`@vercel/routing-utils`](https://github.com/vercel/vercel/blob/main/packages/routing-utils/package.json)
+under Apache-2.0. Its documented
+[`getTransformedRoutes()`](https://vercel.com/docs/build-output-api/features#high-level-routing)
+converts `vercel.json` redirects, headers, rewrites, clean URLs, and trailing-slash
+settings into the lower-level Build Output API route format. It is a compiler
+and validator; executing those routes requires a separate request-time router.
+
+On 2026-10-12, a disposable probe using the published version **6.6.0** compiled
+all 20 site redirects and all 1,439 docs redirects into 1,459 exported route
+entries, with no compiler errors. A mixed headers/redirects/rewrites fixture
+also produced a `filesystem` phase and a rewrite with `check: true`. This is
+compilation evidence, not a claim that an exported-route runtime has been built
+or that Vercel accepts source-fragment rules as meaningful HTTP routes. The
+probe installed no dependencies in this repository and changed no app routing.
+
+The proposed component has three parts:
+
+1. **Importer/compiler.** Accept a Build Output API v3
+   [`.vercel/output/config.json`](https://vercel.com/docs/build-output-api/configuration#routes)
+   export, or compile high-level `vercel.json` routing with Vercel's library.
+   A separate Next.js manifest adapter can support the current standalone-build
+   workflow without requiring a Vercel build. Preserve each project's route
+   order, mount/base path, and middleware boundaries. Report the source file and
+   rule index for invalid, unreachable, or unsupported entries.
+2. **Portable HTTP runtime.** Expose a standard
+   `(request: Request) => Promise<Response>` handler. Match compiled routes and
+   execute redirects, internal/external rewrites, headers, methods, host/header/
+   cookie/query conditions, and `continue` behavior in their exported order.
+   Retain repeated and encoded query values, redirect statuses, POST bodies,
+   cookies, streaming, compression, ranges, and cancellation. Support the
+   export's regex dialect explicitly; a successful JavaScript `RegExp` parse
+   alone does not establish equivalence with every PCRE expression.
+3. **Composer adapter.** Provision a Bun gateway with typed service inputs and
+   bind exported resource/service destinations to `serviceOrigin()` values.
+   Rebind known old origin URLs explicitly and leave intentional external
+   destinations external. Each imported project needs its own target/resource
+   mapping; the JSON export alone cannot identify its replacement Compute
+   services. Compile during the build and ship the routing plan with the
+   gateway, then check expanded size and runtime memory as this PR already does.
+
+Middleware and resource phases need explicit providers. A `middlewarePath`
+references executable code, and `filesystem`/`check` require knowing which
+resources exist; blindly skipping either changes route precedence. Require a
+registered middleware/resource adapter or reject the affected export with a
+clear diagnostic. This provides a place to preserve the site's global Agent
+Front hop before docs/blog dispatch. A rule export alone cannot execute Agent
+Front or any other application middleware. Likewise, caching/ISR, image
+optimization, locale rules, transforms, platform mitigation, and dashboard
+domain/firewall settings require dedicated support or a reported limitation.
+
+The first release should publish a support matrix and reject unsupported
+execution features by default. Its conformance corpus should include this
+repository's redirect tables and the proxy smoke/regression cases, plus
+multi-project mount precedence and middleware/resource phase fixtures. Prefer
+Vercel's compiler and public schema over continuing to extend this repository's
+custom destination-string substitution into a general-purpose implementation.
+Vercel's OSS dev router is useful reference material, but is coupled to its dev
+server and filesystem orchestration; it is not a drop-in Fetch/Compute gateway.
+
+The existing gateway remains the migration implementation in this PR. The
+proposed portable runtime and Composer adapter would be separately reusable
+OSS components; no package has been published by this work.
