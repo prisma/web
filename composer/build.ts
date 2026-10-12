@@ -34,8 +34,8 @@ const manifest = JSON.parse(
   await readFile(new URL("../apps/site/.next/routes-manifest.json", import.meta.url), "utf8"),
 );
 await writeFile(
-  new URL("../dist/composer/gateway/redirects.json", import.meta.url),
-  JSON.stringify(manifest.redirects),
+  new URL("../dist/composer/gateway/routing.json", import.meta.url),
+  JSON.stringify({ redirects: manifest.redirects, beforeFiles: manifest.rewrites.beforeFiles }),
 );
 
 // Measure the real assembler's output, including repaired pnpm dependencies

@@ -79,8 +79,9 @@ export function redirectMatcher(rules: readonly Redirect[]) {
         return Array.isArray(value) ? value.join("/") : (value ?? "");
       });
       const location = new URL(destination, url.origin);
+      const destinationQuery = new Set(location.searchParams.keys());
       for (const [name, value] of url.searchParams) {
-        if (!location.searchParams.has(name)) location.searchParams.append(name, value);
+        if (!destinationQuery.has(name)) location.searchParams.append(name, value);
       }
       return { location: location.href, status: rule.statusCode ?? (rule.permanent ? 308 : 307) };
     }
@@ -88,28 +89,27 @@ export function redirectMatcher(rules: readonly Redirect[]) {
   };
 }
 
-const siteRedirect = redirectMatcher(siteConfig.redirects);
+export const siteRedirect = redirectMatcher(siteConfig.redirects);
 // Vercel's docs project sees both prefixed and unprefixed variants. Normalize
-// the latter for the gateway's /docs mount, preserving table order.
-const docsRedirect = redirectMatcher(
+// the latter for the gateway's /docs mount, preserving table order. Only those
+// unprefixed rules need a relative destination mounted under /docs; already
+// prefixed rules can intentionally redirect out to marketing pages.
+export const docsRedirect = redirectMatcher(
   docsConfig.redirects.map((rule) => ({
     ...rule,
     source: rule.source.startsWith("/docs") ? rule.source : `/docs${rule.source}`,
     destination:
-      rule.destination.startsWith("/") && !rule.destination.startsWith("/docs")
+      !rule.source.startsWith("/docs") &&
+      rule.destination.startsWith("/") &&
+      !rule.destination.startsWith("/docs")
         ? `/docs${rule.destination}`
         : rule.destination,
   })),
 );
 
-export function redirect(
-  url: URL,
-  siteNext?: ReturnType<typeof redirectMatcher>,
-  headers = new Headers(),
-) {
+export function redirect(url: URL, headers = new Headers()) {
   return (
     siteRedirect(url, headers) ??
-    siteNext?.(url, headers) ??
     (route(url.pathname).zone === "docs" ? docsRedirect(url, headers) : undefined)
   );
 }

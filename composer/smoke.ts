@@ -53,6 +53,10 @@ try {
     );
     const html = await response.text();
     assert.match(html, /<html/);
+    if (["/", "/docs/composer", "/blog"].includes(path)) {
+      assert.ok(response.headers.get("content-security-policy"), `${path}: missing CSP`);
+      assert.equal(response.headers.get("x-content-type-options"), "nosniff", path);
+    }
     const asset = html.match(/(?:src|href)="([^"]*\/_next\/static\/[^"]+)"/);
     assert.ok(asset, `${path}: expected a Next.js asset`);
     const assetResponse: Response = await get(new URL(asset[1].replaceAll("&amp;", "&"), origin));
@@ -64,13 +68,50 @@ try {
   assert.equal(markdown.status, 200);
   assert.match(markdown.headers.get("content-type") ?? "", /text\//);
   console.log("PASS docs Markdown");
-  const legacy = await get(new URL("/accelerate?utm_source=smoke", origin), {
+  for (const [source, destination] of [
+    ["/accelerate", "/docs/accelerate"],
+    ["/docs/showcase", "/customers"],
+    ["/docs/about/prisma", "/company"],
+    ["/docs//showcase", "/docs/showcase"],
+  ]) {
+    const legacy = await get(new URL(`${source}?ref=a&ref=b&value=a%2Fb`, origin), {
+      redirect: "manual",
+    });
+    assert.equal(legacy.status, 308, source);
+    const location = new URL(legacy.headers.get("location")!, origin);
+    assert.equal(location.pathname, destination, source);
+    assert.equal(location.origin, new URL(origin).origin, source);
+    assert.deepEqual(location.searchParams.getAll("ref"), ["a", "b"], source);
+    assert.equal(location.searchParams.get("value"), "a/b", source);
+  }
+  console.log("PASS Vercel redirects, repeated query values, and URL normalization");
+
+  const siteRedirect = await get(new URL("/docs/1.0/example?ref=a&ref=b", origin), {
     redirect: "manual",
   });
-  assert.equal(legacy.status, 308);
-  assert.equal(new URL(legacy.headers.get("location")!).pathname, "/docs/accelerate");
-  assert.equal(new URL(legacy.headers.get("location")!).search, "?utm_source=smoke");
-  console.log("PASS legacy Vercel redirect");
+  assert.equal(siteRedirect.status, 308);
+  const siteLocation = new URL(siteRedirect.headers.get("location")!, origin);
+  assert.equal(siteLocation.origin, "https://v1.prisma.io");
+  assert.equal(siteLocation.pathname, "/docs/1.0/example");
+  assert.deepEqual(siteLocation.searchParams.getAll("ref"), ["a", "b"]);
+  console.log("PASS site Next redirect before docs dispatch");
+
+  const blogRedirect = await get(new URL("/blog?tag=orm&page=2&ref=a&ref=b", origin), {
+    redirect: "manual",
+  });
+  assert.equal(blogRedirect.status, 308);
+  const blogLocation = new URL(blogRedirect.headers.get("location")!, origin);
+  assert.equal(blogLocation.pathname, "/blog/tag/orm/page/2");
+  assert.deepEqual(blogLocation.searchParams.getAll("ref"), ["a", "b"]);
+  console.log("PASS blog query-conditional Next redirect");
+
+  for (const pathname of ["/orm", "/docs/composer", "/blog/prisma-orm-8-nestjs"]) {
+    const response = await get(new URL(pathname, origin), { headers: { accept: "text/markdown" } });
+    assert.equal(response.status, 200, pathname);
+    assert.match(response.headers.get("content-type") ?? "", /text\/(markdown|plain)/, pathname);
+    assert.ok((await response.text()).length > 0, pathname);
+  }
+  console.log("PASS site/docs/blog Markdown negotiation through Next middleware");
 
   // Include content from different docs trees, rather than only a landing page.
   for (const pathname of [
@@ -81,7 +122,11 @@ try {
   ]) {
     const response = await get(new URL(pathname, origin));
     assert.equal(response.status, 200, pathname);
-    assert.equal(new URL(response.url).origin, new URL(origin).origin, `${pathname}: escaped the local stack`);
+    assert.equal(
+      new URL(response.url).origin,
+      new URL(origin).origin,
+      `${pathname}: escaped the local stack`,
+    );
     await response.arrayBuffer();
   }
   console.log("PASS current and legacy docs articles");

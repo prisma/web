@@ -1,4 +1,11 @@
-import { redirect, redirectMatcher, route, type Zone, type Redirect } from "./routes.ts";
+import {
+  siteRedirect,
+  docsRedirect,
+  redirectMatcher,
+  route,
+  type Zone,
+  type Redirect,
+} from "./routes.ts";
 
 export type Origins = Record<Zone, string>;
 
@@ -27,22 +34,42 @@ export function createGateway(
   origins: Origins,
   upstreamFetch: UpstreamFetch = fetch,
   siteRedirects: Redirect[] = [],
+  siteBeforeFiles: Redirect[] = [],
 ) {
   const siteNextRedirect = redirectMatcher(siteRedirects);
+  // Keep external beforeFiles rewrites in Next.js, where their original
+  // precedence and proxy behavior are implemented. A hostname rewrite can
+  // claim /docs or /blog before their usual zone dispatch.
+  const siteExternalRewrite = redirectMatcher(
+    siteBeforeFiles.filter((rule) => /^https?:\/\//.test(rule.destination)),
+  );
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     // Compute terminates TLS before forwarding HTTP to the service. Keep
     // redirects on the browser's HTTPS origin in that case.
     if (request.headers.get("x-forwarded-proto") === "https") url.protocol = "https:";
     if (url.pathname === "/_composer/health") return new Response("ok");
-    const legacyRedirect = redirect(url, siteNextRedirect, request.headers);
+    // Vercel normalizes repeated slashes before evaluating any routing rules.
+    if (url.pathname.includes("//")) {
+      url.pathname = url.pathname.replace(/\/{2,}/g, "/");
+      return new Response(null, { status: 308, headers: { location: url.href } });
+    }
+    const selected =
+      siteNextRedirect(url, request.headers) || siteExternalRewrite(url, request.headers)
+        ? { zone: "site" as const, pathname: url.pathname }
+        : route(url.pathname);
+    // Site Next redirects run in the site server, preserving its response
+    // headers as well as redirect semantics. Docs' Vercel rules only run when
+    // site redirects/rewrites have actually forwarded the request to that zone.
+    const legacyRedirect =
+      siteRedirect(url, request.headers) ??
+      (selected.zone === "docs" ? docsRedirect(url, request.headers) : undefined);
     if (legacyRedirect)
       return new Response(null, {
         status: legacyRedirect.status,
         headers: { location: legacyRedirect.location },
       });
 
-    const selected = route(url.pathname);
     const upstream = new URL(origins[selected.zone]);
     // Assign fields instead of resolving an untrusted path as a URL: //host
     // and encoded paths cannot change which upstream receives this request.

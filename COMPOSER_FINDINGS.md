@@ -171,8 +171,8 @@ previews, and the docs/Eclipse browser tests. The Links workflow failed in its
 version check: npm's current `prisma` was 8.0.0-rc.22 with CLI engine 0.7.0,
 while 16 current documentation references still used the previous versions.
 Those current examples and the upgrade guide's historical-version clarification
-are in [PR #8464](https://github.com/prisma/web/pull/8464), which must merge before
-this Composer PR. No validation was weakened or skipped.
+were merged separately in [PR #8464](https://github.com/prisma/web/pull/8464).
+No validation was weakened or skipped.
 
 CodeQL and CodeRabbit identified the new workflow's default token permissions
 and persisted checkout credentials. The Composer workflow now grants only
@@ -181,3 +181,74 @@ verifies preservation of `getText("processed")`. Header/cookie conditions alread
 worked for the generated Next redirect table; the same request headers are now
 passed to both imported Vercel tables, with a conditional-redirect regression
 test. Neither imported Vercel table currently contains header/cookie conditions.
+
+## Routing parity audit
+
+The gateway imports all 20 site and 1,439 docs Vercel redirects. An exhaustive
+comparison against Next.js's path and destination compiler covers all 1,454
+reachable rules, wildcard parameters, repeated/encoded query values,
+destination fragments, status codes, and first-match table precedence.
+Five pre-existing docs rules contain fragments in their **source**; browsers
+never send those fragments to servers, so these rules cannot match on either
+platform. They are retained unchanged and explicitly identified in the test.
+Config tests also compare each app's redirects,
+headers, and non-zone rewrites between Vercel and Composer modes.
+
+The audit caught migration defects, now fixed:
+
+- Already-prefixed docs redirects to `/customers` and `/company` were wrongly
+  mounted under `/docs`. Only the two unprefixed docs aliases require a mounted
+  destination; explicit public destinations keep their meaning.
+- Forwarded repeated query values were dropped after the first value. The
+  gateway now distinguishes keys provided by the destination from keys copied
+  from the request, retaining all request values for non-overridden keys.
+- The site's hostname-based external `beforeFiles` rewrite could be bypassed
+  by `/docs` or `/blog` dispatch. The build now includes those rewrites in the
+  gateway routing snapshot, and matching requests go to the site to execute
+  its original Next.js rewrite. The gateway never proxies an arbitrary request
+  hostname directly.
+- Site Next.js redirects now execute in the site server instead of producing
+  a bare gateway response. This keeps Next's own redirect response semantics
+  and passes through any headers it returns. They take precedence over docs
+  redirects. Next.js 16.3.4 intentionally clears configured response headers
+  when returning a config redirect (`resolve-routes` returns `resHeaders: null`);
+  the live test confirmed this. Page CSP/security headers remain present.
+- Repeated slashes now produce a 308 normalization redirect before evaluating
+  route rules, matching Vercel's documented CDN normalization behavior.
+
+Zone-local Next.js redirects, rewrites, middleware, and headers remain in the
+Next servers, including docs/blog Markdown, MCP, Sentry, analytics, and dataguide
+forwarding. Repository parity is separate from Vercel dashboard domain redirects,
+firewall/CDN rules, custom domains, and third-party integration credentials;
+those need production access and verification before a traffic move. Composer
+would benefit from a routing import/audit helper that exposes both kinds of rules
+and reports precedence changes rather than only checking syntax.
+
+One optional integration has a cross-zone behavior difference: the site's
+Agent Front middleware observes docs/blog requests before Vercel forwards them.
+The Composer gateway dispatches those requests directly to their own servers,
+so configuring Agent Front only on the site would no longer cover those zones.
+It is currently unbound in the local setup. Before enabling it in production,
+choose a shared gateway integration or preserve that middleware hop; merely
+copying the site's credentials is insufficient. This is separate from the
+zone-local Markdown negotiation, which stays in each Next server.
+
+Validation on 2026-10-12: all 22 Composer checks passed, all five websites
+built, and the complete local smoke passed pages/assets, docs Markdown,
+docs-to-marketing and legacy redirects, repeated/encoded query values,
+slash normalization, site-before-docs redirect precedence, blog query-conditional
+redirects, site/docs/blog Markdown negotiation, and page security headers.
+No website content or Vercel configuration changed in this routing fix.
+
+| Service | Expanded artifact, decimal MB | RSS after smoke, decimal MB |
+| --- | ---: | ---: |
+| Site | 264.3 | 132.9 |
+| Docs | 425.7 | 453.7 |
+| Blog | 848.2 | 211.5 |
+| Handbook | 45.0 | 102.5 |
+| Eclipse | 82.6 | 130.4 |
+| Gateway | 0.9 | 107.6 |
+
+These local macOS samples remain subject to the sustained-load and production
+concurrency follow-up above. The blog artifact has about 52 MB left before the
+repository's 900 MB guardrail, so media offload remains the first size improvement.

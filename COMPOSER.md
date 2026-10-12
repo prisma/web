@@ -104,9 +104,20 @@ a Vercel-mode build locally, then rebuild Composer before starting it again.
 upstreams and each website's search origin to the current environment, so
 deployed URLs are not compiled into cross-zone rewrites.
 
-The gateway applies, in order, site `vercel.json` redirects, site Next.js
-redirects from the built routes manifest, then docs `vercel.json` redirects for
-the docs mount. Next.js still handles each zone's own routes and redirects.
+The gateway normalizes repeated slashes and applies site `vercel.json`
+redirects first. Matching site Next.js redirects and external `beforeFiles`
+rewrites from the built routes manifest go to the site server before zone
+dispatch. This preserves hostname rules such as
+`accelerate-speed-test.prisma.io` and Next's own redirect response behavior.
+Docs `vercel.json` redirects apply once the docs zone is selected. Next.js
+handles each zone's own routes, redirects, MCP forwarding,
+analytics/dataguide fallbacks, content negotiation, and response headers.
+Vercel dashboard domain redirects, firewall rules, and CDN settings are outside
+the repository; they must be audited separately before moving production traffic.
+The optional site Agent Front integration needs a separate production decision:
+direct docs/blog dispatch bypasses the site's global Agent Front middleware.
+Binding its credentials only to the site would cover marketing pages, whereas
+Vercel's site-to-zone rewrites currently let it observe docs/blog requests too.
 Asset prefixes are translated to the standalone server's `_next` path, with
 the zone's base path preserved. Requests keep their method, body, query,
 cookies, RSC headers, range semantics, and public forwarded origin. Responses

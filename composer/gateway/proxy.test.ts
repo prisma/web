@@ -52,21 +52,90 @@ test("a redirect's explicit query takes priority and temporary redirects use 307
   });
 });
 
-test("site-level legacy zone redirects run before dispatch and honor host conditions", async () => {
-  const gateway = createGateway(origins, async () => {
-    throw new Error("must redirect before proxying");
-  }, [
-    { source: "/blog/old-post", destination: "/docs/guides/example", statusCode: 308 },
-    {
-      source: "/:path*",
-      destination: "https://www.prisma.io/:path*",
-      statusCode: 307,
-      has: [{ type: "host", value: "prismagraphql.com" }],
-    },
+test("docs redirects can leave the docs mount for marketing pages", () => {
+  for (const [source, destination] of [
+    ["/docs/showcase", "/customers"],
+    ["/docs/about/prisma", "/company"],
+  ]) {
+    assert.deepEqual(redirect(new URL(`https://web.example${source}?ref=legacy`)), {
+      location: `https://web.example${destination}?ref=legacy`,
+      status: 308,
+    });
+  }
+});
+
+test("redirects preserve repeated query values unless the destination overrides that key", () => {
+  const matcher = redirectMatcher([
+    { source: "/old", destination: "/new?tag=fixed&tag=second", permanent: true },
   ]);
+  assert.deepEqual(matcher(new URL("https://web.example/old?tag=old&ref=a&ref=b")), {
+    location: "https://web.example/new?tag=fixed&tag=second&ref=a&ref=b",
+    status: 308,
+  });
+  assert.equal(
+    redirect(new URL("https://web.example/accelerate?tag=a&tag=b"))?.location,
+    "https://web.example/docs/accelerate?tag=a&tag=b",
+  );
+});
+
+test("site external beforeFiles rewrites take precedence over zone dispatch and docs redirects", async () => {
+  const gateway = createGateway(
+    origins,
+    async (input, init) => {
+      assert.equal(new URL(String(input)).origin, origins.site);
+      assert.equal(new URL(String(input)).search, "?ref=a&ref=b");
+      assert.equal(new Headers(init?.headers).get("host"), "accelerate-speed-test.prisma.io");
+      return new Response("site executes the external rewrite");
+    },
+    [],
+    [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "accelerate-speed-test.prisma.io" }],
+        destination: "https://accelerate-speed-test.vercel.app/:path*",
+      },
+    ],
+  );
+  for (const pathname of ["/docs/composer", "/docs/showcase"]) {
+    assert.equal(
+      (await gateway(new Request(`https://accelerate-speed-test.prisma.io${pathname}?ref=a&ref=b`)))
+        .status,
+      200,
+    );
+  }
+});
+
+test("site-level redirects reach Next before zone dispatch, preserving its response headers", async () => {
+  const gateway = createGateway(
+    origins,
+    async (input, init) => {
+      assert.equal(new URL(String(input)).origin, origins.site);
+      const host = new Headers(init?.headers).get("host");
+      return new Response(null, {
+        status: host === "prismagraphql.com" ? 307 : 308,
+        headers: {
+          location:
+            host === "prismagraphql.com"
+              ? "https://www.prisma.io/path"
+              : "/docs/guides/example?ref=test",
+          "x-frame-options": "SAMEORIGIN",
+        },
+      });
+    },
+    [
+      { source: "/blog/old-post", destination: "/docs/guides/example", statusCode: 308 },
+      {
+        source: "/:path*",
+        destination: "https://www.prisma.io/:path*",
+        statusCode: 307,
+        has: [{ type: "host", value: "prismagraphql.com" }],
+      },
+    ],
+  );
   const legacy = await gateway(new Request("https://web.example/blog/old-post?ref=test"));
   assert.equal(legacy.status, 308);
   assert.equal(legacy.headers.get("location"), "https://web.example/docs/guides/example?ref=test");
+  assert.equal(legacy.headers.get("x-frame-options"), "SAMEORIGIN");
   const hostname = await gateway(new Request("https://prismagraphql.com/path"));
   assert.equal(hostname.status, 307);
   assert.equal(hostname.headers.get("location"), "https://www.prisma.io/path");
@@ -88,8 +157,8 @@ test("Next's internal trailing-slash redirect uses its compiled regex", () => {
   );
 });
 
-test("conditional redirects require matching headers and cookies and honor missing conditions", async () => {
-  const gateway = createGateway(origins, async () => new Response("no redirect"), [
+test("conditional redirects require matching headers and cookies and honor missing conditions", () => {
+  const matcher = redirectMatcher([
     {
       source: "/docs/conditional",
       destination: "/docs/:audience",
@@ -100,17 +169,18 @@ test("conditional redirects require matching headers and cookies and honor missi
       missing: [{ type: "header", key: "x-preview" }],
     },
   ]);
-  const url = "https://web.example/docs/conditional";
+  const url = new URL("https://web.example/docs/conditional");
   const headers = { "x-audience": "team", cookie: "other=value; session=active" };
-  const response = await gateway(new Request(url, { headers }));
-  assert.equal(response.status, 307);
-  assert.equal(response.headers.get("location"), "https://web.example/docs/team");
+  assert.deepEqual(matcher(url, new Headers(headers)), {
+    status: 307,
+    location: "https://web.example/docs/team",
+  });
   for (const unmatched of [
     { ...headers, "x-audience": "unknown" },
     { ...headers, cookie: "other=value" },
     { ...headers, "x-preview": "1" },
   ]) {
-    assert.equal((await gateway(new Request(url, { headers: unmatched }))).status, 200);
+    assert.equal(matcher(url, new Headers(unmatched)), undefined);
   }
 });
 
@@ -219,8 +289,22 @@ test("untrusted path and host headers cannot choose an arbitrary upstream", asyn
     return new Response("ok");
   });
   await gateway(
-    new Request("https://web.example//attacker.example/path", {
+    new Request("https://web.example/%2F%2Fattacker.example/path", {
       headers: { host: "attacker.example" },
     }),
   );
+});
+
+test("repeated slashes normalize before redirects and cannot produce an external redirect", async () => {
+  const gateway = createGateway(origins, async () => {
+    throw new Error("must normalize before proxying");
+  });
+  for (const [source, destination] of [
+    ["/docs//showcase", "/docs/showcase"],
+    ["//attacker.example/path", "/attacker.example/path"],
+  ]) {
+    const response = await gateway(new Request(`https://web.example${source}?ref=a&ref=b`));
+    assert.equal(response.status, 308);
+    assert.equal(response.headers.get("location"), `https://web.example${destination}?ref=a&ref=b`);
+  }
 });
