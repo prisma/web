@@ -1,0 +1,47 @@
+name: Site Tests
+
+# Unit tests for apps/site (`pnpm --filter=site test`). Runs on every PR rather
+# than behind a path filter: the suite also reads files outside apps/site (the
+# extensions registry in packages/ui, the MCP tools page in apps/docs), so a
+# change there can break it, and a run is only a filtered install plus a few
+# seconds of tests.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Unit Tests (Site)
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Install and test run dependency code; nothing here needs git auth.
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter "site..."
+
+      - name: Run unit tests
+        run: pnpm --filter=site test
