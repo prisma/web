@@ -2,7 +2,12 @@ import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
-import { BUSINESS_PRICE_USD, HIPAA_FAQ, HIPAA_PATH } from "./_content";
+import {
+  BUSINESS_PRICE_USD,
+  HIPAA_FAQ,
+  HIPAA_LAST_MODIFIED,
+  HIPAA_PATH,
+} from "./_content";
 import {
   HipaaBaaSteps,
   HipaaCloser,
@@ -44,7 +49,6 @@ const faqStructuredData = createFaqStructuredData(
 function buildStructuredData() {
   const base = getBaseUrl();
   const url = `${base}${HIPAA_PATH}`;
-  const today = new Date().toISOString().slice(0, 10);
 
   return [
     {
@@ -53,7 +57,7 @@ function buildStructuredData() {
       "@id": url,
       url,
       name: "HIPAA compliant Postgres database | Prisma Postgres",
-      dateModified: today,
+      dateModified: HIPAA_LAST_MODIFIED,
       about: { "@id": `${base}/postgres#product` },
       publisher: { "@id": `${base}/#organization` },
       breadcrumb: {
@@ -86,9 +90,15 @@ function buildStructuredData() {
       offers: {
         "@type": "Offer",
         name: "Business plan",
-        price: BUSINESS_PRICE_USD,
-        priceCurrency: "USD",
         url: `${base}/pricing`,
+        priceCurrency: "USD",
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: BUSINESS_PRICE_USD,
+          priceCurrency: "USD",
+          billingDuration: "P1M",
+          unitText: "MONTH",
+        },
       },
     },
     {

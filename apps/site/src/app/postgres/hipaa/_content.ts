@@ -18,6 +18,9 @@ export const HIPAA_BAA_ANCHOR = "request-a-baa";
 // competitor comparison table ("HIPAA without an enterprise budget").
 export const HIPAA_COMPARE_ANCHOR = "compare";
 export const BUSINESS_PRICE_USD = "129";
+// Stable ISO date for WebPage JSON-LD dateModified. Keep in sync with the
+// visible "Updated October 2026" microline on the HIPAA page.
+export const HIPAA_LAST_MODIFIED = "2026-10-13";
 // Same href the site header's "Get Started" button uses (components/header.tsx
 // -> siteConfig.consoleSignUpUrl via the shared PrismButton pattern).
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
