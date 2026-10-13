@@ -62,9 +62,9 @@ export const siteConfig = {
     ],
     legalTrust: [
       { label: "All Legal Documents", href: "/legal" },
-      { label: "Data Processing Agreement", href: "/legal/dpa" },
+      { label: "DPA", href: "/legal/dpa" },
       { label: "Security & Compliance", href: "/legal/security-and-compliance" },
-      { label: "Service Level Agreement", href: "/legal/sla" },
+      { label: "SLA", href: "/legal/sla" },
       { label: "Status", href: "https://www.prisma-status.com" },
       { label: "Terms of Service", href: "/legal/terms" },
       { label: "Trust Center", href: "https://trust.prisma.io/" },

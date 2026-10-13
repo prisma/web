@@ -18,6 +18,9 @@ const COLUMNS = [
   { title: "Legal & Trust", items: siteConfig.footer.legalTrust },
 ] as const;
 
+const contactLinkClass =
+  "inline-flex items-center gap-2.5 text-sm leading-5 text-muted-foreground transition-colors hover:text-foreground";
+
 const SOCIALS = [
   { label: "Twitter", href: siteConfig.social.twitter, Icon: XSocial },
   { label: "LinkedIn", href: siteConfig.social.linkedin, Icon: Linkedin },
@@ -31,23 +34,24 @@ export function Footer() {
     <footer className="overflow-hidden bg-white pt-16">
       <div className="mx-auto max-w-[96rem] px-6 sm:px-10">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
-          <div className="flex max-w-xs flex-col">
+          <div className="flex max-w-xs flex-col items-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo/full-color.svg" alt={siteConfig.name} className="h-7 w-auto" />
-            <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
-              {siteConfig.description}
-            </p>
-            <a
-              href="mailto:hello@prisma.io"
-              className="mt-5 inline-flex items-center gap-2 border-b border-foreground/25 pb-0.5 text-sm text-foreground transition-colors hover:border-foreground"
-            >
-              <Mail className="size-4" aria-hidden />
-              hello@prisma.io
-            </a>
-            <GooglePreferredSourceButton
-              className="mt-4 gap-2.5 rounded-none border-0 bg-transparent p-0 font-normal text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground"
-              data-attr="footer-google-preferred-source"
+            <img
+              src="/logo/full-color.svg"
+              alt={siteConfig.name}
+              className="h-7 w-auto self-start"
             />
+            <div className="mt-8 flex flex-col items-start gap-3">
+              <a href="mailto:hello@prisma.io" className={contactLinkClass}>
+                <Mail className="size-4 shrink-0" aria-hidden />
+                hello@prisma.io
+              </a>
+              <GooglePreferredSourceButton
+                monochrome
+                className={`${contactLinkClass} rounded-none border-0 bg-transparent p-0 font-normal shadow-none hover:bg-transparent`}
+                data-attr="footer-google-preferred-source"
+              />
+            </div>
             <p className="mt-8 text-sm text-muted-foreground lg:mt-auto lg:pt-8">
               &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
             </p>
