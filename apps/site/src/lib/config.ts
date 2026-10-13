@@ -62,11 +62,14 @@ export const siteConfig = {
       { label: "Status", href: "https://www.prisma-status.com" },
       { label: "Trust Center", href: "https://trust.prisma.io/" },
     ],
-    legal: [
-      { label: "Privacy", href: "/legal/privacy" },
-      { label: "Terms", href: "/legal/terms" },
-      { label: "SLA", href: "/legal/sla" },
+    legalTrust: [
+      { label: "Terms of Service", href: "/legal/terms" },
+      { label: "Trust Center", href: "https://trust.prisma.io/" },
+      { label: "Service Level Agreement", href: "/legal/sla" },
+      { label: "Data Protection Agreement", href: "/legal/dpa" },
       { label: "Security & Compliance", href: "/legal/security-and-compliance" },
+      { label: "Status", href: "https://www.prisma-status.com" },
+      { label: "All Legal Documents", href: "/legal" },
     ],
   },
   social: {

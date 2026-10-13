@@ -6,15 +6,16 @@ import { siteConfig } from "@/lib/config";
 import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-preferred-source";
 
 // Light reference-style footer (Fincrest): brand block with contact + social
-// icons on the left, link columns (including a Social Media column) on the
-// right, quiet bottom bar with the legal links, and the giant ghost wordmark
-// rising out of the page's bottom edge.
+// icons on the left, link columns (including Legal & Trust and Social Media)
+// on the right, a quiet copyright bar, and the giant ghost wordmark rising
+// out of the page's bottom edge.
 // TODO: hello@prisma.io is a placeholder contact — confirm with the client.
 
 const COLUMNS = [
   { title: "Product", items: siteConfig.footer.product },
   { title: "Company", items: siteConfig.footer.company },
   { title: "Resources", items: siteConfig.footer.resources },
+  { title: "Legal & Trust", items: siteConfig.footer.legalTrust },
 ] as const;
 
 const SOCIALS = [
@@ -61,7 +62,7 @@ export function Footer() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4 xl:grid-cols-5">
             {COLUMNS.map(({ title, items }) => (
               <div key={title}>
                 <h3 className="mb-4 text-sm font-semibold text-foreground">{title}</h3>
@@ -101,21 +102,10 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 grid items-center gap-4 border-t border-black/[0.06] py-6 md:grid-cols-3">
+        <div className="mt-16 border-t border-black/[0.06] py-6">
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
-          <div className="flex flex-wrap items-center gap-6 md:justify-center">
-            {siteConfig.footer.legal.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
         </div>
 
         {/* the giant footer wordmark — kept inside the page's max-width so it
