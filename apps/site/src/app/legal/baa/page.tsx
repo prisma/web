@@ -85,7 +85,7 @@ const KEY_TERMS = [
   {
     label: "Term",
     value:
-      "Coterminous with your Services Agreement; either side can terminate for uncured material breach.",
+      "Coterminous with your Services Agreement; you can terminate if Prisma does not cure a material breach within 30 days.",
   },
   {
     label: "On termination",
