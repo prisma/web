@@ -17,8 +17,6 @@ import {
   HipaaTrustStrip,
 } from "./_sections";
 
-// `noindex` keeps the preview out of search indexes until launch. Remove the
-// `robots` block before marking the PR ready.
 export const metadata = {
   ...createPageMetadata({
     title: "HIPAA compliant database for healthcare | Prisma Postgres",
@@ -28,7 +26,6 @@ export const metadata = {
     ogKicker: "Prisma Postgres",
     ogAccent: "yellow" as const,
   }),
-  robots: { index: false, follow: false },
 };
 
 // FAQPage JSON-LD mirrors every visible FAQ answer. The shared helper strips

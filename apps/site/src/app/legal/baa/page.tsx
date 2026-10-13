@@ -32,7 +32,6 @@ const BAA_MAILTO = `mailto:${BAA_COMPLIANCE_EMAIL}?subject=${encodeURIComponent(
   "Web BAA Request",
 )}&body=${encodeURIComponent(BAA_MAIL_BODY)}`;
 
-// Review-preview page for a draft BAA layout; noindex until legal signs off.
 export const metadata = {
   ...createPageMetadata({
     title: "HIPAA Business Associate Agreement",
@@ -41,7 +40,6 @@ export const metadata = {
     path: "/legal/baa",
     ogKicker: "Legal",
   }),
-  robots: { index: false, follow: false },
 };
 
 const PLAIN_ENGLISH = {
