@@ -1,21 +1,22 @@
 ---
 title: Remix 3
-description: 'Add Prisma ORM to a Remix 3 app, seed a PostgreSQL database, and render users from a controller.'
+description: 'Add Prisma ORM to a Remix 3 app, seed a PostgreSQL database, render users from a controller, and deploy to Prisma Compute.'
 url: /guides/frameworks/remix
 metaTitle: How to use Prisma ORM with Remix 3
-metaDescription: 'Create a Remix 3 app with Prisma ORM and PostgreSQL, define your schema, seed users, and render database records with a Remix controller and component.'
+metaDescription: 'Build a Remix 3 app with Prisma ORM and PostgreSQL, render database users, and deploy to Prisma Compute.'
 ---
 
 ## Introduction
 
-This guide shows you how to use Prisma ORM in a [Remix 3](https://remix.run/) app. You create a project, seed a PostgreSQL database, and render users on the home page.
+This guide shows you how to use Prisma ORM in a [Remix 3](https://remix.run/) app. You create a project, seed a PostgreSQL database, render users on the home page, and deploy the app to [Prisma Compute](/compute), Prisma's app hosting service.
 
 In Remix 3, a controller handles requests and passes database results to a component that renders the page. See the [Remix 3 release candidate announcement](https://remix.run/blog/remix-3-release-candidate) for an overview of the new framework. For apps built with Remix 2, see the [React Router guide](/guides/frameworks/react-router-7).
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) 24.3 or newer
+- [Node.js](https://nodejs.org) 24.11 or newer
 - A PostgreSQL connection string. Use your own database, or run `npx create-db@latest` to create a [Prisma Postgres](/postgres) database.
+- A [Prisma account](https://console.prisma.io) to deploy to Compute.
 
 ## 1. Create a Remix app
 
@@ -27,7 +28,7 @@ cd my-app
 npm install
 ```
 
-The starter defines routes in `app/routes.ts` and handles the home page in `app/actions/controller.tsx`.
+The starter defines routes in `app/routes.ts` and handles the home page in `app/actions/controller.tsx`. Its `app/router.ts` exports the router used by the server.
 
 ## 2. Add Prisma ORM
 
@@ -49,7 +50,7 @@ Both the CLI and the database client load this file automatically.
 
 ## 3. Define and initialize the database
 
-Prisma ORM calls your schema a contract. Replace the starter schema with a user model, keeping the `// use prisma-8` directive that selects the Prisma 8 schema syntax:
+Prisma ORM calls your schema a contract. Replace the starter schema with a user model, keeping `// use prisma-8` so the CLI uses the schema format for Prisma ORM 8:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
@@ -61,18 +62,23 @@ model User {
 }
 ```
 
-Generate the TypeScript types for your queries, then create the database table:
+Generate the TypeScript definitions for checking your queries and a JSON file containing your Prisma model. Then create the database table:
 
 ```npm
 npx prisma contract emit
 npx prisma db init
 ```
 
-Your existing database client in `src/prisma/db.ts` imports the generated files for you. The database now has a `User` table with unique emails.
+`prisma contract emit` generates these files for your queries and deployment:
+
+- `src/prisma/contract.d.ts` exports `Contract`, a TypeScript type describing your tables and columns for checking queries.
+- `src/prisma/contract.json` stores the same model in Prisma's JSON format for the client and deployment tools to read.
+
+Include both files when you commit your project to Git; the starter's `.gitignore` excludes neither file. Leave `src/prisma/db.ts` as generated: it uses `Contract` to check your queries and reads `contract.json` at runtime. `prisma db init` creates the `User` table with unique emails and saves a description of that schema in your project's `migrations` directory.
 
 ## 4. Seed users
 
-Create a script that adds sample users and skips existing emails when you run it again. `db.orm` is the client's query API; `db.orm.public.User` queries the `User` table in PostgreSQL's `public` schema:
+Create a script that adds sample users and skips existing emails when you run it again. `db.orm` is the client's query API, and `db.orm.public.User` queries the `User` table. PostgreSQL groups tables into schemas; this guide uses its default schema, `public`:
 
 ```ts title="src/prisma/seed.ts"
 import { db } from "./db.ts";
@@ -103,7 +109,7 @@ Seeded Alice and Bob
 
 ## 5. Render users on the home page
 
-Replace `app/actions/home-page.tsx` with a [Remix component](https://guides.remix.run/rendering-ui/) that displays the queried users. Remix passes each component a `Handle` object with its props at `handle.props`; return a function containing the JSX as shown below. The starter's `Document` component supplies the page's HTML document:
+Replace `app/actions/home-page.tsx` with a [Remix component](https://guides.remix.run/rendering-ui/) that displays the queried users. Remix passes each component a `Handle`, an object containing its props. Read the users passed by the controller from `handle.props.users`, and return a function containing the JSX as shown below. The starter's `Document` component supplies the page's HTML document:
 
 ```tsx title="app/actions/home-page.tsx"
 import type { Handle } from "remix/component";
@@ -131,7 +137,7 @@ export function HomePage(handle: Handle<{ users: User[] }>) {
 
 Replace the home page controller so it reads users with Prisma ORM and passes them to the component. Keep the `assets` import from `../assets.ts` and the `async assets(context)` handler shown below; they serve the JavaScript files the browser needs.
 
-The `actions` object maps the `home` and `assets` route names from `app/routes.ts` to request handlers. Remix passes each handler a `context` object with the request and `context.render(...)` for returning an HTML response:
+Use `context.render(...)` in the controller's request handler to return the component as an HTML response:
 
 ```tsx title="app/actions/controller.tsx"
 import { createController } from "remix/router";
@@ -174,17 +180,216 @@ Bob (bob@prisma.io)
 
 You can also check the rendered HTML with `curl http://localhost:44100`. If the port is already in use, run `PORT=44101 npm run dev` and open [http://localhost:44101](http://localhost:44101).
 
+Press **Ctrl+C** to stop the development server before continuing.
+
+## 7. Deploy to Prisma Compute
+
+Your first deployment creates a Prisma project containing this app's server and a new Prisma Postgres database, separate from your local database. [Prisma Composer](/composer) is the TypeScript configuration library you use to describe this deployment.
+
+### 7.1. Declare the app
+
+Run the following commands and create all deployment files in the project root. Install the deployment packages and build tool:
+
+```npm
+npm install @prisma/composer @prisma/composer-prisma-cloud
+npm install -D esbuild
+```
+
+Create `data-contract.ts` so your deployment configuration can use the schema you generated. `dataContract()` returns an object describing your PostgreSQL schema for Composer; export it as `userData` so the server and database configuration use the same schema:
+
+```ts title="data-contract.ts"
+import { dataContract } from "@prisma/composer-prisma-cloud/orm";
+import type { Contract } from "./src/prisma/contract.d.ts";
+import contractJson from "./src/prisma/contract.json" with { type: "json" };
+
+export const userData = dataContract<Contract>(contractJson);
+```
+
+Create `service.ts` to describe the server's startup file, `dist/server.mjs`. Add `database: postgres(userData)` to `deps` so deployment knows which database schema the server needs. These files describe deployment work; `prisma deploy` creates the hosted database and server, then supplies the database connection:
+
+```ts title="service.ts"
+import node from "@prisma/composer/node";
+import { compute } from "@prisma/composer-prisma-cloud";
+import { postgres } from "@prisma/composer-prisma-cloud/orm";
+import { userData } from "./data-contract.ts";
+
+export default compute({
+  name: "web",
+  deps: { database: postgres(userData) },
+  // Package an existing build; run npm run build before deploying.
+  build: node({
+    module: import.meta.url, // The source file's URL makes dir relative to service.ts.
+    dir: "./dist",
+    entry: "server.mjs",
+  }),
+});
+```
+
+A Composer module groups the server and database into one app. Create `module.ts` to define the app named `my-remix-app`. Use `provision()` to declare the resources the CLI creates or updates when you run `prisma deploy`, and pass the created database to the server through `deps`:
+
+```ts title="module.ts"
+import { module } from "@prisma/composer";
+import { postgres } from "@prisma/composer-prisma-cloud/orm";
+import { userData } from "./data-contract.ts";
+import web from "./service.ts";
+
+export default module("my-remix-app", ({ provision }) => {
+  const database = provision(postgres({ name: "database", contract: userData, config: "./prisma.config.ts" }));
+  provision(web, { deps: { database } });
+});
+```
+
+Replace `prisma.config.ts` with the configuration below to deploy to Compute in `us-east-1`. The `extensions` array lists the deployment tools: `prismaCloud()` creates the hosted resources, and `nodeBuild()` packages your existing `dist` directory.
+
+The `config: "./prisma.config.ts"` setting in `module.ts` tells Composer to read this file for the hosted database's migrations. Set `orm.migrations.dir` to the project-root `migrations` directory; step 7.3 generates the files there. Deployment applies them to the new hosted database, while local commands use the connection from your `.env`.
+
+Keep `state: prismaState()` so Composer saves the server and database IDs in the hosted project and updates those resources on future deploys:
+
+```ts title="prisma.config.ts"
+import 'dotenv/config';
+import { defineConfig as composer } from '@prisma/composer/config';
+import { nodeBuild } from '@prisma/composer/node/control';
+import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control';
+import { definePrismaConfig } from '@prisma/cli-engine';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  composer: composer({
+    extensions: [prismaCloud({ region: 'us-east-1' }), nodeBuild()],
+    state: prismaState(),
+  }),
+  orm: ormConfig({
+    contract: "./src/prisma/contract.prisma",
+    migrations: { dir: "./migrations" },
+    db: {
+      connection: process.env['DATABASE_URL']!,
+    },
+  }),
+});
+```
+
+### 7.2. Package the server and assets
+
+Create a separate server startup file for Compute. `service.load()` reads the values supplied by deployment when the server starts, including the database connection string. `service.port()` provides the port assigned by Compute. Set the database URL before loading Prisma, and seed users before accepting requests:
+
+```ts title="compute-server.ts"
+import * as http from "node:http";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createRequestListener } from "remix/node-fetch-server";
+import service from "./service.ts";
+
+process.chdir(dirname(fileURLToPath(import.meta.url)));
+process.env.NODE_ENV = "production";
+process.env.DATABASE_URL = service.load().database.url;
+
+const { db } = await import("./src/prisma/db.ts");
+for (const user of [
+  { email: "alice@prisma.io", name: "Alice" },
+  { email: "bob@prisma.io", name: "Bob" },
+]) {
+  if (!(await db.orm.public.User.where({ email: user.email }).first())) {
+    await db.orm.public.User.create(user);
+  }
+}
+
+const { router } = await import("./app/router.ts");
+http.createServer(createRequestListener(router.fetch)).listen(service.port(), "0.0.0.0");
+```
+
+The deployed Remix server needs the app's source files to generate browser JavaScript and CSS. Create `build.mjs` to copy `app`, `public`, and `tsconfig.json` into `dist`, bundle the server startup file, and write the package list for the deployed server:
+
+```js title="build.mjs"
+import { cp, mkdir, rm, readFile, writeFile } from "node:fs/promises";
+import { build } from "esbuild";
+
+await rm("dist", { recursive: true, force: true });
+await mkdir("dist", { recursive: true });
+await build({
+  entryPoints: ["compute-server.ts"],
+  outfile: "dist/server.mjs",
+  bundle: true,
+  // Leave these out of the bundle; package.json's build command installs them in dist/node_modules.
+  external: ["remix/*", "@prisma/orm-postgres/*", "dotenv/config"],
+  platform: "node",
+  format: "esm",
+});
+for (const path of ["app", "public", "tsconfig.json"]) {
+  await cp(path, `dist/${path}`, { recursive: true });
+}
+const { dependencies: installed } = JSON.parse(await readFile("package.json", "utf8"));
+const dependencies = Object.fromEntries(["remix", "@prisma/orm-postgres", "dotenv"].map((name) => [name, installed[name]]));
+await writeFile("dist/package.json", JSON.stringify({ type: "module", dependencies }));
+```
+
+Add a `build` script to the existing scripts in `package.json`. Compute runs on Linux x64, so use the flags below to install Linux binaries for Remix's JavaScript and CSS compilers. `--libc=glibc` selects binaries for glibc (the GNU C Library), which Compute uses:
+
+```json title="package.json"
+{
+  "scripts": {
+    "build": "node build.mjs && npm install --prefix dist --omit=dev --ignore-scripts --os=linux --cpu=x64 --libc=glibc"
+  }
+}
+```
+
+The starter's `.gitignore` excludes `.env`, and the build script does not copy it into `dist`.
+
+### 7.3. Build and deploy
+
+The earlier `db init` also saved a description of the schema it created locally in your project's `migrations` directory. `migration plan` uses that description to write a migration that creates the same `User` table in a fresh hosted database.
+
+Generate the migration files, then sign in through the browser. Check which workspace will contain your app; a workspace groups Prisma projects under your account:
+
+```npm
+npx prisma migration plan --name init
+npx prisma auth login
+npx prisma auth whoami
+```
+
+To switch between workspaces you've signed into on this computer, run `npx prisma auth workspace list`, then `npx prisma auth workspace use "Your workspace name"` with the name shown in the list. If your workspace is absent, run `npx prisma auth login` again and choose it during browser sign-in.
+
+Check existing project names before deploying:
+
+```npm
+npx prisma project list
+```
+
+For your first deployment, choose an unused project name. If `my-remix-app` is listed, replace `"my-remix-app"` in `module.ts` with an unused name such as `"my-remix-app-2"`. Keep that name for later deploys.
+
+Build and deploy:
+
+```npm
+npm run build
+npx prisma deploy module.ts
+```
+
+Keep the generated `migrations` directory with your project. Deployment applies these migrations before starting the server.
+
+```text no-copy
+my-remix-app
+├─ database   postgres-database db_abc123
+└─ web        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
+```
+
+The app name in `module.ts` selects the project in your current workspace. The first deploy creates that project; later deploys update its server and database using the IDs saved by `prismaState()`.
+
+Open the printed URL: the page shows Alice and Bob from the deployed database. In your browser's developer tools, open **Network** and reload the page; requests under `/assets/` should return `200`.
+
+For automatic deployments and previews per Git branch, see [Deploy on push](/compute/deploy-on-push).
+
 ## Use with your agent
 
 <AgentPrompt>
 
 ```text
-Create a Remix 3 app with Prisma ORM and render database users, following https://www.prisma.io/docs/guides/frameworks/remix.md.
+Create a Remix 3 app with Prisma ORM, render database users, and deploy to Prisma Compute, following https://www.prisma.io/docs/guides/frameworks/remix.md.
 
 1. Run `npx remix@latest new my-app`, enter the project, and run `npm install`. Add Prisma ORM with `npx prisma@latest orm init --yes --target postgres --authoring psl`.
 2. Use the PostgreSQL connection string I provide, or create a Prisma Postgres database with `npx create-db@latest` and show me its claim URL to open in a browser before the database expires after 24 hours. Set DATABASE_URL in .env to the separate PostgreSQL connection string it prints.
 3. Define the User model and run `npx prisma contract emit`, `npx prisma db init`, and the seed script from the guide.
 4. Update the home page component and controller from the guide. Run `npm run typecheck`, start `npm run dev`, and verify http://localhost:44100 renders Alice and Bob. Stop the server after verification.
+5. Follow the deployment section to add the Composer configuration, Compute server startup file, and build script. Plan the initial migration with `npx prisma migration plan --name init`, then run `npm run typecheck`. Check `npx prisma auth whoami`; if I am not signed in, ask me to run `npx prisma auth login`. Run `npm run build` and `npx prisma deploy module.ts`, then verify the live page and that its /assets/ requests return 200. In the deployed server, set DATABASE_URL to the connection supplied by service.load().database.url. Keep the local connection string for local commands.
 ```
 
 </AgentPrompt>
