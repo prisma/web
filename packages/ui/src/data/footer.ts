@@ -171,10 +171,6 @@ const footerItems = [
             title: "Security & Compliance",
             url: "https://trust.prisma.io/",
           },
-          {
-            title: "Report Abuse",
-            url: "mailto:abuse@prisma.io",
-          },
         ],
       },
     ],
