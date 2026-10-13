@@ -432,3 +432,37 @@ All services stayed below the 900 MB guards. Production load and concurrency
 validation remain part of the production workspace follow-up. This change adds
 no website content or dependency-version changes and leaves Vercel inputs and
 build mode intact.
+
+
+## GitHub connection setup (2026-10-13)
+
+The Console project-create screenshot showed the `prisma` GitHub account but
+only nine loaded repositories, with no match for `web`. Inspection of the
+Console picker source (`RepoPickerBody` in the control-plane repository) showed
+that its search filters loaded repositories by name; it does not search all of
+GitHub. The likely first check is repository access in the workspace's Prisma
+GitHub App installation: use **Add account**, choose the organization, and
+include `prisma/web` in its selected repositories, then refresh the picker.
+If more pages are available, **Load more** is also needed because the search
+only covers loaded pages. The screenshot had no Load more control. Installation
+access was not changed during this investigation; the CLI token could not list
+organization installations without the `admin:org` scope.
+
+Connecting the repository enables GitHub OIDC authentication, but deploys still
+require the Prisma deploy workflow. The Console can propose that workflow in a
+PR. Its build command must be `pnpm composer:build`, with the repo's pinned pnpm,
+Node, and Bun available; the existing root `build` script retains Vercel mode.
+The Composer setup was still on `codex/web-composer` in open PR #8458, so a first
+preview must run code from that branch rather than unmodified `main`. Confirm
+the target workspace, region, project identity, and integration variables before
+production deployment. No project, connection, deployment, or domain was changed.
+
+**Console improvement:** expose **Manage repository access** beside the account
+picker and in empty search results, with a refresh action after the installation
+changes. Explain that searches cover only loaded repositories, or implement
+search across all accessible repositories. Distinguish missing installation
+access from an empty search, and offer an existing Composer build-command
+choice when proposing the deployment workflow.
+
+References: [GitHub App repository access](https://docs.github.com/en/apps/using-github-apps/reviewing-and-modifying-installed-github-apps)
+and [Prisma deploy on push](https://www.prisma.io/docs/compute/deploy-on-push).
