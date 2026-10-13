@@ -70,16 +70,16 @@ Local measurements on 2026-10-14 with all ten services in the `web` module:
 
 | Service | Assembled files, MB | Compressed estimate, MB | RSS after smoke, MB |
 | --- | ---: | ---: | ---: |
-| Site | 265.9 | 153.2 | 134.4 |
-| Docs | 426.1 | 227.8 | 421.6 |
-| Blog | 165.6 | 38.1 | 206.7 |
-| Handbook | 45.0 | 15.1 | 103.6 |
-| Eclipse | 82.6 | 18.9 | 130.5 |
-| Gateway | 1.6 | 0.4 | 142.2 |
-| Blog media 0 | 171.3 | 161.4 | 94.2 |
-| Blog media 1 | 171.3 | 161.2 | 94.4 |
-| Blog media 2 | 171.3 | 162.3 | 93.7 |
-| Blog media 3 | 171.3 | 163.0 | 93.5 |
+| Site | 265.9 | 153.2 | 134.5 |
+| Docs | 426.1 | 227.8 | 461.6 |
+| Blog | 165.6 | 38.1 | 212.4 |
+| Handbook | 45.0 | 15.1 | 118.1 |
+| Eclipse | 82.6 | 18.9 | 130.8 |
+| Gateway | 1.6 | 0.4 | 142.3 |
+| Blog media 0 | 171.3 | 161.4 | 89.1 |
+| Blog media 1 | 171.3 | 161.2 | 89.1 |
+| Blog media 2 | 171.3 | 162.3 | 89.6 |
+| Blog media 3 | 171.3 | 163.0 | 89.0 |
 
 The smoke runner also checks each Bun process against a 900 MB RSS budget after
 loading website pages and current/legacy docs articles. These macOS samples are
@@ -87,7 +87,8 @@ not a sustained-load or production-concurrency guarantee.
 
 Blog public media accounts for approximately 653 MiB on disk. The gateway streams
 bodies rather than buffering media. A compressed archive fitting the expanded
-filesystem budget alone is insufficient.
+filesystem budget alone is insufficient. Artifacts must satisfy both compressed
+upload and expanded filesystem limits.
 
 There is a separate **256 MiB upload guard** in the deployed Alchemy provider.
 Composer checks compressed archives against a conservative **240,000,000 byte**
@@ -142,7 +143,7 @@ the repository; they must be audited separately before moving production traffic
 The gateway uses the vendored Apache-2.0 [`@prisma/proxy`](packages/proxy/README.md)
 library. The build copies the original Vercel configs and site Next manifest
 alongside the server, together with the original blog Next manifest and media
-file catalog. The 22-line runtime entrypoint points the library at those
+file catalog. The 24-line runtime entrypoint points the library at those
 files, compiles the routing tables in memory once at boot, and binds upstreams
 from Composer input. There is no generated routing-plan artifact. Restart after
 changing config files; requests reuse the startup snapshot. The library's provider adapter contract also
@@ -160,7 +161,15 @@ bootstrap resolves typed service input and writes the existing apps' legacy
 environment names before Next.js starts. This preserves their Vercel code path
 and binds Next's `HOSTNAME` to `0.0.0.0`.
 
-Pages and assets need no credentials. Optional external integrations are bound
+Compute ingress selects a service from HTTP `Host`, so the proxy sends the
+upstream hostname at that boundary. An authenticated internal hop preserves the
+public host and scheme for Next's hostname rules, redirects and server actions.
+The website bootstrap restores those fields before Next handles the request,
+then removes the private markers from both header representations. Forged or
+malformed markers do not change the host. The proxy sends this credential only
+to the five named website services, never to media services or external rewrites.
+
+Pages and assets need no user-supplied credentials. Optional external integrations are bound
 only when selected with `COMPOSER_INTEGRATIONS`, a comma-separated list:
 
 | Integration | Websites | Required platform secrets |
@@ -199,6 +208,13 @@ with `pnpm composer:build`, and deploys `module.ts`. Node 24 and Bun 1.4.3 are
 provided by the workflow. No service-token secret is needed for the connected
 repository. The normal `pnpm build` command and Vercel deployments keep their
 existing behavior.
+
+The workflow generates a masked, random internal `WEB_PROXY_KEY` before deploy.
+Composer provisions it only when the target environment has no stored value;
+later deploys reuse that value. Gateway and website inputs bind the same secret.
+Local dev uses Composer's shared local placeholder for this internal key. A first
+manual cloud deploy outside the workflow needs a random `WEB_PROXY_KEY` exported
+in its shell; subsequent deploys can use the stored platform value.
 
 The workflow reads the non-secret GitHub variable `COMPOSER_INTEGRATIONS`.
 Leave it unset for the initial preview. To enable integrations, first add their

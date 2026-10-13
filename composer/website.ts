@@ -1,14 +1,16 @@
 import { secretString } from "@prisma/composer/arktype";
 import nextjs from "@prisma/composer/nextjs";
-import { compute, serviceOrigin } from "@prisma/composer-prisma-cloud";
+import { compute, envSecret, serviceOrigin } from "@prisma/composer-prisma-cloud";
 import { type } from "arktype";
 import { integrationCredentials } from "./integrations.ts";
+import { installRequestOrigin } from "./request-origin.ts";
 
 // A compatibility boundary for the existing Next.js apps. Composer resolves
 // these values through typed input; the bootstrap writes the legacy env names
 // before importing Next's server. Vercel keeps supplying those names directly.
 const input = type({
   gatewayOrigin: "string",
+  proxyKey: secretString(),
   "MIXEDBREAD_API_KEY?": secretString(),
   "BREVO_API_KEY?": secretString(),
   "GITHUB_EXTENSIONS_TOKEN?": secretString(),
@@ -29,7 +31,7 @@ const input = type({
   "ORA_INGEST?": "string",
 });
 
-const common = { gatewayOrigin: serviceOrigin("gateway") };
+const common = { gatewayOrigin: serviceOrigin("gateway"), proxyKey: envSecret("WEB_PROXY_KEY") };
 // Bind only the integrations each website consumes. Other optional input
 // fields can be added explicitly when configuring the production workspace.
 export const websiteInputs = {
@@ -51,7 +53,8 @@ export function website(name: string, module: string, appDir: string) {
 }
 
 export function initializeWebsite(service: ReturnType<typeof website>) {
-  const { gatewayOrigin, ...settings } = service.input();
+  const { gatewayOrigin, proxyKey, ...settings } = service.input();
+  installRequestOrigin(proxyKey.expose());
   for (const [name, value] of Object.entries(settings)) {
     if (value !== undefined) {
       process.env[name] = typeof value === "string" ? value : value.expose();

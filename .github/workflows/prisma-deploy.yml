@@ -35,6 +35,15 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.4.3"
+      - name: Prepare the internal proxy credential
+        run: |
+          node --input-type=module <<'JS'
+          import { randomBytes } from "node:crypto";
+          import { appendFileSync } from "node:fs";
+          const key = randomBytes(32).toString("hex");
+          console.log(`::add-mask::${key}`);
+          appendFileSync(process.env.GITHUB_ENV, `WEB_PROXY_KEY=${key}\n`);
+          JS
       - name: Build and deploy all web services
         id: deploy
         uses: prisma/cloud-deploy-action@v1

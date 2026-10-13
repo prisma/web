@@ -102,9 +102,11 @@ test("site Next rules and hostname rewrites preempt child configs, retaining the
     origins,
     fetch: async (url, init) => {
       assert.equal(new URL(url).origin, origins.site);
-      assert.equal(
-        new Headers(init.headers).get("x-forwarded-host"),
-        new Headers(init.headers).get("host"),
+      assert.equal(new Headers(init.headers).get("host"), new URL(origins.site).host);
+      assert.ok(
+        ["web.test", "accelerate-speed-test.prisma.io"].includes(
+          new Headers(init.headers).get("x-forwarded-host")!,
+        ),
       );
       return new Response(null, {
         status: 307,

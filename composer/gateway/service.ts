@@ -13,6 +13,7 @@ export default compute({
     blog: "string",
     handbook: "string",
     eclipse: "string",
+    proxyKey: secretString(),
     ...mediaInputSchema,
     "agentFront?": type({
       "ORA_INGEST_KEY?": secretString(),

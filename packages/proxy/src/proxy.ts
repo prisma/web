@@ -107,9 +107,17 @@ export function createProxy(definitions: readonly SiteDefinition[], options: Pro
       upstream.pathname = destinationUrl.pathname;
       upstream.search = destinationUrl.search;
       const headers = endToEndHeaders(request.headers);
-      headers.set("host", site ? publicUrl.host : upstream.host);
+      headers.set("host", upstream.host);
       headers.set("x-forwarded-host", publicUrl.host);
       headers.set("x-forwarded-proto", publicUrl.protocol.slice(0, -1));
+      const extra = await options.upstreamHeaders?.({
+        site,
+        url: upstream,
+        publicUrl,
+        request,
+        headers,
+      });
+      if (extra) new Headers(extra).forEach((value, key) => headers.set(key, value));
       const response = await options.fetch(upstream, {
         method: request.method,
         headers,

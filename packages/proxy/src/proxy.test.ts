@@ -361,13 +361,13 @@ test("asset aliases and exact extension paths preserve base paths without prefix
     "http://root.test/docs-static-other",
   );
 });
-test("request bodies, cookies, RSC, ranges, public Host, and forwarded HTTPS survive proxying", async () => {
+test("request bodies, cookies, RSC, ranges, upstream Host, and forwarded HTTPS survive proxying", async () => {
   const handler = proxy(
     [site("root", "/"), site("docs", "/docs")],
     async (url, init) => {
       assert.equal(String(url), "http://docs.test/docs/api?q=a%2Fb");
       const headers = new Headers(init.headers);
-      assert.equal(headers.get("host"), "public.test");
+      assert.equal(headers.get("host"), "docs.test");
       assert.equal(headers.get("x-forwarded-host"), "public.test");
       assert.equal(headers.get("x-forwarded-proto"), "https");
       assert.equal(headers.get("rsc"), "1");

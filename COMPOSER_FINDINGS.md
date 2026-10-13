@@ -588,3 +588,41 @@ new media factory; each media service now has a small explicit default entrypoin
 Composer's node assembler could validate this bootstrap contract before
 provisioning, and readiness could detect a process that immediately crashes
 instead of first reporting deployment creation and relying on later HTTP checks.
+
+## Compute ingress and public request origins — 14 October 2026
+
+The [third cloud run](https://github.com/prisma/web/actions/runs/38436398041)
+successfully deployed all ten services. Its gateway URL was selected correctly
+by both the action and GitHub environment. One media startup took about three
+minutes longer than its siblings, but deployment eventually succeeded. The
+remote smoke then received 502 on the homepage, while the site service responded
+200 directly. A controlled request to the site endpoint with the gateway's HTTP
+`Host` returned the gateway's health response: Compute ingress routes by Host,
+so preserving the public Host at the upstream connection caused a proxy loop.
+
+The OSS proxy now sends the upstream Host and preserves public forwarded fields.
+Its provider-neutral `upstreamHeaders` hook supports application header handling.
+The web setup uses that hook to send authenticated public-origin metadata only
+to the five named Next services. Their Composer bootstrap restores the public
+host/scheme inside the Node HTTP request boundary, then removes the private
+markers. This preserves hostname-based Next rewrites and server-action origin
+checks without trusting arbitrary client headers or changing the Vercel path.
+
+The workflow generates a masked CSPRNG key in `WEB_PROXY_KEY`. Existing values
+are reused by deploy preflight; an absent key is provisioned into the target
+environment from the workflow. Both ends use the same `envSecret` reference.
+No external integration credentials are required for this internal hop. Tests
+exercise actual HTTP forwarding, valid and forged markers, malformed hosts,
+private-header removal, and exclusion of keys from media/external destinations.
+The gateway entrypoint is now 24 lines, still just application wiring.
+
+**Compute/Composer improvements:** document ingress Host routing and forwarded
+header behavior; offer an authenticated service-to-service origin bridge in the
+Next adapter; expose readiness/startup progress for a slow service; and make a
+failed post-deploy smoke visible alongside deployment success in Console. The
+action currently reports success before subsequent workflow verification runs.
+
+The authenticated-hop revision passed all 37 library tests, 18 Composer checks,
+the complete build and ten-service local smoke. The sampled maximum RSS was
+461.6 MB (docs); each media service was below 90 MB. The internal key stayed out
+of response headers and was excluded from external rewrites and media hops.

@@ -2,12 +2,14 @@ import service from "./service.ts";
 import { createProxy, bunFetch } from "@prisma/proxy";
 import { agentFrontMiddleware } from "./agent-front.ts";
 import { gatewaySites } from "./config.ts";
+import { proxyRequestHeaders } from "../request-origin.ts";
 
-const { agentFront, ...origins } = service.input();
+const { agentFront, proxyKey, ...origins } = service.input();
 const middleware = agentFrontMiddleware(agentFront);
 const proxy = createProxy(gatewaySites(), {
   origins,
   fetch: bunFetch,
+  upstreamHeaders: proxyRequestHeaders(proxyKey.expose()),
   trustForwardedProto: true,
   middleware: middleware ? { site: middleware } : {},
   onError: (_error, site) => console.error(`Composer proxy failed: ${site}`),

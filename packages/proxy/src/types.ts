@@ -66,6 +66,14 @@ export type ProxyFetch = (url: string | URL, init: RequestInit) => Promise<Respo
 export interface ProxyOptions {
   origins: Record<string, string>;
   fetch: ProxyFetch;
+  /** Add application headers; gate credentials on site being a trusted named upstream. */
+  upstreamHeaders?: (context: {
+    site: SitePlan | undefined;
+    url: URL;
+    publicUrl: URL;
+    request: Request;
+    headers: Headers;
+  }) => HeadersInit | undefined | Promise<HeadersInit | undefined>;
   middleware?: Record<string, Middleware>;
   hasResource?: Record<string, ResourceChecker>;
   /** Old application origins explicitly rebound to named sites. */

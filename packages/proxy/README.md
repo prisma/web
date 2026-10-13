@@ -158,6 +158,19 @@ cookies, and hop-by-hop headers are removed. Absolute upstream redirects are
 rebased to the public origin. Transport failures produce 502, aborted requests
 499; `onError(error, site)` provides application diagnostics.
 
+Upstream HTTP `Host` uses the destination host so ingress can select the correct
+service. `X-Forwarded-Host` and `X-Forwarded-Proto` retain the public request
+origin. Frameworks that require the public `Host` should restore it after their
+ingress boundary using authenticated metadata; forwarding the public `Host` to
+a domain-routed ingress can send a request back to the proxy.
+
+`upstreamHeaders({ site, url, publicUrl, request, headers })` can modify outgoing
+headers or return additional headers, synchronously or asynchronously. `site`
+is undefined for external rewrite destinations. Gate internal credentials on
+a trusted named site, and remove client-supplied internal headers before adding
+your own. The vendored web setup uses this hook for its authenticated Next.js
+origin bridge; that bridge is application configuration outside this library.
+
 ## Add another provider
 
 Implement `RoutingAdapter` with a provider name and
