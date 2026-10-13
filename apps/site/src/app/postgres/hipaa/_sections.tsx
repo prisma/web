@@ -22,6 +22,7 @@ import {
   BAA_SAMPLE_PDF,
   CONSOLE_SIGN_UP_URL,
   HIPAA_BAA_ANCHOR,
+  HIPAA_COMPARE_ANCHOR,
   HIPAA_FAQ,
   HIPAA_RESOURCES,
   TRUST_URL,
@@ -93,6 +94,13 @@ export function HipaaHero() {
                 Available on the Business plan, $129 a month.{" "}
                 <Link href="/pricing" className={INLINE_LINK}>
                   Compare plans
+                </Link>
+              </p>
+              {/* Light in-page jump to the competitor table further down —
+                  same #anchor pattern as careers → #open-positions. */}
+              <p className="mt-2 text-sm text-muted-foreground">
+                <Link href={`#${HIPAA_COMPARE_ANCHOR}`} className={INLINE_LINK}>
+                  See how Prisma Postgres compares for HIPAA&nbsp;&rarr;
                 </Link>
               </p>
               <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
@@ -791,13 +799,14 @@ export function HipaaStartups() {
 
   return (
     <section
-      className="bg-white px-4 pb-24 sm:px-8 sm:pb-32"
-      aria-labelledby="startups"
+      id={HIPAA_COMPARE_ANCHOR}
+      className="scroll-mt-28 bg-white px-4 pb-24 sm:px-8 sm:pb-32"
+      aria-labelledby="compare-heading"
     >
       <div className="mx-auto max-w-site">
         <div className="mx-auto max-w-3xl text-center max-md:text-left">
           <h2
-            id="startups"
+            id="compare-heading"
             className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]"
           >
             HIPAA without an enterprise budget

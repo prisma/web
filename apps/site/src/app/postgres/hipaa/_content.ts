@@ -14,6 +14,9 @@ export const HIPAA_PATH = "/postgres/hipaa";
 // is "How do I get a BAA from Prisma?" because the BAA is requested by email
 // after upgrading to Business, not from a form on this page.
 export const HIPAA_BAA_ANCHOR = "request-a-baa";
+// In-page target for the hero "vs others" tease and any deep links into the
+// competitor comparison table ("HIPAA without an enterprise budget").
+export const HIPAA_COMPARE_ANCHOR = "compare";
 export const BUSINESS_PRICE_USD = "129";
 // Same href the site header's "Get Started" button uses (components/header.tsx
 // -> siteConfig.consoleSignUpUrl via the shared PrismButton pattern).
