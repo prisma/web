@@ -150,10 +150,11 @@ const EVERY_PLAN_INCLUDES = [
 ];
 
 // PRESETS in components/sections/calculator-options/calc.ts, with the usage
-// readout each button shows (fmtOps · fmtGB). The V2 `blurb` on each preset is
-// not rendered by the compact preset row, so it is not included.
+// readout each button shows (fmtOps · fmtGB), under the "Example usage, not plan
+// limits" line above the preset row. The V2 `blurb` on each preset is not
+// rendered by the compact preset row, so it is not included.
 const CALCULATOR_PRESETS = [
-  "Hobby — 200K · 500 MB",
+  "Side project — 200K · 500 MB",
   "Startup — 1M · 8 GB",
   "Scaleup — 20M · 40 GB",
 ];
@@ -331,7 +332,7 @@ const FAQS = [
     answer:
       "An operation is a single action against your Prisma Postgres database — a create, read, " +
       "update, or delete. A simple write and a complex query with multiple joins each count as " +
-      "one operation, and a cached read counts too.",
+      "one operation.",
   },
   {
     question: "Is Prisma ORM really free?",
@@ -406,6 +407,7 @@ export function renderPricingMarkdown(): string {
     // cards. The estimated monthly totals and the "Recommended" badge are
     // computed from the slider positions and are interactive-only, so only the
     // static labels and per-plan terms are rendered here.
+    paragraphs("Example usage, not plan limits:"),
     bulletList(CALCULATOR_PRESETS),
     heading(3, "Estimate your monthly usage"),
     bulletList([

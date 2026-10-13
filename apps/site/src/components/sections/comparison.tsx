@@ -6,7 +6,7 @@ import { BrokenCard, LiveCard } from "@/components/sections/comparison-cards";
 const BEFORE = [
   "A database from Neon, an ORM from Drizzle, hosting from Vercel",
   "Your agent writes the code, you wire it up",
-  "Per-branch databases that don't connect to your hosting previews",
+  "Preview databases from one vendor, preview deployments from another",
   "Bandwidth bills that scale faster than your traffic",
   "Context-switching between a database dashboard, ORM CLI, hosting console, and data browser",
 ];
@@ -14,7 +14,7 @@ const BEFORE = [
 const AFTER = [
   "Your agent runs the full loop: build, deploy, debug, fix, redeploy",
   "One platform: hosting, database, and ORM built to work together natively",
-  "Per-branch databases wired to your hosting previews automatically",
+  "A preview database per pushed branch, wired to its preview deployment",
   "App and database co-located on the same host, at latency no two-vendor setup can match",
   "Spend limits on every paid tier, so your bill stops where you tell it to",
 ];

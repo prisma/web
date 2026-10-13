@@ -42,7 +42,7 @@ const BULLETS = [
     rest: "",
   },
   {
-    lead: "Per-branch databases included",
+    lead: "A preview database per pushed branch",
     rest: ", no surcharge",
   },
   {
