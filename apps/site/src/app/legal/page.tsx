@@ -34,15 +34,20 @@ const MONTHS = [
 ] as const;
 
 // The source strings are not one format: privacy is "7th of August, 2026",
-// terms and the SLA are "October 12, 2026", and the BAA publishes an ISO
-// dateModified. Normalize those. Anything else is returned unchanged so a
-// new source shape stays visible instead of being guessed.
+// terms and the SLA are "October 12, 2026", the DPA is "10 September 2025",
+// and the BAA publishes an ISO dateModified. Normalize those. Anything else
+// is returned unchanged so a new source shape stays visible instead of
+// being guessed.
 function formatLastUpdated(source: string): string {
   const ordinal = /^(\d{1,2})(?:st|nd|rd|th) of ([A-Za-z]+), (\d{4})$/.exec(source);
   if (ordinal) return `${ordinal[2]} ${Number(ordinal[1])}, ${ordinal[3]}`;
 
   const monthDay = /^([A-Za-z]+) (\d{1,2}), (\d{4})$/.exec(source);
   if (monthDay) return `${monthDay[1]} ${Number(monthDay[2])}, ${monthDay[3]}`;
+
+  // The DPA page prints "10 September 2025".
+  const dayMonth = /^(\d{1,2}) ([A-Za-z]+) (\d{4})$/.exec(source);
+  if (dayMonth) return `${dayMonth[2]} ${Number(dayMonth[1])}, ${dayMonth[3]}`;
 
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(source);
   if (iso) {
@@ -56,7 +61,7 @@ function formatLastUpdated(source: string): string {
 const PAGE_PATH = "/legal";
 const PAGE_TITLE = "Legal documents and policies";
 const PAGE_DESCRIPTION =
-  "Prisma's legal and compliance documents in one place: Terms of Service, Privacy Policy, Service Level Agreement, Security and Compliance, and the HIPAA Business Associate Agreement.";
+  "Prisma's legal and compliance documents in one place: Terms of Service, Privacy Policy, Data Processing Agreement, Service Level Agreement, Security and Compliance, and the HIPAA Business Associate Agreement.";
 
 export const metadata = {
   ...createPageMetadata({
@@ -77,12 +82,19 @@ type Document = {
 
 // Dates are read from the source each document ships with. The BAA page's
 // visible line is "October 2026"; its WebPage dateModified is 2026-10-11, and
-// that is the day used here so the hub can share one format. Security and
+// that is the day used here so the hub can share one format. The DPA page
+// prints "10 September 2025" (dateModified 2025-09-10). Security and
 // Compliance and the Trust Center have no dated version to read, so the
 // field is omitted rather than invented. Ordered alphabetically.
 const BAA_DATE_MODIFIED = "2026-10-11";
+const DPA_LAST_UPDATED = "10 September 2025";
 
 const DOCUMENTS: Document[] = [
+  {
+    title: "Data Processing Agreement",
+    href: "/legal/dpa",
+    lastUpdated: formatLastUpdated(DPA_LAST_UPDATED),
+  },
   {
     title: "HIPAA Business Associate Agreement",
     href: "/legal/baa",
