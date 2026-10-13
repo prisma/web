@@ -23,7 +23,7 @@ export const metadata = {
   ...createPageMetadata({
     title: "HIPAA compliant database for healthcare | Prisma Postgres",
     description:
-      "Prisma Postgres is a HIPAA ready cloud database with a signed BAA on Business — $129 a month, including usage. Built for teams that need HIPAA compliant database hosting without enterprise bloat.",
+      "Prisma Postgres is a HIPAA ready cloud database with a signed BAA on Business. Built for teams that need HIPAA compliant database hosting without enterprise bloat.",
     path: HIPAA_PATH,
     ogKicker: "Prisma Postgres",
     ogAccent: "yellow" as const,

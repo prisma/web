@@ -83,7 +83,7 @@ const PLANS = [
       "1,000 databases",
       "7-day daily backups",
     ],
-    platform: ["Spend limits", "GDPR, HIPAA"],
+    platform: ["Spend limits", "GDPR"],
     blurb:
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
     cta: "Get started",
