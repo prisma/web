@@ -459,6 +459,8 @@ export function HipaaFeatures() {
         <>
           Pick the region when you create a database: two US regions (North Virginia and San
           Francisco), two in the EU and two in Asia. US patient data can stay in a US region.
+          Storing or transmitting PHI outside the United States needs your advance written
+          consent under the BAA (Section V.O).
         </>
       ),
       href: "/docs/postgres/faq#what-regions-is-prisma-postgres-available-in",
