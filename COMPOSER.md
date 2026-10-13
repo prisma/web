@@ -199,6 +199,11 @@ runtime secret binding cannot rewrite browser bundles or prerendered metadata.
 
 ## GitHub deployment
 
+The branch preview is live at
+[the shared gateway](https://dwgv6bi6aljw05msqzcpvtgg.ewr.prisma.build).
+The [verified GitHub run](https://github.com/prisma/web/actions/runs/38441243472)
+deployed all ten services and passed the complete remote smoke.
+
 The repository is already connected to the Prisma project **web**. Keep that
 connection; the root module's name must match the project name.
 

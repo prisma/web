@@ -626,3 +626,35 @@ The authenticated-hop revision passed all 37 library tests, 18 Composer checks,
 the complete build and ten-service local smoke. The sampled maximum RSS was
 461.6 MB (docs); each media service was below 90 MB. The internal key stayed out
 of response headers and was excluded from external rewrites and media hops.
+
+## Verified GitHub preview — 14 October 2026
+
+[Run 38441243472](https://github.com/prisma/web/actions/runs/38441243472) succeeded
+on code revision `9c8f63f4a`. All ten services deployed into the existing
+project's `codex/web-composer` preview. GitHub OIDC authenticated through the
+existing connection; the internal-key preflight checked one setting, filled
+one absent value and reported no missing settings. Neither the repository
+connection nor production domains were changed.
+
+The public entrypoint is
+[the gateway](https://dwgv6bi6aljw05msqzcpvtgg.ewr.prisma.build). Both the action's
+primary URL and the GitHub deployment environment selected this gateway.
+The remote smoke passed all five sites and their static assets, current and
+legacy docs, Markdown content negotiation, imported redirects, repeated query
+values, normalization and Next redirect precedence. Original media from all
+four shards passed SHA-256, headers, range, HEAD and 304 validation checks.
+Verification took about 16 seconds after deployment. The workflow completed
+successfully, and all five Vercel preview checks also passed on that revision.
+
+Linux artifact measurements: docs was largest at 425.4 MB expanded / 226.6 MB
+compressed; blog was 166.1 / 37.7 MB; media shards were 171.3 MB expanded and
+161.1–162.8 MB compressed; gateway was 1.7 / 0.4 MB. All budgets passed.
+Local validation included 37 library tests, 18 Composer checks, all eight
+workspace type checks, full build/smoke, lint and actionlint. Cloud RSS was not
+measured by the remote smoke; the local samples remain in the setup guide.
+
+External integrations remain an explicit opt-in requiring real keys. The next
+production step is configuring the required integration/public build settings
+before merging the workflow, then auditing domains and production load before
+moving public traffic. The operational findings update does not redeploy
+unchanged services because these two guides are excluded from push triggers.
