@@ -1,0 +1,48 @@
+name: Prisma deploy
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: prisma-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: ${{ github.ref_name == github.event.repository.default_branch && 'prisma-production' || format('prisma-preview/{0}', github.ref_name) }}
+      url: ${{ fromJSON(steps.deploy.outputs.urls || '{}').gateway }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - name: Build and deploy all web services
+        id: deploy
+        uses: prisma/cloud-deploy-action@v1
+        with:
+          module: module.ts
+          install-command: pnpm install --frozen-lockfile
+          build-command: pnpm composer:build
+      - name: Verify the deployed gateway and websites
+        if: steps.deploy.outputs.outcome == 'succeeded'
+        env:
+          GATEWAY_URL: ${{ fromJSON(steps.deploy.outputs.urls).gateway }}
+        run: |
+          test -n "$GATEWAY_URL"
+          pnpm composer:smoke "$GATEWAY_URL"

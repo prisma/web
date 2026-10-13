@@ -8,12 +8,7 @@ import eclipse from "./composer/eclipse.ts";
 import { websiteInputs } from "./composer/website.ts";
 import { serviceOrigin } from "@prisma/composer-prisma-cloud";
 
-export default module("prismaweb", ({ provision }) => {
-  provision(site, { input: websiteInputs.site });
-  provision(docs, { input: websiteInputs.docs });
-  provision(blog, { input: websiteInputs.blog });
-  provision(handbook, { input: websiteInputs.handbook });
-  provision(eclipse, { input: websiteInputs.eclipse });
+export default module("web", ({ provision }) => {
   provision(gateway, {
     input: {
       site: serviceOrigin("site"),
@@ -23,4 +18,9 @@ export default module("prismaweb", ({ provision }) => {
       eclipse: serviceOrigin("eclipse"),
     },
   });
+  provision(site, { input: websiteInputs.site });
+  provision(docs, { input: websiteInputs.docs });
+  provision(blog, { input: websiteInputs.blog });
+  provision(handbook, { input: websiteInputs.handbook });
+  provision(eclipse, { input: websiteInputs.eclipse });
 });

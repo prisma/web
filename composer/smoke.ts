@@ -153,7 +153,7 @@ try {
         "utf8",
       ),
     );
-    for (const [name, service] of Object.entries(state.prismaweb.services) as [
+    for (const [name, service] of Object.entries(state.web.services) as [
       string,
       { pid: number },
     ][]) {

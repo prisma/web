@@ -112,7 +112,9 @@ using placeholders, without requiring every application to write its own flags.
 
 A root module named `prismaWeb` passed authoring/typechecking but failed during
 local convergence with `invalid path segment "prismaWeb"`. Changing it to
-`prismaweb` resolved the failure. Validate names consistently across the
+`prismaweb` resolved the failure. The connected Console project is now `web`,
+so the root module was renamed to `web` before setting up GitHub deploys.
+Validate names consistently across the
 module graph, target, and local URL/path encoder, before spending time assembling
 all services; include the permitted pattern in the error.
 
@@ -466,3 +468,40 @@ choice when proposing the deployment workflow.
 
 References: [GitHub App repository access](https://docs.github.com/en/apps/using-github-apps/reviewing-and-modifying-installed-github-apps)
 and [Prisma deploy on push](https://www.prisma.io/docs/compute/deploy-on-push).
+
+## Connected GitHub deployment setup — 13 October 2026
+
+The repository is now connected to the Console project `web`. Console's setup
+inspection still reads the default branch, where the Composer PR is not merged.
+It identifies the shared `packages/ui` package as Next.js because it declares
+Next dependencies, then blocks automatic setup because that library has no
+build script. The five applications do have build scripts. The existing
+Composer configuration on the PR branch is the intended deployment entrypoint.
+
+The root module originally used `prismaweb`; it must be `web` to target the
+connected project. The deployment workflow uses OIDC, an explicit
+`pnpm install --frozen-lockfile`, and `pnpm composer:build`. The action's automatic
+install detection supports npm/Bun rather than pnpm; its default build command
+would also use the Vercel build path. Node 24 and Bun 1.4.3 are installed before
+the action. Each website retains its separate artifact and 900 MB size guard.
+
+The workflow selects the gateway from the action's service URL map and smoke
+tests all five sites there. The gateway is also declared first: the action's
+default URL selection chooses the first service with a root address when more
+than one exists. A connected repository uses the platform's branch-deletion
+automation for preview cleanup; the action currently cannot invoke CLI destroy.
+
+**Product improvements:** distinguish workspace libraries from deployable apps
+using app/config evidence instead of framework dependencies alone; show which
+branch was inspected and let users choose an existing Composer branch and build
+command; validate that the Composer module matches the connected project name;
+support pnpm lockfiles directly in the deploy action; and let multi-service
+modules declare their public entrypoint explicitly for deployment URLs and
+Console links.
+
+Local validation of the renamed module passed all 37 proxy tests, 9 Composer
+checks, the complete build and six-service smoke test, all eight workspace type
+checks, and workflow actionlint. The largest expanded artifact was blog at
+848.0 MB. Docs had the highest sampled RSS at 488.1 MB; the other five processes
+were below 224 MB. The smoke verified pages, static assets, Markdown, legacy
+redirects, query handling, and current/legacy docs articles through the gateway.

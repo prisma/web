@@ -62,16 +62,16 @@ files and packaging overhead. The check counts the native Next.js assembler's
 output, including public assets and repaired pnpm dependencies, and also runs
 during `dev` and `deploy` assembly.
 
-Local measurements on 2026-10-13 with runtime routing compilation:
+Local measurements on 2026-10-13 with the `web` module:
 
 | Service | Assembled files, decimal MB | RSS after smoke requests, decimal MB |
 | --- | ---: | ---: |
-| Site | 265.9 | 130.7 |
-| Docs | 426.1 | 459.7 |
-| Blog | 848.0 | 216.2 |
-| Handbook | 45.0 | 116.0 |
-| Eclipse | 82.6 | 227.8 |
-| Gateway | 1.3 | 138.7 |
+| Site | 265.9 | 131.5 |
+| Docs | 426.1 | 488.1 |
+| Blog | 848.0 | 216.7 |
+| Handbook | 45.0 | 116.4 |
+| Eclipse | 82.5 | 223.9 |
+| Gateway | 1.0 | 138.0 |
 
 The smoke runner also checks each Bun process against a 900 MB RSS budget after
 loading website pages and current/legacy docs articles. These macOS samples are
@@ -100,8 +100,10 @@ a Vercel-mode build locally, then rebuild Composer before starting it again.
 
 ## Routing and configuration
 
-`module.ts` provisions the six services. `serviceOrigin()` binds the gateway's
-upstreams and each website's search origin to the current environment, so
+`module.ts` names the application `web`, matching the existing Console project,
+and provisions the gateway first, followed by the five websites.
+`serviceOrigin()` binds the gateway's upstreams and each website's search origin
+to the current environment, so
 deployed URLs are not compiled into cross-zone rewrites.
 
 The gateway normalizes repeated slashes and applies site `vercel.json`
@@ -148,18 +150,43 @@ Agent Front credentials are not bound by default. `NEXT_PUBLIC_*` values,
 including analytics configuration, must be supplied **at build time**; a
 runtime secret binding cannot rewrite browser bundles or prerendered metadata.
 
+## GitHub deployment
+
+The repository is already connected to the Prisma project **web**. Keep that
+connection; the root module's name must match the project name.
+
+`.github/workflows/prisma-deploy.yml` runs `prisma/cloud-deploy-action@v1` with
+GitHub OIDC (`id-token: write`). It installs the pinned pnpm dependencies, builds
+with `pnpm composer:build`, and deploys `module.ts`. Node 24 and Bun 1.4.3 are
+provided by the workflow. No service-token secret is needed for the connected
+repository. The normal `pnpm build` command and Vercel deployments keep their
+existing behavior.
+
+Pushes to the default branch deploy to production; pushes to other branches
+deploy their branch preview. Tags do not trigger this workflow. The deployment
+button points explicitly at the gateway, and a post-deploy smoke test exercises
+all five websites through that URL. Manual runs use the same branch policy.
+Preview cleanup is handled by the connected repository's platform automation;
+the workflow does not use the deploy action's currently unsupported destroy mode.
+
+While this setup remains in PR #8458, push that branch to test a preview.
+Console's **Check again** inspects the default branch: its automatic Next.js
+setup currently mistakes the shared UI package for an app with no build script.
+The explicit Composer module and workflow provide this monorepo's deployment
+path once merged. See the [deploy action reference](https://github.com/prisma/cloud-deploy-action#readme).
+
 ## Production workspace follow-up
 
-This PR does not provision or deploy production resources or replace Vercel.
+This PR does not change production domains or replace Vercel. Production
+deployment becomes available when the workflow is merged to the default branch.
 Before the first production deploy, choose the workspace and region, confirm
 the Compute runtime is compatible with Next.js 16.3, configure the required
 integration and public build settings, build, and smoke-test again. Then deploy
 `module.ts` to a preview stage, test its gateway, and configure the public domain
 on the gateway. No domains or live traffic need to change during that validation.
 
-Future deployment automation should use the connected GitHub repository and
-Prisma's OIDC deploy action. The new Composer CI job performs local validation
-only. See [Composer porting](https://www.prisma.io/docs/composer/porting-an-app)
+The separate Composer CI job still performs local validation without cloud
+credentials. See [Composer porting](https://www.prisma.io/docs/composer/porting-an-app)
 and [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push).
 
 Detailed observations and product improvement suggestions are recorded in
