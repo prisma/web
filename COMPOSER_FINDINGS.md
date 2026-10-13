@@ -535,3 +535,56 @@ bindings. The highest sampled RSS was docs at 488.2 MB. The deploy workflow skip
 pushes limited to these two operational Composer guides so recording deployment
 findings does not rebuild and redeploy unchanged services; website content is
 not excluded.
+
+## Compressed upload limit and blog media — 13 October 2026
+
+The [second cloud attempt](https://github.com/prisma/web/actions/runs/38430380305)
+passed OIDC, build and credential preflight. Five services deployed, but blog
+failed in Alchemy before upload: `Prisma deployment artifact exceeds the
+268435456 byte upload safety limit`. This is a separate hard 256 MiB archive
+limit in `alchemy` 2.0.0-beta.78's `Prisma/Deployment.ts`; its validation does not
+permit raising the limit. The 1 GB expanded filesystem guard alone therefore
+did not establish deployability.
+
+The blog's original public media is now distributed deterministically across
+four small Compute services. Files are copied unchanged, with paths, sizes and
+SHA-256 hashes in a catalog. Only the assembled Composer blog public directory
+is removed; no source assets, website content, Vercel configuration or default
+build output are changed. The gateway reads the catalog and original blog Next
+manifest at boot, generating exact resource dispatch in memory. Parent rules
+and Next redirects retain precedence; media receives the blog's original
+headers. Static handlers stream files with ranges, HEAD, conditional requests
+and validators, and serve only cataloged public files. The actual proxy entry
+remains 22 lines; the vendored OSS library remains runtime-only.
+
+Both expanded (900 MB) and compressed (240 MB) budgets now run during assembly.
+The latter streams a system `tar` archive into a byte counter, leaving room
+below the provider's 256 MiB cap for its bootstrap and tar-encoder differences.
+Media shards have a separate 200 MB uncompressed cap, so incompressible images
+cannot approach the upload limit. The first local build measured blog at
+165.6 MB expanded / 38.1 MB compressed; media archives were 161–163 MB each.
+Docs was largest at 426.1 MB expanded / 227.8 MB compressed.
+
+Tests cover deterministic complete partitioning, oversized media, actual Bun
+file streaming, ranges, HEAD, validators, private-file exclusion, retained
+headers, exact dispatch, and Next redirect precedence. The full smoke now
+checks an original file from every shard by hash through the gateway, as well
+as ranges, HEAD, cache validation, and sampled memory across all ten services.
+
+**Compute/Composer improvements:** advertise upload limits alongside memory and
+expanded filesystem limits; include compressed-size checks in the normal
+assembler and report the largest contributing files; align streaming upload
+limits with supported runtime artifacts where possible; and provide a public
+object-storage/CDN asset primitive so a large media collection does not require
+four extra Compute services. The current packager builds the tar and gzip in
+memory; streaming packaging would also reduce deployment-machine memory peaks.
+
+Local validation on 14 October passed 37 proxy tests, 16 Composer checks, the
+complete ten-service build and smoke, and lint. All 1,470 public media files were
+cataloged; the smoke verified original bytes and HTTP behavior from every shard.
+Docs sampled 421.6 MB RSS, the highest service sample; media services stayed below
+95 MB. The local smoke initially caught a missing default service export in the
+new media factory; each media service now has a small explicit default entrypoint.
+Composer's node assembler could validate this bootstrap contract before
+provisioning, and readiness could detect a process that immediately crashes
+instead of first reporting deployment creation and relying on later HTTP checks.

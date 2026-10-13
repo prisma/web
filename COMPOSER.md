@@ -1,7 +1,8 @@
 # Prisma Web on Composer
 
 One Composer application runs all five websites as separate Compute services,
-with a sixth service providing their shared HTTP entrypoint. This is an
+with a sixth service providing their shared HTTP entrypoint and four small
+static services hosting blog media. This is an
 additional deployment path: the existing Vercel configs, app build commands,
 and deployment workflows are retained.
 
@@ -13,6 +14,7 @@ flowchart LR
   gateway -->|"/blog and /blog-static"| blog[Blog]
   gateway -->|"/handbook and /handbook-static"| handbook[Handbook]
   gateway -->|"/eclipse and /eclipse-static"| eclipse[Eclipse]
+  gateway -->|"Existing blog public media URLs"| media[Blog media x 4]
 ```
 
 ## Local development
@@ -30,6 +32,8 @@ Bun dependency, checks artifact sizes, and runs `prisma dev module.ts`. Open the
 are not the old Turbo ports. The gateway serves all five paths in the diagram.
 
 The first build and first local provisioning take longer than a warm start.
+The build also requires `tar` (provided by macOS and the Ubuntu CI runner) to
+measure compressed upload sizes without buffering archives in memory.
 The compute emulator is isolated under `.prisma-composer/emulators` in this
 checkout, so it does not inherit another checkout's services or an older Bun
 from a machine-wide daemon. An explicitly set
@@ -62,26 +66,45 @@ files and packaging overhead. The check counts the native Next.js assembler's
 output, including public assets and repaired pnpm dependencies, and also runs
 during `dev` and `deploy` assembly.
 
-Local measurements on 2026-10-13 with the `web` module:
+Local measurements on 2026-10-14 with all ten services in the `web` module:
 
-| Service | Assembled files, decimal MB | RSS after smoke requests, decimal MB |
-| --- | ---: | ---: |
-| Site | 265.9 | 134.7 |
-| Docs | 426.1 | 488.2 |
-| Blog | 848.0 | 214.8 |
-| Handbook | 45.0 | 118.9 |
-| Eclipse | 82.6 | 132.4 |
-| Gateway | 1.3 | 140.6 |
+| Service | Assembled files, MB | Compressed estimate, MB | RSS after smoke, MB |
+| --- | ---: | ---: | ---: |
+| Site | 265.9 | 153.2 | 134.4 |
+| Docs | 426.1 | 227.8 | 421.6 |
+| Blog | 165.6 | 38.1 | 206.7 |
+| Handbook | 45.0 | 15.1 | 103.6 |
+| Eclipse | 82.6 | 18.9 | 130.5 |
+| Gateway | 1.6 | 0.4 | 142.2 |
+| Blog media 0 | 171.3 | 161.4 | 94.2 |
+| Blog media 1 | 171.3 | 161.2 | 94.4 |
+| Blog media 2 | 171.3 | 162.3 | 93.7 |
+| Blog media 3 | 171.3 | 163.0 | 93.5 |
 
 The smoke runner also checks each Bun process against a 900 MB RSS budget after
 loading website pages and current/legacy docs articles. These macOS samples are
 not a sustained-load or production-concurrency guarantee.
 
-Blog public media accounts for approximately 653 MiB on disk and is the largest
-remaining constraint. The gateway streams bodies rather than buffering media.
-If the blog exceeds the budget, offload public media to object storage or a
-dedicated asset service before deploying. A compressed archive fitting the
-limit is insufficient; the check uses the expanded files.
+Blog public media accounts for approximately 653 MiB on disk. The gateway streams
+bodies rather than buffering media. A compressed archive fitting the expanded
+filesystem budget alone is insufficient.
+
+There is a separate **256 MiB upload guard** in the deployed Alchemy provider.
+Composer checks compressed archives against a conservative **240,000,000 byte**
+budget as well. The blog's original media made its archive exceed that guard,
+even though the expanded service fit under 1 GB. The build now partitions the
+original public files deterministically across four services with at most
+200,000,000 bytes of media each, and removes media only from the assembled
+Composer blog artifact. Source files and Vercel build output are preserved.
+
+The gateway constructs exact media routes from a file catalog at boot, retaining
+the original public URLs. Blog pages and unknown files still go to Next; its
+redirects keep precedence, and the static services retain the original blog
+response headers, streaming, byte ranges, HEAD, ETags and cache validation.
+The catalog records paths, sizes and hashes, rather than compiled routing rules.
+The existing blog config already disables image optimization. Before adding
+enough media to exceed the four shard budgets, add another static service or
+move media to object storage with a compatible public delivery path.
 
 `COMPOSER_BUILD=1` enables standalone output with the monorepo tracing root.
 In that mode, docs and blog use lazy MDX collections and omit the article
@@ -101,7 +124,7 @@ a Vercel-mode build locally, then rebuild Composer before starting it again.
 ## Routing and configuration
 
 `module.ts` names the application `web`, matching the existing Console project,
-and provisions the gateway first, followed by the five websites.
+and provisions the gateway first, followed by the five websites and four media services.
 `serviceOrigin()` binds the gateway's upstreams and each website's search origin
 to the current environment, so
 deployed URLs are not compiled into cross-zone rewrites.
@@ -118,7 +141,8 @@ Vercel dashboard domain redirects, firewall rules, and CDN settings are outside
 the repository; they must be audited separately before moving production traffic.
 The gateway uses the vendored Apache-2.0 [`@prisma/proxy`](packages/proxy/README.md)
 library. The build copies the original Vercel configs and site Next manifest
-alongside the server. The 22-line runtime entrypoint points the library at those
+alongside the server, together with the original blog Next manifest and media
+file catalog. The 22-line runtime entrypoint points the library at those
 files, compiles the routing tables in memory once at boot, and binds upstreams
 from Composer input. There is no generated routing-plan artifact. Restart after
 changing config files; requests reuse the startup snapshot. The library's provider adapter contract also
@@ -187,8 +211,8 @@ all selected secrets must exist in both scopes when using that option.
 Pushes to the default branch deploy to production; pushes to other branches
 deploy their branch preview. Tags do not trigger this workflow. The deployment
 workflow also skips changes limited to these two operational Composer guides;
-website content changes still deploy. The deployment
-button points explicitly at the gateway, and a post-deploy smoke test exercises
+website content changes still deploy. The deployment button points explicitly
+at the gateway, and a post-deploy smoke test exercises
 all five websites through that URL. Manual runs use the same branch policy.
 Preview cleanup is handled by the connected repository's platform automation;
 the workflow does not use the deploy action's currently unsupported destroy mode.

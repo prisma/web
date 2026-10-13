@@ -7,6 +7,8 @@ import handbook from "./composer/handbook.ts";
 import eclipse from "./composer/eclipse.ts";
 import { websiteInputs } from "./composer/website.ts";
 import { serviceOrigin } from "@prisma/composer-prisma-cloud";
+import { mediaNames } from "./composer/media/service.ts";
+import { blogMedia } from "./composer/media/services.ts";
 
 export default module("web", ({ provision }) => {
   provision(gateway, {
@@ -16,6 +18,10 @@ export default module("web", ({ provision }) => {
       blog: serviceOrigin("blog"),
       handbook: serviceOrigin("handbook"),
       eclipse: serviceOrigin("eclipse"),
+      ...(Object.fromEntries(mediaNames.map((name) => [name, serviceOrigin(name)])) as Record<
+        (typeof mediaNames)[number],
+        ReturnType<typeof serviceOrigin>
+      >),
     },
   });
   provision(site, { input: websiteInputs.site });
@@ -23,4 +29,5 @@ export default module("web", ({ provision }) => {
   provision(blog, { input: websiteInputs.blog });
   provision(handbook, { input: websiteInputs.handbook });
   provision(eclipse, { input: websiteInputs.eclipse });
+  for (const service of blogMedia) provision(service, { input: {} });
 });

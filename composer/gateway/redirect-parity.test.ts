@@ -29,10 +29,13 @@ test("every imported Vercel redirect agrees with Next's destination compiler", a
       `http://${name}.test`,
     ]),
   );
-  const aggregateProxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
-    origins,
-    fetch,
-  });
+  const aggregateProxy = createProxy(
+    gatewaySites(new URL("../../apps/", import.meta.url), {}, []),
+    {
+      origins,
+      fetch,
+    },
+  );
   const rules: Redirect[] = [...site.redirects, ...docs.redirects];
   const compiled = rules.map((rule) => {
     // These two rules are aliases relative to the docs project's mount; the

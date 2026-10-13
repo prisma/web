@@ -5,6 +5,8 @@ import { setTimeout as delay } from "node:timers/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { mediaPath, type MediaShard } from "./media/catalog.ts";
 
 let session: DevSession | undefined;
 let origin: string | undefined = process.argv[2];
@@ -17,11 +19,12 @@ if (!origin) {
       readFileSync(new URL(`../apps/${name}/vercel.json`, import.meta.url), "utf8"),
       `${name}: gateway must ship original Vercel config`,
     );
-  assert.equal(
-    readFileSync(new URL("sites/site/routes-manifest.json", gateway), "utf8"),
-    readFileSync(new URL("../apps/site/.next/routes-manifest.json", import.meta.url), "utf8"),
-    "gateway must ship original Next manifest",
-  );
+  for (const name of ["site", "blog"])
+    assert.equal(
+      readFileSync(new URL(`sites/${name}/routes-manifest.json`, gateway), "utf8"),
+      readFileSync(new URL(`../apps/${name}/.next/routes-manifest.json`, import.meta.url), "utf8"),
+      `${name}: gateway must ship original Next manifest`,
+    );
   const result = await dev({
     entry: "module.ts",
     config: { value: config.composer!, file: "prisma.config.ts" },
@@ -81,6 +84,34 @@ try {
   assert.equal(markdown.status, 200);
   assert.match(markdown.headers.get("content-type") ?? "", /text\//);
   console.log("PASS docs Markdown");
+  const media: MediaShard[] = JSON.parse(
+    readFileSync(
+      new URL("../dist/composer/gateway/sites/blog/media.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  for (const shard of media) {
+    const file = [...shard.files]
+      .filter((file) => file.bytes > 32)
+      .sort((a, b) => a.bytes - b.bytes)[0];
+    assert.ok(file, `${shard.name}: expected a public media file`);
+    const url = new URL(mediaPath(file.path), origin);
+    const response = await get(url);
+    assert.equal(response.status, 200, shard.name);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), file.sha256, shard.name);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff", shard.name);
+    assert.ok(response.headers.get("content-security-policy"), shard.name);
+    const partial = await get(url, { headers: { range: "bytes=0-15" } });
+    assert.equal(partial.status, 206, shard.name);
+    assert.deepEqual(Buffer.from(await partial.arrayBuffer()), bytes.subarray(0, 16), shard.name);
+    const head = await get(url, { method: "HEAD" });
+    assert.equal(head.status, 200, shard.name);
+    assert.equal(head.headers.get("content-length"), String(file.bytes), shard.name);
+    const cached = await get(url, { headers: { "if-none-match": response.headers.get("etag")! } });
+    assert.equal(cached.status, 304, shard.name);
+    console.log(`PASS ${shard.name} original media, headers, ranges, HEAD and cache validation`);
+  }
   for (const [source, destination] of [
     ["/accelerate", "/docs/accelerate"],
     ["/docs/showcase", "/customers"],
