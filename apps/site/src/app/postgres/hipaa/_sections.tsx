@@ -23,8 +23,6 @@ import {
   CONSOLE_SIGN_UP_URL,
   HIPAA_BAA_ANCHOR,
   HIPAA_FAQ,
-  HIPAA_PLAN_COLUMNS,
-  HIPAA_PLAN_ROWS,
   HIPAA_RESOURCES,
   TRUST_URL,
   baaComplianceMailto,
@@ -236,7 +234,7 @@ export function HipaaGlance() {
       heading: "Which plan includes HIPAA?",
       body: (
         <>
-          HIPAA is included in the Business plan, which costs $129 a month plus usage. It is not
+          HIPAA is included in the Business plan at $129 a month, including usage. It is not
           available on the Free, Starter or Pro plans. Business also includes SOC 2 Type II and ISO
           27001.
         </>
@@ -260,10 +258,13 @@ export function HipaaGlance() {
       body: (
         <>
           The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health
-          information in services covered by your signed BAA. Embeddable Prisma Studio is not
-          designed for regulated industries under Prisma&apos;s{" "}
+          information in services covered by your signed BAA. Embeddable{" "}
+          <Link href="/studio" className={INLINE_LINK}>
+            Prisma Studio
+          </Link>{" "}
+          is not designed for regulated industries under Prisma&apos;s{" "}
           <Link href="/legal/terms" className={INLINE_LINK}>
-            Terms
+            Terms of Service
           </Link>
           .
         </>
@@ -274,13 +275,32 @@ export function HipaaGlance() {
   const facts: { label: string; value: React.ReactNode }[] = [
     { label: "HIPAA support", value: "Yes, with a signed BAA" },
     { label: "Plan", value: "Business only" },
-    { label: "Price", value: "$129 a month plus usage" },
+    {
+      label: "Price",
+      value: (
+        <>
+          $129 a month, including usage.{" "}
+          <Link href="/pricing" className={INLINE_LINK}>
+            See pricing
+          </Link>
+        </>
+      ),
+    },
     { label: "Also on Business", value: "SOC 2 Type II, ISO 27001" },
     {
       label: "On every plan",
       value: "GDPR, encryption at rest and in transit, tenant isolation",
     },
-    { label: "Backups", value: "Daily, kept 30 days on Business" },
+    {
+      label: "Backups",
+      value: (
+        <>
+          <Link href="/docs/postgres/database/backups" className={INLINE_LINK}>
+            Daily, kept 30 days on Business
+          </Link>
+        </>
+      ),
+    },
     { label: "Regions", value: "6, including 2 in the US" },
     {
       label: "BAA liability cap",
@@ -669,10 +689,13 @@ export function HipaaResponsibility() {
             The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health
             information in services covered by your signed BAA. Prisma&apos;s{" "}
             <Link href="/legal/terms" className={INLINE_LINK}>
-              Terms
+              Terms of Service
             </Link>{" "}
-            state that Embeddable Prisma Studio is not designed for regulated industries such as
-            healthcare.
+            state that Embeddable{" "}
+            <Link href="/studio" className={INLINE_LINK}>
+              Prisma Studio
+            </Link>{" "}
+            is not designed for regulated industries such as healthcare.
           </p>
         </div>
       </div>
@@ -709,93 +732,6 @@ function ResponsibilityCard({
         ))}
       </ul>
     </div>
-  );
-}
-
-export function HipaaPlans() {
-  return (
-    <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32" aria-labelledby="plans">
-      <div className="mx-auto max-w-site">
-        <div className="mx-auto max-w-3xl text-center max-md:text-left">
-          <h2
-            id="plans"
-            className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]"
-          >
-            Which Prisma Postgres plan includes HIPAA?
-          </h2>
-          <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            HIPAA is on the Business plan. Every plan encrypts and isolates your data; compliance
-            coverage and backup retention grow with the plan.
-          </p>
-        </div>
-        <div className="mx-auto mt-14 max-w-5xl overflow-x-auto rounded-2xl border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
-          <table className="w-full border-collapse" style={{ minWidth: "21rem" }}>
-            <thead>
-              <tr className="border-b border-black/[0.08]">
-                <th className="px-4 sm:px-6">
-                  <span className="sr-only">Feature</span>
-                </th>
-                {HIPAA_PLAN_COLUMNS.map((col) => (
-                  <th
-                    key={col.name}
-                    scope="col"
-                    className="px-2 py-4 text-center align-bottom"
-                    style={col.highlight ? { background: "rgba(1,215,228,.06)" } : undefined}
-                  >
-                    <span className="block font-display text-[0.9375rem] font-semibold text-foreground sm:text-base">
-                      {col.name}
-                    </span>
-                    <span className="mt-0.5 block text-[0.75rem] font-normal text-muted-foreground">
-                      {col.price}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {HIPAA_PLAN_ROWS.map((row) => (
-                <tr key={row.label} className="border-b border-black/[0.06] last:border-b-0">
-                  <th
-                    scope="row"
-                    className="px-4 py-3.5 text-left text-[0.875rem] font-semibold text-foreground sm:px-6 sm:text-[0.9375rem]"
-                  >
-                    {row.label}
-                  </th>
-                  {row.cells.map((cell, idx) => {
-                    const highlight = HIPAA_PLAN_COLUMNS[idx]?.highlight;
-                    return (
-                      <td
-                        key={idx}
-                        className="px-2 py-3.5 text-center text-[0.8125rem] text-muted-foreground sm:text-[0.9375rem]"
-                        style={highlight ? { background: "rgba(1,215,228,.06)" } : undefined}
-                      >
-                        {cell === true ? (
-                          <CheckBold
-                            className="mx-auto size-4 shrink-0 text-prism-cyan-500"
-                            aria-label="Yes"
-                          />
-                        ) : cell === false ? (
-                          <span className="text-[0.8125rem] text-muted-foreground/70">No</span>
-                        ) : (
-                          cell
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mx-auto mt-5 max-w-5xl text-center text-sm text-muted-foreground">
-          Usage beyond what each plan includes is billed by operations and storage, and spend limits
-          cap your bill.{" "}
-          <Link href="/pricing" className={INLINE_LINK}>
-            See full pricing
-          </Link>
-        </p>
-      </div>
-    </section>
   );
 }
 

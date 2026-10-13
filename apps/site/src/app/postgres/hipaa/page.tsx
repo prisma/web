@@ -11,7 +11,6 @@ import {
   HipaaFoundations,
   HipaaGlance,
   HipaaHero,
-  HipaaPlans,
   HipaaResources,
   HipaaResponsibility,
   HipaaStartups,
@@ -22,9 +21,8 @@ import {
 // `robots` block before marking the PR ready.
 //
 // Title, meta description and H1 deliberately avoid the price (SEO brief,
-// 11 Oct 2026): the price lives in the hero microline, the glance table,
-// the plan table and one FAQ answer, never in the title, meta, H1 or closing
-// CTA.
+// 11 Oct 2026): the price lives in the hero microline, the glance facts table
+// and one FAQ answer, never in the title, meta, H1 or closing CTA.
 export const metadata = {
   ...createPageMetadata({
     title: "HIPAA compliant Postgres database | Prisma Postgres",
@@ -123,7 +121,6 @@ export default function PostgresHipaaPage() {
       <HipaaFoundations />
       <HipaaFeatures />
       <HipaaResponsibility />
-      <HipaaPlans />
       <HipaaStartups />
       <HipaaBaaSteps />
       <HipaaResources />

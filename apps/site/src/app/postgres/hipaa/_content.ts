@@ -65,14 +65,9 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
       "Yes, on the Business plan. Prisma runs a HIPAA compliance program for Prisma Postgres, and Business customers can sign a Business Associate Agreement (BAA) with Prisma before storing protected health information. HIPAA is not available on the Free, Starter or Pro plans.",
   },
   {
-    question: "Which Prisma Postgres plans include HIPAA?",
-    answer:
-      "Only the Business plan. Free, Starter and Pro include GDPR but not HIPAA. Business also includes SOC 2 Type II and ISO 27001, so one plan covers all of them. You can compare every plan on the [pricing page](/pricing).",
-  },
-  {
     question: "How much does a HIPAA compliant Postgres database cost on Prisma?",
     answer:
-      "HIPAA comes with the Business plan at $129 a month. Usage beyond what the plan includes is billed by operations and storage, and spend limits let you cap your bill. There is no separate HIPAA fee.",
+      "HIPAA comes with the Business plan at $129 a month, including usage. Spend limits let you cap your bill. There is no separate HIPAA fee. See [pricing](/pricing) for plan details.",
   },
   {
     question: "Does Prisma sign a BAA, and how do I get one?",
@@ -82,7 +77,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Which products does the BAA cover?",
     answer:
-      "The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health information in services covered by your signed BAA. Embeddable Prisma Studio is not designed for regulated industries under Prisma's [Terms](/legal/terms).",
+      "The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health information in services covered by your signed BAA. Embeddable [Prisma Studio](/studio) is not designed for regulated industries under Prisma's [Terms of Service](/legal/terms).",
   },
   {
     question: "Where is my data stored?",
@@ -106,8 +101,6 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   },
   {
     question: "Is there a liability cap in the BAA?",
-    // Only the $250,000 cap from the standard BAA text ships here. Any higher
-    // optional cap is omitted until product/legal confirm the published terms.
     answer:
       "Yes. The standard BAA includes a liability cap of $250,000. Read the full terms in the [BAA](/legal/baa).",
   },
@@ -116,32 +109,6 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
     answer:
       "In the [Prisma Trust Center](https://trust.prisma.io), which holds audit reports, policies and control details. HIPAA, SOC 2 Type II and ISO 27001 are included with the Business plan, and GDPR applies on every plan.",
   },
-];
-
-type PlanColumn = { name: string; price: string; highlight?: boolean };
-export const HIPAA_PLAN_COLUMNS: readonly PlanColumn[] = [
-  { name: "Free", price: "$0" },
-  { name: "Starter", price: "$10 / month" },
-  { name: "Pro", price: "$49 / month" },
-  { name: "Business", price: "$129 / month", highlight: true },
-];
-
-type PlanRow = {
-  label: string;
-  // One cell per plan column, in the same order as HIPAA_PLAN_COLUMNS.
-  // `true` renders a check, `false` renders a muted "No", a string renders
-  // text (e.g. "7 days").
-  cells: readonly (boolean | string)[];
-};
-
-export const HIPAA_PLAN_ROWS: PlanRow[] = [
-  { label: "HIPAA with a signed BAA", cells: [false, false, false, true] },
-  { label: "SOC 2 Type II", cells: [false, false, false, true] },
-  { label: "ISO 27001", cells: [false, false, false, true] },
-  { label: "GDPR", cells: [true, true, true, true] },
-  { label: "Encryption at rest and in transit", cells: [true, true, true, true] },
-  { label: "Tenant isolation", cells: [true, true, true, true] },
-  { label: "Daily backups", cells: ["No", "7 days", "7 days", "30 days"] },
 ];
 
 export const HIPAA_RESOURCES = [
