@@ -19,15 +19,11 @@ import {
 
 // `noindex` keeps the preview out of search indexes until launch. Remove the
 // `robots` block before marking the PR ready.
-//
-// Title, meta description and H1 deliberately avoid the price (SEO brief,
-// 11 Oct 2026): the price lives in the hero microline, the glance facts table
-// and one FAQ answer, never in the title, meta, H1 or closing CTA.
 export const metadata = {
   ...createPageMetadata({
-    title: "HIPAA compliant Postgres database | Prisma Postgres",
+    title: "HIPAA compliant database for healthcare | Prisma Postgres",
     description:
-      "Managed Postgres for healthcare apps. Sign a BAA on the Business plan, keep PHI encrypted and isolated, and get SOC 2 and ISO 27001 reports.",
+      "Prisma Postgres is a HIPAA ready cloud database with a signed BAA on Business — $129 a month, including usage. Built for teams that need HIPAA compliant database hosting without enterprise bloat.",
     path: HIPAA_PATH,
     ogKicker: "Prisma Postgres",
     ogAccent: "yellow" as const,
