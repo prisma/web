@@ -1,8 +1,9 @@
 import "./env.ts";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import { websiteBuild } from "./website-build.ts";
+import { checkBudget } from "./budget.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const names = ["site", "docs", "blog", "handbook", "eclipse"];
@@ -23,7 +24,9 @@ run("pnpm", [
   "--concurrency=1",
   ...names.map((name) => `--filter=${name}`),
 ]);
-await mkdir(new URL("../dist/composer/gateway/", import.meta.url), { recursive: true });
+const gateway = new URL("../dist/composer/gateway/", import.meta.url);
+await rm(gateway, { recursive: true, force: true });
+await mkdir(gateway, { recursive: true });
 run("bun", [
   "build",
   "composer/gateway/server.ts",
@@ -31,17 +34,19 @@ run("bun", [
   "--outfile=dist/composer/gateway/server.mjs",
 ]);
 
-const manifest = JSON.parse(
-  await readFile(new URL("../apps/site/.next/routes-manifest.json", import.meta.url), "utf8"),
+// Ship original inputs; the gateway reads and compiles them in memory at boot.
+for (const name of ["site", "docs"]) {
+  await mkdir(new URL(`sites/${name}/`, gateway), { recursive: true });
+  await copyFile(
+    new URL(`../apps/${name}/vercel.json`, import.meta.url),
+    new URL(`sites/${name}/vercel.json`, gateway),
+  );
+}
+await copyFile(
+  new URL("../apps/site/.next/routes-manifest.json", import.meta.url),
+  new URL("sites/site/routes-manifest.json", gateway),
 );
-const { gatewayPlan } = await import("./gateway/config.ts");
-const plan = gatewayPlan({ redirects: manifest.redirects, rewrites: manifest.rewrites });
-for (const diagnostic of plan.diagnostics)
-  console.warn(`[${diagnostic.site}] ${diagnostic.message}`);
-await writeFile(
-  new URL("../dist/composer/gateway/routing.json", import.meta.url),
-  JSON.stringify(plan),
-);
+await checkBudget(fileURLToPath(gateway), "gateway");
 
 // Measure the real assembler's output, including repaired pnpm dependencies
 // and public/static assets. The same check runs again in dev/deploy assembly.

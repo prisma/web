@@ -5,7 +5,8 @@ own routing configuration, public mount, and upstream origin. This Apache-2.0
 library is vendored in `packages/proxy`; this PR does not publish it to npm.
 
 The runtime uses standard `Request`/`Response` objects and has no dependency on
-Composer or Next.js. Routing providers compile into a common, serializable plan.
+Composer or Next.js. Routing providers prepare a common routing table in memory
+at startup; there is no routing-plan build step or generated plan file.
 The Vercel adapter uses Vercel's `@vercel/routing-utils` compiler rather than
 implementing another version of its destination syntax. Netlify and other
 providers can implement the same adapter contract later.
@@ -13,38 +14,50 @@ providers can implement the same adapter contract later.
 ## Use with Bun
 
 Build the vendored workspace package first: `pnpm --filter @prisma/proxy build`.
-The following example imports a separate `vercel.json` for each website:
+Point each website at its own `vercel.json`:
 
 ```ts
-import { compileProxy, createProxy, bunFetch } from "@prisma/proxy";
+import { createProxy, bunFetch } from "@prisma/proxy";
 import { vercel } from "@prisma/proxy/vercel";
-import siteConfig from "./site/vercel.json" with { type: "json" };
-import docsConfig from "./docs/vercel.json" with { type: "json" };
 
-const plan = compileProxy([
-  { name: "site", mount: "/", routing: vercel(siteConfig) },
+const sites = [
+  { name: "site", mount: "/", routing: vercel(new URL("./site/vercel.json", import.meta.url)) },
   {
     name: "docs",
     mount: "/docs",
-    routing: vercel(docsConfig),
+    routing: vercel(new URL("./docs/vercel.json", import.meta.url)),
     assets: [{ prefix: "/docs-static/_next", destination: "/docs/_next" }],
     paths: ["/docs.md", "/docs.mdx"],
   },
-]);
+];
 
 Bun.serve({
   port: 3000,
-  fetch: createProxy(plan, {
+  fetch: createProxy(sites, {
     origins: { site: "http://127.0.0.1:3001", docs: "http://127.0.0.1:3002" },
     fetch: bunFetch,
   }),
 });
 ```
 
-Compile and serialize `plan` on the build machine when possible. At runtime,
-read that JSON and provide environment-specific origins. The compiler and its
-dependencies then stay out of the gateway bundle. Origins must be HTTP(S)
-origins without credentials, path, query, or fragment. `bunFetch` disables Bun's
+`createProxy(sites, options)` reads the files, compiles the rules, and validates
+all bindings synchronously before returning its handler. It does this once per
+proxy instance, before the server starts accepting requests. Requests reuse the
+in-memory tables without file I/O or compilation. Restart the process (or create
+a new instance) to load config changes. Missing files, malformed JSON, and
+unsupported rules throw at startup with the site and input file context where
+applicable. `onDiagnostic` reports nonfatal notices once at startup.
+
+`vercel()` accepts a file URL, a filesystem path string, or an in-memory config
+object. Strings resolve from `process.cwd()`; file URLs relative to
+`import.meta.url` work regardless of the launch directory. Config objects are
+copied before compilation. The Vercel file adapter uses `node:fs`, supported by
+Bun and Node; the provider-neutral HTTP core has no filesystem dependency.
+Ship the original JSON files alongside the server. Bundlers do not discover
+file URL inputs automatically. Building the package above only emits its
+JavaScript and TypeScript declarations; it does not generate website routing.
+
+Origins must be HTTP(S) origins without credentials, path, query, or fragment. `bunFetch` disables Bun's
 automatic decompression so forwarded compression headers describe the actual
 bytes. On Node.js, use `rawFetch` from `@prisma/proxy/node` instead; native Node
 `fetch` automatically decompresses responses.
@@ -95,16 +108,14 @@ Next.js standalone servers should keep executing their own framework routes.
 For a root app whose rules can claim child paths, pass its built routes manifest:
 
 ```ts
-vercel(siteConfig, {
-  nextjs: {
-    redirects: manifest.redirects,
-    rewrites: manifest.rewrites,
-  },
+vercel(new URL("./site/vercel.json", import.meta.url), {
+  nextjs: new URL("./site/routes-manifest.json", import.meta.url),
 });
 ```
 
-Matching Next redirects and external `beforeFiles` rewrites select that site's
-server before child dispatch. Next executes the real rule, including its
+The manifest is read once at boot too; `nextjs` also accepts an in-memory object
+with `redirects` and `rewrites.beforeFiles`. Matching Next redirects and external
+`beforeFiles` rewrites select that site's server before child dispatch. Next executes the real rule, including its
 response behavior and middleware. Other rewrites, Markdown negotiation,
 Sentry forwarding, APIs, image handling, and headers remain in the Next servers.
 
@@ -153,8 +164,9 @@ Implement `RoutingAdapter` with a provider name and
 `compile({ site, mount }): Routing`. Return an ordered `routes` program using
 the public `Route`/`Rule` types, optional framework `delegates`, and diagnostics.
 The common representation uses regex patterns, capture templates, conditions,
-headers, destinations, and resource/middleware references. A Netlify adapter
-can parse `_redirects`/`netlify.toml` into this representation and express its
+headers, destinations, and resource/middleware references. `createProxy` calls
+the adapter once at startup, so it can read its provider files there. A Netlify
+adapter can parse `_redirects`/`netlify.toml` into this representation and express its
 ordering and resource checks without changing `createProxy` or the transports.
 The runtime defaults to case-sensitive patterns; adapters specify otherwise
 when their provider's semantics require it. No Netlify adapter is included yet.
@@ -162,18 +174,18 @@ when their provider's semantics require it. No Netlify adapter is included yet.
 ## This repository
 
 `composer/gateway/config.ts` composes site, docs, blog, handbook, and Eclipse.
-Site/docs import their existing `vercel.json` files; the remaining websites
-have no Vercel JSON rules and continue using their Next configs. The build
-writes the compiled plan to `dist/composer/gateway/routing.json`.
-`composer/gateway/server.ts` is the small runtime entrypoint, with upstreams
-resolved from Composer service input.
+Site/docs point at copies of their existing `vercel.json` files; the remaining
+websites have no Vercel JSON rules and continue using their Next configs. The
+build copies those original files and the site Next manifest under
+`dist/composer/gateway/sites/`. The 22-line `composer/gateway/server.ts` binds
+upstreams from Composer input and calls `createProxy` to compile everything
+in memory at boot. No generated routing-plan JSON is shipped.
 
 The optional `composer/gateway/agent-front.ts` middleware bridge preserves the
 site's Agent Front behavior on child requests while leaving root requests to
 Next, avoiding duplicate reporting. Configure the same ORA settings on the
 site input and the gateway's optional `agentFront` input when enabling it;
-credentials are not serialized into the routing plan. It remains disabled
-when that input is absent. Integration tests use local fixture endpoints.
+credentials stay in runtime bindings. It remains disabled when that input is absent. Integration tests use local fixture endpoints.
 
 Validation: `pnpm --filter @prisma/proxy build`,
 `pnpm --filter @prisma/proxy test`, `pnpm composer:check`, and

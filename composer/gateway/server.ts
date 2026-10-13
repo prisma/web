@@ -1,19 +1,17 @@
 import service from "./service.ts";
-import { createProxy, bunFetch, type ProxyPlan } from "@prisma/proxy";
+import { createProxy, bunFetch } from "@prisma/proxy";
 import { agentFrontMiddleware } from "./agent-front.ts";
-import { readFileSync } from "node:fs";
+import { gatewaySites } from "./config.ts";
 
-const plan: ProxyPlan = JSON.parse(
-  readFileSync(new URL("./routing.json", import.meta.url), "utf8"),
-);
 const { agentFront, ...origins } = service.input();
 const middleware = agentFrontMiddleware(agentFront);
-const proxy = createProxy(plan, {
+const proxy = createProxy(gatewaySites(), {
   origins,
   fetch: bunFetch,
   trustForwardedProto: true,
   middleware: middleware ? { site: middleware } : {},
   onError: (_error, site) => console.error(`Composer proxy failed: ${site}`),
+  onDiagnostic: ({ site, message }) => console.warn(`[${site}] ${message}`),
 });
 
 Bun.serve({

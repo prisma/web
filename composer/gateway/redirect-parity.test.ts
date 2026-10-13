@@ -4,9 +4,9 @@ import { createRequire } from "node:module";
 import { stringify } from "node:querystring";
 import site from "../../apps/site/vercel.json" with { type: "json" };
 import docs from "../../apps/docs/vercel.json" with { type: "json" };
-import { createProxy, compileProxy } from "@prisma/proxy";
+import { createProxy } from "@prisma/proxy";
 import { vercel, type VercelConfig } from "@prisma/proxy/vercel";
-import { gatewayPlan } from "./config.ts";
+import { gatewaySites } from "./config.ts";
 type Redirect = NonNullable<VercelConfig["redirects"]>[number];
 
 // Compare against the framework's real path/condition/destination compiler,
@@ -29,7 +29,10 @@ test("every imported Vercel redirect agrees with Next's destination compiler", a
       `http://${name}.test`,
     ]),
   );
-  const aggregateProxy = createProxy(gatewayPlan(), { origins, fetch });
+  const aggregateProxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
+    origins,
+    fetch,
+  });
   const rules: Redirect[] = [...site.redirects, ...docs.redirects];
   const compiled = rules.map((rule) => {
     // These two rules are aliases relative to the docs project's mount; the
@@ -56,7 +59,7 @@ test("every imported Vercel redirect agrees with Next's destination compiler", a
         // rules without pretending they can match browser requests.
         assert.equal(params, false, rule.source);
         const isolated = createProxy(
-          compileProxy([{ name: "test", mount: "/", routing: vercel({ redirects: [mounted] }) }]),
+          [{ name: "test", mount: "/", routing: vercel({ redirects: [mounted] }) }],
           { origins, fetch },
         );
         assert.equal((await isolated(new Request(url))).status, 200, rule.source);
@@ -77,7 +80,7 @@ test("every imported Vercel redirect agrees with Next's destination compiler", a
         parsedDestination.origin ?? url.origin,
       );
       const isolated = createProxy(
-        compileProxy([{ name: "test", mount: "/", routing: vercel({ redirects: [mounted] }) }]),
+        [{ name: "test", mount: "/", routing: vercel({ redirects: [mounted] }) }],
         { origins, fetch },
       );
       const actual = await isolated(new Request(url));

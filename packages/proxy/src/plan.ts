@@ -1,5 +1,4 @@
-import { compileMatcher } from "./match.ts";
-import type { ProxyPlan, SiteDefinition } from "./types.ts";
+import type { SiteDefinition, SitePlan } from "./types.ts";
 
 export function contains(mount: string, pathname: string) {
   return mount === "/" || pathname === mount || pathname.startsWith(`${mount}/`);
@@ -15,12 +14,12 @@ export function validatePath(path: string) {
   )
     throw new Error(`Expected an absolute path without a trailing slash: ${path}`);
 }
-/** Compile adapters once on the build machine; the resulting plan contains no functions. */
-export function compileProxy(sites: readonly SiteDefinition[]): ProxyPlan {
+/** Read and validate adapters once at startup; never persist a routing artifact. */
+export function prepareSites(sites: readonly SiteDefinition[]): SitePlan[] {
   const names = new Set<string>(),
     mounts = new Set<string>(),
     assets = new Set<string>();
-  const plan: ProxyPlan = { version: 1, sites: [], diagnostics: [] };
+  const prepared: SitePlan[] = [];
   for (const site of sites) {
     validatePath(site.mount);
     if (!site.name || names.has(site.name) || mounts.has(site.mount))
@@ -34,10 +33,16 @@ export function compileProxy(sites: readonly SiteDefinition[]): ProxyPlan {
       if (assets.has(asset.prefix)) throw new Error(`Duplicate asset prefix: ${asset.prefix}`);
       assets.add(asset.prefix);
     }
-    const routing = site.routing.compile({ site: site.name, mount: site.mount });
+    let routing;
+    try {
+      routing = site.routing.compile({ site: site.name, mount: site.mount });
+    } catch (error) {
+      throw new Error(`Site ${site.name}: ${site.routing.name} routing failed: ${String(error)}`, {
+        cause: error,
+      });
+    }
     for (const rule of [...routing.routes, ...(routing.delegates ?? [])]) {
       if ("resource" in rule) continue;
-      compileMatcher(rule);
       if (
         rule.status !== undefined &&
         (!Number.isInteger(rule.status) || rule.status < 200 || rule.status > 599)
@@ -57,10 +62,9 @@ export function compileProxy(sites: readonly SiteDefinition[]): ProxyPlan {
       }
     }
     const { routing: _adapter, ...settings } = site;
-    plan.sites.push({ ...settings, routing });
-    plan.diagnostics.push(...(routing.diagnostics ?? []));
+    prepared.push({ ...settings, routing });
   }
   if (!mounts.has("/")) throw new Error("A root site mounted at / is required");
-  plan.sites.sort((a, b) => a.mount.length - b.mount.length);
-  return plan;
+  prepared.sort((a, b) => a.mount.length - b.mount.length);
+  return prepared;
 }

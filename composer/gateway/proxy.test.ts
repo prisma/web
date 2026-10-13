@@ -1,13 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createProxy, type ProxyFetch } from "@prisma/proxy";
-import { gatewayPlan } from "./config.ts";
+import { gatewaySites } from "./config.ts";
 const origins = Object.fromEntries(
   ["site", "docs", "blog", "handbook", "eclipse"].map((name) => [name, `http://${name}.test`]),
 );
 const send: ProxyFetch = async (input) => new Response(String(input));
 test("all five web projects and their asset aliases dispatch through the library", async () => {
-  const proxy = createProxy(gatewayPlan(), { origins, fetch: send });
+  const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
+    origins,
+    fetch: send,
+  });
   for (const name of Object.keys(origins)) {
     const pathname = name === "site" ? "/" : `/${name}`;
     assert.equal(
@@ -33,7 +36,10 @@ test("all five web projects and their asset aliases dispatch through the library
   );
 });
 test("actual Vercel config imports retain marketing destinations and repeated queries", async () => {
-  const proxy = createProxy(gatewayPlan(), { origins, fetch: send });
+  const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
+    origins,
+    fetch: send,
+  });
   for (const [source, dest] of [
     ["/accelerate", "/docs/accelerate"],
     ["/docs/showcase", "/customers"],
@@ -44,10 +50,9 @@ test("actual Vercel config imports retain marketing destinations and repeated qu
     assert.equal(response.status, 308, source);
     assert.equal(response.headers.get("location"), `https://web.test${dest}?ref=a&ref=b`, source);
   }
-  assert.equal(gatewayPlan().diagnostics.length, 5);
 });
 test("site Next rules and hostname rewrites preempt child configs, retaining the Next response", async () => {
-  const plan = gatewayPlan({
+  const sites = gatewaySites(new URL("../../apps/", import.meta.url), {
     redirects: [{ source: "/docs/showcase", destination: "/framework-owned" }],
     rewrites: {
       beforeFiles: [
@@ -59,7 +64,7 @@ test("site Next rules and hostname rewrites preempt child configs, retaining the
       ],
     },
   });
-  const proxy = createProxy(plan, {
+  const proxy = createProxy(sites, {
     origins,
     fetch: async (url, init) => {
       assert.equal(new URL(url).origin, origins.site);

@@ -2,13 +2,26 @@ import assert from "node:assert/strict";
 import { dev, type DevSession } from "@prisma/composer/control";
 import config from "../prisma.config.ts";
 import { setTimeout as delay } from "node:timers/promises";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 let session: DevSession | undefined;
 let origin: string | undefined = process.argv[2];
 if (!origin) {
+  const gateway = new URL("../dist/composer/gateway/", import.meta.url);
+  assert.equal(existsSync(new URL("routing.json", gateway)), false, "no precompiled routing plan");
+  for (const name of ["site", "docs"])
+    assert.equal(
+      readFileSync(new URL(`sites/${name}/vercel.json`, gateway), "utf8"),
+      readFileSync(new URL(`../apps/${name}/vercel.json`, import.meta.url), "utf8"),
+      `${name}: gateway must ship original Vercel config`,
+    );
+  assert.equal(
+    readFileSync(new URL("sites/site/routes-manifest.json", gateway), "utf8"),
+    readFileSync(new URL("../apps/site/.next/routes-manifest.json", import.meta.url), "utf8"),
+    "gateway must ship original Next manifest",
+  );
   const result = await dev({
     entry: "module.ts",
     config: { value: config.composer!, file: "prisma.config.ts" },

@@ -1,4 +1,4 @@
-/** Provider-neutral, JSON-serializable routing contracts. */
+/** Provider-neutral routing contracts, prepared in memory at startup. */
 export interface Condition {
   type: "host" | "header" | "query" | "cookie";
   key?: string;
@@ -50,11 +50,6 @@ export interface SiteDefinition {
 export interface SitePlan extends Omit<SiteDefinition, "routing"> {
   routing: Routing;
 }
-export interface ProxyPlan {
-  version: 1;
-  sites: SitePlan[];
-  diagnostics: Diagnostic[];
-}
 export interface MiddlewareContext {
   request: Request;
   url: URL;
@@ -79,4 +74,6 @@ export interface ProxyOptions {
   trustForwardedProto?: boolean;
   waitUntil?: (promise: Promise<unknown>) => void;
   onError?: (error: unknown, site: string) => void;
+  /** Called once per diagnostic at startup, after routing and bindings validate. */
+  onDiagnostic?: (diagnostic: Diagnostic) => void;
 }

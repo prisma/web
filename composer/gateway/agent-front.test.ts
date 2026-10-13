@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { createProxy } from "@prisma/proxy";
-import { gatewayPlan } from "./config.ts";
+import { gatewaySites } from "./config.ts";
 import { agentFrontMiddleware } from "./agent-front.ts";
 
 test("Agent Front remains optional and observes child page requests exactly once", async () => {
@@ -40,7 +40,7 @@ test("Agent Front remains optional and observes child page requests exactly once
     const origins = Object.fromEntries(
       ["site", "docs", "blog", "handbook", "eclipse"].map((name) => [name, `http://${name}.test`]),
     );
-    const proxy = createProxy(gatewayPlan(), {
+    const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
       origins,
       fetch: async () => new Response("page"),
       middleware: { site: middleware },

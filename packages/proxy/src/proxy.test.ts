@@ -3,13 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { gzipSync } from "node:zlib";
 import { once } from "node:events";
-import {
-  compileProxy,
-  createProxy,
-  type ProxyFetch,
-  type ProxyOptions,
-  type SiteDefinition,
-} from "./index.ts";
+import { createProxy, type ProxyFetch, type ProxyOptions, type SiteDefinition } from "./index.ts";
 import { vercel, type VercelConfig, type VercelExport } from "./vercel.ts";
 import { rawFetch } from "./node.ts";
 
@@ -30,7 +24,7 @@ function proxy(
   fetch: ProxyFetch = send,
   options: Partial<ProxyOptions> = {},
 ) {
-  return createProxy(compileProxy(sites), { origins, fetch, ...options });
+  return createProxy(sites, { origins, fetch, ...options });
 }
 const request = (path: string, init?: RequestInit) =>
   new Request(`https://public.test${path}`, init);
@@ -494,7 +488,7 @@ test("unavailable upstreams produce 502 and identify the site through the error 
   assert.deepEqual(errors, ["docs"]);
 });
 test("invalid bindings, unsupported routes, dynamic rewrite origins, and duplicate mounts fail early", () => {
-  assert.throws(() => compileProxy([site("root", "/"), site("docs", "/")]), /Duplicate/);
+  assert.throws(() => proxy([site("root", "/"), site("docs", "/")]), /Duplicate/);
   assert.throws(
     () => proxy([site("root", "/", { version: 3, routes: [{ handle: "miss" }] })]),
     /unsupported phase/,
@@ -549,14 +543,14 @@ test("other providers plug into the same runtime without importing Vercel", asyn
   );
 });
 test("fragment sources are diagnosed and never pretended to be HTTP matches", async () => {
-  const plan = compileProxy([
-    site("root", "/", { redirects: [{ source: "/old#fragment", destination: "/new" }] }),
-  ]);
-  assert.equal(plan.diagnostics[0].code, "unreachable-source");
-  assert.equal(
-    (await createProxy(plan, { origins, fetch: send })(request("/old#fragment"))).status,
-    200,
+  const diagnostics: import("./index.ts").Diagnostic[] = [];
+  const handler = proxy(
+    [site("root", "/", { redirects: [{ source: "/old#fragment", destination: "/new" }] })],
+    send,
+    { onDiagnostic: (diagnostic) => diagnostics.push(diagnostic) },
   );
+  assert.equal(diagnostics[0].code, "unreachable-source");
+  assert.equal((await handler(request("/old#fragment"))).status, 200);
 });
 test("Node raw transport keeps real gzip bytes, cookies, and HEAD metadata", async () => {
   const encoded = gzipSync("compressed response");
@@ -624,7 +618,7 @@ test("routing-only Vercel service paths and non-JavaScript PCRE constructs are r
   );
   assert.throws(
     () =>
-      compileProxy([
+      proxy([
         {
           name: "root",
           mount: "/",
@@ -653,19 +647,13 @@ test("service cycles fail with a diagnostic rather than looping", async () => {
   assert.equal((await handler(request("/loop"))).status, 502);
   assert.match(String(errors[0]), /handoff cycle/);
 });
-test("serialized plans preserve behavior and legacy vercel.json version 2 remains accepted", async () => {
-  const plan = JSON.parse(
-    JSON.stringify(
-      compileProxy([
-        site("root", "/", { version: 2, redirects: [{ source: "/old", destination: "/new" }] }),
-      ]),
-    ),
-  );
-  assert.equal(
-    (await createProxy(plan, { origins, fetch: send })(request("/old"))).headers.get("location"),
-    "https://public.test/new",
-  );
+test("legacy vercel.json version 2 remains accepted at startup", async () => {
+  const handler = proxy([
+    site("root", "/", { version: 2, redirects: [{ source: "/old", destination: "/new" }] }),
+  ]);
+  assert.equal((await handler(request("/old"))).headers.get("location"), "https://public.test/new");
 });
+
 test("forwarded TLS is trusted only when explicitly enabled", async () => {
   const definition = [site("root", "/", { redirects: [{ source: "/old", destination: "/new" }] })];
   for (const trustForwardedProto of [false, true]) {

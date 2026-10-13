@@ -1,16 +1,14 @@
 import { compileMatcher, destination, interpolate } from "./match.ts";
-import { contains, validatePath } from "./plan.ts";
+import { contains, prepareSites } from "./plan.ts";
 import { endToEndHeaders } from "./transport.ts";
-import type { MiddlewareContext, ProxyOptions, ProxyPlan, SitePlan } from "./types.ts";
+import type { MiddlewareContext, ProxyOptions, SiteDefinition, SitePlan } from "./types.ts";
 
-/** Execute a compiled plan. This module has no Vercel, Next.js, or Composer dependency. */
-export function createProxy(plan: ProxyPlan, options: ProxyOptions) {
-  if (plan.version !== 1) throw new Error(`Unsupported proxy plan version: ${plan.version}`);
-  const sites = [...plan.sites].sort((a, b) => a.mount.length - b.mount.length);
+/** Prepare sites at boot and return a handler; no Vercel, Next.js, or Composer dependency. */
+export function createProxy(definitions: readonly SiteDefinition[], options: ProxyOptions) {
+  const sites = prepareSites(definitions);
   const origins = new Map<string, URL>();
   const compiled = new Map(
     sites.map((site) => {
-      validatePath(site.mount);
       const origin = new URL(options.origins[site.name]);
       if (
         !["http:", "https:"].includes(origin.protocol) ||
@@ -67,6 +65,8 @@ export function createProxy(plan: ProxyPlan, options: ProxyOptions) {
         .at(-1)!;
     return { site, asset };
   };
+  for (const site of sites)
+    for (const diagnostic of site.routing.diagnostics ?? []) options.onDiagnostic?.(diagnostic);
   return async (request: Request): Promise<Response> => {
     const publicUrl = new URL(request.url);
     if (options.trustForwardedProto && request.headers.get("x-forwarded-proto") === "https")

@@ -62,16 +62,16 @@ files and packaging overhead. The check counts the native Next.js assembler's
 output, including public assets and repaired pnpm dependencies, and also runs
 during `dev` and `deploy` assembly.
 
-Measurements from this port, before later repository changes:
+Local measurements on 2026-10-13 with runtime routing compilation:
 
 | Service | Assembled files, decimal MB | RSS after smoke requests, decimal MB |
 | --- | ---: | ---: |
-| Site | 264 | 129 |
-| Docs | 426 | 467 |
-| Blog | 846 | 211 |
-| Handbook | 45 | 115 |
-| Eclipse | 83 | 128 |
-| Gateway | 1 | 105 |
+| Site | 265.9 | 130.7 |
+| Docs | 426.1 | 459.7 |
+| Blog | 848.0 | 216.2 |
+| Handbook | 45.0 | 116.0 |
+| Eclipse | 82.6 | 227.8 |
+| Gateway | 1.3 | 138.7 |
 
 The smoke runner also checks each Bun process against a 900 MB RSS budget after
 loading website pages and current/legacy docs articles. These macOS samples are
@@ -115,9 +115,11 @@ analytics/dataguide fallbacks, content negotiation, and response headers.
 Vercel dashboard domain redirects, firewall rules, and CDN settings are outside
 the repository; they must be audited separately before moving production traffic.
 The gateway uses the vendored Apache-2.0 [`@prisma/proxy`](packages/proxy/README.md)
-library. Each site's Vercel config and the site's Next routing manifest compile
-into a portable JSON plan during the build; the 24-line runtime entrypoint binds
-its upstreams from Composer input. The library's provider adapter contract also
+library. The build copies the original Vercel configs and site Next manifest
+alongside the server. The 22-line runtime entrypoint points the library at those
+files, compiles the routing tables in memory once at boot, and binds upstreams
+from Composer input. There is no generated routing-plan artifact. Restart after
+changing config files; requests reuse the startup snapshot. The library's provider adapter contract also
 supports adding Netlify and other formats without changing the HTTP runtime.
 The optional Agent Front bridge preserves the site's global middleware on
 child-site requests without reporting root requests twice. When enabling it,

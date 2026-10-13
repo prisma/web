@@ -294,8 +294,9 @@ The architecture has three parts:
    Rebind known old origin URLs explicitly and leave intentional external
    destinations external. Each imported project needs its own target/resource
    mapping; the JSON export alone cannot identify its replacement Compute
-   services. Compile during the build and ship the routing plan with the
-   gateway, then check expanded size and runtime memory as this PR already does.
+   services. The initial proposal compiled during the build; the runtime-only
+   follow-up below instead ships original inputs and prepares the tables at boot,
+   while retaining expanded-size and memory checks.
 
 Middleware and resource phases need explicit providers. A `middlewarePath`
 references executable code, and `filesystem`/`check` require knowing which
@@ -319,7 +320,7 @@ server and filesystem orchestration; it is not a drop-in Fetch/Compute gateway.
 The library replaces the former handwritten gateway router/proxy in this PR.
 Its core and Vercel adapter are independent of Prisma website names, Composer,
 and Next.js. `composer/gateway/config.ts` supplies the five website definitions;
-`composer/gateway/server.ts` is a 24-line runtime that binds their origins.
+`composer/gateway/server.ts` is a 22-line runtime that binds their origins.
 The published-style package has JS/declaration exports, a standalone build,
 Apache-2.0 license, README, and Bun/Node raw transports. It is vendored and has
 not been published to npm.
@@ -341,10 +342,11 @@ network dependency. Matching Vercel redirects are case-sensitive, verified
 against the live `/accelerate` versus `/Accelerate` behavior during the audit;
 framework delegate selectors preserve Next's own matching semantics.
 
-Validation on 2026-10-13 after merging main through `3f690a1e3`: all 33 library
-tests and 9 Composer checks passed, including the 1,454-rule reference comparison.
+Initial library validation on 2026-10-13, before the runtime-only follow-up,
+after merging main through `3f690a1e3`: all 33 library tests and 9 Composer checks
+passed, including the 1,454-rule reference comparison.
 All eight workspace type checks passed using the original Vercel origin settings.
-The final Composer build/smoke passed all five websites and assets, current/legacy
+That Composer build/smoke passed all five websites and assets, current/legacy
 docs, Markdown negotiation, redirects, query preservation, headers, and budgets.
 A packed tarball installed in an independent npm project also passed ESM import,
 compiler/serialized-plan execution, real Node gzip/cookie forwarding, and strict
@@ -360,12 +362,73 @@ formatting/lint, and diff checks passed. The PR diff has no website content chan
 | Eclipse | 82.6 | 127.3 |
 | Gateway | 0.9 | 100.2 |
 
-The compiler is not bundled into the runtime: the gateway JavaScript bundle is
-about 0.58 MB. Root-only Next/React dev dependencies support the optional Agent
-Front bridge; the OSS package itself depends only on the Vercel compiler. React
+In that initial build, the compiler was excluded from the runtime and the gateway
+JavaScript bundle was about 0.58 MB. The runtime-only follow-up bundles it instead.
+Root-only Next/React dev dependencies support the optional Agent Front bridge; the OSS package itself depends only on the Vercel compiler. React
 is pinned to the websites' existing 19.2.8 version for that bridge. A shared
 Composer gateway module could use this library's plan/provider interface and
 offer the middleware/resource bindings without requiring application-specific
 bootstrap code. These remain local memory samples; production concurrency,
 dashboard routing, and credential verification are still required before moving
 traffic.
+
+
+## Runtime-only proxy follow-up (2026-10-13)
+
+The library now prepares its routing tables at boot. `createProxy` accepts site
+adapters directly; `vercel` accepts original `vercel.json`/v3 export paths or
+file URLs and optionally a Next routes-manifest path. There is no public
+compile/serialize-plan workflow or generated `routing.json`. An adapter reads
+its files when `createProxy` initializes it, rather than when the adapter is
+declared. Each proxy instance validates all routing and bindings before serving
+requests; nonfatal diagnostics are reported once. Requests use that snapshot,
+and a restart loads file changes. In-memory configs remain supported.
+
+The HTTP core remains independent of filesystem APIs. File loading lives in
+the Vercel adapter through `node:fs`, supported by Bun and Node. A future
+Netlify adapter can read `_redirects`/`netlify.toml` at the same startup boundary
+without changing the handler or transports. File URL inputs resolve relative
+to the server, avoiding dependence on Composer's working directory. Bundlers
+cannot infer these dynamic input files: the Composer build explicitly copies
+the original site/docs configs and site Next manifest under the gateway's
+`sites/` directory. Cleaning that directory removes the obsolete compiled plan.
+Next's manifest remains necessary because some parent redirects and hostname
+rewrites live in Next config rather than Vercel JSON. Next still executes them.
+
+The compiler adds about 0.10 MB to the gateway JavaScript bundle (0.68 MB total).
+The complete assembled gateway is 1.3 MB, including raw routing inputs and
+Composer bootstrap files. A standalone Bun 1.4.3 probe initialized the actual
+five-site tables in approximately 109 ms; this measures file reading,
+compilation, and proxy initialization, excluding module import and HTTP startup.
+The gateway build now also checks its copied inputs against the 900 MB budget.
+
+**Composer/Compute improvement:** provide explicit runtime input-file declarations
+for gateway adapters, with automatic copying and watching/restart when those
+files change. This would remove the app-specific copy loop while keeping file
+URLs reliable in local and production assembly. Report routing initialization
+failures as failed readiness with their site/file context. Config changes should
+require only a gateway restart when website artifacts are unchanged.
+
+Validation passed: 37 library tests, 9 Composer checks (including comparison of
+all 1,454 reachable Vercel redirects), all eight workspace type checks with the
+existing Vercel origin settings, package formatting/lint, and the complete
+Composer build/smoke. The smoke also verifies byte-for-byte copies of the
+original configs/Next manifest and the absence of `routing.json`. An independent
+npm consumer of the packed library passed file URL initialization, snapshot
+routing after deleting the input file, real Node gzip/cookie forwarding, and
+strict declaration checks with invalid API inputs rejected.
+
+| Service | Expanded artifact, decimal MB | RSS after smoke, decimal MB |
+| --- | ---: | ---: |
+| Site | 265.9 | 130.7 |
+| Docs | 426.1 | 459.7 |
+| Blog | 848.0 | 216.2 |
+| Handbook | 45.0 | 116.0 |
+| Eclipse | 82.6 | 227.8 |
+| Gateway | 1.3 | 138.7 |
+
+These are single local samples, with GC and allocator variation between runs.
+All services stayed below the 900 MB guards. Production load and concurrency
+validation remain part of the production workspace follow-up. This change adds
+no website content or dependency-version changes and leaves Vercel inputs and
+build mode intact.
