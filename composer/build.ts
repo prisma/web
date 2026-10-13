@@ -15,6 +15,7 @@ function run(command: string, args: string[]) {
 
 // Builders run on the developer/CI machine, not inside the 1 GB runtime.
 // Serialize the five Next builds and their workers to bound build memory too.
+run("pnpm", ["--filter", "@prisma/proxy", "build"]);
 run("pnpm", [
   "turbo",
   "run",
@@ -33,9 +34,13 @@ run("bun", [
 const manifest = JSON.parse(
   await readFile(new URL("../apps/site/.next/routes-manifest.json", import.meta.url), "utf8"),
 );
+const { gatewayPlan } = await import("./gateway/config.ts");
+const plan = gatewayPlan({ redirects: manifest.redirects, rewrites: manifest.rewrites });
+for (const diagnostic of plan.diagnostics)
+  console.warn(`[${diagnostic.site}] ${diagnostic.message}`);
 await writeFile(
   new URL("../dist/composer/gateway/routing.json", import.meta.url),
-  JSON.stringify({ redirects: manifest.redirects, beforeFiles: manifest.rewrites.beforeFiles }),
+  JSON.stringify(plan),
 );
 
 // Measure the real assembler's output, including repaired pnpm dependencies

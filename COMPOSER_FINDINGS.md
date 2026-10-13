@@ -224,14 +224,14 @@ those need production access and verification before a traffic move. Composer
 would benefit from a routing import/audit helper that exposes both kinds of rules
 and reports precedence changes rather than only checking syntax.
 
-One optional integration has a cross-zone behavior difference: the site's
+The audit initially found a cross-zone behavior difference: the site's
 Agent Front middleware observes docs/blog requests before Vercel forwards them.
 The Composer gateway dispatches those requests directly to their own servers,
 so configuring Agent Front only on the site would no longer cover those zones.
-It is currently unbound in the local setup. Before enabling it in production,
-choose a shared gateway integration or preserve that middleware hop; merely
-copying the site's credentials is insufficient. This is separate from the
-zone-local Markdown negotiation, which stays in each Next server.
+The library integration below now provides a gateway middleware bridge for
+that hop, using the existing Agent Front implementation. It remains unbound
+locally; enabling it requires the same ORA settings on the site and gateway.
+Zone-local Markdown negotiation stays in each Next server.
 
 Validation on 2026-10-12: all 22 Composer checks passed, all five websites
 built, and the complete local smoke passed pages/assets, docs Markdown,
@@ -255,7 +255,8 @@ repository's 900 MB guardrail, so media offload remains the first size improveme
 
 ## Reusable OSS proxy from Vercel routing exports
 
-A reusable Composer gateway component is feasible. Vercel already publishes
+The reusable component is now implemented as the vendored Apache-2.0
+[`@prisma/proxy`](packages/proxy/README.md) package. Vercel already publishes
 [`@vercel/routing-utils`](https://github.com/vercel/vercel/blob/main/packages/routing-utils/package.json)
 under Apache-2.0. Its documented
 [`getTransformedRoutes()`](https://vercel.com/docs/build-output-api/features#high-level-routing)
@@ -271,7 +272,7 @@ compilation evidence, not a claim that an exported-route runtime has been built
 or that Vercel accepts source-fragment rules as meaningful HTTP routes. The
 probe installed no dependencies in this repository and changed no app routing.
 
-The proposed component has three parts:
+The architecture has three parts:
 
 1. **Importer/compiler.** Accept a Build Output API v3
    [`.vercel/output/config.json`](https://vercel.com/docs/build-output-api/configuration#routes)
@@ -315,6 +316,27 @@ custom destination-string substitution into a general-purpose implementation.
 Vercel's OSS dev router is useful reference material, but is coupled to its dev
 server and filesystem orchestration; it is not a drop-in Fetch/Compute gateway.
 
-The existing gateway remains the migration implementation in this PR. The
-proposed portable runtime and Composer adapter would be separately reusable
-OSS components; no package has been published by this work.
+The library replaces the former handwritten gateway router/proxy in this PR.
+Its core and Vercel adapter are independent of Prisma website names, Composer,
+and Next.js. `composer/gateway/config.ts` supplies the five website definitions;
+`composer/gateway/server.ts` is a 24-line runtime that binds their origins.
+The published-style package has JS/declaration exports, a standalone build,
+Apache-2.0 license, README, and Bun/Node raw transports. It is vendored and has
+not been published to npm.
+
+The implementation uses Vercel's compiler for high-level and v3 exported rules,
+retains per-site order and parent-before-child precedence, handles mixed public
+and mounted docs redirects, and delegates the site's Next redirects/external
+beforeFiles rewrites to its own server. Resource and middleware providers are
+explicit; unsupported phases, transforms, locale/mitigation, object-valued
+conditions, and Vercel routing-only service path overrides fail at compilation
+instead of being ignored. Routing providers compile into a common plan, so a
+future Netlify adapter can be added without changing the HTTP runtime.
+
+The optional Agent Front bridge calls the site's actual implementation for
+child requests and preserves its asset/RSC exclusions. Root requests still
+execute it in Next. Its integration test uses a local ingestion fixture and
+verifies one event per eligible child request, with no external credential or
+network dependency. Matching Vercel redirects are case-sensitive, verified
+against the live `/accelerate` versus `/Accelerate` behavior during the audit;
+framework delegate selectors preserve Next's own matching semantics.

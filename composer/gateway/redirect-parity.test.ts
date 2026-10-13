@@ -4,7 +4,10 @@ import { createRequire } from "node:module";
 import { stringify } from "node:querystring";
 import site from "../../apps/site/vercel.json" with { type: "json" };
 import docs from "../../apps/docs/vercel.json" with { type: "json" };
-import { redirect, redirectMatcher, type Redirect } from "./routes.ts";
+import { createProxy, compileProxy } from "@prisma/proxy";
+import { vercel, type VercelConfig } from "@prisma/proxy/vercel";
+import { gatewayPlan } from "./config.ts";
+type Redirect = NonNullable<VercelConfig["redirects"]>[number];
 
 // Compare against the framework's real path/condition/destination compiler,
 // rather than deriving expected destinations with the gateway implementation.
@@ -18,7 +21,15 @@ function queryValues(url: URL) {
   );
 }
 
-test("every imported Vercel redirect agrees with Next's destination compiler", () => {
+test("every imported Vercel redirect agrees with Next's destination compiler", async () => {
+  const fetch = async () => new Response("no redirect");
+  const origins = Object.fromEntries(
+    ["site", "docs", "blog", "handbook", "eclipse", "test"].map((name) => [
+      name,
+      `http://${name}.test`,
+    ]),
+  );
+  const aggregateProxy = createProxy(gatewayPlan(), { origins, fetch });
   const rules: Redirect[] = [...site.redirects, ...docs.redirects];
   const compiled = rules.map((rule) => {
     // These two rules are aliases relative to the docs project's mount; the
@@ -44,7 +55,11 @@ test("every imported Vercel redirect agrees with Next's destination compiler", (
         // Fragments never reach an HTTP server. Preserve these pre-existing
         // rules without pretending they can match browser requests.
         assert.equal(params, false, rule.source);
-        assert.equal(redirectMatcher([mounted])(url), undefined, rule.source);
+        const isolated = createProxy(
+          compileProxy([{ name: "test", mount: "/", routing: vercel({ redirects: [mounted] }) }]),
+          { origins, fetch },
+        );
+        assert.equal((await isolated(new Request(url))).status, 200, rule.source);
         continue;
       }
       assert.ok(params, `fixture must exercise ${rule.source}`);
@@ -61,9 +76,13 @@ test("every imported Vercel redirect agrees with Next's destination compiler", (
         `${parsedDestination.pathname}?${stringify(parsedDestination.query)}${parsedDestination.hash ?? ""}`,
         parsedDestination.origin ?? url.origin,
       );
-      const actual = redirectMatcher([mounted])(url);
-      assert.ok(actual, `gateway must match ${rule.source}`);
-      const location = new URL(actual.location);
+      const isolated = createProxy(
+        compileProxy([{ name: "test", mount: "/", routing: vercel({ redirects: [mounted] }) }]),
+        { origins, fetch },
+      );
+      const actual = await isolated(new Request(url));
+      assert.ok(actual.headers.get("location"), `gateway must match ${rule.source}`);
+      const location = new URL(actual.headers.get("location")!);
       assert.equal(location.origin, expected.origin, rule.source);
       assert.equal(location.pathname, expected.pathname, rule.source);
       assert.equal(location.hash, expected.hash, rule.source);
@@ -83,9 +102,9 @@ test("every imported Vercel redirect agrees with Next's destination compiler", (
         `${firstDestination.pathname}?${stringify(firstDestination.query)}${firstDestination.hash ?? ""}`,
         firstDestination.origin ?? url.origin,
       );
-      const aggregate = redirect(url);
-      assert.ok(aggregate, rule.source);
-      const aggregateLocation = new URL(aggregate.location);
+      const aggregate = await aggregateProxy(new Request(url));
+      assert.ok(aggregate.headers.get("location"), rule.source);
+      const aggregateLocation = new URL(aggregate.headers.get("location")!);
       assert.equal(
         aggregateLocation.origin + aggregateLocation.pathname + aggregateLocation.hash,
         expectedFirst.origin + expectedFirst.pathname + expectedFirst.hash,

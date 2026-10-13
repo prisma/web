@@ -114,10 +114,14 @@ handles each zone's own routes, redirects, MCP forwarding,
 analytics/dataguide fallbacks, content negotiation, and response headers.
 Vercel dashboard domain redirects, firewall rules, and CDN settings are outside
 the repository; they must be audited separately before moving production traffic.
-The optional site Agent Front integration needs a separate production decision:
-direct docs/blog dispatch bypasses the site's global Agent Front middleware.
-Binding its credentials only to the site would cover marketing pages, whereas
-Vercel's site-to-zone rewrites currently let it observe docs/blog requests too.
+The gateway uses the vendored Apache-2.0 [`@prisma/proxy`](packages/proxy/README.md)
+library. Each site's Vercel config and the site's Next routing manifest compile
+into a portable JSON plan during the build; the 24-line runtime entrypoint binds
+its upstreams from Composer input. The library's provider adapter contract also
+supports adding Netlify and other formats without changing the HTTP runtime.
+The optional Agent Front bridge preserves the site's global middleware on
+child-site requests without reporting root requests twice. When enabling it,
+bind the same ORA settings to the site input and the gateway's `agentFront` input.
 Asset prefixes are translated to the standalone server's `_next` path, with
 the zone's base path preserved. Requests keep their method, body, query,
 cookies, RSC headers, range semantics, and public forwarded origin. Responses

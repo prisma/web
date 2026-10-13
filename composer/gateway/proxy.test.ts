@@ -1,310 +1,82 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createGateway } from "./proxy.ts";
-import { redirect, redirectMatcher, route } from "./routes.ts";
-
-const origins = {
-  site: "http://localhost:4000",
-  docs: "http://localhost:4001",
-  blog: "http://localhost:4002",
-  handbook: "http://localhost:4003",
-  eclipse: "http://localhost:4004",
-};
-
-test("the public entrypoint dispatches all five websites without prefix collisions", () => {
-  for (const zone of ["docs", "blog", "handbook", "eclipse"] as const) {
-    assert.equal(route(`/${zone}`).zone, zone);
-    assert.equal(route(`/${zone}/nested/page?ignored`).zone, zone);
-    assert.equal(route(`/${zone}-other`).zone, "site");
-  }
-  assert.equal(route("/").zone, "site");
-  assert.equal(route("/docs.md").zone, "docs");
-});
-
-test("standalone Next.js receives static asset paths under its basePath", () => {
-  for (const [zone, path] of Object.entries({
-    site: "/_next/static/chunk.js",
-    docs: "/docs/_next/static/chunk.js",
-    blog: "/blog/_next/static/chunk.js",
-    handbook: "/handbook/_next/static/chunk.js",
-    eclipse: "/eclipse/_next/static/chunk.js",
-  }))
-    assert.deepEqual(route(`/${zone}-static/_next/static/chunk.js`), { zone, pathname: path });
-});
-
-test("Vercel redirects remain active with query strings and wildcard parameters", () => {
-  assert.deepEqual(redirect(new URL("https://web.example/accelerate?utm_source=test")), {
-    location: "https://web.example/docs/accelerate?utm_source=test",
-    status: 308,
-  });
-  assert.deepEqual(redirect(new URL("https://web.example/docs/guide/a/b?utm_source=test")), {
-    location: "https://web.example/docs/guides/a/b?utm_source=test",
-    status: 308,
-  });
-  assert.equal(redirect(new URL("https://web.example/unknown")), undefined);
-});
-
-test("a redirect's explicit query takes priority and temporary redirects use 307", () => {
-  const matcher = redirectMatcher([{ source: "/old/:slug", destination: "/new/:slug?tag=new" }]);
-  assert.deepEqual(matcher(new URL("https://web.example/old/hello%20world?tag=old&ref=test")), {
-    location: "https://web.example/new/hello%20world?tag=new&ref=test",
-    status: 307,
-  });
-});
-
-test("docs redirects can leave the docs mount for marketing pages", () => {
-  for (const [source, destination] of [
-    ["/docs/showcase", "/customers"],
-    ["/docs/about/prisma", "/company"],
-  ]) {
-    assert.deepEqual(redirect(new URL(`https://web.example${source}?ref=legacy`)), {
-      location: `https://web.example${destination}?ref=legacy`,
-      status: 308,
-    });
-  }
-});
-
-test("redirects preserve repeated query values unless the destination overrides that key", () => {
-  const matcher = redirectMatcher([
-    { source: "/old", destination: "/new?tag=fixed&tag=second", permanent: true },
-  ]);
-  assert.deepEqual(matcher(new URL("https://web.example/old?tag=old&ref=a&ref=b")), {
-    location: "https://web.example/new?tag=fixed&tag=second&ref=a&ref=b",
-    status: 308,
-  });
-  assert.equal(
-    redirect(new URL("https://web.example/accelerate?tag=a&tag=b"))?.location,
-    "https://web.example/docs/accelerate?tag=a&tag=b",
-  );
-});
-
-test("site external beforeFiles rewrites take precedence over zone dispatch and docs redirects", async () => {
-  const gateway = createGateway(
-    origins,
-    async (input, init) => {
-      assert.equal(new URL(String(input)).origin, origins.site);
-      assert.equal(new URL(String(input)).search, "?ref=a&ref=b");
-      assert.equal(new Headers(init?.headers).get("host"), "accelerate-speed-test.prisma.io");
-      return new Response("site executes the external rewrite");
-    },
-    [],
-    [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "accelerate-speed-test.prisma.io" }],
-        destination: "https://accelerate-speed-test.vercel.app/:path*",
-      },
-    ],
-  );
-  for (const pathname of ["/docs/composer", "/docs/showcase"]) {
+import { createProxy, type ProxyFetch } from "@prisma/proxy";
+import { gatewayPlan } from "./config.ts";
+const origins = Object.fromEntries(
+  ["site", "docs", "blog", "handbook", "eclipse"].map((name) => [name, `http://${name}.test`]),
+);
+const send: ProxyFetch = async (input) => new Response(String(input));
+test("all five web projects and their asset aliases dispatch through the library", async () => {
+  const proxy = createProxy(gatewayPlan(), { origins, fetch: send });
+  for (const name of Object.keys(origins)) {
+    const pathname = name === "site" ? "/" : `/${name}`;
     assert.equal(
-      (await gateway(new Request(`https://accelerate-speed-test.prisma.io${pathname}?ref=a&ref=b`)))
-        .status,
-      200,
+      await (await proxy(new Request(`https://web.test${pathname}`))).text(),
+      `${origins[name]}${pathname}`,
+    );
+    const response = await proxy(
+      new Request(`https://web.test/${name}-static/_next/static/chunk.js`),
+    );
+    assert.equal(
+      await response.text(),
+      `${origins[name]}${name === "site" ? "" : `/${name}`}/_next/static/chunk.js`,
     );
   }
+  for (const pathname of ["/docs.md", "/docs.mdx", "/blog.md", "/handbook.md", "/eclipse.md"])
+    assert.equal(
+      new URL(await (await proxy(new Request(`https://web.test${pathname}`))).text()).hostname,
+      `${pathname.split(/[/.]/)[1]}.test`,
+    );
+  assert.equal(
+    await (await proxy(new Request("https://web.test/docs-other"))).text(),
+    "http://site.test/docs-other",
+  );
 });
-
-test("site-level redirects reach Next before zone dispatch, preserving its response headers", async () => {
-  const gateway = createGateway(
-    origins,
-    async (input, init) => {
-      assert.equal(new URL(String(input)).origin, origins.site);
-      const host = new Headers(init?.headers).get("host");
-      return new Response(null, {
-        status: host === "prismagraphql.com" ? 307 : 308,
-        headers: {
-          location:
-            host === "prismagraphql.com"
-              ? "https://www.prisma.io/path"
-              : "/docs/guides/example?ref=test",
-          "x-frame-options": "SAMEORIGIN",
+test("actual Vercel config imports retain marketing destinations and repeated queries", async () => {
+  const proxy = createProxy(gatewayPlan(), { origins, fetch: send });
+  for (const [source, dest] of [
+    ["/accelerate", "/docs/accelerate"],
+    ["/docs/showcase", "/customers"],
+    ["/docs/about/prisma", "/company"],
+    ["/docs/guide/a/b", "/docs/guides/a/b"],
+  ]) {
+    const response = await proxy(new Request(`https://web.test${source}?ref=a&ref=b`));
+    assert.equal(response.status, 308, source);
+    assert.equal(response.headers.get("location"), `https://web.test${dest}?ref=a&ref=b`, source);
+  }
+  assert.equal(gatewayPlan().diagnostics.length, 5);
+});
+test("site Next rules and hostname rewrites preempt child configs, retaining the Next response", async () => {
+  const plan = gatewayPlan({
+    redirects: [{ source: "/docs/showcase", destination: "/framework-owned" }],
+    rewrites: {
+      beforeFiles: [
+        {
+          source: "/:path*",
+          destination: "https://accelerate-speed-test.vercel.app/:path*",
+          has: [{ type: "host", value: "accelerate-speed-test.prisma.io" }],
         },
+      ],
+    },
+  });
+  const proxy = createProxy(plan, {
+    origins,
+    fetch: async (url, init) => {
+      assert.equal(new URL(url).origin, origins.site);
+      assert.equal(
+        new Headers(init.headers).get("x-forwarded-host"),
+        new Headers(init.headers).get("host"),
+      );
+      return new Response(null, {
+        status: 307,
+        headers: { location: "/framework-owned", "x-framework": "retained" },
       });
     },
-    [
-      { source: "/blog/old-post", destination: "/docs/guides/example", statusCode: 308 },
-      {
-        source: "/:path*",
-        destination: "https://www.prisma.io/:path*",
-        statusCode: 307,
-        has: [{ type: "host", value: "prismagraphql.com" }],
-      },
-    ],
-  );
-  const legacy = await gateway(new Request("https://web.example/blog/old-post?ref=test"));
-  assert.equal(legacy.status, 308);
-  assert.equal(legacy.headers.get("location"), "https://web.example/docs/guides/example?ref=test");
-  assert.equal(legacy.headers.get("x-frame-options"), "SAMEORIGIN");
-  const hostname = await gateway(new Request("https://prismagraphql.com/path"));
-  assert.equal(hostname.status, 307);
-  assert.equal(hostname.headers.get("location"), "https://www.prisma.io/path");
-});
-
-test("Next's internal trailing-slash redirect uses its compiled regex", () => {
-  const matcher = redirectMatcher([
-    {
-      source: "/:path+/",
-      destination: "/:path+",
-      statusCode: 308,
-      regex: "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$",
-    },
-  ]);
-  assert.equal(matcher(new URL("https://web.example/docs/page")), undefined);
-  assert.equal(
-    matcher(new URL("https://web.example/docs/page/"))?.location,
-    "https://web.example/docs/page",
-  );
-});
-
-test("conditional redirects require matching headers and cookies and honor missing conditions", () => {
-  const matcher = redirectMatcher([
-    {
-      source: "/docs/conditional",
-      destination: "/docs/:audience",
-      has: [
-        { type: "header", key: "x-audience", value: "(?<audience>team|public)" },
-        { type: "cookie", key: "session", value: "active" },
-      ],
-      missing: [{ type: "header", key: "x-preview" }],
-    },
-  ]);
-  const url = new URL("https://web.example/docs/conditional");
-  const headers = { "x-audience": "team", cookie: "other=value; session=active" };
-  assert.deepEqual(matcher(url, new Headers(headers)), {
-    status: 307,
-    location: "https://web.example/docs/team",
   });
-  for (const unmatched of [
-    { ...headers, "x-audience": "unknown" },
-    { ...headers, cookie: "other=value" },
-    { ...headers, "x-preview": "1" },
-  ]) {
-    assert.equal(matcher(url, new Headers(unmatched)), undefined);
-  }
-});
-
-test("TLS termination preserves HTTPS in gateway redirects", async () => {
-  const gateway = createGateway(origins);
-  const response = await gateway(
-    new Request("http://web.example/accelerate", { headers: { "x-forwarded-proto": "https" } }),
-  );
-  assert.equal(response.headers.get("location"), "https://web.example/docs/accelerate");
-});
-
-test("POST bodies, cookies, RSC headers, and forwarded origin reach the correct website", async () => {
-  const gateway = createGateway(origins, async (input, init) => {
-    assert.equal(String(input), "http://localhost:4001/docs/api/newsletter?tag=a%2Fb");
-    assert.equal(init?.method, "POST");
-    assert.equal(init?.redirect, "manual");
-    const headers = new Headers(init?.headers);
-    assert.equal(headers.get("host"), "web.example");
-    assert.equal(headers.get("x-forwarded-host"), "web.example");
-    assert.equal(headers.get("x-forwarded-proto"), "https");
-    assert.equal(headers.get("cookie"), "session=value");
-    assert.equal(headers.get("rsc"), "1");
-    assert.equal(headers.get("connection"), null);
-    assert.equal(headers.get("x-hop"), null);
-    assert.equal(await new Response(init?.body).text(), "hello");
-    return new Response("done", {
-      status: 201,
-      headers: { "set-cookie": "session=new; HttpOnly", vary: "RSC, Accept" },
-    });
-  });
-  const response = await gateway(
-    new Request("https://web.example/docs/api/newsletter?tag=a%2Fb", {
-      method: "POST",
-      body: "hello",
-      headers: { cookie: "session=value", rsc: "1", connection: "x-hop", "x-hop": "remove" },
-    }),
-  );
-  assert.equal(response.status, 201);
-  assert.equal(response.headers.get("set-cookie"), "session=new; HttpOnly");
-  assert.equal(response.headers.get("vary"), "RSC, Accept");
-  assert.equal(await response.text(), "done");
-});
-
-test("response streams return before the upstream finishes sending", async () => {
-  let finish!: () => void;
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(new TextEncoder().encode("first"));
-      finish = () => {
-        controller.enqueue(new TextEncoder().encode("last"));
-        controller.close();
-      };
-    },
-  });
-  const gateway = createGateway(origins, async () => new Response(stream));
-  const response = await gateway(new Request("https://web.example/blog/media.mp4"));
-  const reader = response.body!.getReader();
-  assert.equal(new TextDecoder().decode((await reader.read()).value), "first");
-  finish();
-  assert.equal(new TextDecoder().decode((await reader.read()).value), "last");
-  assert.equal((await reader.read()).done, true);
-});
-
-test("upstream absolute redirects stay on the public entrypoint", async () => {
-  const gateway = createGateway(
-    origins,
-    async () =>
-      new Response(null, {
-        status: 307,
-        headers: { location: "http://localhost:4002/blog/tag/orm?q=1" },
-      }),
-  );
-  const response = await gateway(new Request("https://web.example/blog/tag/unknown"));
-  assert.equal(response.status, 307);
-  assert.equal(response.headers.get("location"), "https://web.example/blog/tag/orm?q=1");
-});
-
-test("HEAD, range requests, and compressed assets keep their upstream semantics", async () => {
-  const gateway = createGateway(origins, async (_input, init) => {
-    assert.equal(init?.method, "HEAD");
-    assert.equal(new Headers(init?.headers).get("range"), "bytes=0-99");
-    assert.equal((init as RequestInit & { decompress: boolean }).decompress, false);
-    return new Response(null, {
-      status: 206,
-      headers: {
-        "content-encoding": "gzip",
-        "content-length": "100",
-        "content-range": "bytes 0-99/500",
-      },
-    });
-  });
-  const response = await gateway(
-    new Request("https://web.example/blog/media.mp4", {
-      method: "HEAD",
-      headers: { range: "bytes=0-99" },
-    }),
-  );
-  assert.equal(response.status, 206);
-  assert.equal(response.headers.get("content-encoding"), "gzip");
-  assert.equal(response.headers.get("content-length"), "100");
-});
-
-test("untrusted path and host headers cannot choose an arbitrary upstream", async () => {
-  const gateway = createGateway(origins, async (input) => {
-    assert.equal(new URL(String(input)).origin, origins.site);
-    return new Response("ok");
-  });
-  await gateway(
-    new Request("https://web.example/%2F%2Fattacker.example/path", {
-      headers: { host: "attacker.example" },
-    }),
-  );
-});
-
-test("repeated slashes normalize before redirects and cannot produce an external redirect", async () => {
-  const gateway = createGateway(origins, async () => {
-    throw new Error("must normalize before proxying");
-  });
-  for (const [source, destination] of [
-    ["/docs//showcase", "/docs/showcase"],
-    ["//attacker.example/path", "/attacker.example/path"],
-  ]) {
-    const response = await gateway(new Request(`https://web.example${source}?ref=a&ref=b`));
-    assert.equal(response.status, 308);
-    assert.equal(response.headers.get("location"), `https://web.example${destination}?ref=a&ref=b`);
+  for (const host of ["web.test", "accelerate-speed-test.prisma.io"]) {
+    const response = await proxy(new Request(`https://${host}/docs/showcase`));
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get("location"), `https://${host}/framework-owned`);
+    assert.equal(response.headers.get("x-framework"), "retained");
   }
 });
