@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { Github, Linkedin, Mail, XSocial } from "@/components/icons/forma";
+import { Bluesky, Github, Linkedin, Mail, XSocial, Youtube } from "@/components/icons/forma";
 import { AnimatedWordmark } from "@/components/brand/animated-wordmark";
 import { SiteLink } from "@/components/site-link";
 import { siteConfig } from "@/lib/config";
 import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-preferred-source";
 
-// Light reference-style footer (Fincrest): brand block with contact + social
-// icons on the left, link columns (including Legal & Trust and Social Media)
-// on the right, a quiet copyright bar, and the giant ghost wordmark rising
-// out of the page's bottom edge.
+// Light reference-style footer (Fincrest): brand block with contact and a
+// quiet Google link on the left, link columns (including Legal & Trust and
+// Social Media) on the right, copyright at the foot of the brand column, and
+// the giant ghost wordmark rising out of the page's bottom edge.
 // TODO: hello@prisma.io is a placeholder contact — confirm with the client.
 
 const COLUMNS = [
@@ -22,6 +22,8 @@ const SOCIALS = [
   { label: "Twitter", href: siteConfig.social.twitter, Icon: XSocial },
   { label: "LinkedIn", href: siteConfig.social.linkedin, Icon: Linkedin },
   { label: "GitHub", href: siteConfig.social.github, Icon: Github },
+  { label: "YouTube", href: siteConfig.social.youtube, Icon: Youtube },
+  { label: "Bluesky", href: siteConfig.social.bluesky, Icon: Bluesky },
 ] as const;
 
 export function Footer() {
@@ -29,7 +31,7 @@ export function Footer() {
     <footer className="overflow-hidden bg-white pt-16">
       <div className="mx-auto max-w-[96rem] px-6 sm:px-10">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
-          <div className="max-w-xs">
+          <div className="flex max-w-xs flex-col">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo/full-color.svg" alt={siteConfig.name} className="h-7 w-auto" />
             <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
@@ -42,24 +44,13 @@ export function Footer() {
               <Mail className="size-4" aria-hidden />
               hello@prisma.io
             </a>
-            <div className="mt-8 flex items-center gap-4">
-              {SOCIALS.map(({ label, href, Icon }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-foreground/70 transition-colors hover:text-foreground"
-                >
-                  <Icon className="size-5" aria-hidden />
-                </Link>
-              ))}
-            </div>
             <GooglePreferredSourceButton
-              className="mt-8 border-black/10 bg-white text-foreground hover:bg-black/[0.04]"
+              className="mt-4 gap-2.5 rounded-none border-0 bg-transparent p-0 font-normal text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground"
               data-attr="footer-google-preferred-source"
             />
+            <p className="mt-8 text-sm text-muted-foreground lg:mt-auto lg:pt-8">
+              &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4 xl:grid-cols-5">
@@ -102,16 +93,10 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 border-t border-black/[0.06] py-6">
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
-          </p>
-        </div>
-
         {/* the giant footer wordmark — kept inside the page's max-width so it
             never grows wider than the rest of the content; the letters span
             the content width and the rays bleed off past the right. */}
-        <div className="pointer-events-none relative mt-10 pb-6">
+        <div className="pointer-events-none relative mt-16 pb-6">
           <div className="w-[116.1%]">
             <AnimatedWordmark />
           </div>
