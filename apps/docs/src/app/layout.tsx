@@ -11,6 +11,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
+import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
 import { Banner } from "fumadocs-ui/components/banner";
 import { ArrowRightIcon } from "lucide-react";
 
@@ -100,6 +101,8 @@ export default function Layout({ children }: { children: ReactNode }) {
         />
         {/* Google Tag Manager — consent-gated; activates only after CookieYes analytics consent */}
         <GoogleTagManager section="docs" />
+        {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
+        <OpenAiPixel />
         {/* FontAwesome — icons are non-critical; explicit strategy avoids
             Next.js silently defaulting to afterInteractive without a source hint */}
         <Script

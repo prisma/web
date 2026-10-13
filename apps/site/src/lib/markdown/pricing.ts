@@ -150,10 +150,11 @@ const EVERY_PLAN_INCLUDES = [
 ];
 
 // PRESETS in components/sections/calculator-options/calc.ts, with the usage
-// readout each button shows (fmtOps · fmtGB). The V2 `blurb` on each preset is
-// not rendered by the compact preset row, so it is not included.
+// readout each button shows (fmtOps · fmtGB), under the "Example usage, not plan
+// limits" line above the preset row. The V2 `blurb` on each preset is not
+// rendered by the compact preset row, so it is not included.
 const CALCULATOR_PRESETS = [
-  "Hobby — 200K · 500 MB",
+  "Side project — 200K · 500 MB",
   "Startup — 1M · 8 GB",
   "Scaleup — 20M · 40 GB",
 ];
@@ -331,7 +332,7 @@ const FAQS = [
     answer:
       "An operation is a single action against your Prisma Postgres database — a create, read, " +
       "update, or delete. A simple write and a complex query with multiple joins each count as " +
-      "one operation, and a cached read counts too.",
+      "one operation.",
   },
   {
     question: "Is Prisma ORM really free?",
@@ -406,12 +407,13 @@ export function renderPricingMarkdown(): string {
     // cards. The estimated monthly totals and the "Recommended" badge are
     // computed from the slider positions and are interactive-only, so only the
     // static labels and per-plan terms are rendered here.
+    paragraphs("Example usage, not plan limits"),
     bulletList(CALCULATOR_PRESETS),
     heading(3, "Estimate your monthly usage"),
     bulletList([
       "Database operations per month — 1 query = 1 operation",
       "Storage in gigabytes",
-      "Data transfer — unlimited, included free",
+      "Database data transfer — unlimited, included free",
     ]),
     definitionList(CALCULATOR_PLAN_TERMS),
     paragraphs("Hard spend limit, on by default — never a surprise bill."),
@@ -419,10 +421,10 @@ export function renderPricingMarkdown(): string {
     heading(2, "See how Prisma compares at scale"),
     paragraphs([
       "Prisma charges per operation: each query your app runs against your database counts as " +
-        "one. No seats. No egress fees. And every paid plan includes a hard spend limit so there " +
+        "one. No seats. No database egress fees. And every paid plan includes a hard spend limit so there " +
         "are no surprises.",
       "At around 50K monthly active users, Prisma Pro can cost up to 5x less than a typical " +
-        "Neon + Vercel setup, with one bill, included data transfer, and spend limits on by " +
+        "Neon + Vercel setup, with one bill, included database data transfer, and spend limits on by " +
         "default.",
       // The badge on the Prisma Pro column; its multiple is derived from the
       // costs in the table below.

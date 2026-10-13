@@ -89,7 +89,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "A database from Neon, an ORM from Drizzle, hosting from Vercel",
       "Your agent writes the code, you wire it up",
-      "Per-branch databases that don't connect to your hosting previews",
+      "Preview databases from one vendor, preview deployments from another",
       "Bandwidth bills that scale faster than your traffic",
       "Context-switching between a database dashboard, ORM CLI, hosting console, and data browser",
     ]),
@@ -97,7 +97,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "Your agent runs the full loop: build, deploy, debug, fix, redeploy",
       "One platform: hosting, database, and ORM built to work together natively",
-      "Per-branch databases wired to your hosting previews automatically",
+      "A preview database per feature branch, wired to its preview deployment",
       "App and database co-located on the same host, at latency no two-vendor setup can match",
       "Spend limits on every paid tier, so your bill stops where you tell it to",
     ]),
@@ -157,7 +157,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "Unikernel microVMs on bare metal, single-digit ms boot",
       "Operation-based pricing with spend limits, no bill shock",
-      "Free per-branch databases, integrated with hosting previews",
+      "A preview database per feature branch, integrated with hosting previews",
       "Works with any ORM if you're not using Prisma's",
       "Query Insights built in: spot slow queries and get an agent-ready prompt to fix them",
     ]),
@@ -218,15 +218,15 @@ export function renderHomeMarkdown(): string {
     paragraphs(
       "Start free with the ORM, which will always be free. Prisma Postgres has a free tier with " +
         "a hard cap, so you can build without a credit card. When you outgrow it, you're on " +
-        "operation-based pricing with spend limits, and data transfer is always included.",
+        "operation-based pricing with spend limits, and database data transfer is always included.",
     ),
     ctaList([{ label: "See pricing", href: "/pricing" }]),
     bulletList([
       "**Free Postgres tier** with a hard cap, no credit card required",
       "**Spend limits on every paid tier**, so your bill never surprises you",
-      "**Unlimited data transfer included**, no bandwidth bill-shock",
+      "**Unlimited database data transfer included**, no database egress bill-shock",
       "**Prisma ORM is free, always**",
-      "**Per-branch databases included**, no surcharge",
+      "**A preview database per feature branch**, no surcharge",
       "**SOC2, HIPAA, ISO 27001, and GDPR** at the Business tier",
     ]),
     // All three carousel scenarios are included: only one slide is visible at
@@ -241,7 +241,7 @@ export function renderHomeMarkdown(): string {
     paragraphs("Prisma: $0 per month"),
     bulletList([
       "No credit card required",
-      "Data transfer included",
+      "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ]),
     heading(3, "Growing SaaS (~50K MAU)"),
@@ -252,7 +252,11 @@ export function renderHomeMarkdown(): string {
       "Spend limits not standard",
     ]),
     paragraphs("Prisma: $70-90 per month"),
-    bulletList(["One bill, one platform", "Data transfer included", "Spend limits on by default"]),
+    bulletList([
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ]),
     heading(3, "At scale (~500K MAU)"),
     paragraphs("Typical stack (Neon + Vercel): $2,800-3,400 per month"),
     bulletList([
@@ -261,7 +265,11 @@ export function renderHomeMarkdown(): string {
       "Spend limits not standard",
     ]),
     paragraphs("Prisma: $640-780 per month"),
-    bulletList(["One bill, one platform", "Data transfer included", "Spend limits on by default"]),
+    bulletList([
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ]),
 
     // ---- TestimonialsReveal (testimonials-reveal.tsx) ----
     // Shared renderer: the section is reused on other pages, and it already
@@ -305,8 +313,8 @@ export function renderHomeMarkdown(): string {
     ),
     heading(3, "What about Prisma 7 / Prisma ORM users today?"),
     paragraphs(
-      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now the current " +
-        "release, is a separate, opinionated product built for agentic workflows, not a forced " +
+      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now a release " +
+        "candidate, is a separate, opinionated product built for agentic workflows, not a forced " +
         "upgrade. When you are ready to move, the Prisma 8 docs include an upgrade guide from " +
         "Prisma 7.",
     ),

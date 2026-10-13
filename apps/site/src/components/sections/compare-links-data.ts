@@ -52,9 +52,15 @@ export const COMPARE_PRISMA_LINKS: CompareLink[] = [
     description: "Where to move a TypeScript app with Postgres when Netlify stops fitting.",
   },
   {
-    label: "Import an existing database into Prisma Postgres",
+    label: "Move a local Postgres database online (2026)",
+    href: "/blog/from-local-to-production-with-prisma-postgres",
+    description:
+      "Prisma Postgres, Neon, Render, Railway and Supabase compared for taking a laptop Postgres database online with pg_dump and pg_restore.",
+  },
+  {
+    label: "Migrate a local Postgres database to Prisma Postgres",
     href: "/docs/postgres/import-from-existing-database",
     description:
-      "The docs guide for moving an existing PostgreSQL database over with pg_dump and pg_restore, or a MySQL database with pgloader.",
+      "The docs guide for copying a local PostgreSQL database into Prisma Postgres with pg_dump and pg_restore over the direct connection.",
   },
 ];

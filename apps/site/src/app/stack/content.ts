@@ -39,7 +39,7 @@ export const stack = {
     body: "Managed Postgres wired into your Prisma workflow and designed to run close to your app hosting.",
     bullets: [
       "Operation-based pricing with spend limits",
-      "Free per-branch databases integrated with hosting previews",
+      "A preview database per feature branch, integrated with hosting previews",
       "Works with any ORM if you’re not using Prisma ORM",
       "Query Insights built in: spot slow queries and get an agent-ready prompt to fix them",
     ],

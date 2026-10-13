@@ -169,7 +169,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm",
     title: "Prisma ORM",
     description:
-      "Current Prisma ORM (Prisma ORM 8) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma ORM 7 and legacy v6 trees).",
+      "Prisma ORM 8 (release candidate) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma ORM 7 and legacy v6 trees).",
     prefixes: ["/orm", "/prisma-orm", "/getting-started", "/full-stack-tutorial"],
     excludePrefixes: ["/orm/v6", "/orm/v7"],
   },
@@ -205,7 +205,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
+      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations, plus guides that build complete apps on Prisma Compute (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
     prefixes: ["/guides"],
     excludePrefixes: ["/guides/v7"],
   },

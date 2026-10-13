@@ -183,10 +183,10 @@ Fix it at whichever end is wrong: add the name to the outputs the producer retur
 
 Behavior you will run into once the app is deployed, and what to do about it:
 
-- **Compute scales to zero, and idle database connections get closed.** A long-lived client that treats a dropped connection as fatal will crash-loop through 502s. Keep the pool small and reconnect-friendly, and do not let an async error kill the process:
+- **Compute scales to zero, and idle database connections get closed.** A long-lived client that treats a dropped connection as fatal will crash-loop through 502s. Keep the pool small and reconnect-friendly, turn off named prepared statements so a reconnect against the local `prisma dev` database does not fail with `prepared statement "..." already exists`, and do not let an async error kill the process:
 
   ```ts
-  const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10 });
+  const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10, prepare: false });
   process.on('uncaughtException', (err) => console.error('uncaughtException', err));
   process.on('unhandledRejection', (err) => console.error('unhandledRejection', err));
   ```

@@ -56,7 +56,7 @@ const HOME_CONTENT: StackBentoContent = {
     bullets: [
       "Unikernel microVMs on bare metal, single-digit ms boot",
       "Operation-based pricing with spend limits, no bill shock",
-      "Free per-branch databases, integrated with hosting previews",
+      "A preview database per feature branch, integrated with hosting previews",
       "Works with any ORM if you're not using Prisma's",
       "Query Insights built in: spot slow queries and get an agent-ready prompt to fix them",
     ],
