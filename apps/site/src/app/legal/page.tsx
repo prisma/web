@@ -133,14 +133,14 @@ function DocumentRow({ document: doc }: { document: Document }) {
       <Link
         href={doc.href}
         {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        className="group flex w-full items-center gap-4 py-6 outline-none focus-visible:ring-2 focus-visible:ring-prism-cyan-500 focus-visible:ring-offset-2"
+        className="group flex w-full items-center justify-between gap-6 p-6 outline-none focus-visible:ring-2 focus-visible:ring-prism-cyan-500 focus-visible:ring-offset-2 min-[601px]:p-10 min-[961px]:p-12"
       >
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col gap-2">
           <h2 className="text-base font-semibold leading-snug text-foreground sm:text-[1.0625rem]">
             {doc.title}
           </h2>
           {doc.lastUpdated ? (
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {LAST_UPDATED_LABEL} {doc.lastUpdated}
             </p>
           ) : null}
@@ -204,13 +204,13 @@ export default function LegalHubPage() {
       <JsonLd id="legal-hub-structured-data" data={structuredData} />
 
       <section className="bg-white px-4 pb-24 pt-32 sm:px-8 sm:pb-32 md:pt-40">
-        <div className="mx-auto grid max-w-site gap-x-16 gap-y-10 lg:grid-cols-[18rem_1fr]">
-          <header>
+        <div className="mx-auto grid max-w-site min-[601px]:grid-cols-3">
+          <header className="p-6 min-[601px]:p-10 min-[961px]:p-12">
             <h1 className="text-balance text-2xl leading-[1.2] text-foreground sm:text-[1.75rem]">
               Explore our legal documents and policies
             </h1>
           </header>
-          <ul className="divide-y divide-black/[0.08] border-y border-black/[0.08]">
+          <ul className="divide-y divide-black/[0.08] border-y border-black/[0.08] min-[601px]:col-span-2">
             {DOCUMENTS.map((doc) => (
               <DocumentRow key={doc.href} document={doc} />
             ))}
