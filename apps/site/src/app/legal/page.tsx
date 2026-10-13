@@ -133,7 +133,7 @@ function DocumentRow({ document: doc }: { document: Document }) {
       <Link
         href={doc.href}
         {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        className="group flex items-center justify-between gap-6 py-6 outline-none focus-visible:ring-2 focus-visible:ring-prism-cyan-500 focus-visible:ring-offset-2"
+        className="group flex w-full items-center gap-4 py-6 outline-none focus-visible:ring-2 focus-visible:ring-prism-cyan-500 focus-visible:ring-offset-2"
       >
         <div className="min-w-0">
           <h2 className="text-base font-semibold leading-snug text-foreground sm:text-[1.0625rem]">
