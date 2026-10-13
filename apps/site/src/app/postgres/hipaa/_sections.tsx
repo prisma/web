@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Fragment } from "react";
 import { FileText, Grid3x3, Lock, RotateCcw } from "lucide-react";
 import {
   Accordion,
@@ -33,38 +32,6 @@ import {
 
 // Prefilled mailto for every link on /postgres/hipaa.
 const BAA_MAILTO = baaComplianceMailto("/postgres/hipaa");
-
-// Yellow review badge visible on every unconfirmed claim. The page is noindex
-// behind a draft PR, so these are deliberately in production markup to help
-// reviewers eyeball what still needs sign-off. Remove before launch.
-export function PendingBadge({
-  variant = "pending",
-  size = "default",
-}: {
-  variant?: "pending" | "placeholder";
-  // "sm" prints a quieter version — smaller, less saturated, lower-case label.
-  // Use inside tightly-set type (e.g. the comparison table) where the
-  // regular badge is too loud against the surrounding content.
-  size?: "default" | "sm";
-}) {
-  const label = variant === "pending" ? "Pending confirmation" : "Placeholder";
-  if (size === "sm") {
-    return (
-      <span
-        className="ml-1 inline-flex items-center gap-1 whitespace-nowrap rounded-sm bg-[#FFF4A8] px-1.5 py-px align-middle text-[10px] font-semibold leading-none text-[#6B5A00]"
-        title={label}
-      >
-        <span aria-hidden className="size-1 shrink-0 rounded-full bg-[#C9A800]" />
-        {variant === "pending" ? "Pending" : "Placeholder"}
-      </span>
-    );
-  }
-  return (
-    <span className="ml-1 inline-block whitespace-nowrap rounded-md bg-[#FFE34D] px-[7px] py-[5px] align-middle text-[10px] font-bold uppercase leading-none tracking-[0.06em] text-[#4a3d00]">
-      {label}
-    </span>
-  );
-}
 
 const INLINE_LINK =
   "font-medium text-foreground underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60";
@@ -128,8 +95,7 @@ export function HipaaHero() {
                 Available on the Business plan, $129 a month.{" "}
                 <Link href="/pricing" className={INLINE_LINK}>
                   Compare plans
-                </Link>{" "}
-                <PendingBadge size="sm" />
+                </Link>
               </p>
               <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
                 {[
@@ -255,7 +221,6 @@ export function HipaaGlance() {
   const cards: {
     heading: string;
     body: React.ReactNode;
-    badge?: "pending" | "placeholder";
   }[] = [
     {
       heading: "Does Prisma Postgres support HIPAA?",
@@ -276,7 +241,6 @@ export function HipaaGlance() {
           27001.
         </>
       ),
-      badge: "pending",
     },
     {
       heading: "How do I get a BAA?",
@@ -287,21 +251,23 @@ export function HipaaGlance() {
             compliance@prisma.io
           </a>{" "}
           from your account email with your company and signatory details. Prisma sends it for
-          e-signature, usually within 2 business days.
+          e-signature.
         </>
       ),
-      badge: "pending",
     },
     {
       heading: "What does the BAA cover?",
       body: (
         <>
-          The BAA covers Prisma Postgres databases in a Business workspace. Whether Prisma Compute,
-          Buckets and other products are covered is still being confirmed, so keep PHI in your
-          database until they are listed.
+          The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health
+          information in services covered by your signed BAA. Embeddable Prisma Studio is not
+          designed for regulated industries under Prisma&apos;s{" "}
+          <Link href="/legal/terms" className={INLINE_LINK}>
+            Terms
+          </Link>
+          .
         </>
       ),
-      badge: "placeholder",
     },
   ];
 
@@ -320,8 +286,11 @@ export function HipaaGlance() {
       label: "BAA liability cap",
       value: (
         <>
-          $250,000 standard; raise to $500,000 for an extra $70 a month{" "}
-          <PendingBadge size="sm" />
+          $250,000 standard. See the{" "}
+          <Link href={BAA_HTML_PATH} className={INLINE_LINK}>
+            BAA
+          </Link>
+          .
         </>
       ),
     },
@@ -352,21 +321,13 @@ export function HipaaGlance() {
         </div>
 
         <div className="mx-auto mt-14 grid max-w-5xl gap-4 md:grid-cols-2">
-          {cards.map(({ heading, body, badge }) => (
+          {cards.map(({ heading, body }) => (
             <div
               key={heading}
               className="flex h-full flex-col gap-3 rounded-xl border border-black/[0.06] bg-white p-6 sm:p-7"
             >
               <h3 className="text-xl leading-snug">{heading}</h3>
-              <p className="text-pretty leading-relaxed text-muted-foreground">
-                {body}
-                {badge ? (
-                  <>
-                    {" "}
-                    <PendingBadge variant={badge} />
-                  </>
-                ) : null}
-              </p>
+              <p className="text-pretty leading-relaxed text-muted-foreground">{body}</p>
             </div>
           ))}
         </div>
@@ -463,7 +424,6 @@ export function HipaaFeatures() {
     panel: React.ReactNode;
     photo: string;
     photoPosition: string;
-    badge?: "pending" | "placeholder";
   }[] = [
     {
       title: "Keep patient data in the region you choose",
@@ -473,7 +433,6 @@ export function HipaaFeatures() {
           Francisco), two in the EU and two in Asia. US patient data can stay in a US region.
         </>
       ),
-      badge: "pending",
       href: "/docs/postgres/faq#what-regions-is-prisma-postgres-available-in",
       linkLabel: "See all regions",
       photo: "/brand/feature-postgres.jpg",
@@ -482,8 +441,8 @@ export function HipaaFeatures() {
         <MiniPanel label="regions">
           <MiniRow active>us-east-1&nbsp;&nbsp;North Virginia</MiniRow>
           <MiniRow active>us-west-1&nbsp;&nbsp;San Francisco</MiniRow>
-          <MiniRow>eu-central-1&nbsp;&nbsp;Frankfurt</MiniRow>
-          <MiniRow>ap-northeast-1&nbsp;&nbsp;Tokyo</MiniRow>
+          <MiniRow active>ap-northeast-1&nbsp;&nbsp;Tokyo</MiniRow>
+          <MiniRow active>ap-southeast-1&nbsp;&nbsp;Singapore</MiniRow>
         </MiniPanel>
       ),
     },
@@ -491,8 +450,8 @@ export function HipaaFeatures() {
       title: "Restore from daily backups",
       body: (
         <>
-          Business keeps daily backups for 30 days. Restore one from the database's Backups tab in
-          the Console, or take your own copy any time with pg_dump.
+          Business keeps daily backups for 30 days. Restore one from the database&apos;s Backups
+          tab in the Console, or take your own copy any time with pg_dump.
         </>
       ),
       href: "/docs/postgres/database/backups",
@@ -513,10 +472,10 @@ export function HipaaFeatures() {
       body: (
         <>
           Host your Node.js, Bun or Next.js app on Prisma Compute in the same region as the
-          database, on the same plan. Confirm Compute is covered by your BAA before it handles PHI.
+          database. Keep protected health information in your Prisma Postgres database covered by
+          your BAA.
         </>
       ),
-      badge: "placeholder",
       href: "/compute",
       linkLabel: "Learn more about Compute",
       photo: "/brand/feature-compute.jpg",
@@ -601,12 +560,6 @@ export function HipaaFeatures() {
                     <h3 className="text-xl">{item.title}</h3>
                     <p className="mt-3 grow text-pretty leading-relaxed text-muted-foreground">
                       {item.body}
-                      {item.badge ? (
-                        <>
-                          {" "}
-                          <PendingBadge variant={item.badge} />
-                        </>
-                      ) : null}
                     </p>
                     <Link
                       href={item.href}
@@ -629,7 +582,6 @@ export function HipaaFeatures() {
 function MiniPanel({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div
-      role="img"
       aria-hidden
       className="pointer-events-none relative flex h-full w-full select-none flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-[0_12px_32px_-14px_rgba(21,21,21,0.18)]"
     >
@@ -711,19 +663,16 @@ export function HipaaResponsibility() {
             items={you}
           />
         </div>
-        <div className="mx-auto mt-4 max-w-5xl rounded-2xl border-2 border-dashed border-[#E9C400] bg-[#FFFBE6] p-7">
-          <p className="font-semibold text-foreground">
-            Which products the BAA covers <PendingBadge variant="placeholder" />
-          </p>
+        <div className="mx-auto mt-4 max-w-5xl rounded-2xl border border-black/[0.06] bg-white p-7">
+          <p className="font-semibold text-foreground">Which products the BAA covers</p>
           <p className="mt-2 leading-relaxed text-muted-foreground">
-            This box will list exactly which services are in scope (for example Prisma Postgres,
-            Prisma Compute, Buckets, Studio and Query insights) and which are not. Prisma's{" "}
+            The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health
+            information in services covered by your signed BAA. Prisma&apos;s{" "}
             <Link href="/legal/terms" className={INLINE_LINK}>
               Terms
             </Link>{" "}
-            already state that Embeddable Prisma Studio is not designed for regulated industries
-            such as healthcare. Josh McLeod and Tyler Hogarth to confirm, including subprocessor
-            BAAs.
+            state that Embeddable Prisma Studio is not designed for regulated industries such as
+            healthcare.
           </p>
         </div>
       </div>
@@ -776,7 +725,7 @@ export function HipaaPlans() {
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
             HIPAA is on the Business plan. Every plan encrypts and isolates your data; compliance
-            coverage and backup retention grow with the plan. <PendingBadge />
+            coverage and backup retention grow with the plan.
           </p>
         </div>
         <div className="mx-auto mt-14 max-w-5xl overflow-x-auto rounded-2xl border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
@@ -881,13 +830,7 @@ const STARTUP_ROWS: StartupRow[] = [
   { label: "Signed BAA", cells: ["Included", "Yes", "Yes"] },
   {
     label: "Plan required",
-    cells: [
-      <>
-        Business <PendingBadge size="sm" />
-      </>,
-      "Team plus HIPAA add-on",
-      "Scale",
-    ],
+    cells: ["Business", "Team plus HIPAA add-on", "Scale"],
   },
   { label: "Starting price per month", cells: ["$129", "$599", "$499"] },
   { label: "Extra HIPAA fees", cells: ["None", "HIPAA add-on", "Plus 20% on usage"] },
@@ -1044,7 +987,6 @@ export function HipaaBaaSteps() {
   const steps: {
     title: string;
     body: React.ReactNode;
-    badge?: "pending" | "placeholder";
   }[] = [
     {
       title: "Read or download the BAA",
@@ -1067,8 +1009,7 @@ export function HipaaBaaSteps() {
       title: "Sign up and upgrade to Business",
       body: (
         <>
-          Create a Prisma account from the Console and upgrade your workspace to the Business
-          plan. <PendingBadge size="sm" />
+          Create a Prisma account from the Console and upgrade your workspace to the Business plan.
         </>
       ),
     },
@@ -1087,12 +1028,7 @@ export function HipaaBaaSteps() {
     },
     {
       title: "Sign the BAA",
-      body: (
-        <>
-          Prisma sends the agreement for e-signature, usually within 2 business days.{" "}
-          <PendingBadge size="sm" />
-        </>
-      ),
+      body: <>Prisma sends the agreement for e-signature.</>,
     },
   ];
 
@@ -1194,21 +1130,6 @@ export function HipaaResources() {
   );
 }
 
-// Per-question visible overrides, keyed by the exact `question` string in
-// HIPAA_FAQ. The plain-string answer in _content.ts still feeds the FAQPage
-// JSON-LD so the two copies cannot drift semantically; the override only
-// exists where the visible rendering needs inline React the mini-markup can't
-// carry (an inline PendingBadge, for example).
-const FAQ_ANSWER_OVERRIDES: Record<string, React.ReactNode> = {
-  "Is there a liability cap in the BAA?": (
-    <>
-      Yes. The standard BAA includes a liability cap of $250,000. You can raise it to $500,000{" "}
-      <PendingBadge size="sm" /> for an extra $70 a month, $199 a month in total with the Business
-      plan.
-    </>
-  ),
-};
-
 export function HipaaFaq() {
   return (
     <section id="faq" className="px-6 py-24 lg:px-8">
@@ -1220,29 +1141,16 @@ export function HipaaFaq() {
           {/* Reused shared accordion so answers are present in the server HTML
               (forceMount + inert on closed items, see ui/accordion.tsx). */}
           <Accordion type="single" collapsible defaultValue="item-0">
-            {HIPAA_FAQ.map((faq, i) => {
-              const override = FAQ_ANSWER_OVERRIDES[faq.question];
-              return (
-                <AccordionItem key={faq.question} value={`item-${i}`}>
-                  <AccordionTrigger className="text-left text-base hover:no-underline">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-base leading-relaxed text-muted-foreground">
-                    <Fragment>
-                      {override ?? renderFaqAnswer(faq.answer)}
-                      {faq.confidence !== "confirmed" ? (
-                        <>
-                          {" "}
-                          <PendingBadge
-                            variant={faq.confidence === "placeholder" ? "placeholder" : "pending"}
-                          />
-                        </>
-                      ) : null}
-                    </Fragment>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
+            {HIPAA_FAQ.map((faq, i) => (
+              <AccordionItem key={faq.question} value={`item-${i}`}>
+                <AccordionTrigger className="text-left text-base hover:no-underline">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-base leading-relaxed text-muted-foreground">
+                  {renderFaqAnswer(faq.answer)}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
           </Accordion>
         </div>
       </div>

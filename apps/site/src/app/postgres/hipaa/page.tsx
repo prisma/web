@@ -18,10 +18,8 @@ import {
   HipaaTrustStrip,
 } from "./_sections";
 
-// This is a review-preview page. Vercel builds a preview deployment for the
-// draft PR; `noindex` keeps it out of search indexes until launch. Remove the
-// `robots` block (and the yellow placeholder badges inside _sections.tsx)
-// before marking the PR ready.
+// `noindex` keeps the preview out of search indexes until launch. Remove the
+// `robots` block before marking the PR ready.
 //
 // Title, meta description and H1 deliberately avoid the price (SEO brief,
 // 11 Oct 2026): the price lives in the hero microline, the glance table,
@@ -39,16 +37,12 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-// FAQPage JSON-LD includes only the answers confirmed as accurate for this
-// preview (the other visible FAQ items carry yellow badges in the UI). The
-// shared helper strips the `[text](/path)` and `code` markup back to plain
-// text, so the structured copy cannot drift from the visible copy.
-const confirmedFaq = HIPAA_FAQ.filter((f) => f.confidence === "confirmed").map(
-  ({ question, answer }) => ({ question, answer }),
-);
+// FAQPage JSON-LD mirrors every visible FAQ answer. The shared helper strips
+// the `[text](/path)` and `code` markup back to plain text, so the structured
+// copy cannot drift from the visible copy.
 const faqStructuredData = createFaqStructuredData(
   HIPAA_PATH,
-  confirmedFaq,
+  HIPAA_FAQ.map(({ question, answer }) => ({ question, answer })),
   "Prisma Postgres HIPAA FAQ",
 );
 

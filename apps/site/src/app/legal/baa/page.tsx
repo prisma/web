@@ -66,12 +66,7 @@ const PLAIN_ENGLISH = {
 const KEY_TERMS = [
   {
     label: "Liability cap",
-    value: (
-      <>
-        $250,000 standard. You can raise it to $500,000 for an extra $70 a month, $199 a month in
-        total with the Business plan.
-      </>
-    ),
+    value: "$250,000 (see Sections VI and VIII of the agreement below).",
   },
   {
     label: "Breach notice",
@@ -177,7 +172,7 @@ export default function BaaPage() {
                 name and email.
               </AgreementStep>
               <AgreementStep n={4}>
-                Prisma sends the agreement for e-signature, usually within 2 business days.
+                Prisma sends the agreement for e-signature.
               </AgreementStep>
             </ol>
             <div className="mt-6 flex flex-wrap items-center gap-3">
