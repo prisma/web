@@ -36,8 +36,8 @@ const PAIRS = [
     tone: "yellow",
   },
   {
-    before: "Per-branch databases that don't connect to your hosting previews",
-    after: "Per-branch databases wired to your hosting previews automatically",
+    before: "Preview databases from one vendor, preview deployments from another",
+    after: "A preview database per pushed branch, wired to its preview deployment",
     tone: "red",
   },
   {

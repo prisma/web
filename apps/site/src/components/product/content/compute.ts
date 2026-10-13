@@ -104,7 +104,7 @@ export const computeContent: ProductPageContent = {
   problem: {
     headline: "One platform can ship features two never could",
     body: [
-      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (per-branch previews with their own database, end-to-end test data) don't exist. You wire them together yourself, or you do without.",
+      "When your hosting provider and your database provider are separate companies, the things that depend on them being aware of each other (per-branch previews with their own database, end-to-end test data) depend on an integration between the two that you set up and maintain.",
       "Prisma Compute exists to change that.",
     ],
     outcomes: [

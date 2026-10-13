@@ -407,7 +407,7 @@ export function renderPricingMarkdown(): string {
     // cards. The estimated monthly totals and the "Recommended" badge are
     // computed from the slider positions and are interactive-only, so only the
     // static labels and per-plan terms are rendered here.
-    paragraphs("Example usage, not plan limits:"),
+    paragraphs("Example usage, not plan limits"),
     bulletList(CALCULATOR_PRESETS),
     heading(3, "Estimate your monthly usage"),
     bulletList([
