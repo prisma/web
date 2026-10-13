@@ -201,7 +201,6 @@ const ContentSecurityPolicy = `
     https://pagead2.googlesyndication.com
     https://googleads.g.doubleclick.net
     https://td.doubleclick.net
-    https://calculator.prisma.io/
     https://ppg-pricing-calculator.vercel.app
     https://hcaptcha.com
     https://*.hcaptcha.com;
