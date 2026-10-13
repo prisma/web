@@ -39,7 +39,7 @@ const faqStructuredData = createFaqStructuredData(
 
 // WebPage + BreadcrumbList, Product (Business offer) and Organization — the
 // mockup specifies them as separate JSON-LD blocks. Product `@id` reuses the
-// canonical /postgres product id so this preview page is understood as a
+// canonical /postgres product id so this page is understood as a
 // facet of the same product, not a separate one.
 function buildStructuredData() {
   const base = getBaseUrl();
