@@ -268,8 +268,8 @@ On 2026-10-12, a disposable probe using the published version **6.6.0** compiled
 all 20 site redirects and all 1,439 docs redirects into 1,459 exported route
 entries, with no compiler errors. A mixed headers/redirects/rewrites fixture
 also produced a `filesystem` phase and a rewrite with `check: true`. This is
-compilation evidence, not a claim that an exported-route runtime has been built
-or that Vercel accepts source-fragment rules as meaningful HTTP routes. The
+compilation evidence from before the runtime implementation, not a claim that
+Vercel accepts source-fragment rules as meaningful HTTP routes. The
 probe installed no dependencies in this repository and changed no app routing.
 
 The architecture has three parts:
@@ -340,3 +340,32 @@ verifies one event per eligible child request, with no external credential or
 network dependency. Matching Vercel redirects are case-sensitive, verified
 against the live `/accelerate` versus `/Accelerate` behavior during the audit;
 framework delegate selectors preserve Next's own matching semantics.
+
+Validation on 2026-10-13 after merging main through `3f690a1e3`: all 33 library
+tests and 9 Composer checks passed, including the 1,454-rule reference comparison.
+All eight workspace type checks passed using the original Vercel origin settings.
+The final Composer build/smoke passed all five websites and assets, current/legacy
+docs, Markdown negotiation, redirects, query preservation, headers, and budgets.
+A packed tarball installed in an independent npm project also passed ESM import,
+compiler/serialized-plan execution, real Node gzip/cookie forwarding, and strict
+declaration checks with invalid inputs rejected by TypeScript. Frozen install,
+formatting/lint, and diff checks passed. The PR diff has no website content changes.
+
+| Service | Expanded artifact, decimal MB | RSS after smoke, decimal MB |
+| --- | ---: | ---: |
+| Site | 265.9 | 131.7 |
+| Docs | 426.1 | 467.6 |
+| Blog | 848.0 | 218.9 |
+| Handbook | 45.0 | 118.0 |
+| Eclipse | 82.6 | 127.3 |
+| Gateway | 0.9 | 100.2 |
+
+The compiler is not bundled into the runtime: the gateway JavaScript bundle is
+about 0.58 MB. Root-only Next/React dev dependencies support the optional Agent
+Front bridge; the OSS package itself depends only on the Vercel compiler. React
+is pinned to the websites' existing 19.2.8 version for that bridge. A shared
+Composer gateway module could use this library's plan/provider interface and
+offer the middleware/resource bindings without requiring application-specific
+bootstrap code. These remain local memory samples; production concurrency,
+dashboard routing, and credential verification are still required before moving
+traffic.
