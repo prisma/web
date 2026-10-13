@@ -37,7 +37,7 @@ const PAIRS = [
   },
   {
     before: "Preview databases from one vendor, preview deployments from another",
-    after: "A preview database per pushed branch, wired to its preview deployment",
+    after: "A preview database per feature branch, wired to its preview deployment",
     tone: "red",
   },
   {
