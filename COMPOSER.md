@@ -66,12 +66,12 @@ Local measurements on 2026-10-13 with the `web` module:
 
 | Service | Assembled files, decimal MB | RSS after smoke requests, decimal MB |
 | --- | ---: | ---: |
-| Site | 265.9 | 131.5 |
-| Docs | 426.1 | 488.1 |
-| Blog | 848.0 | 216.7 |
-| Handbook | 45.0 | 116.4 |
-| Eclipse | 82.5 | 223.9 |
-| Gateway | 1.0 | 138.0 |
+| Site | 265.9 | 134.7 |
+| Docs | 426.1 | 488.2 |
+| Blog | 848.0 | 214.8 |
+| Handbook | 45.0 | 118.9 |
+| Eclipse | 82.6 | 132.4 |
+| Gateway | 1.3 | 140.6 |
 
 The smoke runner also checks each Bun process against a 900 MB RSS budget after
 loading website pages and current/legacy docs articles. These macOS samples are
@@ -136,14 +136,28 @@ bootstrap resolves typed service input and writes the existing apps' legacy
 environment names before Next.js starts. This preserves their Vercel code path
 and binds Next's `HOSTNAME` to `0.0.0.0`.
 
-Pages and assets need no credentials. To exercise integrations, copy
-`.env.example` to `.env` and supply the relevant keys; the build and Prisma
-config load this root file without overwriting exported shell variables.
-Unset secrets receive Composer's local placeholders, so calls to those external
-integrations will not succeed without real values.
+Pages and assets need no credentials. Optional external integrations are bound
+only when selected with `COMPOSER_INTEGRATIONS`, a comma-separated list:
 
-`composer/website.ts` binds only the credentials used by each website. Optional
-input fields cover extension repository settings, the Linear team, canonical
+| Integration | Websites | Required platform secrets |
+| --- | --- | --- |
+| `mixedbread` | Site, docs, blog | `MIXEDBREAD_API_KEY` |
+| `brevo` | Site, docs, blog | `BREVO_API_KEY` |
+| `extensions` | Site | `GITHUB_EXTENSIONS_TOKEN` |
+| `linear` | Docs | `GITHUB_WEBHOOK_SECRET`, `BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK`, `LINEAR_API_KEY` |
+
+For local development, copy `.env.example` to `.env`, set e.g.
+`COMPOSER_INTEGRATIONS=mixedbread,brevo`, and supply the corresponding keys.
+The build and Prisma config load this root file without overwriting exported
+shell variables. Enabled, unset secrets receive Composer's local placeholders,
+so external integration calls require real values.
+
+`composer/integrations.ts` binds only enabled credentials used by each website.
+Deploy preflight requires every bound `envSecret`, even for optional input
+fields. The default empty selection lets a new project deploy before credentials
+are configured. Enabling an integration requires its real secrets in the target
+project's Preview or Production environment; no cloud placeholders are created.
+Optional input fields cover extension repository settings, the Linear team, canonical
 URL, and Agent Front settings. Add explicit `envParam`/`envSecret` bindings for
 the integrations you want when configuring the production workspace. Optional
 Agent Front credentials are not bound by default. `NEXT_PUBLIC_*` values,
@@ -162,8 +176,18 @@ provided by the workflow. No service-token secret is needed for the connected
 repository. The normal `pnpm build` command and Vercel deployments keep their
 existing behavior.
 
+The workflow reads the non-secret GitHub variable `COMPOSER_INTEGRATIONS`.
+Leave it unset for the initial preview. To enable integrations, first add their
+secrets in Prisma Console under the project's appropriate Preview/Production
+scope, then set the variable on the matching GitHub environment. The production
+environment is `prisma-production`; branch previews use
+`prisma-preview/<branch-name>`. A repository-level variable applies to both, so
+all selected secrets must exist in both scopes when using that option.
+
 Pushes to the default branch deploy to production; pushes to other branches
 deploy their branch preview. Tags do not trigger this workflow. The deployment
+workflow also skips changes limited to these two operational Composer guides;
+website content changes still deploy. The deployment
 button points explicitly at the gateway, and a post-deploy smoke test exercises
 all five websites through that URL. Manual runs use the same branch policy.
 Preview cleanup is handled by the connected repository's platform automation;
@@ -177,13 +201,12 @@ path once merged. See the [deploy action reference](https://github.com/prisma/cl
 
 ## Production workspace follow-up
 
-This PR does not change production domains or replace Vercel. Production
-deployment becomes available when the workflow is merged to the default branch.
-Before the first production deploy, choose the workspace and region, confirm
-the Compute runtime is compatible with Next.js 16.3, configure the required
-integration and public build settings, build, and smoke-test again. Then deploy
-`module.ts` to a preview stage, test its gateway, and configure the public domain
-on the gateway. No domains or live traffic need to change during that validation.
+Merging the workflow to the default branch triggers a production deployment
+to the already-connected project. Before merging, validate this branch's
+preview, confirm the project's region and runtime, and configure the integration
+and public build settings needed in production. Domain configuration and moving
+live traffic to the gateway remain separate follow-up steps; this PR preserves
+the existing Vercel deployment path.
 
 The separate Composer CI job still performs local validation without cloud
 credentials. See [Composer porting](https://www.prisma.io/docs/composer/porting-an-app)

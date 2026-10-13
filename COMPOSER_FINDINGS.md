@@ -505,3 +505,33 @@ checks, and workflow actionlint. The largest expanded artifact was blog at
 848.0 MB. Docs had the highest sampled RSS at 488.1 MB; the other five processes
 were below 224 MB. The smoke verified pages, static assets, Markdown, legacy
 redirects, query handling, and current/legacy docs articles through the gateway.
+
+The [first GitHub preview run](https://github.com/prisma/web/actions/runs/38428530811)
+successfully exchanged GitHub OIDC for a short-lived workspace token and reused
+the connected project. The Linux build passed every artifact guard (blog was
+848.5 MB), but deploy preflight rejected six missing integration credentials.
+`envSecret` bindings are required even when their input schema fields are
+optional. Local dev had hidden this difference by supplying placeholders.
+
+The fix makes external integrations explicit through `COMPOSER_INTEGRATIONS`
+(`mixedbread`, `brevo`, `extensions`, `linear`). An empty selection binds no
+credentials, allowing the initial pages/assets preview. Enabled integrations
+still use real `envSecret` bindings, scoped to the websites that consume them;
+missing values fail deployment. The workflow reads a non-secret GitHub variable,
+with environment-level overrides for production or a particular preview. The
+setup guide lists every required key and where to configure it. Unknown names
+fail configuration, and regression tests cover empty selection, per-site secret
+scope, and invalid selections. No fake cloud secrets are introduced.
+
+**Compute/Composer improvements:** offer optional platform secret bindings that
+honor optional schema fields, with an explicit unset value; clearly distinguish
+local placeholder behavior from deploy requirements; and expose preflight before
+the full build so missing credentials are caught before several minutes of work.
+
+After merging the latest `main`, validation passed 37 library tests, 12 Composer
+checks (including three credential-selection regressions), all eight workspace
+type checks, the full build, and the six-service local smoke with no credential
+bindings. The highest sampled RSS was docs at 488.2 MB. The deploy workflow skips
+pushes limited to these two operational Composer guides so recording deployment
+findings does not rebuild and redeploy unchanged services; website content is
+not excluded.

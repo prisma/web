@@ -1,7 +1,8 @@
 import { secretString } from "@prisma/composer/arktype";
 import nextjs from "@prisma/composer/nextjs";
-import { compute, envSecret, serviceOrigin } from "@prisma/composer-prisma-cloud";
+import { compute, serviceOrigin } from "@prisma/composer-prisma-cloud";
 import { type } from "arktype";
+import { integrationCredentials } from "./integrations.ts";
 
 // A compatibility boundary for the existing Next.js apps. Composer resolves
 // these values through typed input; the bootstrap writes the legacy env names
@@ -28,27 +29,19 @@ const input = type({
   "ORA_INGEST?": "string",
 });
 
-const credentials = (names: string[]) =>
-  Object.fromEntries(names.map((name) => [name, envSecret(name)]));
 const common = { gatewayOrigin: serviceOrigin("gateway") };
 // Bind only the integrations each website consumes. Other optional input
 // fields can be added explicitly when configuring the production workspace.
 export const websiteInputs = {
   site: {
     ...common,
-    ...credentials(["MIXEDBREAD_API_KEY", "BREVO_API_KEY", "GITHUB_EXTENSIONS_TOKEN"]),
+    ...integrationCredentials("site"),
   },
   docs: {
     ...common,
-    ...credentials([
-      "MIXEDBREAD_API_KEY",
-      "BREVO_API_KEY",
-      "GITHUB_WEBHOOK_SECRET",
-      "BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK",
-      "LINEAR_API_KEY",
-    ]),
+    ...integrationCredentials("docs"),
   },
-  blog: { ...common, ...credentials(["MIXEDBREAD_API_KEY", "BREVO_API_KEY"]) },
+  blog: { ...common, ...integrationCredentials("blog") },
   handbook: common,
   eclipse: common,
 };
