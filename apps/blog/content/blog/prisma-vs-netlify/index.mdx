@@ -2,7 +2,7 @@
 title: "Netlify alternatives for a full-stack TypeScript app with Postgres (2026)"
 slug: "prisma-vs-netlify"
 date: "2026-09-16"
-updatedAt: "2026-10-12"
+updatedAt: "2026-10-14"
 authors:
   - "Shane Neubauer"
 metaTitle: "Netlify alternatives for a full-stack TypeScript app with Postgres (2026)"
@@ -23,10 +23,6 @@ You declare each service, its database, and the calls between them in TypeScript
 
 Netlify builds and publishes your site and its functions together. The connections between separate services, and the database each one uses, are yours to set up and keep correct.
 
-Compute runs your Node.js, Bun or Next.js server on Bun, as an instance that scales to zero when idle. Only the first byte of a response has a deadline: it must go out within 60 seconds, and a streamed response keeps going after that. `waitUntil` keeps the instance awake to finish work after the response is sent, on a best-effort basis. Compute does not run WebSocket servers, and each service runs in one region. If your code depends on Node.js behavior that Bun does not provide, that is a reason not to move.
-
-**Netlify is the better fit** when your app is mostly pages and assets served from its edge network, or when you want every preview to start with a copy of production data. On Prisma, a preview's database is created by you or by a Composer stage deploy, and it starts *empty*.
-
 "Prisma" here means more than the ORM:
 
 - [Prisma ORM 8](https://www.prisma.io/docs/orm) is the typed data layer. It is the version npm installs by default, and it runs on any host, including Netlify.
@@ -43,6 +39,7 @@ better, and the last column says why.
 
 | App | Good fits | Why |
 | --- | --- | --- |
+| Full-stack TypeScript app leaving Netlify | Prisma Compute + Prisma Postgres | Compute runs the app's Node.js, Bun or Next.js server on Bun next to managed PostgreSQL 17 with pooling, in one project, deployed from one repo |
 | Next.js SaaS with Postgres | Prisma Compute + Prisma Postgres; or Vercel + a Marketplace Postgres (Prisma Postgres, Neon or Supabase) when a global CDN matters | Compute runs the Next.js server next to the database; Vercel serves from its CDN and runs functions |
 | Express, Hono or NestJS API with a frontend served by Next.js, Astro, TanStack Start or your own Node.js or Bun server | Prisma Compute + Prisma Postgres; Railway; Render | Compute runs the whole HTTP server as an instance next to the database; Railway and Render run any long-lived process |
 | MVP on a free plan | Prisma Free (app and database, no usage billing, no credit card); Neon Free or Supabase Free when you need only the database | Prisma Free includes Compute plus 200,000 database operations a month, 1.01 GB of storage and 50 databases; Neon Free has 1 GB of storage per project; Supabase Free has a 500 MB database and pauses projects after a week of inactivity |
@@ -51,6 +48,10 @@ better, and the last column says why.
 | Mostly static pages and assets, with functions on the side | Stay on Netlify | Its edge network serves them |
 
 Sources, checked 2026-10-08: Prisma [pricing](https://www.prisma.io/pricing) and [Compute limitations](https://www.prisma.io/docs/compute/limitations); Vercel [Marketplace storage](https://vercel.com/docs/marketplace-storage); Neon [pricing](https://neon.com/pricing); Supabase [pricing](https://supabase.com/pricing); Render [WebSockets](https://render.com/docs/websocket) and [background workers](https://render.com/docs/background-workers); Railway [specs and limits](https://docs.railway.com/networking/public-networking/specs-and-limits) and [services](https://docs.railway.com/services); Fly.io [WebSockets](https://fly.io/javascript-journal/websockets-with-nextjs/), [process groups](https://docs.fly.io/launch/processes/) and [scaling across regions](https://docs.fly.io/launch/scale-count/).
+
+Compute runs your Node.js, Bun or Next.js server on Bun, as an instance that scales to zero when idle. Only the first byte of a response has a deadline: it must go out within 60 seconds, and a streamed response keeps going after that. `waitUntil` keeps the instance awake to finish work after the response is sent, on a best-effort basis. Compute does not run WebSocket servers, and each service runs in one region. If your code depends on Node.js behavior that Bun does not provide, that is a reason not to move.
+
+**Netlify is the better fit** when your app is mostly pages and assets served from its edge network, or when you want every preview to start with a copy of production data. On Prisma, a preview's database is created by you or by a Composer stage deploy, and it starts *empty*.
 
 ## Why teams leave Netlify
 
@@ -160,7 +161,7 @@ What you get from one vendor, which is usually the real question behind leaving.
 | --- | --- | --- | --- | --- | --- |
 | App hosting | Yes | Yes | Yes | Edge Functions only | Yes |
 | Runtime | Node.js functions; Deno Edge Functions | Node.js, Bun or Next.js apps, run on Bun; they scale to zero when idle | Node.js, Bun, Python, and others | Deno-compatible Edge Functions | Node.js, Bun, and other native runtimes, or Docker |
-| Longest request | 60 seconds; Background Functions up to 15 minutes | 60 seconds to first byte, then a started stream keeps going | 300 seconds by default, up to 800 on Pro and Enterprise | 150 seconds on Free, 400 on paid plans | 100 minutes |
+| Longest request | 60 seconds; Background Functions up to 15 minutes | 60 seconds to first byte, then a started stream keeps going | 300 seconds by default, up to 800 on Pro and Enterprise, 30 minutes in beta | 150 seconds to respond; wall-clock limit 150 seconds on Free, 400 on paid plans | 100 minutes |
 | Realtime or WebSocket servers | No | No | WebSockets in Functions (beta); no managed realtime service | Realtime service | WebSockets on web services; no managed realtime service |
 | Managed Postgres | Netlify Database, built on Neon | Prisma Postgres | No; add one from the Marketplace | Yes | Yes |
 | Connection pooling included | Not documented; the `@netlify/database` driver picks the connection method | Dedicated PgBouncer per database | Depends on the database | Shared pooler, plus a dedicated pooler on paid plans | Built-in PgBouncer on paid databases, opt-in |
@@ -173,8 +174,8 @@ Sources for the table, by column:
 
 - Netlify: [functions configuration](https://docs.netlify.com/build/functions/configuration/), [Edge Functions](https://docs.netlify.com/build/edge-functions/overview/), [Netlify Database](https://docs.netlify.com/build/data-and-storage/netlify-database/), [Identity](https://docs.netlify.com/manage/security/secure-access-to-sites/identity/overview/), and [Image CDN](https://docs.netlify.com/build/image-cdn/overview/).
 - Prisma: [Compute FAQ](https://www.prisma.io/docs/compute/faq), [Compute limitations](https://www.prisma.io/docs/compute/limitations), [connection pooling](https://www.prisma.io/docs/postgres/database/connection-pooling), and [Object Store](https://www.prisma.io/docs/storage).
-- Vercel: [runtimes](https://vercel.com/docs/functions/runtimes), [Functions limits](https://vercel.com/docs/functions/limitations), [WebSockets](https://vercel.com/docs/functions/websockets), [Marketplace storage](https://vercel.com/docs/marketplace-storage), and [Blob](https://vercel.com/docs/vercel-blob).
-- Supabase: [Edge Functions limits](https://supabase.com/docs/guides/functions/limits), [connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres), [Storage CDN](https://supabase.com/docs/guides/storage/cdn/fundamentals), [branching](https://supabase.com/docs/guides/deployment/branching), and [pricing](https://supabase.com/pricing).
+- Vercel: [runtimes](https://vercel.com/docs/functions/runtimes), [Functions limits](https://vercel.com/docs/functions/limitations) (checked 2026-10-14), [WebSockets](https://vercel.com/docs/functions/websockets), [Marketplace storage](https://vercel.com/docs/marketplace-storage), and [Blob](https://vercel.com/docs/vercel-blob).
+- Supabase: [Edge Functions limits](https://supabase.com/docs/guides/functions/limits) (checked 2026-10-14), [connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres), [Storage CDN](https://supabase.com/docs/guides/storage/cdn/fundamentals), [branching](https://supabase.com/docs/guides/deployment/branching), and [pricing](https://supabase.com/pricing).
 - Render: [native runtimes](https://render.com/docs/native-runtimes), [Render vs Vercel](https://render.com/docs/render-vs-vercel-comparison), [WebSockets](https://render.com/docs/websocket), [connection pooling](https://render.com/docs/postgresql-connection-pooling), [static sites](https://render.com/docs/static-sites), and [preview environments](https://render.com/docs/preview-environments).
 
 Start from the rows your app cannot do without, and rule out every column that cannot meet one of
@@ -398,6 +399,7 @@ Prisma ORM works with Netlify Database, which is PostgreSQL built on Neon, and i
 
 ## Update history
 
+- 2026-10-14: moved the two paragraphs on the Compute runtime and when Netlify is the better fit below the "Pick by app type" table, added a first row to that table for a full-stack TypeScript app leaving Netlify, and updated two cells in the longest-request row of the feature-parity table from each vendor's limits page: Vercel lists a 30-minute maximum in beta on Pro and Enterprise, and a Supabase Edge Function has 150 seconds to respond on every plan.
 - 2026-10-12: reworded the FAQ answer on Netlify alternatives and the first paragraph of the closing section to describe the options side by side.
 - 2026-10-08: rewrote the description and the opening to name five alternatives side by side, added a "Pick by app type" table and an FAQ on whether Compute runs functions or a server, updated the Railway and Neon profiles from their docs, stated the Starter base fee and metered Compute usage in the Prisma profile and the billing row, made the closing section say that Netlify fits code that depends on the Node.js runtime itself rather than Bun, and moved this history to the end.
 - 2026-10-07: changed the opening and the feature-parity table to describe the Compute runtime in the wording of the [Compute FAQ](https://www.prisma.io/docs/compute/faq), and the closing verdict to match the opening. The Vercel profile now links the Prisma Postgres integration on the Vercel Marketplace, a Fly.io profile was added, and the sentences about Composer cron schedules were removed. The Vercel, Railway, Render, and Fly.io facts added that day were checked against each vendor's own pages.
