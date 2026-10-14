@@ -116,7 +116,7 @@ const PLANS = [
       "1,000 databases",
       "30-day backup retention",
     ],
-    platform: ["Spend limits", "GDPR, HIPAA, SOC 2, ISO 27001"],
+    platform: ["Spend limits", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
     cta: "Get started",
     popular: false,
   },
@@ -318,7 +318,7 @@ const SPEC_GROUPS: {
     label: "Platform",
     rows: [
       ["Support", "Community", "Community", "Standard", "Premium"],
-      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR, HIPAA, SOC 2, ISO 27001"],
+      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
       ["Prisma ORM", "Free", "Free", "Free", "Free"],
     ],
   },
