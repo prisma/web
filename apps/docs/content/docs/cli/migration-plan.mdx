@@ -43,7 +43,9 @@ npx prisma migration plan --name add_users_table
 | `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
 | `--rename <old>:<new>` | Renames a model or a field and keeps its rows, instead of dropping and creating its table or column. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
-| `--delete <subject>` | Lets the migration lose the data of a model, a field, or a table no model stores. Repeatable. |
+| `--delete <subject>` | Lets the migration lose the data of a model, a field, or a table no model stores. For a type change, accepts the database's own cast. Repeatable. |
+| `--convert <Model.field>` | For a type change that can lose values, writes an `alterColumnType` whose conversion you fill in. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
+| `--backfill <Model.field>` | For a new required field or a field made required, writes a backfill step you fill in, instead of a temporary value. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
@@ -62,11 +64,24 @@ Before it writes anything, `migration plan` asks one question for each model, fi
 npx prisma migration plan --name rename_full_name --rename User.name:User.fullName
 ```
 
-In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with `CLI.CONSENT_REQUIRED` instead, and the error's `nextActions` give the flags to add. `--rename` is offered only for a model or field the new contract no longer has, so a field whose type changes is answered with `--delete`. `--confirm` answers none of these questions.
+In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with `CLI.CONSENT_REQUIRED` instead, and the error's `nextActions` give the flags to add. `--rename` is offered only for a model or field the new contract no longer has, so a field whose type changes is answered with `--convert` or `--delete`. `--confirm` answers none of these questions.
 
 Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type, and setting `NOT NULL`, lose no data, so the command asks nothing about them.
 
-On MongoDB, renames are refused in this release, so only `--delete` is offered. To keep a collection's documents, rename the collection in `mongosh` before a migration that drops it is applied.
+On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. A field is named by its stored name, so `id @map("_id")` is `User._id`. Removing a field from a model removes it from every document that holds it, so the command asks about it as it asks about a dropped collection: answer with `--delete User.nickname` or `--rename User.nickname:User.<new name>`. The planner refuses a rename of `_id`, of a field whose stored name contains `.` or starts with `$`, of a time-series collection, and of a variant whose discriminator value changes, and says what to do instead.
+
+## Type changes and required fields [#type-changes-and-required-fields]
+
+On PostgreSQL and SQLite, a type change that can lose values, such as `String` to `Int` or a longer `VarChar` to a shorter one, is a question like a drop. Answer it in one of two ways:
+
+- `--convert <Model.field>` writes an `alterColumnType` with `using: placeholder('<Model.field>:convert')`. Replace the placeholder with the conversion as SQL over the column, such as `using: '"age"::integer'`, then run `node migration.ts`. On SQLite the slot is the column's copy expression in `recreateTable`, such as `copyExpressions: { age: 'CAST("age" AS INTEGER)' }`.
+- `--delete <Model.field>` lets the database's own cast run. It may cut or round values, and a value it cannot cast fails the apply.
+
+A new required field on a table with rows gets a temporary value in the existing rows, such as `''` or `0`, and the command's output names it. An optional field made required is tightened directly, so the apply fails while any row holds `NULL`, with a message that counts those rows. To fill the rows yourself, pass `--backfill <Model.field>`: the migration gets a `dataTransform` step with `check` and `run` placeholders to fill in, as [Editing a migration](/orm/migrations/editing-a-migration) shows. A new unique, primary-key or foreign-key field has no temporary value, so use `--backfill` when the table has rows.
+
+```npm
+npx prisma migration plan --name age_to_int --convert User.age --backfill User.displayName
+```
 
 ## When nothing in the database changes [#no-database-change]
 

@@ -223,7 +223,7 @@ export const db = postgres<Contract>({
 - `db.runtime()`: the connection. It runs raw queries.
 - `db.transaction`: runs several queries in one transaction.
 
-To add middleware, add a `middleware: [...]` key to the `postgres({ ... })` call above. A middleware is a plain object with a name and one or more hook functions, for example `{ name: "log", async beforeQuery(plan) { console.log(plan.sql); } }`. [How middleware works](/orm/middleware/how-middleware-works) lists the hooks.
+To add middleware, add a `middleware: [...]` key to the `postgres({ ... })` call above. A middleware is a plain object with a name and one or more hook functions, for example `{ name: "log", async beforeEncode(plan) { console.log(plan.sql); } }`. [How middleware works](/orm/middleware/how-middleware-works) lists the hooks.
 
 ## Queries
 
@@ -235,7 +235,7 @@ A query is a chain of calls that you `await` as a whole. The last call (`.all()`
 | `prisma.user` | `db.orm.public.User` (`public` is the PostgreSQL schema; unless you set one up, every table is in `public`) |
 | `findMany({ where })` | `.where(...).all()` |
 | `findFirst({ where })` | `.where(...).first()`. Returns `null` when nothing matches. `.first({ id: 1 })` is a shortcut for `.where({ id: 1 }).first()` |
-| `findUnique({ where })` | `.where(...).first()`, and check for `null`. There is no separate unique lookup |
+| `findUnique({ where })` | `.whereUnique({ email }).first()`, and check for `null`. On PostgreSQL, `whereUnique` takes the fields of the primary key or of one unique constraint, and a call that could return many rows after it does not compile. On MongoDB, `.where(...).first()` |
 | `where: { id: 1, active: true }` | `.where({ id: 1, active: true })`; for comparisons, `.where((u) => u.age.gt(18))`. [Filter conditions and operators](/orm/reference/orm-client#filter-conditions-and-operators) lists them all |
 | `select: { id: true, email: true }` | `.select("id", "email")` |
 | `include: { posts: { where: ... } }` | `.include("posts")`, or `.include("posts", (posts) => posts.where({ published: true }))` to filter or sort the related records |
@@ -357,7 +357,7 @@ const posts = await db.orm.public.Post
   .all();
 ```
 
-Add `@@fullTextIndex([title], name: "post_title_search")` to the `Post` model so PostgreSQL can use an index for the search. [Full-text search](/orm/reference/orm-client#full-text-search) covers the other options.
+Add `@@fullTextIndex([title], name: "post_title_search")` to the `Post` model so PostgreSQL can use an index for the search. Prisma ORM 7's `@@fulltext` over several fields becomes an index of several weight groups, such as `@@fullTextIndex([[title], body], name: "post_search")`, which a query searches by name: `.where((p, { fns, indexes }) => fns.fullTextMatches(indexes.post_search, query))`. [Full-text search](/orm/reference/orm-client#full-text-search) covers the other options.
 
 ## Not available [#not-available-yet]
 
@@ -367,7 +367,7 @@ Prisma ORM 7 features that have no direct form in Prisma ORM 8, with what to do 
 | --- | --- | --- |
 | `skipDuplicates` on `createMany` | available in a different form | `.createAll(rows, { onConflict: "skip" })` or `.createAndCount(rows, { onConflict: "skip" })`. See the note below the table |
 | `{ increment: n }` / `{ decrement: n }` in an update | not available | write the arithmetic as raw SQL (see the example above), or read the value and write it back inside `db.transaction(...)` |
-| `findUniqueOrThrow` / `findFirstOrThrow` | not available on the query | the usual form is `.first()` and a `null` check. If you want the throw, write `await db.orm.public.User.where({ id }).all().firstOrThrow()`. It throws an error with code `RUNTIME.NO_ROWS` when nothing matches. Avoid it on a filter that can match many rows; it reads them all first |
+| `findUniqueOrThrow` / `findFirstOrThrow` | `.firstOrThrow()` | `await db.orm.public.User.whereUnique({ id }).firstOrThrow()` or `.where(...).firstOrThrow()`. It reads one row and throws an error with code `RUNTIME.NO_ROWS` when nothing matches |
 | `mode: "insensitive"` | available in a different form | on PostgreSQL, `.ilike("%alice%")` on a text field. You write the `%` wildcards yourself |
 | `contains` / `startsWith` / `endsWith` | available in a different form | `.like("%alice%")`, `.like("alice%")`, `.like("%alice")`; you write the `%` wildcards yourself |
 | filtering inside JSON (`path`, `string_contains`, `array_contains`) | not available | a `Jsonb` field can only be compared as a whole (`eq`, `neq`, `in`, `notIn`) or checked for null. Write the query as raw SQL (see the example above) |

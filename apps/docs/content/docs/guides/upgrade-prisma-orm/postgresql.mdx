@@ -14,7 +14,7 @@ The guide covers **PostgreSQL only**. Guidance for other databases will follow. 
 
 :::info
 
-Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` at `8.0.0-rc.21` and `@prisma/orm-postgres` at `8.0.0-rc.17`: the CLI is released separately, so the two numbers differ. Prisma ORM 7 stays at `7.10.0`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.0`.
+Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` at `8.0.0-rc.21` and `@prisma/orm-postgres` at `8.0.0-rc.18`: the CLI is released separately, so the two numbers differ. Prisma ORM 7 stays at `7.10.0`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.0`.
 
 :::
 
@@ -305,13 +305,13 @@ Prisma ORM 8 describes your schema as a [contract](/orm/contract-authoring/the-d
 npx prisma contract infer --output prisma8/contract.prisma
 ```
 
-### 2.4. Edit the inferred contract
+### 2.4. Review the inferred contract
 
-`contract infer` reads every table in the database, so it also writes a `PrismaMigrations` model for `_prisma_migrations`, the table where Prisma ORM 7 records which migrations it has applied. Delete that model from the contract, because Prisma ORM 8 must not manage the table. The table itself stays in the database, and an extra table that the contract does not describe is fine.
+`contract infer` reads every table in the database except `_prisma_migrations`, the table where Prisma ORM 7 records which migrations it has applied, so the contract has no model for it and Prisma ORM 8 never manages it. The table itself stays in the database, and `db verify --strict` does not report it.
 
 You do not need to add `@@map` to the other models: a model without `@@map` uses its name, exactly as written, as its table name, so `User` reads and writes the `"User"` table that Prisma ORM 7 created.
 
-After that edit, the contract looks like this:
+The inferred contract looks like this:
 
 ```prisma title="prisma8/contract.prisma"
 // use prisma-8
@@ -563,7 +563,7 @@ Start the app and run a query against every route. The application now runs enti
 
 :::note
 
-Prisma ORM 7's `_prisma_migrations` table remains in the database. It is inert (Prisma ORM 8 ignores it) and you can drop it whenever you like.
+Prisma ORM 7's `_prisma_migrations` table remains in the database. It is inert: Prisma ORM 8 leaves it out of `db verify`, `db update` and `contract infer`, and you can drop it whenever you like.
 
 :::
 

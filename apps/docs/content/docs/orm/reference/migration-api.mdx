@@ -18,7 +18,7 @@ On PostgreSQL, everything comes from one module:
 import { Migration, MigrationCLI, col, primaryKey, unique, foreignKey, checkExpression, lit, fn, rawSql, createExtension, placeholder } from '@prisma/orm-postgres/migration';
 ```
 
-`migration plan` writes the import line with only the names the migration needs. When you add a call by hand, add its name to the import line. On MongoDB the module is `@prisma/orm-mongo/target/migration`; the path really does contain `target`, and it is not a placeholder. See [MongoDB operations](#mongodb-operations).
+`migration plan` writes the import line with only the names the migration needs. When you add a call by hand, add its name to the import line. Where a migration holds SQL from your contract, such as a default, a check or an index expression, `migration plan` writes it as a `sql` value, as in ``fn(sql`clock_timestamp()`)``, imported from the same module. Every call that takes SQL accepts either a `sql` value or a plain string. A string is used exactly as written, while a `sql` value has its shared indentation and the blank lines at its start and end removed, so leave the strings in a migration you already applied as they are. On MongoDB the module is `@prisma/orm-mongo/target/migration`; the path really does contain `target`, and it is not a placeholder. See [MongoDB operations](#mongodb-operations).
 
 ## The migration file
 
@@ -63,7 +63,7 @@ The four imports at the top point at snapshots, which are copies of your contrac
 
 A first migration starts from an empty database, so it has no start snapshot. `migration plan` writes it as `extends Migration<never, End>`, without the two `Start` imports and without `startContractJson`.
 
-Running the file turns `operations` into `ops.json`, and also writes `migration.json`, which records the start and end contracts. Node.js 22.18 or later runs the `.ts` file directly, with no build step. Run it from your project root: it reads `prisma.config.ts` from the directory you run it in, to learn which database and extensions the project uses, and it never connects to a database.
+Running the file turns `operations` into `ops.json`, and also writes `migration.json`, which records the start and end contracts. Node.js 22.18 or later runs the `.ts` file directly, with no build step. It reads the `prisma.config.ts` that owns the migration, to learn which database and extensions the project uses: the nearest one above the migration's directory whose migrations directory holds the file, else the one in the working directory, or the one you pass with `--config`. It never connects to a database.
 
 ```bash
 node migrations/app/20260921T1408_add_user_bio/migration.ts
@@ -124,7 +124,7 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | --- | --- | --- | --- |
 | `addColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ADD COLUMN "bio" text` | additive |
 | `dropColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" DROP COLUMN "bio"` | destructive |
-| `alterColumnType` | `schema`, `table`, `column`, `options` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint USING "views"::bigint` | destructive |
+| `alterColumnType` | `schema`, `table`, `column`, `type`, `using?`, `operationClass?` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint USING "views"::bigint` | destructive, or data with `using` |
 | `setNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" SET NOT NULL` | destructive |
 | `dropNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" DROP NOT NULL` | widening |
 | `setDefault` | `schema`, `table`, `column`, `operationClass?` | `ALTER TABLE "public"."user" ALTER COLUMN "name" SET DEFAULT 'anonymous'` | additive |
@@ -132,37 +132,25 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 
 `addColumn` and `setDefault` take a `col(...)` call as `column`. The other methods take the column's name as a string.
 
-`alterColumnType` takes the new type in `options`, which has four fields:
+`alterColumnType` takes the new type and, when PostgreSQL cannot convert the values on its own, the conversion:
 
 | Field | What to put in it |
 | --- | --- |
-| `qualifiedTargetType` | The new type, as it appears in the `ALTER COLUMN ... TYPE` statement: `'bigint'`, `'varchar(255)'`. |
-| `formatTypeExpected` | The same type, spelled the way PostgreSQL itself names it. The postcheck compares the column's type after the change with this string, and the run stops if they differ. See the table below. |
-| `rawTargetTypeForLabel` | The type as the CLI prints it in the operation's label. It affects nothing else, so use the same value as `qualifiedTargetType`. |
-| `using` | Optional. The expression in the `USING` clause, for a conversion PostgreSQL cannot do on its own. Without it, the column is cast to the new type with `::`. |
+| `type` | The new type, written as a migration writes it: `'int8'`, `'varchar(255)'`, or `'"Mood"'` for an enum. Prisma ORM works out from it the type PostgreSQL prints, which the postcheck compares with the column after the change. A type it cannot read fails with `MIGRATION.COLUMN_TYPE_UNREADABLE`; add the extension that provides it to your config. |
+| `using` | Optional. The expression in the `USING` clause, as SQL over the column: `'"views"::bigint'`. Without it, the column is cast to the new type with `::`. A semicolon, a SQL comment or dollar quoting outside a quoted literal, or a comma or a keyword such as `FROM` outside parentheses, fails with `MIGRATION.SQL_EXPRESSION_INVALID`. |
+| `operationClass` | Optional. Without it, the operation is `data` when it has a `using`, and `destructive` otherwise. |
 
 ```ts
 this.alterColumnType({
   schema: 'public',
-  table: 'post',
-  column: 'views',
-  options: { qualifiedTargetType: 'bigint', formatTypeExpected: 'bigint', rawTargetTypeForLabel: 'bigint' },
+  table: 'user',
+  column: 'age',
+  type: 'int4',
+  using: '"age"::integer',
 }),
 ```
 
-PostgreSQL spells most types the way you wrote them. These are the common ones it spells differently, as `\d post` in psql prints them:
-
-| You write | `formatTypeExpected` |
-| --- | --- |
-| `varchar(255)`, `varchar` | `character varying(255)`, `character varying` |
-| `char(3)` | `character(3)` |
-| `int4`, `int8`, `int2` | `integer`, `bigint`, `smallint` |
-| `float8`, `float4` | `double precision`, `real` |
-| `bool` | `boolean` |
-| `timestamptz`, `timestamp` | `timestamp with time zone`, `timestamp without time zone` |
-| `int[]` | `integer[]` |
-
-`text`, `integer`, `bigint`, `numeric(10,2)`, `jsonb`, `uuid`, `date`, `bytea`, and `citext` are spelled the same in both places.
+A `migration.ts` written before `8.0.0-rc.18` passed an `options` object with `qualifiedTargetType`, `formatTypeExpected` and `rawTargetTypeForLabel`. It now stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED): move `qualifiedTargetType` to `type` and `options.using` to `using`, and delete the other two. If no database has applied the migration yet, run it again to write `ops.json`; if one has, leave `ops.json` and `migration.json` as they are, because writing them again changes the migration's hash.
 
 `setDefault` takes the column with its new default, and Prisma ORM writes the `DEFAULT` clause: `column: col('name', 'text', { default: lit('anonymous'), codecRef: { codecId: 'pg/text@1' } })`, or `column: col('createdAt', 'timestamptz', { default: fn('now()') })`. With a `codecRef`, the column's codec checks a literal default first, and a value it refuses fails with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID). A `migration.ts` that still passes `defaultSql`, written before `8.0.0-rc.15`, stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED); rewrite the call this way. Its `ops.json` still applies. When the column already has a default and you are replacing it, set `operationClass: 'widening'`, which only changes how the CLI reports the operation.
 
@@ -361,7 +349,7 @@ this.dataTransform(endContract, 'backfill-user-displayName', {
 }),
 ```
 
-`migration plan` writes a `dataTransform` with `placeholder('<name>:check')` and `placeholder('<name>:run')` in the two positions wherever a change needs your decision about existing rows; you replace each `placeholder(...)` call with a query. [Editing a migration](/orm/migrations/editing-a-migration) shows the whole file, and what to do when the backfill reads a column the migration removes.
+`migration plan` writes a `dataTransform` with `placeholder('<name>:check')` and `placeholder('<name>:run')` in the two positions for each field you name with `--backfill <Model.field>`, and an `alterColumnType` with `using: placeholder('<Model.field>:convert')` for each field you name with `--convert`; you replace each `placeholder(...)` call with a query or a conversion. Without those flags it writes no placeholders: a new required field gets a temporary value in the existing rows, and an optional field made required is tightened directly. See [`migration plan`](/cli/migration-plan). [Editing a migration](/orm/migrations/editing-a-migration) shows the whole file, and what to do when the backfill reads a column the migration removes.
 
 ### Raw SQL
 

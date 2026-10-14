@@ -327,6 +327,26 @@ const recentPosts = await db.orm.posts
 
 For a task-oriented guide to filtering, see [Reading data](/orm/fundamentals/reading-data#filter-records).
 
+### `whereUnique()`
+
+Restrict a query to the one row a primary key or a unique constraint names.
+
+#### Remarks
+
+- PostgreSQL only.
+- The criterion is an object with a value for every field of the primary key or of one `@@unique` constraint, such as `{ id }`, `{ email }` or `{ tenantId, userId }`. A field that is not part of such a key, or a key with a field missing, is a type error. When the call runs, a criterion without a value for every field of one key throws an error whose `code` is `ORM.ARGUMENT_INVALID`.
+- It filters exactly as `where()` with the same object does. A value cannot be `null`, because a unique constraint allows any number of rows whose column is `NULL`; to read those, use `where({ field: null })`.
+- After it, the calls that address many rows are compile errors: `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, `distinctOn()`, `all()`, `aggregate()`, `groupBy()`, `updateAll()`, `updateAndCount()`, `deleteAll()`, `deleteAndCount()`, and `prepared.all()` and `prepared.aggregate()`. `first()`, `firstOrThrow()`, `update()`, `delete()`, `select()`, `include()` and a further `where()` still compile.
+- Inside an `include()` refinement it throws an error whose `code` is `ORM.INCLUDE_INVALID`.
+
+#### Examples
+
+```typescript
+const post = await db.orm.public.Post.whereUnique({ id }).first();
+const membership = await db.orm.public.Membership.whereUnique({ tenantId, userId }).firstOrThrow();
+const removed = await db.orm.public.User.whereUnique({ email }).delete();
+```
+
 ### `select()`
 
 Return only the scalar fields you name.
@@ -911,18 +931,34 @@ const urgentPost = await db.orm.public.Post.first((p) => p.priority.eq('urgent')
 const bob = await db.orm.users.where({ name: 'Bob' }).first();
 ```
 
-For Prisma ORM 7 users, `findUnique` and `findFirst` map onto `first()`:
+For Prisma ORM 7 users, `findUnique` and `findFirst` map onto `first()`, and their `OrThrow` forms onto [`firstOrThrow()`](#firstorthrow):
 
 ```diff
 - const alice = await prisma.user.findUnique({ where: { email } });
-+ const alice = await db.orm.public.User.first({ email });
++ const alice = await db.orm.public.User.whereUnique({ email }).first();
 - const alice = await prisma.user.findUniqueOrThrow({ where: { email } });
-+ const alice = await db.orm.public.User.where({ email }).all().firstOrThrow();
++ const alice = await db.orm.public.User.whereUnique({ email }).firstOrThrow();
 ```
 
-`first()` returns `null` on no match and does not check that only one row matched. `findUniqueOrThrow` and `findFirstOrThrow` both map onto `all().firstOrThrow()`, as the last line above shows.
+`first()` returns `null` on no match and does not check that only one row matched. [`whereUnique()`](#whereunique) checks at compile time that the criterion names one row.
 
-`firstOrThrow()` is a method on the result that `all()` gives you, so calling it is not a second use of that result. It reads every matching row into memory and returns the first one, and it throws an error whose `code` is `RUNTIME.NO_ROWS` when nothing matched.
+### `firstOrThrow()`
+
+Resolve the query to the first matching row, or throw when none matches.
+
+#### Remarks
+
+- Available for PostgreSQL and MongoDB.
+- It runs the query `first()` runs, with `LIMIT 1`, and returns the row type without `null`. When nothing matches, it throws an error whose `code` is `RUNTIME.NO_ROWS`.
+- On PostgreSQL it takes the same inline filter as `first()`, and `.prepared.firstOrThrow()` is its prepared form. On MongoDB it takes no argument.
+- The result of `all()` also has a `firstOrThrow()` method. That one reads every matching row into memory first, so prefer the collection method.
+
+#### Examples
+
+```typescript
+const user = await db.orm.public.User.firstOrThrow({ id });
+const doc = await db.orm.users.where({ email }).firstOrThrow();
+```
 
 ### Custom `Collection` subclass
 
@@ -981,9 +1017,9 @@ A query fragment is a function from a collection to a collection, a piece of a q
 
 - PostgreSQL only.
 - `db.orm.fragment(fields, body)` makes a fragment for every model that has the given fields. Declare each field with the `field` builders from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `with` does not compile.
-- `db.orm.public.Post.fragment(body)` makes a fragment for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`.
+- `db.orm.public.Post.fragment(body)` makes a fragment for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`. Call it on the model's collection itself: on a collection with chained calls, such as `db.orm.public.Post.where(...).fragment(body)`, it throws an error whose `code` is `ORM.ARGUMENT_INVALID`, and a `where()`, `orderBy()` or `include()` before it is a compile error. Put those calls in the body instead.
 - A fragment that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. A fragment that orders returns `Ordered<C>`, so `cursor()` compiles after it.
-- `CollectionRowOf<C>` is the row type a collection returns, including the relations `include()` adds. `CollectionTypeStateOf<C>` is what the collection's type records, such as `hasWhere` and `hasOrderBy`. The types of fragments are `Fragment`, `FieldFragment`, and `FragmentFacts`. Import these types, `Filtered`, and `Ordered` from `@prisma/orm-postgres/orm-client`.
+- `CollectionRowOf<C>` is the row type a collection returns, including the relations `include()` adds. `CollectionTypeStateOf<C>` is what the collection's type records, such as `hasWhere` and `hasOrderBy`. The types of fragments are `QueryFragment`, for a fragment run with `collection.with(...)`, `DeclaredFieldsFragment`, for what `db.orm.fragment(fields, body)` returns, and `FragmentFacts`. Import these types, `Filtered`, and `Ordered` from `@prisma/orm-postgres/orm-client`.
 - `orderByField(collection, name, direction, allowed)` returns an `orderBy()` selector for a field named in a request. `direction` is `'asc'` or `'desc'`, and `undefined` means `'asc'`. `allowed` lists the fields a request may sort by. It is required, because sorting by any field lets a request learn the value of a secret one from the order of the results. Any other `name` or `direction`, including one that is not a string, throws an error whose `code` is `ORM.ARGUMENT_INVALID` before the query runs.
 - A fragment that needs a value is a function that returns a fragment, as `ownedBy` below shows. A scope for every model with a `deletedAt` field is how you share a soft-delete filter.
 - If your contract has a namespace named `fragment`, `db.orm.fragment` is that namespace, and the client has no method to make a fragment for every model with given fields. Use `collection.fragment(body)` on each model instead.
@@ -1477,7 +1513,7 @@ Insert a row if none matches, otherwise update the existing row.
 
 - On MongoDB, call `where()` first. The filter decides which document is updated.
 - On PostgreSQL, `upsert()` never reads the filters. A `where()` before it is ignored, without an error. `conflictOn` decides which row counts as already existing.
-- `conflictOn` names the unique column that decides insert or update, such as `conflictOn: { label: 'typescript' }`. Only the column name is used. The value is required by the type and is then ignored, so pass any value of the right type.
+- `conflictOn` names the unique field that decides insert or update, such as `conflictOn: { label: 'typescript' }`. Only the field name is used. The value is required by the type and is then ignored, so pass any value of the right type other than `null`, which the type refuses.
 - For a unique constraint on several columns together, name every one of those columns, as in `conflictOn: { orgId: '', email: '' }`. The set you name has to match one `@@unique` constraint.
 - When a row is inserted on PostgreSQL, the `create` side is used as you wrote it.
 - When a row is inserted on MongoDB, a field that appears in both `create` and `update` takes the `update` value.
@@ -1860,11 +1896,12 @@ const withoutDescription = await db.orm.public.Task.where((t) => t.description.i
 
 ### Full-text search (PostgreSQL) [#full-text-search]
 
-PostgreSQL full-text search on a text field.
+PostgreSQL full-text search on a text field, or over a full-text index that spans several fields.
 
 #### Remarks
 
 - PostgreSQL. A text field has `fullTextMatches(query, options?)` to filter and `fullTextRank(query, options?)` to sort by relevance.
+- To search a [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) by name, use the second argument of a `where` or `orderBy` callback, `{ fns, indexes }`: `fns.fullTextMatches(indexes.post_search, q)` and `fns.fullTextRank(indexes.post_search, q)`. `indexes` holds the model's indexes, keyed by the name the schema gave each, and the query reads the index's fields, weights and language from the contract, so PostgreSQL uses the index. This is the only way to search several fields at once in the ORM.
 - The [SQL query builder](/orm/reference/sql-query-builder) has both, as `fns.fullTextMatches(column, query)` and `fns.fullTextRank(column, query)`. It also has `fns.fullTextHeadline(column, query)`, which returns the matching text with each match marked. Use the SQL query builder when you want that text in your results, because the ORM's `select()` takes only field names.
 - The `query` argument is a parsed search query, which PostgreSQL calls a `tsquery`. Passing a plain string is a type error. Build the query with one of these functions from `@prisma/orm-postgres/target/full-text`: `websearchToTsquery(text)` reads text the way a web search box does: the user puts a phrase in quotes, writes `or` between choices, and puts `-` before a word to leave it out. `plaintoTsquery(text)` requires every word, and `phrasetoTsquery(text)` requires the words in order.
 - `toTsquery(text)` reads PostgreSQL's own search syntax, in which `&` means and, `|` means or, `!` means not, and `:*` after a word matches any word that starts with it. Text that breaks this syntax makes the query fail when it runs, so never pass user input to `toTsquery()`.
@@ -1876,7 +1913,7 @@ PostgreSQL full-text search on a text field.
   const posts = await db.orm.public.Post.where((p) => p.title.fullTextMatches(q, { language: 'german' })).all();
   ```
 
-- Add [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) to the model, with the same `language`, so PostgreSQL can use an index for the search. Without it the query still works, but PostgreSQL reads every row. The attribute takes the one field to index and a `name:` for the index:
+- Add [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) to the model, with the same `language`, so PostgreSQL can use an index for the search. Without it the query still works, but PostgreSQL reads every row. The attribute takes the fields to index and a `name:` for the index:
 
   ```prisma title="src/prisma/contract.prisma (excerpt)"
   model Post {
@@ -1918,6 +1955,21 @@ const posts = await db.orm.public.Post.select('id', 'title')
 const suggestions = await db.orm.public.Post.select('id', 'title')
   .where((p) => p.title.fullTextMatches(tsquery`${input}:*`))
   .limit(5)
+  .all();
+```
+
+##### Search a weighted index over several fields
+
+With `@@fullTextIndex([[title, subtitle], body], name: "post_search")` on the model, a match in `title` or `subtitle` ranks above a match in `body`:
+
+```typescript title="src/search-posts.ts"
+import { websearchToTsquery } from '@prisma/orm-postgres/target/full-text';
+
+const q = websearchToTsquery(input);
+const posts = await db.orm.public.Post.select('id', 'title')
+  .where((p, { fns, indexes }) => fns.fullTextMatches(indexes.post_search, q))
+  .orderBy((p, { fns, indexes }) => fns.fullTextRank(indexes.post_search, q).desc())
+  .limit(20)
   .all();
 ```
 
