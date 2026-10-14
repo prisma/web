@@ -23,7 +23,7 @@ import type { ProductTourStop } from "@/components/product/types";
 export const CONSOLE_SIGNUP_URL = "https://console.prisma.io/sign-up";
 export const CTA_LABEL = "Get started for free";
 
-export type LandingSlug = "compute" | "orm" | "free";
+export type LandingSlug = "compute" | "postgres" | "free";
 
 export type LandingContent = {
   slug: LandingSlug;
@@ -70,8 +70,8 @@ export type LandingContent = {
   };
 };
 
-// Two stops shared by the Compute and ORM tours: the same deploy and the same
-// result, so the ORM page ends where the Compute page's ad promise begins.
+// Stops shared between the tours: the same deploy and the same result, so the
+// Postgres page ends where the Compute page's ad promise begins.
 const DEPLOY_STOP: ProductTourStop = {
   label: "Deploy",
   caption:
@@ -194,107 +194,115 @@ export const computeLanding: LandingContent = {
   },
 };
 
-export const ormLanding: LandingContent = {
-  slug: "orm",
-  path: "/lp/orm",
-  campaign: "orm-8-typescript",
+export const postgresLanding: LandingContent = {
+  slug: "postgres",
+  path: "/lp/postgres",
+  campaign: "postgres-managed-database",
   meta: {
-    title: "Build TypeScript apps with Prisma ORM 8 | Prisma",
+    title: "Production-ready Postgres in seconds | Prisma Postgres",
     description:
-      "Prisma ORM 8 is the type-safe ORM for TypeScript: one schema, a generated client, migrations that refuse to destroy data. Run it on Prisma Postgres and deploy with Prisma Compute for free.",
-    ogKicker: "Prisma ORM 8",
-    ogAccent: "cyan",
+      "Managed Postgres for TypeScript and AI apps. Create a database in seconds, connect any Postgres client, pay per operation with a spend limit, and host your app next to it with Prisma Compute. Free plan, no credit card.",
+    ogKicker: "Prisma Postgres",
+    ogAccent: "yellow",
   },
-  kicker: "Prisma ORM 8",
-  accent: "orm",
+  kicker: "Prisma Postgres",
+  accent: "postgres",
   hero: {
-    headline: "Build TypeScript apps with Prisma ORM 8",
-    headlineEmphasis: "Prisma ORM 8",
+    headline: "Production-ready Postgres in seconds",
+    headlineEmphasis: "in seconds",
     subheadline:
-      "Define your data model once. Prisma ORM 8 generates a typed client where every query, migration and type is checked against it, and the same schema runs on Prisma Postgres and Prisma Compute with no rework.",
-    microline:
-      "Free and open source. A Console account adds a free Prisma Postgres database and deploys.",
+      "Prisma Postgres is managed Postgres for TypeScript and AI apps. Create a database in seconds, connect any Postgres client, and host your app next to it with Prisma Compute.",
+    microline: "Free plan, no credit card. Standard Postgres underneath.",
     benefits: [
-      "Autocomplete over your own models, and mistakes caught before they ship",
-      "Migrations that refuse to run when they would destroy data",
-      "52% more requests per second than Prisma 7 in our benchmark",
+      "A production database in seconds, from the Console, the CLI or your coding agent",
+      "Billed per operation, with a hard spend limit on paid plans",
+      "A new database for each feature branch's preview, with Prisma Compute",
     ],
     tour: [
-      { ...SCHEMA_STOP, label: "Schema" },
-      { ...QUERY_STOP, label: "Client" },
       {
-        label: "Migrations",
+        label: "Database",
         caption:
-          "Prisma refuses a migration that would destroy data, and tells you what it would have dropped.",
-        illustration: "migrationBlocked",
+          "A production Postgres in seconds, with pooled and direct connection strings and SSL on by default. Any Postgres client works.",
+        illustration: "databasePanel",
+      },
+      {
+        label: "Studio",
+        caption:
+          "Browse and edit real rows in the browser. No psql, no local client to set up first.",
+        illustration: "studioTable",
+      },
+      {
+        label: "Insights",
+        caption: "See which queries are slow and why, without standing up your own tracing stack.",
+        illustration: "queryInsights",
       },
       DEPLOY_STOP,
     ],
   },
   flow: {
-    headline: "From schema to production, with nothing to wire up",
-    body: "The schema you write for the ORM is the same one Prisma Postgres and Prisma Compute read. Start with the ORM for free, add a hosted database when you need one, and deploy the app next to it when you are ready to ship.",
+    headline: "The database half of a TypeScript stack",
+    body: "Prisma Postgres is standard Postgres, so any ORM and any host work with it. Add Prisma ORM 8 for a typed client and safe migrations, and Prisma Compute to run the app next to the database, and the pieces stop needing glue code between them.",
   },
   benefits: {
-    headline: "Why developers pick Prisma ORM 8",
+    headline: "Why Prisma Postgres and not any other Postgres",
     bridge:
-      "The core ORM job, done well: a schema your editor understands, queries that cannot name a column wrong, and migrations you can trust.",
+      "A bare managed Postgres gives you a connection string. Prisma Postgres gives you the things around it that otherwise become your job.",
     items: [
       {
-        icon: "code",
-        name: "A schema your editor understands",
+        icon: "database",
+        name: "Ready in seconds",
         description:
-          "Declare models and relations in one file. The generated client gives you autocomplete over your own data, and a wrong field name fails in the editor, not in production.",
+          "Create a database from the Console, with npx create-db from a terminal, or through the MCP server from Claude Code, Cursor or Codex. You get pooled and direct connection strings, with SSL required.",
+      },
+      {
+        icon: "gitBranch",
+        name: "A database per preview",
+        description:
+          "Pair it with Prisma Compute and every feature branch gets a preview with its own new database, torn down with the branch. Production data is never copied into a preview.",
       },
       {
         icon: "shield",
-        name: "Migrations without the fear",
+        name: "Predictable pricing",
         description:
-          "Change a model and Prisma plans the migration in TypeScript you can read. Every step is verified before and after it runs, and it refuses to apply when it would destroy data.",
+          "Billed per operation, one query read or write, with a spend limit you set on paid plans. A quiet month costs almost nothing, and a busy one never surprises you.",
       },
       {
-        icon: "bot",
-        name: "Built for you and your coding agent",
+        icon: "swap",
+        name: "Standard Postgres, no lock-in",
         description:
-          "Errors carry stable codes and remediation hints, and setup installs Prisma skills for Claude Code, Codex and Cursor, so an agent gets the patterns right from the first prompt.",
-      },
-      {
-        icon: "layers",
-        name: "Smaller, faster, extensible",
-        description:
-          "A rewrite with no Rust engine: under 150 KB gzipped, 52% more throughput than Prisma 7 in our benchmark, and every piece, from Postgres support to the query API, is an extension you can swap.",
+          "Standard SQL and wire protocol, extensions like pgvector on every plan, Studio to browse rows and Query Insights to find slow queries. Leave any time with pg_dump.",
       },
     ],
   },
   faq: [
     {
-      question: "How do I start?",
+      question: "Is Prisma Postgres free to use?",
       answer:
-        "Run npm create prisma@latest. It scaffolds an app with a starter schema, a typed client and package scripts, and can run a local Prisma Postgres for you. Sign up for Prisma Console when you want a hosted database or a deploy.",
+        "Yes. The Free plan costs $0, needs no credit card and includes 200,000 operations a month across up to 50 databases. An operation is one query, read or write, and usage resets at the start of each calendar month. Idle databases cost nothing, and the next query wakes one. Backups and spend limits start on the Starter plan at $10 a month.",
     },
     {
-      question: "Is Prisma ORM 8 ready for production?",
+      question: "What happens when I reach the Free plan limit?",
       answer:
-        "Prisma ORM 8 is a release candidate and the default in the docs and in npm create prisma@latest. Prisma ORM 7 remains fully supported, and the docs map every Prisma ORM 7 API to its Prisma ORM 8 form for when you want to move.",
+        "Nothing is charged. Your databases stop accepting queries until the allowance resets next month or you upgrade, which usually restores access within a minute. If you need time to export your data first, you can lift the limit for 24 hours from the Console, once per workspace.",
     },
     {
-      question: "Do I need Prisma Postgres or Prisma Compute?",
+      question: "Do I need Prisma ORM?",
       answer:
-        "No. The ORM is free, Apache 2.0, and works with any Postgres or MongoDB deployment. Prisma Postgres and Prisma Compute are optional; using them means the database and the deploy read the schema you already wrote, so previews get their own database and migrations run on deploy.",
+        "No. Prisma Postgres is standard Postgres, so any ORM, query builder or raw SQL client connects with the connection string. Prisma ORM 8 is optional; with it, your schema drives a typed client and migrations that are applied for you when you deploy on Prisma Compute.",
     },
     {
-      question: "Which databases does it support?",
+      question: "Which regions can I choose?",
       answer:
-        "Postgres and MongoDB are supported today, each as an extension written by Prisma. Prisma ORM 8 knows nothing about any database by default, so community extensions can add more; one already runs it in the browser on IndexedDB.",
+        "Six: San Francisco, North Virginia, Paris, Frankfurt, Tokyo and Singapore. You pick the region for each database when you create it. Hosting the app on Prisma Compute in the same region keeps queries local.",
     },
   ],
   cta: {
-    headline: "Start with the ORM. Ship the whole stack when you're ready.",
-    body: "A free Prisma Console account gives the app you build with Prisma ORM 8 a hosted Prisma Postgres database and Prisma Compute deploys, with no credit card.",
+    headline: "Postgres that ships with the rest of your stack",
+    body: "Create a free database today and deploy the app next to it when you are ready. No credit card, no time limit, and standard Postgres underneath so you can leave at any time.",
     checks: [
-      "The ORM is free and open source, always",
-      "Free Postgres database, no credit card",
-      "Deploy next to your database in one command",
+      "No credit card required",
+      "200k operations and 50 databases free",
+      "Leave any time with pg_dump",
     ],
   },
 };
@@ -371,7 +379,7 @@ export const freeLanding: LandingContent = {
     {
       question: "What happens when I reach a limit?",
       answer:
-        "Nothing is charged. The Free plan has no usage billing, so the next step is yours: upgrade to Starter at $10 a month, which includes 5M Compute requests and 1M database operations, meters usage beyond that, and lets you set a spend limit.",
+        "Nothing is charged. The Free plan has no usage billing: a database that reaches its operations allowance stops accepting queries until the allowance resets next month or you upgrade. Starter is $10 a month, includes 5M Compute requests and 1M database operations, meters usage beyond that, and lets you set a spend limit.",
     },
     {
       question: "What exactly is included?",
@@ -392,6 +400,6 @@ export const freeLanding: LandingContent = {
 
 export const landingPages: Record<LandingSlug, LandingContent> = {
   compute: computeLanding,
-  orm: ormLanding,
+  postgres: postgresLanding,
   free: freeLanding,
 };
