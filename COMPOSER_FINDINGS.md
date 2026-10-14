@@ -694,3 +694,43 @@ then deploy a real artifact above 256 MiB and verify extraction, readiness,
 original media bytes and memory. Preserve the Compute filesystem guard
 independently. Consolidate the blog media services only after that succeeds.
 The working Web preview and its limits are unchanged by this investigation.
+
+## Proxy connections in the Console topology — 14 October 2026
+
+The intended request path is Internet → gateway → the selected website or
+media service. The gateway implements that path, but the Composer declaration
+does not express its HTTP calls as dependency edges: every service currently
+has `deps: {}`, and gateway upstream URLs arrive through `serviceOrigin()`
+input bindings. Loading the real module with Composer 0.29.1 produced ten
+services, zero dependency edges, zero authored edges and zero ports.
+
+Console's `application-topology-layout.ts:publicServices()` infers entrypoints
+as services that are not the provider of any submitted edge. With no edges,
+it draws Internet arrows to all ten services. Those arrows are an inference
+from declarations, not measured request traffic or configured routing rules.
+The current diagram therefore omits the proxy connections. The Web runtime
+works, but its communication topology is incompletely modeled.
+
+This is also separate from network isolation. A read-only live check returned
+200 from the gateway root and from the site root and docs page on their own
+Compute URLs. Configuring the gateway as the public entrypoint does not make
+the other endpoints private. `WEB_PROXY_KEY` authenticates public-origin
+metadata in Next; it does not deny ordinary direct requests. A future
+gateway-only access policy needs explicit enforcement, not a different diagram.
+
+The installed SDK exports an untyped `http({ name })` dependency. A minimal
+probe wiring a frontend's HTTP dependency to a provisioned backend produced a
+flat dependency edge and a consumer input port, but **zero authored edges**:
+the backend's bare ref has no exposed port for the topology exporter. The
+exporter submits `graph.authoredEdges`, so replacing URL inputs with that bare
+HTTP dependency alone would not fix this view. No cloud deployment was made
+with the probe.
+
+**Compute/Composer improvements:** support first-class raw HTTP provider ports
+and dependency wiring through load, deployment and topology export; expose an
+explicit ingress/access policy rather than inferring it from dependency
+degree; and distinguish declared connections, public reachability and observed
+traffic in Console. `serviceOrigin()` references could be shown separately as
+configuration relationships, but should not automatically be treated as
+traffic: website inputs also reference the gateway to form cross-site URLs.
+Do not add unused RPC contracts solely to make a diagram look connected.
