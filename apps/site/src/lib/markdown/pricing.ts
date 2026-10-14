@@ -55,7 +55,7 @@ const PLANS = [
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
-    postgres: ["200k operations / month", "1.01 GB storage", "50 databases"],
+    postgres: ["200k operations / month", "2 GB storage", "50 databases"],
     platform: [],
     cta: "Start for free",
     popular: false,
@@ -96,7 +96,7 @@ const PLANS = [
       "1,000 databases",
       "7-day daily backups",
     ],
-    platform: ["Spend limits", "GDPR, HIPAA"],
+    platform: ["Spend limits", "GDPR"],
     cta: "Get started",
     popular: false,
   },
@@ -150,10 +150,11 @@ const EVERY_PLAN_INCLUDES = [
 ];
 
 // PRESETS in components/sections/calculator-options/calc.ts, with the usage
-// readout each button shows (fmtOps · fmtGB). The V2 `blurb` on each preset is
-// not rendered by the compact preset row, so it is not included.
+// readout each button shows (fmtOps · fmtGB), under the "Example usage, not plan
+// limits" line above the preset row. The V2 `blurb` on each preset is not
+// rendered by the compact preset row, so it is not included.
 const CALCULATOR_PRESETS = [
-  "Hobby — 200K · 500 MB",
+  "Side project — 200K · 500 MB",
   "Startup — 1M · 8 GB",
   "Scaleup — 20M · 40 GB",
 ];
@@ -162,7 +163,7 @@ const CALCULATOR_PRESETS = [
 // only the monthly totals and the "Recommended" / "Not available" states depend
 // on the slider positions, and those are interactive-only, so they are omitted.
 const CALCULATOR_PLAN_TERMS = [
-  { name: "Free plan", description: "200,000 ops • 1.01GB storage • free forever" },
+  { name: "Free plan", description: "200,000 ops • 2 GB storage • free forever" },
   {
     name: "Starter plan",
     description: "1,000,000 ops included, then $0.008 per 1,000 • 10GB included, then $2/GB",
@@ -230,7 +231,7 @@ const SPEC_GROUPS: {
     rows: [
       ["Operations included", "200k", "1M", "10M", "50M"],
       ["Operation overage", "—", "$8 per million", "$2 per million", "$1 per million"],
-      ["Storage included", "1.01 GB", "10 GB", "50 GB", "100 GB"],
+      ["Storage included", "2 GB", "10 GB", "50 GB", "100 GB"],
       ["Storage overage", "—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
       ["Databases", "50", "1,000", "1,000", "1,000"],
       ["Data transfer", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
@@ -317,7 +318,7 @@ const SPEC_GROUPS: {
     label: "Platform",
     rows: [
       ["Support", "Community", "Community", "Standard", "Premium"],
-      ["Compliance", "GDPR", "GDPR", "GDPR, HIPAA", "GDPR, HIPAA, SOC 2, ISO 27001"],
+      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR, HIPAA, SOC 2, ISO 27001"],
       ["Prisma ORM", "Free", "Free", "Free", "Free"],
     ],
   },
@@ -331,7 +332,7 @@ const FAQS = [
     answer:
       "An operation is a single action against your Prisma Postgres database — a create, read, " +
       "update, or delete. A simple write and a complex query with multiple joins each count as " +
-      "one operation, and a cached read counts too.",
+      "one operation.",
   },
   {
     question: "Is Prisma ORM really free?",
@@ -406,6 +407,7 @@ export function renderPricingMarkdown(): string {
     // cards. The estimated monthly totals and the "Recommended" badge are
     // computed from the slider positions and are interactive-only, so only the
     // static labels and per-plan terms are rendered here.
+    paragraphs("Example usage, not plan limits"),
     bulletList(CALCULATOR_PRESETS),
     heading(3, "Estimate your monthly usage"),
     bulletList([

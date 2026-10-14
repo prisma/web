@@ -27,7 +27,7 @@ export const PLANS: Plan[] = [
     base: 0,
     opsIncluded: 200_000,
     opsOveragePer1K: null,
-    storageIncludedGB: 1.01,
+    storageIncludedGB: 2,
     storagePerGB: null,
   },
   {
@@ -191,7 +191,7 @@ export function fmtUSD(n: number, cents = true) {
 export const PRESETS = [
   {
     id: "hobby",
-    label: "Hobby",
+    label: "Side project",
     blurb: "Start free while you build, test, and learn your usage patterns.",
     ops: 200_000,
     gb: 0.5,

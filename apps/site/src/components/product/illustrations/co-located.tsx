@@ -8,7 +8,7 @@ import { CardChrome, SectionLabel, SurfaceCard } from "./parts";
 
 export function CoLocated() {
   return (
-    <SurfaceCard label="Illustration comparing an app and a database at two separate vendors with Prisma Compute running the app next to Prisma Postgres on one platform, in one project and on one plan">
+    <SurfaceCard label="Illustration comparing an app and a database at two separate vendors with Prisma Compute running the app next to Prisma Postgres on one platform and in one project">
       <CardChrome file="query path" />
       <div className="flex flex-1 flex-col justify-center gap-2.5 px-4 py-3 text-[0.625rem] leading-none">
         {/* two vendors: two dashboards, two bills, a network hop between them */}
@@ -26,7 +26,7 @@ export function CoLocated() {
           </p>
         </div>
 
-        {/* one platform: the same project and plan */}
+        {/* one platform: the same project */}
         <div className="flex flex-col gap-1.5 rounded-lg border border-prism-cyan-200 bg-prism-cyan-50/40 p-2">
           <SectionLabel>One platform</SectionLabel>
           <div className="flex items-center gap-1.5 font-mono">
@@ -42,7 +42,7 @@ export function CoLocated() {
               db
             </span>
           </div>
-          <p className="font-mono text-[0.5625rem] text-prism-cyan-700/80">one project, one plan</p>
+          <p className="font-mono text-[0.5625rem] text-prism-cyan-700/80">one project</p>
         </div>
       </div>
     </SurfaceCard>

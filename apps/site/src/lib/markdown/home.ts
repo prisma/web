@@ -89,7 +89,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "A database from Neon, an ORM from Drizzle, hosting from Vercel",
       "Your agent writes the code, you wire it up",
-      "Per-branch databases that don't connect to your hosting previews",
+      "Preview databases from one vendor, preview deployments from another",
       "Bandwidth bills that scale faster than your traffic",
       "Context-switching between a database dashboard, ORM CLI, hosting console, and data browser",
     ]),
@@ -97,7 +97,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "Your agent runs the full loop: build, deploy, debug, fix, redeploy",
       "One platform: hosting, database, and ORM built to work together natively",
-      "Per-branch databases wired to your hosting previews automatically",
+      "A preview database per feature branch, wired to its preview deployment",
       "App and database co-located on the same host, at latency no two-vendor setup can match",
       "Spend limits on every paid tier, so your bill stops where you tell it to",
     ]),
@@ -157,7 +157,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "Unikernel microVMs on bare metal, single-digit ms boot",
       "Operation-based pricing with spend limits, no bill shock",
-      "Free per-branch databases, integrated with hosting previews",
+      "A preview database per feature branch, integrated with hosting previews",
       "Works with any ORM if you're not using Prisma's",
       "Query Insights built in: spot slow queries and get an agent-ready prompt to fix them",
     ]),
@@ -226,7 +226,7 @@ export function renderHomeMarkdown(): string {
       "**Spend limits on every paid tier**, so your bill never surprises you",
       "**Unlimited database data transfer included**, no database egress bill-shock",
       "**Prisma ORM is free, always**",
-      "**Per-branch databases included**, no surcharge",
+      "**A preview database per feature branch**, no surcharge",
       "**SOC2, HIPAA, ISO 27001, and GDPR** at the Business tier",
     ]),
     // All three carousel scenarios are included: only one slide is visible at
@@ -313,8 +313,8 @@ export function renderHomeMarkdown(): string {
     ),
     heading(3, "What about Prisma 7 / Prisma ORM users today?"),
     paragraphs(
-      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now the current " +
-        "release, is a separate, opinionated product built for agentic workflows, not a forced " +
+      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now a release " +
+        "candidate, is a separate, opinionated product built for agentic workflows, not a forced " +
         "upgrade. When you are ready to move, the Prisma 8 docs include an upgrade guide from " +
         "Prisma 7.",
     ),

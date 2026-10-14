@@ -114,7 +114,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
     subtitle: "Perfect for that weekend idea",
     points: [
       "<b>200,000</b> operations<span>*</span> included",
-      "<b>1.01 GB</b> storage",
+      "<b>2 GB</b> storage",
       "<b>50</b> databases",
       "No credit card required",
     ],
@@ -342,7 +342,7 @@ export const comparisonSections: Array<{
     title: "Platform",
     rows: [
       ["Support", "Community", "Community", "Standard", "Premium"],
-      ["Compliance", "GDPR", "GDPR", "GDPR / HIPAA", "GDPR / HIPAA / SOC2 / ISO:27001"],
+      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR / HIPAA / SOC2 / ISO:27001"],
     ],
   },
 ];

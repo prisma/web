@@ -87,7 +87,7 @@ const GROUPS: Group[] = [
       },
       {
         label: "Storage included",
-        values: ["1.01 GB", "10 GB", "50 GB", "100 GB"],
+        values: ["2 GB", "10 GB", "50 GB", "100 GB"],
       },
       {
         label: "Storage overage",
@@ -258,7 +258,7 @@ const GROUPS: Group[] = [
       },
       {
         label: "Compliance",
-        values: ["GDPR", "GDPR", "GDPR, HIPAA", "GDPR, HIPAA, SOC 2, ISO 27001"],
+        values: ["GDPR", "GDPR", "GDPR", "GDPR, HIPAA, SOC 2, ISO 27001"],
       },
       { label: "Prisma ORM", values: ["Free", "Free", "Free", "Free"] },
     ],

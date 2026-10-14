@@ -36,7 +36,7 @@ const PLANS = [
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
-    postgres: ["200k operations / month", "1.01 GB storage", "50 databases"],
+    postgres: ["200k operations / month", "2 GB storage", "50 databases"],
     platform: [],
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",
@@ -83,7 +83,7 @@ const PLANS = [
       "1,000 databases",
       "7-day daily backups",
     ],
-    platform: ["Spend limits", "GDPR, HIPAA"],
+    platform: ["Spend limits", "GDPR"],
     blurb:
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
     cta: "Get started",
