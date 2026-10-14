@@ -103,7 +103,7 @@ export const computeLanding: LandingContent = {
   path: "/lp/compute",
   campaign: "compute-app-and-database",
   meta: {
-    title: "1M free requests every month with Prisma Compute",
+    title: "Deploy your TypeScript app with 1M free requests every month | Prisma Compute",
     description:
       "Deploy your TypeScript apps with free monthly usage allowances and pay as you grow. Prisma Compute hosts your app and its Prisma Postgres database in one place. No credit card, no time limit.",
     ogKicker: "Prisma Compute",
@@ -112,10 +112,10 @@ export const computeLanding: LandingContent = {
   kicker: "Prisma Compute",
   accent: "compute",
   hero: {
-    headline: "1M free requests every month with Prisma Compute",
+    headline: "Deploy your TypeScript app with 1M free requests every month",
     headlineEmphasis: "1M free requests",
     subheadline:
-      "Deploy your TypeScript apps with free monthly usage allowances and pay as you grow. Prisma Compute hosts your app and its Postgres database in one place, created together in one deploy, with no wiring between two vendors.",
+      "Run one command and Prisma Compute hosts your app and its Postgres database in one place, created together in one deploy. Free monthly usage allowances, no credit card, and pay as you grow.",
     microline:
       "Free every month: 1M requests, 360 GB-hours of memory and a Postgres database. No credit card, no time limit.",
     tour: [
@@ -316,7 +316,7 @@ export const freeLanding: LandingContent = {
   path: "/lp/free",
   campaign: "free-plan",
   meta: {
-    title: "1M free requests and a Postgres database every month | Prisma",
+    title: "Deploy your app and its Postgres database for free | Prisma",
     description:
       "Prisma's Free plan: 1M Compute requests, 200k database operations, 2 GB of storage and 50 databases every month, with no credit card and no time limit. Host your app and Postgres database in one place and pay as you grow.",
     ogKicker: "Free plan",
@@ -325,10 +325,10 @@ export const freeLanding: LandingContent = {
   kicker: "Free plan",
   accent: "postgres",
   hero: {
-    headline: "1M free requests and a Postgres database, every month",
-    headlineEmphasis: "every month",
+    headline: "Deploy your app and its Postgres database for free",
+    headlineEmphasis: "for free",
     subheadline:
-      "Build and launch a real TypeScript app on free monthly usage allowances and pay as you grow. Your app and its Postgres database run in one place, with no credit card, no expiry and no usage billing until you choose a paid plan.",
+      "Sign up, run one deploy, and your TypeScript app is live on Prisma Compute with a Prisma Postgres database next to it. The Free plan gives you 1M requests and 200k database operations every month, with no credit card, no expiry and no usage billing until you choose a paid plan.",
     microline: "$0 a month. No credit card, no expiry, no usage billing.",
   },
   flow: {
