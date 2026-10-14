@@ -1,21 +1,18 @@
 import { computeLanding } from "@/components/landing/content";
-import { LandingExample } from "@/components/landing/landing-example";
 import { LandingPage, landingMetadata } from "@/components/landing/landing-page";
-import { LandingPlans } from "@/components/landing/landing-plans";
 import { PriceCompare } from "@/components/landing/price-compare";
 
-// Landing page for the "Your app and database, together" ChatGPT ad, the
-// campaign's primary message. Campaign URL:
-//   /lp/compute?utm_source=chatgpt&utm_medium=paid&utm_campaign=compute-app-and-database
-// The ad platform appends `oppref=<click id>` itself.
+// Landing page for the Prisma Compute ChatGPT ads. Ad URL, one `utm_content`
+// per ad so Ads Manager rows and PostHog signups line up:
+//   /lp/compute?utm_source=chatgpt&utm_medium=paid&utm_campaign=compute-app-and-database&utm_content=<ad>
+// The ad platform appends `oppref=<click id>` itself. A visit with no
+// `utm_source` is redirected to the tagged URL (next.config.mjs).
 export const metadata = landingMetadata(computeLanding);
 
 export default function ComputeLandingPage() {
   return (
     <LandingPage content={computeLanding}>
-      <LandingExample />
       <PriceCompare />
-      <LandingPlans />
     </LandingPage>
   );
 }

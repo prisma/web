@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { CheckBold } from "@/components/icons/forma";
 import { GlassGlide } from "@/components/brand/glass-glide";
 import { PrismButton } from "@/components/brand/prism-button";
 import { PrismRay } from "@/components/brand/prism-ray";
@@ -7,11 +6,8 @@ import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { PLATFORM_PRODUCT_ACCENTS } from "@/components/product/icons";
 import { ProductTour } from "@/components/product/product-tour";
-import { cn } from "@/lib/utils";
 import { CONSOLE_SIGNUP_URL, CTA_LABEL, type LandingContent } from "./content";
 import { HERO_CTA_ID } from "./landing-sticky-cta";
-
-const CHECK_COLORS = ["text-prism-cyan-500", "text-prism-yellow-400", "text-prism-red-500"];
 
 function Headline({ headline, emphasis }: { headline: string; emphasis?: string }) {
   const at = emphasis ? headline.indexOf(emphasis) : -1;
@@ -26,9 +22,9 @@ function Headline({ headline, emphasis }: { headline: string; emphasis?: string 
 }
 
 // The product hero (product/product-hero.tsx) with the conversion changes the
-// ad brief asks for: one CTA instead of two, the microline right under it,
-// and the visual slot taking either the product tour or a page-specific
-// panel. The wrapped prismatic panel and the ray are the same so the page
+// ad brief asks for: one CTA instead of two, full width on phones, the offer
+// right under it and nothing else competing with it in the column, and the
+// visual slot taking either the product tour or a page-specific panel. The wrapped prismatic panel and the ray are the same so the page
 // reads as a Prisma page and not as a template.
 export function LandingHero({
   content,
@@ -71,39 +67,30 @@ export function LandingHero({
               {/* Up to ~22ch: the strategy page asks the headline to name the
                   outcome in the developer's words, which runs longer than the
                   product pages' 16ch, so the clamp steps down a size. */}
-              <h1 className="isolate mt-4 max-w-[min(22ch,100%)] text-balance text-[clamp(2.25rem,3.5vw,3.25rem)] leading-[1.08]">
+              <h1 className="isolate mt-4 max-w-[min(24ch,100%)] text-balance text-[clamp(2.25rem,3.5vw,3.25rem)] leading-[1.08]">
                 <Headline headline={hero.headline} emphasis={hero.headlineEmphasis} />
               </h1>
               <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
                 {hero.subheadline}
               </p>
-              <div id={HERO_CTA_ID} className="mt-8 flex flex-wrap items-center gap-4">
-                <PrismButton href={CONSOLE_SIGNUP_URL} size="lg" ctaLocation="lp_hero">
+              <div id={HERO_CTA_ID} className="mt-8 w-full sm:w-auto">
+                <PrismButton
+                  href={CONSOLE_SIGNUP_URL}
+                  size="lg"
+                  ctaLocation="lp_hero"
+                  className="w-full justify-center sm:w-auto [&>a]:w-full [&>a]:justify-center [&>a]:px-10 sm:[&>a]:min-w-[15rem]"
+                >
                   {CTA_LABEL}
                 </PrismButton>
               </div>
               {/* the offer: the real free-plan terms, right under the action */}
-              <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground/80">
+              <p className="mt-4 flex max-w-[44ch] items-start gap-2 text-[0.9375rem] font-medium leading-snug text-foreground/85">
                 <span
                   aria-hidden
-                  className="mt-[0.45em] size-2 shrink-0 rounded-full bg-gradient-to-r from-prism-cyan-400 via-prism-yellow-300 to-prism-red-500"
+                  className="mt-[0.4em] size-2 shrink-0 rounded-full bg-gradient-to-r from-prism-cyan-400 via-prism-yellow-300 to-prism-red-500"
                 />
                 {hero.microline}
               </p>
-              <ul className="mt-7 flex flex-col gap-2.5 border-t border-black/[0.07] pt-6">
-                {hero.benefits.map((label, i) => (
-                  <li
-                    key={label}
-                    className="flex items-start gap-2 text-[0.9375rem] font-semibold text-foreground"
-                  >
-                    <CheckBold
-                      className={cn("mt-0.5 size-4 shrink-0", CHECK_COLORS[i % 3])}
-                      aria-hidden
-                    />
-                    {label}
-                  </li>
-                ))}
-              </ul>
             </div>
 
             <div className="relative max-md:mt-4 md:self-stretch">

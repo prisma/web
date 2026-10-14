@@ -7,6 +7,7 @@ import { CONSOLE_SIGNUP_URL, CTA_LABEL, type LandingContent } from "./content";
 import { LandingBenefits } from "./landing-benefits";
 import { LandingFlow } from "./landing-flow";
 import { LandingHero } from "./landing-hero";
+import { LandingPlans } from "./landing-plans";
 
 const CHECK_COLORS = ["text-prism-cyan-500", "text-prism-yellow-400", "text-prism-red-500"];
 
@@ -29,8 +30,10 @@ export function landingMetadata(content: LandingContent): Metadata {
 }
 
 /**
- * The shared page shape: hero, the three-product flow, the benefits, then
- * whatever sections the page adds (`children`), the FAQ and the closer. Every
+ * The shared page shape: hero, the three-product flow, the plan ladder with
+ * the Free plan lit (the second CTA, one screen below the first), the
+ * benefits, then whatever proof the page adds (`children`), the FAQ and the
+ * closer. Every
  * CTA on the page is the same label to the same Console URL; the attribution
  * listener in the root layout stamps the campaign params at click time.
  */
@@ -47,6 +50,7 @@ export function LandingPage({
     <>
       <LandingHero content={content} visual={heroVisual} />
       <LandingFlow flow={content.flow} />
+      <LandingPlans />
       <LandingBenefits benefits={content.benefits} />
       {children}
       <Faq heading="Before you sign up" items={content.faq} />
