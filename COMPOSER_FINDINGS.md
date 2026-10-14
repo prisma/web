@@ -734,3 +734,12 @@ traffic in Console. `serviceOrigin()` references could be shown separately as
 configuration relationships, but should not automatically be treated as
 traffic: website inputs also reference the gateway to form cross-site URLs.
 Do not add unused RPC contracts solely to make a diagram look connected.
+
+[Composer PR #358](https://github.com/prisma/composer/pull/358) now implements
+explicit `httpContract` provider ports, contract-checked `http()` dependencies
+and HTTP request/response topology styling. It includes the original Console
+screenshot, the intended graph and a regression for this complete ten-service
+shape. The exported payload passed Console's actual entrypoint and summary
+functions: ten services, nine connections, only `gateway` as an entrypoint.
+Web still uses the released SDK's URL input bindings; adopting the new HTTP
+ports after the Composer change is available is a separate migration step.
