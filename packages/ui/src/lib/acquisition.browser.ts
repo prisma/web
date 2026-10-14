@@ -42,16 +42,17 @@ export function captureBrowserAcquisition(
       ),
       now: Date.now(),
     };
-    if (!analyticsConsent) {
-      const expired = acquisitionCookieHeader(undefined, window.location.hostname);
-      if (expired) document.cookie = expired;
-      return acquisitionEventProperties(acquisitionAtSignup(undefined, false, surface));
-    }
-    const snapshot = mergeAcquisition(
-      readAcquisitionCookie(document.cookie),
-      observeAcquisition({ ...entry, surface, captureMethod: `browser` }),
+    const snapshot = analyticsConsent
+      ? mergeAcquisition(
+          readAcquisitionCookie(document.cookie),
+          observeAcquisition({ ...entry, surface, captureMethod: `browser` }),
+        )
+      : acquisitionAtSignup(undefined, false, surface);
+    const cookie = acquisitionCookieHeader(
+      analyticsConsent ? snapshot : undefined,
+      window.location.hostname,
     );
-    const cookie = acquisitionCookieHeader(snapshot, window.location.hostname);
+    // Synchronous for navigation and browsers without Cookie Store.
     if (cookie) document.cookie = cookie;
     return acquisitionEventProperties(acquisitionAtSignup(snapshot, true, surface));
   } catch {

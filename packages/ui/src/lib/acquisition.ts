@@ -82,7 +82,7 @@ export type AcquisitionSnapshot = z.infer<typeof AcquisitionSnapshotSchema>;
 
 /** Exact DNS boundaries keep lookalike domains from becoming self-referrals. */
 export function isInternalAcquisitionHost(host: string): boolean {
-  return [`prisma.io`, `prisma-data.net`, `prisma.sh`].some(
+  return [`prisma.io`, `prisma-data.net`, `prisma.sh`, `prismagraphql.com`, `prisma.build`].some(
     (domain) => host === domain || host.endsWith(`.${domain}`),
   );
 }

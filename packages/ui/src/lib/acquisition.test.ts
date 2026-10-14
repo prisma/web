@@ -28,6 +28,8 @@ const google = mergeAcquisition(
 );
 
 for (const [input, expected] of [
+  [`https://www.prismagraphql.com/`, { kind: `unknown`, unknownReason: `internal_only` }],
+  [`https://preview.prisma.build/`, { kind: `unknown`, unknownReason: `internal_only` }],
   [
     `https://WWW.Google.com./search?q=secret`,
     {
