@@ -49,7 +49,7 @@ export function LandingPage({
       <LandingFlow flow={content.flow} />
       <LandingBenefits benefits={content.benefits} />
       {children}
-      <Faq heading="Questions before you sign up" items={content.faq} />
+      <Faq heading="Before you sign up" items={content.faq} />
       <CtaBurst
         headline={content.cta.headline}
         headlineMaxWidth="max-w-[26ch]"

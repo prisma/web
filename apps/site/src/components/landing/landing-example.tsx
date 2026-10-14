@@ -62,23 +62,19 @@ function Pane({
 
 export function LandingExample() {
   return (
-    <section className="bg-white px-4 py-20 sm:px-8 sm:py-28">
+    <section className="bg-white px-4 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
-        <div className="max-w-3xl">
-          <Reveal>
-            <h2 className="text-balance text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.1]">
-              A real app, from model to live URL
-            </h2>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <p className="mt-5 max-w-[62ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-              This is what the whole stack looks like for a small API. One schema file, one typed
-              query, and one command that deploys the app and its database together.
-            </p>
-          </Reveal>
-        </div>
+        <Reveal className="max-w-3xl">
+          <h2 className="text-balance text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.1]">
+            What it looks like: a small API, from model to live URL
+          </h2>
+          <p className="mt-5 max-w-[62ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+            One schema file, one typed query, and one command that deploys the app and its database
+            together. This is the full-stack tutorial&rsquo;s app, trimmed to the lines that matter.
+          </p>
+        </Reveal>
 
-        <Reveal delay={0.12} className="mt-12 grid gap-5 lg:grid-cols-3">
+        <Reveal delay={0.1} className="mt-10 grid gap-5 lg:grid-cols-3">
           <Pane step="1" title="Model" file="src/prisma/contract.prisma" accent="bg-prism-cyan-400">
             <Kw>model</Kw> User {"{"}
             {"\n"}

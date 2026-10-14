@@ -1,6 +1,7 @@
 import { computeLanding } from "@/components/landing/content";
 import { LandingExample } from "@/components/landing/landing-example";
 import { LandingPage, landingMetadata } from "@/components/landing/landing-page";
+import { LandingPlans } from "@/components/landing/landing-plans";
 import { PriceCompare } from "@/components/landing/price-compare";
 
 // Landing page for the "Your app and database, together" ChatGPT ad, the
@@ -12,8 +13,9 @@ export const metadata = landingMetadata(computeLanding);
 export default function ComputeLandingPage() {
   return (
     <LandingPage content={computeLanding}>
-      <PriceCompare />
       <LandingExample />
+      <PriceCompare />
+      <LandingPlans />
     </LandingPage>
   );
 }

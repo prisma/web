@@ -68,10 +68,13 @@ export function LandingHero({
           <div className="mx-auto grid max-w-site items-center gap-12 pb-16 pt-32 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:pb-24 md:pt-44 lg:gap-16">
             <div className="flex flex-col items-start">
               <RoleKicker color={PLATFORM_PRODUCT_ACCENTS[accent]}>{kicker}</RoleKicker>
-              <h1 className="isolate mt-4 max-w-[min(16ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+              {/* Up to ~22ch: the strategy page asks the headline to name the
+                  outcome in the developer's words, which runs longer than the
+                  product pages' 16ch, so the clamp steps down a size. */}
+              <h1 className="isolate mt-4 max-w-[min(22ch,100%)] text-balance text-[clamp(2.25rem,3.5vw,3.25rem)] leading-[1.08]">
                 <Headline headline={hero.headline} emphasis={hero.headlineEmphasis} />
               </h1>
-              <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
+              <p className="mt-6 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
                 {hero.subheadline}
               </p>
               <div id={HERO_CTA_ID} className="mt-8 flex flex-wrap items-center gap-4">
@@ -79,8 +82,15 @@ export function LandingHero({
                   {CTA_LABEL}
                 </PrismButton>
               </div>
-              <p className="mt-3.5 text-sm text-muted-foreground">{hero.microline}</p>
-              <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
+              {/* the offer: the real free-plan terms, right under the action */}
+              <p className="mt-4 flex items-start gap-2 text-sm font-medium text-foreground/80">
+                <span
+                  aria-hidden
+                  className="mt-[0.45em] size-2 shrink-0 rounded-full bg-gradient-to-r from-prism-cyan-400 via-prism-yellow-300 to-prism-red-500"
+                />
+                {hero.microline}
+              </p>
+              <ul className="mt-7 flex flex-col gap-2.5 border-t border-black/[0.07] pt-6">
                 {hero.benefits.map((label, i) => (
                   <li
                     key={label}

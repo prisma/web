@@ -15,7 +15,7 @@ const GROUPS = [
       border: "border-prism-yellow-200",
       dot: "bg-prism-yellow-400",
     },
-    lines: ["200k operations a month", "1.01 GB storage", "50 databases"],
+    lines: ["200k operations a month", "2 GB storage", "50 databases"],
   },
   {
     product: "Prisma Compute",
