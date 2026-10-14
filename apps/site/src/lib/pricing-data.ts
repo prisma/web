@@ -342,7 +342,7 @@ export const comparisonSections: Array<{
     title: "Platform",
     rows: [
       ["Support", "Community", "Community", "Standard", "Premium"],
-      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR / HIPAA (Business, see /postgres/hipaa) / SOC2 / ISO:27001"],
+      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR / HIPAA / SOC2 / ISO:27001"],
     ],
   },
 ];
