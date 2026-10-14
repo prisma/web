@@ -108,7 +108,7 @@ export const computeContent: ProductPageContent = {
       "Prisma Compute exists to change that.",
     ],
     outcomes: [
-      { icon: "gitBranch", label: "A preview per feature branch" },
+      { icon: "gitBranch", label: "A preview or staging environment per feature branch" },
       { icon: "rocket", label: "Ship app and database in one deploy" },
       { icon: "bot", label: "Host streaming agents natively" },
       { icon: "settings", label: "One module.ts for app and database" },
