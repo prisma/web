@@ -743,3 +743,27 @@ shape. The exported payload passed Console's actual entrypoint and summary
 functions: ten services, nine connections, only `gateway` as an entrypoint.
 Web still uses the released SDK's URL input bindings; adopting the new HTTP
 ports after the Composer change is available is a separate migration step.
+
+## Original author of the 256 MiB limit — 14 October 2026
+
+The constant was introduced by **Aman Varshney (`AmanVarshney01`)** in
+[commit `74ff76499f4e64d7241d6aa5f6ef040d57378949`](https://github.com/alchemy-run/alchemy/commit/74ff76499f4e64d7241d6aa5f6ef040d57378949),
+dated 10 July 2026 and titled `feat(prisma): harden management api provider`.
+This is a pre-squash commit in
+[Alchemy PR #416](https://github.com/alchemy-run/alchemy/pull/416), the original
+Prisma provider PR, merged by Sam Goodwin on 29 July 2026. The squash commit
+`92f9b3a` shows the same constant, but the earlier commit identifies when it
+was actually added.
+
+The original addition is at
+[Deployment.ts line 49](https://github.com/alchemy-run/alchemy/blob/74ff76499f4e64d7241d6aa5f6ef040d57378949/packages/alchemy/src/Prisma/Deployment.ts#L49).
+It also adds the validation that refuses a higher `maxBytes` and the final
+upload guard. The immediately preceding `ComputeVersion.ts` upload code reads
+the artifact into memory and has no equivalent size guard. This was therefore
+a new client-side bound in the hardening change, not merely a rename of an
+existing upload cap.
+
+The error names it an "upload safety limit". Neither the commit message nor
+the matching PR discussions inspected document why **256 MiB** was selected
+or cite an underlying hosted-platform size constraint. Aman is the direct
+contact for that rationale; the code history alone does not establish it.
