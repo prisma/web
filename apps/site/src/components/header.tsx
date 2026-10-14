@@ -50,7 +50,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 h-0 flow-root">
+    <header data-playtime-header className="sticky top-0 z-50 h-0 flow-root">
       {/* one element morphs between two states: docked inside the hero wrapper
           (transparent, wrapper-wide) and the floating pill. Every property is
           transitioned so the change is smooth in both directions. */}
@@ -156,7 +156,7 @@ export function Header() {
           <UnifiedSearchTrigger />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="Open menu">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>

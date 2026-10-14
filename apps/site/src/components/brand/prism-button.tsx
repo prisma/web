@@ -96,6 +96,7 @@ export function PrismButton({
 
   return (
     <span
+      data-playtime-cta="primary"
       className={cn("relative inline-flex items-center", fullWidth && "w-full", className)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -165,6 +166,7 @@ export function PrismButtonOutline({
   const Comp = href ? "a" : "button";
   return (
     <Comp
+      data-playtime-cta="secondary"
       href={href}
       type={href ? undefined : type}
       onClick={(event: React.MouseEvent<HTMLElement>) => {

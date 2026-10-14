@@ -135,6 +135,7 @@ export function PricingPlans() {
         {PLANS.map((plan) => (
           <div
             key={plan.name}
+            data-playtime-plan={plan.name}
             className={cn(
               "relative flex flex-col rounded-2xl border bg-white p-6 sm:p-7",
               plan.popular

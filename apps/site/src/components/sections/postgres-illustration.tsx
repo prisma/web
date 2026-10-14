@@ -86,7 +86,7 @@ export function PostgresIllustration() {
           </motion.div>
           {/* the database itself — floats gently */}
           <motion.img
-            src="/brand/database-3d.png"
+            src="/april-fools/database.svg"
             alt=""
             className="relative w-36 drop-shadow-[0_18px_28px_rgba(21,21,21,0.22)]"
             initial={false}

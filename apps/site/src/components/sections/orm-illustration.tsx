@@ -154,7 +154,7 @@ export function OrmIllustration() {
         </div>
         {/* the schema stack — floats gently over the editor's right half */}
         <motion.img
-          src="/brand/cards-3d.png"
+          src="/april-fools/cards.svg"
           alt=""
           className="absolute right-4 top-[46%] w-52 -translate-y-1/2 drop-shadow-[0_18px_26px_rgba(21,21,21,0.24)] max-md:hidden"
           initial={false}

@@ -184,7 +184,7 @@ export function ComputeIllustration() {
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/brand/cpu-3d.png"
+            src="/april-fools/compute.svg"
             alt=""
             className="relative w-full drop-shadow-[0_20px_30px_rgba(21,21,21,0.24)]"
           />

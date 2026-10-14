@@ -16,17 +16,35 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <>
+    <div className="playtime-home">
       <HeroHome />
-      <LogoCloud />
-      <Comparison />
-      <HowItWorks />
-      <StackBento />
-      <AgentLoop />
-      <PricingScale />
-      <TestimonialsReveal />
-      <Faq />
-      <CtaBurst />
-    </>
+      <div className="playtime-chapter" data-playtime-section="friends">
+        <LogoCloud />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="comparison">
+        <Comparison />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="steps">
+        <HowItWorks />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="stack">
+        <StackBento />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="agent">
+        <AgentLoop />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="pricing">
+        <PricingScale />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="testimonials">
+        <TestimonialsReveal />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="faq">
+        <Faq />
+      </div>
+      <div className="playtime-chapter" data-playtime-section="cta">
+        <CtaBurst />
+      </div>
+    </div>
   );
 }

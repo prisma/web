@@ -14,10 +14,9 @@ type RevealProps = {
   repeat?: boolean;
 };
 
-// Baseline scroll-reveal used across the homepage. Each instance observes its
-// own entry into the viewport, so elements animate as they actually scroll on
-// screen (rather than a whole tall section firing off its top edge). Fade +
-// rise, clearly visible, triggered once. Respects prefers-reduced-motion.
+// Content is visible in the server-rendered markup and before observation.
+// The short settle animation enhances it without hiding information in
+// offscreen sections or when a tab's animations are suspended.
 //
 // Pass `className` to make the Reveal *be* the layout element (grid/flex cell)
 // so wrapping never changes the box model; pass none to wrap neutrally.
@@ -31,10 +30,10 @@ export function Reveal({ children, className, delay = 0, y = 44, repeat = false 
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y }}
+      initial={{ opacity: 1, y: Math.min(y, 8) }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: !repeat, margin: "0px 0px -20% 0px" }}
-      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1], delay }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay }}
     >
       {children}
     </motion.div>

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { Blocks } from "lucide-react";
 import Link from "next/link";
 import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
 import { siteConfig } from "@/lib/config";
@@ -8,8 +8,10 @@ import { siteConfig } from "@/lib/config";
 export function Logo() {
   return (
     <PrismaLogoMenu section="website" siteUrl="">
-      <Link href="/" className="flex items-center">
-        <Image src="/logo/full-color.svg" alt={siteConfig.name} width={110} height={28} priority />
+      <Link href="/" className="playtime-logo" aria-label={`${siteConfig.name} home`}>
+        <Blocks size={32} strokeWidth={2.5} aria-hidden="true" />
+        <span>prisma</span>
+        <span className="playtime-logo-tag">playtime!</span>
       </Link>
     </PrismaLogoMenu>
   );

@@ -15,6 +15,7 @@ export function Texture({ className, opacity = 0.06, blend = "multiply" }: Textu
   return (
     <div
       aria-hidden
+      data-brand-texture
       className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
     >
       <Image

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Github, Linkedin, Mail, XSocial } from "@/components/icons/forma";
-import { AnimatedWordmark } from "@/components/brand/animated-wordmark";
+import { Logo } from "@/components/logo";
 import { SiteLink } from "@/components/site-link";
 import { siteConfig } from "@/lib/config";
 import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-preferred-source";
@@ -25,12 +25,11 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="overflow-hidden bg-white pt-16">
+    <footer data-playtime-footer className="overflow-hidden bg-white pt-16">
       <div className="mx-auto max-w-[96rem] px-6 sm:px-10">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
           <div className="max-w-xs">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo/full-color.svg" alt={siteConfig.name} className="h-7 w-auto" />
+            <Logo />
             <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
               {siteConfig.description}
             </p>
@@ -118,13 +117,9 @@ export function Footer() {
           </div>
         </div>
 
-        {/* the giant footer wordmark — kept inside the page's max-width so it
-            never grows wider than the rest of the content; the letters span
-            the content width and the rays bleed off past the right. */}
-        <div className="pointer-events-none relative mt-10 pb-6">
-          <div className="w-[116.1%]">
-            <AnimatedWordmark />
-          </div>
+        {/* A big, simple Comic Sans wordmark to close the storybook page. */}
+        <div aria-hidden className="playtime-footer-wordmark">
+          prisma
         </div>
       </div>
     </footer>

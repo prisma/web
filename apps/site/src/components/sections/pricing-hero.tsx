@@ -32,7 +32,7 @@ import { Texture } from "@/components/brand/texture";
 // run edge to edge and the section clips them.
 export function PricingHero({ children }: { children?: React.ReactNode }) {
   return (
-    <section className="relative overflow-hidden bg-white px-4 sm:px-8">
+    <section data-playtime-pricing className="relative overflow-hidden bg-white px-4 sm:px-8">
       {/* Spectral wash pooling behind the cards. Unlike everywhere else on the
           site there's no panel clipping this, so both the wash and the grain have
           to dissolve into white on their own — anchored hard to bottom-0 they cut
