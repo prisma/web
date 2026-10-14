@@ -105,9 +105,9 @@ export function getActiveAttribution(storageKey: string) {
 }
 
 /**
- * Document-level attribution carrier. On every route change it captures campaign
- * params into storage; on every link click it rewrites the target so internal
- * links keep the last touch and Console links also receive the first touch.
+ * Captures campaign parameters in storage and forwards them only at the Console
+ * handoff. Ordinary links retain their authored URLs so copied docs links do not
+ * replay another visitor's campaign.
  * With `fallbackConsoleRef`, Console links clicked by a visitor with no
  * attribution at all get a `ref` naming the page that sent them.
  */
@@ -168,6 +168,7 @@ export function UtmPersistence({
       }
 
       const isConsoleBound = isConsoleLink || isConsoleRedirect;
+      if (!isConsoleBound) return;
 
       let updated: boolean;
       if (attribution) {
