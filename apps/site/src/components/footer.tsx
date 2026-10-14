@@ -8,9 +8,10 @@ import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-p
 // Light reference-style footer (Fincrest): brand block on the left (logo,
 // email, Google link, copyright), link columns on the right, and the giant
 // ghost wordmark rising out of the page's bottom edge.
-// Spacing is one 4px scale with contrast between tight and generous steps:
-// 12px inside a group, 24px through the brand stack, 32px between columns,
-// 48px before the columns and before the wordmark.
+// The brand stack is compact: 12px from the logo to the email, 12px between
+// the email and Google link (the same step as the column links), and 16px
+// before the copyright. Columns stay on 12px inside a group, 32px between
+// groups, and 48px before the columns and the wordmark.
 // TODO: hello@prisma.io is a placeholder contact — confirm with the client.
 
 const COLUMNS = [
@@ -36,14 +37,14 @@ export function Footer() {
     <footer className="overflow-hidden bg-white pt-16">
       <div className="mx-auto max-w-[96rem] px-6 sm:px-10">
         <div className="grid items-start gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
-          <div className="flex max-w-xs flex-col items-start gap-6">
+          <div className="flex max-w-xs flex-col items-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo/full-color.svg"
               alt={siteConfig.name}
               className="h-7 w-auto self-start"
             />
-            <div className="flex flex-col items-start gap-3">
+            <div className="mt-3 flex flex-col items-start gap-3">
               <a href="mailto:hello@prisma.io" className={contactLinkClass}>
                 <Mail className="size-4 shrink-0" aria-hidden />
                 hello@prisma.io
@@ -54,7 +55,7 @@ export function Footer() {
                 data-attr="footer-google-preferred-source"
               />
             </div>
-            <p className="text-sm leading-5 text-muted-foreground">
+            <p className="mt-4 text-sm leading-5 text-muted-foreground">
               &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
             </p>
           </div>
