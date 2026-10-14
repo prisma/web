@@ -658,3 +658,39 @@ production step is configuring the required integration/public build settings
 before merging the workflow, then auditing domains and production load before
 moving public traffic. The operational findings update does not redeploy
 unchanged services because these two guides are excluded from push triggers.
+
+## Ownership of the upload cap — 14 October 2026
+
+The 256 MiB cap belongs to the **Prisma-specific provider inside Alchemy**,
+not to a generic Alchemy engine limit. In the installed 2.0.0-beta.78 release,
+`Prisma/Deployment.ts` defines `MAX_DEPLOYMENT_ARTIFACT_BYTES` as
+`256 * 1024 * 1024`. The same constant remains in
+[current upstream source](https://github.com/alchemy-run/alchemy/blob/1c1461cb8dad6c24a4824f36cb58b10cc3c5b7d1/packages/alchemy/src/Prisma/Deployment.ts#L46).
+It governs file inspection, byte-array validation and the final upload guard.
+The validation helper's `maxBytes` argument can lower the limit, but explicitly
+rejects a higher value; deployment properties expose no override. An upstream
+[regression test](https://github.com/alchemy-run/alchemy/blob/1c1461cb8dad6c24a4824f36cb58b10cc3c5b7d1/packages/alchemy/test/Prisma/Deployment.test.ts#L140)
+also enforces that restriction. Updating Alchemy alone does not currently
+remove it.
+
+This proves the observed failure is client-side, before a PUT to the
+presigned upload URL. It does **not** establish the maximum the hosted upload
+and Foundry extraction paths accept. The inspected control-plane deployment
+interactor asks Foundry to create a version and returns its upload URL; it does
+not receive the artifact bytes or apply this 256 MiB check. Foundry's actual
+upload/extraction limits still need confirmation or a live test.
+
+The provider's file-backed hash and upload already stream in 64 KiB chunks.
+The separate Composer Prisma Cloud packager remains memory-proportional to the
+artifact: it reads every file into a buffer, concatenates the tar and calls
+`gzipSync`. This is present in both the installed release and
+[current Composer source](https://github.com/prisma/composer/blob/90a30381fb37bc204bcd003358c8bec28bec8d69/packages/1-prisma-cloud/0-lowering/lowering/src/compute/artifact.ts#L199).
+Raising the provider cap does not solve that deployment-machine memory peak.
+
+**Path to removing the workaround:** establish the platform's compressed and
+expanded limits; align the Prisma provider's cap with the supported upload
+limit; stream Composer's deterministic tar/gzip packaging to a temporary file;
+then deploy a real artifact above 256 MiB and verify extraction, readiness,
+original media bytes and memory. Preserve the Compute filesystem guard
+independently. Consolidate the blog media services only after that succeeds.
+The working Web preview and its limits are unchanged by this investigation.
