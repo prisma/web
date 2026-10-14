@@ -8,10 +8,9 @@ import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-p
 // Light reference-style footer (Fincrest): brand block on the left (logo,
 // email, Google link, copyright), link columns on the right, and the giant
 // ghost wordmark rising out of the page's bottom edge.
-// The brand stack is compact: 12px from the logo to the email, 12px between
-// the email and Google link (the same step as the column links), and 16px
-// before the copyright. Columns stay on 12px inside a group, 32px between
-// groups, and 48px before the columns and the wordmark.
+// The brand stack uses the same 12px step between the logo, email, Google
+// link, and copyright as the column links. Columns stay on 12px inside a
+// group, 32px between groups, and 48px before the columns and the wordmark.
 // TODO: hello@prisma.io is a placeholder contact — confirm with the client.
 
 const COLUMNS = [
@@ -55,7 +54,7 @@ export function Footer() {
                 data-attr="footer-google-preferred-source"
               />
             </div>
-            <p className="mt-4 text-sm leading-5 text-muted-foreground">
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">
               &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
             </p>
           </div>
