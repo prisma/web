@@ -3,6 +3,7 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
+import { isLandingPath } from "@/lib/landing-routes";
 import { extensions } from "@prisma-docs/ui/data/extensions";
 
 type SitemapEntry = {
@@ -168,7 +169,8 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
 
   const allPathnames = [
     ...new Set([
-      ...pageRoutes.map((route) => route.pathname),
+      // The paid-campaign landing pages are noindex (see lib/landing-routes.ts).
+      ...pageRoutes.map((route) => route.pathname).filter((pathname) => !isLandingPath(pathname)),
       ...changelogPages.map((page) => page.url),
       ...extensions.map((entry) => `/extensions/${entry.slug}`),
     ]),

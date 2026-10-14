@@ -8,6 +8,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UtmPersistence } from "@/components/utm-persistence";
+import { SiteChrome } from "@/components/site-chrome";
 import { siteConfig } from "@/lib/config";
 import { createSiteStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
@@ -114,10 +115,16 @@ export default function RootLayout({
         <ThemeProvider>
           <UnifiedSearchProvider>
             <UtmPersistence />
-            <BuildersDayBanner />
-            <Header />
+            {/* The campaign landing pages under /lp carry their own header and
+                footer (app/lp/layout.tsx); SiteChrome drops the site's for them. */}
+            <SiteChrome>
+              <BuildersDayBanner />
+              <Header />
+            </SiteChrome>
             <main className="min-h-screen">{children}</main>
-            <Footer />
+            <SiteChrome>
+              <Footer />
+            </SiteChrome>
           </UnifiedSearchProvider>
         </ThemeProvider>
       </body>
