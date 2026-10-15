@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next"
 import { siteConfig } from "@/lib/config"
 import { getAllPosts } from "@/lib/blog"
+import { isStarterKitComparison } from "@/app/compare/comparisons"
 import { getContentSlugs } from "@/lib/content"
 import { CUSTOMER_STORY_DETAILS } from "@/data/customer-stories"
 
@@ -49,10 +50,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   const contentRoutes = contentTypes.flatMap(({ dir, prefix }) =>
-    getContentSlugs(dir).map((slug) => ({
-      url: `${siteConfig.url}/${prefix}/${slug}`,
-      lastModified: new Date(),
-    }))
+    getContentSlugs(dir)
+      .filter((slug) => dir !== "compare" || !isStarterKitComparison(slug))
+      .map((slug) => ({
+        url: `${siteConfig.url}/${prefix}/${slug}`,
+        lastModified: new Date(),
+      }))
   )
 
   const customerStoryRoutes = CUSTOMER_STORY_DETAILS.map((story) => ({

@@ -55,6 +55,7 @@ export const siteConfig = {
       { label: "Programs", href: "/programs" },
     ],
     resources: [
+      { label: "Comparisons", href: "/compare" },
       { label: "Docs", href: "/docs" },
       { label: "Data Guide", href: "/dataguide" },
       { label: "Support", href: "/support" },
