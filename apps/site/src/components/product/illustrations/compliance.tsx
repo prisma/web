@@ -3,17 +3,17 @@ import { CardChrome, SectionLabel, SurfaceCard } from "./parts";
 
 // "Production-ready from day one". Three accuracy points here:
 //  - The certifications sit at different plan levels, so each badge group is
-//    labelled with the plan it starts from: GDPR on every plan, HIPAA from
-//    Pro, SOC 2 Type II and ISO 27001 on Business. The pricing comparison
-//    table and the FAQ on this page agree on those boundaries.
+//    labelled with the plan it starts from: GDPR on every plan, HIPAA, SOC 2
+//    Type II and ISO 27001 on Business (with a signed BAA for HIPAA; see
+//    /postgres/hipaa). The pricing comparison table and the FAQ on this page
+//    agree on those boundaries.
 //  - Daily backups are paid-plan only (Free has none), spelled out on the row.
 //  - "no cold starts" is in the copy but a standing guardrail says not to
 //    promote it, so it stays out of the illustration.
 
 const CERT_GROUPS: { label: string; certs: string[] }[] = [
   { label: "Every plan", certs: ["GDPR"] },
-  { label: "Pro", certs: ["HIPAA"] },
-  { label: "Business", certs: ["SOC 2 Type II", "ISO 27001"] },
+  { label: "Business", certs: ["HIPAA", "SOC 2 Type II", "ISO 27001"] },
 ];
 const ALWAYS = [
   "Daily backups on paid plans",
@@ -23,7 +23,7 @@ const ALWAYS = [
 
 export function Compliance() {
   return (
-    <SurfaceCard label="Illustration of production readiness: daily backups on paid plans, encryption in transit and at rest, full tenant isolation, and compliance badges grouped by plan: GDPR on every plan, HIPAA from Pro, SOC 2 Type II and ISO 27001 on Business">
+    <SurfaceCard label="Illustration of production readiness: daily backups on paid plans, encryption in transit and at rest, full tenant isolation, and compliance badges grouped by plan: GDPR on every plan, HIPAA, SOC 2 Type II and ISO 27001 on Business">
       <CardChrome file="compliance" />
       <div className="flex flex-1 flex-col justify-center gap-3 px-4 py-3 text-[0.625rem] leading-none">
         <div className="flex flex-col gap-2">

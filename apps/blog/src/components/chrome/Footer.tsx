@@ -14,7 +14,13 @@
 // CF's original is light-only (`bg-white`, `border-black/[0.06]`); here the
 // surfaces are eclipse tokens so dark mode works.
 import footerData from "@prisma-docs/ui/data/footer";
-import { gdpr, hipaa, iso27, soc2 } from "@prisma-docs/ui/components/footer-badges";
+import {
+  HIPAA_BADGE_HREF,
+  gdpr,
+  hipaa,
+  iso27,
+  soc2,
+} from "@prisma-docs/ui/components/footer-badges";
 import PDPStatus from "@prisma-docs/ui/components/pdp-status";
 import {
   GooglePreferredSourceButton,
@@ -143,17 +149,40 @@ export function Footer({ newsletterComponent }: { newsletterComponent?: ReactNod
           <div className="flex flex-wrap items-center gap-6">
             <PDPStatus className="justify-start" />
             <div className="flex items-center gap-5">
+              {/* HIPAA is the odd one out — it links to /postgres/hipaa (the
+                  Business-plan HIPAA landing page) rather than the Trust
+                  Center, so each entry carries its own href. */}
               {[
-                { label: "GDPR Compliance – Prisma Trust", badge: gdpr },
-                { label: "HIPAA Compliance – Prisma Trust", badge: hipaa },
-                { label: "ISO 27001 – Prisma Trust", badge: iso27 },
-                { label: "SOC 2 – Prisma Trust", badge: soc2 },
-              ].map(({ label, badge }) => (
+                {
+                  label: "GDPR Compliance – Prisma Trust",
+                  badge: gdpr,
+                  href: "https://trust.prisma.io/",
+                  external: true,
+                },
+                {
+                  label: "HIPAA on the Business plan",
+                  badge: hipaa,
+                  href: HIPAA_BADGE_HREF,
+                  external: false,
+                },
+                {
+                  label: "ISO 27001 – Prisma Trust",
+                  badge: iso27,
+                  href: "https://trust.prisma.io/",
+                  external: true,
+                },
+                {
+                  label: "SOC 2 – Prisma Trust",
+                  badge: soc2,
+                  href: "https://trust.prisma.io/",
+                  external: true,
+                },
+              ].map(({ label, badge, href, external }) => (
                 <a
                   key={label}
-                  href="https://trust.prisma.io/"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={href}
+                  target={external ? "_blank" : undefined}
+                  rel={external ? "noopener noreferrer" : undefined}
                   aria-label={label}
                   className="opacity-80 transition-opacity duration-300 hover:opacity-100 motion-reduce:transition-none"
                 >

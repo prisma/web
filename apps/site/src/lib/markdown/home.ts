@@ -227,7 +227,7 @@ export function renderHomeMarkdown(): string {
       "**Unlimited database data transfer included**, no database egress bill-shock",
       "**Prisma ORM is free, always**",
       "**A preview database per feature branch**, no surcharge",
-      "**SOC2, HIPAA, ISO 27001, and GDPR** at the Business tier",
+      "**SOC2, [HIPAA](/postgres/hipaa), ISO 27001, and GDPR** at the Business tier",
     ]),
     // All three carousel scenarios are included: only one slide is visible at
     // a time in the HTML, and Markdown has no interaction.
