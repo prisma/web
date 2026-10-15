@@ -59,7 +59,7 @@ Two Prisma pages that answer the same question compete with each other.
 
 ## Step 4: Pick the page type and its URL
 
-The prompt's shape decides the page type. New pages don't go under `/blog`.
+The prompt's shape decides the page type. New pages don't go under `/blog` unless the operator explicitly approves it (see "Where the files go").
 
 | Prompt shape | Page type | URL |
 |---|---|---|
@@ -73,7 +73,7 @@ A prompt about the whole platform goes under the product that answers most of it
 
 **One page per rival.** Alternatives and head-to-head pages work as a series: one page for each competitor that people search for, all built from the same template, so every competitor name has a page of its own.
 
-**Template.** Use the Conversion Factory template for the page type when the operator has it. The templates live in Conversion Factory's Notion, so ask the operator to paste the template or point to it. Without one, use the matching outline in "Page outlines" below. Both follow the same rules.
+**Template.** Conversion Factory designed two templates: a comparison page (for head-to-heads, alternatives and roundups) and an article page (for use-case guides and troubleshooting). The links are in the AI content drive thread in #developer-relations. Use their layout and section order, which "Page outlines" below follows, and apply this skill's writing rules on top. Never copy their sample copy: it uses labels and claims this skill rules out, such as a "Recommended" column and database branching. The article template's header has an empty block above the title; leave it out.
 
 **Where the files go.** Before writing, find how the target section is built: look for the route under `apps/site/src/app/` (for example `comparisons/`) and read how its newest page is authored (a TSX page with `_content.ts`, like `postgres/hipaa/`, or an MDX collection). Copy that pattern. If the section doesn't exist yet, stop and tell the operator that it has to be built first, and ask the content lead who owns the URL structure. Use `/blog` only if the operator explicitly approves it.
 
@@ -130,62 +130,62 @@ Once the page is live on www.prisma.io:
 
 1. **Tracker.** Set Status to "Published" and fill in Article URL and the Published date. Put the same URL on every row the page serves.
 2. **PromptWatch.** With the PromptWatch MCP connected, add a page tracker for the URL in the Prisma project. Without it, send the URL to the PromptWatch owner in #developer-relations.
-3. **Indexing.** After the deploy, confirm the IndexNow run succeeded (`gh run list -R prisma/web --workflow indexnow.yml --limit 3`). Ask whoever has Google Search Console access to request indexing for the URL. In our tests, Google's AI answers started citing pages within days of a request.
+3. **Indexing.** After the deploy, confirm the IndexNow run succeeded (`gh run list -R prisma/web --workflow indexnow.yml --limit 3`). Ask whoever has access to Google Search Console and Bing Webmaster Tools to request indexing for the URL and check how it ranks for the Step 2 fan-outs. In our tests, Google's AI answers started citing pages within days of a request, and Copilot followed the Bing rank on its exact search query.
 4. **Crawl check after about three days.** Look the URL up in PromptWatch's crawler logs (or Ora) to see whether AI crawlers fetched it, and note the result in the row's Notes. If nothing has crawled it after a week, recheck Step 7: the sitemap entry and the inbound links are the usual causes.
 5. **Judge the answers, not the score.** The win is an answer that names Prisma Postgres or Prisma Compute as the database or host. PromptWatch's visibility score also counts ORM mentions and citations that back a competitor, so read the answers. Compare them model by model, before and after, and expect Bing-grounded engines to move first and Claude's to move weeks later.
 
 ## Page outlines
 
-Use these when there is no Conversion Factory template. Each one opens with the decision and ends with an FAQ in the site's accordion format (`content-seo-geo` Step 3). The numbers give the order of the sections.
+The comparison outlines follow Conversion Factory's comparison template, and the use-case and troubleshooting outlines follow its article template, with the additions this skill requires (disclosure, sources and dates, a "wrong choice" section, migration, FAQ). Each page ends with an FAQ in the site's accordion format (`content-seo-geo` Step 3). The numbers give the order of the sections.
 
 ### Head-to-head (`/comparisons/prisma-vs-<x>`)
 
-1. H1 in the form "<Prisma product> vs <X>: <the decision in a few words>"
-2. A decision paragraph that says who should pick which, with the disclosure that Prisma makes one of them
-3. A comparison table built from the Step 2 criteria (pricing model, free plan, limits, regions, app and database hosting, agent and MCP support, migration path), with a source and date behind each competitor cell
-4. One section per criterion where the two differ, each ending with which product fits whom
-5. "Choose <X> if..." and "Choose <Prisma product> if..."
-6. How to migrate in either direction
-7. FAQ
+1. Hero: H1 in the form "<Prisma product> vs <X>: <the decision in a few words>", a decision paragraph that says who should pick which, the disclosure that Prisma makes one of the two, and the call to action
+2. "Choose <Prisma product> if..." and "Choose <X> if...", side by side
+3. A feature table with the columns Feature, <X>, <Prisma product>, built from the Step 2 criteria (pricing model, free plan, limits, regions, app and database hosting, agent and MCP support, migration path), with no "Recommended" label and a source and date behind each competitor cell
+4. "Where <X> works well" and "Where <Prisma product> fits better", both with real points
+5. What sets <Prisma product> apart: three or four short sections, each one claim that matches the docs
+6. Pricing for both, each figure with its source and date
+7. When <Prisma product> is the wrong choice
+8. How to migrate in either direction
+9. Proof: customer quotes only from those currently on prisma.io, and none if there isn't a relevant one
+10. FAQ, then the closing call to action
 
 ### Alternatives (`/comparisons/<x>-alternatives`)
 
-1. H1 in the form "<X> alternatives in <year>: <n> options compared"
-2. A decision paragraph: the reasons people look beyond X, and which option fits each reason
-3. A short section on what X does well, so the reader knows what they would give up
-4. One section per alternative with "Best for", strengths, trade-offs and price, Prisma included in the stated order
-5. A comparison table of the alternatives
-6. How to move off X
-7. FAQ
+1. Hero: H1 in the form "<X> alternatives in <year>: <n> options compared", a decision paragraph naming the reasons people look beyond X and which option fits each reason, and the disclosure
+2. What X does well, so the reader knows what they would give up
+3. One section per alternative with "Best for", strengths, trade-offs and price, Prisma included in the stated order
+4. A comparison table of the alternatives, sourced and dated
+5. How to move off X
+6. FAQ, then the closing call to action
 
 ### Roundup (`/comparisons/<category>`)
 
-1. H1 in the form "<Category> in <year>: <n> options compared"
-2. A decision paragraph with the short list and the situation each option fits
-3. The criteria, as a checklist, before any option
-4. One section per option with "Best for", features, pricing and trade-offs, ordered by a stated key, each linking to its head-to-head page where one exists
-5. A comparison table
-6. "Which one fits you": decision questions that send each reader to an option
-7. FAQ
+1. Hero: H1 in the form "<Category> in <year>: <n> options compared", a decision paragraph with the short list and the situation each option fits, and the disclosure
+2. The criteria, as a checklist, before any option
+3. One section per option with "Best for", features, pricing and trade-offs, ordered by a stated key, each linking to its head-to-head page where one exists
+4. A comparison table, sourced and dated
+5. "Which one fits you": decision questions that send each reader to an option
+6. FAQ, then the closing call to action
 
 ### Use-case guide (`/postgres/<topic>`, `/compute/<topic>`)
 
-1. H1 that restates the question
+1. H1 that restates the question, a one-sentence dek that answers it, the byline, date and reading time
 2. A decision paragraph
 3. What this use case needs from a database or host
 4. The options, compared briefly
-5. How to set it up with Prisma, as numbered steps with runnable commands
+5. How to set it up with Prisma, as numbered steps with runnable commands and their real output
 6. When Prisma is the wrong choice for this use case
-7. FAQ
+7. FAQ, a short recap, the call to action and related pages
 
 ### Troubleshooting
 
-1. H1 that states the symptom in the reader's words, with the error message verbatim when there is one
-2. An answer paragraph with the cause and the fix
-3. Why it happens
-4. The fix, as numbered steps
-5. How to prevent it, and the cases where the fix doesn't apply
-6. FAQ
+1. H1 that states the symptom in the reader's words, with the error message verbatim when there is one, a one-sentence dek with the cause and the fix, the byline and date
+2. Why it happens
+3. The fix, as numbered steps with runnable commands
+4. How to prevent it, and the cases where the fix doesn't apply
+5. FAQ, the call to action and related pages
 
 ## Anti-patterns
 
