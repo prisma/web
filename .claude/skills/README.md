@@ -47,7 +47,7 @@ Writes and publishes a page that answers one question people ask AI assistants, 
 1. Give it the tracked prompt or its Prompt tracker reference (`PW123`). It claims the row so nobody else writes the same page, and stops if someone else owns it.
 2. It reads how AI engines phrase the prompt (their search queries, the pages they cite, the criteria they decide on), so the page is titled in the engines' words.
 3. It checks whether a prisma.io page already answers the prompt. If one does, it refreshes that page instead.
-4. It picks the page type and URL (`/comparisons/...`, `/postgres/...`, `/compute/...`). `/blog` is used only if the operator explicitly approves it. It writes the page with `content-seo-geo` and runs the adversarial review from `content-write-blog`.
+4. It picks the page type and URL (`/comparisons/...`, `/postgres/...`, `/compute/...`, `/orm/...`). `/blog` is used only if the operator explicitly approves it. It writes the page with `content-seo-geo` and runs the adversarial review from `content-write-blog`.
 5. In the same pull request it adds what makes the page discoverable: the sitemap entry, links within the comparison series and from related pages, the section index linked from the footer, and `llms.txt`. IndexNow then runs by itself after the production deploy.
 6. After the page is live, it marks the tracker row Published, adds a PromptWatch page tracker, and checks AI crawler logs about three days later.
 
