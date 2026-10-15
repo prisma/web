@@ -83,8 +83,8 @@ Both only work if the database schema suits the old and the new version at the s
 
 Coding assistants such as Claude Code, Codex, Cursor or GitHub Copilot fit the preview workflow well, because they already work in Git. The setup only needs to make sure the assistant cannot ship to production by itself:
 
-1. **Protect the main branch.** In GitHub, require a pull request before merging into `main`. GitHub's docs note that by default a branch protection rule does not apply to people with admin permissions to the repository, and that you can apply it to them too. An assistant running on your machine pushes with your Git access, so turn that on.
-2. **Write the rule down for the assistant.** Add it to `AGENTS.md` or `CLAUDE.md`, for example: "Never push to main. Open a pull request for every change. Never merge a pull request."
+1. **Protect the main branch.** In GitHub, require a pull request with at least one approving review before merging into `main`, and turn on "Do not allow bypassing the above settings": by default a branch protection rule does not apply to people with admin permissions or the "bypass branch protections" permission. An assistant running on your machine pushes and merges with your GitHub access, and GitHub does not let the author of a pull request approve it, so with this rule someone other than the author has to approve before anything merges. If you work alone, have the assistant open pull requests from its own GitHub account or app, so that you can be the reviewer.
+2. **Write the rule down for the assistant.** Add it to `AGENTS.md` or `CLAUDE.md`, for example: "Never push to main. Open a pull request for every change. Never merge a pull request." A written rule is a reminder, not a permission; the branch protection from step 1 is what enforces it.
 3. **Let it work on a branch.** The assistant creates a feature branch, commits, pushes and opens a pull request.
 4. **Open the preview.** Your host builds a preview for the branch or pull request and shows the URL on the pull request or in the CI run.
 5. **Test it yourself.** Use the feature on the preview URL, against the preview's database and test-mode services.
@@ -117,13 +117,13 @@ Six hosts in alphabetical order, each with what its own docs say about a test ve
 
 ### Railway
 
-- **Test version:** PR environments, turned on under Project Settings, Environments, create a temporary environment when a pull request is opened and delete it when the pull request is merged or closed. A separate Bot PR Environments toggle does the same for pull requests opened by GitHub bots; Railway's docs list GitHub Copilot, Claude Code, Devin and Jules among them.
+- **Test version:** PR environments, turned on under Project Settings, Environments, create a temporary environment when a pull request is opened and delete it when the pull request is merged or closed. A separate Bot PR Environments toggle does the same for pull requests opened by GitHub bots; Railway's docs list GitHub Copilot, Claude Code, Devin and Jules among them. A PR environment copies its base environment, including variables, and the base is the production environment by default, so choose a base with test credentials, such as a `staging` environment, in project settings, or replace the inherited values.
 - **Staging:** every project starts with a `production` environment, and Railway's docs describe a persistent `staging` environment that auto-deploys from a `staging` branch, with its own variables, as a common pattern.
 - **Database:** Railway's Environments page does not say what data a PR environment's database starts with, so check before you test destructive changes.
 
 ### Render
 
-- **Test version:** preview environments, on a Pro workspace plan or higher, copy the services, datastores and environment groups defined in your Blueprint (`render.yaml`) for each pull request (in manual mode, only for pull requests whose title includes `[render preview]`), and delete the copy when the pull request is merged or closed. Service previews instead create a temporary instance of a single service per pull request, at its own `onrender.com` URL.
+- **Test version:** preview environments, on a Pro workspace plan or higher, copy the services, datastores and environment groups defined in your Blueprint (`render.yaml`) for each pull request (in manual mode, only for pull requests whose title includes `[render preview]`), and delete the copy when the pull request is merged or closed. Set a `previewValue` on environment variables that hold production values, such as an API key, so the preview uses a test value, and check which environment groups the preview copies. Service previews instead create a temporary instance of a single service per pull request, at its own `onrender.com` URL; the instance copies the base service's settings, including environment variables such as database connection information, so change those on the preview instance.
 - **Database:** datastore copies in a preview environment do not include data from the production resource; Render's docs suggest seeding sample data while the preview environment initializes.
 - **Staging:** a Render project can hold separate environments such as staging and production, with environment-scoped variables and an option to block private network traffic between environments. Hobby workspaces can have up to two environments per project.
 
@@ -135,7 +135,7 @@ Six hosts in alphabetical order, each with what its own docs say about a test ve
 
 ## Checklist
 
-- Production deploys only from the main branch, and the main branch is protected for admins too.
+- Production deploys only from the main branch, and merging into it needs an approving review from someone other than the author, with no bypass for admins.
 - Every change gets its own preview URL from a branch or pull request.
 - Previews run the whole app: frontend, API and any workers the change touches.
 - Previews read preview-scoped environment variables and never production secrets.
@@ -146,7 +146,7 @@ Six hosts in alphabetical order, each with what its own docs say about a test ve
 - A staging environment exists if you release several changes together or need a stable URL for callbacks.
 - Risky changes ship behind a feature flag with an off switch.
 - You know how to roll back a production deploy.
-- Merging the pull request releases the change; deleting the branch removes the preview and its database.
+- Merging the pull request releases the change. You have checked whether your host removes the preview and its database when the branch is deleted or the pull request is closed, and you delete them yourself where it does not.
 - A coding assistant has written rules to never push to `main` and never merge, and credentials that reach previews, not production.
 
 ## Frequently asked questions
@@ -161,17 +161,17 @@ Only if you are allowed to keep that data in test environments. A new database w
 
 ### How do I stop a coding assistant from deploying to production?
 
-Make production deploy only from the main branch, protect that branch in GitHub so even admins need a pull request, and tell the assistant in `AGENTS.md` or `CLAUDE.md` to never push to `main` and never merge a pull request. Give it credentials that reach previews only. You test the preview and merge the pull request yourself.
+Make production deploy only from the main branch, protect that branch in GitHub so every merge, including by admins, needs a pull request approved by someone other than its author, and tell the assistant in `AGENTS.md` or `CLAUDE.md` to never push to `main` and never merge a pull request. Give it credentials that reach previews only. You test the preview, and a person, not the assistant, approves and merges the pull request.
 
 ## Sources checked 2026-10-15
 
 | Vendor | Pages |
 | --- | --- |
 | Fly.io | [Git branch preview environments on GitHub (review apps)](https://docs.fly.io/blueprints/review-apps-guide/), [Staging and production isolation](https://docs.fly.io/blueprints/staging-prod-isolation/) |
-| GitHub | [About protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) |
+| GitHub | [About protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [Approving a pull request with required reviews](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/approving-a-pull-request-with-required-reviews) |
 | Netlify | [Deploy Previews](https://docs.netlify.com/deploy/deploy-types/deploy-previews/), [Branch deploys](https://docs.netlify.com/deploy/deploy-types/branch-deploys/), [Netlify Database](https://docs.netlify.com/build/data-and-storage/netlify-database/) |
 | Prisma | [Deploy on push: preview and staging environments per Git branch](https://www.prisma.io/docs/compute/deploy-on-push), [Compute known limitations](https://www.prisma.io/docs/compute/limitations), [Compute FAQ](https://www.prisma.io/docs/compute/faq) |
-| Railway | [Environments](https://docs.railway.com/environments) |
+| Railway | [Environments](https://docs.railway.com/environments), [Preview deployments with PR environments](https://docs.railway.com/guides/preview-deployments-with-pr-environments) |
 | Render | [Preview environments](https://render.com/docs/preview-environments), [Service previews](https://render.com/docs/service-previews), [Projects and environments](https://render.com/docs/projects) |
 | Vercel | [Environments](https://vercel.com/docs/deployments/environments) |
 
