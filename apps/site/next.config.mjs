@@ -328,21 +328,34 @@ const config = {
   async redirects() {
     return [
       // ChatGPT ads landing pages (src/app/lp): noindex, linked only from the
-      // ads, so a visit without campaign params is a stripped or hand-copied
-      // ad link. Tag it as the campaign it belongs to, with `utm_content=
-      // untagged` so PostHog can tell it apart from a clicked ad; the ad's own
-      // params and `oppref` win whenever they are present. Campaign names are
-      // in src/components/landing/content.ts.
+      // ads. Two guarantees for attribution, both no-ops when the ad URL is
+      // complete (see the campaign URL in each page.tsx):
+      //  1. `utm_term=lp-<slug>` names the landing variant on every visit, so
+      //     signups split by page even when variants share an ad campaign.
+      //  2. A visit without campaign params is a stripped or hand-copied ad
+      //     link; tag it as the campaign it belongs to, with `utm_content=
+      //     untagged` so PostHog can tell it apart from a clicked ad.
+      // The ad's own params and `oppref` are kept. Campaign names are in
+      // src/components/landing/content.ts.
       ...[
         ["compute", "compute-app-and-database"],
         ["postgres", "postgres-managed-database"],
         ["free", "free-plan"],
-      ].map(([slug, campaign]) => ({
-        source: `/lp/${slug}`,
-        missing: [{ type: "query", key: "utm_source" }],
-        destination: `/lp/${slug}?utm_source=chatgpt&utm_medium=paid&utm_campaign=${campaign}&utm_content=untagged`,
-        permanent: false,
-      })),
+      ].flatMap(([slug, campaign]) => [
+        {
+          source: `/lp/${slug}`,
+          missing: [{ type: "query", key: "utm_source" }],
+          destination: `/lp/${slug}?utm_source=chatgpt&utm_medium=paid&utm_campaign=${campaign}&utm_content=untagged&utm_term=lp-${slug}`,
+          permanent: false,
+        },
+        {
+          source: `/lp/${slug}`,
+          has: [{ type: "query", key: "utm_source" }],
+          missing: [{ type: "query", key: "utm_term" }],
+          destination: `/lp/${slug}?utm_term=lp-${slug}`,
+          permanent: false,
+        },
+      ]),
       // Search Console 404s: published docs URLs missing the /docs base path.
       // Exact mappings preserve the /orm marketing page and unknown-path 404s.
       { source: "/ai/mcp-tools", destination: "/docs/ai/mcp-tools", permanent: true },

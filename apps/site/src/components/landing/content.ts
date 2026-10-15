@@ -44,6 +44,15 @@ export type LandingContent = {
   path: string;
   /** The `utm_campaign` value the matching ad campaign should send. */
   campaign: string;
+  /**
+   * The `utm_term` value that names this page as the landing variant on the
+   * Console link, so PostHog and the warehouse can split signups by page
+   * even when two variants share an ad campaign. Stamped by the redirect in
+   * next.config.mjs when the ad URL does not carry it.
+   */
+  variant: `lp-${LandingSlug}`;
+  /** The marketing hypothesis this variant tests against the other two. */
+  hypothesis: string;
   meta: {
     title: string;
     description: string;
@@ -102,10 +111,13 @@ export const computeLanding: LandingContent = {
   slug: "compute",
   path: "/lp/compute",
   campaign: "compute-app-and-database",
+  variant: "lp-compute",
+  hypothesis:
+    "Simplicity converts: one command deploys the app and its database together, so the page leads with the deploy and shows the live URL before it mentions price.",
   meta: {
     title: "Deploy your TypeScript app with 1M free requests every month | Prisma Compute",
     description:
-      "Deploy your TypeScript apps with free monthly usage allowances and pay as you grow. Prisma Compute hosts your app and its Prisma Postgres database in one place. No credit card, no time limit.",
+      "One command deploys your Next.js, Hono or Bun app next to a Prisma Postgres database. 1M requests free every month, no credit card, pay as you grow.",
     ogKicker: "Prisma Compute",
     ogAccent: "red",
   },
@@ -115,7 +127,7 @@ export const computeLanding: LandingContent = {
     headline: "Deploy your TypeScript app with 1M free requests every month",
     headlineEmphasis: "1M free requests",
     subheadline:
-      "Run one command and Prisma Compute hosts your app and its Postgres database in one place, created together in one deploy. Free monthly usage allowances, no credit card, and pay as you grow.",
+      "One command puts your Next.js, Hono or Bun app live next to a Prisma Postgres database. No connection strings to wire, no second vendor, and nothing to pay until the app outgrows the free allowance.",
     microline:
       "Free every month: 1M requests, 360 GB-hours of memory and a Postgres database. No credit card, no time limit.",
     tour: [
@@ -130,14 +142,14 @@ export const computeLanding: LandingContent = {
       {
         label: "Apps",
         caption:
-          "Bring a Next.js, Hono or Bun app, or an agent: add a short Composer declaration around the server code you already have, then deploy.",
+          "Bring a Next.js, Hono or Bun app, or an agent: wrap the server code you already have in a short declaration, then deploy.",
         illustration: "runApps",
       },
     ],
   },
   flow: {
     headline: "Two vendors means glue code. One platform means one deploy.",
-    body: "Prisma ORM 8 types your queries, Prisma Postgres stores the data, Prisma Compute runs the app next to it. Use all three and nothing needs wiring. Use one and it still works: any Postgres client connects, and the ORM is optional.",
+    body: "Prisma ORM 8 types your queries, Prisma Postgres stores the data, Prisma Compute runs the app next to it. Use all three or just one: any Postgres client connects, and the ORM is optional.",
   },
   benefits: {
     headline: "What you stop doing",
@@ -147,25 +159,25 @@ export const computeLanding: LandingContent = {
         icon: "server",
         name: "No connection strings to copy between dashboards",
         description:
-          "Declare the app and its database in one TypeScript module. Deploy creates both, connects them, and prints the live URL.",
+          "Declare the app and its database in one TypeScript module; deploy creates both, connects them and prints the live URL.",
       },
       {
         icon: "gitBranch",
         name: "No shared test database",
         description:
-          "Set up deploy on push and every feature branch gets its own app and its own new database, deleted with the branch. Tests run on data that looks like production, not on data another branch just changed.",
+          "Deploy on push and every feature branch gets its own app and its own new database, deleted with the branch.",
       },
       {
         icon: "database",
         name: "No query crossing a vendor boundary",
         description:
-          "Your app runs in the same project and region as Prisma Postgres, with connection pooling included. It is standard Postgres, so any client works.",
+          "The app runs in the same project and region as its database, with pooling included. Standard Postgres, so any client works.",
       },
       {
         icon: "shield",
         name: "No bill that grows with headcount",
         description:
-          "Pay for requests, memory and active CPU. No seat fees, nothing for deploys or previews, a spend limit you set, and an idle app scales to zero.",
+          "Pay for requests, memory and active CPU, with a spend limit you set. No seat fees, nothing for previews, and an idle app scales to zero.",
       },
     ],
   },
@@ -173,27 +185,22 @@ export const computeLanding: LandingContent = {
     {
       question: "Can I deploy an app I already have?",
       answer:
-        "Yes, if it is a TypeScript service built for Node.js, Bun or Next.js. You add a short Composer declaration (a service.ts and a module.ts) around the server code you already have, run your build, and deploy with npx prisma deploy module.ts. The docs include a prompt your coding agent can write the declaration from.",
+        "Yes, if it is a TypeScript service for Node.js, Bun or Next.js. Add a short declaration (a service.ts and a module.ts) around the server code you already have, then run npx prisma deploy module.ts. The docs include a prompt your coding agent can write the declaration from.",
     },
     {
       question: "What does it cost?",
       answer:
-        "The Free plan includes 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of bandwidth a month for Compute, plus 200k operations, 2 GB and 50 databases for Prisma Postgres, with no credit card and no usage billing. Starter is $10 a month with 5M requests included, then memory at $0.006 per GB-hour and active vCPU at $0.064 per hour, with a spend limit you set.",
+        "Nothing until you outgrow the Free plan: 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of bandwidth a month for Compute, plus 200k operations, 2 GB and 50 databases for Prisma Postgres, with no credit card and no usage billing. Starter is $10 a month with 5M requests included, then $0.006 per GB-hour of memory and $0.064 per active vCPU-hour, under a spend limit you set.",
     },
     {
       question: "Do I have to use Prisma ORM?",
       answer:
         "No. Your app reaches Prisma Postgres through a standard connection string, so any Postgres client works. Prisma ORM 8 is optional; it adds a typed client, safe migrations and migrations applied for you on deploy.",
     },
-    {
-      question: "Is Prisma Compute related to Prisma Cloud?",
-      answer:
-        "No. Prisma Compute is unrelated to Palo Alto Networks' Prisma Cloud. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute, and the dashboard is Prisma Console.",
-    },
   ],
   cta: {
-    headline: "Start with 1M free requests every month",
-    body: "Sign up, run one deploy, and get a live URL with a Prisma Postgres database behind it. The free monthly allowances have no time limit and need no credit card, and paid plans start at $10 a month with a spend limit you set.",
+    headline: "Deploy your first app in the next ten minutes",
+    body: "Sign up, run one deploy, and get a live URL with a Prisma Postgres database behind it. No credit card, no time limit, and paid plans from $10 a month with a spend limit you set.",
     checks: [
       "1M free requests every month",
       "No credit card required",
@@ -206,10 +213,13 @@ export const postgresLanding: LandingContent = {
   slug: "postgres",
   path: "/lp/postgres",
   campaign: "postgres-managed-database",
+  variant: "lp-postgres",
+  hypothesis:
+    "The database is the entry point: a developer who only needs Postgres today signs up for a free one in seconds and adds hosting later, so the page leads with the database and keeps Compute as the next step.",
   meta: {
     title: "A production Postgres database, free every month | Prisma Postgres",
     description:
-      "Managed Postgres with free monthly usage allowances: 200k operations, 2 GB of storage and 50 databases. Create it in seconds, connect any Postgres client, and host your app next to it in one place with Prisma Compute. No credit card.",
+      "Managed Postgres in seconds: 200k operations, 2 GB of storage and 50 databases free every month. Any Postgres client connects, and your app can run next to it on Prisma Compute. No credit card.",
     ogKicker: "Prisma Postgres",
     ogAccent: "yellow",
   },
@@ -219,7 +229,7 @@ export const postgresLanding: LandingContent = {
     headline: "A production Postgres database, free every month",
     headlineEmphasis: "free every month",
     subheadline:
-      "Get a managed Postgres database with free monthly usage allowances and pay as you grow. Create it in seconds from the Console, a terminal or your coding agent, with pooling, backups and a spend limit built in, then host your app next to it in one place with Prisma Compute.",
+      "Create it in seconds from the Console, your terminal or your coding agent, with pooling and backups built in. Connect any Postgres client, and when you want, run the app next to it on Prisma Compute.",
     microline:
       "Free every month: 200k operations, 2 GB of storage and 50 databases. No credit card, no time limit.",
     tour: [
@@ -245,7 +255,7 @@ export const postgresLanding: LandingContent = {
   },
   flow: {
     headline: "The database now, the rest of the stack when you want it",
-    body: "Prisma Postgres works on its own with any ORM and any host. Add Prisma ORM 8 for typed queries and safe migrations, and Prisma Compute to run the app next to the database, and the wiring between them disappears.",
+    body: "Prisma Postgres works on its own with any ORM and any host. Add Prisma ORM 8 for typed queries and Prisma Compute to run the app next to the database, and the wiring between them disappears.",
   },
   benefits: {
     headline: "Why this Postgres",
@@ -256,25 +266,25 @@ export const postgresLanding: LandingContent = {
         icon: "database",
         name: "Ready in seconds",
         description:
-          "Create a database from the Console, with npx create-db from a terminal, or through the MCP server from Claude Code, Cursor or Codex. You get pooled and direct connection strings, with SSL required.",
+          "From the Console, with npx create-db in a terminal, or through the MCP server from Claude Code, Cursor or Codex.",
       },
       {
         icon: "gitBranch",
         name: "A database per preview",
         description:
-          "Pair it with Prisma Compute and every feature branch gets a preview with its own new database, torn down with the branch. Production data is never copied into a preview.",
+          "With Prisma Compute, every feature branch gets a preview with its own new database, torn down with the branch.",
       },
       {
         icon: "shield",
         name: "A bill you can cap",
         description:
-          "Billed per operation, one query read or write, with a spend limit you set on paid plans. A quiet month costs almost nothing, and a busy one never surprises you.",
+          "Billed per operation, with a spend limit you set on paid plans. A quiet month costs almost nothing and a busy one never surprises you.",
       },
       {
         icon: "swap",
         name: "Standard Postgres, no lock-in",
         description:
-          "Standard SQL and wire protocol, extensions like pgvector on every plan, Studio to browse rows and Query Insights to find slow queries. Leave any time with pg_dump.",
+          "Standard SQL and wire protocol, pgvector on every plan, Studio to browse rows, Query Insights to find slow queries. Leave any time with pg_dump.",
       },
     ],
   },
@@ -294,15 +304,10 @@ export const postgresLanding: LandingContent = {
       answer:
         "No. Prisma Postgres is standard Postgres, so any ORM, query builder or raw SQL client connects with the connection string. Prisma ORM 8 is optional; with it, your schema drives a typed client and migrations that are applied for you when you deploy on Prisma Compute.",
     },
-    {
-      question: "Which regions can I choose?",
-      answer:
-        "Six: San Francisco, North Virginia, Paris, Frankfurt, Tokyo and Singapore. You pick the region for each database when you create it. Hosting the app on Prisma Compute in the same region keeps queries local.",
-    },
   ],
   cta: {
-    headline: "Start with a free Postgres database today",
-    body: "Create a database now and host the app next to it when you are ready. The free monthly allowances have no time limit and need no credit card, and it is standard Postgres underneath, so you can leave at any time.",
+    headline: "Your Postgres database is a minute away",
+    body: "Create it now and host the app next to it when you are ready. No credit card, no time limit, and standard Postgres underneath, so you can leave at any time.",
     checks: [
       "200k operations and 2 GB free every month",
       "No credit card required",
@@ -315,10 +320,13 @@ export const freeLanding: LandingContent = {
   slug: "free",
   path: "/lp/free",
   campaign: "free-plan",
+  variant: "lp-free",
+  hypothesis:
+    "Price converts: a free plan with no card and no expiry removes the reason to put it off, so the page leads with the allowances, shows them on the plan card, and proves it stays cheap after the free plan.",
   meta: {
     title: "Deploy your app and its Postgres database for free | Prisma",
     description:
-      "Prisma's Free plan: 1M Compute requests, 200k database operations, 2 GB of storage and 50 databases every month, with no credit card and no time limit. Host your app and Postgres database in one place and pay as you grow.",
+      "Prisma's Free plan: 1M requests, 200k database operations, 2 GB of storage and 50 databases every month, with no credit card and no time limit. Deploy a real TypeScript app and its Postgres database in one place.",
     ogKicker: "Free plan",
     ogAccent: "yellow",
   },
@@ -328,12 +336,12 @@ export const freeLanding: LandingContent = {
     headline: "Deploy your app and its Postgres database for free",
     headlineEmphasis: "for free",
     subheadline:
-      "Sign up, run one deploy, and your TypeScript app is live on Prisma Compute with a Prisma Postgres database next to it. The Free plan gives you 1M requests and 200k database operations every month, with no credit card, no expiry and no usage billing until you choose a paid plan.",
+      "Sign up, run one deploy, and your TypeScript app is live on Prisma Compute with a Prisma Postgres database next to it. 1M requests and 200k database operations every month, and nothing is billed until you choose a paid plan.",
     microline: "$0 a month. No credit card, no expiry, no usage billing.",
   },
   flow: {
     headline: "Everything the app needs, on the Free plan",
-    body: "Prisma ORM 8 is free and open source. The Free plan adds a hosted Prisma Postgres database and Prisma Compute deploys, so the whole path from first query to live URL costs nothing.",
+    body: "Prisma ORM 8 is free and open source. The Free plan adds a hosted Prisma Postgres database and Prisma Compute deploys, so the path from first query to live URL costs nothing.",
   },
   benefits: {
     headline: "What the Free plan is enough for",
@@ -343,25 +351,25 @@ export const freeLanding: LandingContent = {
         icon: "rocket",
         name: "A side project with real users",
         description:
-          "1M requests a month is about 23 requests a minute, all month long. Enough for a launch, a waitlist, a newsletter signup page or a small SaaS beta.",
+          "1M requests a month is about 23 a minute, all month: a launch, a waitlist or a small SaaS beta.",
       },
       {
         icon: "bot",
         name: "An AI agent or bot",
         description:
-          "Compute streams responses, bills memory and active CPU separately, and scales to zero between tasks, so an agent that mostly waits on a model API uses little of the allowance.",
+          "Compute streams responses and scales to zero between tasks, so an agent that mostly waits on a model API uses little of the allowance.",
       },
       {
         icon: "database",
         name: "Up to 50 databases",
         description:
-          "One per prototype, per branch or per customer. Each is standard Postgres, provisioned in seconds, with 2 GB of storage included on the plan.",
+          "One per prototype, branch or customer, each standard Postgres and ready in seconds, with 2 GB of storage on the plan.",
       },
       {
         icon: "shield",
         name: "No surprise bill",
         description:
-          "The Free plan has no usage billing at all. When your app needs more than the allowance, you choose to upgrade; you are never charged for going over.",
+          "No usage billing at all. When the app needs more than the allowance you choose to upgrade; you are never charged for going over.",
       },
     ],
   },
@@ -380,15 +388,10 @@ export const freeLanding: LandingContent = {
       answer:
         "Nothing is charged. The Free plan has no usage billing: a database that reaches its operations allowance stops accepting queries until the allowance resets next month or you upgrade. Starter is $10 a month, includes 5M Compute requests and 1M database operations, meters usage beyond that, and lets you set a spend limit.",
     },
-    {
-      question: "What exactly is included?",
-      answer:
-        "Prisma Postgres: 200k operations a month, 2 GB of storage and 50 databases. Prisma Compute: 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of outbound bandwidth a month, with scale to zero. Prisma ORM 8 is free and open source regardless of plan.",
-    },
   ],
   cta: {
     headline: "Start building for free today",
-    body: "Sign up, create a database, deploy an app. The Free plan has no time limit and no credit card, and the ORM is free whatever plan you are on.",
+    body: "Sign up, create a database, deploy an app. No time limit, no credit card, and the ORM is free whatever plan you are on.",
     checks: [
       "No credit card required",
       "Free forever, not a trial",

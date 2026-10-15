@@ -4,8 +4,9 @@ import { LandingPage, landingMetadata } from "@/components/landing/landing-page"
 import { PriceCompare } from "@/components/landing/price-compare";
 
 // Landing page for the Free plan ChatGPT ads. Ad URL, one `utm_content` per ad:
-//   /lp/free?utm_source=chatgpt&utm_medium=paid&utm_campaign=free-plan&utm_content=<ad>
-// A visit with no `utm_source` is redirected to the tagged URL (next.config.mjs).
+//   /lp/free?utm_source=chatgpt&utm_medium=paid&utm_campaign=free-plan&utm_content=<ad>&utm_term=lp-free
+// `utm_term` names the landing variant. A visit without it, or without
+// `utm_source`, is redirected to the tagged URL (next.config.mjs).
 export const metadata = landingMetadata(freeLanding);
 
 export default function FreeLandingPage() {

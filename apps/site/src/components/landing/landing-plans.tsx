@@ -54,7 +54,7 @@ const ROWS = [
 
 export function LandingPlans({
   headline = "Start free. Pay when the app grows.",
-  body = "Every plan covers both the app and the database. The Free plan has no time limit and no usage billing; paid plans meter the work your app does and let you cap the bill.",
+  body = "Every plan covers both the app and the database. Free has no time limit and no usage billing; paid plans meter what the app does, under a spend limit you set.",
 }: {
   headline?: string;
   body?: string;
