@@ -11,6 +11,8 @@ Produce a _skeleton_ for a Prisma blog post — frontmatter, section headings, a
 
 This skill produces content only. It does **not** check out, branch, commit, push, or open pull requests against the blog repository. The operator owns that workflow: they prepare the checkout, place the skeleton into it, and push and open the pull request following the repo's contribution process.
 
+If the operator wants a page that answers one specific AI prompt (a comparison, an alternatives page, a "best X" roundup, a use-case guide or a troubleshooting fix), use the `content-write-answer-page` skill instead. Those pages live outside the blog, and that skill also handles their publishing steps.
+
 The blog is owned by DevRel but contributed to by everyone, so do not assume the operator is on the DevRel team or familiar with the blog repository. Treat first-time contributors as the default case.
 
 ## Assets
