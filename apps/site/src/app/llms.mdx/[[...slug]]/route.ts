@@ -5,6 +5,7 @@ import {
 } from "@/lib/agent-markdown";
 import { getMarkdownPage, markdownPageList, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { getBaseUrl } from "@/lib/url";
+import { getAnswerEntries, renderAnswerMarkdown } from "@/lib/answer-page-content";
 
 /**
  * Markdown renditions of the marketing pages.
@@ -148,6 +149,15 @@ ${available}
 
 export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[...slug]]">) {
   const { slug } = await params;
+  const answer = getAnswerEntries().find((entry) => entry.url === `/${(slug ?? []).join("/")}`);
+  if (answer) {
+    const baseUrl = getBaseUrl();
+    return new Response(renderAnswerMarkdown(answer), {
+      headers: markdownHeaders({
+        Link: `<${new URL(answer.url, baseUrl)}>; rel="canonical", <${new URL("/llms.txt", baseUrl)}>; rel="llms-txt"`,
+      }),
+    });
+  }
   const path = resolvePath(slug);
   if (!path) return notFoundResponse(slug);
 
@@ -177,5 +187,6 @@ export function generateStaticParams() {
     ...AGENT_MARKDOWN_PATHS.filter((path) => path !== "/").map((path) => ({
       slug: path.slice(1).split("/"),
     })),
+    ...getAnswerEntries().map((entry) => ({ slug: entry.url.slice(1).split("/") })),
   ];
 }
