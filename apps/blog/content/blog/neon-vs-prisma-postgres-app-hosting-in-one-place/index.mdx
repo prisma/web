@@ -2,7 +2,7 @@
 title: "Neon alternatives with app hosting and Postgres in one place (2026): Prisma Postgres + Prisma Compute, Railway, Render and Supabase compared"
 slug: "neon-vs-prisma-postgres-app-hosting-in-one-place"
 date: "2026-09-24"
-updatedAt: "2026-10-14"
+updatedAt: "2026-10-16"
 authors:
   - "Gregory Boch"
 metaTitle: "Neon alternatives with app hosting and Postgres in one place (2026): Prisma, Railway, Render, Supabase"
@@ -20,7 +20,7 @@ If you are looking at Neon and want the app hosted in the same place as its data
 
 ## Quick recommendation
 
-Pick Prisma Postgres + Prisma Compute when you want the frontend, the API and the database deployed from one repository in one project, with a preview per pushed branch once deploy on push is set up (each preview gets its own new database when the database is declared in the Composer module). Pick Neon when a pull request needs a copy of production data or you need point-in-time recovery today. Pick Railway or Render when the API holds WebSocket connections open or is not written in TypeScript, and Supabase when you want auth, storage and realtime from the database vendor and can host the frontend elsewhere.
+Pick Prisma Postgres + Prisma Compute when you want the frontend, the API and the database deployed from one repository in one project, with a preview per pushed branch once deploy on push is set up (each preview gets its own new database when the database is declared in the Composer module). Pick Neon when a pull request needs a copy of production data or you need point-in-time recovery today. Pick Railway or Render when the API holds WebSocket connections open or is not written in TypeScript, and Supabase when you want auth, storage and realtime from the database vendor and can host the frontend elsewhere. Supabase hosts Postgres, auth, storage and Edge Functions; Supabase Compute, which runs long-running web services next to the database, is a private alpha behind a waitlist, open only to projects in us-west-2 and not meant for production workloads (supabase.com, checked 2026-10-16), so plan on another host for the frontend.
 
 | Your situation | Pick | Why |
 | --- | --- | --- |
@@ -42,28 +42,29 @@ Neon is the better pick when a pull request needs a copy of production data or y
 
 ## What to compare before you leave Neon
 
-1. **Who runs the database**, and which features, such as backups and pooling, are opt-in.
-2. **Previews per branch**, and whether a preview copies production data or starts with a new database.
-3. **Idle cost**: what a project costs when nobody uses it, and how long it takes to wake.
-4. **Same-region networking** between the app and the database.
-5. **Connection pooling**: included, opt-in or a separate endpoint.
-6. **Backups and point-in-time recovery**: how far back you can restore, and on which plans.
-7. **Postgres extensions**: check every extension your schema uses. Prisma Postgres [lists its supported extensions](https://www.prisma.io/docs/postgres/database/postgres-extensions), including `vector` (pgvector), `pg_search`, `pg_trgm`, `pgcrypto` and `pg_stat_statements`; PostGIS is not on that list.
-8. **Observability**: how you find slow queries. Prisma Postgres includes [Query Insights](https://www.prisma.io/docs/postgres/database/query-insights) at no extra cost: average latency and queries per second over time, queries grouped by statement shape and, for Prisma ORM, the SQL each call generates.
-9. **Pricing shape**: a plan fee, usage meters or both, and which meter your workload drives.
-10. **Exit path**: whether `pg_dump` over a direct connection gets your data out.
+1. **Where the frontend, the API and the database run**: in one project, or on separate hosts.
+2. **Who runs the database**, and which features, such as backups and pooling, are opt-in.
+3. **Previews per branch**, and whether a preview copies production data or starts with a new database.
+4. **Idle cost**: what a project costs when nobody uses it, and how long it takes to wake.
+5. **Same-region networking** between the app and the database.
+6. **Connection pooling**: included, opt-in or a separate endpoint.
+7. **Backups and point-in-time recovery**: how far back you can restore, and on which plans.
+8. **Postgres extensions**: check every extension your schema uses. Prisma Postgres [lists its supported extensions](https://www.prisma.io/docs/postgres/database/postgres-extensions), including `vector` (pgvector), `pg_search`, `pg_trgm`, `pgcrypto` and `pg_stat_statements`; PostGIS is not on that list.
+9. **Observability**: how you find slow queries. Prisma Postgres includes [Query Insights](https://www.prisma.io/docs/postgres/database/query-insights) at no extra cost: average latency and queries per second over time, queries grouped by statement shape and, for Prisma ORM, the SQL each call generates.
+10. **Pricing shape**: a plan fee, usage meters or both, and which meter your workload drives.
+11. **Exit path**: whether `pg_dump` over a direct connection gets your data out.
 
 :::note[How we compared]
-The [comparison table](#how-the-four-compare-with-neon) uses these ten criteria, in this order, and lists the vendors in alphabetical order. Every cell links to the vendor page it rests on; Prisma's figures come from the [pricing page](https://www.prisma.io/pricing) and the Compute and Prisma Postgres docs. We checked every vendor page on 2026-09-30, the "Who runs the database" row on 2026-10-07, the Railway and Neon facts and the extensions and observability rows on 2026-10-08, and Neon pricing on 2026-10-14. We make Prisma Compute and Prisma Postgres.
+The [comparison table](#how-the-four-compare-with-neon) uses the last ten of these criteria, in this order (the situation table and the entries cover the first), and lists the vendors in alphabetical order. Every cell links to the vendor page it rests on; Prisma's figures come from the [pricing page](https://www.prisma.io/pricing) and the Compute and Prisma Postgres docs. We checked every vendor page on 2026-09-30, the "Who runs the database" row on 2026-10-07, the Railway and Neon facts and the extensions and observability rows on 2026-10-08, Neon pricing on 2026-10-14 and Supabase Compute on 2026-10-16. We make Prisma Compute and Prisma Postgres.
 :::
 
 ## Neon alternatives that include app hosting
 
 1. **Prisma Postgres + Prisma Compute**
    - Best for: a TypeScript app and its managed Postgres database deployed from one GitHub repository in one project, with a preview per pushed branch once deploy on push is set up.
-   - What it does: [Prisma Postgres](https://www.prisma.io/docs/postgres) is managed Postgres, run by Prisma: PostgreSQL 17 with PgBouncer pooling included, reached by any Postgres client through a connection string. [Prisma Compute](https://www.prisma.io/docs/compute) runs TypeScript services (Node.js, Bun or Next.js) next to it in the same region, chosen from six, generally available since August 2026. With [Prisma Composer](https://www.prisma.io/docs/composer) you describe your whole app in TypeScript, each service and the database it depends on; `npx prisma dev module.ts` runs it on your laptop, and `npx prisma deploy module.ts` provisions the services on Prisma Compute and the database on Prisma Postgres.
+   - What it does: Neither product needs Prisma ORM; any Postgres client works. [Prisma Postgres](https://www.prisma.io/docs/postgres) is managed Postgres, run by Prisma: PostgreSQL 17 with PgBouncer pooling included, reached through a connection string. [Prisma Compute](https://www.prisma.io/docs/compute) runs TypeScript services (Node.js, Bun or Next.js) next to it in the same region, chosen from six, generally available since August 2026. With [Prisma Composer](https://www.prisma.io/docs/composer) you describe your whole app in TypeScript, each service and the database it depends on; `npx prisma dev module.ts` runs it on your laptop, and `npx prisma deploy module.ts` provisions the services on Prisma Compute and the database on Prisma Postgres.
    - Pricing: Free $0, no credit card, no usage billing: 1M Compute requests and 200,000 database operations a month, 50 databases. Starter $10 base plus metered compute: 5M requests and 1M operations included, 10 GB of storage, daily backups kept 7 days and a spend limit; memory, active vCPU and bandwidth metered from the first unit, then $1 per million requests and $8 per million operations beyond the included amounts. [Prisma pricing](https://www.prisma.io/pricing), as of October 2026.
-   - Trade-offs: no point-in-time recovery, no preview that copies production data, one region per service. We make Prisma Compute and Prisma Postgres; the entries are in alphabetical order, and we checked Neon, Railway, Render, Supabase and Vercel against their own docs on 2026-09-30.
+   - Trade-offs: no point-in-time recovery, no preview that copies production data, one region per service. We make Prisma Compute and Prisma Postgres, and we checked Neon, Railway, Render, Supabase and Vercel against their own docs on 2026-09-30.
    - Compare: [Prisma Postgres vs Neon pricing](/prisma-postgres-vs-neon-pricing-2026).
 
 2. **Railway**
@@ -150,12 +151,13 @@ It depends on whether your bill should follow queries or uptime. Neon bills CU-h
 - Neon: [pricing](https://neon.com/pricing), [introduction](https://neon.com/docs/introduction), [Functions overview](https://neon.com/docs/compute/functions/overview), [full-stack apps](https://neon.com/use-cases/full-stack-apps), [compute sizes](https://neon.com/docs/manage/computes), [extensions](https://neon.com/docs/extensions/pg-extensions), [monitoring](https://neon.com/docs/introduction/monitoring-page), [branching](https://neon.com/docs/introduction/branching), [Postgres version policy](https://neon.com/docs/postgresql/postgres-version-policy) and the [backend launch post](https://neon.com/blog/neon-backend-is-ga). Pricing checked 2026-10-14; Functions and compute sizes checked 2026-10-08.
 - Railway: [pricing](https://railway.com/pricing), [PostgreSQL guide](https://docs.railway.com/databases/postgresql), [what Railway manages](https://docs.railway.com/databases#what-railway-manages), [metrics](https://docs.railway.com/observability/metrics), [regions](https://docs.railway.com/reference/regions) and [backups](https://docs.railway.com/reference/backups). PostgreSQL guide and what Railway manages checked 2026-10-08.
 - Render: [free tier](https://render.com/docs/free), [Render Postgres](https://render.com/docs/postgresql), [Postgres backups](https://render.com/docs/postgresql-backups), [supported extensions](https://render.com/docs/postgresql-extensions), [service metrics](https://render.com/docs/service-metrics), [regions](https://render.com/docs/regions) and [preview environments](https://render.com/docs/preview-environments).
-- Supabase: [pricing](https://supabase.com/pricing), [database overview](https://supabase.com/docs/guides/database/overview), [backups](https://supabase.com/docs/guides/platform/backups), [extensions](https://supabase.com/docs/guides/database/extensions), [observability](https://supabase.com/docs/guides/observability), [Edge Functions](https://supabase.com/docs/guides/functions), [custom domains](https://supabase.com/docs/guides/platform/custom-domains) and [branching](https://supabase.com/docs/guides/deployment/branching).
+- Supabase: [pricing](https://supabase.com/pricing), [database overview](https://supabase.com/docs/guides/database/overview), [backups](https://supabase.com/docs/guides/platform/backups), [extensions](https://supabase.com/docs/guides/database/extensions), [observability](https://supabase.com/docs/guides/observability), [Edge Functions](https://supabase.com/docs/guides/functions), [custom domains](https://supabase.com/docs/guides/platform/custom-domains), [branching](https://supabase.com/docs/guides/deployment/branching) and [Compute](https://supabase.com/compute). Compute checked 2026-10-16.
 - Prisma Postgres: [extensions](https://www.prisma.io/docs/postgres/database/postgres-extensions), [Query Insights](https://www.prisma.io/docs/postgres/database/query-insights) and the Composer [porting guide](https://www.prisma.io/docs/composer/porting-an-app), checked 2026-10-08.
 - Vercel: [pricing](https://vercel.com/pricing) and [Marketplace storage](https://vercel.com/docs/marketplace-storage). Fly.io: [regions](https://docs.fly.io/reference/regions/).
 
 ## Update history
 
+- 2026-10-16: the quick recommendation now says what Supabase hosts and that Supabase Compute is a private alpha, the checklist starts with where the frontend, the API and the database run, the Prisma entry opens with the note that neither product needs Prisma ORM, and a duplicate sentence on entry order was removed.
 - 2026-10-14: added a first situation-table row for a frontend, API and Postgres in one project and an FAQ on whether Supabase hosts the app; the idle-cost row now says the Free plan has no usage billing, that on paid plans Prisma Postgres bills per operation on top of the plan fee and any storage beyond the included amount, which still bill while idle, and that Neon's paid plans bill compute by the CU-hour and still bill storage and restore history while compute is suspended.
 - 2026-10-08: moved Prisma's recovery and preview-data trade-off from the opening to the line under the situation table, rechecked the Railway and Neon entries against their docs, added a checklist of what to compare before leaving Neon with matching extensions and observability rows, put the comparison table's vendors in alphabetical order, and added the compared vendors to the page title.
 - 2026-10-07: added a "Who runs the database" row checked against each vendor's docs, called Prisma Postgres managed Postgres in the summary and the first entry, added an FAQ on using Prisma Postgres and Prisma Compute without Prisma ORM and dropped the Free plan storage figure.
