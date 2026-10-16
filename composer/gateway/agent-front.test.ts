@@ -40,7 +40,7 @@ test("Agent Front remains optional and observes child page requests exactly once
     const origins = Object.fromEntries(
       ["site", "docs", "blog", "handbook", "eclipse"].map((name) => [name, `http://${name}.test`]),
     );
-    const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}, []), {
+    const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
       origins,
       fetch: async () => new Response("page"),
       middleware: { site: middleware },

@@ -25,14 +25,6 @@ export function websiteBuild() {
         kind: "build" as const,
         async assemble(input: AssembleInput) {
           const bundle = await assemble(input);
-          if (input.address === "blog") {
-            // Only the assembled Composer copy is changed. Original public
-            // assets and Vercel standalone output remain intact.
-            await rm(path.join(bundle.dir, path.dirname(bundle.entry), "public"), {
-              recursive: true,
-              force: true,
-            });
-          }
           // Next traces server maps into standalone; docs alone emits hundreds
           // of MB of them. Build-time Sentry uploads still see the originals.
           await removeServerMaps(path.join(bundle.dir, "bundle"));

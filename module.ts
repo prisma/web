@@ -7,7 +7,6 @@ import handbook from "./composer/handbook.ts";
 import eclipse from "./composer/eclipse.ts";
 import { websiteInputs } from "./composer/website.ts";
 import { envSecret } from "@prisma/composer-prisma-cloud";
-import { blogMedia } from "./composer/media/services.ts";
 
 export default module("web", ({ provision }) => {
   provision(gateway, {
@@ -17,10 +16,6 @@ export default module("web", ({ provision }) => {
       blog: provision(blog, { input: websiteInputs.blog }).http,
       handbook: provision(handbook, { input: websiteInputs.handbook }).http,
       eclipse: provision(eclipse, { input: websiteInputs.eclipse }).http,
-      blogmedia0: provision(blogMedia[0], { input: {} }).http,
-      blogmedia1: provision(blogMedia[1], { input: {} }).http,
-      blogmedia2: provision(blogMedia[2], { input: {} }).http,
-      blogmedia3: provision(blogMedia[3], { input: {} }).http,
     },
     input: { proxyKey: envSecret("WEB_PROXY_KEY") },
   });

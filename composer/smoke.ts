@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { dev, type DevSession } from "@prisma/composer/control";
 import config from "../prisma.config.ts";
 import { setTimeout as delay } from "node:timers/promises";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, createReadStream } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { mediaPath, type MediaShard } from "./media/catalog.ts";
+import { fileURLToPath } from "node:url";
 
 let session: DevSession | undefined;
 let origin: string | undefined = process.argv[2];
@@ -19,7 +20,7 @@ if (!origin) {
       readFileSync(new URL(`../apps/${name}/vercel.json`, import.meta.url), "utf8"),
       `${name}: gateway must ship original Vercel config`,
     );
-  for (const name of ["site", "blog"])
+  for (const name of ["site"])
     assert.equal(
       readFileSync(new URL(`sites/${name}/routes-manifest.json`, gateway), "utf8"),
       readFileSync(new URL(`../apps/${name}/.next/routes-manifest.json`, import.meta.url), "utf8"),
@@ -84,33 +85,53 @@ try {
   assert.equal(markdown.status, 200);
   assert.match(markdown.headers.get("content-type") ?? "", /text\//);
   console.log("PASS docs Markdown");
-  const media: MediaShard[] = JSON.parse(
-    readFileSync(
-      new URL("../dist/composer/gateway/sites/blog/media.json", import.meta.url),
-      "utf8",
-    ),
+  // Exercise original public files served by Next, including the largest file.
+  // Select representatives from the checkout, without a runtime media catalog.
+  const publicDir = fileURLToPath(new URL("../apps/blog/public/", import.meta.url));
+  const files = await Promise.all(
+    (await readdir(publicDir, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile())
+      .map(async (entry) => {
+        const source = path.join(entry.parentPath, entry.name);
+        return { source, path: path.relative(publicDir, source), bytes: (await stat(source)).size };
+      }),
   );
-  for (const shard of media) {
-    const file = [...shard.files]
-      .filter((file) => file.bytes > 32)
-      .sort((a, b) => a.bytes - b.bytes)[0];
-    assert.ok(file, `${shard.name}: expected a public media file`);
-    const url = new URL(mediaPath(file.path), origin);
-    const response = await get(url);
-    assert.equal(response.status, 200, shard.name);
+  files.sort((a, b) => a.bytes - b.bytes || a.path.localeCompare(b.path));
+  const media = new Set(
+    [".svg", ".png", ".jpg", ".gif", ".webp", ".mp4"]
+      .map((ext) => files.find((file) => file.bytes > 32 && path.extname(file.path) === ext))
+      .filter((file) => file !== undefined),
+  );
+  assert.ok(files.length > 0, "expected original public blog files");
+  media.add(files.at(-1)!);
+  for (const file of media) {
+    const url = new URL(
+      `/blog/${file.path.split(path.sep).map(encodeURIComponent).join("/")}`,
+      origin,
+    );
+    const headers = { "accept-encoding": "identity" };
+    const response = await get(url, { headers });
+    assert.equal(response.status, 200, file.path);
     const bytes = Buffer.from(await response.arrayBuffer());
-    assert.equal(createHash("sha256").update(bytes).digest("hex"), file.sha256, shard.name);
-    assert.equal(response.headers.get("x-content-type-options"), "nosniff", shard.name);
-    assert.ok(response.headers.get("content-security-policy"), shard.name);
-    const partial = await get(url, { headers: { range: "bytes=0-15" } });
-    assert.equal(partial.status, 206, shard.name);
-    assert.deepEqual(Buffer.from(await partial.arrayBuffer()), bytes.subarray(0, 16), shard.name);
-    const head = await get(url, { method: "HEAD" });
-    assert.equal(head.status, 200, shard.name);
-    assert.equal(head.headers.get("content-length"), String(file.bytes), shard.name);
-    const cached = await get(url, { headers: { "if-none-match": response.headers.get("etag")! } });
-    assert.equal(cached.status, 304, shard.name);
-    console.log(`PASS ${shard.name} original media, headers, ranges, HEAD and cache validation`);
+    const hash = createHash("sha256");
+    for await (const chunk of createReadStream(file.source)) hash.update(chunk);
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), hash.digest("hex"), file.path);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff", file.path);
+    assert.ok(response.headers.get("content-security-policy"), file.path);
+    const partial = await get(url, { headers: { ...headers, range: "bytes=0-15" } });
+    assert.equal(partial.status, 206, file.path);
+    assert.deepEqual(Buffer.from(await partial.arrayBuffer()), bytes.subarray(0, 16), file.path);
+    const head = await get(url, { method: "HEAD", headers });
+    assert.equal(head.status, 200, file.path);
+    assert.equal(head.headers.get("content-length"), String(file.bytes), file.path);
+    const cached = await get(url, {
+      // Node fetch otherwise adds a forced-reload no-cache header when an ETag
+      // is supplied; Next correctly returns 200 for that request instead of 304.
+      cache: "no-cache",
+      headers: { ...headers, "if-none-match": response.headers.get("etag")! },
+    });
+    assert.equal(cached.status, 304, file.path);
+    console.log(`PASS ${file.path} original media, headers, ranges, HEAD and cache validation`);
   }
   for (const [source, destination] of [
     ["/accelerate", "/docs/accelerate"],
@@ -179,7 +200,7 @@ try {
     // The pinned SDK's isolated emulator records child PIDs here. These are the Bun
     // website processes, not the larger developer-side build/assembly process.
     const state: {
-      instances: Record<string, { labels: Record<string, string>; pid: number }>;
+      instances: Record<string, { labels: Record<string, string>; pid: number; status: string }>;
     } = JSON.parse(
       readFileSync(
         path.join(process.env.PRISMA_COMPOSER_EMULATORS_DIR!, "compute/instances.json"),
@@ -188,10 +209,11 @@ try {
     );
     const services = Object.values(state.instances).filter(
       (service) =>
+        service.status === "running" &&
         service.labels["composer.app"] === "web" &&
         service.labels["composer.directory"] === process.cwd(),
     );
-    assert.equal(services.length, 10, "expected all ten local service processes");
+    assert.equal(services.length, 6, "expected all six local service processes");
     for (const service of services) {
       const name = service.labels["composer.address"];
       const rss =

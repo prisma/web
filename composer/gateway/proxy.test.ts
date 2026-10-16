@@ -6,38 +6,26 @@ const origins = Object.fromEntries(
   ["site", "docs", "blog", "handbook", "eclipse"].map((name) => [name, `http://${name}.test`]),
 );
 const send: ProxyFetch = async (input) => new Response(String(input));
-test("blog media keeps its public path, parent headers and Next redirect precedence", async () => {
-  const media = [
-    {
-      name: "blogmedia0",
-      files: [
-        { path: "post/image name.svg", bytes: 12, sha256: "0".repeat(64), modified: 0 },
-        { path: "robots.txt", bytes: 12, sha256: "0".repeat(64), modified: 0 },
-      ],
-    },
-  ];
-  const sites = gatewaySites(new URL("../../apps/", import.meta.url), {}, media, {
-    headers: [
-      { source: "/blog/:path*", headers: [{ key: "x-content-type-options", value: "nosniff" }] },
-    ],
-    redirects: [{ source: "/blog/robots.txt", destination: "/blog/robots-origin.txt" }],
-  });
-  const proxy = createProxy(sites, {
-    origins: { ...origins, blogmedia0: "http://media.test" },
+test("blog media, unknown files and framework redirects stay with the blog server", async () => {
+  const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
+    origins,
     fetch: send,
   });
-  const image = await proxy(new Request("https://web.test/blog/post/image%20name.svg?ref=a&ref=b"));
-  assert.equal(await image.text(), "http://media.test/blog/post/image%20name.svg?ref=a&ref=b");
-  assert.equal(image.headers.get("x-content-type-options"), "nosniff");
-  for (const pathname of ["/blog/post", "/blog/post/unknown.svg", "/blog/robots.txt"]) {
+  for (const pathname of [
+    "/blog/post/image%20name.svg",
+    "/blog/post",
+    "/blog/post/unknown.svg",
+    "/blog/robots.txt",
+  ]) {
+    const url = `${pathname}?ref=a&ref=b`;
     assert.equal(
-      await (await proxy(new Request(`https://web.test${pathname}`))).text(),
-      `http://blog.test${pathname}`,
+      await (await proxy(new Request(`https://web.test${url}`))).text(),
+      `http://blog.test${url}`,
     );
   }
 });
 test("all five web projects and their asset aliases dispatch through the library", async () => {
-  const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}, []), {
+  const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
     origins,
     fetch: send,
   });
@@ -66,7 +54,7 @@ test("all five web projects and their asset aliases dispatch through the library
   );
 });
 test("actual Vercel config imports retain marketing destinations and repeated queries", async () => {
-  const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}, []), {
+  const proxy = createProxy(gatewaySites(new URL("../../apps/", import.meta.url), {}), {
     origins,
     fetch: send,
   });
@@ -82,22 +70,18 @@ test("actual Vercel config imports retain marketing destinations and repeated qu
   }
 });
 test("site Next rules and hostname rewrites preempt child configs, retaining the Next response", async () => {
-  const sites = gatewaySites(
-    new URL("../../apps/", import.meta.url),
-    {
-      redirects: [{ source: "/docs/showcase", destination: "/framework-owned" }],
-      rewrites: {
-        beforeFiles: [
-          {
-            source: "/:path*",
-            destination: "https://accelerate-speed-test.vercel.app/:path*",
-            has: [{ type: "host", value: "accelerate-speed-test.prisma.io" }],
-          },
-        ],
-      },
+  const sites = gatewaySites(new URL("../../apps/", import.meta.url), {
+    redirects: [{ source: "/docs/showcase", destination: "/framework-owned" }],
+    rewrites: {
+      beforeFiles: [
+        {
+          source: "/:path*",
+          destination: "https://accelerate-speed-test.vercel.app/:path*",
+          has: [{ type: "host", value: "accelerate-speed-test.prisma.io" }],
+        },
+      ],
     },
-    [],
-  );
+  });
   const proxy = createProxy(sites, {
     origins,
     fetch: async (url, init) => {

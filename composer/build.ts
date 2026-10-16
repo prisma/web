@@ -1,11 +1,9 @@
 import "./env.ts";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
-import { websiteBuild, gatewayBuild } from "./website-build.ts";
+import { copyFile, mkdir, rm } from "node:fs/promises";
+import { websiteBuild } from "./website-build.ts";
 import { checkBudget } from "./budget.ts";
-import { buildBlogMedia } from "./media/build.ts";
-import { blogMedia } from "./media/services.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const names = ["site", "docs", "blog", "handbook", "eclipse"];
@@ -26,7 +24,6 @@ run("pnpm", [
   "--concurrency=1",
   ...names.map((name) => `--filter=${name}`),
 ]);
-const media = await buildBlogMedia();
 const gateway = new URL("../dist/composer/gateway/", import.meta.url);
 await rm(gateway, { recursive: true, force: true });
 await mkdir(gateway, { recursive: true });
@@ -49,12 +46,6 @@ await copyFile(
   new URL("../apps/site/.next/routes-manifest.json", import.meta.url),
   new URL("sites/site/routes-manifest.json", gateway),
 );
-await mkdir(new URL("sites/blog/", gateway), { recursive: true });
-await copyFile(
-  new URL("../apps/blog/.next/routes-manifest.json", import.meta.url),
-  new URL("sites/blog/routes-manifest.json", gateway),
-);
-await writeFile(new URL("sites/blog/media.json", gateway), JSON.stringify(media));
 await checkBudget(fileURLToPath(gateway), "gateway");
 
 // Measure the real assembler's output, including repaired pnpm dependencies
@@ -62,11 +53,4 @@ await checkBudget(fileURLToPath(gateway), "gateway");
 for (const name of names) {
   const { default: service } = await import(`./${name}.ts`);
   await websiteBuild().nodes.nextjs.assemble({ cwd: root, address: name, build: service.build });
-}
-for (const service of blogMedia) {
-  await gatewayBuild().nodes.node.assemble({
-    cwd: root,
-    address: service.name,
-    build: service.build,
-  });
 }

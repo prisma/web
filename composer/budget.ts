@@ -6,9 +6,10 @@ import { spawn } from "node:child_process";
 // Compute's 1 GB filesystem limit. Public assets are counted, never bundled
 // into a JavaScript string or loaded into memory by the gateway.
 export const artifactLimit = 900_000_000;
-// Alchemy's upload guard is 256 MiB. Reserve space for the target's bootstrap
+// Alchemy's upload guard is 768 MiB with the tracked upstream #2257 patch.
+// Reserve space for the target's bootstrap
 // and for small differences between tar encoders, separately from expanded size.
-export const uploadLimit = 240_000_000;
+export const uploadLimit = 750_000_000;
 
 export async function checkUploadBudget(directory: string, name: string, limit = uploadLimit) {
   const bytes = await new Promise<number>((resolve, reject) => {

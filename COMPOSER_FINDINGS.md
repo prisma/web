@@ -824,3 +824,70 @@ The default `pnpm composer:smoke` also passed its complete SDK-owned startup,
 HTTP checks, memory sampling and cleanup. Docs was the largest sampled process
 at 425.5 MB RSS; the gateway sampled 139.2 MB. All ten service processes stopped
 successfully afterwards. These local samples are not a concurrency load test.
+
+
+## 768 MiB upload limit and blog consolidation — 16 October 2026
+
+[Alchemy PR #2257](https://github.com/alchemy-run/alchemy/pull/2257) merged on
+14 October as `891c46f23e9403a8d21cce164938d2fac492a8a0`. It raises the
+compressed deployment upload ceiling from 256 MiB to **768 MiB / 805,306,368
+bytes**, along with the generic archive, staging and website total bounds.
+Uploads now have a fifteen-minute timeout; the generic 128 MiB per-file and
+50,000-entry limits are unchanged.
+
+Composer `0.30.0-dev.9` resolves Alchemy `2.0.0-beta.83`, published on
+12 October, which still contains the old limits. The official PR preview at
+`pkg.alchemy.run/alchemy/pr:2257:fb131d1` expires on 21 October after the PR
+closed. Depending on it would make later clean CI installs fail. Instead,
+`patches/alchemy@2.0.0-beta.83.patch` carries the exact five-file upstream
+behavior change, plus corresponding compiled JavaScript and declaration
+comments. Both exports matter: Bun selects `src/*.ts`, while Node selects
+`lib/*.js`. Regression checks resolve the provider from Composer's own package
+under both runtimes and confirm its active cap. The lockfile records the patch
+hash; a frozen install passes. See `patches/README.md` for removal instructions.
+
+The whole blog now measures **848.0 MB expanded / 685.1 MB compressed**, including
+all 1,470 original public files. It satisfies the unchanged 900 MB expanded
+budget and a new 750 MB compressed budget, leaving about 52 MB and 65 MB of
+headroom respectively. Source media totals 682,419,712 bytes (650.8 MiB); its
+largest file is 43,470,561 bytes. No media or website content is modified.
+
+This works with the current Composer packaging path: its own tar/gzip writer
+passes an artifact file to Alchemy's `Deployment` uploader. It does not call
+Alchemy's generic `createComputeArchive()`, whose expanded ceiling is also
+768 MiB and would reject the full blog. Keep expanded and compressed limits
+separate; revalidate this distinction if the Composer packager changes.
+
+The module now has **six services, five HTTP connections and ten ports**:
+Internet → gateway → five websites. All media stays with the blog's Next server.
+The four shard services, partitioner, file catalog, static server and gateway
+media interception are removed. The gateway no longer ships a blog manifest
+or media catalog; Next handles its own redirects and headers directly. The
+smoke selects original files from the checkout, covers representative formats
+and the largest file, and verifies hashes, byte ranges, HEAD, ETags and headers.
+The memory check counts only running services belonging to this checkout,
+allowing old stopped emulator instances to remain as local state.
+
+Local validation passed: all five website builds and assembled size guards,
+37 proxy tests, 18 Composer checks (including both provider runtime exports),
+declaration types, formatting, lint and frozen installation. The complete
+six-service smoke passed pages, assets, current/legacy docs, redirects,
+Markdown and all selected original media, including the largest 43.5 MB GIF.
+Blog RSS sampled 242.0 MB after those requests; docs was the largest process at
+417.9 MB. All service processes stopped afterwards. The matching GitHub
+preview deploy and upload result are linked from PR #8458.
+
+The old custom media server returned 304 even when Node fetch implicitly added
+`Cache-Control: no-cache` to a conditional request. Next honors that forced
+reload and returns 200. The smoke now explicitly selects fetch's `no-cache`
+revalidation mode, which sends `max-age=0`, and confirms a genuine 304. This
+changes the test request, preserving the framework's existing cache behavior.
+
+**Compute/Composer improvements:** publish compatible, durable development
+artifacts for merged fixes; a seven-day PR download is unsuitable for a
+long-lived deployment branch. Expose compressed and expanded artifact limits as
+separate capabilities rather than requiring consumers to infer them from the
+packaging path. Composer's current tar/gzip writer also holds the source files,
+tar and compressed buffers in memory; stream packaging and hashing to disk to
+reduce CI memory as artifact sizes approach these larger limits. Build-machine
+memory is separate from the service's 1 GB runtime allowance.

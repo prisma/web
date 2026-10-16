@@ -1,8 +1,8 @@
 # Prisma Web on Composer
 
 One Composer application runs all five websites as separate Compute services,
-with a sixth service providing their shared HTTP entrypoint and four small
-static services hosting blog media. This is an
+with a sixth service providing their shared HTTP entrypoint. Blog media
+stays in the blog's original public directory. This is an
 additional deployment path: the existing Vercel configs, app build commands,
 and deployment workflows are retained.
 
@@ -14,7 +14,6 @@ flowchart LR
   gateway -->|"/blog and /blog-static"| blog[Blog]
   gateway -->|"/handbook and /handbook-static"| handbook[Handbook]
   gateway -->|"/eclipse and /eclipse-static"| eclipse[Eclipse]
-  gateway -->|"Existing blog public media URLs"| media[Blog media x 4]
 ```
 
 ## Local development
@@ -66,46 +65,46 @@ files and packaging overhead. The check counts the native Next.js assembler's
 output, including public assets and repaired pnpm dependencies, and also runs
 during `dev` and `deploy` assembly.
 
-Local measurements on 2026-10-16 with all ten services in the `web` module:
+Local measurements on 2026-10-16 with all six services in the `web` module:
 
 | Service | Assembled files, MB | Compressed estimate, MB | RSS after smoke, MB |
 | --- | ---: | ---: | ---: |
-| Site | 265.9 | 153.3 | 135.6 |
-| Docs | 426.1 | 227.8 | 425.5 |
-| Blog | 165.6 | 38.1 | 208.7 |
-| Handbook | 45.0 | 15.1 | 105.4 |
-| Eclipse | 82.6 | 18.9 | 130.9 |
-| Gateway | 1.7 | 0.4 | 139.2 |
-| Blog media 0 | 171.3 | 161.4 | 87.4 |
-| Blog media 1 | 171.3 | 161.2 | 87.6 |
-| Blog media 2 | 171.3 | 162.3 | 95.4 |
-| Blog media 3 | 171.3 | 163.0 | 94.1 |
+| Site | 265.9 | 153.2 | 132.6 |
+| Docs | 426.1 | 227.8 | 417.9 |
+| Blog | 848.0 | 685.1 | 242.0 |
+| Handbook | 45.0 | 15.1 | 103.6 |
+| Eclipse | 82.6 | 18.9 | 129.4 |
+| Gateway | 1.3 | 0.3 | 141.4 |
 
 The smoke runner also checks each Bun process against a 900 MB RSS budget after
 loading website pages and current/legacy docs articles. These macOS samples are
 not a sustained-load or production-concurrency guarantee.
 
-Blog public media accounts for approximately 653 MiB on disk. The gateway streams
-bodies rather than buffering media. A compressed archive fitting the expanded
-filesystem budget alone is insufficient. Artifacts must satisfy both compressed
-upload and expanded filesystem limits.
+Alchemy's deployment uploader has a **768 MiB (805,306,368 byte)** ceiling with
+[upstream PR #2257](https://github.com/alchemy-run/alchemy/pull/2257). Its npm
+release still has the old 256 MiB cap, so a tracked pnpm patch backports that
+change to `alchemy@2.0.0-beta.83`. Both Node's compiled entry and Bun's source
+entry are patched; upload timeouts increase from five to fifteen minutes.
+See [patch provenance and removal instructions](patches/README.md). The upstream
+preview download expires, so it is not a deployment dependency.
 
-There is a separate **256 MiB upload guard** in the deployed Alchemy provider.
-Composer checks compressed archives against a conservative **240,000,000 byte**
-budget as well. The blog's original media made its archive exceed that guard,
-even though the expanded service fit under 1 GB. The build now partitions the
-original public files deterministically across four services with at most
-200,000,000 bytes of media each, and removes media only from the assembled
-Composer blog artifact. Source files and Vercel build output are preserved.
+Compressed archives are checked against **750,000,000 bytes** to reserve room
+for bootstrap files and tar encoder differences. The separate expanded budget
+remains **900,000,000 bytes** under Compute's 1 GB filesystem limit. Both checks
+run during build, local dev and cloud assembly.
 
-The gateway constructs exact media routes from a file catalog at boot, retaining
-the original public URLs. Blog pages and unknown files still go to Next; its
-redirects keep precedence, and the static services retain the original blog
-response headers, streaming, byte ranges, HEAD, ETags and cache validation.
-The catalog records paths, sizes and hashes, rather than compiled routing rules.
-The existing blog config already disables image optimization. Before adding
-enough media to exceed the four shard budgets, add another static service or
-move media to object storage with a compatible public delivery path.
+The blog now includes all 1,470 original public files (650.8 MiB of content)
+in its own Next.js service. There are no media shard services or runtime media
+catalog. Next handles their existing URLs, redirects, headers, streaming, byte
+ranges, HEAD, ETags and cache validation. The smoke covers representative file
+types and the largest file, comparing original bytes by hash.
+
+Alchemy's generic `createComputeArchive()` helper also caps *expanded* input at
+768 MiB. Composer uses its own packager and passes the compressed file to
+Alchemy's `Deployment` uploader, so that helper is not on this application's
+path. The complete blog can therefore exceed 768 MiB expanded while satisfying
+Compute's 1 GB limit and the uploader's compressed cap. If media growth exceeds
+either repository budget, move it to object storage or split services again.
 
 `COMPOSER_BUILD=1` enables standalone output with the monorepo tracing root.
 In that mode, docs and blog use lazy MDX collections and omit the article
@@ -125,10 +124,10 @@ a Vercel-mode build locally, then rebuild Composer before starting it again.
 ## Routing and configuration
 
 `module.ts` names the application `web`, matching the existing Console project,
-and connects the gateway to the five websites and four media services through
+and connects the gateway to the five websites through
 declared HTTP ports. Each upstream exposes `rawHttpContract`; the gateway declares
-nine `rawHttp()` dependencies and reads their resolved URLs through `service.load()`.
-The topology therefore contains nine communication connections and Console infers
+five `rawHttp()` dependencies and reads their resolved URLs through `service.load()`.
+The topology therefore contains five communication connections and Console infers
 only `gateway` as the Internet entrypoint. This describes the intended traffic
 flow; service URLs remain directly reachable.
 
@@ -156,8 +155,7 @@ Vercel dashboard domain redirects, firewall rules, and CDN settings are outside
 the repository; they must be audited separately before moving production traffic.
 The gateway uses the vendored Apache-2.0 [`@prisma/proxy`](packages/proxy/README.md)
 library. The build copies the original Vercel configs and site Next manifest
-alongside the server, together with the original blog Next manifest and media
-file catalog. The small runtime entrypoint points the library at those
+alongside the server. The small runtime entrypoint points the library at those
 files, compiles the routing tables in memory once at boot, and binds upstreams
 from Composer HTTP dependencies. There is no generated routing-plan artifact. Restart after
 changing config files; requests reuse the startup snapshot. The library's provider adapter contract also
@@ -181,7 +179,7 @@ public host and scheme for Next's hostname rules, redirects and server actions.
 The website bootstrap restores those fields before Next handles the request,
 then removes the private markers from both header representations. Forged or
 malformed markers do not change the host. The proxy sends this credential only
-to the five named website services, never to media services or external rewrites.
+to the five named website services, never to other origins or external rewrites.
 
 Pages and assets need no user-supplied credentials. Optional external integrations are bound
 only when selected with `COMPOSER_INTEGRATIONS`, a comma-separated list:
@@ -215,8 +213,9 @@ runtime secret binding cannot rewrite browser bundles or prerendered metadata.
 
 The branch preview is live at
 [the shared gateway](https://dwgv6bi6aljw05msqzcpvtgg.ewr.prisma.build).
-The [verified GitHub run](https://github.com/prisma/web/actions/runs/38441243472)
-deployed all ten services and passed the complete remote smoke.
+Current build, deployment and smoke evidence is linked in
+[PR #8458](https://github.com/prisma/web/pull/8458); the findings guide records
+the measurements and the earlier ten-service deployment history.
 
 The repository is already connected to the Prisma project **web**. Keep that
 connection; the root module's name must match the project name.

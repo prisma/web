@@ -12,10 +12,6 @@ export default compute({
     blog: rawHttp(),
     handbook: rawHttp(),
     eclipse: rawHttp(),
-    blogmedia0: rawHttp(),
-    blogmedia1: rawHttp(),
-    blogmedia2: rawHttp(),
-    blogmedia3: rawHttp(),
   },
   input: type({
     proxyKey: secretString(),

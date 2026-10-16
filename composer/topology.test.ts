@@ -3,21 +3,11 @@ import { test } from "node:test";
 import { Load } from "@prisma/composer";
 import app from "../module.ts";
 
-test("the actual web module declares all nine HTTP upstream connections", () => {
+test("the actual web module declares all five website HTTP connections", () => {
   const graph = Load(app);
-  const upstreams = [
-    "site",
-    "docs",
-    "blog",
-    "handbook",
-    "eclipse",
-    "blogmedia0",
-    "blogmedia1",
-    "blogmedia2",
-    "blogmedia3",
-  ];
+  const upstreams = ["site", "docs", "blog", "handbook", "eclipse"];
   const services = graph.nodes.filter(({ node }) => node.kind === "service");
-  assert.equal(services.length, 10);
+  assert.equal(services.length, upstreams.length + 1);
   assert.equal(graph.authoredEdges.length, upstreams.length);
   assert.equal(graph.ports.length, upstreams.length * 2);
 
