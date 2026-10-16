@@ -54,6 +54,7 @@ export const siteConfig = {
     ],
     resources: [
       { label: "Docs", href: "/docs" },
+      { label: "Postgres guides", href: "/postgres/guides" },
       { label: "Apps", href: "/apps" },
       { label: "Compare", href: "/compare" },
       { label: "Extensions", href: "/extensions" },

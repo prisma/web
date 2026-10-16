@@ -173,7 +173,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Can I manage my databases from Claude Code, Cursor or Codex?",
       answer:
-        "Yes, through Prisma's [hosted MCP server](/docs/ai/tools/mcp-server) at https://mcp.prisma.io/mcp, which you connect with your Prisma sign-in. In Claude Code, run `claude mcp add --transport http prisma https://mcp.prisma.io/mcp`. Cursor adds it from its MCP settings or a one-click link, and Codex through the Prisma plugin. An agent can then create databases, inspect the schema, run SQL, apply schema changes and, on paid plans, restore a backup into a new database. For scripts, there is also a REST API that uses a workspace service token.",
+        "Yes, through Prisma's [hosted MCP server](/docs/ai/tools/mcp-server) at https://mcp.prisma.io/mcp, which you connect with your Prisma sign-in. In Claude Code, run `claude mcp add --transport http prisma https://mcp.prisma.io/mcp`. Cursor adds it from its MCP settings or a one-click link, and Codex through the Prisma plugin. An agent can then create databases, inspect the schema, run SQL, apply schema changes and, on paid plans, restore a backup into a new database. For scripts, there is also a REST API that uses a workspace service token. To keep test writes away from customer data, see [hosting a TypeScript test app with a separate database](/postgres/typescript-test-environment).",
     },
     {
       question: "Where do I find my connection string?",

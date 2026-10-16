@@ -1,6 +1,7 @@
 import { getMarkdownUrlPath } from "@/lib/agent-markdown";
 import { markdownPageList, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { getBaseUrl } from "@/lib/url";
+import { getAnswerEntries, renderAnswerMarkdown } from "@/lib/answer-page-content";
 
 type LlmsPage = {
   path: string;
@@ -17,6 +18,12 @@ type LlmsPage = {
  * (/changelog.md, built by app/changelog.md/route.ts from the release notes).
  */
 const additionalPages: LlmsPage[] = [
+  {
+    path: "/postgres/guides",
+    title: "Prisma Postgres guides",
+    description:
+      "Practical answers to choosing, hosting and running Postgres for your TypeScript app.",
+  },
   {
     path: "/compare",
     title: "Prisma comparisons",
@@ -47,11 +54,19 @@ const additionalPages: LlmsPage[] = [
   },
 ];
 
+/** Resolve a root-relative page path against the requested website origin. */
 function toAbsoluteUrl(baseUrl: string, path: string) {
   return new URL(path, baseUrl).toString();
 }
 
+/** Build the website's llms index, including every guide and its Markdown URL. */
 export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
+  const answersList = getAnswerEntries()
+    .map(
+      (page) =>
+        `- [${page.data.title}](${toAbsoluteUrl(baseUrl, page.url)}): ${page.data.description} [Markdown](${toAbsoluteUrl(baseUrl, `${page.url}.md`)})`,
+    )
+    .join("\n");
   // Each rendition-backed page advertises its .md URL next to the HTML one, so
   // an agent reading llms.txt does not have to guess the suffix or make a
   // second request to discover it.
@@ -76,11 +91,15 @@ Prisma provides Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and 
 
 > Prisma changes frequently. Before implementing Prisma features, check the changelog at ${toAbsoluteUrl(baseUrl, "/changelog")} for recent breaking changes or API updates.
 
-> Every page below marked [Markdown] has a Markdown rendition at its \`.md\` URL, served as \`text/plain\` so every assistant's URL fetcher accepts it, and at its normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages have renditions too: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.
+> Every page below marked [Markdown] has a Markdown rendition at its \`.md\` URL, served as \`text/plain\` so every assistant's URL fetcher accepts it. Key Pages also serve Markdown at their normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages have renditions too: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.
 
 ## Key Pages
 
 ${pagesList}
+
+## Postgres guides
+
+${answersList}
 
 ## Other Pages
 
@@ -93,7 +112,14 @@ ${otherList}
 `;
 }
 
+/** Combine marketing-page and guide renditions into the full website Markdown export. */
 export function buildLlmsFullContent(baseUrl = getBaseUrl()) {
+  const answerSections = getAnswerEntries()
+    .map(
+      (page) =>
+        `URL: ${toAbsoluteUrl(baseUrl, page.url)}\nMarkdown: ${toAbsoluteUrl(baseUrl, `${page.url}.md`)}\n\n${renderAnswerMarkdown(page)}`,
+    )
+    .join("\n\n---\n\n");
   // Each section is the metadata header this file has always carried, followed
   // by the same Markdown the page's .md URL serves — not the hand-written
   // title-and-description summary it used to be, so llms-full.txt can no
@@ -119,7 +145,11 @@ export function buildLlmsFullContent(baseUrl = getBaseUrl()) {
 
   // Flat index of every page on this file, kept for agents that only want the
   // URL list.
-  const keyPageIndex = [...markdownPageList, ...additionalPages]
+  const keyPageIndex = [
+    ...markdownPageList,
+    ...additionalPages,
+    ...getAnswerEntries().map((page) => ({ title: page.data.title, path: page.url })),
+  ]
     .map((page) => `- ${page.title}: ${toAbsoluteUrl(baseUrl, page.path)}`)
     .join("\n");
 
@@ -142,6 +172,10 @@ IMPORTANT: Prisma changes frequently. Before implementing any Prisma feature, fe
 ---
 
 ${pageSections}
+
+---
+
+${answerSections}
 
 ---
 
