@@ -14,7 +14,7 @@ import { renderComparisonContent } from "./comparison-content";
 function plainMarkdown(text: string): string {
   return text
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/\\([\\`*_{}[\]<>|])/g, "$1")
+    .replace(/\\([\\`*_{}[\]<>|#+.()-])/g, "$1")
     .replace(/[`*]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -106,4 +106,33 @@ test("a table without rows does not interrupt the comparison rendition", () => {
 test("comparison text escapes literal backslashes together with pipes", () => {
   const markdown = renderComparisonContent(<p>{String.raw`left\|right`}</p>, "/compare/convex");
   assert.equal(markdown, String.raw`left\\\|right`);
+});
+
+test("literal block markers stay prose while semantic headings and lists keep their syntax", () => {
+  for (const [text, expected] of [
+    ["# Literal heading", String.raw`\# Literal heading`],
+    ["- Literal bullet", String.raw`\- Literal bullet`],
+    ["+ Literal bullet", String.raw`\+ Literal bullet`],
+    ["1. Literal step", String.raw`1\. Literal step`],
+    ["2) Literal step", String.raw`2\) Literal step`],
+    ["Prose.\n  - Literal bullet", "Prose.\n  \\- Literal bullet"],
+    ["Node.js with type-safe SQL and C++.", "Node.js with type-safe SQL and C++."],
+  ]) {
+    assert.equal(renderComparisonContent(<p>{text}</p>, "/compare/convex"), expected);
+  }
+
+  assert.equal(
+    renderComparisonContent(
+      <>
+        <h2>Heading</h2>
+        <ul>
+          <li>
+            <span>-</span> Literal bullet
+          </li>
+        </ul>
+      </>,
+      "/compare/convex",
+    ),
+    "## Heading\n\n- \\- Literal bullet",
+  );
 });
