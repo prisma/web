@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Marker } from "@/components/brand/marker";
 import {
   AppWindow,
@@ -48,7 +49,15 @@ const HALO =
 // comparison table.
 const YES = "yes";
 
-type Row = { label: string; values: [string, string, string, string] };
+type CellLink = { token: string; href: string };
+type Row = {
+  label: string;
+  values: [string, string, string, string];
+  /** Optional per-column list of inline link spans. Keyed by column index
+      (0-3), each entry splices a next/link in for the first match of each
+      token inside the plain cell string. */
+  cellLinks?: Partial<Record<0 | 1 | 2 | 3, CellLink[]>>;
+};
 
 type Group = {
   label: string;
@@ -87,7 +96,7 @@ const GROUPS: Group[] = [
       },
       {
         label: "Storage included",
-        values: ["1.01 GB", "10 GB", "50 GB", "100 GB"],
+        values: ["2 GB", "10 GB", "50 GB", "100 GB"],
       },
       {
         label: "Storage overage",
@@ -259,6 +268,12 @@ const GROUPS: Group[] = [
       {
         label: "Compliance",
         values: ["GDPR", "GDPR", "GDPR", "GDPR, HIPAA, SOC 2, ISO 27001"],
+        // Business-column HIPAA deep-links to /postgres/hipaa; the Cell
+        // renderer swaps the plain string for a mix of text and a next/link
+        // for the HIPAA token (the only cell on this page that opts in).
+        cellLinks: {
+          3: [{ token: "HIPAA", href: "/postgres/hipaa" }],
+        },
       },
       { label: "Prisma ORM", values: ["Free", "Free", "Free", "Free"] },
     ],
@@ -269,7 +284,15 @@ const PLAN_NAMES = ["Free", "Starter", "Pro", "Business"];
 // Starter carries "Most popular" on the cards, so it reads as the lit column here too.
 const HIGHLIGHT = 1;
 
-function Cell({ value, highlight }: { value: string; highlight: boolean }) {
+function Cell({
+  value,
+  highlight,
+  links,
+}: {
+  value: string;
+  highlight: boolean;
+  links?: CellLink[];
+}) {
   if (value === YES) {
     return <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />;
   }
@@ -284,9 +307,35 @@ function Cell({ value, highlight }: { value: string; highlight: boolean }) {
             : "text-foreground",
       )}
     >
-      {value}
+      {links && links.length > 0 ? renderCellWithLinks(value, links) : value}
     </span>
   );
+}
+
+// Splice next/link spans into a plain cell string for the first occurrence of
+// each token, in token order. The pricing cells are static strings and only
+// the Business Compliance cell opts in today, so a left-to-right pass is
+// enough.
+function renderCellWithLinks(value: string, links: CellLink[]) {
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+  links.forEach(({ token, href }, i) => {
+    const index = value.indexOf(token, cursor);
+    if (index === -1) return;
+    if (index > cursor) nodes.push(value.slice(cursor, index));
+    nodes.push(
+      <Link
+        key={`${href}-${i}`}
+        href={href}
+        className="underline-offset-4 hover:underline"
+      >
+        {token}
+      </Link>,
+    );
+    cursor = index + token.length;
+  });
+  if (cursor < value.length) nodes.push(value.slice(cursor));
+  return <>{nodes}</>;
 }
 
 // One row of the mobile feature-first pivot — uniform rows collapse to a
@@ -301,7 +350,7 @@ function MobileRow({ row }: { row: Row }) {
         <div className="flex items-start justify-between gap-4">
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="shrink-0 text-right">
-            <Cell value={row.values[0]} highlight />
+            <Cell value={row.values[0]} highlight links={row.cellLinks?.[0]} />
           </dd>
         </div>
       ) : (
@@ -322,7 +371,11 @@ function MobileRow({ row }: { row: Row }) {
                   {PLAN_NAMES[i]}
                 </p>
                 <div className="mt-1">
-                  <Cell value={v} highlight={i === HIGHLIGHT} />
+                  <Cell
+                    value={v}
+                    highlight={i === HIGHLIGHT}
+                    links={row.cellLinks?.[i as 0 | 1 | 2 | 3]}
+                  />
                 </div>
               </div>
             ))}
@@ -345,7 +398,11 @@ function DesktopRow({ row }: { row: Row }) {
       </th>
       {row.values.map((v, i) => (
         <td key={i} className="px-5 py-3.5 align-top">
-          <Cell value={v} highlight={i === HIGHLIGHT} />
+          <Cell
+            value={v}
+            highlight={i === HIGHLIGHT}
+            links={row.cellLinks?.[i as 0 | 1 | 2 | 3]}
+          />
         </td>
       ))}
     </tr>

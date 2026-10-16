@@ -120,8 +120,11 @@ export const postgresContent: ProductPageContent = {
         // 2026-10-08: compliance claims rewritten to match pricing and the
         // page's own FAQ, which pin each certification to the plan it starts
         // from. Daily backups are paid-plan only (Free has none).
+        // 2026-10-14: HIPAA (with signed BAA) moved to Business only; the
+        // deep link points at /postgres/hipaa, which the card renders through
+        // `renderInlineMarkup` (see product-features.tsx).
         description:
-          "Daily backups on paid plans, encryption at rest and in transit, full tenant isolation. GDPR on every plan, HIPAA from Pro, SOC 2 Type II and ISO 27001 on Business.",
+          "Daily backups on paid plans, encryption at rest and in transit, full tenant isolation. GDPR on every plan. [HIPAA](/postgres/hipaa), SOC 2 Type II and ISO 27001 on Business.",
         illustration: "compliance",
       },
       {
@@ -195,7 +198,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Is Prisma Postgres HIPAA compliant?",
       answer:
-        "Yes, from the Pro plan up. HIPAA is available on Pro ($49 a month) and Business ($129 a month), so you can run workloads with protected health information on either; it is not available on Free or Starter. Business adds SOC 2 Type II and ISO 27001, and GDPR applies on every plan, including Free. Audit reports and control details are in the [Prisma Trust Center](https://trust.prisma.io).",
+        "Yes, on the Business plan at $129 a month, with a signed Business Associate Agreement (BAA). HIPAA is not available on the Free, Starter or Pro plans. For comparison, Supabase only offers HIPAA from its Team plan at $599 a month, plus a paid HIPAA add-on. Business also includes SOC 2 Type II and ISO 27001, and GDPR applies on every plan, including Free. See [HIPAA on the Business plan](/postgres/hipaa) for the BAA and scope. Audit reports and control details are in the [Prisma Trust Center](https://trust.prisma.io).",
     },
   ],
   cta: {

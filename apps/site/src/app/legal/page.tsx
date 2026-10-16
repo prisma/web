@@ -9,9 +9,9 @@ import { termsEffectiveDate } from "@/lib/legal/terms";
 
 // A flat index of Prisma's legal and compliance documents, modeled on
 // vercel.com/legal: left-rail heading, right-rail list of document rows,
-// hairline dividers, no fills, no scroll-reveal, no section groupings. The
-// hub is noindex while review approves copy and layout; the underlying
-// document pages stay indexed on their own.
+// hairline dividers, no fills, no scroll-reveal, no section groupings.
+// Indexable now that every linked document is live (the BAA and DPA
+// shipped in #8469, the hub matched them in #8471).
 
 // Same label and order as vercel.com/legal ("Last Updated April 21, 2026"):
 // the words "Last Updated", then Month D, YYYY. No ordinals, no month-only
@@ -63,15 +63,12 @@ const PAGE_TITLE = "Legal documents and policies";
 const PAGE_DESCRIPTION =
   "Prisma's legal and compliance documents in one place: Terms of Service, Privacy Policy, Data Processing Agreement, Service Level Agreement, Security and Compliance, and the HIPAA Business Associate Agreement.";
 
-export const metadata = {
-  ...createPageMetadata({
-    title: PAGE_TITLE,
-    description: PAGE_DESCRIPTION,
-    path: PAGE_PATH,
-    ogKicker: "Legal",
-  }),
-  robots: { index: false, follow: false },
-};
+export const metadata = createPageMetadata({
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  path: PAGE_PATH,
+  ogKicker: "Legal",
+});
 
 type Document = {
   title: string;
@@ -154,9 +151,9 @@ function DocumentRow({ document: doc }: { document: Document }) {
   );
 }
 
-// WebPage + BreadcrumbList + ItemList JSON-LD so search engines can read the
-// hub structure even while it's noindex (noindex blocks indexing, not
-// crawling of the structured data by other agents).
+// WebPage + BreadcrumbList + ItemList JSON-LD so search engines can read
+// the hub structure: Home -> Legal -> each document, with the hub itself
+// isPartOf the existing WebSite entity and about the Organization.
 function buildStructuredData() {
   const baseUrl = getBaseUrl();
   const absolute = (path: string) =>

@@ -27,7 +27,7 @@ export const PLANS: Plan[] = [
     base: 0,
     opsIncluded: 200_000,
     opsOveragePer1K: null,
-    storageIncludedGB: 1.01,
+    storageIncludedGB: 2,
     storagePerGB: null,
   },
   {
