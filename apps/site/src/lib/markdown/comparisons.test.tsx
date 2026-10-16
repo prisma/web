@@ -102,3 +102,8 @@ test("comparison Markdown preserves literal code and escapes table pipes", () =>
 test("a table without rows does not interrupt the comparison rendition", () => {
   assert.equal(renderComparisonContent(<table />, "/compare/convex"), "");
 });
+
+test("comparison text escapes literal backslashes together with pipes", () => {
+  const markdown = renderComparisonContent(<p>{String.raw`left\|right`}</p>, "/compare/convex");
+  assert.equal(markdown, String.raw`left\\\|right`);
+});

@@ -9,7 +9,7 @@ type ContentProps = { children?: ReactNode; href?: string; [key: string]: unknow
 
 /** Escape literal prose while preserving Markdown syntax added by the serializer. */
 function escapeText(text: string): string {
-  return text.replace(/([\\`*_{}[\]<>])/g, "\\$1");
+  return text.replace(/([\\`*_{}[\]<>|])/g, "\\$1");
 }
 
 /** Read literal code without applying prose escaping inside backticks. */
@@ -65,8 +65,7 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
         return Children.toArray(row.props.children).map((cell) =>
           render(isValidElement<ContentProps>(cell) ? cell.props.children : cell)
             .trim()
-            .replace(/\s+/g, " ")
-            .replace(/\|/g, "\\|"),
+            .replace(/\s+/g, " "),
         );
       });
       if (rows.length === 0) return "";
