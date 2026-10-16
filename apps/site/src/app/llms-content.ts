@@ -13,7 +13,7 @@ type LlmsPage = {
 /**
  * Pages listed in /llms.txt that have no Markdown rendition of their own.
  *
- * The nine that do come from `markdownPageList`, so their titles, descriptions
+ * Those that do come from `markdownPageList`, so their titles, descriptions
  * and bodies are the same objects the pages and the `.md` URLs render from.
  * /changelog is the exception that already had a machine-readable form
  * (/changelog.md, built by app/changelog.md/route.ts from the release notes).
@@ -24,12 +24,6 @@ const additionalPages: LlmsPage[] = [
     title: product.guidesTitle,
     description: product.description,
   })),
-  {
-    path: "/compare",
-    title: "Prisma comparisons",
-    description:
-      "Prisma ORM and Prisma Postgres set beside the tools people weigh them against, with every figure sourced and dated.",
-  },
   {
     path: "/changelog",
     title: "Prisma Changelog — Release Notes & Product Updates",

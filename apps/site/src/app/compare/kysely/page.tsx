@@ -1,22 +1,18 @@
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-import { createPageMetadata } from "@/lib/page-metadata";
+import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
-import { FAQ, KYSELY_DESCRIPTION, KYSELY_PATH, KYSELY_TITLE } from "./_content";
+import { FAQ, KYSELY_PATH, KYSELY_TITLE } from "./_content";
 import { KyselyPage } from "./_sections";
 
-export const metadata = createPageMetadata({
-  title: KYSELY_TITLE,
-  description: KYSELY_DESCRIPTION,
-  path: KYSELY_PATH,
-  ogKicker: "Compare",
-  ogAccent: "cyan",
-});
+export const metadata = getComparisonMetadata("kysely");
 
 const faqStructuredData = createFaqStructuredData(KYSELY_PATH, [...FAQ], KYSELY_TITLE);
 
+/** Render the comparison and its article, breadcrumb and FAQ structured data. */
 export default function Page() {
   return (
     <>
+      <JsonLd id="compare-kysely-article" data={getComparisonStructuredData("kysely")} />
       <JsonLd id="compare-kysely-faq" data={faqStructuredData} />
       <KyselyPage />
     </>

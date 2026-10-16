@@ -1,3 +1,5 @@
+import { COMPARISON_PATHS } from "@/app/compare/comparisons";
+
 /**
  * Agent-facing Markdown content negotiation for the marketing site.
  *
@@ -59,6 +61,7 @@ export const AGENT_MARKDOWN_PATHS = [
   "/stack",
   "/enterprise",
   "/mcp",
+  ...COMPARISON_PATHS,
 ] as const;
 
 export type AgentMarkdownPath = (typeof AGENT_MARKDOWN_PATHS)[number];
@@ -108,7 +111,7 @@ export function getAgentMarkdownSignal(headers: Headers): AgentMarkdownSignal | 
 /**
  * Normalises a request pathname to one of `AGENT_MARKDOWN_PATHS`, or undefined
  * if the path has no Markdown rendition. Only a trailing slash is forgiven;
- * anything else (a nested path, a zone path, a path with a file extension) is
+ * anything else (an unregistered path, a zone path, or a file extension) is
  * not a supported page.
  */
 export function getAgentMarkdownPath(pathname: string): AgentMarkdownPath | undefined {

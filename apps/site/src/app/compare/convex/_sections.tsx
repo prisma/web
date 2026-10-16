@@ -32,7 +32,8 @@ const PROOF = TESTIMONIALS.filter(
   (item) => item.name === "Martin Adams" || item.name === "Ron Cohen",
 );
 
-export function ConvexPage() {
+/** Build the shared content tree for the HTML page and its Markdown rendition. */
+export function getConvexPageContent() {
   return (
     <>
       <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
@@ -483,4 +484,9 @@ export function ConvexPage() {
       />
     </>
   );
+}
+
+/** Render the comparison using its shared content tree. */
+export function ConvexPage() {
+  return getConvexPageContent();
 }

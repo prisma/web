@@ -269,6 +269,10 @@ const agentMarkdownPaths = [
   "/stack",
   "/enterprise",
   "/mcp",
+  "/compare",
+  "/compare/convex",
+  "/compare/kysely",
+  "/compare/mongoose",
 ];
 
 /**
@@ -281,7 +285,7 @@ const agentMarkdownPaths = [
  *
  * `Vary: Accept` says the same URL has an HTML and a Markdown variant, so a
  * shared cache must key them apart. Under `next start` it does not reach the
- * client on these nine pages: Next writes its own RSC `Vary` onto an
+ * client on these pages: Next writes its own RSC `Vary` onto an
  * app-router response after both `headers()` and middleware headers have been
  * merged, and neither survives it (measured; a middleware `append` was tried
  * and dropped the same way, and apps/docs does not set it at all). It is

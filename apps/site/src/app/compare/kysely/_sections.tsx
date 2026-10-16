@@ -32,7 +32,8 @@ const PROOF = TESTIMONIALS.filter(
   (item) => item.name === "Ron Cohen" || item.name === "Omar López",
 );
 
-export function KyselyPage() {
+/** Build the shared content tree for the HTML page and its Markdown rendition. */
+export function getKyselyPageContent() {
   return (
     <>
       <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
@@ -487,4 +488,9 @@ export function KyselyPage() {
       />
     </>
   );
+}
+
+/** Render the comparison using its shared content tree. */
+export function KyselyPage() {
+  return getKyselyPageContent();
 }

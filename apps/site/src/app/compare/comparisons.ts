@@ -1,3 +1,14 @@
+import { CONVEX_DESCRIPTION, CONVEX_TITLE } from "./convex/_content";
+import { KYSELY_DESCRIPTION, KYSELY_TITLE } from "./kysely/_content";
+import { MONGOOSE_DESCRIPTION, MONGOOSE_TITLE } from "./mongoose/_content";
+
+export const COMPARISON_INDEX = {
+  path: "/compare",
+  title: "Prisma comparisons",
+  description:
+    "Prisma ORM and Prisma Postgres set beside the tools people weigh them against, with every figure sourced and dated.",
+} as const;
+
 /**
  * Head-to-head pages linked from /compare/<slug>.
  *
@@ -27,29 +38,33 @@ export type ComparisonEntry = {
   description: string;
 };
 
-export const COMPARISONS: readonly ComparisonEntry[] = [
+export const COMPARISONS = [
   {
     slug: "convex",
     category: "platform",
     competitor: "Convex",
-    title: "Prisma Postgres vs Convex: standard Postgres or a reactive database?",
-    description:
-      "Convex is a reactive database with TypeScript query functions. Prisma Postgres is managed PostgreSQL, and Prisma ORM is optional. Which fits your app, with sourced figures.",
+    title: CONVEX_TITLE,
+    description: CONVEX_DESCRIPTION,
   },
   {
     slug: "kysely",
     category: "orm",
     competitor: "Kysely",
-    title: "Prisma ORM vs Kysely: contract-based ORM or SQL-first query builder?",
-    description:
-      "Prisma ORM 8 drives typed queries and migrations from one contract file. Kysely is a type-safe SQL query builder with no schema file. Which fits your project, with sourced figures.",
+    title: KYSELY_TITLE,
+    description: KYSELY_DESCRIPTION,
   },
   {
     slug: "mongoose",
     category: "orm",
     competitor: "Mongoose",
-    title: "Prisma ORM vs Mongoose: type-safe data modeling beyond MongoDB",
-    description:
-      "Prisma ORM drives typed queries and migrations from one contract file, on PostgreSQL and MongoDB. Mongoose models MongoDB documents in application code. Which fits, with sourced figures.",
+    title: MONGOOSE_TITLE,
+    description: MONGOOSE_DESCRIPTION,
   },
-];
+] as const satisfies readonly ComparisonEntry[];
+
+export type ComparisonSlug = (typeof COMPARISONS)[number]["slug"];
+export const COMPARISON_PATHS = [
+  COMPARISON_INDEX.path,
+  ...COMPARISONS.map((entry) => `/compare/${entry.slug}` as const),
+] as const;
+export type ComparisonPath = (typeof COMPARISON_PATHS)[number];

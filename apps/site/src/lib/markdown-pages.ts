@@ -1,3 +1,4 @@
+import { getComparisonMarkdownPages } from "./markdown/comparisons";
 import { computeContent } from "@/components/product/content/compute";
 import { ormContent, ormFeedback, ormMigrations } from "@/components/product/content/orm";
 import { postgresContent } from "@/components/product/content/postgres";
@@ -48,6 +49,7 @@ export type MarkdownPage = {
 };
 
 export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
+  ...getComparisonMarkdownPages(),
   "/": {
     path: "/",
     title: SITE_HOME_TITLE,

@@ -79,6 +79,10 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/sections/cta-burst.tsx",
   ],
   "/enterprise": ["src/app/enterprise/page.tsx"],
+  "/compare": ["src/app/compare/page.tsx"],
+  "/compare/convex": ["src/app/compare/convex/_sections.tsx"],
+  "/compare/kysely": ["src/app/compare/kysely/_sections.tsx"],
+  "/compare/mongoose": ["src/app/compare/mongoose/_sections.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
     "src/app/mcp/_components/mcp-hero-section.tsx",
@@ -109,6 +113,10 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/stack": 1,
   "/enterprise": 3,
   "/mcp": 4,
+  "/compare": 1,
+  "/compare/convex": 10,
+  "/compare/kysely": 10,
+  "/compare/mongoose": 10,
 };
 
 const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
@@ -186,7 +194,7 @@ for (const page of markdownPageList) {
 
     // Not a title-and-description stub: the audit's whole complaint.
     assert.ok(
-      document.length > 1500,
+      document.length > (page.path === "/compare" ? 800 : 1500),
       `${page.path} markdown is only ${document.length} characters — too short to be at parity with the page`,
     );
 

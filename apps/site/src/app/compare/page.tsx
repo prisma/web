@@ -1,19 +1,31 @@
+import { COMPARISON_CTA } from "./_content";
+import { JsonLd } from "@prisma-docs/ui/components/json-ld";
+import { createCollectionPageStructuredData } from "@/lib/structured-data";
+import { COMPARISONS, COMPARISON_INDEX } from "./comparisons";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { CompareRows, CompareState } from "./compare-list";
 
-export const metadata = createPageMetadata({
-  title: "Prisma comparisons",
-  description:
-    "Prisma ORM and Prisma Postgres set beside the tools people weigh them against, with every figure sourced and dated.",
-  path: "/compare",
-});
+export const metadata = createPageMetadata(COMPARISON_INDEX);
 
+/** Render the comparison directory with its complete, unfiltered collection schema. */
 export default function ComparePage() {
   return (
     <>
+      <JsonLd
+        id="comparison-directory"
+        data={createCollectionPageStructuredData({
+          ...COMPARISON_INDEX,
+          name: COMPARISON_INDEX.title,
+          items: COMPARISONS.map((entry) => ({
+            name: entry.title,
+            description: entry.description,
+            url: `/compare/${entry.slug}`,
+          })),
+        })}
+      />
       <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
         <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
           <div
@@ -62,25 +74,7 @@ export default function ComparePage() {
         </section>
       </CompareState>
 
-      <CtaBurst
-        headline="Ready to build with Prisma?"
-        headlineMaxWidth="max-w-[22ch]"
-        body="Free to start, no credit card required."
-        bodyMaxWidth="max-w-[44ch]"
-        checks={[
-          {
-            label: "Create a database and start building in minutes",
-            color: "text-prism-cyan-500",
-          },
-          {
-            label: "Read the docs for guides and API reference",
-            color: "text-prism-yellow-400",
-          },
-          { label: "Trusted by 500K+ developers globally", color: "text-prism-red-500" },
-        ]}
-        primaryCta={{ label: "Get started free", href: "https://console.prisma.io" }}
-        secondaryCta={{ label: "Talk to us", href: "/contact" }}
-      />
+      <CtaBurst {...COMPARISON_CTA} />
     </>
   );
 }

@@ -32,7 +32,8 @@ const PROOF = TESTIMONIALS.filter(
   (item) => item.name === "Ron Cohen" || item.name === "Omar López",
 );
 
-export function MongoosePage() {
+/** Build the shared content tree for the HTML page and its Markdown rendition. */
+export function getMongoosePageContent() {
   return (
     <>
       <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
@@ -494,4 +495,9 @@ export function MongoosePage() {
       />
     </>
   );
+}
+
+/** Render the comparison using its shared content tree. */
+export function MongoosePage() {
+  return getMongoosePageContent();
 }

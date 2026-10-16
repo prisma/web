@@ -172,7 +172,7 @@ test("a browser on a marketing page passes through with Vary: Accept", async () 
   assert.equal(response.headers.get("vary"), "Accept");
 });
 
-test("everything outside the nine pages passes through untouched, agent or not", async () => {
+test("everything outside the registered pages passes through untouched, agent or not", async () => {
   const headerSets: Record<string, string>[] = [
     { accept: "text/markdown" },
     { "user-agent": "Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)" },
