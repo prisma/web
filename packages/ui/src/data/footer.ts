@@ -74,6 +74,11 @@ const footerItems = [
       },
       {
         _type: "footerLinkType",
+        title: "Compute guides",
+        url: "/compute/guides",
+      },
+      {
+        _type: "footerLinkType",
         title: "Docs",
         url: "/docs",
       },

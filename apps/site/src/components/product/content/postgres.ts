@@ -178,7 +178,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Where do I find my connection string?",
       answer:
-        "In the Prisma Console: open your project, select Connect to your database, then Generate new connection string. You get [two connection strings](/docs/postgres/database/connecting-to-your-database). Use the pooled one as `DATABASE_URL` for your app and serverless functions, and the direct one for migrations, Prisma Studio and `pg_dump`. SSL is required, so keep `sslmode=require` in the URL. `npx create-db` also prints a connection string.",
+        "In the Prisma Console: open your project, select Connect to your database, then Generate new connection string. You get [two connection strings](/docs/postgres/database/connecting-to-your-database). Use the pooled one as `DATABASE_URL` for your app and serverless functions, and the direct one for migrations, Prisma Studio and `pg_dump`. SSL is required, so keep `sslmode=require` in the URL. `npx create-db` also prints a connection string. Once connected, the [query-monitoring guide](/postgres/managed-postgres-query-monitoring) explains how to inspect slow SQL and existing indexes.",
     },
     {
       question: "Does Prisma Postgres support pgvector?",
@@ -193,7 +193,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Which regions can I choose?",
       answer:
-        "Six: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1). You pick the region for each database when you create it in the Console, through MCP or with `npx create-db --region`. Without the flag, `npx create-db` picks the region closest to you.",
+        "Six: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1). You pick the region for each database when you create it in the Console, through MCP or with `npx create-db --region`. Without the flag, `npx create-db` picks the region closest to you. For deployed apps, see [choosing app and database regions](/postgres/nodejs-database-regions).",
     },
     {
       question: "Is Prisma Postgres HIPAA compliant?",

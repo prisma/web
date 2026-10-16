@@ -1,14 +1,18 @@
 import { getAllContent } from "./content";
 import { answerPageSchema } from "./answer-page-schema";
+import { answerProductIds, type AnswerProduct } from "./answer-products";
 
-/** Read validated Postgres guides without loading compiled MDX, for discovery and scripts. */
-export function getAnswerEntries() {
-  return getAllContent("answers/postgres")
-    .map((entry) => ({
-      ...entry,
-      data: answerPageSchema.parse(entry.frontmatter),
-      url: `/postgres/${entry.slug}`,
-    }))
+/** Read validated product guides without loading compiled MDX, for discovery and scripts. */
+export function getAnswerEntries(product?: AnswerProduct) {
+  return (product ? [product] : answerProductIds)
+    .flatMap((productId) =>
+      getAllContent(`answers/${productId}`).map((entry) => ({
+        ...entry,
+        data: answerPageSchema.parse(entry.frontmatter),
+        product: productId,
+        url: `/${productId}/${entry.slug}`,
+      })),
+    )
     .sort((a, b) => b.data.date.localeCompare(a.data.date) || a.url.localeCompare(b.url));
 }
 
@@ -19,7 +23,7 @@ export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
   return [
     `# ${data.title}`,
     data.summary,
-    `By [${data.author}](${data.authorUrl}) · ${data.date} · ${data.readingTime}`,
+    `By [${data.author}](${data.authorUrl}) · ${data.date} · ${data.readingTime}${data.updatedAt !== data.date ? ` · Updated ${data.updatedAt}` : ""}`,
     content
       .trim()
       .replace(

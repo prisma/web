@@ -2,6 +2,7 @@ import { getMarkdownUrlPath } from "@/lib/agent-markdown";
 import { markdownPageList, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { getBaseUrl } from "@/lib/url";
 import { getAnswerEntries, renderAnswerMarkdown } from "@/lib/answer-page-content";
+import { answerProducts } from "@/lib/answer-products";
 
 type LlmsPage = {
   path: string;
@@ -18,12 +19,11 @@ type LlmsPage = {
  * (/changelog.md, built by app/changelog.md/route.ts from the release notes).
  */
 const additionalPages: LlmsPage[] = [
-  {
-    path: "/postgres/guides",
-    title: "Prisma Postgres guides",
-    description:
-      "Practical answers to choosing, hosting and running Postgres for your TypeScript app.",
-  },
+  ...Object.values(answerProducts).map((product) => ({
+    path: product.guidesPath,
+    title: product.guidesTitle,
+    description: product.description,
+  })),
   {
     path: "/changelog",
     title: "Prisma Changelog — Release Notes & Product Updates",
@@ -92,7 +92,7 @@ Prisma provides Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and 
 
 ${pagesList}
 
-## Postgres guides
+## Product guides
 
 ${answersList}
 

@@ -14,12 +14,14 @@ import { getBaseUrl } from "@/lib/url";
 import { formatAnswerDate, type AnswerPage as AnswerPageContent } from "@/lib/answer-pages";
 import { getMDXComponents } from "@/mdx-components";
 import { EnvironmentDiagram } from "./environment-diagram";
+import { getAnswerProduct } from "@/lib/answer-products";
 
 // Conversion Factory's article structure, using the site's brand components.
 // The reference's empty header image is deliberately absent.
 /** Render a guide with article metadata, heading navigation and server-rendered FAQ answers. */
 export function AnswerPage({ page }: { page: AnswerPageContent }) {
   const { data } = page;
+  const product = getAnswerProduct(page.slugs[0]);
   const Body = data.body;
   const url = new URL(page.url, getBaseUrl()).toString();
   const toc = [
@@ -55,11 +57,11 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
             aria-label="Breadcrumb"
             className="mb-7 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
           >
-            <Link href="/postgres" className="hover:text-foreground">
-              Prisma Postgres
+            <Link href={product.path} className="hover:text-foreground">
+              {product.name}
             </Link>
             <ChevronRight className="size-3.5" aria-hidden />
-            <Link href="/postgres/guides" className="hover:text-foreground">
+            <Link href={product.guidesPath} className="hover:text-foreground">
               Guides
             </Link>
           </nav>
