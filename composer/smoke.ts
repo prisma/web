@@ -176,18 +176,24 @@ try {
   console.log("PASS current and legacy docs articles");
 
   if (session && (process.platform === "linux" || process.platform === "darwin")) {
-    // SDK 0.29.1's isolated emulator records child PIDs here. These are the Bun
+    // The pinned SDK's isolated emulator records child PIDs here. These are the Bun
     // website processes, not the larger developer-side build/assembly process.
-    const state = JSON.parse(
+    const state: {
+      instances: Record<string, { labels: Record<string, string>; pid: number }>;
+    } = JSON.parse(
       readFileSync(
-        path.join(process.env.PRISMA_COMPOSER_EMULATORS_DIR!, "compute/apps.json"),
+        path.join(process.env.PRISMA_COMPOSER_EMULATORS_DIR!, "compute/instances.json"),
         "utf8",
       ),
     );
-    for (const [name, service] of Object.entries(state.web.services) as [
-      string,
-      { pid: number },
-    ][]) {
+    const services = Object.values(state.instances).filter(
+      (service) =>
+        service.labels["composer.app"] === "web" &&
+        service.labels["composer.directory"] === process.cwd(),
+    );
+    assert.equal(services.length, 10, "expected all ten local service processes");
+    for (const service of services) {
+      const name = service.labels["composer.address"];
       const rss =
         Number(
           execFileSync("ps", ["-o", "rss=", "-p", String(service.pid)], {

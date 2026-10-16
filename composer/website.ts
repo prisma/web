@@ -1,4 +1,5 @@
 import { secretString } from "@prisma/composer/arktype";
+import { rawHttpContract } from "@prisma/composer/http";
 import nextjs from "@prisma/composer/nextjs";
 import { compute, envSecret, serviceOrigin } from "@prisma/composer-prisma-cloud";
 import { type } from "arktype";
@@ -49,7 +50,13 @@ export const websiteInputs = {
 };
 
 export function website(name: string, module: string, appDir: string) {
-  return compute({ name, deps: {}, input, build: nextjs({ module, appDir }) });
+  return compute({
+    name,
+    deps: {},
+    input,
+    expose: { http: rawHttpContract },
+    build: nextjs({ module, appDir }),
+  });
 }
 
 export function initializeWebsite(service: ReturnType<typeof website>) {

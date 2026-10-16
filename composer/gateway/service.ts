@@ -2,19 +2,23 @@ import node from "@prisma/composer/node";
 import { compute } from "@prisma/composer-prisma-cloud";
 import { type } from "arktype";
 import { secretString } from "@prisma/composer/arktype";
-import { mediaInputSchema } from "../media/service.ts";
+import { rawHttp } from "@prisma/composer/http";
 
 export default compute({
   name: "gateway",
-  deps: {},
+  deps: {
+    site: rawHttp(),
+    docs: rawHttp(),
+    blog: rawHttp(),
+    handbook: rawHttp(),
+    eclipse: rawHttp(),
+    blogmedia0: rawHttp(),
+    blogmedia1: rawHttp(),
+    blogmedia2: rawHttp(),
+    blogmedia3: rawHttp(),
+  },
   input: type({
-    site: "string",
-    docs: "string",
-    blog: "string",
-    handbook: "string",
-    eclipse: "string",
     proxyKey: secretString(),
-    ...mediaInputSchema,
     "agentFront?": type({
       "ORA_INGEST_KEY?": secretString(),
       "ORA_KEY?": secretString(),

@@ -66,20 +66,20 @@ files and packaging overhead. The check counts the native Next.js assembler's
 output, including public assets and repaired pnpm dependencies, and also runs
 during `dev` and `deploy` assembly.
 
-Local measurements on 2026-10-14 with all ten services in the `web` module:
+Local measurements on 2026-10-16 with all ten services in the `web` module:
 
 | Service | Assembled files, MB | Compressed estimate, MB | RSS after smoke, MB |
 | --- | ---: | ---: | ---: |
-| Site | 265.9 | 153.2 | 134.5 |
-| Docs | 426.1 | 227.8 | 461.6 |
-| Blog | 165.6 | 38.1 | 212.4 |
-| Handbook | 45.0 | 15.1 | 118.1 |
-| Eclipse | 82.6 | 18.9 | 130.8 |
-| Gateway | 1.6 | 0.4 | 142.3 |
-| Blog media 0 | 171.3 | 161.4 | 89.1 |
-| Blog media 1 | 171.3 | 161.2 | 89.1 |
-| Blog media 2 | 171.3 | 162.3 | 89.6 |
-| Blog media 3 | 171.3 | 163.0 | 89.0 |
+| Site | 265.9 | 153.3 | 135.6 |
+| Docs | 426.1 | 227.8 | 425.5 |
+| Blog | 165.6 | 38.1 | 208.7 |
+| Handbook | 45.0 | 15.1 | 105.4 |
+| Eclipse | 82.6 | 18.9 | 130.9 |
+| Gateway | 1.7 | 0.4 | 139.2 |
+| Blog media 0 | 171.3 | 161.4 | 87.4 |
+| Blog media 1 | 171.3 | 161.2 | 87.6 |
+| Blog media 2 | 171.3 | 162.3 | 95.4 |
+| Blog media 3 | 171.3 | 163.0 | 94.1 |
 
 The smoke runner also checks each Bun process against a 900 MB RSS budget after
 loading website pages and current/legacy docs articles. These macOS samples are
@@ -125,10 +125,24 @@ a Vercel-mode build locally, then rebuild Composer before starting it again.
 ## Routing and configuration
 
 `module.ts` names the application `web`, matching the existing Console project,
-and provisions the gateway first, followed by the five websites and four media services.
-`serviceOrigin()` binds the gateway's upstreams and each website's search origin
-to the current environment, so
-deployed URLs are not compiled into cross-zone rewrites.
+and connects the gateway to the five websites and four media services through
+declared HTTP ports. Each upstream exposes `rawHttpContract`; the gateway declares
+nine `rawHttp()` dependencies and reads their resolved URLs through `service.load()`.
+The topology therefore contains nine communication connections and Console infers
+only `gateway` as the Internet entrypoint. This describes the intended traffic
+flow; service URLs remain directly reachable.
+
+Composer is pinned to `0.30.0-dev.9`, the published build containing
+[HTTP ports](https://github.com/prisma/composer/pull/358). Stable `0.30.0`
+predates that merge. The pnpm override pins Prisma's Composer CLI to the same
+build; the selected Prisma CLI remains `8.0.0-rc.22` and shares its required
+CLI engine version. Replace these three Composer pins together when a stable
+release includes the API.
+
+`serviceOrigin("gateway")` remains a configuration value for each website's
+cross-site links and search origin. It is not an additional dependency edge.
+The GitHub environment URL and deployed smoke test explicitly select the gateway
+from the service URL map, independently of provisioning order.
 
 The gateway normalizes repeated slashes and applies site `vercel.json`
 redirects first. Matching site Next.js redirects and external `beforeFiles`
@@ -143,9 +157,9 @@ the repository; they must be audited separately before moving production traffic
 The gateway uses the vendored Apache-2.0 [`@prisma/proxy`](packages/proxy/README.md)
 library. The build copies the original Vercel configs and site Next manifest
 alongside the server, together with the original blog Next manifest and media
-file catalog. The 24-line runtime entrypoint points the library at those
+file catalog. The small runtime entrypoint points the library at those
 files, compiles the routing tables in memory once at boot, and binds upstreams
-from Composer input. There is no generated routing-plan artifact. Restart after
+from Composer HTTP dependencies. There is no generated routing-plan artifact. Restart after
 changing config files; requests reuse the startup snapshot. The library's provider adapter contract also
 supports adding Netlify and other formats without changing the HTTP runtime.
 The optional Agent Front bridge preserves the site's global middleware on

@@ -4,7 +4,10 @@ import { agentFrontMiddleware } from "./agent-front.ts";
 import { gatewaySites } from "./config.ts";
 import { proxyRequestHeaders } from "../request-origin.ts";
 
-const { agentFront, proxyKey, ...origins } = service.input();
+const { agentFront, proxyKey } = service.input();
+const origins = Object.fromEntries(
+  Object.entries(service.load()).map(([name, client]) => [name, client.url]),
+);
 const middleware = agentFrontMiddleware(agentFront);
 const proxy = createProxy(gatewaySites(), {
   origins,

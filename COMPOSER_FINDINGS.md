@@ -735,14 +735,11 @@ configuration relationships, but should not automatically be treated as
 traffic: website inputs also reference the gateway to form cross-site URLs.
 Do not add unused RPC contracts solely to make a diagram look connected.
 
-[Composer PR #358](https://github.com/prisma/composer/pull/358) now implements
-explicit `httpContract` provider ports, contract-checked `http()` dependencies
-and HTTP request/response topology styling. It includes the original Console
-screenshot, the intended graph and a regression for this complete ten-service
-shape. The exported payload passed Console's actual entrypoint and summary
-functions: ten services, nine connections, only `gateway` as an entrypoint.
-Web still uses the released SDK's URL input bindings; adopting the new HTTP
-ports after the Composer change is available is a separate migration step.
+[Composer PR #358](https://github.com/prisma/composer/pull/358) merged on
+16 October with the final API `rawHttpContract` and `rawHttp()` in
+`@prisma/composer/http`. Raw HTTP declares no communication style. The original
+proposal's `httpContract`/`http()` names and request/response styling were
+revised before merge. Adoption and validation of the final API are recorded below.
 
 ## Original author of the 256 MiB limit — 14 October 2026
 
@@ -767,3 +764,63 @@ The error names it an "upload safety limit". Neither the commit message nor
 the matching PR discussions inspected document why **256 MiB** was selected
 or cite an underlying hosted-platform size constraint. Aman is the direct
 contact for that rationale; the code history alone does not establish it.
+
+## HTTP ports adopted — 16 October 2026
+
+The Web module now wires all nine gateway upstreams through real Composer HTTP
+ports. Each website and media service exposes `rawHttpContract`; the gateway
+consumes a named `rawHttp()` dependency for each and reads its URL from
+`service.load()`. The proxy continues using its existing raw Bun transport and
+authenticated origin bridge, preserving headers, redirects, streaming and media
+ranges. Its runtime entrypoint is 27 lines. No routing-plan file is generated.
+
+The actual `module.ts` graph has ten services, eighteen HTTP ports and nine
+authored connections. The published Prisma Cloud topology exporter produces
+nine `communication` edges with no style. Passing that payload to Console's
+actual `publicServices()` selects only `gateway`, so the intended map is
+Internet → gateway → five websites / four media shards. The committed regression
+loads the real module and checks every upstream connection and both endpoint
+ports. Website `gatewayOrigin` remains URL configuration rather than a reverse
+communication edge. This changes the declared topology, not direct reachability.
+
+The stable Composer release `0.30.0` was published on 15 October, before the HTTP
+merge. The feature is available in the published **`0.30.0-dev.9`** build from
+16 October. Both SDK dependencies and Prisma's transitive Composer CLI are
+pinned to that exact build. A pnpm override is necessary because the existing
+Prisma CLI `8.0.0-rc.22` otherwise installs Composer CLI `0.29.1`. Both CLI builds
+use CLI engine `0.7.0`; the Prisma CLI version itself is unchanged. Exact
+minimum-release-age exclusions cover the three deliberately selected Composer
+packages. Move these pins together to a stable release once it contains HTTP.
+The existing `capnp-es` TypeScript 7 peer warning is unchanged by this upgrade.
+
+Providers are provisioned while evaluating the gateway's dependency bindings,
+so the gateway is no longer the first service in provisioning order. The
+existing GitHub environment URL and remote smoke explicitly use `urls.gateway`,
+which remains the public preview entrypoint.
+
+The actual `pnpm dev --detach --json` command started all ten services and
+reported the gateway endpoint. The full gateway smoke passed all five websites,
+assets, Markdown, current/legacy docs, Vercel and Next redirects, query handling,
+and original media bytes/ranges/HEAD/cache behavior from every shard.
+
+Two upgrade details deserve upstream follow-up. The emulator moved process state
+from `compute/apps.json` to `compute/instances.json`, with app/directory/address
+labels instead of a nested app service map. The smoke runner now reads that
+layout, limits its memory samples to this checkout's Web services, and requires
+all ten processes to be present. A public process-inspection API would avoid
+coupling memory checks to internal state files. Also, although the selected
+Composer CLI advertises `dev url` and `dev stop`, `prisma dev url gateway --json`
+through Prisma CLI `8.0.0-rc.22` was parsed as the parent `dev` command and failed
+with `CLI.INVALID_ARGUMENTS` (too many arguments). The main `dev` command works;
+the public SDK's `devStop()` successfully stopped the detached stack. Improve
+CLI-family compatibility checks or ship a documented version matrix so matching
+peer versions also guarantee the advertised subcommands work together.
+
+Validation: the full ten-service build, 37 proxy tests, 19 Composer checks,
+eight workspace type checks with the existing Vercel origins, formatting, lint
+and frozen-lockfile installation pass. The largest archive remains docs at
+227.8 MB, and all services satisfy the existing expanded/upload budgets.
+The default `pnpm composer:smoke` also passed its complete SDK-owned startup,
+HTTP checks, memory sampling and cleanup. Docs was the largest sampled process
+at 425.5 MB RSS; the gateway sampled 139.2 MB. All ten service processes stopped
+successfully afterwards. These local samples are not a concurrency load test.
