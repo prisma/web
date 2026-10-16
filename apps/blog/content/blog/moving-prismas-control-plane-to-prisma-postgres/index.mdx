@@ -1,0 +1,194 @@
+---
+title: "How We Moved Prisma's Control Plane to Prisma Postgres Without Downtime"
+slug: "moving-prismas-control-plane-to-prisma-postgres"
+date: "2026-14-08"
+authors:
+  - "Kristof Siket"
+  - "Ankur Datta"
+metaTitle: "Zero-Downtime Postgres Migration from RDS to Prisma Postgres"
+metaDescription: "How Prisma migrated 83 tables and 74 GB from Amazon RDS to Prisma Postgres with zero downtime using logical replication, and kept a rollback open for a week."
+excerpt: "How we migrated 83 tables and 74 GB of production data from Amazon RDS to Prisma Postgres with zero downtime. We explain how we copied the data with logical replication, switched our services to the new database, and kept the option to go back for a week."
+heroImagePath: "/moving-prismas-control-plane-to-prisma-postgres/imgs/hero.svg"
+heroImageAlt: "The Amazon RDS icon on the left, an arrow pointing right, and the Prisma logo on the right."
+metaImagePath: "/moving-prismas-control-plane-to-prisma-postgres/imgs/meta.png"
+tags:
+  - "prisma-postgres"
+  - "platform"
+---
+
+import { TableGrid } from "./TableGrid";
+import { Recipe } from "./Recipe";
+import { CutoverFlow } from "./CutoverFlow";
+import { SchemaDrift } from "./SchemaDrift";
+import { TryPostgres } from "./TryPostgres";
+
+Moving a production database to a new provider is a job that most teams put off for as long as they can. A team can revert a bad application deploy in minutes. A database is harder to move back, because it keeps taking new writes after the switch. So two questions come up every time: how long will the application be unavailable, and can we go back if the new setup has a problem?
+
+We had to answer both for our own control plane. This is the database behind the Prisma Console, and it holds every workspace, project, and API key. It ran on Amazon RDS. [Prisma Postgres](https://www.prisma.io/docs/postgres) is the managed Postgres we offer to our customers, and we wanted our own production data to run on it too.
+
+In September 2026 we made the move: **83 tables and 74 GB**. We did not pause writes, and for a week after the switch we could have gone back to RDS without losing data.
+
+We used [Postgres logical replication](https://www.postgresql.org/docs/current/logical-replication.html), which is part of Postgres. This post describes how we did it, step by step, with the SQL we ran.
+
+One engineer did the work together with [Claude Code](https://claude.com/claude-code), an AI coding agent. We kept one rule: the agent prepared each step and checked the result, and the engineer ran every statement that changed production. Each section below ends with a short note on how that went.
+
+<TryPostgres />
+
+## Why we moved
+
+Our services reached the RDS database through [Accelerate](https://www.prisma.io/docs/accelerate), Prisma's connection pooling service. We wanted to change that setup for three reasons:
+
+- **To use what our customers use.** Prisma Postgres is the database platform we offer. With our own production data on it, we experience it at scale in the same way our customers do.
+- **To move off Accelerate.** At the time of the migration we were already planning to [retire Accelerate](https://www.prisma.io/docs/postgres/database/switch-from-accelerate), so our own services had to stop using it.
+- **To adopt Prisma 8.** We wanted to move our services to [Prisma 8](https://www.prisma.io/docs/orm). Prisma 8 connects to the database directly and, by design, does not support Accelerate.
+
+The move also made a later step possible. With the database on Prisma Postgres, we could move our services to [Prisma Compute](https://www.prisma.io/docs/compute). Compute runs next to Prisma Postgres on the same platform, so each database query has a shorter network path. We have since moved the Console there.
+
+## Why we used logical replication
+
+The simplest way to move a Postgres database is `pg_dump` and `pg_restore`, which is what the [import guide](https://www.prisma.io/docs/postgres/import-from-existing-database) in our docs describes. It needs writes paused while the copy runs, and we could not pause writes. Six services read and write this database, and customers use the Console and the Management API at all hours.
+
+Logical replication does not need a pause. The source database *publishes* row changes and the target *subscribes*. The target copies each table once and then applies new changes as they happen. The application keeps writing to the source until it is switched over.
+
+We planned the move in four stages:
+
+1. **Copy.** Prisma Postgres subscribes to RDS and copies every table.
+2. **Check.** We compare every table on both databases.
+3. **Cut over.** One deployment points every service at Prisma Postgres.
+4. **Keep a way back.** We turn the replication around, so RDS follows Prisma Postgres for a week.
+
+## Preparing the two databases
+
+Before we created anything, we went through what logical replication needs from each database. This is the list we checked, and what we found for each point.
+
+- **Logical replication is enabled on the source.** Postgres only publishes row changes when `wal_level` is set to `logical`. On RDS, the `rds.logical_replication` parameter controls this setting. It was already turned on for our instance.
+- **Every table has a primary key.** Logical replication uses the primary key to find the row that an update or a delete applies to. We ran a query that lists the tables without a primary key, and it returned no rows.
+- **The target has the same schema.** Logical replication copies rows. It does not create tables. Our CI already ran every migration against Prisma Postgres on each deploy, so both databases had the same 204 migrations.
+- **The target tables are empty.** The copy inserts every row, so a row that already exists on the target causes a duplicate key error. Every table on Prisma Postgres was empty, with one exception: the migration history table.
+- **The migration history table stays out of the copy.** Prisma records the applied migrations in the `_prisma_migrations` table. The migrations had already run on Prisma Postgres, so this table was filled in there. Copying the RDS version on top would have failed on duplicate keys. We left it out and published the other 82 tables by name.
+- **Prisma Postgres can reach RDS.** The subscription opens a connection from Prisma Postgres to RDS. Our RDS security group did not allow that connection. We added an inbound rule in a separate security group, so that we could remove it after the migration. Then we tested the connection with a `dblink` query from Prisma Postgres. `dblink` is the Postgres extension that lets one database run a query on another.
+- **Prisma Postgres stays awake during the copy.** Prisma Postgres pauses a database that has no connections and [resumes it on the next connection](/cloudflare-unikernels-and-bare-metal-life-of-a-prisma-postgres-query). Replication alone does not count as a connection, and none of our services used the new database yet. So we deployed a small service on Prisma Compute that pinged the database every few seconds.
+- **We know which tables hold the data.** Two tables held about three quarters of the 74 GB. The largest was a log of GitHub webhook deliveries: about nine million rows of raw JSON with no retention rule. We have since added a 30-day retention job. If we had added it before the migration, there would have been less to copy.
+
+<Callout title="Working with the agent">
+The agent wrote the queries for these checks and went through the results with us. It noticed that the database was a lot larger than our plan assumed. It also worked out which network address RDS had to allow, although its first guess was the wrong list of addresses. And it wrote the small service that kept the new database awake.
+</Callout>
+
+## Copying the data and checking it
+
+Creating the subscription started the copy. Postgres copies two tables at a time by default, and each table moves through four states: waiting, copying, catching up, and ready. All 82 tables were ready the same day. The figure below shows the 83 tables at each stage.
+
+<TableGrid />
+
+When every table was ready, we compared the two databases in two ways.
+
+First, one query counted the rows of every table on both sides through `dblink` and returned only the tables that differed. It returned nothing, so every table matched.
+
+Second, we compared an md5 hash over the full rows of a few tables. The hashes matched on tables that change rarely. They differed on two tables that are written on every login, because the two hash queries ran a few seconds apart. We expected that.
+
+The size on disk was not the same. Our 74 GB on RDS became 79 GB on Prisma Postgres, because the two databases compress large values with different methods: `lz4` on our RDS instance and `pglz` on Prisma Postgres. The rows were the same.
+
+<Callout title="Working with the agent">
+The agent wrote the comparison queries. We ran each statement in a SQL client and pasted the output back. The agent read it and told us if the next step was safe to run.
+</Callout>
+
+## The SQL
+
+Here is every command, in the order we ran it, with hostnames and passwords replaced. The first four steps copy the data and check it. The fifth step prepares the rollback and belongs to the cutover, which the next two sections describe.
+
+<Recipe />
+
+## Cutting over in one deployment
+
+We set one rule for the cutover: every service, and every connection path inside a service, had to switch in the same deployment. If one path switched and another did not, a service could write a row to one database and then fail to read it from the other.
+
+We run five services on Cloudflare Workers and one on Prisma Compute. Some reach the database with the classic Prisma Client through Accelerate. Some use the Prisma 8 client, which connects [directly over TCP](https://www.prisma.io/docs/postgres/database/connecting-to-your-database) through a [Cloudflare Hyperdrive](https://developers.cloudflare.com/hyperdrive/) binding. Two use both. That gave us several pieces of connection config in different places.
+
+We prepared the switch in three steps:
+
+1. **Before the cutover day:** we changed every service to read its connection secret from a new name, and to fall back to the old name if the new one was missing. Nothing changed in production, because the new names did not exist yet.
+2. **Minutes before:** we added the new secrets. A running service only reads new secrets when it is deployed again, so this also changed nothing.
+3. **The switch:** we merged one pull request. It changed the Hyperdrive binding in three config files, and the merge deployed every service with the new binding and the new secrets together.
+
+To roll back, we would have reverted that commit, deleted the new secrets, and let the deploy run.
+
+The deploy jobs took a few minutes. During that time some services wrote to RDS and others wrote to Prisma Postgres. The forward replication kept running, so writes on RDS still reached Prisma Postgres. Writes on Prisma Postgres did not reach the services that were still on RDS.
+
+Two things could go wrong in that window. If both sides had created a row with the same key, the replication would have reported an apply error. We watched `apply_error_count` in `pg_stat_subscription_stats`, and it stayed at zero. If both sides had updated the same row, one update would have overwritten the other, and Postgres would not have reported an error. We had no check for that case, so we needed the window to be short.
+
+It was short. The last statement from any service ran on RDS seven minutes after the merge, and our tracing showed no new kind of error on any service.
+
+<CutoverFlow />
+
+<Callout title="Working with the agent">
+The agent mapped where each of the six services reads its connection settings. Its first map assumed one shared config for all of them. That was wrong, because each service has its own, and we corrected it. After the merge, the agent ran the read-only checks on RDS and looked through the error traces.
+</Callout>
+
+## Keeping a way back
+
+After the cutover, we kept RDS as a copy of Prisma Postgres for a week. Going back would have been a config change, and RDS would have had every row.
+
+We did this in three steps, and the order mattered:
+
+1. **We created a replication slot on Prisma Postgres three minutes before the merge.** A slot tells Postgres to keep every change from that moment until something reads it, so it kept the changes that Prisma Postgres received during the cutover. We did not create it earlier, because an unread slot held about one gigabyte of write-ahead log per hour. The publication that the slot serves can be created earlier, because a publication keeps nothing.
+2. **We dropped the forward subscription once RDS was quiet.** A sixty-second sample of the RDS write counters showed no inserts, updates, or deletes.
+3. **We subscribed RDS to Prisma Postgres from that slot.** We set `copy_data = false`, because RDS already had every row. We set `origin = none`, available since Postgres 16, so that Prisma Postgres sent back only the rows that the application wrote. Without it, the stream would also have sent back the rows that came from RDS in the first place.
+
+About half an hour after the merge, the reverse stream was running with zero apply errors, and the newest row in the projects table was the same on both databases.
+
+A week later we compared row counts and the newest `updatedAt` on our key tables, and they matched. We dropped the reverse subscription on RDS, which also drops the slot on Prisma Postgres, and then dropped the publication. `DROP SUBSCRIPTION` cannot run inside a transaction block while a slot is attached, so we ran it with auto-commit on. We then took a final snapshot and stopped the RDS instances.
+
+From that point we could no longer go back without losing data.
+
+<Callout title="Working with the agent">
+The agent wrote the rollback steps and the check queries that we ran each day that week. We ran the statements that created the slot and turned the replication around.
+</Callout>
+
+## Schema changes need both databases
+
+Logical replication carries row changes. It does not carry `ALTER TABLE` or any other schema change. If a migration adds a column on one database only, replication stops at the first row change that uses the new column. It stays stopped until the other database gets the same migration.
+
+So while replication ran in either direction, every migration had to run on both databases. We had one CI job per database, and no deploy started until both had passed.
+
+<SchemaDrift />
+
+On cutover day this failed once. One of our cutover changes pointed the RDS migration job at Prisma Postgres by mistake. Fifty-two minutes after the cutover, a migration added three columns on Prisma Postgres only, and the reverse stream to RDS stopped. About fifteen minutes later we ran the same SQL on RDS by hand, and the stream caught up with nothing lost. We then pointed the job back at RDS.
+
+Our lesson: before we change a database connection setting, we check which services and CI jobs use it.
+
+<Callout title="Working with the agent">
+We both missed this one. The agent's plan listed two connection settings to change, and we agreed to it. Neither of us checked what else used those settings.
+</Callout>
+
+## What we would repeat, and what we would change
+
+We would do these things the same way again:
+
+- Publish the tables by name, and leave out the migration history table.
+- Test the network path from the new database to the old one before creating the subscription.
+- Compare the databases with a query that returns only the mismatches, and then compare hashes on tables that change rarely.
+- Switch every service and every connection path in one deployment.
+- Create the rollback slot minutes before the cutover, and reverse the replication with `copy_data = false` and `origin = none`.
+- Let the agent prepare and check each step, and have an engineer run every statement that changes production.
+
+We would change two things:
+
+- Check which services and CI jobs use a connection setting before changing it.
+- Add the retention rule for the webhook log before the copy, not after.
+
+## Frequently asked questions
+
+<Accordions type="single">
+  <Accordion title="Does Postgres logical replication replicate schema changes?">
+No. Logical replication carries only row changes (inserts, updates, and deletes) from publisher to subscriber. It does not replicate `ALTER TABLE` or other DDL, and it does not replicate sequence values. You have to apply each migration on both sides, by hand or in CI. If you do not, the subscriber fails on the first change that uses the new column and retries it until the schema matches.
+  </Accordion>
+  <Accordion title="How do you roll back a Postgres migration done with logical replication?">
+Keep the old database as a live copy of the new one. Create a replication slot on the new database minutes before the cutover. Once the old database has stopped receiving writes, subscribe it to the new database from that slot with `copy_data = false` and, on Postgres 16 or later, `origin = none`. Rolling back is then a config change back to the old database, with no data lost. Apply every schema change to both databases while the rollback is open, or the reverse stream stops until you do.
+  </Accordion>
+  <Accordion title="Do you need to pause writes to migrate a Postgres database to a new provider?">
+Not with logical replication. The new database copies each table once and then follows the old one in near real time, so the application keeps writing to the old database until the cutover. Prisma's control plane, 83 tables and 74 GB, had its last write from a service on Amazon RDS seven minutes after the merge that switched services to Prisma Postgres, with no maintenance window. A dump and restore needs writes paused for the whole copy.
+  </Accordion>
+  <Accordion title="How do you verify the data after logical replication finishes?">
+Count every table on both databases in one query through `dblink` and return only the tables whose counts differ. An empty result means every table matches. Then compare an md5 hash over the full rows of the tables that change rarely. Tables that are written on every request will hash differently because the two queries run seconds apart, which is expected.
+  </Accordion>
+</Accordions>
