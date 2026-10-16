@@ -121,6 +121,19 @@ test("literal block markers stay prose while semantic headings and lists keep th
     assert.equal(renderComparisonContent(<p>{text}</p>, "/compare/convex"), expected);
   }
 
+  for (const marker of [".", ")"]) {
+    assert.equal(
+      renderComparisonContent(
+        <p>
+          <span>1</span>
+          {marker} Literal step
+        </p>,
+        "/compare/convex",
+      ),
+      `1\\${marker} Literal step`,
+    );
+  }
+
   assert.equal(
     renderComparisonContent(
       <>

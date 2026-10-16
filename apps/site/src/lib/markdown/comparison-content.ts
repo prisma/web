@@ -9,7 +9,8 @@ type ContentProps = { children?: ReactNode; href?: string; [key: string]: unknow
 
 /** Escape literal prose while preserving Markdown syntax added by the serializer. */
 function escapeText(text: string): string {
-  return text.replace(/[\\`*_{}[\]<>|#]|(?<=^[ \t]*)[-+]|(?<=^[ \t]*\d{1,9})[.)]/gm, "\\$&");
+  // A leading "." or ")" may follow digits in a preceding inline element.
+  return text.replace(/[\\`*_{}[\]<>|#]|(?<=^[ \t]*)[-+.)]|(?<=^[ \t]*\d{1,9})[.)]/gm, "\\$&");
 }
 
 /** Read literal code without applying prose escaping inside backticks. */
