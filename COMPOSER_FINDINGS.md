@@ -891,3 +891,36 @@ packaging path. Composer's current tar/gzip writer also holds the source files,
 tar and compressed buffers in memory; stream packaging and hashing to disk to
 reduce CI memory as artifact sizes approach these larger limits. Build-machine
 memory is separate from the service's 1 GB runtime allowance.
+
+
+### Real cloud upload and readiness observations
+
+[GitHub run 38904449879](https://github.com/prisma/web/actions/runs/38904449879)
+on commit `1301c2edd` successfully uploaded and deployed the consolidated blog.
+Linux measured 848.5 MB expanded / 684.2 MB compressed. The four media services
+and deployments were deleted. The uploader cap therefore works beyond 256 MiB
+on the real GitHub/Compute path, not only in local constant checks.
+
+The immediate post-deploy smoke then saw a 404 at `/blog`, despite the deploy
+operation reporting success. Later direct and gateway requests returned 200
+without another deploy, and the complete remote smoke passed, including the
+largest GIF's original bytes, byte ranges, HEAD, ETag revalidation and headers.
+This is consistent with a routing/service-readiness window; the precise
+platform cause was not established. Initial landing-page probes now allow a
+bounded two-minute startup window for 404/502/503 responses. Ordinary article
+and asset 404s and application 500s still fail. A local HTTP fixture verified
+startup retries and immediate failures for normal 404s and application 500s.
+Full media downloads have a separate two-minute client deadline: the largest
+file exceeded the old ten-second deadline from the local remote client.
+
+**Platform improvements:** expose a routable/healthy state and keep the previous
+version serving until that state is reached, rather than treating version
+creation/start as HTTP readiness. Cleanup also logged four best-effort
+`config_variable` deletion-report 404s after those variables were removed;
+deploy itself completed. Change reporting should be able to record a deletion
+without requiring a deleted resource to remain queryable.
+
+Consolidation trades independent media deploy hashes for fewer services and
+less proxy/static-server code. Blog code/content deployments now carry its
+unchanged media too. Object storage or a separate media origin can avoid that
+re-upload if deployment size or further media growth becomes a concern.

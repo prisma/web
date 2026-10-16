@@ -36,32 +36,30 @@ if (!origin) {
   assert.ok(origin, "Composer must report the gateway endpoint");
 }
 
-// Composer reports process startup before every HTTP listener is ready.
-// Retry transport errors during that window; application 500s still fail.
-async function get(url: URL, init?: RequestInit): Promise<Response> {
-  const deadline = Date.now() + 60_000;
+// Deployment can finish before Compute routes a newly promoted service.
+// Initial landing-page probes also wait for transient 404s, for at most two
+// minutes. Other requests retain strict 404 checks; application 500s still fail.
+async function get(url: URL, init?: RequestInit, startup = false): Promise<Response> {
+  const deadline = Date.now() + (startup ? 120_000 : 60_000);
   for (;;) {
     try {
-      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(10_000) });
-      if (![502, 503].includes(response.status) || Date.now() >= deadline) return response;
+      const response = await fetch(url, {
+        ...init,
+        signal: init?.signal ?? AbortSignal.timeout(10_000),
+      });
+      const pending = [502, 503].includes(response.status) || (startup && response.status === 404);
+      if (!pending || Date.now() >= deadline) return response;
       await response.body?.cancel();
     } catch (error) {
       if (Date.now() >= deadline) throw error;
     }
-    await delay(200);
+    await delay(startup ? 1000 : 200);
   }
 }
 
 try {
-  for (const path of [
-    "/",
-    "/docs/composer",
-    "/blog",
-    "/blog/prisma-orm-8-nestjs",
-    "/handbook",
-    "/eclipse",
-  ]) {
-    const response: Response = await get(new URL(path, origin));
+  for (const path of ["/", "/docs/composer", "/blog", "/handbook", "/eclipse"]) {
+    const response: Response = await get(new URL(path, origin), undefined, true);
     assert.equal(response.status, 200, `${path}: expected a working page`);
     assert.equal(
       new URL(response.url).origin,
@@ -110,7 +108,8 @@ try {
       origin,
     );
     const headers = { "accept-encoding": "identity" };
-    const response = await get(url, { headers });
+    // Full public files can take longer than a page from a distant client.
+    const response = await get(url, { headers, signal: AbortSignal.timeout(120_000) });
     assert.equal(response.status, 200, file.path);
     const bytes = Buffer.from(await response.arrayBuffer());
     const hash = createHash("sha256");
@@ -180,6 +179,7 @@ try {
 
   // Include content from different docs trees, rather than only a landing page.
   for (const pathname of [
+    "/blog/prisma-orm-8-nestjs",
     "/docs/composer/getting-started",
     "/docs/composer/porting-an-app",
     "/docs/orm/v7/reference/prisma-schema-reference",
@@ -192,9 +192,9 @@ try {
       new URL(origin).origin,
       `${pathname}: escaped the local stack`,
     );
-    await response.arrayBuffer();
+    assert.match(await response.text(), /<html/);
   }
-  console.log("PASS current and legacy docs articles");
+  console.log("PASS blog and current/legacy docs articles");
 
   if (session && (process.platform === "linux" || process.platform === "darwin")) {
     // The pinned SDK's isolated emulator records child PIDs here. These are the Bun

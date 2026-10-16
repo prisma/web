@@ -54,8 +54,11 @@ If changing declarations, `prisma.config.ts`, or runtime bindings, restart dev.
 To keep the original Next.js HMR workflow, use `pnpm dev:turbo` or an individual
 app's `dev` script.
 
-`pnpm composer:smoke <gateway-url>` checks an already-running stack. The CI
-workflow builds and runs the full smoke test without cloud credentials.
+`pnpm composer:smoke <gateway-url>` checks an already-running stack. Initial
+landing pages get up to two minutes for Compute routing/startup to settle;
+subsequent article and asset checks retain strict status assertions. Full media
+downloads have a two-minute client deadline. The CI workflow builds and runs
+the local smoke test without cloud credentials.
 
 ## Resource limits
 
