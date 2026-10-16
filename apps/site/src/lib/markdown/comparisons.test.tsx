@@ -98,3 +98,7 @@ test("comparison Markdown preserves literal code and escapes table pipes", () =>
   assert.ok(markdown.includes("| Literal | left \\| right |"));
   assert.ok(markdown.includes("```\nSELECT '<value>';\n```"));
 });
+
+test("a table without rows does not interrupt the comparison rendition", () => {
+  assert.equal(renderComparisonContent(<table />, "/compare/convex"), "");
+});

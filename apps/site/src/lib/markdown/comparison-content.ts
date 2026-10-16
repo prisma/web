@@ -69,6 +69,7 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
             .replace(/\|/g, "\\|"),
         );
       });
+      if (rows.length === 0) return "";
       return `\n\n${table(rows[0], rows.slice(1))}\n\n`;
     }
 
