@@ -66,32 +66,33 @@ export function KyselyPage() {
                   Prisma ORM
                 </Link>{" "}
                 when a contract file should drive typed queries and migrations. Prisma ORM 8 is a
-                release candidate, and it is what <code className="text-foreground">npm install prisma</code>{" "}
-                gives you. Pick{" "}
+                release candidate, and it is what{" "}
+                <code className="text-foreground">npm install prisma</code> gives you. Pick{" "}
                 <a href="https://kysely.dev" className={INLINE}>
                   Kysely
                 </a>{" "}
                 when you want a type-safe SQL query builder and table types you keep in TypeScript.
-                Prisma makes Prisma ORM. Kysely is a separate open-source library. This page sits
-                in the{" "}
-                <Link href="/compare" className={INLINE}>
-                  Prisma comparisons
-                </Link>{" "}
-                directory. The other ORM comparison is{" "}
+                Prisma makes Prisma ORM. Kysely is an independent open-source project. The other ORM
+                comparison is{" "}
                 <Link href="/compare/mongoose" className={INLINE}>
                   Prisma ORM vs Mongoose
                 </Link>
-                .
+                , and all{" "}
+                <Link href="/compare" className={INLINE}>
+                  Prisma comparisons
+                </Link>{" "}
+                are listed in one place.
               </p>
               <p className="mt-4 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
-                Product facts and competitor figures on this page link to a source, checked {CHECKED}.
+                Every competitor figure on this page has a source, listed under the table and
+                checked {CHECKED}.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <PrismButton href="/docs/orm" size="lg">
                   Read the ORM docs
                 </PrismButton>
                 <PrismButtonOutline href="#choose" size="lg">
-                  Choose a side
+                  See which fits
                 </PrismButtonOutline>
               </div>
             </div>
@@ -107,7 +108,10 @@ export function KyselyPage() {
             </h2>
             <ul className="mt-6 flex flex-col gap-3">
               {CHOOSE_PRISMA.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">
+                <li
+                  key={item}
+                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
+                >
                   <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
                   <span>{renderFaqAnswer(item)}</span>
                 </li>
@@ -120,7 +124,10 @@ export function KyselyPage() {
             </h2>
             <ul className="mt-6 flex flex-col gap-3">
               {CHOOSE_KYSELY.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">
+                <li
+                  key={item}
+                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
+                >
                   <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-yellow-400" aria-hidden />
                   <span>{renderFaqAnswer(item)}</span>
                 </li>
@@ -139,9 +146,8 @@ export function KyselyPage() {
             What each one supports
           </h2>
           <p className="mt-4 max-w-[68ch] text-pretty leading-relaxed text-muted-foreground">
-            Columns are alphabetical: Kysely, then Prisma ORM. One is a SQL query builder. The
-            other is a contract-based ORM that also includes a SQL query builder on PostgreSQL and
-            SQLite.
+            Columns are alphabetical: Kysely, then Prisma ORM. One is a SQL query builder. The other
+            is a contract-based ORM that also includes a SQL query builder on PostgreSQL and SQLite.
           </p>
           <div className="mt-10 overflow-hidden rounded-2xl border border-black/[0.08] bg-white">
             <div className="overflow-x-auto">
@@ -162,10 +168,7 @@ export function KyselyPage() {
                 <tbody>
                   {COMPARE_ROWS.map((row) => (
                     <tr key={row.feature} className="border-t border-black/[0.06]">
-                      <th
-                        scope="row"
-                        className="px-5 py-4 align-top text-sm font-semibold sm:px-6"
-                      >
+                      <th scope="row" className="px-5 py-4 align-top text-sm font-semibold sm:px-6">
                         {row.feature}
                       </th>
                       <td className="px-5 py-4 align-top text-sm leading-relaxed text-muted-foreground sm:px-6">
@@ -186,14 +189,15 @@ export function KyselyPage() {
               Getting started
             </a>
             ,{" "}
+            <a href="https://www.npmjs.com/package/kysely" className={INLINE}>
+              npm
+            </a>
+            ,{" "}
             <a href="https://kysely.dev/docs/migrations" className={INLINE}>
               Migrations
             </a>
             , and the{" "}
-            <a
-              href="https://github.com/kysely-org/kysely/blob/master/LICENSE"
-              className={INLINE}
-            >
+            <a href="https://github.com/kysely-org/kysely/blob/master/LICENSE" className={INLINE}>
               MIT license
             </a>
             , {CHECKED}. Prisma ORM cells:{" "}
@@ -232,7 +236,7 @@ export function KyselyPage() {
               Where Kysely works well
             </h2>
             <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-              Kysely is the query builder. Its{" "}
+              Kysely is a SQL query builder. Its{" "}
               <a href="https://kysely.dev/docs/getting-started" className={INLINE}>
                 getting started guide
               </a>{" "}
@@ -356,17 +360,21 @@ export function KyselyPage() {
             </h2>
             <ol className="mt-6 list-decimal space-y-3 pl-5 text-pretty leading-relaxed text-muted-foreground">
               <li>
-                For PostgreSQL, run <code className="text-foreground">npx prisma@latest orm init</code>{" "}
-                in the app. The{" "}
+                For PostgreSQL, run{" "}
+                <code className="text-foreground">npx prisma@latest orm init</code> in the app. The{" "}
                 <Link href="/docs/prisma-orm/add-to-existing-project/postgresql" className={INLINE}>
                   existing-database guide
                 </Link>{" "}
                 lists the Node.js versions it expects.
               </li>
               <li>
-                Run <code className="text-foreground">npx prisma contract infer</code> so it writes{" "}
-                <code className="text-foreground">contract.prisma</code> from the tables. The rows
-                stay in the database.
+                Run <code className="text-foreground">npx prisma contract infer</code> to write{" "}
+                <code className="text-foreground">contract.prisma</code> from the tables, then{" "}
+                <code className="text-foreground">npx prisma contract emit</code> and{" "}
+                <code className="text-foreground">npx prisma db sign</code>. Signing records that
+                the database already matches the contract, so the first{" "}
+                <code className="text-foreground">migration plan</code> starts from your tables
+                instead of an empty database. The rows stay where they are.
               </li>
               <li>
                 Later changes go through{" "}
@@ -385,8 +393,8 @@ export function KyselyPage() {
               <li>Keep the database and the connection string.</li>
               <li>
                 Add a TypeScript <code className="text-foreground">Database</code> interface that
-                matches the tables. A community generator can emit those types from a Prisma
-                schema. Prisma documents it on the{" "}
+                matches the tables. A community generator can emit those types from a Prisma schema.
+                Prisma documents it on the{" "}
                 <Link href="/docs/orm/v7/prisma-schema/overview/generators" className={INLINE}>
                   Prisma ORM 7 generators
                 </Link>{" "}

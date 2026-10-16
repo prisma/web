@@ -17,7 +17,7 @@ const faqStructuredData = createFaqStructuredData(CONVEX_PATH, [...FAQ], CONVEX_
 export default function Page() {
   return (
     <>
-      <JsonLd data={faqStructuredData} />
+      <JsonLd id="compare-convex-faq" data={faqStructuredData} />
       <ConvexPage />
     </>
   );

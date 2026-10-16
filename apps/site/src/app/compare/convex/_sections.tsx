@@ -79,21 +79,22 @@ export function ConvexPage() {
                 </a>{" "}
                 when you want a reactive database and TypeScript query functions, with the frontend
                 on a host such as Vercel or Netlify. Prisma makes Prisma Postgres, Prisma ORM, and
-                Prisma Compute. This page sits in the{" "}
+                Prisma Compute. All{" "}
                 <Link href="/compare" className={INLINE}>
                   Prisma comparisons
                 </Link>{" "}
-                directory.
+                are listed in one place.
               </p>
               <p className="mt-4 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
-                The table below links each figure to a source, checked {CHECKED}.
+                Every competitor figure on this page has a source, listed under the table and
+                checked {CHECKED}.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <PrismButton href="/docs/postgres" size="lg">
                   Read the Postgres docs
                 </PrismButton>
                 <PrismButtonOutline href="#choose" size="lg">
-                  Choose a side
+                  See which fits
                 </PrismButtonOutline>
               </div>
             </div>
@@ -109,7 +110,10 @@ export function ConvexPage() {
             </h2>
             <ul className="mt-6 flex flex-col gap-3">
               {CHOOSE_PRISMA.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">
+                <li
+                  key={item}
+                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
+                >
                   <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
                   <span>{renderFaqAnswer(item)}</span>
                 </li>
@@ -122,7 +126,10 @@ export function ConvexPage() {
             </h2>
             <ul className="mt-6 flex flex-col gap-3">
               {CHOOSE_CONVEX.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">
+                <li
+                  key={item}
+                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
+                >
                   <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-yellow-400" aria-hidden />
                   <span>{renderFaqAnswer(item)}</span>
                 </li>
@@ -164,10 +171,7 @@ export function ConvexPage() {
                 <tbody>
                   {COMPARE_ROWS.map((row) => (
                     <tr key={row.feature} className="border-t border-black/[0.06]">
-                      <th
-                        scope="row"
-                        className="px-5 py-4 align-top text-sm font-semibold sm:px-6"
-                      >
+                      <th scope="row" className="px-5 py-4 align-top text-sm font-semibold sm:px-6">
                         {row.feature}
                       </th>
                       <td className="px-5 py-4 align-top text-sm leading-relaxed text-muted-foreground sm:px-6">
@@ -314,9 +318,9 @@ export function ConvexPage() {
             <div>
               <h3 className="text-lg">Prisma Postgres and Prisma Compute</h3>
               <p className="mt-3 max-w-[48ch] text-pretty leading-relaxed text-muted-foreground">
-                Prisma Postgres Free is $0, with 200,000 operations a month, 2 GB of storage, and
-                50 databases. Starter is $10 a month. Prisma Compute is separate app hosting. The
-                page does not list a per-developer fee (
+                Prisma Postgres Free is $0, with 200,000 operations a month, 2 GB of storage, and 50
+                databases. Starter is $10 a month. Prisma Compute is separate app hosting. The page
+                does not list a per-developer fee (
                 <Link href="/pricing" className={INLINE}>
                   pricing page
                 </Link>
@@ -362,9 +366,14 @@ export function ConvexPage() {
                 shows <code className="text-foreground">contract infer</code>.
               </li>
               <li>
-                Load the rows into PostgreSQL. Convex Professional includes streaming data exports.
-                The Free and Starter column on the pricing page marks that export as unavailable.
-                This page does not include a converter.
+                Export the data. Every Convex plan can download a snapshot export, a ZIP with one{" "}
+                <code className="text-foreground">documents.jsonl</code> file per table, from the
+                dashboard or with <code className="text-foreground">npx convex export</code>, as the{" "}
+                <a href="https://docs.convex.dev/database/backup-restore" className={INLINE}>
+                  backup and export guide
+                </a>{" "}
+                describes. Professional adds streaming data exports. Load the JSONL into PostgreSQL
+                yourself. This page does not include a converter.
               </li>
               <li>
                 Point the app at the Postgres connection string. Host the HTTP app on Prisma

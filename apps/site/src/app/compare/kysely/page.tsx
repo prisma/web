@@ -17,7 +17,7 @@ const faqStructuredData = createFaqStructuredData(KYSELY_PATH, [...FAQ], KYSELY_
 export default function Page() {
   return (
     <>
-      <JsonLd data={faqStructuredData} />
+      <JsonLd id="compare-kysely-faq" data={faqStructuredData} />
       <KyselyPage />
     </>
   );

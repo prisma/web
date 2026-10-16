@@ -38,10 +38,7 @@ function useCompare() {
 
 export function CompareState({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
-  const filtered = useMemo(
-    () => COMPARISONS.filter((entry) => matches(entry, query)),
-    [query],
-  );
+  const filtered = useMemo(() => COMPARISONS.filter((entry) => matches(entry, query)), [query]);
   return (
     <CompareContext.Provider value={{ query, setQuery, filtered }}>
       {children}
@@ -84,13 +81,7 @@ function CompareSearch() {
   );
 }
 
-function CompareSort({
-  value,
-  onChange,
-}: {
-  value: SortKey;
-  onChange: (sort: SortKey) => void;
-}) {
+function CompareSort({ value, onChange }: { value: SortKey; onChange: (sort: SortKey) => void }) {
   return (
     <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
       Sort by
@@ -262,7 +253,11 @@ export function CompareRows() {
 
       <div className="min-w-0">
         <div className="mb-6 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
-          <CategoryPill active={category === "all"} onClick={() => setCategory("all")} count={counts.all}>
+          <CategoryPill
+            active={category === "all"}
+            onClick={() => setCategory("all")}
+            count={counts.all}
+          >
             All
           </CategoryPill>
           {visibleCategories.map((item) => (
@@ -303,7 +298,9 @@ export function CompareRows() {
                   href={`/compare/${entry.slug}`}
                   className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 py-4 outline-none transition-colors hover:bg-black/[0.02] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset md:grid-cols-[12.5rem_minmax(0,1fr)_auto] md:gap-x-12 md:py-5"
                 >
-                  <h2 className="col-start-1 row-start-1 text-xl leading-snug">{entry.competitor}</h2>
+                  <h2 className="col-start-1 row-start-1 text-xl leading-snug">
+                    {entry.competitor}
+                  </h2>
                   <span className="col-start-1 row-start-2 min-w-0 max-w-[68ch] md:col-start-2 md:row-start-1">
                     <span className="block text-pretty text-sm font-semibold leading-5 text-foreground underline-offset-4 group-hover:underline">
                       {entry.title}

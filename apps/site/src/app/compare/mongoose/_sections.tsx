@@ -70,27 +70,28 @@ export function MongoosePage() {
                 <a href="https://mongoosejs.com/docs/" className={INLINE}>
                   Mongoose
                 </a>{" "}
-                when the application is MongoDB and the schema, populate, and middleware should
-                live in application code. Prisma makes Prisma ORM. Mongoose is a separate
-                open-source library. This page sits in the{" "}
-                <Link href="/compare" className={INLINE}>
-                  Prisma comparisons
-                </Link>{" "}
-                directory. The other ORM comparison is{" "}
+                when the app runs on MongoDB and the schema, populate, and middleware should live in
+                application code. Prisma makes Prisma ORM. Mongoose is an independent open-source
+                project. The other ORM comparison is{" "}
                 <Link href="/compare/kysely" className={INLINE}>
                   Prisma ORM vs Kysely
                 </Link>
-                .
+                , and all{" "}
+                <Link href="/compare" className={INLINE}>
+                  Prisma comparisons
+                </Link>{" "}
+                are listed in one place.
               </p>
               <p className="mt-4 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
-                The table below links each figure to a source, checked {CHECKED}.
+                Every competitor figure on this page has a source, listed under the table and
+                checked {CHECKED}.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <PrismButton href="/docs/orm" size="lg">
                   Read the ORM docs
                 </PrismButton>
                 <PrismButtonOutline href="#choose" size="lg">
-                  Choose a side
+                  See which fits
                 </PrismButtonOutline>
               </div>
             </div>
@@ -106,7 +107,10 @@ export function MongoosePage() {
             </h2>
             <ul className="mt-6 flex flex-col gap-3">
               {CHOOSE_PRISMA.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">
+                <li
+                  key={item}
+                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
+                >
                   <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
                   <span>{renderFaqAnswer(item)}</span>
                 </li>
@@ -119,7 +123,10 @@ export function MongoosePage() {
             </h2>
             <ul className="mt-6 flex flex-col gap-3">
               {CHOOSE_MONGOOSE.map((item) => (
-                <li key={item} className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed">
+                <li
+                  key={item}
+                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
+                >
                   <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-yellow-400" aria-hidden />
                   <span>{renderFaqAnswer(item)}</span>
                 </li>
@@ -161,10 +168,7 @@ export function MongoosePage() {
                 <tbody>
                   {COMPARE_ROWS.map((row) => (
                     <tr key={row.feature} className="border-t border-black/[0.06]">
-                      <th
-                        scope="row"
-                        className="px-5 py-4 align-top text-sm font-semibold sm:px-6"
-                      >
+                      <th scope="row" className="px-5 py-4 align-top text-sm font-semibold sm:px-6">
                         {row.feature}
                       </th>
                       <td className="px-5 py-4 align-top text-sm leading-relaxed text-muted-foreground sm:px-6">
@@ -381,7 +385,8 @@ export function MongoosePage() {
                 guide adds Prisma ORM beside the existing models. The documents stay put.
               </li>
               <li>
-                Run <code className="text-foreground">npx prisma@latest orm init --target mongodb</code>
+                Run{" "}
+                <code className="text-foreground">npx prisma@latest orm init --target mongodb</code>
                 . Write <code className="text-foreground">contract.prisma</code> yourself.{" "}
                 <code className="text-foreground">contract infer</code> does not read MongoDB.
               </li>

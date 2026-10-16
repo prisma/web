@@ -27,7 +27,8 @@ const additionalPages: LlmsPage[] = [
   {
     path: "/compare",
     title: "Prisma comparisons",
-    description: "Compare Prisma with other developer tools.",
+    description:
+      "Prisma ORM and Prisma Postgres set beside the tools people weigh them against, with every figure sourced and dated.",
   },
   {
     path: "/changelog",

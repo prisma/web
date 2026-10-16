@@ -1,14 +1,13 @@
 /**
  * Head-to-head pages linked from /compare/<slug>.
  *
- * Postgres entries were checked 15 October 2026 against the redesign
- * deployment. Kysely, Mongoose, and Convex are pages in this app. Titles
+ * Every entry here must have a page at src/app/compare/<slug>/page.tsx, because
+ * the list links to /compare/<slug> and nothing else resolves that path. Titles
  * and descriptions match each page's own document title and meta description.
  *
- * Order is alphabetical by the other product.
- *
- * content/compare/competitor-one.mdx and competitor-two.mdx are starter-kit
- * samples. They stay on disk and off this list.
+ * Order is alphabetical by the other product. A category with no entries is
+ * hidden from the sidebar, so adding the first page in a category is enough to
+ * show it.
  */
 export const COMPARISON_CATEGORIES = [
   { id: "orm", label: "ORM", dot: "bg-prism-cyan-400" },
@@ -35,7 +34,7 @@ export const COMPARISONS: readonly ComparisonEntry[] = [
     competitor: "Convex",
     title: "Prisma Postgres vs Convex: standard Postgres or a reactive database?",
     description:
-      "Convex is a reactive database with TypeScript queries. Prisma Postgres is PostgreSQL, and Prisma ORM is optional. Prisma makes Prisma Postgres.",
+      "Convex is a reactive database with TypeScript query functions. Prisma Postgres is managed PostgreSQL, and Prisma ORM is optional. Which fits your app, with sourced figures.",
   },
   {
     slug: "kysely",
@@ -43,7 +42,7 @@ export const COMPARISONS: readonly ComparisonEntry[] = [
     competitor: "Kysely",
     title: "Prisma ORM vs Kysely: contract-based ORM or SQL-first query builder?",
     description:
-      "Prisma ORM 8, a release candidate, uses a contract for typed queries and migrations. Kysely is a type-safe SQL query builder. Prisma makes Prisma ORM.",
+      "Prisma ORM 8 drives typed queries and migrations from one contract file. Kysely is a type-safe SQL query builder with no schema file. Which fits your project, with sourced figures.",
   },
   {
     slug: "mongoose",
@@ -51,35 +50,6 @@ export const COMPARISONS: readonly ComparisonEntry[] = [
     competitor: "Mongoose",
     title: "Prisma ORM vs Mongoose: type-safe data modeling beyond MongoDB",
     description:
-      "Prisma ORM uses a contract for typed queries on PostgreSQL and MongoDB. Mongoose models MongoDB documents in application code. Prisma makes Prisma ORM.",
-  },
-  {
-    slug: "neon",
-    category: "postgres",
-    competitor: "Neon",
-    title: "Prisma Postgres vs Neon: compare managed Postgres for TypeScript apps",
-    description:
-      "Compare managed Postgres for TypeScript apps. Prisma Postgres puts your database on the same platform as a type-safe ORM and full TypeScript app hosting.",
-  },
-  {
-    slug: "planetscale",
-    category: "postgres",
-    competitor: "PlanetScale",
-    title: "Prisma Postgres vs PlanetScale: managed Postgres for TypeScript apps",
-    description:
-      "Managed Postgres for TypeScript apps. PlanetScale focuses on database performance and infrastructure; Prisma Postgres connects your database to a first-party ORM and full app hosting.",
-  },
-  {
-    slug: "supabase",
-    category: "postgres",
-    competitor: "Supabase",
-    title: "Prisma Postgres vs Supabase: which is better for TypeScript apps?",
-    description:
-      "Which is better for TypeScript apps? Compare Supabase's backend-as-a-service around Postgres with Prisma's first-party ORM, managed Postgres, and full app hosting.",
+      "Prisma ORM drives typed queries and migrations from one contract file, on PostgreSQL and MongoDB. Mongoose models MongoDB documents in application code. Which fits, with sourced figures.",
   },
 ];
-
-/** Starter-kit samples under content/compare. Not products, so not published. */
-export function isStarterKitComparison(slug: string): boolean {
-  return slug.startsWith("competitor-");
-}

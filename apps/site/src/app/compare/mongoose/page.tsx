@@ -17,7 +17,7 @@ const faqStructuredData = createFaqStructuredData(MONGOOSE_PATH, [...FAQ], MONGO
 export default function Page() {
   return (
     <>
-      <JsonLd data={faqStructuredData} />
+      <JsonLd id="compare-mongoose-faq" data={faqStructuredData} />
       <MongoosePage />
     </>
   );

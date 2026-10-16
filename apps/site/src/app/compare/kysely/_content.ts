@@ -1,10 +1,9 @@
 export const KYSELY_PATH = "/compare/kysely";
 
-export const KYSELY_TITLE =
-  "Prisma ORM vs Kysely: contract-based ORM or SQL-first query builder?";
+export const KYSELY_TITLE = "Prisma ORM vs Kysely: contract-based ORM or SQL-first query builder?";
 
 export const KYSELY_DESCRIPTION =
-  "Prisma ORM 8, a release candidate, uses a contract for typed queries and migrations. Kysely is a type-safe SQL query builder. Prisma makes Prisma ORM.";
+  "Prisma ORM 8 drives typed queries and migrations from one contract file. Kysely is a type-safe SQL query builder with no schema file. Which fits your project, with sourced figures.";
 
 export const CHECKED = "October 2026";
 
@@ -37,24 +36,28 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   },
   {
     feature: "Release status",
-    kysely: "A published library. The getting started guide requires TypeScript 5.4 or newer, and strict mode.",
+    kysely:
+      "Version 0.29.6 on npm, so not yet a 1.0 release. The getting started guide requires TypeScript 5.4 or newer, and strict mode.",
     prisma:
-      "Prisma ORM 8 is a release candidate, and it is what npm install prisma gives you. It is not a final release.",
+      "Prisma ORM 8 is a release candidate, and it is what npm install prisma gives you. The final release is still to come.",
   },
   {
     feature: "Data model",
-    kysely: "TypeScript interfaces you provide. A dialect also needs its driver, such as pg for PostgreSQL.",
-    prisma: "A contract file, contract.prisma. contract emit writes the types. There is no @prisma/client package.",
+    kysely:
+      "TypeScript interfaces you provide. A dialect also needs its driver, such as pg for PostgreSQL.",
+    prisma:
+      "A contract file, contract.prisma. contract emit writes the types. There is no @prisma/client package.",
   },
   {
     feature: "Queries",
     kysely: "A fluent SQL builder: selectFrom, where, and the other clauses in the guide.",
     prisma:
-      "An ORM client for model queries, a SQL query builder on PostgreSQL and SQLite, and raw SQL when those APIs stop short.",
+      "An ORM client for model queries, a SQL query builder on PostgreSQL and SQLite, and raw SQL for a statement neither API expresses.",
   },
   {
     feature: "Migrations",
-    kysely: "up and down functions you write. Pending migrations run in alphanumeric order, with an option for unordered migrations.",
+    kysely:
+      "up and down functions you write. Pending migrations run in alphanumeric order, with an option for unordered migrations.",
     prisma:
       "migration plan writes migration.ts from the contract. On PostgreSQL, migration show prints the SQL. db migrate runs ops.json, not the TypeScript file.",
   },

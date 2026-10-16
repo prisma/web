@@ -1,10 +1,9 @@
 export const MONGOOSE_PATH = "/compare/mongoose";
 
-export const MONGOOSE_TITLE =
-  "Prisma ORM vs Mongoose: type-safe data modeling beyond MongoDB";
+export const MONGOOSE_TITLE = "Prisma ORM vs Mongoose: type-safe data modeling beyond MongoDB";
 
 export const MONGOOSE_DESCRIPTION =
-  "Prisma ORM uses a contract for typed queries on PostgreSQL and MongoDB. Mongoose models MongoDB documents in application code. Prisma makes Prisma ORM.";
+  "Prisma ORM drives typed queries and migrations from one contract file, on PostgreSQL and MongoDB. Mongoose models MongoDB documents in application code. Which fits, with sourced figures.";
 
 export const CHECKED = "October 2026";
 
@@ -37,9 +36,10 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   },
   {
     feature: "Release status",
-    mongoose: "The getting started guide is Mongoose v9.11.2. Mongoose 9.0.0 shipped on 21 November 2025.",
+    mongoose:
+      "The getting started guide is Mongoose v9.11.2. Mongoose 9.0.0 shipped on 21 November 2025.",
     prisma:
-      "Prisma ORM 8 is a release candidate, and it is what npm install prisma gives you. It is not a final release. PostgreSQL is the release-candidate database. MongoDB is early access.",
+      "Prisma ORM 8 is a release candidate, and it is what npm install prisma gives you. The final release is still to come. PostgreSQL is the release-candidate database. MongoDB is early access.",
   },
   {
     feature: "Data model",
@@ -51,7 +51,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Queries",
     mongoose: "Model.find() and the other query helpers, with MongoDB query operators.",
     prisma:
-      "An ORM client, db.orm.<collection>. On MongoDB, a pipeline builder for aggregation, and raw commands when those APIs stop short.",
+      "An ORM client, db.orm.<collection>. On MongoDB, a pipeline builder for aggregation, and raw commands for anything the two APIs do not cover.",
   },
   {
     feature: "Related documents",
@@ -69,8 +69,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   },
   {
     feature: "Middleware",
-    mongoose:
-      "pre and post hooks. Four kinds: document, model, aggregate, and query middleware.",
+    mongoose: "pre and post hooks. Four kinds: document, model, aggregate, and query middleware.",
     prisma:
       "Middleware runs on MongoDB, except beforeCompile, which exists on PostgreSQL. The cache middleware runs on both databases.",
   },

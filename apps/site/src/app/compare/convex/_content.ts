@@ -1,10 +1,9 @@
 export const CONVEX_PATH = "/compare/convex";
 
-export const CONVEX_TITLE =
-  "Prisma Postgres vs Convex: standard Postgres or a reactive database?";
+export const CONVEX_TITLE = "Prisma Postgres vs Convex: standard Postgres or a reactive database?";
 
 export const CONVEX_DESCRIPTION =
-  "Convex is a reactive database with TypeScript queries. Prisma Postgres is PostgreSQL, and Prisma ORM is optional. Prisma makes Prisma Postgres.";
+  "Convex is a reactive database with TypeScript query functions. Prisma Postgres is managed PostgreSQL, and Prisma ORM is optional. Which fits your app, with sourced figures.";
 
 export const CHECKED = "October 2026";
 

@@ -6,7 +6,8 @@ import { CompareRows, CompareState } from "./compare-list";
 
 export const metadata = createPageMetadata({
   title: "Prisma comparisons",
-  description: "Compare Prisma with other developer tools.",
+  description:
+    "Prisma ORM and Prisma Postgres set beside the tools people weigh them against, with every figure sourced and dated.",
   path: "/compare",
 });
 
@@ -42,7 +43,8 @@ export default function ComparePage() {
                 Prisma comparisons
               </h1>
               <p className="mt-4 max-w-[76ch] text-pretty leading-relaxed text-muted-foreground md:text-lg">
-                Compare Prisma with other developer tools.
+                Prisma ORM and Prisma Postgres set beside the tools people weigh them against, with
+                every figure sourced and dated.
               </p>
             </div>
           </div>
@@ -50,7 +52,10 @@ export default function ComparePage() {
       </section>
 
       <CompareState>
-        <section className="bg-white px-4 pb-24 pt-10 sm:px-8 sm:pb-32 sm:pt-14" aria-label="Comparisons">
+        <section
+          className="bg-white px-4 pb-24 pt-10 sm:px-8 sm:pb-32 sm:pt-14"
+          aria-label="Comparisons"
+        >
           <div className="mx-auto max-w-site">
             <CompareRows />
           </div>
