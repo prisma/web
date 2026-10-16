@@ -83,7 +83,7 @@ export function FreePlanCard() {
       </div>
 
       <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-sm text-muted-foreground sm:px-6">
-        No time limit. Allowances reset monthly. Upgrade when you need to.
+        No time limit. Usage allowances reset monthly. Upgrade when you need to.
       </p>
     </div>
   );

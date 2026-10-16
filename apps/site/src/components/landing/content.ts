@@ -376,7 +376,8 @@ export const freeLanding: LandingContent = {
   faq: [
     {
       question: "Is there a time limit on the Free plan?",
-      answer: "No. The Free plan is free forever, not a trial. The allowances reset every month.",
+      answer:
+        "No. The Free plan is free forever, not a trial. The request and operation allowances reset every month; storage and the database count are fixed limits of the plan.",
     },
     {
       question: "Do I need a credit card?",

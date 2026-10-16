@@ -40,6 +40,7 @@ export function LandingStickyCta({ label = CTA_LABEL }: { label?: string }) {
   return (
     <div
       aria-hidden={!visible}
+      inert={!visible}
       className={cn(
         "fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.06] bg-white/90 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md transition-transform duration-300 md:hidden",
         visible ? "translate-y-0" : "pointer-events-none translate-y-full",
