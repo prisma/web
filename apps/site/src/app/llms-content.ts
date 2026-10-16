@@ -18,6 +18,11 @@ type LlmsPage = {
  */
 const additionalPages: LlmsPage[] = [
   {
+    path: "/compare",
+    title: "Prisma comparisons",
+    description: "Compare Prisma with other developer tools.",
+  },
+  {
     path: "/changelog",
     title: "Prisma Changelog — Release Notes & Product Updates",
     description:
