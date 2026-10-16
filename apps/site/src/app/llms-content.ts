@@ -49,10 +49,12 @@ const additionalPages: LlmsPage[] = [
   },
 ];
 
+/** Resolve a root-relative page path against the requested website origin. */
 function toAbsoluteUrl(baseUrl: string, path: string) {
   return new URL(path, baseUrl).toString();
 }
 
+/** Build the website's llms index, including every guide and its Markdown URL. */
 export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
   const answersList = getAnswerEntries()
     .map(
@@ -105,6 +107,7 @@ ${otherList}
 `;
 }
 
+/** Combine marketing-page and guide renditions into the full website Markdown export. */
 export function buildLlmsFullContent(baseUrl = getBaseUrl()) {
   const answerSections = getAnswerEntries()
     .map(

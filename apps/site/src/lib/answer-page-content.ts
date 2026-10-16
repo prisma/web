@@ -1,8 +1,7 @@
 import { getAllContent } from "./content";
 import { answerPageSchema } from "./answer-page-schema";
 
-// Keep discovery and Markdown independent of compiled MDX. This also lets the
-// site scripts validate the collection without a Next.js module loader.
+/** Read validated Postgres guides without loading compiled MDX, for discovery and scripts. */
 export function getAnswerEntries() {
   return getAllContent("answers/postgres")
     .map((entry) => ({
@@ -15,6 +14,7 @@ export function getAnswerEntries() {
 
 export type AnswerEntry = ReturnType<typeof getAnswerEntries>[number];
 
+/** Render the shared guide content as Markdown, including text equivalents of custom visuals. */
 export function renderAnswerMarkdown({ data, content }: AnswerEntry) {
   return [
     `# ${data.title}`,

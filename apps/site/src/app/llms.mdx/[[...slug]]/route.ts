@@ -147,6 +147,7 @@ ${available}
   });
 }
 
+/** Serve a guide or marketing-page Markdown rendition with canonical discovery headers. */
 export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[...slug]]">) {
   const { slug } = await params;
   const answer = getAnswerEntries().find((entry) => entry.url === `/${(slug ?? []).join("/")}`);

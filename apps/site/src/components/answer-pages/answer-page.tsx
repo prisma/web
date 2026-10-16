@@ -17,6 +17,7 @@ import { EnvironmentDiagram } from "./environment-diagram";
 
 // Conversion Factory's article structure, using the site's brand components.
 // The reference's empty header image is deliberately absent.
+/** Render a guide with article metadata, heading navigation and server-rendered FAQ answers. */
 export function AnswerPage({ page }: { page: AnswerPageContent }) {
   const { data } = page;
   const Body = data.body;

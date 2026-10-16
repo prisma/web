@@ -1,5 +1,6 @@
 import { ArrowDown, Database, GitBranch, Server } from "lucide-react";
 
+/** Illustrate the separate app, database and credential boundaries for test and production. */
 export function EnvironmentDiagram() {
   return (
     <figure className="not-prose my-10 rounded-xl border border-border p-5 sm:p-8">

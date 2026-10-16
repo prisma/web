@@ -12,6 +12,7 @@ export const metadata = createPageMetadata({
   ogAccent: "yellow",
 });
 
+/** List the Postgres guide collection so new articles have an index linked from the footer. */
 export default function PostgresGuidesPage() {
   return (
     <section className="mx-auto max-w-site px-6 pb-24 pt-36 sm:px-8 sm:pt-44">
