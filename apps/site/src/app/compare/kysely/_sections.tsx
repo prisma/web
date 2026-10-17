@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Info } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -128,14 +129,6 @@ export function getKyselyPageContent() {
         starts from SQL: you write each query as a fluent TypeScript builder over table types you
         keep yourself.
       </p>
-      <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">
-        Prisma makes Prisma ORM; Kysely is an independent open-source project. Figures about Kysely
-        come from its own pages, listed under{" "}
-        <a href="#sources" className={QUIET_LINK}>
-          Sources
-        </a>{" "}
-        and checked {CHECKED}.
-      </p>
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <PrismButton href="https://console.prisma.io" ctaLocation="compare-intro">
           Get started free
@@ -146,6 +139,19 @@ export function getKyselyPageContent() {
       </div>
     </div>,
     <div key="body" className={BODY}>
+      <aside
+        aria-label="Disclosure"
+        className="flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
+      >
+        <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
+        <p className="!text-sm !leading-6 !text-muted-foreground">
+          Prisma makes Prisma ORM. Every Kysely figure links to its{" "}
+          <a href="#sources" className={QUIET_LINK}>
+            source
+          </a>{" "}
+          at the bottom of the page.
+        </p>
+      </aside>
       <section className={SECTION}>
         <h2 id="choose">When should I choose Prisma ORM or Kysely</h2>
         <div className={TABLE_FRAME}>
