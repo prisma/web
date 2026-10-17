@@ -2,6 +2,7 @@ import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { FAQ, KYSELY_PATH, KYSELY_TITLE } from "./_content";
+import { CompareDocument } from "../document";
 import { KyselyPage } from "./_sections";
 
 export const metadata = getComparisonMetadata("kysely");
@@ -14,7 +15,9 @@ export default function Page() {
     <>
       <JsonLd id="compare-kysely-article" data={getComparisonStructuredData("kysely")} />
       <JsonLd id="compare-kysely-faq" data={faqStructuredData} />
-      <KyselyPage />
+      <CompareDocument slug="kysely">
+        <KyselyPage />
+      </CompareDocument>
     </>
   );
 }

@@ -117,7 +117,7 @@ export default function RootLayout({
             <UtmPersistence />
             {/* The campaign landing pages under /lp carry their own header and
                 footer (app/lp/layout.tsx); SiteChrome drops the site's for them. */}
-            <SiteChrome>
+            <SiteChrome hideOnCompare>
               <BuildersDayBanner />
               <Header />
             </SiteChrome>
