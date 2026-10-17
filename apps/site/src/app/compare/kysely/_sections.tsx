@@ -173,18 +173,20 @@ export function getKyselyPageContent() {
             height={32}
             className="size-8 rounded-md bg-neutral-100"
           />
-          <span>
-            By{" "}
-            <a
-              href={KYSELY_AUTHOR.path}
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              {KYSELY_AUTHOR.name}
-            </a>
-          </span>{" "}
-          <span className="text-black/25">·</span>{" "}
-          <span>
-            Updated <time dateTime={KYSELY_UPDATED.iso}>{KYSELY_UPDATED.label}</time>
+          <span className="flex flex-col max-sm:leading-5 sm:flex-row sm:items-center sm:gap-x-3">
+            <span>
+              By{" "}
+              <a
+                href={KYSELY_AUTHOR.path}
+                className="font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                {KYSELY_AUTHOR.name}
+              </a>
+            </span>{" "}
+            <span className="hidden text-black/25 sm:inline">·</span>{" "}
+            <span>
+              Updated <time dateTime={KYSELY_UPDATED.iso}>{KYSELY_UPDATED.label}</time>
+            </span>
           </span>
         </p>
         <aside
