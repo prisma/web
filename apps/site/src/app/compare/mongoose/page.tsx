@@ -2,7 +2,6 @@ import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { FAQ, MONGOOSE_PATH, MONGOOSE_TITLE } from "./_content";
-import { CompareDocument } from "../document";
 import { MongoosePage } from "./_sections";
 
 export const metadata = getComparisonMetadata("mongoose");
@@ -15,9 +14,7 @@ export default function Page() {
     <>
       <JsonLd id="compare-mongoose-article" data={getComparisonStructuredData("mongoose")} />
       <JsonLd id="compare-mongoose-faq" data={faqStructuredData} />
-      <CompareDocument slug="mongoose">
-        <MongoosePage />
-      </CompareDocument>
+      <MongoosePage />
     </>
   );
 }
