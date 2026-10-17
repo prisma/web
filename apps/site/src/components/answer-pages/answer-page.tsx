@@ -50,6 +50,18 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
         id="answer-faq-structured-data"
         data={createFaqStructuredData(page.url, data.faq, data.title)}
       />
+      <JsonLd
+        id="answer-breadcrumb-structured-data"
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { name: product.name, item: new URL(product.path, getBaseUrl()).toString() },
+            { name: "Guides", item: new URL(product.guidesPath, getBaseUrl()).toString() },
+            { name: data.title, item: url },
+          ].map((item, index) => ({ "@type": "ListItem", position: index + 1, ...item })),
+        }}
+      />
 
       <header className="mx-auto max-w-site px-6 sm:px-8">
         <div className="rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
