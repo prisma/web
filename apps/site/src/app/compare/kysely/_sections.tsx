@@ -35,10 +35,10 @@ const QUIET_LINK =
  * 32px between h3 groups and 8px under each h3. Prose margins are zeroed so
  * these gaps are the only spacing, and every paragraph and list item shares
  * one size, line height and colour. Code spans from prose and from
- * `renderFaqAnswer` share one treatment and never break inside a command.
+ * `renderFaqAnswer` share one treatment, and a span that wraps keeps its padding on both lines.
  */
 const BODY =
-  "flex flex-col gap-14 [&_:is(h2,h3)]:my-0 [&_:is(h2,h3)]:text-primary [&_:is(p,ul,ol,li,table,figure,img)]:my-0 [&_:is(p,li)]:text-base [&_:is(p,li)]:leading-7 [&_:is(p,li)]:text-foreground [&_code]:whitespace-nowrap [&_code]:rounded [&_code]:border-0 [&_code]:bg-black/[0.045] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.875em] [&_code]:font-medium [&_code]:text-primary [&_code]:before:content-none [&_code]:after:content-none [&_blockquote]:my-0 [&_blockquote]:border-0 [&_blockquote]:pl-0 [&_blockquote]:font-normal [&_blockquote]:not-italic [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none";
+  "flex flex-col gap-14 [&_:is(h2,h3)]:my-0 [&_:is(h2,h3)]:text-primary [&_:is(p,ul,ol,li,table,figure,img)]:my-0 [&_:is(p,li)]:text-base [&_:is(p,li)]:leading-7 [&_:is(p,li)]:text-foreground [&_code]:box-decoration-clone [&_code]:rounded [&_code]:border-0 [&_code]:bg-black/[0.045] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.875em] [&_code]:font-medium [&_code]:text-primary [&_code]:before:content-none [&_code]:after:content-none [&_blockquote]:my-0 [&_blockquote]:border-0 [&_blockquote]:pl-0 [&_blockquote]:font-normal [&_blockquote]:not-italic [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none";
 const SECTION = "flex flex-col gap-5";
 const GROUPS = "flex flex-col gap-8";
 const GROUP = "flex flex-col gap-2";
@@ -220,7 +220,7 @@ export function getKyselyPageContent() {
       <section className={SECTION}>
         <h2 id="where-kysely">Where Kysely works well</h2>
         <p className="max-w-[68ch]">
-          Kysely is a SQL query builder. Its{" "}
+          The Kysely{" "}
           <a href="https://kysely.dev/docs/getting-started" className={INLINE}>
             getting started guide
           </a>{" "}
