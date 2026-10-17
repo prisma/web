@@ -59,6 +59,8 @@ export type CompareRow = {
   feature: string;
   kysely: string;
   prisma: string;
+  /** Only for rows whose cells answer a plain yes or no. */
+  marks?: { kysely: "yes" | "no"; prisma: "yes" | "no" };
 };
 
 /** Columns run Feature, Kysely, Prisma ORM: alphabetical by product. */
@@ -71,7 +73,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "Release status",
     kysely:
-      "Version 0.29.6 on npm, so not yet a 1.0 release. The getting started guide requires TypeScript 5.4 or newer, and strict mode.",
+      "Version 0.29.7 on npm, so not yet a 1.0 release. The getting started guide requires TypeScript 5.4 or newer, and strict mode.",
     prisma:
       "Prisma ORM 8 is a release candidate, and it is what `npm install prisma` gives you. The final release is still to come.",
   },
@@ -104,6 +106,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "Hosted database",
     kysely: "None. Kysely is a library.",
+    marks: { kysely: "no", prisma: "yes" },
     prisma:
       "[Prisma Postgres](/docs/postgres) is a separate product. Any Postgres client works with it, so Prisma ORM is optional. [Prisma Compute](/docs/compute) is separate app hosting.",
   },
@@ -125,18 +128,22 @@ export const PRISMA_FITS = [
 
 export const APART = [
   {
+    id: "one-contract",
     title: "One contract for queries and migrations",
     body: "You describe models in `contract.prisma`. `contract emit` writes the types, and `migration plan` writes a TypeScript migration from that contract. On PostgreSQL, `migration show` prints the SQL the migration will run.",
   },
   {
+    id: "model-api",
     title: "A model API and a SQL query builder",
     body: "The ORM client answers model queries. The SQL query builder, on PostgreSQL and SQLite, takes joins and aggregates the client does not expose. Raw SQL covers a statement neither API expresses.",
   },
   {
+    id: "contract-from-tables",
     title: "A contract from tables you already have",
     body: "`contract infer` reads a PostgreSQL database and writes `contract.prisma`. It does what `prisma db pull` did in Prisma ORM 7. The rows stay in the database.",
   },
   {
+    id: "offline-migration-plan",
     title: "A migration plan that does not need the database",
     body: "`migration plan` reads the contract and writes the migration. Planning does not connect to a database, so it can run without database credentials. On PostgreSQL, `migration show` prints the SQL before anything runs.",
   },

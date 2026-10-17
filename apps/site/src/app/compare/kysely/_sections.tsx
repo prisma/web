@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Info } from "lucide-react";
+import type { ReactNode } from "react";
+import { Check, Info, Minus } from "lucide-react";
 import {
   CodeBlock,
   CodeBlockTab,
@@ -16,6 +17,7 @@ import {
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { TESTIMONIALS } from "@/components/sections/testimonials-data";
 import { COMPARISON_CTA } from "../_content";
+import { AnchorHeading } from "../anchor-heading";
 import { CompareArticle } from "../article";
 import { highlight } from "./highlight";
 import { QuoteCarousel } from "./quote-carousel";
@@ -75,6 +77,27 @@ const SCROLL_HINT = {
 const STICKY =
   "sticky left-0 z-10 before:absolute before:inset-y-0 before:-left-1 before:w-1 before:bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/[0.06]";
 const TD = "text-sm leading-6 text-foreground";
+
+/**
+ * A quiet yes or no beside a cell's own wording. The icon is cap height and
+ * centred on the first line; its label is an attribute, so Markdown keeps the text alone.
+ */
+function MarkedCell({ mark, children }: { mark?: "yes" | "no"; children: ReactNode }) {
+  if (!mark) return children;
+  const Icon = mark === "yes" ? Check : Minus;
+  return (
+    <span className="flex gap-2">
+      <span
+        role="img"
+        aria-label={mark === "yes" ? "Yes" : "No"}
+        className={`flex h-6 shrink-0 items-center ${mark === "yes" ? "text-emerald-700/55" : "text-black/30"}`}
+      >
+        <Icon className="size-2.5" strokeWidth={3} aria-hidden />
+      </span>
+      <span>{children}</span>
+    </span>
+  );
+}
 
 /**
  * The site does not build the eclipse tokens these components use
@@ -171,7 +194,7 @@ export function getKyselyPageContent() {
             alt=""
             width={32}
             height={32}
-            className="size-8 rounded-md bg-neutral-100"
+            className="size-8 shrink-0 rounded-full bg-neutral-100 object-cover"
           />
           <span className="flex flex-col max-sm:leading-5 sm:flex-row sm:items-center sm:gap-x-3">
             <span>
@@ -204,7 +227,9 @@ export function getKyselyPageContent() {
         </aside>
       </div>
       <section className={SECTION}>
-        <h2 id="choose">When should I choose Prisma ORM or Kysely</h2>
+        <AnchorHeading level={2} id="choose">
+          When should I choose Prisma ORM or Kysely
+        </AnchorHeading>
         <div className={TABLE_FRAME}>
           <table className="w-full border-collapse text-left" style={{ minWidth: 0 }}>
             <thead>
@@ -230,7 +255,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="same-query">The same query in both</h2>
+        <AnchorHeading level={2} id="same-query">
+          The same query in both
+        </AnchorHeading>
         <p className="max-w-[68ch]">
           Each snippet reads one user by email with their posts: Kysely nests the posts with its{" "}
           <code>jsonArrayFrom</code> helper, and Prisma ORM loads them with <code>include</code>.
@@ -258,7 +285,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="feature-table">What each one supports</h2>
+        <AnchorHeading level={2} id="feature-table">
+          What each one supports
+        </AnchorHeading>
         <p className="max-w-[68ch]">
           Kysely is a SQL query builder. Prisma ORM is a contract-based ORM that also includes a SQL
           query builder on PostgreSQL and SQLite. Columns are in alphabetical order.
@@ -293,8 +322,12 @@ export function getKyselyPageContent() {
                   <th scope="row" className={`${TH_ROW} ${STICKY}`}>
                     {row.feature}
                   </th>
-                  <td className={TD}>{renderFaqAnswer(row.kysely)}</td>
-                  <td className={TD}>{renderFaqAnswer(row.prisma)}</td>
+                  <td className={TD}>
+                    <MarkedCell mark={row.marks?.kysely}>{renderFaqAnswer(row.kysely)}</MarkedCell>
+                  </td>
+                  <td className={TD}>
+                    <MarkedCell mark={row.marks?.prisma}>{renderFaqAnswer(row.prisma)}</MarkedCell>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -303,7 +336,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="where-kysely">Where Kysely works well</h2>
+        <AnchorHeading level={2} id="where-kysely">
+          Where Kysely works well
+        </AnchorHeading>
         <p className="max-w-[68ch]">
           The Kysely{" "}
           <a href="https://kysely.dev/docs/getting-started" className={INLINE}>
@@ -320,7 +355,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="where-prisma">Where Prisma ORM fits better</h2>
+        <AnchorHeading level={2} id="where-prisma">
+          Where Prisma ORM fits better
+        </AnchorHeading>
         <p className="max-w-[68ch]">
           Prisma ORM fits a team that wants the contract, the model queries, and the migrations to
           come from one file. The{" "}
@@ -337,11 +374,15 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="apart">What sets Prisma ORM apart</h2>
+        <AnchorHeading level={2} id="apart">
+          What sets Prisma ORM apart
+        </AnchorHeading>
         <div className={GROUPS}>
           {APART.map((item) => (
             <div key={item.title} className={GROUP}>
-              <h3 className="text-lg leading-snug">{item.title}</h3>
+              <AnchorHeading level={3} className="text-lg leading-snug" id={item.id}>
+                {item.title}
+              </AnchorHeading>
               <p className="max-w-[68ch]">{renderFaqAnswer(item.body)}</p>
             </div>
           ))}
@@ -349,10 +390,14 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="pricing">Pricing</h2>
+        <AnchorHeading level={2} id="pricing">
+          Pricing
+        </AnchorHeading>
         <div className={GROUPS}>
           <div className={GROUP}>
-            <h3 className="text-lg leading-snug">Kysely</h3>
+            <AnchorHeading level={3} className="text-lg leading-snug" id="pricing-kysely">
+              Kysely
+            </AnchorHeading>
             <p className="max-w-[68ch]">
               The library is free under the{" "}
               <a href="https://github.com/kysely-org/kysely/blob/master/LICENSE" className={INLINE}>
@@ -362,7 +407,9 @@ export function getKyselyPageContent() {
             </p>
           </div>
           <div className={GROUP}>
-            <h3 className="text-lg leading-snug">Prisma ORM and Prisma Postgres</h3>
+            <AnchorHeading level={3} className="text-lg leading-snug" id="pricing-prisma">
+              Prisma ORM and Prisma Postgres
+            </AnchorHeading>
             <p className="max-w-[68ch]">
               Prisma ORM is free under the{" "}
               <a href="https://github.com/prisma/prisma/blob/main/LICENSE" className={INLINE}>
@@ -381,7 +428,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="wrong-choice">When Prisma ORM is the wrong choice</h2>
+        <AnchorHeading level={2} id="wrong-choice">
+          When Prisma ORM is the wrong choice
+        </AnchorHeading>
         <ul className={LIST}>
           {WRONG_CHOICE.map((item) => (
             <li key={item}>{renderFaqAnswer(item)}</li>
@@ -390,7 +439,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="migrate">Move from Kysely to Prisma ORM</h2>
+        <AnchorHeading level={2} id="migrate">
+          Move from Kysely to Prisma ORM
+        </AnchorHeading>
         <ol className={STEPS}>
           <li>
             For PostgreSQL, run <code>npx prisma@latest orm init</code> in the app. The{" "}
@@ -417,7 +468,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="migrate-back">Move from Prisma ORM to Kysely</h2>
+        <AnchorHeading level={2} id="migrate-back">
+          Move from Prisma ORM to Kysely
+        </AnchorHeading>
         <ol className={STEPS}>
           <li>Keep the database and the connection string.</li>
           <li>
@@ -441,7 +494,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="proof">What teams on Prisma say</h2>
+        <AnchorHeading level={2} id="proof">
+          What teams on Prisma say
+        </AnchorHeading>
         <p className="max-w-[68ch]">Two teams on what type safety in Prisma ORM does for them.</p>
         <QuoteCarousel>
           {PROOF.map((item) => (
@@ -466,7 +521,9 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <h2 id="faq">Frequently asked questions</h2>
+        <AnchorHeading level={2} id="faq">
+          Frequently asked questions
+        </AnchorHeading>
         <Accordion type="single" collapsible className="border-t border-black/[0.08]">
           {FAQ.map((faq, index) => (
             <AccordionItem key={faq.question} value={`item-${index}`}>

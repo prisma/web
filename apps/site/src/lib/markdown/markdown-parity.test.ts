@@ -119,10 +119,12 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/compare/mongoose": 10,
 };
 
-const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
+const HEADING_PATTERN =
+  /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>|<AnchorHeading level=\{[12]\}[^>]*>([\s\S]*?)<\/AnchorHeading>/g;
 
 /**
- * The literal text of every `<h1>`/`<h2>` in a source file.
+ * The literal text of every `<h1>`/`<h2>` in a source file, including level 2
+ * `<AnchorHeading>`s.
  *
  * Presentational wrappers inside a heading (`<GlassGlide>`, `<span>`) are
  * flattened, because they carry no meaning in Markdown. A heading whose text
@@ -134,7 +136,8 @@ const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
 function literalHeadings(source: string): string[] {
   const headings: string[] = [];
 
-  for (const [, , inner] of source.matchAll(HEADING_PATTERN)) {
+  for (const [, , tagInner, anchorInner] of source.matchAll(HEADING_PATTERN)) {
+    const inner = tagInner ?? anchorInner;
     // JSX's explicit whitespace literal, used to keep a space before a tag.
     let flattened = inner.replace(/\{" "\}/g, " ");
 

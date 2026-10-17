@@ -1,6 +1,7 @@
 import { Children, isValidElement, type ReactNode } from "react";
 import { CodeBlockTab, CodeBlockTabs, CodeBlockTabsTrigger } from "@prisma/eclipse";
 import { AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { AnchorHeading } from "@/app/compare/anchor-heading";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
@@ -119,6 +120,9 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
     if (type === "em" || type === "i") return `*${children}*`;
     if (type === "br") return "\n";
     if (type === "blockquote") return `\n\n> ${children.trim().replace(/\n/g, "\n> ")}\n\n`;
+    if (type === AnchorHeading) {
+      return `\n\n${"#".repeat(props.level as number)} ${children.trim()}\n\n`;
+    }
     if (type === AccordionTrigger) return `\n\n### ${children.trim()}\n\n`;
     if (type === AccordionContent) return `\n\n${children.trim()}\n\n`;
     if (typeof type === "string" && /^h[1-6]$/.test(type)) {

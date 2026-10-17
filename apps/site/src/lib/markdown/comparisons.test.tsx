@@ -29,6 +29,7 @@ for (const entry of COMPARISONS) {
     const plain = plainMarkdown(markdown);
     for (const row of content.COMPARE_ROWS) {
       for (const cell of Object.values(row)) {
+        if (typeof cell !== "string") continue;
         assert.ok(plain.includes(stripFaqAnswerMarkup(cell)), `missing table cell: ${cell}`);
       }
     }
@@ -161,4 +162,20 @@ test("literal block markers stay prose while semantic headings and lists keep th
     ),
     "## Heading\n\n- \\- Literal bullet",
   );
+});
+
+test("kysely Markdown keeps yes and no marks out of the table, and anchored headings intact", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const hosted = markdown.split("\n").find((line) => line.startsWith("| Hosted database |"));
+  assert.ok(hosted);
+  assert.ok(
+    hosted.startsWith("| Hosted database | None. Kysely is a library. | [Prisma Postgres]"),
+  );
+  assert.doesNotMatch(hosted, /\b(Yes|No)\b/);
+  assert.ok(markdown.includes("\n## When should I choose Prisma ORM or Kysely\n"));
+  assert.ok(markdown.includes("\n### One contract for queries and migrations\n"));
+  assert.ok(markdown.includes("\n### Prisma ORM and Prisma Postgres\n"));
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
 });
