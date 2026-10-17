@@ -1,16 +1,13 @@
 import Link from "next/link";
+import { Info } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CheckBold } from "@/components/icons/forma";
-import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
-import { RoleKicker } from "@/components/brand/role-kicker";
-import { Texture } from "@/components/brand/texture";
-import { CtaBurst } from "@/components/sections/cta-burst";
 import { TESTIMONIALS } from "@/components/sections/testimonials-data";
+import { CompareArticle, comparisonClosingCta, comparisonHeroCtas } from "../article";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import {
   APART,
@@ -34,105 +31,76 @@ const PROOF = TESTIMONIALS.filter(
 
 /** Build the shared content tree for the HTML page and its Markdown rendition. */
 export function getConvexPageContent() {
-  return (
-    <>
-      <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[16rem] overflow-hidden"
-          >
-            <div
-              className="absolute -bottom-1/2 left-1/2 h-full w-[140%] -translate-x-1/2"
-              style={{
-                background: [
-                  "radial-gradient(42% 60% at 28% 100%, color-mix(in srgb, var(--color-prism-cyan-400) 14%, transparent), transparent 70%)",
-                  "radial-gradient(42% 60% at 50% 100%, color-mix(in srgb, var(--color-prism-yellow-300) 12%, transparent), transparent 70%)",
-                  "radial-gradient(42% 60% at 72% 100%, color-mix(in srgb, var(--color-prism-red-400) 14%, transparent), transparent 70%)",
-                ].join(","),
-              }}
-            />
-            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-t from-transparent to-white" />
-          </div>
-          <Texture opacity={0.06} blend="multiply" />
-          <div className="relative px-4 sm:px-8">
-            <div className="mx-auto max-w-site pb-12 pt-24 md:pb-16 md:pt-28">
-              <RoleKicker color="bg-prism-cyan-400">Compare</RoleKicker>
-              <h1 className="isolate mt-3 max-w-[24ch] text-balance text-[clamp(2rem,3.2vw,2.75rem)] leading-[1.08]">
-                {CONVEX_TITLE}
-              </h1>
-              <p className="mt-5 max-w-[68ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Pick{" "}
-                <Link href="/docs/postgres" className={INLINE}>
-                  Prisma Postgres
-                </Link>{" "}
-                when you want a standard SQL database. It is PostgreSQL,{" "}
-                <Link href="/docs/orm" className={INLINE}>
-                  Prisma ORM
-                </Link>{" "}
-                is optional, and{" "}
-                <Link href="/docs/compute" className={INLINE}>
-                  Prisma Compute
-                </Link>{" "}
-                hosts the app. Pick{" "}
-                <a href="https://docs.convex.dev/understanding/" className={INLINE}>
-                  Convex
-                </a>{" "}
-                when you want a reactive database and TypeScript query functions, with the frontend
-                on a host such as Vercel or Netlify. Prisma makes Prisma Postgres, Prisma ORM, and
-                Prisma Compute. All{" "}
-                <Link href="/compare" className={INLINE}>
-                  Prisma comparisons
-                </Link>{" "}
-                are listed in one place.
-              </p>
-              <p className="mt-4 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
-                Every competitor figure on this page has a source, listed under the table and
-                checked {CHECKED}.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <PrismButton href="/docs/postgres" size="lg">
-                  Read the Postgres docs
-                </PrismButton>
-                <PrismButtonOutline href="#choose" size="lg">
-                  See which fits
-                </PrismButtonOutline>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="choose" className="scroll-mt-28 bg-white px-4 py-16 sm:px-8 sm:py-24">
-        <div className="mx-auto grid max-w-site gap-12 md:grid-cols-2 md:gap-16">
+  return [
+    <div key="intro">
+      <h1 className="max-w-4xl text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
+        {CONVEX_TITLE}
+      </h1>
+      <p className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-foreground">
+        Pick{" "}
+        <Link href="/docs/postgres" className={INLINE}>
+          Prisma Postgres
+        </Link>{" "}
+        when you want a standard SQL database. It is PostgreSQL,{" "}
+        <Link href="/docs/orm" className={INLINE}>
+          Prisma ORM
+        </Link>{" "}
+        is optional, and{" "}
+        <Link href="/docs/compute" className={INLINE}>
+          Prisma Compute
+        </Link>{" "}
+        hosts the app. Pick{" "}
+        <a href="https://docs.convex.dev/understanding/" className={INLINE}>
+          Convex
+        </a>{" "}
+        when you want a reactive database and TypeScript query functions, with the frontend on a
+        host such as Vercel or Netlify. Prisma makes Prisma Postgres, Prisma ORM, and Prisma
+        Compute. All{" "}
+        <Link href="/compare" className={INLINE}>
+          Prisma comparisons
+        </Link>{" "}
+        are listed in one place.
+      </p>
+      <aside className="mt-6 flex gap-3 rounded-xl border border-prism-cyan-200/70 bg-gradient-to-br from-prism-cyan-50 via-prism-cyan-50/40 to-card px-4 py-3.5 text-[0.9375rem] leading-7 text-foreground/80">
+        <Info className="mt-1.5 size-4 shrink-0 text-prism-cyan-600" aria-hidden />
+        <p>
+          <strong className="font-semibold text-foreground">Note:</strong> Every competitor figure
+          on this page has a source, listed under the table and checked {CHECKED}.
+        </p>
+      </aside>
+      <p className="mt-6 flex max-w-[68ch] flex-wrap gap-x-4 gap-y-1 text-[0.9375rem] leading-7 text-foreground/80">
+        <Link href="/docs/postgres" className={INLINE}>
+          Read the Postgres docs
+        </Link>{" "}
+        <a href="#choose" className={INLINE}>
+          See which fits
+        </a>
+      </p>
+      {comparisonHeroCtas()}
+    </div>,
+    <div key="body">
+      <section className="mt-14">
+        <div>
           <div>
-            <h2 className="text-balance text-[clamp(1.5rem,2.2vw,1.875rem)] leading-[1.15]">
+            <h2 id="choose" className="scroll-mt-28">
               Choose Prisma Postgres if
             </h2>
-            <ul className="mt-6 flex flex-col gap-3">
+            <ul className="list-disc pl-5">
               {CHOOSE_PRISMA.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
-                >
-                  <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
-                  <span>{renderFaqAnswer(item)}</span>
+                <li key={item} className="text-[0.9375rem] leading-7 text-foreground/80">
+                  {renderFaqAnswer(item)}
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <h2 className="text-balance text-[clamp(1.5rem,2.2vw,1.875rem)] leading-[1.15]">
+            <h2 id="choose-convex" className="scroll-mt-28">
               Choose Convex if
             </h2>
-            <ul className="mt-6 flex flex-col gap-3">
+            <ul className="list-disc pl-5">
               {CHOOSE_CONVEX.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-start gap-2.5 text-[0.9375rem] leading-relaxed"
-                >
-                  <CheckBold className="mt-0.5 size-4 shrink-0 text-prism-yellow-400" aria-hidden />
-                  <span>{renderFaqAnswer(item)}</span>
+                <li key={item} className="text-[0.9375rem] leading-7 text-foreground/80">
+                  {renderFaqAnswer(item)}
                 </li>
               ))}
             </ul>
@@ -140,20 +108,17 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-8 sm:pb-24" aria-labelledby="feature-table">
-        <div className="mx-auto max-w-site">
-          <h2
-            id="feature-table"
-            className="max-w-[28ch] text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]"
-          >
+      <section className="mt-14" aria-labelledby="feature-table">
+        <div className="mx-auto flex max-w-site flex-col gap-5">
+          <h2 id="feature-table" className="scroll-mt-28">
             What each one supports
           </h2>
-          <p className="mt-4 max-w-[68ch] text-pretty leading-relaxed text-muted-foreground">
+          <p className="max-w-[68ch] text-[0.9375rem] leading-7 text-foreground/80">
             Columns are alphabetical: Convex, then Prisma Postgres. Convex is a reactive database
             whose cloud offering stores data in MySQL. Prisma Postgres is managed PostgreSQL, with
             an optional ORM and separate app hosting.
           </p>
-          <div className="mt-10 overflow-hidden rounded-2xl border border-black/[0.08] bg-white">
+          <div className="overflow-x-auto rounded-xl border border-black/[0.06]">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left" style={{ minWidth: "42rem" }}>
                 <thead>
@@ -175,10 +140,10 @@ export function getConvexPageContent() {
                       <th scope="row" className="px-5 py-4 align-top text-sm font-semibold sm:px-6">
                         {row.feature}
                       </th>
-                      <td className="px-5 py-4 align-top text-sm leading-relaxed text-muted-foreground sm:px-6">
+                      <td className="px-5 py-4 align-top text-sm leading-7 text-foreground/80 sm:px-6">
                         {row.convex}
                       </td>
-                      <td className="px-5 py-4 align-top text-sm leading-relaxed text-foreground sm:px-6">
+                      <td className="px-5 py-4 align-top text-sm leading-7 text-foreground sm:px-6">
                         {renderFaqAnswer(row.prisma)}
                       </td>
                     </tr>
@@ -187,7 +152,7 @@ export function getConvexPageContent() {
               </table>
             </div>
           </div>
-          <p className="mt-4 max-w-[75ch] text-sm leading-relaxed text-muted-foreground">
+          <p className="max-w-[68ch] text-sm leading-7 text-foreground/80">
             Convex cells: the{" "}
             <a href="https://docs.convex.dev/understanding/" className={INLINE}>
               Convex overview
@@ -229,13 +194,13 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-8 sm:pb-24">
-        <div className="mx-auto grid max-w-site gap-14 md:grid-cols-2 md:gap-16">
+      <section className="mt-14">
+        <div>
           <div>
-            <h2 className="text-balance text-[clamp(1.5rem,2.2vw,1.875rem)] leading-[1.15]">
+            <h2 id="where-convex" className="scroll-mt-28">
               Where Convex works well
             </h2>
-            <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+            <p className="max-w-[68ch] text-[0.9375rem] leading-7 text-foreground/80">
               Convex is a reactive database. Its{" "}
               <a href="https://docs.convex.dev/understanding/" className={INLINE}>
                 overview
@@ -243,7 +208,7 @@ export function getConvexPageContent() {
               describes TypeScript queries that rerun when their data changes, and a client library
               that subscribes over a WebSocket.
             </p>
-            <ul className="mt-6 flex flex-col gap-3">
+            <ul className="list-disc pl-5">
               {CONVEX_FITS.map((item) => (
                 <li key={item} className="text-[0.9375rem] leading-relaxed">
                   {item}
@@ -252,10 +217,10 @@ export function getConvexPageContent() {
             </ul>
           </div>
           <div>
-            <h2 className="text-balance text-[clamp(1.5rem,2.2vw,1.875rem)] leading-[1.15]">
+            <h2 id="where-prisma" className="scroll-mt-28">
               Where Prisma Postgres fits better
             </h2>
-            <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+            <p className="max-w-[68ch] text-[0.9375rem] leading-7 text-foreground/80">
               Prisma Postgres fits a team that wants PostgreSQL.{" "}
               <Link href="/docs/orm" className={INLINE}>
                 Prisma ORM
@@ -266,7 +231,7 @@ export function getConvexPageContent() {
               </Link>{" "}
               is separate app hosting.
             </p>
-            <ul className="mt-6 flex flex-col gap-3">
+            <ul className="list-disc pl-5">
               {PRISMA_FITS.map((item) => (
                 <li key={item} className="text-[0.9375rem] leading-relaxed">
                   {item}
@@ -277,16 +242,19 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-8 sm:pb-24">
-        <div className="mx-auto max-w-site">
-          <h2 className="max-w-[24ch] text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+      <section className="mt-14">
+        <div className="mx-auto flex max-w-site flex-col gap-5">
+          <h2 id="apart" className="scroll-mt-28">
             What sets Prisma Postgres apart
           </h2>
-          <div className="mt-10 grid gap-10 md:grid-cols-3">
+          <div className="flex flex-col gap-8">
             {APART.map((item) => (
-              <div key={item.title} className="border-t border-black/[0.08] pt-5">
+              <div
+                key={item.title}
+                className="flex flex-col gap-3 border-t border-black/[0.08] pt-5"
+              >
                 <h3 className="text-lg leading-snug">{item.title}</h3>
-                <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground">
+                <p className="max-w-[68ch] text-[0.9375rem] leading-7 text-foreground/80">
                   {item.body}
                 </p>
               </div>
@@ -295,18 +263,15 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-8 sm:pb-24" aria-labelledby="pricing">
-        <div className="mx-auto max-w-site">
-          <h2
-            id="pricing"
-            className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]"
-          >
+      <section className="mt-14" aria-labelledby="pricing">
+        <div className="mx-auto flex max-w-site flex-col gap-5">
+          <h2 id="pricing" className="scroll-mt-28">
             Pricing
           </h2>
-          <div className="mt-8 grid gap-10 md:grid-cols-2">
+          <div className="flex flex-col gap-8">
             <div>
-              <h3 className="text-lg">Convex</h3>
-              <p className="mt-3 max-w-[48ch] text-pretty leading-relaxed text-muted-foreground">
+              <h3 className="text-lg leading-snug">Convex</h3>
+              <p className="max-w-[68ch] text-[0.9375rem] leading-7 text-foreground/80">
                 Free and Starter are $0, then pay as you go, and list 1 to 6 developers. The
                 resource table includes 0.5 GB of database storage. Professional is $25 per
                 developer per month. Business and Enterprise have a $2,500 monthly minimum (
@@ -317,8 +282,8 @@ export function getConvexPageContent() {
               </p>
             </div>
             <div>
-              <h3 className="text-lg">Prisma Postgres and Prisma Compute</h3>
-              <p className="mt-3 max-w-[48ch] text-pretty leading-relaxed text-muted-foreground">
+              <h3 className="text-lg leading-snug">Prisma Postgres and Prisma Compute</h3>
+              <p className="max-w-[68ch] text-[0.9375rem] leading-7 text-foreground/80">
                 Prisma Postgres Free is $0, with 200,000 operations a month, 2 GB of storage, and 50
                 databases. Starter is $10 a month. Prisma Compute is separate app hosting. The page
                 does not list a per-developer fee (
@@ -333,14 +298,14 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-8 sm:pb-24">
-        <div className="mx-auto max-w-site">
-          <h2 className="max-w-[22ch] text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+      <section className="mt-14">
+        <div className="mx-auto flex max-w-site flex-col gap-5">
+          <h2 id="wrong-choice" className="scroll-mt-28">
             When Prisma Postgres is the wrong choice
           </h2>
-          <ul className="mt-8 flex max-w-[68ch] flex-col gap-4">
+          <ul className="list-disc pl-5">
             {WRONG_CHOICE.map((item) => (
-              <li key={item} className="text-pretty leading-relaxed text-muted-foreground">
+              <li key={item} className="text-[0.9375rem] leading-7 text-foreground/80">
                 {renderFaqAnswer(item)}
               </li>
             ))}
@@ -348,13 +313,10 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-8 sm:pb-24" aria-labelledby="migrate">
-        <div className="mx-auto grid max-w-site gap-14 md:grid-cols-2 md:gap-16">
+      <section className="mt-14" aria-labelledby="migrate">
+        <div>
           <div>
-            <h2
-              id="migrate"
-              className="text-balance text-[clamp(1.5rem,2.2vw,1.875rem)] leading-[1.15]"
-            >
+            <h2 id="migrate" className="scroll-mt-28">
               Move from Convex to Prisma Postgres
             </h2>
             <ol className="mt-6 list-decimal space-y-3 pl-5 text-pretty leading-relaxed text-muted-foreground">
@@ -383,7 +345,7 @@ export function getConvexPageContent() {
             </ol>
           </div>
           <div>
-            <h2 className="text-balance text-[clamp(1.5rem,2.2vw,1.875rem)] leading-[1.15]">
+            <h2 id="migrate-back" className="scroll-mt-28">
               Move from Prisma Postgres to Convex
             </h2>
             <ol className="mt-6 list-decimal space-y-3 pl-5 text-pretty leading-relaxed text-muted-foreground">
@@ -411,19 +373,16 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section className="bg-white px-4 pb-16 sm:px-8 sm:pb-24" aria-labelledby="proof">
-        <div className="mx-auto max-w-site">
-          <h2
-            id="proof"
-            className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]"
-          >
+      <section className="mt-14" aria-labelledby="proof">
+        <div className="mx-auto flex max-w-site flex-col gap-5">
+          <h2 id="proof" className="scroll-mt-28">
             What teams on Prisma say
           </h2>
-          <p className="mt-4 max-w-[62ch] text-pretty leading-relaxed text-muted-foreground">
+          <p className="max-w-[68ch] text-[0.9375rem] leading-7 text-foreground/80">
             These two quotes are on prisma.io today. One is about Prisma Postgres, and one is about
             type safety in Prisma ORM.
           </p>
-          <div className="mt-10 grid gap-10 md:grid-cols-2">
+          <div className="flex flex-col gap-8">
             {PROOF.map((item) => (
               <figure key={item.name} className="border-t border-black/[0.08] pt-5">
                 <blockquote className="text-pretty text-lg leading-relaxed">
@@ -438,9 +397,9 @@ export function getConvexPageContent() {
         </div>
       </section>
 
-      <section id="faq" className="bg-white px-4 pb-20 sm:px-8 sm:pb-28">
-        <div className="mx-auto max-w-site">
-          <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+      <section className="mt-14">
+        <div className="mx-auto flex max-w-site flex-col gap-5">
+          <h2 id="faq" className="scroll-mt-28">
             Frequently asked questions
           </h2>
           <div className="mt-8 max-w-3xl">
@@ -459,34 +418,12 @@ export function getConvexPageContent() {
           </div>
         </div>
       </section>
-
-      <CtaBurst
-        headline="Start with the Free plan"
-        headlineMaxWidth="max-w-[22ch]"
-        body="Free to start, no credit card required."
-        bodyMaxWidth="max-w-[44ch]"
-        checks={[
-          {
-            label: "Prisma Postgres Free includes 200,000 operations a month",
-            color: "text-prism-cyan-500",
-          },
-          {
-            label: "Prisma ORM is optional with Prisma Postgres",
-            color: "text-prism-yellow-400",
-          },
-          {
-            label: "The pricing page does not list a per-developer fee",
-            color: "text-prism-red-500",
-          },
-        ]}
-        primaryCta={{ label: "Get started free", href: "https://console.prisma.io" }}
-        secondaryCta={{ label: "Talk to us", href: "/contact" }}
-      />
-    </>
-  );
+    </div>,
+    comparisonClosingCta(),
+  ];
 }
 
-/** Render the comparison using its shared content tree. */
+/** Render the comparison in the guide article frame. */
 export function ConvexPage() {
-  return getConvexPageContent();
+  return <CompareArticle slug="convex">{getConvexPageContent()}</CompareArticle>;
 }
