@@ -7,6 +7,15 @@ export const KYSELY_DESCRIPTION =
 
 export const CHECKED = "October 2026";
 
+/** The blog's author page and photo; `/blog` is rewritten to the blog app. */
+export const KYSELY_AUTHOR = {
+  name: "Martin Janse van Rensburg",
+  path: "/blog/author/martin-janse-van-rensburg",
+  image: "/blog/authors/martin-janse-van-rensburg.png",
+} as const;
+
+export const KYSELY_UPDATED = { iso: "2026-10-17", label: "October 2026" } as const;
+
 export const CHOOSE_PRISMA = [
   "You want models and relations in a contract file, `contract.prisma`.",
   "You want typed model queries and a SQL query builder from the same database client.",

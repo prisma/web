@@ -27,8 +27,10 @@ import {
   CHOOSE_PRISMA,
   COMPARE_ROWS,
   FAQ,
+  KYSELY_AUTHOR,
   KYSELY_FITS,
   KYSELY_TITLE,
+  KYSELY_UPDATED,
   PRISMA_FITS,
   SAME_QUERY,
   WRONG_CHOICE,
@@ -162,19 +164,43 @@ export function getKyselyPageContent() {
       </div>
     </div>,
     <div key="body" className={BODY}>
-      <aside
-        aria-label="Disclosure"
-        className="flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
-      >
-        <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
-        <p className="!text-sm !leading-6 !text-muted-foreground">
-          Prisma makes Prisma ORM. Every Kysely figure links to its{" "}
-          <a href="#sources" className={QUIET_LINK}>
-            source
-          </a>{" "}
-          at the bottom of the page.
+      <div className="flex flex-col gap-5">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 !text-sm !leading-6 !text-muted-foreground">
+          <img
+            src={KYSELY_AUTHOR.image}
+            alt=""
+            width={32}
+            height={32}
+            className="size-8 rounded-md bg-neutral-100"
+          />
+          <span>
+            By{" "}
+            <a
+              href={KYSELY_AUTHOR.path}
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              {KYSELY_AUTHOR.name}
+            </a>
+          </span>{" "}
+          <span className="text-black/25">·</span>{" "}
+          <span>
+            Updated <time dateTime={KYSELY_UPDATED.iso}>{KYSELY_UPDATED.label}</time>
+          </span>
         </p>
-      </aside>
+        <aside
+          aria-label="Disclosure"
+          className="flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
+        >
+          <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
+          <p className="!text-sm !leading-6 !text-muted-foreground">
+            Prisma makes Prisma ORM. Every Kysely figure links to its{" "}
+            <a href="#sources" className={QUIET_LINK}>
+              source
+            </a>{" "}
+            at the bottom of the page.
+          </p>
+        </aside>
+      </div>
       <section className={SECTION}>
         <h2 id="choose">When should I choose Prisma ORM or Kysely</h2>
         <div className={TABLE_FRAME}>

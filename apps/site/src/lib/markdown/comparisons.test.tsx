@@ -99,10 +99,15 @@ test("comparison Markdown preserves literal code and escapes table pipes", () =>
   assert.ok(markdown.includes("```\nSELECT '<value>';\n```"));
 });
 
-test("Kysely Markdown carries each code tab as a labelled TypeScript fence", () => {
+test("Kysely Markdown carries the byline and each code tab as a labelled TypeScript fence", () => {
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
+  assert.ok(
+    markdown.includes(
+      `By [${kysely.KYSELY_AUTHOR.name}](${kysely.KYSELY_AUTHOR.path}) · Updated ${kysely.KYSELY_UPDATED.label}`,
+    ),
+  );
   assert.ok(markdown.includes(`**Kysely**\n\n\`\`\`ts\n${kysely.SAME_QUERY.kysely}\n\`\`\``));
   assert.ok(markdown.includes(`**Prisma ORM**\n\n\`\`\`ts\n${kysely.SAME_QUERY.prisma}\n\`\`\``));
 });
