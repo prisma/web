@@ -10,8 +10,7 @@ const PROSE =
 
 const TOC: Record<ComparisonSlug, readonly { id: string; label: string }[]> = {
   kysely: [
-    { id: "choose", label: "Choose Prisma ORM if" },
-    { id: "choose-kysely", label: "Choose Kysely if" },
+    { id: "choose", label: "When should I choose Prisma ORM or Kysely" },
     { id: "feature-table", label: "What each one supports" },
     { id: "where-kysely", label: "Where Kysely works well" },
     { id: "where-prisma", label: "Where Prisma ORM fits better" },
@@ -101,7 +100,7 @@ export function comparisonClosingCta() {
 
 function articleParts(children: ReactNode) {
   const parts = Children.toArray(children);
-  if (parts.length !== 3 || parts.some((part) => !isValidElement(part))) {
+  if ((parts.length !== 3 && parts.length !== 4) || parts.some((part) => !isValidElement(part))) {
     throw new Error("A comparison article needs an introduction, a body, and a closing action.");
   }
   return parts;
@@ -114,7 +113,7 @@ function articleParts(children: ReactNode) {
 export function CompareArticle({ slug, children }: { slug: ComparisonSlug; children: ReactNode }) {
   const entry = COMPARISONS.find((item) => item.slug === slug);
   if (!entry) throw new Error(`Unknown comparison: ${slug}`);
-  const [intro, body, closing] = articleParts(children);
+  const [intro, body, closing, footnote] = articleParts(children);
   const related = COMPARISONS.filter((item) => item.slug !== slug);
 
   return (
@@ -178,6 +177,7 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
               ))}
             </ul>
           </nav>
+          {footnote}
         </div>
       </div>
     </article>
