@@ -68,7 +68,7 @@ For a server app, configure it to listen on the service's assigned port and `0.0
 
 Declare a Prisma Postgres database with the app, or configure a separate existing demo database. Use fictional seed records that make the review useful: for example, a few customer accounts with different statuses and an empty state the client can try.
 
-Keep the database URL, session secret and integration credentials in the service's server environment. Never put database credentials in browser code or a public environment variable. Make the app's database access depend on the authenticated user, rather than trusting a customer ID sent by the browser.
+For a [declared database dependency](/docs/composer/databases) named `db`, read `service.load().db.url` in server code and pass it to your PostgreSQL client. Composer supplies this connection; it does not require a separate database URL environment variable. For a separately managed database, configure its URL as a server-side environment input instead. Keep session secrets and integration credentials server-side too. Never put database credentials in browser code or a public environment variable. Make the app's database access depend on the authenticated user, rather than trusting a customer ID sent by the browser.
 
 ### 3. Build and deploy a review stage
 
@@ -79,7 +79,7 @@ npx prisma auth login
 npx prisma deploy module.ts --stage client-review
 ```
 
-The deploy command does not build the application for you. It deploys the prepared artifacts and reports the service URL. Copy the actual HTTPS URL from that result; its hostname ends in `.prisma.build`. Before running migrations and seeds, open Prisma Console and locate the database resource belonging to the `client-review` stage you just deployed and get that database's direct connection string. Check its database ID against production, then configure your migration tool with the review database connection. A manually supplied database URL needs the same check.
+The deploy command does not build the application for you. It deploys the prepared artifacts and reports the service URL. Copy the actual HTTPS URL from that result; its hostname ends in `.prisma.build`. For a declared database, open Prisma Console and locate the database resource belonging to the `client-review` stage you just deployed, then get its direct connection string for migration tools that need one. For a separately managed database, get the migration connection from that database's provider and verify that it targets the database configured for the review app. In either case, check the database ID against production before running migrations or seeds.
 
 ### 4. Test as the client before sending the link
 

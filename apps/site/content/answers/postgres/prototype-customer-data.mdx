@@ -58,15 +58,17 @@ Prisma Postgres is useful when a prototype is becoming an application: keep Post
 
 ### 1. Create an account-owned database
 
-Sign in to [Prisma Console](https://console.prisma.io), create or choose the intended project and create a Prisma Postgres database. Choose a region near the server that will query it. Name the resources clearly so you can distinguish development from production.
+Choose one creation workflow. For a separately managed database, sign in to [Prisma Console](https://console.prisma.io), create or choose the intended project and create a Prisma Postgres database. If you use the Composer dependency workflow in step 2, let the module provision the database in your account instead; you do not need to create a second database in Console. In either workflow, choose a region near the app server and use names that distinguish development from production.
 
 If you previously tried `npx create-db`, check whether you claimed that database. An [unclaimed database expires when its selected lifetime ends](/docs/postgres/npx-create-db), which defaults to 24 hours and can be shorter. Do not treat a temporary playground URL as the permanent home for customer records.
 
 ### 2. Connect from the server
 
-Get the [database connection strings](/docs/postgres/database/connecting-to-your-database). Put the pooled connection URL in a server-side environment variable for normal app traffic. Keep the direct connection for migration and administrative workflows that need it. Never put either credential in browser code.
+Keep database access on the server. Choose the connection workflow that matches how you created the database; never put database credentials in browser code.
 
-For an app on Prisma Compute, follow its [database dependency setup](/docs/compute/getting-started) to declare the database and load its connection into the service. For Vercel or Netlify, configure the connection in the host's server environment. Use distinct values for development, review and production. The [test-environment guide](/postgres/typescript-test-environment) explains how to keep an assistant's changes away from customer data.
+For an app on Prisma Compute, follow the [Composer database dependency guide](/docs/composer/databases): declare a `rawPostgres()` dependency for your service, provision the database in the module and wire it into the service. If that dependency is named `db`, server code reads its connection from `service.load().db.url` and passes it to the PostgreSQL client. This workflow does not require a separate `DATABASE_URL` environment variable.
+
+For a separately managed database on Prisma Compute, or an app on Vercel or Netlify, get the [connection strings](/docs/postgres/database/connecting-to-your-database) and configure the pooled URL in the host's server environment instead. Keep the direct connection for migration and administrative workflows that need it. Use distinct databases for development, review and production. The [test-environment guide](/postgres/typescript-test-environment) explains how to keep an assistant's changes away from customer data.
 
 ### 3. Add a customer table and authenticated save endpoint
 
