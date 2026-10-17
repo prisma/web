@@ -1,5 +1,10 @@
 # Multi-Zone Architecture Overview
 
+This page describes the existing Vercel deployment path. The additional Composer
+setup runs all five websites behind a gateway, with four static services for
+blog media; see [COMPOSER.md](COMPOSER.md) and
+[COMPOSER_FINDINGS.md](COMPOSER_FINDINGS.md).
+
 This repository is a pnpm monorepo with three closely related Next.js apps:
 
 - `apps/site`: the main Prisma website and the public multi-zone entrypoint
@@ -18,7 +23,8 @@ There are two architectural layers to keep in mind:
 The monorepo layer is defined by `pnpm-workspace.yaml`, the root `package.json`, and `turbo.json`.
 
 - `pnpm-workspace.yaml` includes `apps/*` and `packages/*`, so all apps and shared packages live in one workspace.
-- The root `package.json` delegates common workflows to Turbo with `pnpm build`, `pnpm dev`, `pnpm check`, and `pnpm types:check`.
+- The root `package.json` delegates common workflows to Turbo with `pnpm build`, `pnpm dev:turbo`, `pnpm check`, and `pnpm types:check`.
+  Root `pnpm dev` runs the Composer setup.
 - `turbo.json` defines the task graph, shared cache inputs, and build outputs for `.next`, `dist`, and cache folders.
 
 This matches the useful Turborepo framing for this repo: package boundaries are managed at the workspace level, while runtime composition happens inside the app configs rather than through root scripts.
@@ -291,7 +297,7 @@ So even when content is physically served by different apps, search treats the m
 
 ## Local Development Nuance
 
-Root `pnpm dev` starts all relevant apps together:
+Root `pnpm dev:turbo` starts the original Next.js development servers together:
 
 - site on `http://localhost:3000`
 - docs on `http://localhost:3001`

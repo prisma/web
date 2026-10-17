@@ -1,3 +1,4 @@
+import { composerBuild, composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -30,6 +31,7 @@ const imageRemoteHostnames = [
 
 if (
   process.env.NODE_ENV === "production" &&
+  !composerBuild &&
   (!process.env.NEXT_DOCS_ORIGIN || !process.env.NEXT_BLOG_ORIGIN)
 ) {
   throw new Error(
@@ -317,6 +319,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   reactCompiler: true,
   assetPrefix: "/site-static",
   allowedDevOrigins,
@@ -886,6 +889,7 @@ const config = {
   },
 
   async rewrites() {
+    const crossZone = (rule) => !composerBuild || !/^\/(docs|blog)(?:[/:.-]|$)/.test(rule.source);
     return {
       beforeFiles: [
         {
@@ -989,7 +993,7 @@ const config = {
           destination: `${BLOG_ORIGIN}/blog-static/:path*`,
           missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
         },
-      ],
+      ].filter(crossZone),
       afterFiles: [
         // Markdown renditions of the marketing pages: /orm.md, /pricing.md,
         // /index.md for the homepage, and so on, all handled by
