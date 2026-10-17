@@ -50,8 +50,18 @@ const TABLE_FRAME =
   "overflow-x-auto rounded-xl border border-black/[0.08] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
 const TH_COL = "bg-neutral-50 text-sm font-semibold text-primary";
 const TH_ROW = "bg-background text-sm font-semibold text-primary";
+/**
+ * A shadow at the right edge while more columns sit off-screen. The `local`
+ * cover scrolls with the table and hides the shadow once the last column is in view.
+ */
+const SCROLL_HINT = {
+  background:
+    "linear-gradient(to right, transparent, var(--background) 70%) 100% 0 / 2.5rem 100% no-repeat local, radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.12), transparent) 100% 0 / 0.875rem 100% no-repeat scroll, var(--background)",
+};
+
 /** Keeps each feature row's label in view while the table scrolls sideways on phones. */
-const STICKY = "sticky left-0 z-10 shadow-[1px_0_0_rgb(0_0_0/0.06)]";
+const STICKY =
+  "sticky left-0 z-10 before:absolute before:inset-y-0 before:-left-1 before:w-1 before:bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/[0.06]";
 const TD = "text-sm leading-6 text-foreground";
 
 const PROOF = TESTIMONIALS.filter(
@@ -143,18 +153,18 @@ export function getKyselyPageContent() {
             <thead>
               <tr>
                 <th scope="col" className={TH_COL} style={{ width: "50%" }}>
-                  Prisma ORM
+                  Kysely
                 </th>
                 <th scope="col" className={TH_COL} style={{ width: "50%" }}>
-                  Kysely
+                  Prisma ORM
                 </th>
               </tr>
             </thead>
             <tbody>
-              {CHOOSE_PRISMA.map((prisma, index) => (
-                <tr key={prisma} className="border-t border-black/[0.06]">
-                  <td className={TD}>{renderFaqAnswer(prisma)}</td>
-                  <td className={TD}>{renderFaqAnswer(CHOOSE_KYSELY[index])}</td>
+              {CHOOSE_KYSELY.map((kysely, index) => (
+                <tr key={kysely} className="border-t border-black/[0.06]">
+                  <td className={TD}>{renderFaqAnswer(kysely)}</td>
+                  <td className={TD}>{renderFaqAnswer(CHOOSE_PRISMA[index])}</td>
                 </tr>
               ))}
             </tbody>
@@ -168,8 +178,17 @@ export function getKyselyPageContent() {
           Kysely is a SQL query builder. Prisma ORM is a contract-based ORM that also includes a SQL
           query builder on PostgreSQL and SQLite. Columns are in alphabetical order.
         </p>
-        <div className={TABLE_FRAME} role="region" aria-labelledby="feature-table" tabIndex={0}>
-          <table className="w-full border-collapse text-left" style={{ minWidth: "40rem" }}>
+        <div
+          className={TABLE_FRAME}
+          role="region"
+          aria-labelledby="feature-table"
+          tabIndex={0}
+          style={SCROLL_HINT}
+        >
+          <table
+            className="w-full border-collapse text-left"
+            style={{ minWidth: "40rem", overflow: "visible" }}
+          >
             <thead>
               <tr>
                 <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "22%" }}>
