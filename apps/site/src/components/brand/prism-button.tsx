@@ -1,9 +1,10 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 import { BurstFill } from "@/components/brand/burst-fill";
+import { observeAnimationActivity } from "@/lib/animation-activity";
 import { cn } from "@/lib/utils";
 
 const SPECTRUM =
@@ -94,8 +95,21 @@ export function PrismButton({
   const burstOn = hover && !reduce;
   const MotionComp = href ? motion.a : motion.button;
 
+  // The resting drift is a blurred layer re-composited every frame for as
+  // long as the button exists, so it only runs while the button is on screen
+  // (every PrismButton on a page was drifting, in view or not).
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const [onScreen, setOnScreen] = useState(false);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    return observeAnimationActivity(root, setOnScreen);
+  }, []);
+  const drift = onScreen && !reduce;
+
   return (
     <span
+      ref={rootRef}
       className={cn("relative inline-flex items-center", fullWidth && "w-full", className)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -106,10 +120,14 @@ export function PrismButton({
           className="absolute inset-y-0 block w-[240%]"
           style={{ backgroundImage: SPECTRUM }}
           animate={
-            reduce ? { x: "0%", scaleY: 1 } : { x: ["0%", "-58%", "0%"], scaleY: hover ? 1.18 : 1 }
+            drift ? { x: ["0%", "-58%", "0%"], scaleY: hover ? 1.18 : 1 } : { x: "0%", scaleY: 1 }
           }
           transition={{
-            x: { duration: 7, repeat: Infinity, ease: "easeInOut" },
+            // The settle-back must not inherit the loop's repeat, or parking
+            // the glow would itself become an endless 7s tween.
+            x: drift
+              ? { duration: 7, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.6, ease: "easeOut" },
             scaleY: { duration: 0.35, ease: "easeOut" },
           }}
         />
