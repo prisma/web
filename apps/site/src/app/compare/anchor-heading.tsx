@@ -7,19 +7,24 @@ import { Check, Link as LinkIcon } from "lucide-react";
  * A section heading with a copy-link button in the left gutter, following the
  * copy-link pattern in Eclipse's accordion. The button is absolutely positioned
  * so it never moves the heading, and only appears on devices that can hover.
+ * Inside a frame or card, `placement="end"` puts it at the heading's right end
+ * instead, where the left gutter would fall outside the frame.
  */
 export function AnchorHeading({
   level,
   id,
   className,
+  placement = "gutter",
   children,
 }: {
   level: 2 | 3;
   id: string;
   className?: string;
+  placement?: "gutter" | "end";
   children: ReactNode;
 }) {
   const Tag = level === 2 ? "h2" : "h3";
+  const end = placement === "end";
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -40,9 +45,14 @@ export function AnchorHeading({
   }
 
   return (
-    <Tag id={id} className={`group/heading relative ${className ?? ""}`}>
+    <Tag
+      id={id}
+      className={`group/heading relative ${end ? "[@media(hover:hover)]:pr-8" : ""} ${className ?? ""}`}
+    >
       {children}
-      <span className="absolute top-0 right-full hidden h-[1lh] items-center pr-2 [@media(hover:hover)]:flex">
+      <span
+        className={`absolute top-0 hidden h-[1lh] items-center [@media(hover:hover)]:flex ${end ? "right-0" : "right-full pr-2"}`}
+      >
         <button
           type="button"
           onClick={copy}
@@ -56,7 +66,7 @@ export function AnchorHeading({
           )}
           <span
             aria-hidden
-            className={`pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 font-sans text-[11px] leading-4 font-normal text-background transition-opacity duration-200 after:content-['Copied'] motion-reduce:transition-none ${copied ? "opacity-90" : "opacity-0"}`}
+            className={`pointer-events-none absolute whitespace-nowrap ${end ? "top-1/2 right-full mr-1 -translate-y-1/2" : "bottom-full left-1/2 mb-1 -translate-x-1/2"} rounded bg-foreground px-1.5 py-0.5 font-sans text-[11px] leading-4 font-normal text-background transition-opacity duration-200 after:content-['Copied'] motion-reduce:transition-none ${copied ? "opacity-90" : "opacity-0"}`}
           />
           <span role="status" className="sr-only">
             {copied ? "Link copied" : ""}

@@ -36,6 +36,10 @@ import {
   PRISMA_FITS,
   SAME_QUERY,
   WRONG_CHOICE,
+  DATABASE_MATRIX,
+  type DatabaseStatus,
+  FULL_SUPPORT,
+  SAME_JOB,
 } from "./_content";
 
 const INLINE =
@@ -77,6 +81,38 @@ const SCROLL_HINT = {
 const STICKY =
   "sticky left-0 z-10 before:absolute before:inset-y-0 before:-left-1 before:w-1 before:bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/[0.06]";
 const TD = "text-sm leading-6 text-foreground";
+
+/** The two "where it fits" columns share the choose table's frame and header strip. */
+const FIT_FRAME =
+  "grid overflow-hidden rounded-xl border border-black/[0.08] md:grid-cols-2 md:divide-x divide-black/[0.08] max-md:divide-y";
+const FIT_COLUMN = "flex flex-col";
+const FIT_HEADING =
+  "!font-sans border-b border-black/[0.06] bg-neutral-50 px-4 py-3 !text-sm !leading-6 font-semibold !tracking-normal";
+const FIT_BODY =
+  "flex flex-col gap-4 px-4 py-4 [&_:is(p,li)]:!text-[0.9375rem] [&_:is(p,li)]:!leading-6";
+const CARD = "flex flex-col gap-2 rounded-xl border border-black/[0.08] p-5";
+
+/**
+ * Full support reads as body text; preview and ORM 7 labels are muted; a dash
+ * is no support. Called as a function so the Markdown walker sees the elements.
+ */
+function databaseStatus(status: DatabaseStatus) {
+  if (status === null) {
+    return (
+      <>
+        <span aria-hidden className="text-black/30">
+          —
+        </span>
+        <span className="sr-only">Not supported</span>
+      </>
+    );
+  }
+  return (
+    <span className={FULL_SUPPORT.includes(status) ? undefined : "text-muted-foreground"}>
+      {status}
+    </span>
+  );
+}
 
 /**
  * A quiet yes or no beside a cell's own wording. The icon is cap height and
@@ -126,7 +162,15 @@ const SOURCES = [
     links: [
       { label: "Getting started", href: "https://kysely.dev/docs/getting-started" },
       { label: "kysely on npm", href: "https://www.npmjs.com/package/kysely" },
+      { label: "Dialects", href: "https://kysely.dev/docs/dialects" },
+      { label: "Generating types", href: "https://kysely.dev/docs/generating-types" },
       { label: "Migrations", href: "https://kysely.dev/docs/migrations" },
+      {
+        label: "Splitting query building and execution",
+        href: "https://kysely.dev/docs/recipes/splitting-query-building-and-execution",
+      },
+      { label: "kysely-ctl", href: "https://github.com/kysely-org/kysely-ctl" },
+      { label: "kysely-codegen", href: "https://github.com/RobinBlomberg/kysely-codegen" },
       { label: "Relations recipe", href: "https://kysely.dev/docs/recipes/relations" },
       { label: "MIT license", href: "https://github.com/kysely-org/kysely/blob/master/LICENSE" },
     ],
@@ -136,6 +180,15 @@ const SOURCES = [
     links: [
       { label: "Prisma ORM docs", href: "/docs/orm" },
       { label: "Supported databases", href: "/docs/orm/supported-databases" },
+      {
+        label: "Prisma ORM 7 supported databases",
+        href: "/docs/orm/v7/reference/supported-databases",
+      },
+      { label: "contract emit", href: "/docs/cli/contract-emit" },
+      { label: "contract infer", href: "/docs/cli/contract-infer" },
+      { label: "migration plan", href: "/docs/cli/migration-plan" },
+      { label: "migration show", href: "/docs/cli/migration-show" },
+      { label: "db migrate", href: "/docs/cli/db-migrate" },
       { label: "ORM client reference", href: "/docs/orm/reference/orm-client" },
       { label: "How migrations work", href: "/docs/orm/migrations/how-migrations-work" },
       { label: "SQL query builder", href: "/docs/orm/reference/sql-query-builder" },
@@ -336,54 +389,135 @@ export function getKyselyPageContent() {
       </section>
 
       <section className={SECTION}>
-        <AnchorHeading level={2} id="where-kysely">
-          Where Kysely works well
+        <AnchorHeading level={2} id="databases">
+          Database support
         </AnchorHeading>
-        <p className="max-w-[68ch]">
-          The Kysely{" "}
-          <a href="https://kysely.dev/docs/getting-started" className={INLINE}>
-            getting started guide
-          </a>{" "}
-          shows <code>selectFrom</code> and <code>where</code>, and lists joins among the other SQL
-          features. Each built-in dialect needs its driver.
+        <p>
+          Kysely&apos;s dialects next to the two Prisma ORM lines. Prisma ORM 7 is the generally
+          available release, and it supports every database here except PGlite. A dash means no
+          support.
         </p>
-        <ul className={LIST}>
-          {KYSELY_FITS.map((item) => (
-            <li key={item}>{renderFaqAnswer(item)}</li>
-          ))}
-        </ul>
+        <div
+          className={TABLE_FRAME}
+          role="region"
+          aria-labelledby="databases"
+          tabIndex={0}
+          style={SCROLL_HINT}
+        >
+          <table
+            className="w-full border-collapse text-left"
+            style={{ minWidth: "34rem", overflow: "visible" }}
+          >
+            <thead>
+              <tr>
+                <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "31%" }}>
+                  Database
+                </th>
+                <th scope="col" className={TH_COL} style={{ width: "23%" }}>
+                  Kysely
+                </th>
+                <th scope="col" className={TH_COL} style={{ width: "23%" }}>
+                  Prisma ORM 8
+                </th>
+                <th scope="col" className={TH_COL} style={{ width: "23%" }}>
+                  Prisma ORM 7
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {DATABASE_MATRIX.map((row) => (
+                <tr key={row.database} className="border-t border-black/[0.06]">
+                  <th scope="row" className={`${TH_ROW} ${STICKY}`}>
+                    {row.database}
+                  </th>
+                  <td className={TD}>{databaseStatus(row.kysely)}</td>
+                  <td className={TD}>{databaseStatus(row.orm8)}</td>
+                  <td className={TD}>{databaseStatus(row.orm7)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="!text-sm !leading-6 !text-muted-foreground">
+          MariaDB on Kysely is the community{" "}
+          <a href="https://github.com/awaludinar/kysely-mariadb" className={QUIET_LINK}>
+            kysely-mariadb
+          </a>{" "}
+          dialect. Sources:{" "}
+          <a href="https://kysely.dev/docs/dialects" className={QUIET_LINK}>
+            Kysely dialects
+          </a>
+          ,{" "}
+          <Link href="/docs/orm/supported-databases" className={QUIET_LINK}>
+            Prisma ORM 8 supported databases
+          </Link>
+          , and{" "}
+          <Link href="/docs/orm/v7/reference/supported-databases" className={QUIET_LINK}>
+            Prisma ORM 7 supported databases
+          </Link>
+          , {CHECKED}.
+        </p>
       </section>
 
-      <section className={SECTION}>
-        <AnchorHeading level={2} id="where-prisma">
-          Where Prisma ORM fits better
-        </AnchorHeading>
-        <p className="max-w-[68ch]">
-          Prisma ORM fits a team that wants the contract, the model queries, and the migrations to
-          come from one file. The{" "}
-          <Link href="/docs/orm" className={INLINE}>
-            ORM docs
-          </Link>{" "}
-          describe that file as the contract.
-        </p>
-        <ul className={LIST}>
-          {PRISMA_FITS.map((item) => (
-            <li key={item}>{renderFaqAnswer(item)}</li>
-          ))}
-        </ul>
-      </section>
+      <div className={FIT_FRAME}>
+        <section className={FIT_COLUMN}>
+          <AnchorHeading level={2} id="where-kysely" placement="end" className={FIT_HEADING}>
+            Where Kysely works well
+          </AnchorHeading>
+          <div className={FIT_BODY}>
+            <p>
+              The Kysely{" "}
+              <a href="https://kysely.dev/docs/getting-started" className={INLINE}>
+                getting started guide
+              </a>{" "}
+              shows <code>selectFrom</code> and <code>where</code>, and lists joins among the other
+              SQL features. Each built-in dialect needs its driver.
+            </p>
+            <ul className={LIST}>
+              {KYSELY_FITS.map((item) => (
+                <li key={item}>{renderFaqAnswer(item)}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+        <section className={FIT_COLUMN}>
+          <AnchorHeading level={2} id="where-prisma" placement="end" className={FIT_HEADING}>
+            Where Prisma ORM fits better
+          </AnchorHeading>
+          <div className={FIT_BODY}>
+            <p>
+              Prisma ORM fits a team that wants the contract, the model queries, and the migrations
+              to come from one file. The{" "}
+              <Link href="/docs/orm" className={INLINE}>
+                ORM docs
+              </Link>{" "}
+              describe that file as the contract.
+            </p>
+            <ul className={LIST}>
+              {PRISMA_FITS.map((item) => (
+                <li key={item}>{renderFaqAnswer(item)}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      </div>
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="apart">
           What sets Prisma ORM apart
         </AnchorHeading>
-        <div className={GROUPS}>
+        <div className="grid gap-4 sm:grid-cols-2">
           {APART.map((item) => (
-            <div key={item.title} className={GROUP}>
-              <AnchorHeading level={3} className="text-lg leading-snug" id={item.id}>
+            <div key={item.title} className={CARD}>
+              <AnchorHeading
+                level={3}
+                id={item.id}
+                placement="end"
+                className="text-base leading-snug font-semibold"
+              >
                 {item.title}
               </AnchorHeading>
-              <p className="max-w-[68ch]">{renderFaqAnswer(item.body)}</p>
+              <p className="!text-[0.9375rem] !leading-6">{renderFaqAnswer(item.body)}</p>
             </div>
           ))}
         </div>
@@ -436,6 +570,53 @@ export function getKyselyPageContent() {
             <li key={item}>{renderFaqAnswer(item)}</li>
           ))}
         </ul>
+      </section>
+
+      <section className={SECTION}>
+        <AnchorHeading level={2} id="same-job">
+          Same job, different tool
+        </AnchorHeading>
+        <p>
+          What each step of the usual workflow looks like on each side, for a team moving in either
+          direction.
+        </p>
+        <div
+          className={TABLE_FRAME}
+          role="region"
+          aria-labelledby="same-job"
+          tabIndex={0}
+          style={SCROLL_HINT}
+        >
+          <table
+            className="w-full border-collapse text-left"
+            style={{ minWidth: "40rem", overflow: "visible" }}
+          >
+            <thead>
+              <tr>
+                <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "22%" }}>
+                  Task
+                </th>
+                <th scope="col" className={TH_COL} style={{ width: "39%" }}>
+                  Kysely
+                </th>
+                <th scope="col" className={TH_COL} style={{ width: "39%" }}>
+                  Prisma ORM
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {SAME_JOB.map((row) => (
+                <tr key={row.task} className="border-t border-black/[0.06]">
+                  <th scope="row" className={`${TH_ROW} ${STICKY}`}>
+                    {row.task}
+                  </th>
+                  <td className={TD}>{renderFaqAnswer(row.kysely)}</td>
+                  <td className={TD}>{renderFaqAnswer(row.prisma)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className={SECTION}>

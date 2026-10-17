@@ -99,9 +99,10 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   },
   {
     feature: "Databases",
-    kysely: "Built-in dialects for PostgreSQL, MySQL, Microsoft SQL Server, SQLite, and PGlite.",
+    kysely:
+      "Built-in dialects for PostgreSQL, MySQL, Microsoft SQL Server, SQLite, and PGlite. See [database support](#databases).",
     prisma:
-      "PostgreSQL is a release candidate. MongoDB is early access. SQLite is experimental. MySQL, MariaDB, SQL Server, and CockroachDB stay on Prisma ORM 7.",
+      "PostgreSQL, MongoDB, and SQLite in Prisma ORM 8. The rest stay on Prisma ORM 7. See [database support](#databases).",
   },
   {
     feature: "Hosted database",
@@ -109,6 +110,83 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     marks: { kysely: "no", prisma: "yes" },
     prisma:
       "[Prisma Postgres](/docs/postgres) is a separate product. Any Postgres client works with it, so Prisma ORM is optional. [Prisma Compute](/docs/compute) is separate app hosting.",
+  },
+];
+
+/**
+ * Kysely: core and community dialects on kysely.dev/docs/dialects. Prisma ORM 8:
+ * /docs/orm/supported-databases. Prisma ORM 7: /docs/orm/v7/reference/supported-databases.
+ * `null` is no support.
+ */
+export type DatabaseStatus =
+  | "Built-in"
+  | "Community dialect"
+  | "Release candidate"
+  | "Early access"
+  | "Experimental"
+  | "ORM 7 only"
+  | "Supported"
+  | null;
+
+/** Statuses for something you can build on today without a preview label. */
+export const FULL_SUPPORT: readonly DatabaseStatus[] = [
+  "Built-in",
+  "Release candidate",
+  "Supported",
+];
+
+export const DATABASE_MATRIX: readonly {
+  database: string;
+  kysely: DatabaseStatus;
+  orm8: DatabaseStatus;
+  orm7: DatabaseStatus;
+}[] = [
+  { database: "PostgreSQL", kysely: "Built-in", orm8: "Release candidate", orm7: "Supported" },
+  { database: "MySQL", kysely: "Built-in", orm8: "ORM 7 only", orm7: "Supported" },
+  { database: "MariaDB", kysely: "Community dialect", orm8: "ORM 7 only", orm7: "Supported" },
+  { database: "Microsoft SQL Server", kysely: "Built-in", orm8: "ORM 7 only", orm7: "Supported" },
+  { database: "SQLite", kysely: "Built-in", orm8: "Experimental", orm7: "Supported" },
+  { database: "CockroachDB", kysely: null, orm8: "ORM 7 only", orm7: "Supported" },
+  { database: "MongoDB", kysely: null, orm8: "Early access", orm7: "Supported" },
+  { database: "PGlite", kysely: "Built-in", orm8: null, orm7: null },
+];
+
+/** One row per job; every Kysely cell names the API or tool its docs give for it. */
+export const SAME_JOB: readonly { task: string; kysely: string; prisma: string }[] = [
+  {
+    task: "Define tables",
+    kysely: "A TypeScript `Database` interface, with one property per table.",
+    prisma: "Models in `contract.prisma`.",
+  },
+  {
+    task: "Generate types",
+    kysely:
+      "Nothing to generate if you write the interface by hand. Community generators such as kysely-codegen write it for you.",
+    prisma: "`contract emit` writes the types from the contract.",
+  },
+  {
+    task: "Read an existing database",
+    kysely:
+      "kysely-codegen connects to PostgreSQL, MySQL, SQLite, or SQL Server and writes the `Database` interface.",
+    prisma: "`contract infer` inspects a live database and writes a starter `contract.prisma`.",
+  },
+  {
+    task: "Write a migration",
+    kysely:
+      "`up` and `down` functions you write with `db.schema`. `kysely migrate make` from kysely-ctl creates the file.",
+    prisma: "`migration plan` writes `migration.ts` from the contract.",
+  },
+  {
+    task: "Preview SQL",
+    kysely: "`.compile()` on a query returns its SQL and parameters without running it.",
+    prisma:
+      "`migration show` prints a migration's operations and statement preview, without connecting to the database.",
+  },
+  {
+    task: "Run migrations",
+    kysely:
+      "`Migrator` from `kysely/migration`, with `migrateToLatest()`. kysely-ctl wraps it as `kysely migrate latest`.",
+    prisma: "`db migrate` applies the pending migrations on disk.",
   },
 ];
 

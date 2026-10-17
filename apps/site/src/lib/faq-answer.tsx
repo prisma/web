@@ -25,7 +25,7 @@ import * as React from "react";
  *   - inline code uses the same `bg-muted` chip as other sections.
  */
 
-const LINK_PATTERN = /\[((?:[^[\]\\`]|`[^`]*`)+)\]\((\/[^\s)]*|https?:\/\/[^\s)]+)\)/g;
+const LINK_PATTERN = /\[((?:[^[\]\\`]|`[^`]*`)+)\]\((\/[^\s)]*|#[^\s)]+|https?:\/\/[^\s)]+)\)/g;
 const CODE_PATTERN = /`([^`]+)`/g;
 
 function renderCode(label: string, keyPrefix: string): React.ReactNode[] {

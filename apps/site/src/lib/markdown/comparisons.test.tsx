@@ -179,3 +179,51 @@ test("kysely Markdown keeps yes and no marks out of the table, and anchored head
   assert.ok(markdown.includes("\n### Prisma ORM and Prisma Postgres\n"));
   assert.doesNotMatch(markdown, /Copy link|Copied/);
 });
+
+test("kysely Markdown carries the database matrix and the task table as Markdown tables", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes("\n## Database support\n"));
+  assert.ok(markdown.includes("| Database | Kysely | Prisma ORM 8 | Prisma ORM 7 |"));
+  for (const row of kysely.DATABASE_MATRIX) {
+    const cells = [row.kysely, row.orm8, row.orm7].map((status) => status ?? "Not supported");
+    assert.ok(
+      markdown.includes(`| ${row.database} | ${cells.join(" | ")} |`),
+      `missing matrix row: ${row.database}`,
+    );
+  }
+  assert.ok(markdown.includes("](/compare/kysely#databases)"), "Databases row links to the matrix");
+
+  assert.ok(markdown.includes("\n## Same job, different tool\n"));
+  assert.ok(markdown.includes("| Task | Kysely | Prisma ORM |"));
+  const plain = plainMarkdown(markdown);
+  for (const row of kysely.SAME_JOB) {
+    const line = markdown.split("\n").find((text) => text.startsWith(`| ${row.task} |`));
+    assert.ok(line, `missing task row: ${row.task}`);
+    assert.ok(plain.includes(stripFaqAnswerMarkup(row.kysely)), `missing Kysely cell: ${row.task}`);
+    assert.ok(plain.includes(stripFaqAnswerMarkup(row.prisma)), `missing Prisma cell: ${row.task}`);
+  }
+});
+
+test("kysely Markdown renders the cards as headings and the fit columns as headings and lists", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  for (const card of kysely.APART) {
+    assert.ok(markdown.includes(`\n### ${card.title}\n`), `missing card heading: ${card.title}`);
+  }
+  for (const [heading, items] of [
+    ["Where Kysely works well", kysely.KYSELY_FITS],
+    ["Where Prisma ORM fits better", kysely.PRISMA_FITS],
+  ] as const) {
+    const section = markdown.split(`\n## ${heading}\n`)[1]?.split("\n## ")[0];
+    assert.ok(section, `missing column heading: ${heading}`);
+    for (const item of items) {
+      assert.ok(
+        plainMarkdown(section).includes(`- ${stripFaqAnswerMarkup(item)}`),
+        `missing list item under ${heading}: ${item}`,
+      );
+    }
+  }
+});
