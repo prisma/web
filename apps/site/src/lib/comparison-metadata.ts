@@ -1,5 +1,6 @@
 import { COMPARISONS, COMPARISON_INDEX, type ComparisonSlug } from "@/app/compare/comparisons";
 import { createPageMetadata } from "./page-metadata";
+import { createCollectionPageStructuredData, createFaqStructuredData } from "./structured-data";
 import { getBaseUrl } from "./url";
 
 /** Resolve a registered comparison's shared metadata and canonical path. */
@@ -47,4 +48,23 @@ export function getComparisonStructuredData(slug: ComparisonSlug) {
       },
     ],
   };
+}
+
+/** Describe the directory as the collection of every registered comparison. */
+export function getComparisonDirectoryStructuredData() {
+  return createCollectionPageStructuredData({
+    ...COMPARISON_INDEX,
+    name: COMPARISON_INDEX.title,
+    items: COMPARISONS.map((entry) => ({
+      name: entry.title,
+      description: entry.description,
+      url: `/compare/${entry.slug}`,
+    })),
+  });
+}
+
+/** FAQPage JSON-LD from the FAQ already published on the comparison. */
+export function getComparisonFaqStructuredData(slug: ComparisonSlug) {
+  const page = getComparison(slug);
+  return createFaqStructuredData(page.path, [...page.faq], page.title);
 }

@@ -1,6 +1,6 @@
-import { CONVEX_DESCRIPTION, CONVEX_TITLE } from "./convex/_content";
-import { KYSELY_DESCRIPTION, KYSELY_TITLE } from "./kysely/_content";
-import { MONGOOSE_DESCRIPTION, MONGOOSE_TITLE } from "./mongoose/_content";
+import { CONVEX_DESCRIPTION, CONVEX_TITLE, FAQ as CONVEX_FAQ } from "./convex/_content";
+import { KYSELY_DESCRIPTION, KYSELY_TITLE, FAQ as KYSELY_FAQ } from "./kysely/_content";
+import { MONGOOSE_DESCRIPTION, MONGOOSE_TITLE, FAQ as MONGOOSE_FAQ } from "./mongoose/_content";
 
 export const COMPARISON_INDEX = {
   path: "/compare",
@@ -36,6 +36,8 @@ export type ComparisonEntry = {
   competitor: string;
   title: string;
   description: string;
+  /** Visible FAQ, also emitted as FAQPage JSON-LD by the compare layout. */
+  faq: readonly { question: string; answer: string }[];
 };
 
 export const COMPARISONS = [
@@ -45,6 +47,7 @@ export const COMPARISONS = [
     competitor: "Convex",
     title: CONVEX_TITLE,
     description: CONVEX_DESCRIPTION,
+    faq: CONVEX_FAQ,
   },
   {
     slug: "kysely",
@@ -52,6 +55,7 @@ export const COMPARISONS = [
     competitor: "Kysely",
     title: KYSELY_TITLE,
     description: KYSELY_DESCRIPTION,
+    faq: KYSELY_FAQ,
   },
   {
     slug: "mongoose",
@@ -59,6 +63,7 @@ export const COMPARISONS = [
     competitor: "Mongoose",
     title: MONGOOSE_TITLE,
     description: MONGOOSE_DESCRIPTION,
+    faq: MONGOOSE_FAQ,
   },
 ] as const satisfies readonly ComparisonEntry[];
 

@@ -2,7 +2,7 @@
 name: content-write-answer-page
 description: Use when the operator wants a page that answers one specific question people ask AI assistants, such as a comparison ("Prisma vs X", "X vs Y"), an alternatives page ("X alternatives"), a roundup ("best X for Y"), a use-case guide ("Postgres for X", "where to host X"), or a troubleshooting fix; when they give a tracked prompt or a Prompt tracker reference (PW123); or when they want to publish such a page so AI engines can find, crawl and cite it.
 metadata:
-  version: "2026.10.15"
+  version: "2026.10.16"
 ---
 
 # Write and publish an answer page
@@ -119,10 +119,13 @@ Do all of this in the same pull request as the page.
 2. **Links within the series.** A roundup links to each head-to-head and alternatives page it covers. Each head-to-head links back to the roundup and to the alternatives page for that competitor. Use the question or the topic as anchor text.
 3. **Links from the rest of the site.** Link to the new page from at least two related pages: the product or docs page it extends, and a related blog post. A page that nothing links to is crawled late or not at all.
 4. **Section index and footer.** Add the page to its section's index page (for example `/comparisons`). The index page must be linked from the footer (`packages/ui/src/data/footer.ts`). If it isn't yet, add that footer link once.
-5. **llms.txt and Markdown.** These are hygiene: no engine has been seen reading them, but they cost little. Blog posts appear in `/blog/llms.txt` automatically. Site pages don't: `/llms.txt` is built in `apps/site/src/app/llms-content.ts` from `markdownPageList` plus `additionalPages`, so add the page there or add its section index once the section has one. For the `.md` rendition, check whether the section supports one (`apps/site/src/lib/agent-markdown.ts`) and register the page if it does.
+5. **llms.txt and Markdown.** Blog posts are included in `/blog/llms.txt` by the blog build. Do not add a hand-maintained list for a blog post. Other site pages are listed from `apps/site/src/app/llms-content.ts` (`markdownPageList` plus `additionalPages`), so add the page there, or add its section index once the section has one. Outside the comparisons section, see whether a `.md` rendition already exists (`apps/site/src/lib/agent-markdown.ts`).
+
+   A comparison page takes Markdown, content negotiation, and JSON-LD from the shared compare registry (`apps/site/src/app/compare/comparisons.ts`) and the shared `app/compare` layout. The directory is CollectionPage and ItemList. Each head-to-head is Article, BreadcrumbList, and FAQPage. Add the page to that registry. Do not hand-write script tags or a second path list.
 6. **IndexNow runs by itself.** `.github/workflows/indexnow.yml` submits changed sitemap URLs to IndexNow after every production deploy of the site, docs and blog apps. There is nothing to submit by hand, but it only sees URLs that item 1 put in the sitemap.
 7. **Check the served page.** Serve it and run `content-seo-geo` Step 7 against the rendered HTML, not the source file. Confirm the `<title>` and the H1 match.
 8. **Keep the pull request public-safe.** prisma/web is public, and engines have quoted its pull request descriptions. Describe what the page is and what changed. Leave out prompt lists, citation counts, competitor strategy and internal names.
+9. **Review a comparison on the served page.** When the page is in the comparisons section, do this yourself before the pull request is finished. Fetch the directory and each head-to-head in the compare registry: the HTML, the `.md` URL, and the HTML URL with `Accept: text/markdown`. The directory HTML includes CollectionPage and ItemList. Each head-to-head HTML includes Article, BreadcrumbList, and FAQPage, and each Markdown response includes the page body. If any of those are missing, stop and tell the operator what is missing and which URL. Do not ask the operator to run this check.
 
 ## Step 8: Record and measure
 
@@ -201,3 +204,5 @@ The comparison outlines follow Conversion Factory's comparison template, and the
 - **Internal analysis in the pull request description.**
 - **Changing a published slug.**
 - **Near-duplicate pages with swapped keywords.** Each page answers a different question, or it doesn't ship.
+- **Hand-written comparison JSON-LD or a second comparison path list.** Markdown, content negotiation, and JSON-LD for `/compare` come from the compare registry and layout.
+- **Asking the operator to confirm comparison Markdown, content negotiation, or JSON-LD.** The agent running this skill fetches the served pages before the pull request is finished.

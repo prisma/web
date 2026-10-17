@@ -5,7 +5,12 @@ import { stripFaqAnswerMarkup } from "@/lib/faq-answer";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { COMPARISONS, COMPARISON_PATHS } from "@/app/compare/comparisons";
-import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
+import {
+  getComparisonDirectoryStructuredData,
+  getComparisonFaqStructuredData,
+  getComparisonMetadata,
+  getComparisonStructuredData,
+} from "@/lib/comparison-metadata";
 import { getAgentMarkdownRewritePathname } from "@/lib/agent-markdown";
 import { getMarkdownPage, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { renderComparisonContent } from "./comparison-content";
@@ -20,9 +25,17 @@ function plainMarkdown(text: string): string {
     .trim();
 }
 
+const contentBySlug = { convex, kysely, mongoose } satisfies Record<
+  (typeof COMPARISONS)[number]["slug"],
+  {
+    COMPARE_ROWS: readonly Record<string, string>[];
+    FAQ: readonly { question: string; answer: string }[];
+  }
+>;
+
 for (const entry of COMPARISONS) {
   test(`${entry.slug} Markdown preserves comparison cells and every FAQ answer`, () => {
-    const content = { convex, kysely, mongoose }[entry.slug];
+    const content = contentBySlug[entry.slug];
     const page = getMarkdownPage(`/compare/${entry.slug}`);
     assert.ok(page);
     const markdown = renderMarkdownDocument(page);
@@ -55,8 +68,27 @@ for (const entry of COMPARISONS) {
     assert.equal(getComparisonMetadata(entry.slug).openGraph.type, "article");
     assert.equal(breadcrumbs?.itemListElement?.length, 2);
     assert.equal(article.publisher?.["@id"], `${new URL(article.url!).origin}#organization`);
+
+    const content = contentBySlug[entry.slug];
+    assert.equal(entry.faq, content.FAQ);
+    const faq = getComparisonFaqStructuredData(entry.slug);
+    assert.equal(faq["@type"], "FAQPage");
+    assert.deepEqual(
+      faq.mainEntity.map((item) => item.name),
+      content.FAQ.map((item) => item.question),
+    );
   });
 }
+
+test("the directory schema lists every registered comparison", () => {
+  const directory = getComparisonDirectoryStructuredData();
+  assert.equal(directory["@type"], "CollectionPage");
+  assert.equal(directory.mainEntity["@type"], "ItemList");
+  assert.deepEqual(
+    directory.mainEntity.itemListElement.map((item) => item.name),
+    COMPARISONS.map((entry) => entry.title),
+  );
+});
 
 test("every registered comparison negotiates Markdown, and unknown slugs stay outside the boundary", () => {
   for (const path of COMPARISON_PATHS) {

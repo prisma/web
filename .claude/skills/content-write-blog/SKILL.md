@@ -2,7 +2,7 @@
 name: content-write-blog
 description: Use when the operator wants to write a blog post, draft a blog article, start a new post for the Prisma blog, or publish to prisma.io/blog.
 metadata:
-  version: "2026.9.16"
+  version: "2026.10.16"
 ---
 
 # Write Blog Post
@@ -150,7 +150,7 @@ End by giving the operator, in a short block:
 - A reminder that the repository workflow is theirs: create a feature branch, commit the skeleton (and author profile), push, and open the pull request following the blog repo's contribution process. The pull request should be opened as a **draft** until the post is fleshed out.
 - A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for search engines and AI answer engines, then complete Step 10 before opening any PR."_
 
-Do not claim the post is "done" or "ready" — it is a skeleton handed back to the operator.
+Do not claim the post is "done" or "ready" — it is a skeleton handed back to the operator. Do not ask the operator to check Markdown, content negotiation, `/blog/llms.txt`, or BlogPosting. That review is Step 11, and you run it before the pull request is finished.
 
 ## Step 10: Adversarial review
 
@@ -171,7 +171,21 @@ Spawn one reviewer agent per applicable lens, every lens that applies, regardles
 
 ### Completion criterion
 
-The draft is ready for the operator's PR when the most recent review round returned zero confirmed findings, and the operator has been given the final round's summary (findings found and fixed per round) so they can judge the review's depth, not just its verdict.
+The draft has passed review when the most recent round returned zero confirmed findings, and the operator has been given the final round's summary (findings found and fixed per round) so they can judge the review's depth, not just its verdict. The pull request is not finished until the agent running this skill has done Step 11.
+
+## Step 11: Review the served post
+
+Before the pull request is finished, review the served post yourself. Do not ask the operator to do it.
+
+The post template already serves this for every post. Do not hand-write script tags, a Markdown route, or content negotiation, and do not add a second list.
+
+Fetch the post's HTML, its `.md` URL, and the HTML URL with `Accept: text/markdown`. Also fetch `/blog/llms.txt`.
+
+- The post is included in `/blog/llms.txt` by the blog build. Do not add a hand-maintained second list.
+- The Markdown rendition and content negotiation respond. They come from `apps/blog/src/lib/agent-markdown.ts`, the blog proxy, and the post `.md` route.
+- The HTML contains `BlogPosting`, from `getBlogPostingJsonLd` in `apps/blog/src/app/(blog)/[slug]/page.tsx`. Blog posts have no FAQPage schema. Do not add one, and do not treat a missing FAQPage as a failure.
+
+If the post is missing from `/blog/llms.txt`, either Markdown response is missing, or the HTML has no BlogPosting, stop and tell the operator what is missing and which URL.
 
 ## Writing quality
 
@@ -201,3 +215,5 @@ The lead you draft, and the prose the author later writes over your stubs, ship 
 - **Over-linking.** Adding links to every proper noun, tangential reference, or vaguely related page produces a link farm, not a useful post. Link only when the reader genuinely benefits. If in doubt, leave it out — the operator can always add links later. The one exception is the first mention of Prisma Postgres, Prisma Compute, and Prisma 8: always link those to docs for SEO.
 - **Linking to non-canonical sources.** External links must point to official sites and canonical docs. Wikipedia, Medium, third-party tutorials, and versioned URLs are not acceptable link targets.
 - **Modifying or relocating the operator's checkout.** If the checkout is the wrong repo or has unexpected state, surface it and ask — do not clean up, move, or reset it unilaterally.
+- **Asking the operator to confirm Markdown, content negotiation, `/blog/llms.txt`, or BlogPosting.** Step 11 is the agent's review of the served post. Do not hand that check back.
+- **Adding FAQPage to a blog post.** The post template emits BlogPosting only.

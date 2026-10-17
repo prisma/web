@@ -43,7 +43,15 @@ export function getComparisonMarkdownPages(): Record<ComparisonPath, MarkdownPag
     [index.path, index],
     ...COMPARISONS.map((entry) => {
       const path = `/compare/${entry.slug}` as const;
-      const blocks = renderComparisonContent(comparisonContent[entry.slug](), path).split("\n\n");
+      const renderPage = comparisonContent[entry.slug];
+      if (typeof renderPage !== "function") {
+        throw new Error(`Registered comparison has no Markdown body: ${path}`);
+      }
+      const markdown = renderComparisonContent(renderPage(), path);
+      if (!markdown.trim()) {
+        throw new Error(`Registered comparison has no Markdown body: ${path}`);
+      }
+      const blocks = markdown.split("\n\n");
       if (blocks[0] !== `# ${entry.title}` || !blocks[1]) {
         throw new Error(`Comparison opening does not match its metadata: ${path}`);
       }

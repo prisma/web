@@ -1,7 +1,5 @@
 import { COMPARISON_CTA } from "./_content";
-import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-import { createCollectionPageStructuredData } from "@/lib/structured-data";
-import { COMPARISONS, COMPARISON_INDEX } from "./comparisons";
+import { COMPARISON_INDEX } from "./comparisons";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
@@ -10,22 +8,10 @@ import { CompareRows, CompareState } from "./compare-list";
 
 export const metadata = createPageMetadata(COMPARISON_INDEX);
 
-/** Render the comparison directory with its complete, unfiltered collection schema. */
+/** Render the comparison directory. The compare layout emits its collection schema. */
 export default function ComparePage() {
   return (
     <>
-      <JsonLd
-        id="comparison-directory"
-        data={createCollectionPageStructuredData({
-          ...COMPARISON_INDEX,
-          name: COMPARISON_INDEX.title,
-          items: COMPARISONS.map((entry) => ({
-            name: entry.title,
-            description: entry.description,
-            url: `/compare/${entry.slug}`,
-          })),
-        })}
-      />
       <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
         <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
           <div

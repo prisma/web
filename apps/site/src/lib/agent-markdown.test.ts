@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { COMPARISON_PATHS } from "@/app/compare/comparisons";
+import { readComparisonPaths } from "@/app/compare/read-comparison-paths.mjs";
 import {
   AGENT_MARKDOWN_PATHS,
   getAgentMarkdownPath,
@@ -198,10 +200,21 @@ test("next.config.mjs sends Vary/Link for exactly AGENT_MARKDOWN_PATHS", () => {
   const configSource = readFileSync(join(siteRoot, "next.config.mjs"), "utf8");
   const block = configSource.match(/const agentMarkdownPaths = \[([\s\S]*?)\];/)?.[1];
   assert.ok(block, "expected agentMarkdownPaths in next.config.mjs");
+  assert.match(configSource, /readComparisonPaths\(/);
+  assert.match(configSource, /src\/app\/compare\/comparisons\.ts/);
+  assert.match(block, /\.\.\.comparisonPaths\b/);
 
-  const paths = [...block.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  const literals = [...block.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  const registrySource = readFileSync(join(siteRoot, "src/app/compare/comparisons.ts"), "utf8");
+  const comparisonPaths = readComparisonPaths(registrySource);
+  assert.deepEqual(comparisonPaths, [...COMPARISON_PATHS]);
+
+  for (const path of comparisonPaths) {
+    assert.equal(literals.includes(path), false, `${path} is hardcoded in next.config.mjs`);
+  }
+
   assert.deepEqual(
-    paths.sort(),
+    [...literals, ...comparisonPaths].sort(),
     [...AGENT_MARKDOWN_PATHS].sort(),
     "next.config.mjs agentMarkdownPaths and AGENT_MARKDOWN_PATHS disagree",
   );

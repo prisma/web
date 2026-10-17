@@ -1,4 +1,10 @@
+import { readFileSync } from "node:fs";
 import { createMDX } from "fumadocs-mdx/next";
+import { readComparisonPaths } from "./src/app/compare/read-comparison-paths.mjs";
+
+const comparisonPaths = readComparisonPaths(
+  readFileSync(new URL("./src/app/compare/comparisons.ts", import.meta.url), "utf8"),
+);
 
 const withMDX = createMDX();
 
@@ -258,6 +264,7 @@ const securityHeaders = [
  * The marketing pages that also have a Markdown rendition. Mirrors
  * AGENT_MARKDOWN_PATHS in src/lib/agent-markdown.ts;
  * src/lib/agent-markdown.test.ts asserts the two agree.
+ * Comparison paths are read from the comparisons registry.
  */
 const agentMarkdownPaths = [
   "/",
@@ -269,10 +276,7 @@ const agentMarkdownPaths = [
   "/stack",
   "/enterprise",
   "/mcp",
-  "/compare",
-  "/compare/convex",
-  "/compare/kysely",
-  "/compare/mongoose",
+  ...comparisonPaths,
 ];
 
 /**

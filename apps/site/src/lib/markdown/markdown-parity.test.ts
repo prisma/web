@@ -2,11 +2,25 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { COMPARISONS } from "@/app/compare/comparisons";
 import { AGENT_MARKDOWN_PATHS, type AgentMarkdownPath } from "@/lib/agent-markdown";
 import { markdownPageList, markdownPages, renderMarkdownDocument } from "@/lib/markdown-pages";
 
 const siteRoot = new URL("../../..", import.meta.url).pathname;
 const baseUrl = "https://www.prisma.io";
+
+type HeadToHeadPath = `/compare/${(typeof COMPARISONS)[number]["slug"]}`;
+
+const headToHeadSources = Object.fromEntries(
+  COMPARISONS.map((entry) => [
+    `/compare/${entry.slug}`,
+    [`src/app/compare/${entry.slug}/_sections.tsx`],
+  ]),
+) as Record<HeadToHeadPath, string[]>;
+
+const headToHeadHeadingMinimums = Object.fromEntries(
+  COMPARISONS.map((entry) => [`/compare/${entry.slug}`, 10]),
+) as Record<HeadToHeadPath, number>;
 
 /**
  * The component files that render each page's headings.
@@ -80,9 +94,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
   ],
   "/enterprise": ["src/app/enterprise/page.tsx"],
   "/compare": ["src/app/compare/page.tsx"],
-  "/compare/convex": ["src/app/compare/convex/_sections.tsx"],
-  "/compare/kysely": ["src/app/compare/kysely/_sections.tsx"],
-  "/compare/mongoose": ["src/app/compare/mongoose/_sections.tsx"],
+  ...headToHeadSources,
   "/mcp": [
     "src/app/mcp/page.tsx",
     "src/app/mcp/_components/mcp-hero-section.tsx",
@@ -114,9 +126,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/enterprise": 3,
   "/mcp": 4,
   "/compare": 1,
-  "/compare/convex": 10,
-  "/compare/kysely": 10,
-  "/compare/mongoose": 10,
+  ...headToHeadHeadingMinimums,
 };
 
 const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
