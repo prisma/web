@@ -187,16 +187,16 @@ export function getKyselyPageContent() {
       </div>
     </div>,
     <div key="body" className={BODY}>
-      <div className="flex flex-col gap-5">
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 !text-sm !leading-6 !text-muted-foreground">
+      <div className="max-w-[36rem] rounded-xl border border-black/[0.08] bg-neutral-50 text-sm leading-6 text-muted-foreground">
+        <p className="flex items-center gap-3 px-4 pt-3 pb-2.5 !text-sm !leading-5 !text-muted-foreground">
           <img
             src={KYSELY_AUTHOR.image}
             alt=""
-            width={32}
-            height={32}
-            className="size-8 shrink-0 rounded-full bg-neutral-100 object-cover"
+            width={28}
+            height={28}
+            className="size-7 shrink-0 rounded-full bg-neutral-200 object-cover"
           />
-          <span className="flex flex-col max-sm:leading-5 sm:flex-row sm:items-center sm:gap-x-3">
+          <span className="flex flex-col sm:flex-row sm:items-center sm:gap-x-2">
             <span>
               By{" "}
               <a
@@ -214,9 +214,9 @@ export function getKyselyPageContent() {
         </p>
         <aside
           aria-label="Disclosure"
-          className="flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
+          className="flex gap-3 border-t border-black/[0.06] px-4 pt-2.5 pb-3"
         >
-          <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
+          <Info className="ml-1.5 mt-1 size-4 shrink-0 text-black/35" aria-hidden />
           <p className="!text-sm !leading-6 !text-muted-foreground">
             Prisma makes Prisma ORM. Every Kysely figure links to its{" "}
             <a href="#sources" className={QUIET_LINK}>

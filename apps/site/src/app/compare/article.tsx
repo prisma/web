@@ -3,57 +3,52 @@ import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { COMPARISON_CTA } from "./_content";
-import { ArticleToc } from "./article-toc";
+import { ArticleToc, ArticleTocDisclosure, type TocItem } from "./article-toc";
 import { COMPARISONS, type ComparisonSlug } from "./comparisons";
 
 const PROSE =
-  "answer-prose prose max-w-none text-foreground prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-2xl prose-h3:mt-8 prose-h3:text-xl prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left";
+  "answer-prose prose max-w-none text-foreground prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-[1.375rem] prose-h2:leading-[1.3] prose-h2:tracking-[-0.01em] prose-h3:mt-8 prose-h3:text-lg [&_:is(p,ul,ol):not(:is(td,th,blockquote)_*)]:max-w-[36rem] prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left";
 
-const TOC: Record<ComparisonSlug, readonly { id: string; label: string }[]> = {
+/**
+ * Short labels for the heading list, set apart from the headings themselves.
+ * An item can stand for several consecutive sections; it stays marked while
+ * any of them is being read.
+ */
+const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
   kysely: [
-    { id: "choose", label: "When should I choose Prisma ORM or Kysely" },
-    { id: "same-query", label: "The same query in both" },
-    { id: "feature-table", label: "What each one supports" },
-    { id: "where-kysely", label: "Where Kysely works well" },
-    { id: "where-prisma", label: "Where Prisma ORM fits better" },
-    { id: "apart", label: "What sets Prisma ORM apart" },
+    { id: "choose", label: "When to choose" },
+    { id: "same-query", label: "Same query" },
+    { id: "feature-table", label: "Features" },
+    { id: "where-kysely", label: "Where each fits", also: ["where-prisma"] },
+    { id: "apart", label: "Why Prisma ORM" },
     { id: "pricing", label: "Pricing" },
-    { id: "wrong-choice", label: "When Prisma ORM is the wrong choice" },
-    { id: "migrate", label: "Move from Kysely to Prisma ORM" },
-    { id: "migrate-back", label: "Move from Prisma ORM to Kysely" },
-    { id: "proof", label: "What teams on Prisma say" },
-    { id: "faq", label: "Frequently asked questions" },
-    { id: "next", label: "Ready to build with Prisma?" },
+    { id: "wrong-choice", label: "Trade-offs" },
+    { id: "migrate", label: "Switching", also: ["migrate-back"] },
+    { id: "proof", label: "What teams say" },
+    { id: "faq", label: "FAQ", also: ["next"] },
+    { id: "sources", label: "Sources" },
   ],
   mongoose: [
-    { id: "choose", label: "Choose Prisma ORM if" },
-    { id: "choose-mongoose", label: "Choose Mongoose if" },
-    { id: "feature-table", label: "What each one supports" },
-    { id: "where-mongoose", label: "Where Mongoose works well" },
-    { id: "where-prisma", label: "Where Prisma ORM fits better" },
-    { id: "apart", label: "What sets Prisma ORM apart" },
+    { id: "choose", label: "When to choose", also: ["choose-mongoose"] },
+    { id: "feature-table", label: "Features" },
+    { id: "where-mongoose", label: "Where each fits", also: ["where-prisma"] },
+    { id: "apart", label: "Why Prisma ORM" },
     { id: "pricing", label: "Pricing" },
-    { id: "wrong-choice", label: "When Prisma ORM is the wrong choice" },
-    { id: "migrate", label: "Move from Mongoose to Prisma ORM" },
-    { id: "migrate-back", label: "Move from Prisma ORM to Mongoose" },
-    { id: "proof", label: "What teams on Prisma say" },
-    { id: "faq", label: "Frequently asked questions" },
-    { id: "next", label: "Ready to build with Prisma?" },
+    { id: "wrong-choice", label: "Trade-offs" },
+    { id: "migrate", label: "Switching", also: ["migrate-back"] },
+    { id: "proof", label: "What teams say" },
+    { id: "faq", label: "FAQ", also: ["next"] },
   ],
   convex: [
-    { id: "choose", label: "Choose Prisma Postgres if" },
-    { id: "choose-convex", label: "Choose Convex if" },
-    { id: "feature-table", label: "What each one supports" },
-    { id: "where-convex", label: "Where Convex works well" },
-    { id: "where-prisma", label: "Where Prisma Postgres fits better" },
-    { id: "apart", label: "What sets Prisma Postgres apart" },
+    { id: "choose", label: "When to choose", also: ["choose-convex"] },
+    { id: "feature-table", label: "Features" },
+    { id: "where-convex", label: "Where each fits", also: ["where-prisma"] },
+    { id: "apart", label: "Why Prisma Postgres" },
     { id: "pricing", label: "Pricing" },
-    { id: "wrong-choice", label: "When Prisma Postgres is the wrong choice" },
-    { id: "migrate", label: "Move from Convex to Prisma Postgres" },
-    { id: "migrate-back", label: "Move from Prisma Postgres to Convex" },
-    { id: "proof", label: "What teams on Prisma say" },
-    { id: "faq", label: "Frequently asked questions" },
-    { id: "next", label: "Ready to build with Prisma?" },
+    { id: "wrong-choice", label: "Trade-offs" },
+    { id: "migrate", label: "Switching", also: ["migrate-back"] },
+    { id: "proof", label: "What teams say" },
+    { id: "faq", label: "FAQ", also: ["next"] },
   ],
 };
 
@@ -136,42 +131,40 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
         </div>
       </header>
 
-      <div className="mx-auto mt-12 grid max-w-site gap-10 px-6 sm:px-8 lg:mt-16 lg:grid-cols-[220px_minmax(0,760px)] lg:gap-14 xl:gap-20">
-        <aside className="hidden lg:block">
-          <nav
-            aria-label="On this page"
-            className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3"
-          >
-            <p className="mb-4 text-sm font-semibold">On this page</p>
+      <div className="mx-auto mt-10 max-w-site px-6 sm:px-8 lg:mt-14">
+        <div className="sm:px-12 lg:px-16 xl:grid xl:grid-cols-[minmax(0,1fr)_11rem] xl:gap-16">
+          <div className="min-w-0 max-w-[54rem]">
+            <div className="mb-10 xl:hidden">
+              <ArticleTocDisclosure items={TOC[slug]} />
+            </div>
+            <div className={PROSE}>{body}</div>
+            {closing}
+            <nav aria-labelledby="related-comparisons-heading" className="mt-14">
+              <h2 id="related-comparisons-heading" className="font-heading text-xl font-medium">
+                Related comparisons
+              </h2>
+              <ul className="mt-5 divide-y divide-border border-y border-border">
+                {related.map((item) => (
+                  <li key={item.slug}>
+                    <Link
+                      href={`/compare/${item.slug}`}
+                      className="group flex items-center justify-between gap-4 py-4 text-sm hover:text-prism-cyan-700"
+                    >
+                      {item.title}
+                      <ArrowRight
+                        className="size-4 shrink-0 transition-transform group-hover:translate-x-1 motion-reduce:transform-none"
+                        aria-hidden
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            {footnote}
+          </div>
+          <aside className="hidden xl:block">
             <ArticleToc items={TOC[slug]} />
-          </nav>
-        </aside>
-
-        <div className="min-w-0 max-w-3xl">
-          <div className={PROSE}>{body}</div>
-          {closing}
-          <nav aria-labelledby="related-comparisons-heading" className="mt-14">
-            <h2 id="related-comparisons-heading" className="font-heading text-xl font-medium">
-              Related comparisons
-            </h2>
-            <ul className="mt-5 divide-y divide-border border-y border-border">
-              {related.map((item) => (
-                <li key={item.slug}>
-                  <Link
-                    href={`/compare/${item.slug}`}
-                    className="group flex items-center justify-between gap-4 py-4 text-sm hover:text-prism-cyan-700"
-                  >
-                    {item.title}
-                    <ArrowRight
-                      className="size-4 shrink-0 transition-transform group-hover:translate-x-1 motion-reduce:transform-none"
-                      aria-hidden
-                    />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          {footnote}
+          </aside>
         </div>
       </div>
     </article>
