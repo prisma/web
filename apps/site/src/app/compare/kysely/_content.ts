@@ -21,6 +21,31 @@ export const CHOOSE_KYSELY = [
   "You need a built-in dialect for MySQL, Microsoft SQL Server, or PGlite, which Prisma ORM 8 does not ship.",
 ];
 
+/** One user and their posts, read from the same PostgreSQL `User` and `Post` tables. */
+export const SAME_QUERY = {
+  kysely: `import { jsonArrayFrom } from "kysely/helpers/postgres";
+import { db } from "./db"; // your Kysely<Database> instance
+
+const user = await db
+  .selectFrom("User")
+  .selectAll("User")
+  .select((eb) => [
+    jsonArrayFrom(
+      eb
+        .selectFrom("Post")
+        .selectAll("Post")
+        .whereRef("Post.authorId", "=", "User.id"),
+    ).as("posts"),
+  ])
+  .where("User.email", "=", "alice@example.com")
+  .executeTakeFirst();`,
+  prisma: `import { db } from "./src/prisma/db";
+
+const user = await db.orm.public.User.include("posts")
+  .where({ email: "alice@example.com" })
+  .first();`,
+} as const;
+
 export type CompareRow = {
   feature: string;
   kysely: string;

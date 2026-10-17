@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { Info } from "lucide-react";
 import {
+  CodeBlock,
+  CodeBlockTab,
+  CodeBlockTabs,
+  CodeBlockTabsList,
+  CodeBlockTabsTrigger,
+} from "@prisma/eclipse";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -10,6 +17,7 @@ import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button
 import { TESTIMONIALS } from "@/components/sections/testimonials-data";
 import { COMPARISON_CTA } from "../_content";
 import { CompareArticle } from "../article";
+import { highlight } from "./highlight";
 import { QuoteCarousel } from "./quote-carousel";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import {
@@ -22,6 +30,7 @@ import {
   KYSELY_FITS,
   KYSELY_TITLE,
   PRISMA_FITS,
+  SAME_QUERY,
   WRONG_CHOICE,
 } from "./_content";
 
@@ -65,6 +74,18 @@ const STICKY =
   "sticky left-0 z-10 before:absolute before:inset-y-0 before:-left-1 before:w-1 before:bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/[0.06]";
 const TD = "text-sm leading-6 text-foreground";
 
+/**
+ * The site does not build the eclipse tokens these components use
+ * (`rounded-square`, `border-stroke-neutral`, `type-text-sm-strong`, the active
+ * tab bar), so the same values are set with site utilities.
+ */
+const CODE_TABS = "my-0 rounded-[0.625rem] border-black/[0.08] bg-white";
+const CODE_TAB_LIST = "flex flex-row overflow-x-auto px-2";
+const CODE_TAB =
+  "relative inline-flex items-center px-2 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:text-primary data-[state=active]:[&>div]:bg-primary";
+const CODE_BLOCK =
+  "my-0 rounded-none border-black/[0.08] bg-white [&>div]:py-3.5 [&_button]:text-muted-foreground";
+
 const PROOF = TESTIMONIALS.filter(
   (item) => item.name === "Ron Cohen" || item.name === "Omar López",
 );
@@ -81,6 +102,7 @@ const SOURCES = [
       { label: "Getting started", href: "https://kysely.dev/docs/getting-started" },
       { label: "kysely on npm", href: "https://www.npmjs.com/package/kysely" },
       { label: "Migrations", href: "https://kysely.dev/docs/migrations" },
+      { label: "Relations recipe", href: "https://kysely.dev/docs/recipes/relations" },
       { label: "MIT license", href: "https://github.com/kysely-org/kysely/blob/master/LICENSE" },
     ],
   },
@@ -89,6 +111,7 @@ const SOURCES = [
     links: [
       { label: "Prisma ORM docs", href: "/docs/orm" },
       { label: "Supported databases", href: "/docs/orm/supported-databases" },
+      { label: "ORM client reference", href: "/docs/orm/reference/orm-client" },
       { label: "How migrations work", href: "/docs/orm/migrations/how-migrations-work" },
       { label: "SQL query builder", href: "/docs/orm/reference/sql-query-builder" },
       { label: "Apache License 2.0", href: "https://github.com/prisma/prisma/blob/main/LICENSE" },
@@ -176,6 +199,34 @@ export function getKyselyPageContent() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className={SECTION}>
+        <h2 id="same-query">The same query in both</h2>
+        <p className="max-w-[68ch]">
+          Each snippet reads one user by email with their posts: Kysely nests the posts with its{" "}
+          <code>jsonArrayFrom</code> helper, and Prisma ORM loads them with <code>include</code>.
+        </p>
+        <CodeBlockTabs defaultValue="kysely" className={CODE_TABS}>
+          <CodeBlockTabsList className={CODE_TAB_LIST}>
+            <CodeBlockTabsTrigger value="kysely" className={CODE_TAB}>
+              Kysely
+            </CodeBlockTabsTrigger>
+            <CodeBlockTabsTrigger value="prisma" className={CODE_TAB}>
+              Prisma ORM
+            </CodeBlockTabsTrigger>
+          </CodeBlockTabsList>
+          {(["kysely", "prisma"] as const).map((tool) => (
+            <CodeBlockTab
+              key={tool}
+              value={tool}
+              forceMount
+              className="data-[state=inactive]:hidden"
+            >
+              <CodeBlock className={CODE_BLOCK}>{highlight(SAME_QUERY[tool])}</CodeBlock>
+            </CodeBlockTab>
+          ))}
+        </CodeBlockTabs>
       </section>
 
       <section className={SECTION}>

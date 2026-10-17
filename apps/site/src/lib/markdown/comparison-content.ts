@@ -1,4 +1,5 @@
 import { Children, isValidElement, type ReactNode } from "react";
+import { CodeBlockTab, CodeBlockTabs, CodeBlockTabsTrigger } from "@prisma/eclipse";
 import { AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { RoleKicker } from "@/components/brand/role-kicker";
@@ -38,7 +39,33 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
     if (!isValidElement<ContentProps>(value)) return "";
     const { type, props } = value;
     if (props["aria-hidden"] === true || type === RoleKicker || type === Texture) return "";
-    if (type === "pre") return `\n\n\`\`\`\n${codeText(props.children)}\n\`\`\`\n\n`;
+    if (type === "pre") {
+      const language = typeof props["data-language"] === "string" ? props["data-language"] : "";
+      return `\n\n\`\`\`${language}\n${codeText(props.children)}\n\`\`\`\n\n`;
+    }
+    if (type === CodeBlockTabs) {
+      const labels = new Map<unknown, string>();
+      const panels: ReactNode[] = [];
+      const collect = (nodes: ReactNode) =>
+        Children.forEach(nodes, (child) => {
+          if (!isValidElement<ContentProps>(child)) return;
+          if (child.type === CodeBlockTabsTrigger) {
+            labels.set(child.props.value, codeText(child.props.children));
+          } else if (child.type === CodeBlockTab) {
+            panels.push(child);
+          } else {
+            collect(child.props.children);
+          }
+        });
+      collect(props.children);
+      return panels
+        .map((panel) => {
+          if (!isValidElement<ContentProps>(panel)) return "";
+          const label = labels.get(panel.props.value);
+          return `\n\n${label ? `**${escapeText(label)}**\n\n` : ""}${render(panel.props.children).trim()}\n\n`;
+        })
+        .join("");
+    }
     if (type === "code") {
       const text = codeText(props.children);
       const ticks = "`".repeat(

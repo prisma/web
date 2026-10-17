@@ -11,6 +11,7 @@ const PROSE =
 const TOC: Record<ComparisonSlug, readonly { id: string; label: string }[]> = {
   kysely: [
     { id: "choose", label: "When should I choose Prisma ORM or Kysely" },
+    { id: "same-query", label: "The same query in both" },
     { id: "feature-table", label: "What each one supports" },
     { id: "where-kysely", label: "Where Kysely works well" },
     { id: "where-prisma", label: "Where Prisma ORM fits better" },

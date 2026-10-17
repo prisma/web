@@ -99,6 +99,14 @@ test("comparison Markdown preserves literal code and escapes table pipes", () =>
   assert.ok(markdown.includes("```\nSELECT '<value>';\n```"));
 });
 
+test("Kysely Markdown carries each code tab as a labelled TypeScript fence", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes(`**Kysely**\n\n\`\`\`ts\n${kysely.SAME_QUERY.kysely}\n\`\`\``));
+  assert.ok(markdown.includes(`**Prisma ORM**\n\n\`\`\`ts\n${kysely.SAME_QUERY.prisma}\n\`\`\``));
+});
+
 test("a table without rows does not interrupt the comparison rendition", () => {
   assert.equal(renderComparisonContent(<table />, "/compare/convex"), "");
 });
