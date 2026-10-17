@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { COMPARISON_CTA } from "./_content";
+import { ArticleToc } from "./article-toc";
 import { COMPARISONS, type ComparisonSlug } from "./comparisons";
 
 const PROSE =
@@ -142,15 +143,7 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
             className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3"
           >
             <p className="mb-4 text-sm font-semibold">On this page</p>
-            <ul className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-              {TOC[slug].map((item) => (
-                <li key={item.id}>
-                  <a href={`#${item.id}`} className="transition-colors hover:text-foreground">
-                    {item.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <ArticleToc items={TOC[slug]} />
           </nav>
         </aside>
 
