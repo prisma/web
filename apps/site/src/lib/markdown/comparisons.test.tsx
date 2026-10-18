@@ -418,6 +418,10 @@ test("kysely code tabs stay unmounted when closed, while Markdown still has ever
 test("kysely code lines pad past the Copy pill and preload the unbracketed mono face", () => {
   const highlight = readFileSync(join(compareDir, "kysely/highlight.tsx"), "utf8");
   assert.match(highlight, /className="line pl-4 pr-12"/);
+  const sections = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
+  assert.match(sections, /not-fumadocs-codeblock/);
+  assert.match(sections, /<TabCodeCopy /);
+  assert.equal([...sections.matchAll(/allowCopy=\{false\}/g)].length, 5);
   const page = readFileSync(join(compareDir, "kysely/page.tsx"), "utf8");
   assert.match(page, /src: "\.\/mona-sans-mono\.woff2"/);
   assert.doesNotMatch(page, /preload:\s*false/);

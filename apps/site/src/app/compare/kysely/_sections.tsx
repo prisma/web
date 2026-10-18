@@ -21,6 +21,7 @@ import { ComparisonPricingTable } from "../pricing-table";
 import { QUIET_LINK, QUIET_NOTE } from "../table-styles";
 import { highlight, lineGroupMap } from "./highlight";
 import { SameQueryHighlight } from "./same-query";
+import { TabCodeCopy } from "../tab-code-copy";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import {
   APART,
@@ -82,11 +83,13 @@ function databaseStatus(status: DatabaseStatus) {
  * tab bar), so the same values are set with site utilities.
  */
 const CODE_TABS = "my-0 rounded-[0.625rem] border-black/[0.08] bg-white";
-const CODE_TAB_LIST = "flex flex-row overflow-x-auto px-2";
+const CODE_TAB_LIST = "flex min-w-0 flex-1 flex-row overflow-x-auto px-2";
 const CODE_TAB =
   "relative inline-flex min-h-11 items-center px-2 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:text-primary data-[state=active]:[&>div]:bg-primary";
 const CODE_BLOCK =
-  "my-0 rounded-none border-black/[0.08] bg-white [&>div]:py-3.5 [&_.line]:pr-12 [&_button]:relative [&_button]:text-muted-foreground [&_button]:after:absolute [&_button]:after:-inset-2.5 [&_button]:after:content-['']";
+  "not-fumadocs-codeblock my-0 rounded-none border-black/[0.08] bg-white [&>div]:py-3.5";
+const CODE_BLOCK_WITH_COPY =
+  `${CODE_BLOCK} [&>[role=region]]:mr-11 [&_button]:relative [&_button]:text-muted-foreground [&_button]:after:absolute [&_button]:after:-inset-2.5 [&_button]:after:content-['']`;
 
 const PROOF = TESTIMONIALS.filter(
   (item) => item.name === "Ron Cohen" || item.name === "Omar López",
@@ -256,29 +259,32 @@ export function getKyselyPageContent() {
         </p>
         <SameQueryHighlight>
           <CodeBlockTabs defaultValue="kysely" className={CODE_TABS}>
-            <CodeBlockTabsList aria-label="Code example" className={CODE_TAB_LIST}>
-              <CodeBlockTabsTrigger value="kysely" className={CODE_TAB}>
-                Kysely
-              </CodeBlockTabsTrigger>
-              <CodeBlockTabsTrigger value="prisma" className={CODE_TAB}>
-                Prisma ORM
-              </CodeBlockTabsTrigger>
-              <CodeBlockTabsTrigger value="sql" className={CODE_TAB}>
-                SQL sent
-              </CodeBlockTabsTrigger>
-            </CodeBlockTabsList>
+            <div className="flex items-center">
+              <CodeBlockTabsList aria-label="Code example" className={CODE_TAB_LIST}>
+                <CodeBlockTabsTrigger value="kysely" className={CODE_TAB}>
+                  Kysely
+                </CodeBlockTabsTrigger>
+                <CodeBlockTabsTrigger value="prisma" className={CODE_TAB}>
+                  Prisma ORM
+                </CodeBlockTabsTrigger>
+                <CodeBlockTabsTrigger value="sql" className={CODE_TAB}>
+                  SQL sent
+                </CodeBlockTabsTrigger>
+              </CodeBlockTabsList>
+              <TabCodeCopy label="Copy the open example" />
+            </div>
             <CodeBlockTab value="kysely">
-              <CodeBlock className={CODE_BLOCK}>
+              <CodeBlock allowCopy={false} className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.kysely, "typescript", kyselyGroups)}
               </CodeBlock>
             </CodeBlockTab>
             <CodeBlockTab value="prisma">
-              <CodeBlock className={CODE_BLOCK}>
+              <CodeBlock allowCopy={false} className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.prisma, "typescript", prismaGroups)}
               </CodeBlock>
             </CodeBlockTab>
             <CodeBlockTab value="sql">
-              <CodeBlock className={CODE_BLOCK}>
+              <CodeBlock allowCopy={false} className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.sql, "sql", sqlGroups)}
               </CodeBlock>
             </CodeBlockTab>
@@ -440,24 +446,29 @@ export function getKyselyPageContent() {
         </p>
         <p>Representative types for the User and Post tables in the query above, then the four commands.</p>
         <CodeBlockTabs defaultValue="kysely-types" className={CODE_TABS}>
-          <CodeBlockTabsList aria-label="Switching types" className={CODE_TAB_LIST}>
-            <CodeBlockTabsTrigger value="kysely-types" className={CODE_TAB}>
-              Kysely types
-            </CodeBlockTabsTrigger>
-            <CodeBlockTabsTrigger value="contract" className={CODE_TAB}>
-              contract.prisma
-            </CodeBlockTabsTrigger>
-          </CodeBlockTabsList>
+          <div className="flex items-center">
+            <CodeBlockTabsList aria-label="Switching types" className={CODE_TAB_LIST}>
+              <CodeBlockTabsTrigger value="kysely-types" className={CODE_TAB}>
+                Kysely types
+              </CodeBlockTabsTrigger>
+              <CodeBlockTabsTrigger value="contract" className={CODE_TAB}>
+                contract.prisma
+              </CodeBlockTabsTrigger>
+            </CodeBlockTabsList>
+            <TabCodeCopy label="Copy the open types" />
+          </div>
           <CodeBlockTab value="kysely-types">
-            <CodeBlock className={CODE_BLOCK}>{highlight(SWITCH_KYSELY_TYPES)}</CodeBlock>
+            <CodeBlock allowCopy={false} className={CODE_BLOCK}>
+              {highlight(SWITCH_KYSELY_TYPES)}
+            </CodeBlock>
           </CodeBlockTab>
           <CodeBlockTab value="contract">
-            <CodeBlock className={CODE_BLOCK}>
+            <CodeBlock allowCopy={false} className={CODE_BLOCK}>
               {highlight(SWITCH_PRISMA_CONTRACT, "prisma")}
             </CodeBlock>
           </CodeBlockTab>
         </CodeBlockTabs>
-        <CodeBlock className={CODE_BLOCK}>{highlight(SWITCH_COMMANDS, "bash")}</CodeBlock>
+        <CodeBlock className={CODE_BLOCK_WITH_COPY}>{highlight(SWITCH_COMMANDS, "bash")}</CodeBlock>
         <ol className={STEPS}>
           <li>
             Later changes go through{" "}
