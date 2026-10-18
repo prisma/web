@@ -155,11 +155,11 @@ function articleParts(children: ReactNode) {
 
 /**
  * The same article frame as the product guides: a rounded muted hero card
- * (same chrome as `/postgres/codex-database-provisioning`), heading list,
+ * at the Codex guide width (`max-w-site` + `px-6 sm:px-8`), heading list,
  * 760px reading column, closing action, and related links. Hero type matches
  * that guide: `max-w-4xl` title, `max-w-3xl` dek. TOC stays on the right.
- * Hero + column + rail center as one unit, like `/blog/serverless-postgres`,
- * so the 760px measure is not hugged to the left. The directory stays separate.
+ * The column + rail center as one unit, like `/blog/serverless-postgres`.
+ * The directory stays separate.
  */
 export function CompareArticle({ slug, children }: { slug: ComparisonSlug; children: ReactNode }) {
   const entry = COMPARISONS.find((item) => item.slug === slug);
@@ -169,26 +169,26 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
 
   return (
     <article className="overflow-x-clip bg-background pb-24 pt-32 sm:pt-40">
-      <div className="mx-auto max-w-site px-6 sm:px-8">
-        <div className="grid gap-y-12 lg:grid-cols-[minmax(0,760px)_220px] lg:justify-center lg:gap-x-14 lg:gap-y-16 xl:gap-x-20">
-          <header className="lg:col-span-2">
-            <div className="rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
-              <nav
-                aria-label="Breadcrumb"
-                className="mb-7 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Link href="/compare" className="hover:text-foreground">
-                  Compare
-                </Link>
-                <ChevronRight className="size-3.5" aria-hidden />
-                <span aria-current="page" className="text-foreground">
-                  {entry.competitor}
-                </span>
-              </nav>
-              {intro}
-            </div>
-          </header>
+      <header className="mx-auto max-w-site px-6 sm:px-8">
+        <div className="rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-7 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+          >
+            <Link href="/compare" className="hover:text-foreground">
+              Compare
+            </Link>
+            <ChevronRight className="size-3.5" aria-hidden />
+            <span aria-current="page" className="text-foreground">
+              {entry.competitor}
+            </span>
+          </nav>
+          {intro}
+        </div>
+      </header>
 
+      <div className="mx-auto max-w-site px-6 sm:px-8">
+        <div className="mt-12 grid gap-10 lg:mt-16 lg:grid-cols-[minmax(0,760px)_220px] lg:justify-center lg:gap-14 xl:gap-20">
           <div className="min-w-0 max-w-3xl">
             <div className="mb-10 lg:hidden">
               <ArticleTocDisclosure items={TOC[slug]} markdownPath={AI_MARKDOWN[slug]} />

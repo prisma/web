@@ -521,6 +521,21 @@ test("kysely code lines pad past the Copy pill and preload the unbracketed mono 
   assert.match(readFileSync(join(compareDir, "tab-code-copy.tsx"), "utf8"), /COPIED_VISIBLE_MS/);
 });
 
+test("kysely FAQ is the six Prisma-vs-Kysely Q&As with code fences, mongoose is not", () => {
+  assert.equal(kysely.FAQ.length, 6);
+  assert.equal(
+    kysely.FAQ[0].question,
+    "Does Prisma generate database migrations for you, unlike Kysely?",
+  );
+  assert.match(kysely.FAQ[0].answer, /```bash/);
+  assert.match(kysely.FAQ[5].question, /Prisma 7 or Prisma 8/);
+  assert.doesNotMatch(kysely.FAQ.map((item) => item.answer).join("\n"), /Kysely is a really good/);
+  assert.equal(
+    mongoose.FAQ.some((item) => item.question.includes("nested relations")),
+    false,
+  );
+});
+
 test("kysely choose leads with the lists and defines terms in the bullets", () => {
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
@@ -541,13 +556,11 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /kysely: "\/compare\/kysely\.md"/);
   assert.match(article, /pt-32 sm:pt-40/);
-  assert.match(article, /mx-auto max-w-site px-6 sm:px-8/);
+  assert.match(article, /header className="mx-auto max-w-site px-6 sm:px-8"/);
   assert.match(article, /lg:justify-center/);
-  assert.match(article, /lg:col-span-2/);
   assert.match(article, /rounded-2xl bg-muted\/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16/);
   assert.match(article, /lg:grid-cols-\[minmax\(0,760px\)_220px\]/);
   assert.match(article, /min-w-0 max-w-3xl/);
-  assert.doesNotMatch(article, /header className="mx-auto max-w-site/);
   assert.match(article, /overflow-x-clip/);
   assert.doesNotMatch(article, /w-screen|100vw/);
   assert.doesNotMatch(article, /max-w-\[54rem\]/);

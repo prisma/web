@@ -325,24 +325,100 @@ export const WRONG_CHOICE = [
 
 export const FAQ: readonly { question: string; answer: string }[] = [
   {
-    question: "Is Kysely an ORM?",
-    answer:
-      "Kysely is a type-safe SQL query builder. You describe tables as TypeScript interfaces and write queries with a fluent SQL API. It does not generate queries from a contract file. Source: [Kysely getting started](https://kysely.dev/docs/getting-started), October 2026.",
+    question: "Does Prisma generate database migrations for you, unlike Kysely?",
+    answer: `Yes. Kysely ships a migrator that runs the \`up\` and \`down\` functions you write by hand, so many teams add a separate tool to generate them. Prisma writes the migration for you from your schema. In Prisma 7, \`prisma migrate dev\` compares your schema with the database, writes a plain SQL file you can edit, and applies it, while \`prisma migrate deploy\` applies migrations in production. Prisma 8 (release candidate) keeps the idea with new commands: \`prisma migration plan\` writes a TypeScript migration you can review, and \`prisma db migrate\` applies it. To try it, [Prisma Postgres](https://www.prisma.io/postgres) has a free plan with 50 databases, 2 GB and 200k operations a month, no card needed.
+
+\`\`\`bash
+# Prisma 7
+npx prisma migrate dev --name add_user_phone
+
+# Prisma 8 (release candidate)
+npx prisma migration plan --name add_user_phone
+npx prisma db migrate
+\`\`\``,
   },
   {
-    question: "Is Prisma ORM 8 a final release?",
-    answer:
-      "No. Prisma ORM 8 is a release candidate, and it is what `npm install prisma` gives you today. PostgreSQL is the release-candidate database. MongoDB is early access, and SQLite is experimental. Source: [Prisma ORM](/docs/orm) and [supported databases](/docs/orm/supported-databases), October 2026.",
+    question: "How do I query nested relations in TypeScript without writing joins by hand?",
+    answer: `Kysely's own docs are upfront that it has no concept of relations, so you nest rows with SQL JSON helpers such as \`jsonArrayFrom\`. Prisma knows your relations from the schema, so you just ask for them. In Prisma 7 you use \`include\` or \`select\`, nest as deep as you like, and filter parents by their children with \`some\`, \`every\` and \`none\`. Prisma 7 can load it all in one SQL query with \`relationLoadStrategy: "join"\`, which is still in Preview. Prisma 8 (release candidate) uses a chained \`.include()\` that reads the relation in the same SQL statement as the parent, with a callback to filter, sort or limit it.
+
+\`\`\`ts
+// Prisma 7
+const users = await prisma.user.findMany({
+  include: { posts: { where: { published: true }, take: 5 } },
+});
+
+// Prisma 8 (release candidate)
+const users = await db.orm.public.User
+  .include("posts", (p) => p.where({ published: true }).limit(5))
+  .all();
+\`\`\``,
   },
   {
-    question: "Can I connect Kysely to Prisma Postgres?",
-    answer:
-      "Yes. Prisma Postgres is PostgreSQL, and Prisma ORM is optional. Pass the connection string to Kysely's `PostgresDialect` and the `pg` driver. The [Kysely quickstart](/docs/prisma-postgres/quickstart/kysely) shows the setup.",
+    question: "Can Prisma create a record and its related records in one call?",
+    answer: `Yes. With a query builder you usually write each insert yourself and wrap them in a transaction. Prisma 7 has nested writes: inside one \`create\` or \`update\` you can create, connect, update or delete related records, and Prisma runs it all as a single transaction, rolling everything back if any part fails. Prisma 8 (release candidate) supports nested \`create\`, \`connect\` and \`disconnect\`. Nested update, upsert, delete and \`connectOrCreate\` are not in Prisma 8 yet, so for those you change the related rows through their own model inside \`db.transaction(...)\`.
+
+\`\`\`ts
+// Prisma 7: one query, one transaction
+await prisma.user.create({
+  data: {
+    email: "elsa@prisma.io",
+    posts: { create: [{ title: "Hello" }, { title: "Second post" }] },
+  },
+});
+
+// Prisma 8 (release candidate)
+await db.orm.public.User.create({
+  email: "elsa@prisma.io",
+  posts: (p) => p.create([{ title: "Hello", published: false }]),
+});
+\`\`\``,
   },
   {
-    question: "Which TypeScript setup does Kysely require?",
-    answer:
-      "Kysely's getting started guide requires TypeScript 5.4 or newer, and strict mode in tsconfig.json. Source: [Kysely getting started](https://kysely.dev/docs/getting-started), October 2026.",
+    question: "How do I set updatedAt automatically in TypeScript?",
+    answer: `Kysely has no built-in way to do it, so you set the column in every update, add a database trigger, or write your own plugin. In Prisma you mark the field once in the schema and Prisma fills it in on every write. In Prisma 7 that is the \`@updatedAt\` attribute. In Prisma 8 (release candidate) it is \`temporal.updatedAt()\`, which sets the time on every create and update from your application's clock. One thing to know: because the value comes from the app, a row you insert with raw SQL has to supply it.
+
+\`\`\`prisma
+// Prisma 7: schema.prisma
+model Post {
+  id        Int      @id @default(autoincrement())
+  updatedAt DateTime @updatedAt
+}
+
+// Prisma 8 (release candidate): contract.prisma
+// use prisma-8
+model Post {
+  id        Int @id @default(autoincrement())
+  updatedAt temporal.updatedAt()
+}
+\`\`\``,
+  },
+  {
+    question: "Is Prisma simpler than Kysely for everyday CRUD?",
+    answer: `For everyday reads and writes, usually yes, because Prisma gives you methods for each model. Kysely asks you to spell out each step, which is great for complex SQL but adds up for simple CRUD. In Prisma 7, a create returns the new record by default. Prisma 8 (release candidate) trims it further: no \`data\` wrapper, and an update or delete without a \`.where(...)\` does not type-check, so you can't wipe a table by accident. When you do want SQL, Prisma 7 has \`$queryRaw\` and TypedSQL (Preview), and Prisma 8 has a typed SQL query builder.
+
+\`\`\`ts
+// Kysely
+await db.insertInto("user").values({ email, name }).returningAll().executeTakeFirstOrThrow();
+
+// Prisma 7
+await prisma.user.create({ data: { email, name } });
+
+// Prisma 8 (release candidate)
+await db.orm.public.User.create({ email, name });
+\`\`\``,
+  },
+  {
+    question: "Should I start with Prisma 7 or Prisma 8?",
+    answer: `If you need something stable today, use Prisma 7. It is the current stable release, it supports PostgreSQL, MySQL, SQLite, SQL Server, CockroachDB and MongoDB, and it will keep getting bug fixes and security updates for 18 months after Prisma 8 reaches general availability. Prisma 8 is a release candidate: PostgreSQL is the most complete, MongoDB is in early access, SQLite is experimental, and MySQL is not supported yet. Note that a plain \`npm install prisma\` now installs the Prisma 8 release candidate, so pin \`prisma@7\` if you want version 7.
+
+\`\`\`bash
+# Prisma 7 (stable)
+npm install --save-dev prisma@7
+
+# Prisma 8 (release candidate)
+npm install --save-dev prisma
+npm install @prisma/orm-postgres
+\`\`\``,
   },
 ];
 
