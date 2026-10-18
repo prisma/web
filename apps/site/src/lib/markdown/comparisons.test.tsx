@@ -264,13 +264,29 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     COMPARISON_CTA.checks.some((item) => item.label === "Trusted by 500K+ developers globally"),
   );
   assert.equal(ORM_COMPARISON_CTA.checks, COMPARISON_CTA.checks);
+  assert.equal(
+    ORM_COMPARISON_CTA.body,
+    "Prisma ORM is free and open source, and always will be.",
+  );
+  assert.equal(COMPARISON_CTA.body, "Free to start, no credit card required.");
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
   assert.ok(markdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(markdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.doesNotMatch(markdown, /Free to start, no credit card required/);
   assert.ok(markdown.includes("\n## Add Prisma ORM to an existing project\n"));
   assert.ok(markdown.includes("[Get started with Prisma ORM](/docs/prisma-orm/quickstart/postgresql)"));
   assert.ok(markdown.includes("[Get started with Prisma Postgres](https://console.prisma.io)"));
+  const mongoosePage = getMarkdownPage("/compare/mongoose");
+  assert.ok(mongoosePage);
+  const mongooseMarkdown = renderMarkdownDocument(mongoosePage);
+  assert.ok(mongooseMarkdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.doesNotMatch(mongooseMarkdown, /Free to start, no credit card required/);
+  const convexPage = getMarkdownPage("/compare/convex");
+  assert.ok(convexPage);
+  const convexMarkdown = renderMarkdownDocument(convexPage);
+  assert.ok(convexMarkdown.includes("Free to start, no credit card required."));
 });
 
 test("kysely Markdown carries the switch types, contract, and four commands", () => {

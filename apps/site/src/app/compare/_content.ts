@@ -13,15 +13,17 @@ export const COMPARISON_CTA = {
 } as const;
 
 /**
- * Closing action on ORM comparisons (Kysely, Mongoose). The 500K+ line is how
- * many people use Prisma ORM; it stays. The buttons go to the ORM quickstart
- * and Prisma Postgres rather than a generic console pitch.
+ * Closing action on ORM comparisons (Kysely, Mongoose). Prisma ORM is free and
+ * open source, not a trial. The 500K+ line is how many people use it; it stays.
+ * The buttons go to the ORM quickstart and Prisma Postgres rather than a
+ * generic console pitch. Do not reuse COMPARISON_CTA.body here: that dek is
+ * for hosted Prisma Postgres (free plan, credit card).
  */
 export const ORM_COMPARISON_CTA = {
   headline: "Add Prisma ORM to an existing project",
   headlineMaxWidth: "max-w-[28ch]",
-  body: "Free to start, no credit card required.",
-  bodyMaxWidth: "max-w-[44ch]",
+  body: "Prisma ORM is free and open source, and always will be.",
+  bodyMaxWidth: "max-w-[52ch]",
   checks: COMPARISON_CTA.checks,
   primaryCta: {
     label: "Get started with Prisma ORM",
