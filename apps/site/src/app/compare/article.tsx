@@ -2,7 +2,7 @@ import { Children, isValidElement, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
-import { COMPARISON_CTA, ORM_COMPARISON_CTA, ORM_HERO_CTAS } from "./_content";
+import { COMPARISON_CTA, CREATE_DB_WEB, ORM_COMPARISON_CTA, ORM_HERO_CTAS } from "./_content";
 import { ArticleToc, ArticleTocDisclosure, type TocItem } from "./article-toc";
 import { COMPARISONS, type ComparisonSlug } from "./comparisons";
 import { QUIET_LINK } from "./table-styles";
@@ -125,7 +125,7 @@ export function comparisonClosingCta(kind: "orm" | "postgres" = "postgres") {
         <p className="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground">
           Need a database?{" "}
           <a
-            href={cta.secondaryCta.href}
+            href={CREATE_DB_WEB}
             className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
           >
             Create one instantly

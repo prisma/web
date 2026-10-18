@@ -39,6 +39,9 @@ export const ORM_COMPARISON_CTA = {
   },
 } as const;
 
+/** Temporary Prisma Postgres in the browser, no account. */
+export const CREATE_DB_WEB = "https://create-db.prisma.io/web";
+
 export const ORM_HERO_CTAS = {
   primary: {
     label: "Get started with Prisma ORM",
@@ -46,6 +49,6 @@ export const ORM_HERO_CTAS = {
   },
   secondary: {
     label: "Create a database",
-    href: ORM_COMPARISON_CTA.secondaryCta.href,
+    href: CREATE_DB_WEB,
   },
 } as const;
