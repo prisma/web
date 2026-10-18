@@ -106,17 +106,36 @@ VALUES
 The demonstration account is `42`. This query joins the conversation's ownership to its messages:
 
 ```sql
-SELECT m.role, m.state, m.content
-FROM conversation_message_demo m
-JOIN conversation_history_demo c ON c.id = m.conversation_id
-WHERE c.id = 1 AND c.account_id = 42
-ORDER BY m.id
-LIMIT 50;
+SELECT id, role, state, content
+FROM (
+  SELECT m.id, m.role, m.state, m.content
+  FROM conversation_message_demo m
+  JOIN conversation_history_demo c ON c.id = m.conversation_id
+  WHERE c.id = 1 AND c.account_id = 42
+  ORDER BY m.id DESC
+  LIMIT 50
+) AS recent_messages
+ORDER BY id;
 ```
 
-It returns the user question followed by the assistant reply. In the server, bind query values as parameters and derive the authorized account from the verified session. Apply that check to writes and deletes too. If you use row-level security, configure the relevant roles and policies as well.
+The inner query selects the latest 50 messages; the outer query puts that page in display order. For the two demonstration messages, it returns the user question followed by the assistant reply, with their IDs. In the server, bind query values as parameters and derive the authorized account from the verified session. Apply that check to writes and deletes too. If you use row-level security, configure the relevant roles and policies as well.
 
-Use a message ID cursor for stable pagination. If parallel generations need a strict conversational turn sequence, model that sequence explicitly; an insertion ID alone does not define the order in which concurrent work completes.
+Use the smallest returned message ID as the cursor when requesting an older page. The demonstration page starts at ID `1`, so this next-page query correctly returns no older rows:
+
+```sql
+SELECT id, role, state, content
+FROM (
+  SELECT m.id, m.role, m.state, m.content
+  FROM conversation_message_demo m
+  JOIN conversation_history_demo c ON c.id = m.conversation_id
+  WHERE c.id = 1 AND c.account_id = 42 AND m.id < 1
+  ORDER BY m.id DESC
+  LIMIT 50
+) AS older_messages
+ORDER BY id;
+```
+
+The application should bind the conversation, verified account and cursor as parameters. A new conversation loads the first query without a cursor; subsequent requests use the smallest ID from the previous page. If parallel generations need a strict conversational turn sequence, model that sequence explicitly; an insertion ID alone does not define the order in which concurrent work completes.
 
 ### 4. Define generation and interruption states
 
