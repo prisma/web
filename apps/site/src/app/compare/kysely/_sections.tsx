@@ -21,6 +21,7 @@ import {
   comparisonHeroCtas,
 } from "../article";
 import { comparisonByline } from "../byline";
+import { comparisonProofCards } from "../proof-cards";
 import { articleReadingStats } from "../reading-time";
 import { CompareTable } from "../compare-table";
 import { ComparisonPricingTable } from "../pricing-table";
@@ -166,26 +167,24 @@ function buildKyselyPage(minutes: number) {
 
   return [
     <div key="intro">
-      <div className="max-w-3xl">
-        <h1 className="text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
-          {KYSELY_TITLE}
-        </h1>
-        <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-foreground">
-          Both give you type-safe database access in TypeScript, from opposite ends.{" "}
-          <Link href="/docs/orm" className={INLINE}>
-            Prisma ORM
-          </Link>{" "}
-          starts from a contract file: you describe your models once, and typed queries and
-          migrations follow from it.{" "}
-          <a href="https://kysely.dev" className={INLINE}>
-            Kysely
-          </a>{" "}
-          starts from SQL: you write each query as a fluent TypeScript builder over table types you
-          keep yourself.
-        </p>
-        {comparisonHeroCtas("orm")}
-        {comparisonByline({ author: KYSELY_AUTHOR, updated: KYSELY_UPDATED, minutes })}
-      </div>
+      <h1 className="max-w-4xl text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
+        {KYSELY_TITLE}
+      </h1>
+      <p className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-foreground">
+        Both give you type-safe database access in TypeScript, from opposite ends.{" "}
+        <Link href="/docs/orm" className={INLINE}>
+          Prisma ORM
+        </Link>{" "}
+        starts from a contract file: you describe your models once, and typed queries and migrations
+        follow from it.{" "}
+        <a href="https://kysely.dev" className={INLINE}>
+          Kysely
+        </a>{" "}
+        starts from SQL: you write each query as a fluent TypeScript builder over table types you
+        keep yourself.
+      </p>
+      {comparisonHeroCtas("orm")}
+      {comparisonByline({ author: KYSELY_AUTHOR, updated: KYSELY_UPDATED, minutes })}
       {comparisonDisclosure({ competitor: "Kysely", checked: CHECKED })}
     </div>,
     <div key="body" className={BODY}>
@@ -496,26 +495,15 @@ function buildKyselyPage(minutes: number) {
           What do teams say about Prisma ORM?
         </AnchorHeading>
         <p className="max-w-[68ch]">Two teams on what type safety in Prisma ORM does for them.</p>
-        <div className="grid gap-8 sm:grid-cols-2">
-          {PROOF.map((item) => (
-            <figure key={item.name} className="flex flex-col gap-5">
-              <img
-                src={LOGOS[item.company].src}
-                alt=""
-                width={LOGOS[item.company].width}
-                height={20}
-                className="h-5 w-auto self-start"
-              />
-              <blockquote className="max-w-[34rem] text-pretty text-lg leading-8 text-primary">
-                &ldquo;{item.quote}&rdquo;
-              </blockquote>
-              <figcaption className="text-sm leading-6 text-muted-foreground">
-                <span className="font-medium text-foreground">{item.name}</span>, {item.role},{" "}
-                {item.company}
-              </figcaption>
-            </figure>
-          ))}
-        </div>
+        {comparisonProofCards(
+          PROOF.map((item) => ({
+            name: item.name,
+            role: item.role,
+            company: item.company,
+            quote: item.quote,
+            logo: LOGOS[item.company],
+          })),
+        )}
       </section>
 
       <section className={SECTION}>

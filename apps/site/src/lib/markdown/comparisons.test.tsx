@@ -511,6 +511,8 @@ test("kysely code lines pad past the Copy pill and preload the unbracketed mono 
   assert.doesNotMatch(page, /preload:\s*false/);
   const toc = readFileSync(join(compareDir, "article-toc.tsx"), "utf8");
   assert.match(toc, /min-h-11 items-center/);
+  assert.doesNotMatch(toc, /overflow-y-auto/);
+  assert.doesNotMatch(toc, /max-h-\[calc/);
   const heading = readFileSync(join(compareDir, "anchor-heading.tsx"), "utf8");
   assert.match(heading, /tabIndex=\{inTabOrder \? 0 : -1\}/);
   assert.match(heading, /COPIED_VISIBLE_MS/);
@@ -540,8 +542,12 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   assert.match(article, /pt-32 sm:pt-40/);
   assert.match(article, /header className="mx-auto max-w-site px-6 sm:px-8"/);
   assert.match(article, /rounded-2xl bg-muted\/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16/);
+  assert.match(article, /lg:grid-cols-\[minmax\(0,760px\)_220px\]/);
+  assert.match(article, /min-w-0 max-w-3xl/);
   assert.match(article, /overflow-x-clip/);
   assert.doesNotMatch(article, /w-screen|100vw/);
+  assert.doesNotMatch(article, /max-w-\[54rem\]/);
+  assert.doesNotMatch(article, /lg:grid-cols-\[minmax\(0,1fr\)_11rem\]/);
   const byline = readFileSync(join(compareDir, "byline.tsx"), "utf8");
   assert.match(byline, /linkedin\.com\/in\/martjvr/);
   assert.match(byline, /x\.com\/vanrensbird/);
@@ -550,6 +556,20 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   const toc = readFileSync(join(compareDir, "article-toc.tsx"), "utf8");
   assert.match(toc, /PageAiActions/);
   assert.match(toc, /markdownPath/);
+  const desktopToc = toc.slice(
+    toc.indexOf("export function ArticleToc"),
+    toc.indexOf("export function ArticleTocDisclosure"),
+  );
+  assert.ok(desktopToc.indexOf("PageAiActions") < desktopToc.indexOf(">On this page</p>"));
+  const disclosureToc = toc.slice(toc.indexOf("export function ArticleTocDisclosure"));
+  assert.ok(disclosureToc.indexOf("PageAiActions") < disclosureToc.indexOf("<TocList"));
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.doesNotMatch(sections, /max-w-2xl/);
+  assert.match(sections, /comparisonProofCards/);
+  const proof = readFileSync(join(compareDir, "proof-cards.tsx"), "utf8");
+  assert.match(proof, /grid gap-4 sm:grid-cols-2/);
+  assert.match(proof, /rounded-xl border border-border bg-card p-6/);
   const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
   assert.match(ai, /Copy this page as Markdown/);
   assert.doesNotMatch(ai, />Open with AI</);
@@ -792,6 +812,11 @@ test("mongoose choose leads with the lists and Open-with-AI points at mongoose.m
   assert.match(markdown, /published filter/);
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /mongoose: "\/compare\/mongoose\.md"/);
+  const sections = readFileSync(join(compareDir, "mongoose/_sections.tsx"), "utf8");
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.doesNotMatch(sections, /max-w-2xl/);
+  assert.match(sections, /comparisonProofCards/);
   const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
   assert.match(ai, /pageMdUrl.includes\("\/compare\/mongoose\.md"\)/);
   assert.match(ai, /I am choosing between Prisma ORM and Mongoose for a TypeScript app/);

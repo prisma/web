@@ -98,14 +98,14 @@ function TocList({
   onChoose: (id: string) => void;
 }) {
   return (
-    <ul className="border-l-2 border-black/[0.08] text-[0.8125rem] leading-5 text-muted-foreground">
+    <ul className="border-l-2 border-black/[0.08] text-[11px] leading-4 text-muted-foreground">
       {items.map((item) => (
         <li key={item.id}>
           <a
             href={`#${item.id}`}
             aria-current={item.id === active ? "location" : undefined}
             onClick={() => onChoose(item.id)}
-            className="-ml-0.5 flex min-h-11 items-center border-l-2 border-transparent py-2.5 pl-3.5 transition-colors duration-200 hover:text-foreground motion-reduce:transition-none aria-[current=location]:border-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
+            className="-ml-0.5 flex min-h-11 items-center border-l-2 border-transparent py-1 pl-2.5 transition-colors duration-200 hover:text-foreground motion-reduce:transition-none aria-[current=location]:border-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
           >
             {item.label}
           </a>
@@ -115,7 +115,11 @@ function TocList({
   );
 }
 
-/** The sticky right-hand list, matching the docs' table of contents. */
+/**
+ * The sticky right-hand list. No overflow scroll: the AI cluster plus every
+ * item must fit a 900px-tall window under `top-28`. Rows stay 44px (`min-h-11`)
+ * unless that overflows; then shrink the tap row rather than scrolling the rail.
+ */
 export function ArticleToc({
   items,
   markdownPath,
@@ -125,17 +129,14 @@ export function ArticleToc({
 }) {
   const [active, choose] = useActiveItem(items);
   return (
-    <nav
-      aria-label="On this page"
-      className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto"
-    >
-      <p className="mb-3 text-[0.8125rem] font-medium text-foreground">On this page</p>
-      <TocList items={items} active={active} onChoose={choose} />
+    <nav aria-label="On this page" className="sticky top-28">
       {markdownPath ? (
-        <div className="mt-5 border-t border-black/[0.08] pt-3">
+        <div className="mb-2">
           <PageAiActions markdownPath={markdownPath} />
         </div>
       ) : null}
+      <p className="mb-1 text-[11px] font-medium text-foreground">On this page</p>
+      <TocList items={items} active={active} onChoose={choose} />
     </nav>
   );
 }
@@ -152,14 +153,19 @@ export function ArticleTocDisclosure({
   const details = useRef<HTMLDetailsElement>(null);
   return (
     <details ref={details} className="group rounded-xl border border-black/[0.08]">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
         On this page
         <ChevronDown
           className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
           aria-hidden
         />
       </summary>
-      <nav aria-label="On this page" className="px-4 pt-1 pb-3">
+      <nav aria-label="On this page" className="px-3 pt-0.5 pb-2">
+        {markdownPath ? (
+          <div className="mb-2">
+            <PageAiActions markdownPath={markdownPath} />
+          </div>
+        ) : null}
         <TocList
           items={items}
           active={active}
@@ -168,11 +174,6 @@ export function ArticleTocDisclosure({
             if (details.current) details.current.open = false;
           }}
         />
-        {markdownPath ? (
-          <div className="mt-3 border-t border-black/[0.08] pt-2">
-            <PageAiActions markdownPath={markdownPath} />
-          </div>
-        ) : null}
       </nav>
     </details>
   );

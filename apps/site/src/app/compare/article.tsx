@@ -8,9 +8,9 @@ import { COMPARISONS, type ComparisonSlug } from "./comparisons";
 import { QUIET_LINK } from "./table-styles";
 
 const PROSE =
-  "answer-prose prose max-w-none text-foreground selection:bg-prism-cyan-100 prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-[1.375rem] prose-h2:leading-[1.3] prose-h2:tracking-[-0.01em] prose-h3:mt-8 prose-h3:text-lg [&_:is(p,ul,ol):not(:is(td,th,blockquote)_*)]:max-w-[36rem] prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 prose-a:hover:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-2 [&_:focus-visible]:outline-foreground/70";
+  "answer-prose prose max-w-none text-foreground selection:bg-prism-cyan-100 prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-2xl prose-h3:mt-8 prose-h3:text-xl prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 prose-a:hover:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-2 [&_:focus-visible]:outline-foreground/70";
 
-const SECTION_H2 = "font-heading text-[1.375rem] leading-[1.3] font-medium";
+const SECTION_H2 = "font-heading text-2xl font-medium";
 
 /**
  * Short labels for the heading list, set apart from the headings themselves.
@@ -156,9 +156,9 @@ function articleParts(children: ReactNode) {
 /**
  * The same article frame as the product guides: a rounded muted hero card that
  * breaks out of the reading column (same chrome as `/postgres/codex-database-provisioning`),
- * heading list, reading column, closing action, and related links. Title, dek,
- * CTAs and byline stay on the existing content measure. The directory stays
- * separate.
+ * heading list, 760px reading column, closing action, and related links. Hero
+ * type matches that guide: `max-w-4xl` title, `max-w-3xl` dek. TOC stays on the
+ * right. The directory stays separate.
  */
 export function CompareArticle({ slug, children }: { slug: ComparisonSlug; children: ReactNode }) {
   const entry = COMPARISONS.find((item) => item.slug === slug);
@@ -186,41 +186,39 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
         </div>
       </header>
 
-      <div className="mx-auto mt-10 max-w-site px-6 sm:px-8 lg:mt-14">
-        <div className="sm:px-12 lg:grid lg:grid-cols-[minmax(0,1fr)_11rem] lg:gap-12 lg:px-16">
-          <div className="min-w-0 max-w-[54rem]">
-            <div className="mb-10 lg:hidden">
-              <ArticleTocDisclosure items={TOC[slug]} markdownPath={AI_MARKDOWN[slug]} />
-            </div>
-            <div className={PROSE}>{body}</div>
-            {closing}
-            {footnote}
-            <nav aria-labelledby="related-comparisons-heading" className="mt-14">
-              <h2 id="related-comparisons-heading" className={SECTION_H2}>
-                Related comparisons
-              </h2>
-              <ul className="mt-5 divide-y divide-border border-y border-border">
-                {related.map((item) => (
-                  <li key={item.slug}>
-                    <Link
-                      href={`/compare/${item.slug}`}
-                      className="group flex min-h-11 items-center justify-between gap-4 py-4 text-sm hover:text-prism-cyan-700"
-                    >
-                      {item.title}
-                      <ArrowRight
-                        className="size-4 shrink-0 transition-transform group-hover:translate-x-1 motion-reduce:transform-none"
-                        aria-hidden
-                      />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+      <div className="mx-auto mt-12 grid max-w-site gap-10 px-6 sm:px-8 lg:mt-16 lg:grid-cols-[minmax(0,760px)_220px] lg:gap-14 xl:gap-20">
+        <div className="min-w-0 max-w-3xl">
+          <div className="mb-10 lg:hidden">
+            <ArticleTocDisclosure items={TOC[slug]} markdownPath={AI_MARKDOWN[slug]} />
           </div>
-          <aside className="hidden lg:block">
-            <ArticleToc items={TOC[slug]} markdownPath={AI_MARKDOWN[slug]} />
-          </aside>
+          <div className={PROSE}>{body}</div>
+          {closing}
+          {footnote}
+          <nav aria-labelledby="related-comparisons-heading" className="mt-14">
+            <h2 id="related-comparisons-heading" className={SECTION_H2}>
+              Related comparisons
+            </h2>
+            <ul className="mt-5 divide-y divide-border border-y border-border">
+              {related.map((item) => (
+                <li key={item.slug}>
+                  <Link
+                    href={`/compare/${item.slug}`}
+                    className="group flex min-h-11 items-center justify-between gap-4 py-4 text-sm hover:text-prism-cyan-700"
+                  >
+                    {item.title}
+                    <ArrowRight
+                      className="size-4 shrink-0 transition-transform group-hover:translate-x-1 motion-reduce:transform-none"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
+        <aside className="hidden lg:block">
+          <ArticleToc items={TOC[slug]} markdownPath={AI_MARKDOWN[slug]} />
+        </aside>
       </div>
     </article>
   );
