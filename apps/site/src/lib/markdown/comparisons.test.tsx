@@ -1,6 +1,9 @@
 import * as convex from "@/app/compare/convex/_content";
 import * as kysely from "@/app/compare/kysely/_content";
 import { MARTIN_SOCIALS, comparisonAuthorPerson } from "@/app/compare/byline";
+import { getConvexArticleFields, getConvexFacts } from "@/app/compare/convex/facts";
+import { GET as getConvexFactsResponse } from "@/app/compare/convex.json/route";
+import { getConvexReadingStats } from "@/app/compare/convex/_sections";
 import { getKyselyArticleFields, getKyselyFacts } from "@/app/compare/kysely/facts";
 import { GET as getKyselyFactsResponse } from "@/app/compare/kysely.json/route";
 import { getKyselyReadingStats } from "@/app/compare/kysely/_sections";
@@ -14,6 +17,7 @@ import {
   CREATE_DB_WEB,
   ORM_COMPARISON_CTA,
   ORM_HERO_CTAS,
+  POSTGRES_HERO_CTAS,
 } from "@/app/compare/_content";
 import { CompareTable } from "@/app/compare/compare-table";
 import { ComparisonPricingTable } from "@/app/compare/pricing-table";
@@ -338,6 +342,15 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   assert.ok(convexPage);
   const convexMarkdown = renderMarkdownDocument(convexPage);
   assert.ok(convexMarkdown.includes("Free to start, no credit card required."));
+  assert.ok(convexMarkdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(convexMarkdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.match(
+    convexMarkdown,
+    /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
+  );
+  assert.equal(POSTGRES_HERO_CTAS.secondary.href, CREATE_DB_WEB);
+  assert.equal(POSTGRES_HERO_CTAS.secondary.label, "Create an instant database");
+  assert.equal(POSTGRES_HERO_CTAS.primary.href, "https://console.prisma.io");
 });
 
 test("kysely Markdown carries the switch types, contract, and four commands", () => {
@@ -391,21 +404,21 @@ test("kysely JSON facts carry a source and dateChecked on every value", async ()
   assert.equal(fields.about[1]?.name, "Prisma ORM");
 });
 
-test("Kysely and Mongoose Article JSON-LD authors are a Person with confirmed sameAs", () => {
+test("Kysely, Mongoose, and Convex Article JSON-LD authors are a Person with confirmed sameAs", () => {
   const hrefs = MARTIN_SOCIALS.map((social) => social.href);
   assert.deepEqual(hrefs, [
     "https://x.com/vanrensbird",
     "https://www.linkedin.com/in/martjvr/",
     "https://github.com/vanrensbird",
   ]);
-  for (const author of [kysely.KYSELY_AUTHOR, mongoose.MONGOOSE_AUTHOR]) {
+  for (const author of [kysely.KYSELY_AUTHOR, mongoose.MONGOOSE_AUTHOR, convex.CONVEX_AUTHOR]) {
     const person = comparisonAuthorPerson(author, getBaseUrl());
     assert.equal(person["@type"], "Person");
     assert.equal(person.name, author.name);
     assert.equal(person.url, new URL(author.path, getBaseUrl()).toString());
     assert.deepEqual(person.sameAs, hrefs);
   }
-  for (const page of ["kysely/page.tsx", "mongoose/page.tsx"]) {
+  for (const page of ["kysely/page.tsx", "mongoose/page.tsx", "convex/page.tsx"]) {
     const source = readFileSync(join(compareDir, page), "utf8");
     assert.match(source, /comparisonAuthorPerson\(/);
     assert.doesNotMatch(source, /sameAs:\s*\[/);
@@ -605,6 +618,7 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   assert.match(ai, /Read this article and treat it as the source of truth:/);
   assert.match(ai, /I am choosing between Prisma ORM and Kysely for a TypeScript app/);
   assert.match(ai, /I am choosing between Prisma ORM and Mongoose for a TypeScript app/);
+  assert.match(ai, /I am choosing between Prisma Postgres and Convex for a TypeScript app/);
   assert.doesNotMatch(ai, /I want to ask questions about it/);
   assert.match(ai, /claude\.ai\/new/);
   assert.match(ai, /gemini\.google\.com\/app/);
@@ -843,4 +857,84 @@ test("mongoose choose leads with the lists and Open-with-AI points at mongoose.m
   assert.match(ai, /I am choosing between Prisma ORM and Mongoose for a TypeScript app/);
   assert.match(ai, /schema lives next to the model in application code/);
   assert.doesNotMatch(ai, /Open-with-AI prompt pointed at `\/compare\/kysely\.md` for mongoose/);
+});
+
+test("Convex Markdown carries the byline, disclosure, and Sources on the shared chrome", () => {
+  const page = getMarkdownPage("/compare/convex");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const minutes = getConvexReadingStats().minutes;
+  assert.ok(
+    markdown.includes(
+      `By [${convex.CONVEX_AUTHOR.name}](${convex.CONVEX_AUTHOR.path}) · Updated ${convex.CONVEX_UPDATED.label} · ${minutes} min read`,
+    ),
+  );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes(`dateModified: ${convex.CONVEX_UPDATED.iso}`));
+  assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
+  assert.ok(markdown.includes("\n## Sources\n"));
+  assert.ok(markdown.includes("\n## When should I choose Convex or Prisma Postgres?\n"));
+  assert.ok(markdown.includes("\n## How do Convex and Prisma Postgres compare?\n"));
+  assert.ok(markdown.includes("\n## Where does each one fit?\n"));
+  assert.ok(markdown.includes("\n## How much do Convex and Prisma Postgres cost?\n"));
+  assert.ok(markdown.includes("| Feature | Convex | Prisma Postgres |"));
+  assert.ok(markdown.includes("| Cost | Convex | Prisma Postgres |"));
+  assert.doesNotMatch(markdown, /When should I choose Kysely/);
+  assert.doesNotMatch(markdown, /fluent TypeScript builder/);
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /convex: "\/compare\/convex\.md"/);
+  const sections = readFileSync(join(compareDir, "convex/_sections.tsx"), "utf8");
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.match(sections, /comparisonProofCards/);
+  assert.match(sections, /comparisonDisclosure/);
+  assert.doesNotMatch(sections, /defaultValue=/);
+  assert.doesNotMatch(sections, /PageAiActions/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /pageMdUrl.includes\("\/compare\/convex\.md"\)/);
+  assert.match(ai, /I am choosing between Prisma Postgres and Convex for a TypeScript app/);
+  assert.match(ai, /reactive database with TypeScript query functions/);
+});
+
+test("convex JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getConvexFacts();
+  assert.equal(facts.path, "/compare/convex");
+  assert.equal(facts.dateChecked, convex.CONVEX_UPDATED.iso);
+  assert.equal(facts.tools.convex.softwareVersion, "1.47.0");
+  assert.equal(facts.features.length, convex.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.convex.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.convex.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  const response = getConvexFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getConvexArticleFields();
+  const stats = getConvexReadingStats();
+  assert.equal(fields.datePublished, convex.CONVEX_PUBLISHED.iso);
+  assert.equal(fields.dateModified, convex.CONVEX_UPDATED.iso);
+  assert.equal(WORDS_PER_MINUTE, 225);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
+  assert.equal(fields.about[0]?.name, "Convex");
+  assert.equal(fields.about[1]?.name, "Prisma Postgres");
+});
+
+test("convex metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("convex").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/convex\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/convex\.json$/);
 });

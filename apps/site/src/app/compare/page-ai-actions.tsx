@@ -29,9 +29,21 @@ const MONGOOSE_PROMPT = `I am choosing between Prisma ORM and Mongoose for a Typ
 
 Ask me up to three short questions if you need whether I already use MongoDB, whether I use populate on arrays of ids, or whether I need PostgreSQL as well.`;
 
+const CONVEX_PROMPT = `I am choosing between Prisma Postgres and Convex for a TypeScript app. Using only what the article states, plus my answers:
+
+1. Tell me which fits if I want standard PostgreSQL vs if I want a reactive database with TypeScript query functions.
+2. Call out the real tradeoffs (SQL vs TypeScript queries, realtime WebSocket sync, per-developer fees, hosting) without selling.
+3. Give me the first steps to try the one you recommend.
+
+Ask me up to three short questions if you need whether I need live query updates, whether I want SQL, or whether I already have a Postgres database.`;
+
 /** Prompt every Open-with-AI logo prefills. The page's `.md` alternate is the source of truth. */
 export function choosePrompt(pageMdUrl: string) {
-  const body = pageMdUrl.includes("/compare/mongoose.md") ? MONGOOSE_PROMPT : KYSELY_PROMPT;
+  const body = pageMdUrl.includes("/compare/convex.md")
+    ? CONVEX_PROMPT
+    : pageMdUrl.includes("/compare/mongoose.md")
+      ? MONGOOSE_PROMPT
+      : KYSELY_PROMPT;
   return `Read this article and treat it as the source of truth:
 
 ${pageMdUrl}

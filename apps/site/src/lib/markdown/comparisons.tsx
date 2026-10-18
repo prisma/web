@@ -7,6 +7,7 @@ import {
   type ComparisonPath,
   type ComparisonSlug,
 } from "@/app/compare/comparisons";
+import { CHECKED as CONVEX_CHECKED, CONVEX_UPDATED } from "@/app/compare/convex/_content";
 import { getConvexPageContent } from "@/app/compare/convex/_sections";
 import { CHECKED as KYSELY_CHECKED, KYSELY_UPDATED } from "@/app/compare/kysely/_content";
 import { getKyselyPageContent } from "@/app/compare/kysely/_sections";
@@ -62,7 +63,9 @@ export function getComparisonMarkdownPages(): Record<ComparisonPath, MarkdownPag
             ? { checked: KYSELY_CHECKED, dateModified: KYSELY_UPDATED.iso }
             : entry.slug === "mongoose"
               ? { checked: MONGOOSE_CHECKED, dateModified: MONGOOSE_UPDATED.iso }
-              : {}),
+              : entry.slug === "convex"
+                ? { checked: CONVEX_CHECKED, dateModified: CONVEX_UPDATED.iso }
+                : {}),
         } satisfies MarkdownPage,
       ];
     }),

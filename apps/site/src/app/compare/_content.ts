@@ -52,3 +52,15 @@ export const ORM_HERO_CTAS = {
     href: CREATE_DB_WEB,
   },
 } as const;
+
+/** Hero buttons on Postgres/platform comparisons (Convex). */
+export const POSTGRES_HERO_CTAS = {
+  primary: {
+    label: "Get started with Prisma Postgres",
+    href: "https://console.prisma.io",
+  },
+  secondary: {
+    label: "Create an instant database",
+    href: CREATE_DB_WEB,
+  },
+} as const;

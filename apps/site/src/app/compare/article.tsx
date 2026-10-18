@@ -2,7 +2,13 @@ import { Children, isValidElement, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
-import { COMPARISON_CTA, CREATE_DB_WEB, ORM_COMPARISON_CTA, ORM_HERO_CTAS } from "./_content";
+import {
+  COMPARISON_CTA,
+  CREATE_DB_WEB,
+  ORM_COMPARISON_CTA,
+  ORM_HERO_CTAS,
+  POSTGRES_HERO_CTAS,
+} from "./_content";
 import { ArticleToc, ArticleTocDisclosure, type TocItem } from "./article-toc";
 import { COMPARISONS, type ComparisonSlug } from "./comparisons";
 import { QUIET_LINK } from "./table-styles";
@@ -20,6 +26,7 @@ const SECTION_H2 = "font-heading text-2xl font-medium";
 const AI_MARKDOWN: Partial<Record<ComparisonSlug, string>> = {
   kysely: "/compare/kysely.md",
   mongoose: "/compare/mongoose.md",
+  convex: "/compare/convex.md",
 };
 
 const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
@@ -52,15 +59,16 @@ const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
     { id: "sources", label: "Sources" },
   ],
   convex: [
-    { id: "choose", label: "When to choose", also: ["choose-convex"] },
+    { id: "choose", label: "When to choose" },
     { id: "feature-table", label: "Features" },
-    { id: "where-convex", label: "Where each fits", also: ["where-prisma"] },
+    { id: "where-each", label: "Where each fits" },
     { id: "apart", label: "Why Prisma Postgres" },
     { id: "pricing", label: "Pricing" },
-    { id: "wrong-choice", label: "Trade-offs" },
+    { id: "wrong-choice", label: "When it is the wrong choice" },
     { id: "migrate", label: "Switching", also: ["migrate-back"] },
     { id: "proof", label: "What teams say" },
     { id: "faq", label: "FAQ", also: ["next"] },
+    { id: "sources", label: "Sources" },
   ],
 };
 
@@ -71,13 +79,15 @@ const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
 export function comparisonDisclosure({
   competitor,
   checked,
+  prismaProduct = "Prisma ORM",
 }: {
   competitor: string;
   checked: string;
+  prismaProduct?: string;
 }) {
   return (
     <p className="mt-6 w-full min-w-0 text-sm leading-6 text-muted-foreground">
-      Prisma makes Prisma ORM. {competitor} figures come from the pages listed under{" "}
+      Prisma makes {prismaProduct}. {competitor} figures come from the pages listed under{" "}
       <a href="#sources" className={QUIET_LINK}>
         Sources
       </a>
@@ -88,8 +98,8 @@ export function comparisonDisclosure({
 
 /** Buttons under the introduction. ORM pages lead with the ORM quickstart. */
 export function comparisonHeroCtas(kind: "orm" | "postgres" = "postgres") {
-  const primary = kind === "orm" ? ORM_HERO_CTAS.primary : COMPARISON_CTA.primaryCta;
-  const secondary = kind === "orm" ? ORM_HERO_CTAS.secondary : COMPARISON_CTA.secondaryCta;
+  const primary = kind === "orm" ? ORM_HERO_CTAS.primary : POSTGRES_HERO_CTAS.primary;
+  const secondary = kind === "orm" ? ORM_HERO_CTAS.secondary : POSTGRES_HERO_CTAS.secondary;
   return (
     <p className="mt-8 flex flex-wrap items-center gap-3">
       <PrismButton href={primary.href} ctaLocation="compare-intro">
@@ -116,23 +126,26 @@ export function comparisonClosingCta(kind: "orm" | "postgres" = "postgres") {
         {cta.headline}
       </h2>
       <p className="mt-4 max-w-[36rem] text-pretty leading-relaxed text-foreground">{cta.body}</p>
+      {kind === "postgres" ? (
+        <p className="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground">
+          {ORM_COMPARISON_CTA.body}
+        </p>
+      ) : null}
       <ul className="mt-4 max-w-[36rem] list-disc pl-5">
         {cta.checks.map((item) => (
           <li key={item.label}>{item.label}</li>
         ))}
       </ul>
-      {kind === "orm" ? (
-        <p className="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground">
-          Need a database?{" "}
-          <a
-            href={CREATE_DB_WEB}
-            className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
-          >
-            Create an instant database
-          </a>
-          .
-        </p>
-      ) : null}
+      <p className="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground">
+        Need a database?{" "}
+        <a
+          href={CREATE_DB_WEB}
+          className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
+        >
+          Create an instant database
+        </a>
+        .
+      </p>
       <p className="mt-7 flex flex-wrap items-center gap-3">
         <PrismButton href={cta.primaryCta.href} ctaLocation="compare-close">
           {cta.primaryCta.label}
