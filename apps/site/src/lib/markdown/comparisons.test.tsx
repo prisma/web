@@ -399,8 +399,8 @@ test("comparison tables use the border token and only tab-stop when they scroll"
 
 test("kysely code tabs stay unmounted when closed, while Markdown still has every snippet", () => {
   const source = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
-  assert.equal([...source.matchAll(/forceMount=\{false\}/g)].length, 5);
-  assert.doesNotMatch(source, /forceMount(?!=\{false\})/);
+  assert.equal([...source.matchAll(/<CodeBlockTab /g)].length, 5);
+  assert.doesNotMatch(source, /forceMount/);
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);

@@ -267,17 +267,17 @@ export function getKyselyPageContent() {
                 SQL sent
               </CodeBlockTabsTrigger>
             </CodeBlockTabsList>
-            <CodeBlockTab value="kysely" forceMount={false}>
+            <CodeBlockTab value="kysely">
               <CodeBlock className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.kysely, "typescript", kyselyGroups)}
               </CodeBlock>
             </CodeBlockTab>
-            <CodeBlockTab value="prisma" forceMount={false}>
+            <CodeBlockTab value="prisma">
               <CodeBlock className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.prisma, "typescript", prismaGroups)}
               </CodeBlock>
             </CodeBlockTab>
-            <CodeBlockTab value="sql" forceMount={false}>
+            <CodeBlockTab value="sql">
               <CodeBlock className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.sql, "sql", sqlGroups)}
               </CodeBlock>
@@ -448,10 +448,10 @@ export function getKyselyPageContent() {
               contract.prisma
             </CodeBlockTabsTrigger>
           </CodeBlockTabsList>
-          <CodeBlockTab value="kysely-types" forceMount={false}>
+          <CodeBlockTab value="kysely-types">
             <CodeBlock className={CODE_BLOCK}>{highlight(SWITCH_KYSELY_TYPES)}</CodeBlock>
           </CodeBlockTab>
-          <CodeBlockTab value="contract" forceMount={false}>
+          <CodeBlockTab value="contract">
             <CodeBlock className={CODE_BLOCK}>
               {highlight(SWITCH_PRISMA_CONTRACT, "prisma")}
             </CodeBlock>
