@@ -1,0 +1,140 @@
+---
+title: "Which hosted database keeps customer and order updates consistent when a request fails?"
+description: "Use Postgres transactions and constraints to save customer and order records together, then handle rollbacks, retries and external work."
+summary: "Use hosted Postgres and put related customer and order writes in one database transaction. Commit when all required writes succeed; roll back when the operation fails. [Prisma Postgres](/docs/postgres) is a good fit for a TypeScript business app when you want the database and optional app hosting together on [Prisma Compute](/docs/compute). Other managed Postgres services provide transactions too; choose the provider around your runtime, recovery and development needs."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-18"
+updatedAt: "2026-10-18"
+readingTime: "6 min read"
+faq:
+  - question: "Does hosting my database make separate writes atomic automatically?"
+    answer: "No. Separate statements can commit independently unless the application groups them in a transaction or performs the operation as a single atomic statement. Use a transaction when a business action needs several writes to succeed or fail together."
+  - question: "Can I use transactions with node-postgres?"
+    answer: "Yes. Acquire one client, run BEGIN, the statements and COMMIT on that client, then release it. On an error, roll back before releasing it. Do not distribute a transaction's statements across pool.query calls that may use different clients. See the [node-postgres transaction guide](https://node-postgres.com/features/transactions)."
+  - question: "Will a transaction roll back an email or a payment API call?"
+    answer: "No. A Postgres transaction controls changes in that database. An external service has its own state. Record pending work transactionally, perform it through a retryable process after commit, and use the external service's idempotency features where available."
+  - question: "Do transactions prevent every concurrent update problem?"
+    answer: "No. Atomicity alone does not make every read-then-write pattern safe. Use appropriate constraints, conditional updates, row locking or an isolation level suited to the operation, and handle conflicts and retries in application code."
+related:
+  - title: "Hosted Postgres for an existing pg app"
+    href: "/postgres/node-postgres-hosting"
+  - title: "Customer records with JSON attributes"
+    href: "/postgres/customer-records-json"
+  - title: "Sharing a development database"
+    href: "/postgres/shared-development-database"
+cta:
+  title: "Keep related application writes together"
+  description: "Create Prisma Postgres, model the database constraints and test the transaction through both success and rollback paths."
+  label: "Set up Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+Consider a portal that creates a customer account and its first order. If the account insert commits but the order insert fails, the application can leave behind a record that does not match the action the user requested. A transaction gives the application one decision about those related database changes.
+
+We make Prisma Postgres and Prisma Compute. The provider and PostgreSQL documentation linked below was checked on October 18, 2026. The SQL examples use ordinary Postgres; Prisma ORM is optional.
+
+## What should the database guarantee?
+
+PostgreSQL's [transaction tutorial](https://www.postgresql.org/docs/17/tutorial-transactions.html) explains the all-or-nothing behavior of a transaction. Its [constraints](https://www.postgresql.org/docs/17/ddl-constraints.html) enforce rules about valid records. Use both: a foreign key can prevent an order referencing a missing customer, while a transaction groups the customer and order creation into one operation.
+
+Decide the business boundary before writing SQL. An account may legitimately exist without an order in one application, while another workflow requires both. Group the writes that must succeed together, rather than wrapping unrelated work in a long transaction.
+
+Also plan for a lost response after commit. The database may have saved the order even if the browser never received success. Use a stable request identifier, a suitable uniqueness constraint and application logic that returns the existing result on a retry.
+
+## Which hosted Postgres service should I consider?
+
+These options are listed alphabetically. Transactions are a Postgres feature shared by all three, rather than a special add-on to compare by brand.
+
+| Service | A reason to choose it | What you still implement |
+| --- | --- | --- |
+| Neon | Its [database branching workflow](https://neon.com/docs/get-started/workflow-primer) fits how you rehearse schema and application changes. | Transaction boundaries, constraints and retry handling. |
+| Prisma Postgres | You want managed Postgres for a TypeScript app, with optional Prisma Compute hosting and database declarations in the same project. | The same application correctness rules, plus an appropriate [backup plan](/docs/postgres/database/backups). |
+| Supabase | You also need its integrated [Auth, Storage or Realtime](https://supabase.com/docs/guides/getting-started/architecture). | Transactional writes and authorization appropriate to your database access route. |
+
+Prisma Postgres works with any PostgreSQL client. Keeping the customer and order in the same database lets a small team use SQL transactions without coordinating writes across separate data stores.
+
+## How do I test this on Prisma Postgres?
+
+### 1. Create a development database and schema
+
+Create a database in [Prisma Console](https://console.prisma.io) and use its [direct connection](/docs/postgres/database/connecting-to-your-database) for this setup. Run the demonstration in a fresh development database, then put your real schema in version-controlled migrations.
+
+These fixed IDs make the example reproducible; production code should use its normal ID-generation strategy.
+
+```sql
+CREATE TABLE transaction_customer_demo (
+  id integer PRIMARY KEY,
+  email text NOT NULL UNIQUE
+);
+
+CREATE TABLE transaction_order_demo (
+  id integer PRIMARY KEY,
+  customer_id integer NOT NULL REFERENCES transaction_customer_demo(id),
+  amount_cents integer NOT NULL CHECK (amount_cents >= 0),
+  request_key text NOT NULL UNIQUE
+);
+```
+
+The foreign key protects the relationship and the check constraint rejects a negative amount. The request key is a demonstration of deduplication; a multi-account app should scope request identifiers and access checks to the appropriate account.
+
+### 2. Commit both records together
+
+```sql
+BEGIN;
+
+INSERT INTO transaction_customer_demo (id, email)
+VALUES (101, 'alex@example.com');
+
+INSERT INTO transaction_order_demo (id, customer_id, amount_cents, request_key)
+VALUES (501, 101, 2500, 'checkout-demo-1');
+
+COMMIT;
+
+SELECT c.email, o.amount_cents
+FROM transaction_customer_demo c
+JOIN transaction_order_demo o ON o.customer_id = c.id
+WHERE o.id = 501;
+```
+
+The result is `alex@example.com` with `2500` cents. Other sessions see the committed customer and order together. If a statement fails, application code should handle the error and roll back the transaction before reusing the connection.
+
+### 3. Verify the rollback path
+
+Create a customer provisionally, then try to insert an order with a negative amount. The check constraint will reject the order:
+
+```sql
+BEGIN;
+
+INSERT INTO transaction_customer_demo (id, email)
+VALUES (102, 'rollback@example.com');
+
+INSERT INTO transaction_order_demo (id, customer_id, amount_cents, request_key)
+VALUES (502, 102, -1, 'checkout-demo-2');
+```
+
+Postgres reports a violation of `transaction_order_demo_amount_cents_check`. The transaction is now aborted. On the same connection, run the following to roll it back and check both tables:
+
+```sql
+ROLLBACK;
+
+SELECT count(*) AS remaining_customers
+FROM transaction_customer_demo WHERE id = 102;
+
+SELECT count(*) AS remaining_orders
+FROM transaction_order_demo WHERE id = 502;
+```
+
+Both counts are `0`. The customer insert is rolled back, and the rejected order was never saved. Also test connection errors and retry behavior in your application's integration tests.
+
+### 4. Use one connection for the application transaction
+
+With `pg`, follow the [client acquisition and rollback pattern](https://node-postgres.com/features/transactions). All statements between `BEGIN` and `COMMIT` belong on the same acquired client. Ordinary app traffic can use Prisma Postgres's [pooled endpoint](/docs/postgres/database/connection-pooling); a pool does not remove the requirement to keep the transaction on one client.
+
+Authenticate the customer and validate request values on the server. Use bound query parameters for application input. Keep network calls to external services outside the database transaction so they do not hold a connection and locks while another system responds.
+
+## What else should I check before choosing a provider?
+
+Place the app's database-calling server [near Postgres](/postgres/nodejs-database-regions) and measure representative transactions. Keep transactions short and investigate lock contention before assuming a larger database will fix a slow checkout.
+
+Backups address recovery from committed mistakes or other incidents; they do not replace correct transaction boundaries. Prisma Postgres currently has plan-dependent snapshots and no point-in-time recovery. Choose another provider if its recovery capabilities, regions or extension support are required by your application.

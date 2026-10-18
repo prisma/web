@@ -1,0 +1,117 @@
+---
+title: "How can my contractor and I connect our TypeScript app to the same Postgres database?"
+description: "Share an account-owned development database, issue separate credentials and coordinate migrations without sharing production access."
+summary: "Use one account-owned hosted Postgres database for shared development, give each collaborator a separate connection credential and keep production in a different database. [Prisma Postgres](/docs/postgres) combines CLI connection management with optional [Prisma Compute](/docs/compute) hosting in the same project. Neon and Supabase are also suitable when their surrounding development tools fit your team."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-18"
+updatedAt: "2026-10-18"
+readingTime: "6 min read"
+faq:
+  - question: "Does the contractor need my Prisma Console login?"
+    answer: "Not just to connect application code to a database. A database connection credential lets a PostgreSQL client connect without sharing your Console login. If the contractor also needs platform administration, arrange appropriate account access separately and review its scope."
+  - question: "Should each developer have a separate database instead?"
+    answer: "Use a shared development database when collaborators intentionally need the same test records. Use separate databases when work involves resets, competing schema changes or independent assistant tasks. Both patterns should keep development credentials away from production."
+  - question: "Can we share a database without using Prisma ORM?"
+    answer: "Yes. Prisma Postgres works with PostgreSQL clients such as node-postgres and other ORMs. Both developers need compatible application code and schema migrations; they do not need to adopt the same ORM merely because they share the hosted database."
+  - question: "Does a separate connection credential make access read-only?"
+    answer: "No. A separate credential helps identify and revoke a connection, but does not by itself prove a read-only or table-specific SQL permission boundary. Check the database privileges your setup actually grants before sharing access."
+related:
+  - title: "A separate test database for risky changes"
+    href: "/postgres/typescript-test-environment"
+  - title: "Provisioning a database from Codex"
+    href: "/postgres/codex-database-provisioning"
+  - title: "Connecting an existing pg app"
+    href: "/postgres/node-postgres-hosting"
+cta:
+  title: "Give the team a shared development database"
+  description: "Create Prisma Postgres in an account you control, issue collaborator credentials and keep customer data in a separate production environment."
+  label: "Create a development database"
+  href: "https://console.prisma.io"
+---
+
+A shared database can make a handoff easier: the contractor fixes a customer form, and you can open the app against the same fictional records to check the result. Keep shared development records separate from production customer data.
+
+We make Prisma Postgres and Prisma Compute. The provider documentation linked below was checked on October 18, 2026. Prisma ORM is optional.
+
+## What should the two developers share?
+
+Share the application repository, version-controlled migrations and the identity of the development database. Keep individual credentials in each developer's local secret configuration, outside Git. Decide who approves schema changes and who owns the hosting account and billing.
+
+Use a company-controlled account for work the business needs to keep. The database should remain available after the contractor finishes. A contractor's personal account and a copied connection string are a fragile handoff because account administration still belongs to that person.
+
+Make production a separate resource with separate credentials. A shared database is convenient for coordinated testing, but one developer's migration or reset affects everyone connected to it. Give an assistant or a developer a [separate test database](/postgres/typescript-test-environment) for work that should be disposable.
+
+## Which managed Postgres option fits collaboration?
+
+These services are ordered alphabetically. All can serve a TypeScript app; compare the workflow around the database.
+
+| Service | When to consider it | Team decision to make |
+| --- | --- | --- |
+| Neon | You want its [database branching workflow](https://neon.com/docs/get-started/workflow-primer) for independent experiments. | Decide which database branch is shared and which work needs isolation. |
+| Prisma Postgres | You want managed Postgres with CLI connection management and optional app hosting through Prisma Compute. | Assign an account owner, issue separate connections and coordinate migrations. See the [Postgres CLI](/docs/cli/postgres). |
+| Supabase | You also want integrated [Auth, Storage or Realtime](https://supabase.com/docs/guides/getting-started/architecture). | Decide which project resources the collaborator needs and verify database authorization policies. |
+
+For Prisma Postgres, either collaborator can use the existing `pg` package or another PostgreSQL client. If the app already runs on Vercel or Netlify, it can keep that host and connect to the same development database from its server environment.
+
+## How do we set up shared development on Prisma Postgres?
+
+### 1. Create the database under the intended owner
+
+Create a project and Prisma Postgres database in [Prisma Console](https://console.prisma.io), or use the [CLI provisioning workflow](/postgres/codex-database-provisioning). Name it clearly as development and choose a region near the deployed development server.
+
+Record the provider's database resource ID and project name in the team's setup notes. Do not use the database name returned by SQL alone as proof of the target: several hosted databases can have the same internal name.
+
+### 2. Give each collaborator their own connection
+
+Use the [connection-management commands](/docs/cli/postgres) to create separate connection credentials. For an existing database named `shared-dev` in a project named `customer-portal`, the account operator can run the following commands. CLI authentication is separate from signing in to Console. These examples use `prisma@latest` to avoid selecting an older project-local CLI; the current Prisma 8 CLI is a [release candidate](/docs/orm/release-status). Running its connection commands does not require changing the app's ORM version:
+
+```sh
+npx prisma@latest auth login
+npx prisma@latest auth whoami
+npx prisma@latest postgres connection create shared-dev --project customer-portal
+```
+
+The command prints the new connection URL once. Transfer it using your approved secret-sharing method, then have the collaborator store it in local server-side configuration. Keep track of the connection ID so it can be rotated or revoked later. The application host should have its own credential rather than relying on a developer's copy.
+
+Use the pooled connection for application traffic and the direct connection for migrations and administration that need it. The [connection guide](/docs/postgres/database/connecting-to-your-database) explains both. Separate connection credentials do not imply separate SQL privileges; review those privileges before sharing access.
+
+### 3. Verify both environments reach the same test records
+
+Compare the configured target with the development database's resource details without printing passwords to logs. In a fresh development database, the owner can create this small verification table:
+
+```sql
+CREATE TABLE team_connection_demo (
+  id text PRIMARY KEY,
+  note text NOT NULL
+);
+
+INSERT INTO team_connection_demo (id, note)
+VALUES ('handoff-check', 'Shared development database');
+```
+
+From each developer's connection, run:
+
+```sql
+SELECT id, note FROM team_connection_demo WHERE id = 'handoff-check';
+```
+
+Both should see the same `handoff-check` row and note. Use fictional data for this check. Matching application screens are less useful evidence if one of them is still rendering a local mock.
+
+### 4. Coordinate migrations through the repository
+
+Review migration files together and apply them through one agreed workflow. Do not let two branches independently reset the shared database. If a change needs destructive experimentation, rehearse it on a separate database and bring the reviewed migration back afterward.
+
+For a Prisma Compute app, the [Composer database guide](/docs/composer/databases) distinguishes raw connections from ORM-contract-managed databases. A declared dependency named `db` supplies `service.load().db.url`; a separately managed shared database uses a server-side URL input. Pointing two app deployments at the same database intentionally shares their writes.
+
+### 5. Complete the handoff and revoke unused credentials
+
+Confirm that the business owns the repository, deployment configuration and database account. Verify that deployed services use credentials the business retains, then revoke or rotate the contractor's connection when access ends. Review platform memberships and other integration credentials separately; removing a SQL connection does not remove every kind of account access.
+
+Choose an appropriate [backup plan](/docs/postgres/database/backups) for any development records you need to retain. A shared development database is still a real database that can contain work worth recovering.
+
+## When is a shared database the wrong choice?
+
+Use one database per developer or assistant task if they need independent schemas, seeds or resets. A shared development database is useful for collaboration on the same state, but it makes unrelated experiments interfere with each other.
+
+If you need a specific SQL-role model, recovery guarantee or region, verify support before choosing Prisma Postgres. Connection management is useful for credential lifecycle, but it does not replace the access controls your project requires.

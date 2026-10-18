@@ -1,0 +1,149 @@
+---
+title: "Where should I host a TypeScript AI assistant that saves conversations in Postgres?"
+description: "Host a TypeScript AI assistant with persistent Postgres conversations, server-side authorization and a clear plan for interrupted responses."
+summary: "Use an app host for the assistant's server and managed Postgres for conversation history. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) is a good fit for a TypeScript team that wants the app and database deployed in one project. You can also keep a Vercel or Netlify app and connect it to Prisma Postgres. Persist messages on the server, enforce conversation ownership and decide what happens when a model response is interrupted."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-18"
+updatedAt: "2026-10-18"
+readingTime: "7 min read"
+faq:
+  - question: "Does a streaming response save itself to Postgres?"
+    answer: "No. Streaming sends bytes to a client; persistence requires application writes. Save the user's message before generation, track the assistant message's state, and store completed or partial output according to your recovery design."
+  - question: "Can I store every conversation in one messages table?"
+    answer: "Yes, provided each message belongs to a conversation and the server checks who can access that conversation. Index the fields used to load history, paginate large conversations and avoid treating a client-supplied conversation ID as authorization."
+  - question: "Do I need pgvector to store chat history?"
+    answer: "No. Text columns and relational keys are enough to save and reload messages. Add vectors when the app needs semantic retrieval, such as finding relevant passages across documents or conversations. That is a separate feature from ordinary conversation persistence."
+  - question: "Do I need Prisma ORM or an OpenAI-specific schema?"
+    answer: "No. Prisma Postgres works with any PostgreSQL client, and Prisma ORM is optional. Define a conversation model that fits the app, keeping provider-specific request IDs or metadata where useful without making the whole schema depend on one model vendor."
+related:
+  - title: "Postgres transactions for related writes"
+    href: "/postgres/customer-order-transactions"
+  - title: "Document search with pgvector"
+    href: "/postgres/pgvector-document-search"
+  - title: "A durable streaming chat implementation"
+    href: "/blog/building-open-chat"
+cta:
+  title: "Host the assistant and its conversation database together"
+  description: "Deploy the TypeScript server on Prisma Compute with Prisma Postgres, then test history and interruption behavior before inviting customers."
+  label: "Set up Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+A useful assistant needs to remember what the customer sees after a refresh or a return visit. Keeping an array in the server process or rendering model tokens in the browser does not give the app durable conversation history.
+
+We make Prisma Compute and Prisma Postgres. The host documentation linked below was checked on October 18, 2026. Prisma ORM is optional, and the database model here does not depend on a particular model API.
+
+## What belongs on the server and in Postgres?
+
+The server authenticates the user, checks conversation access, calls the model provider and writes messages. Keep the model API key and database credentials in server-side configuration. The browser should call an application endpoint rather than connect with a database password.
+
+Store conversations with an owner or account identifier. Store messages with a conversation reference, role, content and processing state. A request identifier helps the server recognize a retried send instead of creating another copy of the user's message.
+
+Keep persistence separate from the model's context window. You can retain a conversation in Postgres while sending only selected messages or a summary to the model. Decide retention and deletion behavior for customer conversations before the app starts collecting sensitive text.
+
+## Which hosting setup fits the assistant?
+
+These options are ordered alphabetically by app host.
+
+| App host | When to choose it | Database and response work |
+| --- | --- | --- |
+| Netlify + Prisma Postgres | Your framework already uses [Netlify's deployment workflow](https://docs.netlify.com/deploy/create-deploys/). | Deploy the server features too, set the database URL in server configuration and check the runtime limits for your model calls. |
+| Prisma Compute + Prisma Postgres | You want the TypeScript server and database declared in one project. | Configure the Composer module, database dependency and model API secret. Check [request and streaming behavior](/docs/compute/request-timeout). |
+| Vercel + Prisma Postgres | Your app already follows Vercel's framework workflow. | Its [streaming function documentation](https://vercel.com/docs/functions/streaming-functions) explains response delivery; the app must still save conversation data. |
+
+Place the database-calling server [near Postgres](/postgres/nodejs-database-regions). Changing app hosts is optional: Prisma Postgres accepts ordinary PostgreSQL connections from a supported server runtime.
+
+## How do I connect and verify an existing assistant?
+
+Use this database design and deployment checklist alongside the framework-specific deployment guide for your existing assistant. The SQL checks persistence; the app still needs its authenticated endpoints and model integration.
+
+### 1. Choose one database creation workflow
+
+Follow the [Prisma Compute deployment guide](/docs/prisma-compute/deploy) for your framework and declare its services in a Prisma Composer module. If the module provisions the database, use the [Composer database dependency instructions](/docs/composer/databases). For a dependency named `db`, the server gets its connection from `service.load().db.url`.
+
+If the database already exists, configure its URL as a [server-side input](/docs/composer/service-input) instead of provisioning a second one. Configure the model provider's API key as a separate secret input as well. Use a [test database](/postgres/typescript-test-environment) for migrations and assistant-driven changes.
+
+### 2. Model conversations and messages
+
+Run this SQL in a fresh development database through its [direct connection](/docs/postgres/database/connecting-to-your-database), then adapt the schema into your migration workflow. The account ID is illustrative; a real app should connect it to the authenticated account model.
+
+```sql
+CREATE TABLE conversation_history_demo (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  account_id bigint NOT NULL,
+  title text NOT NULL
+);
+
+CREATE TABLE conversation_message_demo (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  conversation_id bigint NOT NULL
+    REFERENCES conversation_history_demo(id) ON DELETE CASCADE,
+  request_key text NOT NULL,
+  role text NOT NULL CHECK (role IN ('user', 'assistant')),
+  state text NOT NULL DEFAULT 'completed'
+    CHECK (state IN ('pending', 'completed', 'failed')),
+  content text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (conversation_id, request_key)
+);
+
+CREATE INDEX conversation_message_demo_history
+ON conversation_message_demo (conversation_id, id);
+
+INSERT INTO conversation_history_demo (account_id, title)
+VALUES (42, 'Delivery question');
+
+INSERT INTO conversation_message_demo
+  (conversation_id, request_key, role, content)
+VALUES
+  (1, 'send-demo-1', 'user', 'When will my order arrive?'),
+  (1, 'reply-demo-1', 'assistant', 'I can help check the delivery details.');
+```
+
+### 3. Read history through an authorized endpoint
+
+The demonstration account is `42`. This query joins the conversation's ownership to its messages:
+
+```sql
+SELECT m.role, m.state, m.content
+FROM conversation_message_demo m
+JOIN conversation_history_demo c ON c.id = m.conversation_id
+WHERE c.id = 1 AND c.account_id = 42
+ORDER BY m.id
+LIMIT 50;
+```
+
+It returns the user question followed by the assistant reply. In the server, bind query values as parameters and derive the authorized account from the verified session. Apply that check to writes and deletes too. If you use row-level security, configure the relevant roles and policies as well.
+
+Use a message ID cursor for stable pagination. If parallel generations need a strict conversational turn sequence, model that sequence explicitly; an insertion ID alone does not define the order in which concurrent work completes.
+
+### 4. Define generation and interruption states
+
+Save the user message before calling the model. Create an assistant message in `pending` state, then save its content and mark it `completed` when generation succeeds. Use distinct request keys for the user message and assistant reply, with duplicate-request handling in the server.
+
+Decide how interrupted work becomes `failed` or resumes. Persist a start time or job identifier if you need a recovery process to find abandoned pending messages after a crash. Catching errors in a handler alone cannot update a row after the process has stopped.
+
+For token-level resumption, persist chunks or events before relying on them as durable history. The [Open Chat walkthrough](/blog/building-open-chat) describes an event-log design with Prisma Streams. Saving only the final response has a smaller implementation, but loses unsaved output if generation is interrupted.
+
+### 5. Deploy and test a return visit
+
+For a project with a `build` script and the `module.ts` prepared in step 1, authenticate, build the app and deploy a separate review stage. Configure the project region through the [deployment setup](/docs/cli/deploy) if it is not already set. These commands use the current [Prisma 8 release candidate CLI](/docs/orm/release-status) explicitly, so an older project-local CLI is not selected:
+
+```sh
+npx prisma@latest auth login
+npm run build
+npx prisma@latest deploy module.ts --stage assistant-review
+```
+
+Open the service URL returned by the deployment. Confirm that its database target is the intended review resource before applying migrations or testing writes. An externally supplied URL must point to a separate test database; changing the stage name does not isolate an external database by itself.
+
+Prisma Compute runs deployed services on Bun, so check runtime-dependent packages. Its [request timeout](/docs/compute/request-timeout) gives a service 60 seconds to start responding; a response that has started streaming is not subject to that first-byte deadline.
+
+Test a saved conversation after refreshing, signing out and signing back in. Verify that another account cannot read its messages. Interrupt a generation and check that the UI and database state match the recovery behavior you chose. Also rehearse deleting a conversation and its associated messages.
+
+## When should I choose a different setup?
+
+Prisma Compute currently does not host WebSocket servers. Use an HTTP streaming design it supports, or choose another app host if WebSocket server support is a requirement. Streaming an HTTP response also does not guarantee that an in-process generation job survives a restart or deployment.
+
+Choose database hosting with the regions, extensions and recovery features your customer data requires. Prisma Postgres has [plan-dependent snapshots](/docs/postgres/database/backups) and currently no point-in-time recovery. Keep long-term history, backups and model-provider costs as separate decisions when estimating the app's operating budget.
