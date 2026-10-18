@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/accordion";
 import { TESTIMONIALS } from "@/components/sections/testimonials-data";
 import { AnchorHeading } from "../anchor-heading";
-import { CompareArticle, comparisonClosingCta, comparisonHeroCtas } from "../article";
+import {
+  CompareArticle,
+  comparisonClosingCta,
+  comparisonDisclosure,
+  comparisonHeroCtas,
+} from "../article";
 import { comparisonByline } from "../byline";
 import { articleReadingStats } from "../reading-time";
 import { CompareTable } from "../compare-table";
@@ -160,32 +165,28 @@ function buildKyselyPage(minutes: number) {
   const sqlGroups = lineGroupMap(SAME_QUERY_LINE_GROUPS, "sql");
 
   return [
-    <div key="intro" className="max-w-3xl">
-      <h1 className="text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
-        {KYSELY_TITLE}
-      </h1>
-      <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-foreground">
-        Both give you type-safe database access in TypeScript, from opposite ends.{" "}
-        <Link href="/docs/orm" className={INLINE}>
-          Prisma ORM
-        </Link>{" "}
-        starts from a contract file: you describe your models once, and typed queries and migrations
-        follow from it.{" "}
-        <a href="https://kysely.dev" className={INLINE}>
-          Kysely
-        </a>{" "}
-        starts from SQL: you write each query as a fluent TypeScript builder over table types you
-        keep yourself.
-      </p>
-      {comparisonHeroCtas("orm")}
-      {comparisonByline({ author: KYSELY_AUTHOR, updated: KYSELY_UPDATED, minutes })}
-      <p className="mt-3 max-w-[32rem] text-sm leading-6 text-muted-foreground">
-        Prisma makes Prisma ORM. Kysely figures come from the pages listed under{" "}
-        <a href="#sources" className={QUIET_LINK}>
-          Sources
-        </a>
-        , checked {CHECKED}.
-      </p>
+    <div key="intro">
+      <div className="max-w-3xl">
+        <h1 className="text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
+          {KYSELY_TITLE}
+        </h1>
+        <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-foreground">
+          Both give you type-safe database access in TypeScript, from opposite ends.{" "}
+          <Link href="/docs/orm" className={INLINE}>
+            Prisma ORM
+          </Link>{" "}
+          starts from a contract file: you describe your models once, and typed queries and
+          migrations follow from it.{" "}
+          <a href="https://kysely.dev" className={INLINE}>
+            Kysely
+          </a>{" "}
+          starts from SQL: you write each query as a fluent TypeScript builder over table types you
+          keep yourself.
+        </p>
+        {comparisonHeroCtas("orm")}
+        {comparisonByline({ author: KYSELY_AUTHOR, updated: KYSELY_UPDATED, minutes })}
+      </div>
+      {comparisonDisclosure({ competitor: "Kysely", checked: CHECKED })}
     </div>,
     <div key="body" className={BODY}>
       <section className={SECTION}>

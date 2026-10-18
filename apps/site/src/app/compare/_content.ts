@@ -45,7 +45,7 @@ export const ORM_HERO_CTAS = {
     href: "/docs/prisma-orm/quickstart/postgresql",
   },
   secondary: {
-    label: "Get started with Prisma Postgres",
-    href: "https://console.prisma.io",
+    label: "Create a database",
+    href: ORM_COMPARISON_CTA.secondaryCta.href,
   },
 } as const;

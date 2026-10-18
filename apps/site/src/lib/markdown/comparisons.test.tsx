@@ -9,7 +9,7 @@ import { getMongooseArticleFields, getMongooseFacts } from "@/app/compare/mongoo
 import { getMongooseReadingStats } from "@/app/compare/mongoose/_sections";
 import { WORDS_PER_MINUTE, readingMinutes } from "@/app/compare/reading-time";
 import { GET as getMongooseFactsResponse } from "@/app/compare/mongoose.json/route";
-import { COMPARISON_CTA, ORM_COMPARISON_CTA } from "@/app/compare/_content";
+import { COMPARISON_CTA, ORM_COMPARISON_CTA, ORM_HERO_CTAS } from "@/app/compare/_content";
 import { CompareTable } from "@/app/compare/compare-table";
 import { ComparisonPricingTable } from "@/app/compare/pricing-table";
 import { TABLE_FRAME } from "@/app/compare/table-styles";
@@ -305,12 +305,20 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   assert.ok(
     markdown.includes("[Get started with Prisma ORM](/docs/prisma-orm/quickstart/postgresql)"),
   );
+  assert.ok(markdown.includes("[Create a database](https://console.prisma.io)"));
   assert.ok(markdown.includes("[Get started with Prisma Postgres](https://console.prisma.io)"));
+  assert.equal(ORM_HERO_CTAS.secondary.href, ORM_COMPARISON_CTA.secondaryCta.href);
+  assert.equal(ORM_HERO_CTAS.secondary.label, "Create a database");
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /comparisonDisclosure/);
+  assert.match(article, /w-full min-w-0/);
+  assert.doesNotMatch(article, /max-w-\[32rem\].*Prisma makes Prisma ORM/);
   const mongoosePage = getMarkdownPage("/compare/mongoose");
   assert.ok(mongoosePage);
   const mongooseMarkdown = renderMarkdownDocument(mongoosePage);
   assert.ok(mongooseMarkdown.includes("Prisma ORM is free and open source, and always will be."));
   assert.ok(mongooseMarkdown.includes("Add the library"));
+  assert.ok(mongooseMarkdown.includes("[Create a database](https://console.prisma.io)"));
   assert.doesNotMatch(mongooseMarkdown, /Free to start, no credit card required/);
   const convexPage = getMarkdownPage("/compare/convex");
   assert.ok(convexPage);

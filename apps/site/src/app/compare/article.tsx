@@ -5,6 +5,7 @@ import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button
 import { COMPARISON_CTA, ORM_COMPARISON_CTA, ORM_HERO_CTAS } from "./_content";
 import { ArticleToc, ArticleTocDisclosure, type TocItem } from "./article-toc";
 import { COMPARISONS, type ComparisonSlug } from "./comparisons";
+import { QUIET_LINK } from "./table-styles";
 
 const PROSE =
   "answer-prose prose max-w-none text-foreground selection:bg-prism-cyan-100 prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-[1.375rem] prose-h2:leading-[1.3] prose-h2:tracking-[-0.01em] prose-h3:mt-8 prose-h3:text-lg [&_:is(p,ul,ol):not(:is(td,th,blockquote)_*)]:max-w-[36rem] prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 prose-a:hover:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-2 [&_:focus-visible]:outline-foreground/70";
@@ -62,6 +63,28 @@ const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
     { id: "faq", label: "FAQ", also: ["next"] },
   ],
 };
+
+/**
+ * Who-makes-this line under the byline. Full width of the hero card so it
+ * reads as one line on desktop; wraps at 390 without overflowing.
+ */
+export function comparisonDisclosure({
+  competitor,
+  checked,
+}: {
+  competitor: string;
+  checked: string;
+}) {
+  return (
+    <p className="mt-6 w-full min-w-0 text-sm leading-6 text-muted-foreground">
+      Prisma makes Prisma ORM. {competitor} figures come from the pages listed under{" "}
+      <a href="#sources" className={QUIET_LINK}>
+        Sources
+      </a>
+      , checked {checked}.
+    </p>
+  );
+}
 
 /** Buttons under the introduction. ORM pages lead with the ORM quickstart. */
 export function comparisonHeroCtas(kind: "orm" | "postgres" = "postgres") {
