@@ -1,18 +1,30 @@
 import type { CSSProperties } from "react";
 import { createHighlighterCoreSync } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
-import githubDark from "shiki/themes/github-dark.mjs";
-import githubLight from "shiki/themes/github-light.mjs";
+import githubDarkHighContrast from "shiki/themes/github-dark-high-contrast.mjs";
+import githubLightHighContrast from "shiki/themes/github-light-high-contrast.mjs";
+import bash from "shiki/langs/bash.mjs";
+import prisma from "shiki/langs/prisma.mjs";
+import sql from "shiki/langs/sql.mjs";
 import typescript from "shiki/langs/typescript.mjs";
 
+export type HighlightLang = "typescript" | "sql" | "prisma" | "bash";
+
+const LANG_IDS: Record<HighlightLang, string> = {
+  typescript: "typescript",
+  sql: "sql",
+  prisma: "prisma",
+  bash: "bash",
+};
+
 /**
- * The docs' Shiki themes with `defaultColor: false`, so tokens carry
- * `--shiki-light` / `--shiki-dark` and `globals.css` picks the active one.
- * Synchronous, because the same content tree also renders to Markdown.
+ * High-contrast GitHub themes so parameter tokens clear 4.5:1 (the default
+ * github-light orange `#e36209` is 3.49:1). `defaultColor: false` so tokens
+ * carry `--shiki-light` / `--shiki-dark`.
  */
 const highlighter = createHighlighterCoreSync({
-  themes: [githubLight, githubDark],
-  langs: [typescript],
+  themes: [githubLightHighContrast, githubDarkHighContrast],
+  langs: [typescript, sql, prisma, bash],
   engine: createJavaScriptRegexEngine(),
 });
 
@@ -38,23 +50,34 @@ const BLOCK_CODE: CSSProperties = {
   color: "inherit",
 };
 
+const DATA_LANG: Record<HighlightLang, string> = {
+  typescript: "ts",
+  sql: "sql",
+  prisma: "prisma",
+  bash: "bash",
+};
+
 /** A highlighted `pre` with the docs' code block layout: one flex row per line. */
-export function highlight(code: string) {
+export function highlight(
+  code: string,
+  lang: HighlightLang = "typescript",
+  lineGroups: Readonly<Record<number, string>> = {},
+) {
   const { tokens } = highlighter.codeToTokens(code, {
-    lang: "typescript",
-    themes: { light: "github-light", dark: "github-dark" },
+    lang: LANG_IDS[lang],
+    themes: { light: "github-light-high-contrast", dark: "github-dark-high-contrast" },
     defaultColor: false,
   });
   return (
     <pre
       className="shiki m-0 w-max min-w-full rounded-none bg-transparent p-0 *:flex *:flex-col"
       style={CODE_TYPE}
-      data-language="ts"
+      data-language={DATA_LANG[lang]}
     >
       <code style={BLOCK_CODE}>
         {tokens.flatMap((line, index) => [
           index > 0 ? "\n" : null,
-          <span key={index} className="line px-4">
+          <span key={index} className="line px-4" data-group={lineGroups[index] || undefined}>
             {line.length === 0
               ? " "
               : line.map((token) => (
@@ -67,4 +90,18 @@ export function highlight(code: string) {
       </code>
     </pre>
   );
+}
+
+/** Invert SAME_QUERY_LINE_GROUPS into a line-index map for one tab. */
+export function lineGroupMap(
+  groups: readonly { id: string; [tab: string]: string | readonly number[] }[],
+  tab: string,
+): Record<number, string> {
+  const map: Record<number, string> = {};
+  for (const group of groups) {
+    const lines = group[tab];
+    if (!Array.isArray(lines)) continue;
+    for (const line of lines) map[line] = group.id;
+  }
+  return map;
 }

@@ -73,7 +73,7 @@ export function getMongoosePageContent() {
           See which fits
         </a>
       </p>
-      {comparisonHeroCtas()}
+      {comparisonHeroCtas("orm")}
     </div>,
     <div key="body">
       <section className="mt-14">
@@ -430,7 +430,7 @@ export function getMongoosePageContent() {
         </div>
       </section>
     </div>,
-    comparisonClosingCta(),
+    comparisonClosingCta("orm"),
   ];
 }
 

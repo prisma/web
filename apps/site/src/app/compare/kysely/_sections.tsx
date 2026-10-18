@@ -1,6 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { Check, Info, Minus } from "lucide-react";
+import { Info } from "lucide-react";
 import {
   CodeBlock,
   CodeBlockTab,
@@ -14,24 +13,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import { TESTIMONIALS } from "@/components/sections/testimonials-data";
-import { COMPARISON_CTA } from "../_content";
 import { AnchorHeading } from "../anchor-heading";
-import { CompareArticle } from "../article";
+import { CompareArticle, comparisonClosingCta, comparisonHeroCtas } from "../article";
+import { CompareTable } from "../compare-table";
 import { ComparisonPricingTable } from "../pricing-table";
-import {
-  QUIET_LINK,
-  QUIET_NOTE,
-  SCROLL_HINT,
-  STICKY,
-  TABLE_FRAME,
-  TD,
-  TH_COL,
-  TH_ROW,
-} from "../table-styles";
-import { highlight } from "./highlight";
-import { QuoteCarousel } from "./quote-carousel";
+import { QUIET_LINK, QUIET_NOTE } from "../table-styles";
+import { highlight, lineGroupMap } from "./highlight";
+import { SameQueryHighlight } from "./same-query";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import {
   APART,
@@ -41,12 +30,14 @@ import {
   COMPARE_ROWS,
   FAQ,
   KYSELY_AUTHOR,
-  KYSELY_FITS,
   KYSELY_TITLE,
   KYSELY_UPDATED,
   PRICING,
-  PRISMA_FITS,
   SAME_QUERY,
+  SAME_QUERY_LINE_GROUPS,
+  SWITCH_COMMANDS,
+  SWITCH_KYSELY_TYPES,
+  SWITCH_PRISMA_CONTRACT,
   WRONG_CHOICE,
   DATABASE_MATRIX,
   type DatabaseStatus,
@@ -55,7 +46,7 @@ import {
 } from "./_content";
 
 const INLINE =
-  "font-medium text-foreground underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60";
+  "font-medium text-foreground underline underline-offset-4 decoration-black/35 transition-colors hover:decoration-black/60";
 
 /**
  * One rhythm for the whole body: 56px between sections and 20px under every h2.
@@ -64,60 +55,23 @@ const INLINE =
  * `renderFaqAnswer` share one treatment, and a span that wraps keeps its padding on both lines.
  */
 const BODY =
-  "flex flex-col gap-14 [&_:is(h2,h3)]:my-0 [&_:is(h2,h3)]:text-primary [&_:is(p,ul,ol,li,table,figure,img)]:my-0 [&_:is(p,li)]:text-base [&_:is(p,li)]:leading-7 [&_:is(p,li)]:text-foreground [&_code]:box-decoration-clone [&_code]:rounded [&_code]:border-0 [&_code]:bg-black/[0.045] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.875em] [&_code]:font-medium [&_code]:text-primary [&_code]:before:content-none [&_code]:after:content-none [&_blockquote]:my-0 [&_blockquote]:border-0 [&_blockquote]:pl-0 [&_blockquote]:font-normal [&_blockquote]:not-italic [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none";
+  "flex flex-col gap-14 [&_:is(h2,h3)]:my-0 [&_:is(h2,h3)]:text-primary [&_:is(p,ul,ol,li,table,figure,img)]:my-0 [&_:is(p,li)]:text-base [&_:is(p,li)]:leading-7 [&_:is(p,li)]:text-foreground [&_code]:box-decoration-clone [&_code]:rounded [&_code]:border-0 [&_code]:bg-black/[0.045] [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.875em] [&_code]:font-[family-name:var(--font-code)] [&_code]:font-medium [&_code]:text-primary [&_code]:before:content-none [&_code]:after:content-none [&_table_code]:text-[13px] [&_blockquote]:my-0 [&_blockquote]:border-0 [&_blockquote]:pl-0 [&_blockquote]:font-normal [&_blockquote]:not-italic [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none";
 const SECTION = "flex flex-col gap-5";
 const LIST = "list-disc space-y-2 pl-5 marker:text-black/25";
 const STEPS = "list-decimal space-y-2 pl-5 marker:text-muted-foreground";
-
-/** The two "where it fits" columns share the choose table's frame and header strip. */
-const FIT_FRAME =
-  "grid overflow-hidden rounded-xl border border-black/[0.08] md:grid-cols-2 md:divide-x divide-black/[0.08] max-md:divide-y";
-const FIT_COLUMN = "flex flex-col";
-const FIT_HEADING =
-  "!font-sans border-b border-black/[0.06] bg-neutral-50 px-4 py-3 !text-sm !leading-6 font-semibold !tracking-normal";
-const FIT_BODY =
-  "flex flex-col gap-4 px-4 py-4 [&_:is(p,li)]:!text-[0.9375rem] [&_:is(p,li)]:!leading-6";
-const CARD = "flex flex-col gap-2 rounded-xl border border-black/[0.08] p-5";
+const CHOOSE_LABEL = "font-heading text-lg leading-snug font-medium";
 
 /**
- * Full support reads as body text; preview and ORM 7 labels are muted; a dash
- * is no support. Called as a function so the Markdown walker sees the elements.
+ * Full support reads as body text; preview and ORM 7 labels are muted; No is
+ * no support. Called as a function so the Markdown walker sees the elements.
  */
 function databaseStatus(status: DatabaseStatus) {
   if (status === null) {
-    return (
-      <>
-        <span aria-hidden className="text-black/30">
-          —
-        </span>
-        <span className="sr-only">Not supported</span>
-      </>
-    );
+    return <span className="text-muted-foreground">No</span>;
   }
   return (
     <span className={FULL_SUPPORT.includes(status) ? undefined : "text-muted-foreground"}>
       {status}
-    </span>
-  );
-}
-
-/**
- * A quiet yes or no beside a cell's own wording. The icon is cap height and
- * centred on the first line; its label is an attribute, so Markdown keeps the text alone.
- */
-function MarkedCell({ mark, children }: { mark?: "yes" | "no"; children: ReactNode }) {
-  if (!mark) return children;
-  const Icon = mark === "yes" ? Check : Minus;
-  return (
-    <span className="flex gap-2">
-      <span
-        role="img"
-        aria-label={mark === "yes" ? "Yes" : "No"}
-        className={`flex h-6 shrink-0 items-center ${mark === "yes" ? "text-emerald-700/55" : "text-black/30"}`}
-      >
-        <Icon className="size-2.5" strokeWidth={3} aria-hidden />
-      </span>
-      <span>{children}</span>
     </span>
   );
 }
@@ -130,9 +84,9 @@ function MarkedCell({ mark, children }: { mark?: "yes" | "no"; children: ReactNo
 const CODE_TABS = "my-0 rounded-[0.625rem] border-black/[0.08] bg-white";
 const CODE_TAB_LIST = "flex flex-row overflow-x-auto px-2";
 const CODE_TAB =
-  "relative inline-flex items-center px-2 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:text-primary data-[state=active]:[&>div]:bg-primary";
+  "relative inline-flex min-h-11 items-center px-2 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:text-primary data-[state=active]:[&>div]:bg-primary";
 const CODE_BLOCK =
-  "my-0 rounded-none border-black/[0.08] bg-white [&>div]:py-3.5 [&_button]:text-muted-foreground";
+  "my-0 rounded-none border-black/[0.08] bg-white [&>div]:py-3.5 [&_.line]:pr-12 [&_button]:relative [&_button]:text-muted-foreground [&_button]:after:absolute [&_button]:after:-inset-2.5 [&_button]:after:content-['']";
 
 const PROOF = TESTIMONIALS.filter(
   (item) => item.name === "Ron Cohen" || item.name === "Omar López",
@@ -187,11 +141,11 @@ const SOURCES = [
 
 function SourceLink({ href, children }: { href: string; children: string }) {
   return href.startsWith("/") ? (
-    <Link href={href} className={QUIET_LINK}>
+    <Link href={href} className={`${QUIET_LINK} inline-block py-1.5`}>
       {children}
     </Link>
   ) : (
-    <a href={href} className={QUIET_LINK}>
+    <a href={href} className={`${QUIET_LINK} inline-block py-1.5`}>
       {children}
     </a>
   );
@@ -199,6 +153,10 @@ function SourceLink({ href, children }: { href: string; children: string }) {
 
 /** Build the shared content tree for the HTML page and its Markdown rendition. */
 export function getKyselyPageContent() {
+  const kyselyGroups = lineGroupMap(SAME_QUERY_LINE_GROUPS, "kysely");
+  const prismaGroups = lineGroupMap(SAME_QUERY_LINE_GROUPS, "prisma");
+  const sqlGroups = lineGroupMap(SAME_QUERY_LINE_GROUPS, "sql");
+
   return [
     <div key="intro" className="max-w-3xl">
       <h1 className="text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
@@ -217,80 +175,73 @@ export function getKyselyPageContent() {
         starts from SQL: you write each query as a fluent TypeScript builder over table types you
         keep yourself.
       </p>
-      <div className="mt-8 flex flex-wrap items-center gap-3">
-        <PrismButton href="https://console.prisma.io" ctaLocation="compare-intro">
-          Get started free
-        </PrismButton>{" "}
-        <PrismButtonOutline href="/pricing" ctaLocation="compare-intro">
-          See pricing
-        </PrismButtonOutline>
-      </div>
+      {comparisonHeroCtas("orm")}
+      <p className="mt-8 flex items-center gap-3 text-sm leading-5 text-muted-foreground">
+        <img
+          src={KYSELY_AUTHOR.image}
+          alt=""
+          width={28}
+          height={28}
+          className="size-7 shrink-0 rounded-full bg-neutral-200 object-cover"
+        />
+        <span className="flex flex-col sm:flex-row sm:items-center sm:gap-x-2">
+          <span>
+            By{" "}
+            <a
+              href={KYSELY_AUTHOR.path}
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              {KYSELY_AUTHOR.name}
+            </a>
+          </span>{" "}
+          <span className="hidden text-black/25 sm:inline">·</span>{" "}
+          <span>
+            Updated <time dateTime={KYSELY_UPDATED.iso}>{KYSELY_UPDATED.label}</time>
+          </span>
+        </span>
+      </p>
+      <aside
+        aria-label="Disclosure"
+        className="mt-3 flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
+      >
+        <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
+        <p className="max-w-[32rem] text-sm leading-6 text-muted-foreground">
+          Prisma makes Prisma ORM. Kysely figures come from the pages listed under{" "}
+          <a href="#sources" className={QUIET_LINK}>
+            Sources
+          </a>
+          , checked {CHECKED}.
+        </p>
+      </aside>
     </div>,
     <div key="body" className={BODY}>
-      <div className="flex max-w-[36rem] flex-col gap-3">
-        <p className="flex items-center gap-3 !text-sm !leading-5 !text-muted-foreground">
-          <img
-            src={KYSELY_AUTHOR.image}
-            alt=""
-            width={28}
-            height={28}
-            className="size-7 shrink-0 rounded-full bg-neutral-200 object-cover"
-          />
-          <span className="flex flex-col sm:flex-row sm:items-center sm:gap-x-2">
-            <span>
-              By{" "}
-              <a
-                href={KYSELY_AUTHOR.path}
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-              >
-                {KYSELY_AUTHOR.name}
-              </a>
-            </span>{" "}
-            <span className="hidden text-black/25 sm:inline">·</span>{" "}
-            <span>
-              Updated <time dateTime={KYSELY_UPDATED.iso}>{KYSELY_UPDATED.label}</time>
-            </span>
-          </span>
-        </p>
-        <aside
-          aria-label="Disclosure"
-          className="flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
-        >
-          <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
-          <p className="!text-sm !leading-6 !text-muted-foreground">
-            Prisma makes Prisma ORM. Every Kysely figure links to its{" "}
-            <a href="#sources" className={QUIET_LINK}>
-              source
-            </a>{" "}
-            at the bottom of the page.
-          </p>
-        </aside>
-      </div>
       <section className={SECTION}>
         <AnchorHeading level={2} id="choose">
-          When should I choose Prisma ORM or Kysely?
+          When should I choose Kysely or Prisma ORM?
         </AnchorHeading>
-        <div className={TABLE_FRAME}>
-          <table className="w-full border-collapse text-left" style={{ minWidth: 0 }}>
-            <thead>
-              <tr>
-                <th scope="col" className={TH_COL} style={{ width: "50%" }}>
-                  Kysely
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "50%" }}>
-                  Prisma ORM
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {CHOOSE_KYSELY.map((kysely, index) => (
-                <tr key={kysely} className="border-t border-black/[0.06]">
-                  <td className={TD}>{renderFaqAnswer(kysely)}</td>
-                  <td className={TD}>{renderFaqAnswer(CHOOSE_PRISMA[index])}</td>
-                </tr>
+        <p className="max-w-[36rem]">
+          A contract is the <code>contract.prisma</code> file that describes your models. A dialect
+          is Kysely&apos;s adapter for one database. <code>db sign</code> records that your
+          database already matches the contract. Reasons are independent lists, in alphabetical
+          order by product.
+        </p>
+        <div className="grid gap-10 sm:grid-cols-2">
+          <div className="flex flex-col gap-4">
+            <h3 className={CHOOSE_LABEL}>Kysely</h3>
+            <ul className={LIST}>
+              {CHOOSE_KYSELY.map((item) => (
+                <li key={item}>{renderFaqAnswer(item)}</li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+          </div>
+          <div className="flex flex-col gap-4">
+            <h3 className={CHOOSE_LABEL}>Prisma ORM</h3>
+            <ul className={LIST}>
+              {CHOOSE_PRISMA.map((item) => (
+                <li key={item}>{renderFaqAnswer(item)}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -301,27 +252,38 @@ export function getKyselyPageContent() {
         <p className="max-w-[68ch]">
           Each snippet reads one user by email with their posts: Kysely nests the posts with its{" "}
           <code>jsonArrayFrom</code> helper, and Prisma ORM loads them with <code>include</code>.
+          The SQL tab is representative of the statements both send, not captured from a live run.
         </p>
-        <CodeBlockTabs defaultValue="kysely" className={CODE_TABS}>
-          <CodeBlockTabsList className={CODE_TAB_LIST}>
-            <CodeBlockTabsTrigger value="kysely" className={CODE_TAB}>
-              Kysely
-            </CodeBlockTabsTrigger>
-            <CodeBlockTabsTrigger value="prisma" className={CODE_TAB}>
-              Prisma ORM
-            </CodeBlockTabsTrigger>
-          </CodeBlockTabsList>
-          {(["kysely", "prisma"] as const).map((tool) => (
-            <CodeBlockTab
-              key={tool}
-              value={tool}
-              forceMount
-              className="data-[state=inactive]:hidden"
-            >
-              <CodeBlock className={CODE_BLOCK}>{highlight(SAME_QUERY[tool])}</CodeBlock>
+        <SameQueryHighlight>
+          <CodeBlockTabs defaultValue="kysely" className={CODE_TABS}>
+            <CodeBlockTabsList aria-label="Code example" className={CODE_TAB_LIST}>
+              <CodeBlockTabsTrigger value="kysely" className={CODE_TAB}>
+                Kysely
+              </CodeBlockTabsTrigger>
+              <CodeBlockTabsTrigger value="prisma" className={CODE_TAB}>
+                Prisma ORM
+              </CodeBlockTabsTrigger>
+              <CodeBlockTabsTrigger value="sql" className={CODE_TAB}>
+                SQL sent
+              </CodeBlockTabsTrigger>
+            </CodeBlockTabsList>
+            <CodeBlockTab value="kysely" forceMount className="data-[state=inactive]:hidden">
+              <CodeBlock className={CODE_BLOCK}>
+                {highlight(SAME_QUERY.kysely, "typescript", kyselyGroups)}
+              </CodeBlock>
             </CodeBlockTab>
-          ))}
-        </CodeBlockTabs>
+            <CodeBlockTab value="prisma" forceMount className="data-[state=inactive]:hidden">
+              <CodeBlock className={CODE_BLOCK}>
+                {highlight(SAME_QUERY.prisma, "typescript", prismaGroups)}
+              </CodeBlock>
+            </CodeBlockTab>
+            <CodeBlockTab value="sql" forceMount className="data-[state=inactive]:hidden">
+              <CodeBlock className={CODE_BLOCK}>
+                {highlight(SAME_QUERY.sql, "sql", sqlGroups)}
+              </CodeBlock>
+            </CodeBlockTab>
+          </CodeBlockTabs>
+        </SameQueryHighlight>
       </section>
 
       <section className={SECTION}>
@@ -332,47 +294,16 @@ export function getKyselyPageContent() {
           Kysely is a SQL query builder. Prisma ORM is a contract-based ORM that also includes a SQL
           query builder on PostgreSQL and SQLite. Columns are in alphabetical order.
         </p>
-        <div
-          className={TABLE_FRAME}
-          role="region"
-          aria-labelledby="feature-table"
-          tabIndex={0}
-          style={SCROLL_HINT}
-        >
-          <table
-            className="w-full border-collapse text-left"
-            style={{ minWidth: "40rem", overflow: "visible" }}
-          >
-            <thead>
-              <tr>
-                <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "22%" }}>
-                  Feature
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "39%" }}>
-                  Kysely
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "39%" }}>
-                  Prisma ORM
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARE_ROWS.map((row) => (
-                <tr key={row.feature} className="border-t border-black/[0.06]">
-                  <th scope="row" className={`${TH_ROW} ${STICKY}`}>
-                    {row.feature}
-                  </th>
-                  <td className={TD}>
-                    <MarkedCell mark={row.marks?.kysely}>{renderFaqAnswer(row.kysely)}</MarkedCell>
-                  </td>
-                  <td className={TD}>
-                    <MarkedCell mark={row.marks?.prisma}>{renderFaqAnswer(row.prisma)}</MarkedCell>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CompareTable
+          labelledBy="feature-table"
+          corner="Feature"
+          columns={["Kysely", "Prisma ORM"]}
+          minWidth="40rem"
+          rows={COMPARE_ROWS.map((row) => ({
+            label: row.feature,
+            cells: [renderFaqAnswer(row.kysely), renderFaqAnswer(row.prisma)],
+          }))}
+        />
       </section>
 
       <section className={SECTION}>
@@ -381,50 +312,22 @@ export function getKyselyPageContent() {
         </AnchorHeading>
         <p>
           Kysely&apos;s dialects next to the two Prisma ORM lines. Prisma ORM 7 is the generally
-          available release, and it supports every database here except PGlite. A dash means no
-          support.
+          available release, and it supports every database here except PGlite. No means no support.
         </p>
-        <div
-          className={TABLE_FRAME}
-          role="region"
-          aria-labelledby="databases"
-          tabIndex={0}
-          style={SCROLL_HINT}
-        >
-          <table
-            className="w-full border-collapse text-left"
-            style={{ minWidth: "34rem", overflow: "visible" }}
-          >
-            <thead>
-              <tr>
-                <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "31%" }}>
-                  Database
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "23%" }}>
-                  Kysely
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "23%" }}>
-                  Prisma ORM 8
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "23%" }}>
-                  Prisma ORM 7
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {DATABASE_MATRIX.map((row) => (
-                <tr key={row.database} className="border-t border-black/[0.06]">
-                  <th scope="row" className={`${TH_ROW} ${STICKY}`}>
-                    {row.database}
-                  </th>
-                  <td className={TD}>{databaseStatus(row.kysely)}</td>
-                  <td className={TD}>{databaseStatus(row.orm8)}</td>
-                  <td className={TD}>{databaseStatus(row.orm7)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CompareTable
+          labelledBy="databases"
+          corner="Database"
+          columns={["Kysely", "Prisma ORM 8", "Prisma ORM 7"]}
+          minWidth="34rem"
+          rows={DATABASE_MATRIX.map((row) => ({
+            label: row.database,
+            cells: [
+              databaseStatus(row.kysely),
+              databaseStatus(row.orm8),
+              databaseStatus(row.orm7),
+            ],
+          }))}
+        />
         <p className={QUIET_NOTE}>
           MariaDB on Kysely is the community{" "}
           <a href="https://github.com/awaludinar/kysely-mariadb" className={QUIET_LINK}>
@@ -446,65 +349,17 @@ export function getKyselyPageContent() {
         </p>
       </section>
 
-      <div className={FIT_FRAME}>
-        <section className={FIT_COLUMN}>
-          <AnchorHeading level={2} id="where-kysely" placement="end" className={FIT_HEADING}>
-            When is Kysely the better fit?
-          </AnchorHeading>
-          <div className={FIT_BODY}>
-            <p>
-              The Kysely{" "}
-              <a href="https://kysely.dev/docs/getting-started" className={INLINE}>
-                getting started guide
-              </a>{" "}
-              shows <code>selectFrom</code> and <code>where</code>, and lists joins among the other
-              SQL features. Each built-in dialect needs its driver.
-            </p>
-            <ul className={LIST}>
-              {KYSELY_FITS.map((item) => (
-                <li key={item}>{renderFaqAnswer(item)}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-        <section className={FIT_COLUMN}>
-          <AnchorHeading level={2} id="where-prisma" placement="end" className={FIT_HEADING}>
-            When is Prisma ORM the better fit?
-          </AnchorHeading>
-          <div className={FIT_BODY}>
-            <p>
-              Prisma ORM fits a team that wants the contract, the model queries, and the migrations
-              to come from one file. The{" "}
-              <Link href="/docs/orm" className={INLINE}>
-                ORM docs
-              </Link>{" "}
-              describe that file as the contract.
-            </p>
-            <ul className={LIST}>
-              {PRISMA_FITS.map((item) => (
-                <li key={item}>{renderFaqAnswer(item)}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      </div>
-
       <section className={SECTION}>
         <AnchorHeading level={2} id="apart">
           {"What does Prisma ORM do that Kysely doesn't?"}
         </AnchorHeading>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-8 sm:grid-cols-2">
           {APART.map((item) => (
-            <div key={item.title} className={CARD}>
-              <AnchorHeading
-                level={3}
-                id={item.id}
-                placement="end"
-                className="text-base leading-snug font-semibold"
-              >
+            <div key={item.title} className="border-t border-black/[0.08] pt-5">
+              <AnchorHeading level={3} id={item.id} className="text-base leading-snug font-semibold">
                 {item.title}
               </AnchorHeading>
-              <p className="!text-[0.9375rem] !leading-6">{renderFaqAnswer(item.body)}</p>
+              <p className="mt-2">{renderFaqAnswer(item.body)}</p>
             </div>
           ))}
         </div>
@@ -557,64 +412,53 @@ export function getKyselyPageContent() {
           What each step of the usual workflow looks like on each side, for a team moving in either
           direction.
         </p>
-        <div
-          className={TABLE_FRAME}
-          role="region"
-          aria-labelledby="same-job"
-          tabIndex={0}
-          style={SCROLL_HINT}
-        >
-          <table
-            className="w-full border-collapse text-left"
-            style={{ minWidth: "40rem", overflow: "visible" }}
-          >
-            <thead>
-              <tr>
-                <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "22%" }}>
-                  Task
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "39%" }}>
-                  Kysely
-                </th>
-                <th scope="col" className={TH_COL} style={{ width: "39%" }}>
-                  Prisma ORM
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {SAME_JOB.map((row) => (
-                <tr key={row.task} className="border-t border-black/[0.06]">
-                  <th scope="row" className={`${TH_ROW} ${STICKY}`}>
-                    {row.task}
-                  </th>
-                  <td className={TD}>{renderFaqAnswer(row.kysely)}</td>
-                  <td className={TD}>{renderFaqAnswer(row.prisma)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CompareTable
+          labelledBy="same-job"
+          corner="Task"
+          columns={["Kysely", "Prisma ORM"]}
+          minWidth="40rem"
+          rows={SAME_JOB.map((row) => ({
+            label: row.task,
+            cells: [renderFaqAnswer(row.kysely), renderFaqAnswer(row.prisma)],
+          }))}
+        />
       </section>
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="migrate">
           How do I switch from Kysely to Prisma ORM?
         </AnchorHeading>
+        <p>
+          For PostgreSQL, these four commands from the{" "}
+          <Link href="/docs/prisma-orm/add-to-existing-project/postgresql" className={INLINE}>
+            existing-database guide
+          </Link>{" "}
+          add Prisma ORM beside the tables you already have. The Node.js versions that guide
+          expects still apply. Signing records that the database already matches the contract, so
+          the first <code>migration plan</code> starts from your tables instead of an empty
+          database. The rows stay where they are.
+        </p>
+        <p>Representative types for the User and Post tables in the query above, then the four commands.</p>
+        <CodeBlockTabs defaultValue="kysely-types" className={CODE_TABS}>
+          <CodeBlockTabsList aria-label="Switching types" className={CODE_TAB_LIST}>
+            <CodeBlockTabsTrigger value="kysely-types" className={CODE_TAB}>
+              Kysely types
+            </CodeBlockTabsTrigger>
+            <CodeBlockTabsTrigger value="contract" className={CODE_TAB}>
+              contract.prisma
+            </CodeBlockTabsTrigger>
+          </CodeBlockTabsList>
+          <CodeBlockTab value="kysely-types" forceMount className="data-[state=inactive]:hidden">
+            <CodeBlock className={CODE_BLOCK}>{highlight(SWITCH_KYSELY_TYPES)}</CodeBlock>
+          </CodeBlockTab>
+          <CodeBlockTab value="contract" forceMount className="data-[state=inactive]:hidden">
+            <CodeBlock className={CODE_BLOCK}>
+              {highlight(SWITCH_PRISMA_CONTRACT, "prisma")}
+            </CodeBlock>
+          </CodeBlockTab>
+        </CodeBlockTabs>
+        <CodeBlock className={CODE_BLOCK}>{highlight(SWITCH_COMMANDS, "bash")}</CodeBlock>
         <ol className={STEPS}>
-          <li>
-            For PostgreSQL, run <code>npx prisma@latest orm init</code> in the app. The{" "}
-            <Link href="/docs/prisma-orm/add-to-existing-project/postgresql" className={INLINE}>
-              existing-database guide
-            </Link>{" "}
-            lists the Node.js versions it expects.
-          </li>
-          <li>
-            Run <code>npx prisma contract infer</code> to write <code>contract.prisma</code> from
-            the tables, then <code>npx prisma contract emit</code> and{" "}
-            <code>npx prisma db sign</code>. Signing records that the database already matches the
-            contract, so the first <code>migration plan</code> starts from your tables instead of an
-            empty database. The rows stay where they are.
-          </li>
           <li>
             Later changes go through{" "}
             <Link href="/docs/orm/migrations/generating-a-migration" className={INLINE}>
@@ -656,7 +500,7 @@ export function getKyselyPageContent() {
           What do teams say about Prisma ORM?
         </AnchorHeading>
         <p className="max-w-[68ch]">Two teams on what type safety in Prisma ORM does for them.</p>
-        <QuoteCarousel>
+        <div className="grid gap-8 sm:grid-cols-2">
           {PROOF.map((item) => (
             <figure key={item.name} className="flex flex-col gap-5">
               <img
@@ -666,8 +510,8 @@ export function getKyselyPageContent() {
                 height={20}
                 className="h-5 w-auto self-start"
               />
-              <blockquote className="text-pretty text-lg leading-8 text-primary">
-                &quot;{item.quote}&quot;
+              <blockquote className="max-w-[34rem] text-pretty text-lg leading-8 text-primary">
+                &ldquo;{item.quote}&rdquo;
               </blockquote>
               <figcaption className="text-sm leading-6 text-muted-foreground">
                 <span className="font-medium text-foreground">{item.name}</span>, {item.role},{" "}
@@ -675,7 +519,7 @@ export function getKyselyPageContent() {
               </figcaption>
             </figure>
           ))}
-        </QuoteCarousel>
+        </div>
       </section>
 
       <section className={SECTION}>
@@ -688,7 +532,7 @@ export function getKyselyPageContent() {
               <AccordionTrigger className="text-left text-base font-medium text-primary hover:no-underline">
                 {faq.question}
               </AccordionTrigger>
-              <AccordionContent className="text-base leading-7 text-foreground">
+              <AccordionContent className="max-w-[36rem] text-base leading-7 text-foreground">
                 {renderFaqAnswer(faq.answer)}
               </AccordionContent>
             </AccordionItem>
@@ -696,47 +540,24 @@ export function getKyselyPageContent() {
         </Accordion>
       </section>
     </div>,
-    <section
-      key="next"
-      id="next"
-      aria-labelledby="compare-cta-heading"
-      className="mt-14 scroll-mt-28 rounded-xl bg-muted/60 p-7 sm:p-10"
-    >
-      <h2 id="compare-cta-heading" className="text-balance font-heading text-2xl font-medium">
-        {COMPARISON_CTA.headline}
-      </h2>
-      <p className="mt-4 text-pretty leading-7 text-foreground">{COMPARISON_CTA.body}</p>
-      <ul className="mt-3 list-disc space-y-1 pl-5 leading-7 marker:text-black/25">
-        {COMPARISON_CTA.checks.map((item) => (
-          <li key={item.label}>{item.label}</li>
-        ))}
-      </ul>
-      <div className="mt-7 flex flex-wrap items-center gap-3">
-        <PrismButton href={COMPARISON_CTA.primaryCta.href} ctaLocation="compare-close">
-          {COMPARISON_CTA.primaryCta.label}
-        </PrismButton>{" "}
-        <PrismButtonOutline href={COMPARISON_CTA.secondaryCta.href} ctaLocation="compare-close">
-          {COMPARISON_CTA.secondaryCta.label}
-        </PrismButtonOutline>
-      </div>
-    </section>,
+    comparisonClosingCta("orm"),
     <section
       key="sources"
       id="sources"
       aria-labelledby="sources-heading"
       className="mt-14 scroll-mt-28"
     >
-      <h2 id="sources-heading" className="font-heading text-xl font-medium">
+      <h2 id="sources-heading" className="font-heading text-[1.375rem] leading-[1.3] font-medium">
         Sources
       </h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+      <p className="mt-5 max-w-[32rem] text-sm leading-6 text-muted-foreground">
         Every competitor figure on this page comes from these pages, checked {CHECKED}.
       </p>
       <div className="mt-5 grid gap-6 sm:grid-cols-2">
         {SOURCES.map((group) => (
           <div key={group.product}>
             <h3 className="text-sm font-medium">{group.product}</h3>
-            <ul className="mt-2 space-y-1.5 text-sm leading-6 text-muted-foreground">
+            <ul className="mt-2 space-y-0 text-sm leading-6 text-muted-foreground">
               {group.links.map((link) => (
                 <li key={link.href}>
                   <SourceLink href={link.href}>{link.label}</SourceLink>

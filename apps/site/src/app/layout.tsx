@@ -115,13 +115,18 @@ export default function RootLayout({
         <ThemeProvider>
           <UnifiedSearchProvider>
             <UtmPersistence />
+            <a href="#content" className="skip-link">
+              Skip to content
+            </a>
             {/* The campaign landing pages under /lp carry their own header and
                 footer (app/lp/layout.tsx); SiteChrome drops the site's for them. */}
             <SiteChrome>
               <BuildersDayBanner />
               <Header />
             </SiteChrome>
-            <main className="min-h-screen">{children}</main>
+            <main id="content" className="min-h-screen">
+              {children}
+            </main>
             <SiteChrome>
               <Footer />
             </SiteChrome>

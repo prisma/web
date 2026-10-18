@@ -11,3 +11,35 @@ export const COMPARISON_CTA = {
   primaryCta: { label: "Get started free", href: "https://console.prisma.io" },
   secondaryCta: { label: "Talk to us", href: "/contact" },
 } as const;
+
+/**
+ * Closing action on ORM comparisons (Kysely, Mongoose). The 500K+ line is how
+ * many people use Prisma ORM; it stays. The buttons go to the ORM quickstart
+ * and Prisma Postgres rather than a generic console pitch.
+ */
+export const ORM_COMPARISON_CTA = {
+  headline: "Add Prisma ORM to an existing project",
+  headlineMaxWidth: "max-w-[28ch]",
+  body: "Free to start, no credit card required.",
+  bodyMaxWidth: "max-w-[44ch]",
+  checks: COMPARISON_CTA.checks,
+  primaryCta: {
+    label: "Get started with Prisma ORM",
+    href: "/docs/prisma-orm/quickstart/postgresql",
+  },
+  secondaryCta: {
+    label: "Get started with Prisma Postgres",
+    href: "https://console.prisma.io",
+  },
+} as const;
+
+export const ORM_HERO_CTAS = {
+  primary: {
+    label: "Get started with Prisma ORM",
+    href: "/docs/prisma-orm/quickstart/postgresql",
+  },
+  secondary: {
+    label: "Get started with Prisma Postgres",
+    href: "https://console.prisma.io",
+  },
+} as const;

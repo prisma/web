@@ -3,9 +3,18 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Link as LinkIcon } from "lucide-react";
 
+function headingText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(headingText).join("");
+  if (node && typeof node === "object" && "props" in node) {
+    return headingText((node as { props: { children?: ReactNode } }).props.children);
+  }
+  return "";
+}
+
 /**
- * A section heading with a copy-link button in the left gutter, following the
- * copy-link pattern in Eclipse's accordion. The button is absolutely positioned
+ * A section heading with a copy-link button as a sibling, so the heading's
+ * accessible name stays the visible text. The button is absolutely positioned
  * so it never moves the heading, and only appears on devices that can hover.
  * Inside a frame or card, `placement="end"` puts it at the heading's right end
  * instead, where the left gutter would fall outside the frame.
@@ -27,6 +36,7 @@ export function AnchorHeading({
   const end = placement === "end";
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const label = headingText(children).trim();
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -45,19 +55,18 @@ export function AnchorHeading({
   }
 
   return (
-    <Tag
-      id={id}
-      className={`group/heading relative ${end ? "[@media(hover:hover)]:pr-8" : ""} ${className ?? ""}`}
-    >
-      {children}
+    <div className="group/heading relative">
+      <Tag id={id} className={className}>
+        {children}
+      </Tag>
       <span
         className={`absolute top-0 hidden h-[1lh] items-center [@media(hover:hover)]:flex ${end ? "right-0" : "right-full pr-2"}`}
       >
         <button
           type="button"
           onClick={copy}
-          aria-label="Copy link to this section"
-          className="relative flex size-6 items-center justify-center rounded-md text-foreground/40 opacity-0 transition-[opacity,color] duration-150 group-hover/heading:opacity-100 hover:text-foreground/70 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/30 motion-reduce:transition-none"
+          aria-label={label ? `Copy link to “${label}”` : "Copy link to this section"}
+          className="relative flex size-6 items-center justify-center rounded-md text-foreground/40 opacity-0 transition-[opacity,color] duration-150 group-hover/heading:opacity-100 hover:text-foreground/70 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 motion-reduce:transition-none after:absolute after:-inset-2.5 after:content-['']"
         >
           {copied ? (
             <Check className="size-3.5" strokeWidth={2} aria-hidden />
@@ -73,6 +82,6 @@ export function AnchorHeading({
           </span>
         </button>
       </span>
-    </Tag>
+    </div>
   );
 }

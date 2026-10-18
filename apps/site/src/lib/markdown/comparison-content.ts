@@ -2,6 +2,7 @@ import { Children, isValidElement, type ReactNode } from "react";
 import { CodeBlockTab, CodeBlockTabs, CodeBlockTabsTrigger } from "@prisma/eclipse";
 import { AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { AnchorHeading } from "@/app/compare/anchor-heading";
+import { CompareTable, type CompareTableProps } from "@/app/compare/compare-table";
 import { ComparisonPricingTable, type PricingTableProps } from "@/app/compare/pricing-table";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { RoleKicker } from "@/components/brand/role-kicker";
@@ -89,6 +90,15 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
       ])}\n\n`;
     }
 
+    if (type === CompareTable) {
+      const { corner, columns, rows } = props as unknown as CompareTableProps;
+      const cell = (node: ReactNode) => render(node).trim().replace(/\s+/g, " ");
+      return `\n\n${table(
+        [escapeText(corner), ...columns.map((column) => escapeText(column))],
+        rows.map((row) => [escapeText(row.label), ...row.cells.map(cell)]),
+      )}\n\n`;
+    }
+
     if (type === ComparisonPricingTable) {
       const { corner, columns, rows, note } = props as unknown as PricingTableProps;
       const cell = (node: ReactNode) => render(node).trim().replace(/\s+/g, " ");
@@ -148,5 +158,7 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
   return render(node)
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
+    .replace(/(`[^`]+`)\\([.])/g, "$1$2")
+    .replace(/(\]\([^)]+\))\\([.])/g, "$1$2")
     .trim();
 }

@@ -9,11 +9,25 @@ function getComparison(slug: ComparisonSlug) {
   return { ...entry, path: `/compare/${slug}` };
 }
 
-/** Describe a comparison as an article in social metadata. */
+/** Describe a comparison as an article in social metadata, and advertise its Markdown. */
 export function getComparisonMetadata(slug: ComparisonSlug) {
   const page = getComparison(slug);
   const metadata = createPageMetadata({ ...page, ogKicker: "Compare", ogAccent: "cyan" });
-  return { ...metadata, openGraph: { ...metadata.openGraph, type: "article" as const } };
+  const baseUrl = getBaseUrl();
+  const types: Record<string, string> = {
+    "text/markdown": new URL(`${page.path}.md`, baseUrl).toString(),
+  };
+  if (slug === "kysely") {
+    types["application/json"] = new URL(`${page.path}.json`, baseUrl).toString();
+  }
+  return {
+    ...metadata,
+    alternates: {
+      ...metadata.alternates,
+      types,
+    },
+    openGraph: { ...metadata.openGraph, type: "article" as const },
+  };
 }
 
 /** Describe the comparison article and its directory hierarchy without inventing publication dates. */

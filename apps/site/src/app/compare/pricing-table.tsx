@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
-import { QUIET_NOTE, SCROLL_HINT, STICKY, TABLE_FRAME, TD, TH_COL, TH_ROW } from "./table-styles";
+import {
+  QUIET_NOTE,
+  SCROLL_HINT,
+  STICKY,
+  TABLE_FRAME,
+  TABLE_STACK,
+  TD,
+  TH_COL,
+  TH_ROW,
+} from "./table-styles";
 
 export type PricingColumn = {
   label: string;
@@ -26,7 +35,8 @@ export type PricingTableProps = {
 
 /**
  * Cost side by side: one column per product, one row per thing you could pay
- * for. Rows can name paid tiers as well as licenses and hosting. The Markdown
+ * for. Rows can name paid tiers as well as licenses and hosting. Below 640px
+ * each row stacks as a card with `data-label` on every cell. The Markdown
  * serializer reads these props directly, so it never renders this component.
  */
 export function ComparisonPricingTable({
@@ -40,7 +50,7 @@ export function ComparisonPricingTable({
   return (
     <>
       <div
-        className={TABLE_FRAME}
+        className={`${TABLE_FRAME} ${TABLE_STACK}`}
         role="region"
         aria-labelledby={labelledBy}
         tabIndex={0}
@@ -75,7 +85,11 @@ export function ComparisonPricingTable({
                   {row.label}
                 </th>
                 {row.cells.map((cell, index) => (
-                  <td key={columns[index]?.label ?? index} className={TD}>
+                  <td
+                    key={columns[index]?.label ?? index}
+                    className={TD}
+                    data-label={columns[index]?.label}
+                  >
                     {cell}
                   </td>
                 ))}

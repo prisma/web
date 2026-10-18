@@ -97,14 +97,14 @@ function TocList({
   onChoose: (id: string) => void;
 }) {
   return (
-    <ul className="border-l border-black/[0.08] text-[0.8125rem] leading-5 text-muted-foreground">
+    <ul className="border-l-2 border-black/[0.08] text-[0.8125rem] leading-5 text-muted-foreground">
       {items.map((item) => (
         <li key={item.id}>
           <a
             href={`#${item.id}`}
             aria-current={item.id === active ? "location" : undefined}
             onClick={() => onChoose(item.id)}
-            className="-ml-px block border-l border-transparent py-1.5 pl-3.5 transition-colors duration-200 hover:text-foreground motion-reduce:transition-none aria-[current=location]:border-foreground/70 aria-[current=location]:text-foreground"
+            className="-ml-0.5 block border-l-2 border-transparent py-2.5 pl-3.5 transition-colors duration-200 hover:text-foreground motion-reduce:transition-none aria-[current=location]:border-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
           >
             {item.label}
           </a>
@@ -134,7 +134,7 @@ export function ArticleTocDisclosure({ items }: { items: readonly TocItem[] }) {
   const details = useRef<HTMLDetailsElement>(null);
   return (
     <details ref={details} className="group rounded-xl border border-black/[0.08]">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
         On this page
         <ChevronDown
           className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"

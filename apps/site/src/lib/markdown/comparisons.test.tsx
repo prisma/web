@@ -1,9 +1,15 @@
 import * as convex from "@/app/compare/convex/_content";
 import * as kysely from "@/app/compare/kysely/_content";
+import { getKyselyArticleFields, getKyselyFacts } from "@/app/compare/kysely/facts";
+import { GET as getKyselyFactsResponse } from "@/app/compare/kysely.json/route";
 import * as mongoose from "@/app/compare/mongoose/_content";
+import { COMPARISON_CTA, ORM_COMPARISON_CTA } from "@/app/compare/_content";
+import { CompareTable } from "@/app/compare/compare-table";
+import { ComparisonPricingTable } from "@/app/compare/pricing-table";
 import { stripFaqAnswerMarkup } from "@/lib/faq-answer";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Children, isValidElement, type ReactNode } from "react";
 import { COMPARISONS, COMPARISON_PATHS } from "@/app/compare/comparisons";
 import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
 import { getAgentMarkdownRewritePathname } from "@/lib/agent-markdown";
@@ -111,6 +117,7 @@ test("Kysely Markdown carries the byline and each code tab as a labelled TypeScr
   );
   assert.ok(markdown.includes(`**Kysely**\n\n\`\`\`ts\n${kysely.SAME_QUERY.kysely}\n\`\`\``));
   assert.ok(markdown.includes(`**Prisma ORM**\n\n\`\`\`ts\n${kysely.SAME_QUERY.prisma}\n\`\`\``));
+  assert.ok(markdown.includes(`**SQL sent**\n\n\`\`\`sql\n${kysely.SAME_QUERY.sql}\n\`\`\``));
 });
 
 test("a table without rows does not interrupt the comparison rendition", () => {
@@ -174,8 +181,9 @@ test("kysely Markdown keeps yes and no marks out of the table, and anchored head
     hosted.startsWith("| Hosted database | None. Kysely is a library. | [Prisma Postgres]"),
   );
   assert.doesNotMatch(hosted, /\b(Yes|No)\b/);
-  assert.ok(markdown.includes("\n## When should I choose Prisma ORM or Kysely?\n"));
-  assert.ok(markdown.includes("\n### One contract for queries and migrations\n"));
+  assert.ok(markdown.includes("\n## When should I choose Kysely or Prisma ORM?\n"));
+  assert.ok(markdown.includes("\n### A model API and a SQL query builder\n"));
+  assert.ok(markdown.includes("\n### A migration plan that does not need the database\n"));
   assert.doesNotMatch(markdown, /Copy link|Copied/);
 });
 
@@ -186,7 +194,7 @@ test("kysely Markdown carries the database matrix and the task table as Markdown
   assert.ok(markdown.includes("\n## Which databases do Prisma ORM and Kysely support?\n"));
   assert.ok(markdown.includes("| Database | Kysely | Prisma ORM 8 | Prisma ORM 7 |"));
   for (const row of kysely.DATABASE_MATRIX) {
-    const cells = [row.kysely, row.orm8, row.orm7].map((status) => status ?? "Not supported");
+    const cells = [row.kysely, row.orm8, row.orm7].map((status) => status ?? "No");
     assert.ok(
       markdown.includes(`| ${row.database} | ${cells.join(" | ")} |`),
       `missing matrix row: ${row.database}`,
@@ -205,26 +213,18 @@ test("kysely Markdown carries the database matrix and the task table as Markdown
   }
 });
 
-test("kysely Markdown renders the cards as headings and the fit columns as headings and lists", () => {
+test("kysely Markdown renders the remaining cards and drops the fit columns", () => {
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
+  assert.equal(kysely.APART.length, 2);
   for (const card of kysely.APART) {
     assert.ok(markdown.includes(`\n### ${card.title}\n`), `missing card heading: ${card.title}`);
   }
-  for (const [heading, items] of [
-    ["When is Kysely the better fit?", kysely.KYSELY_FITS],
-    ["When is Prisma ORM the better fit?", kysely.PRISMA_FITS],
-  ] as const) {
-    const section = markdown.split(`\n## ${heading}\n`)[1]?.split("\n## ")[0];
-    assert.ok(section, `missing column heading: ${heading}`);
-    for (const item of items) {
-      assert.ok(
-        plainMarkdown(section).includes(`- ${stripFaqAnswerMarkup(item)}`),
-        `missing list item under ${heading}: ${item}`,
-      );
-    }
-  }
+  assert.doesNotMatch(markdown, /When is Kysely the better fit\?/);
+  assert.doesNotMatch(markdown, /When is Prisma ORM the better fit\?/);
+  assert.doesNotMatch(markdown, /One contract for queries and migrations/);
+  assert.doesNotMatch(markdown, /A contract from tables you already have/);
 });
 
 test("kysely Markdown carries pricing as a table followed by the free tier note", () => {
@@ -246,4 +246,121 @@ test("kysely Markdown carries pricing as a table followed by the free tier note"
     /\|\n\nPrisma Postgres has a Free plan: \$0 a month for 200,000 operations, 2 GB of storage, and 50 databases\. The \[pricing page\]\(\/pricing\) lists the paid plans\.$/,
   );
   assert.doesNotMatch(markdown, /pricing page, October 2026/);
+});
+
+test("kysely Markdown opens with the check date and does not add a period after the title's question mark", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes(`dateModified: ${kysely.KYSELY_UPDATED.iso}`));
+  assert.doesNotMatch(markdown, /builder\?\./);
+  assert.doesNotMatch(markdown, /`[^`\n]+`\\\./);
+  assert.doesNotMatch(markdown, /\]\([^)]+\)\\\./);
+});
+
+test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () => {
+  assert.ok(
+    COMPARISON_CTA.checks.some((item) => item.label === "Trusted by 500K+ developers globally"),
+  );
+  assert.equal(ORM_COMPARISON_CTA.checks, COMPARISON_CTA.checks);
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(markdown.includes("\n## Add Prisma ORM to an existing project\n"));
+  assert.ok(markdown.includes("[Get started with Prisma ORM](/docs/prisma-orm/quickstart/postgresql)"));
+  assert.ok(markdown.includes("[Get started with Prisma Postgres](https://console.prisma.io)"));
+});
+
+test("kysely Markdown carries the switch types, contract, and four commands", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(
+    markdown.includes(`**Kysely types**\n\n\`\`\`ts\n${kysely.SWITCH_KYSELY_TYPES}\n\`\`\``),
+  );
+  assert.ok(
+    markdown.includes(`**contract.prisma**\n\n\`\`\`prisma\n${kysely.SWITCH_PRISMA_CONTRACT}\n\`\`\``),
+  );
+  assert.ok(markdown.includes(`\`\`\`bash\n${kysely.SWITCH_COMMANDS}\n\`\`\``));
+});
+
+test("kysely JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getKyselyFacts();
+  assert.equal(facts.path, "/compare/kysely");
+  assert.equal(facts.dateChecked, kysely.KYSELY_UPDATED.iso);
+  assert.equal(facts.tools.kysely.softwareVersion, "0.29.7");
+  assert.equal(facts.features.length, kysely.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.kysely.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.kysely.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  for (const row of facts.databases) {
+    for (const side of [row.kysely, row.orm8, row.orm7] as const) {
+      assert.match(side.source, /^https?:\/\//);
+      assert.equal(side.dateChecked, facts.dateChecked);
+      assert.ok(side.value === "No" || typeof side.value === "string");
+    }
+  }
+  const response = getKyselyFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getKyselyArticleFields();
+  assert.equal(fields.datePublished, kysely.KYSELY_PUBLISHED.iso);
+  assert.equal(fields.dateModified, kysely.KYSELY_UPDATED.iso);
+  assert.equal(fields.about[0]?.name, "Kysely");
+  assert.equal(fields.about[1]?.name, "Prisma ORM");
+});
+
+test("kysely metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("kysely").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/kysely\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/kysely\.json$/);
+});
+
+function dataLabels(node: ReactNode): string[] {
+  const labels: string[] = [];
+  function walk(value: ReactNode) {
+    if (!isValidElement<{ children?: ReactNode; "data-label"?: string }>(value)) return;
+    if (typeof value.props["data-label"] === "string") labels.push(value.props["data-label"]);
+    Children.forEach(value.props.children, walk);
+  }
+  walk(node);
+  return labels;
+}
+
+test("stacked comparison tables label every cell for the phone card layout", () => {
+  const feature = CompareTable({
+    labelledBy: "feature-table",
+    corner: "Feature",
+    columns: ["Kysely", "Prisma ORM"],
+    minWidth: "40rem",
+    rows: [{ label: "Library price", cells: ["Free. MIT license.", "Free. Apache License 2.0."] }],
+  });
+  assert.deepEqual(dataLabels(feature), ["Kysely", "Prisma ORM"]);
+
+  const pricing = ComparisonPricingTable({
+    labelledBy: "pricing",
+    corner: "Cost",
+    columns: [
+      { label: "Kysely", id: "pricing-kysely" },
+      { label: "Prisma ORM", id: "pricing-prisma" },
+    ],
+    rows: [{ label: "Library license and cost", cells: ["Free, MIT", "Free, Apache 2.0"] }],
+  });
+  assert.deepEqual(dataLabels(pricing), ["Kysely", "Prisma ORM"]);
+});
+
+test("same-query line groups stay inside each tab's line count", () => {
+  const count = (code: string) => code.split("\n").length;
+  for (const group of kysely.SAME_QUERY_LINE_GROUPS) {
+    for (const line of group.kysely) assert.ok(line >= 0 && line < count(kysely.SAME_QUERY.kysely));
+    for (const line of group.prisma) assert.ok(line >= 0 && line < count(kysely.SAME_QUERY.prisma));
+    for (const line of group.sql) assert.ok(line >= 0 && line < count(kysely.SAME_QUERY.sql));
+  }
 });
