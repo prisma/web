@@ -11,7 +11,7 @@ const cache = new Map<string, string>();
 const COPY_LABEL = "Copy this page as Markdown";
 
 const ICON =
-  "inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 disabled:opacity-60";
+  "inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground/80 transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 disabled:opacity-60";
 
 /** Prompt every Open-with-AI logo prefills. `{PAGE_MD_URL}` is the page's `.md` alternate. */
 export function choosePrompt(pageMdUrl: string) {
@@ -66,7 +66,7 @@ function toolLinks(markdownUrl: string) {
 
 function Mark({ children }: { children: ReactNode }) {
   return (
-    <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
       {children}
     </svg>
   );
@@ -169,7 +169,11 @@ export function PageAiActions({ markdownPath }: { markdownPath: string }) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="mt-4 flex items-center gap-1">
+      <div
+        role="group"
+        aria-label="Copy or open this page with AI"
+        className="flex max-w-[11rem] flex-wrap items-center gap-0.5"
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -180,9 +184,9 @@ export function PageAiActions({ markdownPath }: { markdownPath: string }) {
               className={ICON}
             >
               {copied ? (
-                <Check className="size-5" strokeWidth={2} aria-hidden />
+                <Check className="size-4" strokeWidth={2} aria-hidden />
               ) : (
-                <Copy className="size-5" strokeWidth={2} aria-hidden />
+                <Copy className="size-4" strokeWidth={2} aria-hidden />
               )}
               <span role="status" className="sr-only">
                 {copied ? "Page copied" : ""}
@@ -191,7 +195,7 @@ export function PageAiActions({ markdownPath }: { markdownPath: string }) {
           </TooltipTrigger>
           <TooltipContent side="bottom">{copied ? "Copied" : COPY_LABEL}</TooltipContent>
         </Tooltip>
-        <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
+        <span className="mx-0.5 h-3.5 w-px shrink-0 self-center bg-border" aria-hidden />
         {tools.map((tool) => (
           <Tooltip key={tool.name}>
             <TooltipTrigger asChild>

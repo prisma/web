@@ -471,7 +471,12 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   assert.match(markdown, /posts include/);
   assert.match(markdown, /email filter/);
   const sections = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
-  assert.match(sections, /<PageAiActions markdownPath="\/compare\/kysely\.md" \/>/);
+  assert.doesNotMatch(sections, /PageAiActions/);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /kysely: "\/compare\/kysely\.md"/);
+  const toc = readFileSync(join(compareDir, "article-toc.tsx"), "utf8");
+  assert.match(toc, /PageAiActions/);
+  assert.match(toc, /markdownPath/);
   const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
   assert.match(ai, /Copy this page as Markdown/);
   assert.doesNotMatch(ai, />Open with AI</);

@@ -16,6 +16,10 @@ const SECTION_H2 = "font-heading text-[1.375rem] leading-[1.3] font-medium";
  * An item can stand for several consecutive sections; it stays marked while
  * any of them is being read.
  */
+const AI_MARKDOWN: Partial<Record<ComparisonSlug, string>> = {
+  kysely: "/compare/kysely.md",
+};
+
 const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
   kysely: [
     { id: "choose", label: "When to choose" },
@@ -158,7 +162,7 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
         <div className="sm:px-12 lg:grid lg:grid-cols-[minmax(0,1fr)_11rem] lg:gap-12 lg:px-16">
           <div className="min-w-0 max-w-[54rem]">
             <div className="mb-10 lg:hidden">
-              <ArticleTocDisclosure items={TOC[slug]} />
+              <ArticleTocDisclosure items={TOC[slug]} markdownPath={AI_MARKDOWN[slug]} />
             </div>
             <div className={PROSE}>{body}</div>
             {closing}
@@ -186,7 +190,7 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
             </nav>
           </div>
           <aside className="hidden lg:block">
-            <ArticleToc items={TOC[slug]} />
+            <ArticleToc items={TOC[slug]} markdownPath={AI_MARKDOWN[slug]} />
           </aside>
         </div>
       </div>

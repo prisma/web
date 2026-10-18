@@ -21,7 +21,6 @@ import { QUIET_LINK, QUIET_NOTE } from "../table-styles";
 import { highlight, lineGroupMap } from "./highlight";
 import { SameQueryHighlight } from "./same-query";
 import { TabCodeCopy } from "../tab-code-copy";
-import { PageAiActions } from "../page-ai-actions";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import {
   APART,
@@ -201,7 +200,6 @@ export function getKyselyPageContent() {
           </span>
         </span>
       </p>
-      <PageAiActions markdownPath="/compare/kysely.md" />
       <p className="mt-3 max-w-[32rem] text-sm leading-6 text-muted-foreground">
         Prisma makes Prisma ORM. Kysely figures come from the pages listed under{" "}
         <a href="#sources" className={QUIET_LINK}>

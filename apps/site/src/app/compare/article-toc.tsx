@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { PageAiActions } from "./page-ai-actions";
 
 /** A short label for one or more consecutive sections; `id` is the link target. */
 export type TocItem = { id: string; label: string; also?: readonly string[] };
@@ -115,7 +116,13 @@ function TocList({
 }
 
 /** The sticky right-hand list, matching the docs' table of contents. */
-export function ArticleToc({ items }: { items: readonly TocItem[] }) {
+export function ArticleToc({
+  items,
+  markdownPath,
+}: {
+  items: readonly TocItem[];
+  markdownPath?: string;
+}) {
   const [active, choose] = useActiveItem(items);
   return (
     <nav
@@ -124,12 +131,23 @@ export function ArticleToc({ items }: { items: readonly TocItem[] }) {
     >
       <p className="mb-3 text-[0.8125rem] font-medium text-foreground">On this page</p>
       <TocList items={items} active={active} onChoose={choose} />
+      {markdownPath ? (
+        <div className="mt-5 border-t border-black/[0.08] pt-3">
+          <PageAiActions markdownPath={markdownPath} />
+        </div>
+      ) : null}
     </nav>
   );
 }
 
 /** The same list folded into a disclosure for narrow screens; it closes after a pick. */
-export function ArticleTocDisclosure({ items }: { items: readonly TocItem[] }) {
+export function ArticleTocDisclosure({
+  items,
+  markdownPath,
+}: {
+  items: readonly TocItem[];
+  markdownPath?: string;
+}) {
   const [active, choose] = useActiveItem(items);
   const details = useRef<HTMLDetailsElement>(null);
   return (
@@ -150,6 +168,11 @@ export function ArticleTocDisclosure({ items }: { items: readonly TocItem[] }) {
             if (details.current) details.current.open = false;
           }}
         />
+        {markdownPath ? (
+          <div className="mt-3 border-t border-black/[0.08] pt-2">
+            <PageAiActions markdownPath={markdownPath} />
+          </div>
+        ) : null}
       </nav>
     </details>
   );
