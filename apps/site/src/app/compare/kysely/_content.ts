@@ -152,6 +152,18 @@ export const DATABASE_MATRIX: readonly {
 ];
 
 /** One row per job; every Kysely cell names the API or tool its docs give for it. */
+/** What each side costs. Figures checked against the pricing page and each license. */
+export const PRICING: readonly { label: string; kysely: string; prisma: string }[] = [
+  { label: "Library license and cost", kysely: "Free, MIT", prisma: "Free, Apache 2.0" },
+  { label: "Paid plans", kysely: "None", prisma: "None for the ORM" },
+  {
+    label: "Hosted database",
+    kysely: "None. You bring your own.",
+    prisma:
+      "[Prisma Postgres](/docs/postgres), optional. It works with any Postgres client, Kysely included.",
+  },
+];
+
 export const SAME_JOB: readonly { task: string; kysely: string; prisma: string }[] = [
   {
     task: "Define tables",

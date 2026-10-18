@@ -19,6 +19,17 @@ import { TESTIMONIALS } from "@/components/sections/testimonials-data";
 import { COMPARISON_CTA } from "../_content";
 import { AnchorHeading } from "../anchor-heading";
 import { CompareArticle } from "../article";
+import { ComparisonPricingTable } from "../pricing-table";
+import {
+  QUIET_LINK,
+  QUIET_NOTE,
+  SCROLL_HINT,
+  STICKY,
+  TABLE_FRAME,
+  TD,
+  TH_COL,
+  TH_ROW,
+} from "../table-styles";
 import { highlight } from "./highlight";
 import { QuoteCarousel } from "./quote-carousel";
 import { renderFaqAnswer } from "@/lib/faq-answer";
@@ -33,6 +44,7 @@ import {
   KYSELY_FITS,
   KYSELY_TITLE,
   KYSELY_UPDATED,
+  PRICING,
   PRISMA_FITS,
   SAME_QUERY,
   WRONG_CHOICE,
@@ -45,42 +57,17 @@ import {
 const INLINE =
   "font-medium text-foreground underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60";
 
-const QUIET_LINK =
-  "underline underline-offset-4 decoration-black/15 transition-colors hover:text-foreground hover:decoration-black/50";
-
 /**
- * One rhythm for the whole body: 56px between sections, 20px under every h2,
- * 32px between h3 groups and 8px under each h3. Prose margins are zeroed so
- * these gaps are the only spacing, and every paragraph and list item shares
- * one size, line height and colour. Code spans from prose and from
+ * One rhythm for the whole body: 56px between sections and 20px under every h2.
+ * Prose margins are zeroed so these gaps are the only spacing, and every
+ * paragraph and list item shares one size, line height and colour. Code spans from prose and from
  * `renderFaqAnswer` share one treatment, and a span that wraps keeps its padding on both lines.
  */
 const BODY =
   "flex flex-col gap-14 [&_:is(h2,h3)]:my-0 [&_:is(h2,h3)]:text-primary [&_:is(p,ul,ol,li,table,figure,img)]:my-0 [&_:is(p,li)]:text-base [&_:is(p,li)]:leading-7 [&_:is(p,li)]:text-foreground [&_code]:box-decoration-clone [&_code]:rounded [&_code]:border-0 [&_code]:bg-black/[0.045] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.875em] [&_code]:font-medium [&_code]:text-primary [&_code]:before:content-none [&_code]:after:content-none [&_blockquote]:my-0 [&_blockquote]:border-0 [&_blockquote]:pl-0 [&_blockquote]:font-normal [&_blockquote]:not-italic [&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none";
 const SECTION = "flex flex-col gap-5";
-const GROUPS = "flex flex-col gap-8";
-const GROUP = "flex flex-col gap-2";
 const LIST = "list-disc space-y-2 pl-5 marker:text-black/25";
 const STEPS = "list-decimal space-y-2 pl-5 marker:text-muted-foreground";
-
-/** Table cell padding comes from `.answer-prose`; these set the frame, type and column widths. */
-const TABLE_FRAME =
-  "overflow-x-auto rounded-xl border border-black/[0.08] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
-const TH_COL = "bg-neutral-50 text-sm font-semibold text-primary";
-const TH_ROW = "bg-background text-sm font-semibold text-primary";
-/**
- * A shadow at the right edge while more columns sit off-screen. The `local`
- * cover scrolls with the table and hides the shadow once the last column is in view.
- */
-const SCROLL_HINT = {
-  background:
-    "linear-gradient(to right, transparent, var(--background) 70%) 100% 0 / 2.5rem 100% no-repeat local, radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.12), transparent) 100% 0 / 0.875rem 100% no-repeat scroll, var(--background)",
-};
-
-/** Keeps each feature row's label in view while the table scrolls sideways on phones. */
-const STICKY =
-  "sticky left-0 z-10 before:absolute before:inset-y-0 before:-left-1 before:w-1 before:bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/[0.06]";
-const TD = "text-sm leading-6 text-foreground";
 
 /** The two "where it fits" columns share the choose table's frame and header strip. */
 const FIT_FRAME =
@@ -193,7 +180,7 @@ const SOURCES = [
       { label: "How migrations work", href: "/docs/orm/migrations/how-migrations-work" },
       { label: "SQL query builder", href: "/docs/orm/reference/sql-query-builder" },
       { label: "Apache License 2.0", href: "https://github.com/prisma/prisma/blob/main/LICENSE" },
-      { label: "Pricing", href: "/pricing" },
+      { label: "Prisma Postgres pricing", href: "/pricing" },
     ],
   },
 ] as const;
@@ -281,7 +268,7 @@ export function getKyselyPageContent() {
       </div>
       <section className={SECTION}>
         <AnchorHeading level={2} id="choose">
-          When should I choose Prisma ORM or Kysely
+          When should I choose Prisma ORM or Kysely?
         </AnchorHeading>
         <div className={TABLE_FRAME}>
           <table className="w-full border-collapse text-left" style={{ minWidth: 0 }}>
@@ -309,7 +296,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="same-query">
-          The same query in both
+          What does the same query look like in each?
         </AnchorHeading>
         <p className="max-w-[68ch]">
           Each snippet reads one user by email with their posts: Kysely nests the posts with its{" "}
@@ -339,7 +326,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="feature-table">
-          What each one supports
+          How do Prisma ORM and Kysely compare feature by feature?
         </AnchorHeading>
         <p className="max-w-[68ch]">
           Kysely is a SQL query builder. Prisma ORM is a contract-based ORM that also includes a SQL
@@ -390,7 +377,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="databases">
-          Database support
+          Which databases do Prisma ORM and Kysely support?
         </AnchorHeading>
         <p>
           Kysely&apos;s dialects next to the two Prisma ORM lines. Prisma ORM 7 is the generally
@@ -438,7 +425,7 @@ export function getKyselyPageContent() {
             </tbody>
           </table>
         </div>
-        <p className="!text-sm !leading-6 !text-muted-foreground">
+        <p className={QUIET_NOTE}>
           MariaDB on Kysely is the community{" "}
           <a href="https://github.com/awaludinar/kysely-mariadb" className={QUIET_LINK}>
             kysely-mariadb
@@ -462,7 +449,7 @@ export function getKyselyPageContent() {
       <div className={FIT_FRAME}>
         <section className={FIT_COLUMN}>
           <AnchorHeading level={2} id="where-kysely" placement="end" className={FIT_HEADING}>
-            Where Kysely works well
+            When is Kysely the better fit?
           </AnchorHeading>
           <div className={FIT_BODY}>
             <p>
@@ -482,7 +469,7 @@ export function getKyselyPageContent() {
         </section>
         <section className={FIT_COLUMN}>
           <AnchorHeading level={2} id="where-prisma" placement="end" className={FIT_HEADING}>
-            Where Prisma ORM fits better
+            When is Prisma ORM the better fit?
           </AnchorHeading>
           <div className={FIT_BODY}>
             <p>
@@ -504,7 +491,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="apart">
-          What sets Prisma ORM apart
+          {"What does Prisma ORM do that Kysely doesn't?"}
         </AnchorHeading>
         <div className="grid gap-4 sm:grid-cols-2">
           {APART.map((item) => (
@@ -525,45 +512,35 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="pricing">
-          Pricing
+          How much do Prisma ORM and Kysely cost?
         </AnchorHeading>
-        <div className={GROUPS}>
-          <div className={GROUP}>
-            <AnchorHeading level={3} className="text-lg leading-snug" id="pricing-kysely">
-              Kysely
-            </AnchorHeading>
-            <p className="max-w-[68ch]">
-              The library is free under the{" "}
-              <a href="https://github.com/kysely-org/kysely/blob/master/LICENSE" className={INLINE}>
-                MIT license
-              </a>
-              . There is no Kysely hosting plan: you bring the database.
-            </p>
-          </div>
-          <div className={GROUP}>
-            <AnchorHeading level={3} className="text-lg leading-snug" id="pricing-prisma">
-              Prisma ORM and Prisma Postgres
-            </AnchorHeading>
-            <p className="max-w-[68ch]">
-              Prisma ORM is free under the{" "}
-              <a href="https://github.com/prisma/prisma/blob/main/LICENSE" className={INLINE}>
-                Apache License 2.0
-              </a>
-              . Prisma Postgres is optional, and it works with any Postgres client, so Prisma ORM is
-              optional with it. Its{" "}
-              <Link href="/pricing" className={INLINE}>
-                Free plan
+        <ComparisonPricingTable
+          labelledBy="pricing"
+          corner="Cost"
+          columns={[
+            { label: "Kysely", id: "pricing-kysely" },
+            { label: "Prisma ORM", id: "pricing-prisma" },
+          ]}
+          rows={PRICING.map((row) => ({
+            label: row.label,
+            cells: [renderFaqAnswer(row.kysely), renderFaqAnswer(row.prisma)],
+          }))}
+          note={
+            <>
+              Prisma Postgres has a Free plan: $0 a month for 200,000 operations, 2 GB of storage,
+              and 50 databases. The{" "}
+              <Link href="/pricing" className={QUIET_LINK}>
+                pricing page
               </Link>{" "}
-              is $0, with 200,000 operations a month, 2 GB of storage, and 50 databases. Prisma
-              Compute is separate app hosting.
-            </p>
-          </div>
-        </div>
+              lists the paid plans.
+            </>
+          }
+        />
       </section>
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="wrong-choice">
-          When Prisma ORM is the wrong choice
+          When is Prisma ORM the wrong choice?
         </AnchorHeading>
         <ul className={LIST}>
           {WRONG_CHOICE.map((item) => (
@@ -574,7 +551,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="same-job">
-          Same job, different tool
+          How does each task look in Kysely and Prisma ORM?
         </AnchorHeading>
         <p>
           What each step of the usual workflow looks like on each side, for a team moving in either
@@ -621,7 +598,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="migrate">
-          Move from Kysely to Prisma ORM
+          How do I switch from Kysely to Prisma ORM?
         </AnchorHeading>
         <ol className={STEPS}>
           <li>
@@ -650,7 +627,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="migrate-back">
-          Move from Prisma ORM to Kysely
+          How do I switch from Prisma ORM to Kysely?
         </AnchorHeading>
         <ol className={STEPS}>
           <li>Keep the database and the connection string.</li>
@@ -676,7 +653,7 @@ export function getKyselyPageContent() {
 
       <section className={SECTION}>
         <AnchorHeading level={2} id="proof">
-          What teams on Prisma say
+          What do teams say about Prisma ORM?
         </AnchorHeading>
         <p className="max-w-[68ch]">Two teams on what type safety in Prisma ORM does for them.</p>
         <QuoteCarousel>

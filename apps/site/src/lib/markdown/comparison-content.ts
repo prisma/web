@@ -2,6 +2,7 @@ import { Children, isValidElement, type ReactNode } from "react";
 import { CodeBlockTab, CodeBlockTabs, CodeBlockTabsTrigger } from "@prisma/eclipse";
 import { AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { AnchorHeading } from "@/app/compare/anchor-heading";
+import { ComparisonPricingTable, type PricingTableProps } from "@/app/compare/pricing-table";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
@@ -86,6 +87,16 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
           props.secondaryCta as { label: string; href: string },
         ]),
       ])}\n\n`;
+    }
+
+    if (type === ComparisonPricingTable) {
+      const { corner, columns, rows, note } = props as unknown as PricingTableProps;
+      const cell = (node: ReactNode) => render(node).trim().replace(/\s+/g, " ");
+      const grid = table(
+        [escapeText(corner), ...columns.map((column) => escapeText(column.label))],
+        rows.map((row) => [escapeText(row.label), ...row.cells.map(cell)]),
+      );
+      return `\n\n${joinBlocks([grid, note ? render(note).trim() : ""])}\n\n`;
     }
 
     if (type === "table") {

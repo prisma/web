@@ -40,9 +40,9 @@ for (const entry of COMPARISONS) {
         `missing answer: ${faq.question}`,
       );
     }
-    assert.ok(markdown.includes("## Pricing"));
-    assert.ok(markdown.includes("## What teams on Prisma say"));
-    assert.ok(markdown.includes("## Move from"));
+    assert.match(markdown, /\n## (Pricing|How much do .+ cost\?)\n/);
+    assert.match(markdown, /\n## (What teams on Prisma say|What do teams say about .+\?)\n/);
+    assert.match(markdown, /\n## (Move from|How do I switch from) /);
   });
 
   test(`${entry.slug} article schema agrees with the page metadata and directory`, () => {
@@ -174,9 +174,8 @@ test("kysely Markdown keeps yes and no marks out of the table, and anchored head
     hosted.startsWith("| Hosted database | None. Kysely is a library. | [Prisma Postgres]"),
   );
   assert.doesNotMatch(hosted, /\b(Yes|No)\b/);
-  assert.ok(markdown.includes("\n## When should I choose Prisma ORM or Kysely\n"));
+  assert.ok(markdown.includes("\n## When should I choose Prisma ORM or Kysely?\n"));
   assert.ok(markdown.includes("\n### One contract for queries and migrations\n"));
-  assert.ok(markdown.includes("\n### Prisma ORM and Prisma Postgres\n"));
   assert.doesNotMatch(markdown, /Copy link|Copied/);
 });
 
@@ -184,7 +183,7 @@ test("kysely Markdown carries the database matrix and the task table as Markdown
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
-  assert.ok(markdown.includes("\n## Database support\n"));
+  assert.ok(markdown.includes("\n## Which databases do Prisma ORM and Kysely support?\n"));
   assert.ok(markdown.includes("| Database | Kysely | Prisma ORM 8 | Prisma ORM 7 |"));
   for (const row of kysely.DATABASE_MATRIX) {
     const cells = [row.kysely, row.orm8, row.orm7].map((status) => status ?? "Not supported");
@@ -195,7 +194,7 @@ test("kysely Markdown carries the database matrix and the task table as Markdown
   }
   assert.ok(markdown.includes("](/compare/kysely#databases)"), "Databases row links to the matrix");
 
-  assert.ok(markdown.includes("\n## Same job, different tool\n"));
+  assert.ok(markdown.includes("\n## How does each task look in Kysely and Prisma ORM?\n"));
   assert.ok(markdown.includes("| Task | Kysely | Prisma ORM |"));
   const plain = plainMarkdown(markdown);
   for (const row of kysely.SAME_JOB) {
@@ -214,8 +213,8 @@ test("kysely Markdown renders the cards as headings and the fit columns as headi
     assert.ok(markdown.includes(`\n### ${card.title}\n`), `missing card heading: ${card.title}`);
   }
   for (const [heading, items] of [
-    ["Where Kysely works well", kysely.KYSELY_FITS],
-    ["Where Prisma ORM fits better", kysely.PRISMA_FITS],
+    ["When is Kysely the better fit?", kysely.KYSELY_FITS],
+    ["When is Prisma ORM the better fit?", kysely.PRISMA_FITS],
   ] as const) {
     const section = markdown.split(`\n## ${heading}\n`)[1]?.split("\n## ")[0];
     assert.ok(section, `missing column heading: ${heading}`);
@@ -226,4 +225,25 @@ test("kysely Markdown renders the cards as headings and the fit columns as headi
       );
     }
   }
+});
+
+test("kysely Markdown carries pricing as a table followed by the free tier note", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const section = markdown
+    .split("\n## How much do Prisma ORM and Kysely cost?\n")[1]
+    ?.split("\n## ")[0];
+  assert.ok(section, "missing pricing section");
+  assert.ok(section.includes("| Cost | Kysely | Prisma ORM |"));
+  for (const row of kysely.PRICING) {
+    const line = section.split("\n").find((text) => text.startsWith(`| ${row.label} |`));
+    assert.ok(line, `missing pricing row: ${row.label}`);
+    assert.ok(plainMarkdown(line).includes(stripFaqAnswerMarkup(row.prisma)));
+  }
+  assert.match(
+    section.trimEnd(),
+    /\|\n\nPrisma Postgres has a Free plan: \$0 a month for 200,000 operations, 2 GB of storage, and 50 databases\. The \[pricing page\]\(\/pricing\) lists the paid plans\.$/,
+  );
+  assert.doesNotMatch(markdown, /pricing page, October 2026/);
 });
