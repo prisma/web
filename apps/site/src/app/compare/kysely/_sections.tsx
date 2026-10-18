@@ -240,8 +240,8 @@ export function getKyselyPageContent() {
       </div>
     </div>,
     <div key="body" className={BODY}>
-      <div className="max-w-[36rem] rounded-xl border border-black/[0.08] bg-neutral-50 text-sm leading-6 text-muted-foreground">
-        <p className="flex items-center gap-3 px-4 pt-3 pb-2.5 !text-sm !leading-5 !text-muted-foreground">
+      <div className="flex max-w-[36rem] flex-col gap-3">
+        <p className="flex items-center gap-3 !text-sm !leading-5 !text-muted-foreground">
           <img
             src={KYSELY_AUTHOR.image}
             alt=""
@@ -267,9 +267,9 @@ export function getKyselyPageContent() {
         </p>
         <aside
           aria-label="Disclosure"
-          className="flex gap-3 border-t border-black/[0.06] px-4 pt-2.5 pb-3"
+          className="flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
         >
-          <Info className="ml-1.5 mt-1 size-4 shrink-0 text-black/35" aria-hidden />
+          <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
           <p className="!text-sm !leading-6 !text-muted-foreground">
             Prisma makes Prisma ORM. Every Kysely figure links to its{" "}
             <a href="#sources" className={QUIET_LINK}>
