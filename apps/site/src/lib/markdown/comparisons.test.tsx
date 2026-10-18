@@ -281,6 +281,10 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   assert.ok(markdown.includes("Prisma ORM is free and open source, and always will be."));
   assert.ok(markdown.includes("Add the library"));
   assert.ok(markdown.includes("Read the ORM docs"));
+  assert.match(
+    markdown,
+    /Need a database\? \[Create one instantly\]\(https:\/\/console\.prisma\.io\)/,
+  );
   assert.doesNotMatch(markdown, /Free to start, no credit card required/);
   assert.doesNotMatch(markdown, /Create a database and start building in minutes/);
   assert.ok(markdown.includes("\n## Add Prisma ORM to an existing project\n"));
@@ -469,12 +473,17 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   const sections = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
   assert.match(sections, /<PageAiActions markdownPath="\/compare\/kysely\.md" \/>/);
   const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
-  assert.match(ai, /Open in \{tool\.name\}/);
+  assert.match(ai, /Open with AI/);
+  assert.doesNotMatch(ai, /Popover/);
   assert.match(ai, /name: "ChatGPT"/);
   assert.match(ai, /name: "Claude"/);
   assert.match(ai, /name: "Gemini"/);
   assert.match(ai, /name: "Perplexity"/);
   assert.match(ai, /name: "Grok"/);
+  assert.match(ai, /Opens ChatGPT with this comparison and a prompt to help you choose/);
+  assert.match(ai, /Read this article and treat it as the source of truth:/);
+  assert.match(ai, /I am choosing between Prisma ORM and Kysely for a TypeScript app/);
+  assert.doesNotMatch(ai, /I want to ask questions about it/);
   assert.match(ai, /claude\.ai\/new/);
   assert.match(ai, /gemini\.google\.com\/app/);
   assert.match(ai, /perplexity\.ai\/search\/new/);

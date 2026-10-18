@@ -90,6 +90,18 @@ export function comparisonClosingCta(kind: "orm" | "postgres" = "postgres") {
           <li key={item.label}>{item.label}</li>
         ))}
       </ul>
+      {kind === "orm" ? (
+        <p className="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground">
+          Need a database?{" "}
+          <a
+            href={cta.secondaryCta.href}
+            className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
+          >
+            Create one instantly
+          </a>
+          .
+        </p>
+      ) : null}
       <p className="mt-7 flex flex-wrap items-center gap-3">
         <PrismButton href={cta.primaryCta.href} ctaLocation="compare-close">
           {cta.primaryCta.label}
