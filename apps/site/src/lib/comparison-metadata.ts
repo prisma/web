@@ -26,8 +26,28 @@ export function getComparisonMetadata(slug: ComparisonSlug) {
       ...metadata.alternates,
       types,
     },
-    openGraph: { ...metadata.openGraph, type: "article" as const },
+    openGraph: {
+      ...metadata.openGraph,
+      type: "article" as const,
+    },
   };
+}
+
+/** OG image URL from the comparison's page metadata. */
+export function getComparisonOgImageUrl(slug: ComparisonSlug) {
+  const page = getComparison(slug);
+  const metadata = createPageMetadata({ ...page, ogKicker: "Compare", ogAccent: "cyan" });
+  const og = metadata.openGraph;
+  if (!og || !("images" in og) || og.images == null) {
+    throw new Error(`Comparison metadata is missing an OG image: ${page.path}`);
+  }
+  const first = Array.isArray(og.images) ? og.images[0] : og.images;
+  if (typeof first === "string") return first;
+  if (first instanceof URL) return first.toString();
+  if (typeof first === "object" && "url" in first) {
+    return typeof first.url === "string" ? first.url : first.url.toString();
+  }
+  throw new Error(`Comparison OG image is not a URL: ${page.path}`);
 }
 
 /** Describe the comparison article and its directory hierarchy without inventing publication dates. */

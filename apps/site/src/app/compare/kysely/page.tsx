@@ -1,6 +1,10 @@
 import localFont from "next/font/local";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
-import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
+import {
+  getComparisonMetadata,
+  getComparisonOgImageUrl,
+  getComparisonStructuredData,
+} from "@/lib/comparison-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
 import { FAQ, KYSELY_AUTHOR, KYSELY_PATH, KYSELY_TITLE } from "./_content";
@@ -20,15 +24,6 @@ export const metadata = getComparisonMetadata("kysely");
 
 const faqStructuredData = createFaqStructuredData(KYSELY_PATH, [...FAQ], KYSELY_TITLE);
 
-function ogImageUrl() {
-  const images = getComparisonMetadata("kysely").openGraph?.images;
-  const first = Array.isArray(images) ? images[0] : images;
-  if (!first) return undefined;
-  if (typeof first === "string") return first;
-  if ("url" in first) return typeof first.url === "string" ? first.url : first.url.toString();
-  return undefined;
-}
-
 /** The shared comparison graph, with this page's author, dates, image, and tool entities. */
 function articleStructuredData() {
   const base = getComparisonStructuredData("kysely");
@@ -39,7 +34,7 @@ function articleStructuredData() {
       {
         ...article,
         ...getKyselyArticleFields(),
-        image: ogImageUrl(),
+        image: getComparisonOgImageUrl("kysely"),
         author: {
           "@type": "Person",
           name: KYSELY_AUTHOR.name,
