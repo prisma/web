@@ -8,11 +8,10 @@ import { COPIED_VISIBLE_MS } from "./copied";
 
 const cache = new Map<string, string>();
 
-const COPY =
-  "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 disabled:opacity-60";
+const COPY_LABEL = "Copy this page as Markdown";
 
-const LOGO =
-  "inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70";
+const ICON =
+  "inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 disabled:opacity-60";
 
 /** Prompt every Open-with-AI logo prefills. `{PAGE_MD_URL}` is the page's `.md` alternate. */
 export function choosePrompt(pageMdUrl: string) {
@@ -130,7 +129,7 @@ function GrokMark() {
   );
 }
 
-/** Copy page plus a labelled row of AI logos. No dropdown. */
+/** Copy icon, then the five AI marks. No dropdown. No shared label over the row. */
 export function PageAiActions({ markdownPath }: { markdownPath: string }) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -170,41 +169,47 @@ export function PageAiActions({ markdownPath }: { markdownPath: string }) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <button type="button" onClick={copyPage} disabled={loading} className={COPY}>
-          {copied ? (
-            <Check className="size-3.5" strokeWidth={2} aria-hidden />
-          ) : (
-            <Copy className="size-3.5" strokeWidth={2} aria-hidden />
-          )}
-          {copied ? "Copied" : "Copy page"}
-          <span role="status" className="sr-only">
-            {copied ? "Page copied" : ""}
-          </span>
-        </button>
-        <div className="flex flex-col items-start gap-y-0.5 sm:flex-row sm:items-center sm:gap-1">
-          <span className="pr-1 text-sm text-muted-foreground">Open with AI</span>
-          <div className="flex items-center gap-1">
-            {tools.map((tool) => (
-              <Tooltip key={tool.name}>
-                <TooltipTrigger asChild>
-                  <a
-                    href={tool.href}
-                    rel="noreferrer noopener"
-                    target="_blank"
-                    aria-label={tool.tooltip}
-                    className={LOGO}
-                  >
-                    {tool.icon}
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[16rem]">
-                  {tool.tooltip}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </div>
+      <div className="mt-4 flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={copyPage}
+              disabled={loading}
+              aria-label={COPY_LABEL}
+              className={ICON}
+            >
+              {copied ? (
+                <Check className="size-5" strokeWidth={2} aria-hidden />
+              ) : (
+                <Copy className="size-5" strokeWidth={2} aria-hidden />
+              )}
+              <span role="status" className="sr-only">
+                {copied ? "Page copied" : ""}
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{copied ? "Copied" : COPY_LABEL}</TooltipContent>
+        </Tooltip>
+        <span className="h-4 w-px shrink-0 bg-border" aria-hidden />
+        {tools.map((tool) => (
+          <Tooltip key={tool.name}>
+            <TooltipTrigger asChild>
+              <a
+                href={tool.href}
+                rel="noreferrer noopener"
+                target="_blank"
+                aria-label={tool.tooltip}
+                className={ICON}
+              >
+                {tool.icon}
+              </a>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[16rem]">
+              {tool.tooltip}
+            </TooltipContent>
+          </Tooltip>
+        ))}
       </div>
     </TooltipProvider>
   );

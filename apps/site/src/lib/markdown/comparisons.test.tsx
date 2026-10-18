@@ -473,7 +473,9 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   const sections = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
   assert.match(sections, /<PageAiActions markdownPath="\/compare\/kysely\.md" \/>/);
   const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
-  assert.match(ai, /Open with AI/);
+  assert.match(ai, /Copy this page as Markdown/);
+  assert.doesNotMatch(ai, />Open with AI</);
+  assert.doesNotMatch(ai, /"Copy page"/);
   assert.doesNotMatch(ai, /Popover/);
   assert.match(ai, /name: "ChatGPT"/);
   assert.match(ai, /name: "Claude"/);
