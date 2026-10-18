@@ -511,8 +511,9 @@ test("kysely code lines pad past the Copy pill and preload the unbracketed mono 
   assert.doesNotMatch(page, /preload:\s*false/);
   const toc = readFileSync(join(compareDir, "article-toc.tsx"), "utf8");
   assert.match(toc, /min-h-11 items-center/);
-  assert.doesNotMatch(toc, /overflow-y-auto/);
-  assert.doesNotMatch(toc, /max-h-\[calc/);
+  assert.match(toc, /text-\[0\.8125rem\] leading-5/);
+  assert.match(toc, /py-2\.5 pl-3\.5/);
+  assert.match(toc, /overflow-y-auto/);
   const heading = readFileSync(join(compareDir, "anchor-heading.tsx"), "utf8");
   assert.match(heading, /tabIndex=\{inTabOrder \? 0 : -1\}/);
   assert.match(heading, /COPIED_VISIBLE_MS/);
@@ -540,10 +541,13 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /kysely: "\/compare\/kysely\.md"/);
   assert.match(article, /pt-32 sm:pt-40/);
-  assert.match(article, /header className="mx-auto max-w-site px-6 sm:px-8"/);
+  assert.match(article, /mx-auto max-w-site px-6 sm:px-8/);
+  assert.match(article, /lg:justify-center/);
+  assert.match(article, /lg:col-span-2/);
   assert.match(article, /rounded-2xl bg-muted\/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16/);
   assert.match(article, /lg:grid-cols-\[minmax\(0,760px\)_220px\]/);
   assert.match(article, /min-w-0 max-w-3xl/);
+  assert.doesNotMatch(article, /header className="mx-auto max-w-site/);
   assert.match(article, /overflow-x-clip/);
   assert.doesNotMatch(article, /w-screen|100vw/);
   assert.doesNotMatch(article, /max-w-\[54rem\]/);
@@ -561,8 +565,12 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
     toc.indexOf("export function ArticleTocDisclosure"),
   );
   assert.ok(desktopToc.indexOf("PageAiActions") < desktopToc.indexOf(">On this page</p>"));
+  assert.match(desktopToc, /mb-3 text-\[0\.8125rem\] font-medium/);
   const disclosureToc = toc.slice(toc.indexOf("export function ArticleTocDisclosure"));
   assert.ok(disclosureToc.indexOf("PageAiActions") < disclosureToc.indexOf("<TocList"));
+  assert.match(disclosureToc, /px-4 pt-1 pb-3/);
+  assert.doesNotMatch(toc, /text-\[11px\]/);
+  assert.doesNotMatch(toc, /py-1 pl-2\.5/);
   assert.match(sections, /max-w-4xl text-balance font-heading/);
   assert.match(sections, /mt-6 max-w-3xl text-pretty/);
   assert.doesNotMatch(sections, /max-w-2xl/);

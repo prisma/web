@@ -183,7 +183,7 @@ export function PageAiActions({ markdownPath }: { markdownPath: string }) {
       <div
         role="group"
         aria-label="Copy or open this page with AI"
-        className="flex w-full flex-wrap items-center gap-0"
+        className="flex max-w-[11rem] flex-wrap items-center gap-0.5"
       >
         <Tooltip>
           <TooltipTrigger asChild>
