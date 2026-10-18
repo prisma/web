@@ -1,0 +1,105 @@
+---
+title: Limits
+description: How Prisma Postgres limits work, including connections, storage and database size, databases per workspace, query timeouts, RPO and RTO, and Free plan operations, and where to find each plan's values.
+url: /postgres/database/limits
+metaTitle: Limits in Prisma Postgres
+metaDescription: How Prisma Postgres limits work, including connections, storage and database size, databases per workspace, query timeouts, RPO and RTO, and Free plan operations, and where to find each plan's values.
+---
+
+This page explains the limits that apply to a Prisma Postgres database. For each plan's prices, included usage, and published limits, see the [pricing page](https://www.prisma.io/pricing). For how plans work, see [Plans and pricing](/console/billing/plans-and-pricing). For what happens when a workspace goes over a limit, see [Usage limits and blocks](/console/billing/usage-limits-and-blocks).
+
+## Connections
+
+Prisma Postgres has two connection strings: a pooled one (`pooled.db.prisma.io`) for application traffic and a direct one (`db.prisma.io`) for migrations and admin tools. [Connection pooling](/postgres/database/connection-pooling) explains which one to use.
+
+For each plan's pooled and direct connection limits, see the [pricing page](https://www.prisma.io/pricing). These are concurrent connection limits, and they apply to each database separately, not to the workspace as a whole.
+
+### Reserved connections
+
+Prisma reserves 5 direct connections on every database for platform operations such as maintenance and monitoring. They are not available to your workload.
+
+### Hosted Accelerate connections
+
+The pooled and direct limits apply to the `pooled.db.prisma.io` and `db.prisma.io` connection strings. A hosted Accelerate connection string (`prisma+postgres://accelerate.prisma-data.net`) uses its own connection limit, which is set by your plan: 10 on Free and Starter, 40 on Pro and Business. You can't change it in Console for a Prisma Postgres database. See [Accelerate troubleshooting](/accelerate/more/troubleshoot#connection-limit-stays-at-10). The hosted Accelerate connection retires on December 1, 2026; see [Connect to Prisma Postgres without Accelerate](/postgres/database/switch-from-accelerate).
+
+## Storage and database size
+
+Storage is measured across every database in the workspace and billed per workspace. Each plan includes some storage, and paid plans bill the rest. For each plan's included storage and rates, see the [pricing page](https://www.prisma.io/pricing).
+
+Storage counts the size of your tables, including indexes and large values that Postgres stores out of line. Write-ahead log and system logs are not counted.
+
+### Maximum database size
+
+A single database also has a maximum size, separate from the storage your plan includes.
+
+| Plan     | Maximum size of one database |
+| -------- | ---------------------------- |
+| Free     | 10 GiB                       |
+| Starter  | 100 GiB                      |
+| Pro      | 100 GiB                      |
+| Business | 100 GiB                      |
+
+If you need a single database larger than 100 GiB, contact [support](/console/more/support).
+
+## Databases per workspace
+
+Each plan limits how many databases a workspace can have. For each plan's limit, see the [pricing page](https://www.prisma.io/pricing).
+
+When a Free workspace reaches its limit, creating another project or database fails with `Workspace plan limit reached`. Delete databases you no longer use, or upgrade the workspace to a paid plan.
+
+To go past your plan's database limit on a paid plan, contact [support](/console/more/support).
+
+## Timeouts
+
+| Timeout                                 | Value      | Applies to                                                       |
+| --------------------------------------- | ---------- | ---------------------------------------------------------------- |
+| Query timeout on pooled connections     | 10 minutes | Queries over `pooled.db.prisma.io` are stopped after 10 minutes. |
+| Statement timeout on direct connections | None       | Prisma Postgres sets no statement timeout on `db.prisma.io`.     |
+
+Idle connections are also closed after a timeout; for its value, see the [pricing page](https://www.prisma.io/pricing).
+
+Run long jobs, such as migrations, backfills, and `pg_dump`, over the direct connection. You can still set your own `statement_timeout` in a session or a transaction.
+
+### Hosted Accelerate timeouts
+
+A hosted Accelerate connection has shorter limits, set per plan:
+
+| Limit                           | Free       | Starter    | Pro        | Business   |
+| ------------------------------- | ---------- | ---------- | ---------- | ---------- |
+| Query timeout                   | 10 seconds | 10 seconds | 20 seconds | 60 seconds |
+| Interactive transaction timeout | 15 seconds | 15 seconds | 30 seconds | 90 seconds |
+
+## Free plan operations
+
+The Free plan includes a fixed number of operations per calendar month, shared across every database in the workspace. When the workspace uses them all, its databases stop accepting queries until you upgrade or the next calendar month starts. Paid plans don't stop at their included operations; they bill the extra operations instead. For each plan's included operations, see the [pricing page](https://www.prisma.io/pricing). See also [Plans and pricing](/console/billing/plans-and-pricing) and [Usage limits and blocks](/console/billing/usage-limits-and-blocks).
+
+## Recovery point and recovery time
+
+| Objective                      | Value          |
+| ------------------------------ | -------------- |
+| Recovery point objective (RPO) | Up to 24 hours |
+| Recovery time objective (RTO)  | 4 hours        |
+
+RPO is how much recent data a recovery can lose: Prisma Postgres restores from daily snapshots, so changes made after the last snapshot can be lost. RTO is how long recovery from a platform failure can take. The Free plan has no backups. See [Backups](/postgres/database/backups).
+
+## Common questions
+
+### How many connections can my database handle?
+
+The limits apply to each database, and each plan's values are on the [pricing page](https://www.prisma.io/pricing). See [Connections](#connections). Send application traffic through the pooled connection string, because the direct limits are much lower.
+
+### Why do I get "too many connections" when I'm under my plan's limit?
+
+Check which connection string your application uses. Direct connections have a much lower limit than pooled ones, and a hosted Accelerate connection has its own limit, set by your plan (10 on Free and Starter, 40 on Pro and Business). See [Connection pooling](/postgres/database/connection-pooling#too-many-connections-or-connection-limit-errors).
+
+### Can I raise the connection limit for my database?
+
+Not from Console. Connection limits are set by your plan, so the way to get higher limits is to upgrade the workspace. Business has the highest standard limits. If you need more than Business allows, contact [support](/console/more/support).
+
+### Why did my query stop after 10 minutes?
+
+Pooled connections stop any query that runs longer than 10 minutes. Run it over the direct connection (`db.prisma.io`), where Prisma Postgres sets no statement timeout, or split it into smaller batches.
+
+### How much data can I lose if Prisma Postgres has an outage?
+
+Recovery from a platform failure uses the most recent daily snapshot, so up to 24 hours of changes. Keep your own `pg_dump` backups if you need a tighter recovery point; see [Backups](/postgres/database/backups).

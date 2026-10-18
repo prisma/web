@@ -82,6 +82,18 @@ export const commonQueries: LLMsLink[] = [
       "Choose the right connection string for Prisma ORM, PostgreSQL tools, and serverless runtimes.",
   },
   {
+    title: "Understand Prisma billing, plans, and blocks",
+    href: "/console/billing",
+    description:
+      "How billing works per workspace, plans and pricing, spend limits, usage and unpaid-invoice blocks, invoices, refunds, and Vercel Marketplace billing.",
+  },
+  {
+    title: "Check Prisma Postgres limits",
+    href: "/postgres/database/limits",
+    description:
+      "Per-plan connection, storage, database count, and timeout limits for Prisma Postgres.",
+  },
+  {
     title: "Run Prisma Postgres locally",
     href: "/local-development/postgres",
     description:
@@ -230,6 +242,14 @@ export const llmsSections: LLMsSection[] = [
     description:
       "Prisma Console and the REST API for managing projects, environments, and deployments.",
     prefixes: ["/console", "/rest-api"],
+    excludePrefixes: ["/console/billing", "/console/account", "/console/workspaces"],
+  },
+  {
+    slug: "billing-and-account",
+    title: "Billing and Account",
+    description:
+      "Plans and pricing, how billing works, spend limits, usage and unpaid-invoice blocks, invoices and payments, refunds, Vercel Marketplace billing, sign-in, account email and deletion, notification emails, and workspace members.",
+    prefixes: ["/console/billing", "/console/account", "/console/workspaces"],
   },
   {
     slug: "storage",
