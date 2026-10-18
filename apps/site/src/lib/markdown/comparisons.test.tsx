@@ -515,9 +515,10 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   assert.doesNotMatch(sections, /PageAiActions/);
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /kysely: "\/compare\/kysely\.md"/);
-  assert.match(article, /header className="bg-muted\/50"/);
+  assert.match(article, /pt-32 sm:pt-40/);
+  assert.match(article, /header className="mx-auto max-w-site px-6 sm:px-8"/);
+  assert.match(article, /rounded-2xl bg-muted\/50 px-6 py-10 sm:px-12 sm:py-14 lg:px-16/);
   assert.match(article, /overflow-x-clip/);
-  assert.doesNotMatch(article, /rounded-2xl bg-muted\/50/);
   assert.doesNotMatch(article, /w-screen|100vw/);
   const byline = readFileSync(join(compareDir, "byline.tsx"), "utf8");
   assert.match(byline, /linkedin\.com\/in\/martjvr/);
