@@ -104,7 +104,7 @@ function TocList({
             href={`#${item.id}`}
             aria-current={item.id === active ? "location" : undefined}
             onClick={() => onChoose(item.id)}
-            className="-ml-0.5 block border-l-2 border-transparent py-2.5 pl-3.5 transition-colors duration-200 hover:text-foreground motion-reduce:transition-none aria-[current=location]:border-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
+            className="-ml-0.5 flex min-h-11 items-center border-l-2 border-transparent py-2.5 pl-3.5 transition-colors duration-200 hover:text-foreground motion-reduce:transition-none aria-[current=location]:border-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
           >
             {item.label}
           </a>

@@ -3,8 +3,8 @@
 import { useCallback, type MouseEvent, type ReactNode } from "react";
 
 /**
- * Hovering or focusing a mapped line in any same-query tab highlights its
- * counterparts (force-mounted, so the group is marked even in hidden tabs).
+ * Hovering or focusing a mapped line highlights its counterparts in the
+ * open tab. Inactive tabs are not mounted, so the mapping is in-tab only.
  */
 export function SameQueryHighlight({ children }: { children: ReactNode }) {
   const mark = useCallback((event: MouseEvent<HTMLDivElement> | { target: EventTarget }) => {

@@ -267,17 +267,17 @@ export function getKyselyPageContent() {
                 SQL sent
               </CodeBlockTabsTrigger>
             </CodeBlockTabsList>
-            <CodeBlockTab value="kysely" forceMount className="data-[state=inactive]:hidden">
+            <CodeBlockTab value="kysely" forceMount={false}>
               <CodeBlock className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.kysely, "typescript", kyselyGroups)}
               </CodeBlock>
             </CodeBlockTab>
-            <CodeBlockTab value="prisma" forceMount className="data-[state=inactive]:hidden">
+            <CodeBlockTab value="prisma" forceMount={false}>
               <CodeBlock className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.prisma, "typescript", prismaGroups)}
               </CodeBlock>
             </CodeBlockTab>
-            <CodeBlockTab value="sql" forceMount className="data-[state=inactive]:hidden">
+            <CodeBlockTab value="sql" forceMount={false}>
               <CodeBlock className={CODE_BLOCK}>
                 {highlight(SAME_QUERY.sql, "sql", sqlGroups)}
               </CodeBlock>
@@ -448,10 +448,10 @@ export function getKyselyPageContent() {
               contract.prisma
             </CodeBlockTabsTrigger>
           </CodeBlockTabsList>
-          <CodeBlockTab value="kysely-types" forceMount className="data-[state=inactive]:hidden">
+          <CodeBlockTab value="kysely-types" forceMount={false}>
             <CodeBlock className={CODE_BLOCK}>{highlight(SWITCH_KYSELY_TYPES)}</CodeBlock>
           </CodeBlockTab>
-          <CodeBlockTab value="contract" forceMount className="data-[state=inactive]:hidden">
+          <CodeBlockTab value="contract" forceMount={false}>
             <CodeBlock className={CODE_BLOCK}>
               {highlight(SWITCH_PRISMA_CONTRACT, "prisma")}
             </CodeBlock>

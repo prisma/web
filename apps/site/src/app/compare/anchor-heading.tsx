@@ -35,6 +35,7 @@ export function AnchorHeading({
   const Tag = level === 2 ? "h2" : "h3";
   const end = placement === "end";
   const [copied, setCopied] = useState(false);
+  const [inTabOrder, setInTabOrder] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const label = headingText(children).trim();
 
@@ -55,8 +56,18 @@ export function AnchorHeading({
   }
 
   return (
-    <div className="group/heading relative">
-      <Tag id={id} className={className}>
+    <div
+      className="group/heading relative"
+      onMouseEnter={() => setInTabOrder(true)}
+      onMouseLeave={() => setInTabOrder(false)}
+      onFocusCapture={() => setInTabOrder(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setInTabOrder(false);
+        }
+      }}
+    >
+      <Tag id={id} tabIndex={-1} className={className}>
         {children}
       </Tag>
       <span
@@ -65,8 +76,9 @@ export function AnchorHeading({
         <button
           type="button"
           onClick={copy}
+          tabIndex={inTabOrder ? 0 : -1}
           aria-label={label ? `Copy link to “${label}”` : "Copy link to this section"}
-          className="relative flex size-6 items-center justify-center rounded-md text-foreground/40 opacity-0 transition-[opacity,color] duration-150 group-hover/heading:opacity-100 hover:text-foreground/70 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 motion-reduce:transition-none after:absolute after:-inset-2.5 after:content-['']"
+          className="relative flex size-6 items-center justify-center rounded-md text-foreground/40 opacity-0 transition-[opacity,color] duration-150 group-hover/heading:opacity-100 group-focus-within/heading:opacity-100 hover:text-foreground/70 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 motion-reduce:transition-none after:absolute after:-inset-2.5 after:content-['']"
         >
           {copied ? (
             <Check className="size-3.5" strokeWidth={2} aria-hidden />

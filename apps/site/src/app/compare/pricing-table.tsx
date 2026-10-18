@@ -9,6 +9,7 @@ import {
   TH_COL,
   TH_ROW,
 } from "./table-styles";
+import { TableScrollRegion } from "./table-scroll-region";
 
 export type PricingColumn = {
   label: string;
@@ -49,11 +50,9 @@ export function ComparisonPricingTable({
   const columnWidth = `${78 / columns.length}%`;
   return (
     <>
-      <div
+      <TableScrollRegion
+        labelledBy={labelledBy}
         className={`${TABLE_FRAME} ${TABLE_STACK}`}
-        role="region"
-        aria-labelledby={labelledBy}
-        tabIndex={0}
         style={SCROLL_HINT}
       >
         <table
@@ -99,7 +98,7 @@ export function ComparisonPricingTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScrollRegion>
       {note ? <p className={QUIET_NOTE}>{note}</p> : null}
     </>
   );

@@ -1,6 +1,6 @@
 /** Table cell padding comes from `.answer-prose`; these set the frame, type and column widths. */
 export const TABLE_FRAME =
-  "compare-table-frame relative overflow-x-auto max-sm:overflow-visible rounded-xl border border-black/[0.08] outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "compare-table-frame relative overflow-x-auto max-sm:overflow-visible rounded-xl border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * Below 640px each row becomes a labelled card (`display: block` + `data-label`).

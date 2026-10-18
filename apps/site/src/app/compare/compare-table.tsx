@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SCROLL_HINT, STICKY, TABLE_FRAME, TABLE_STACK, TD, TH_COL, TH_ROW } from "./table-styles";
+import { TableScrollRegion } from "./table-scroll-region";
 
 export type CompareTableRow = {
   label: string;
@@ -24,11 +25,9 @@ export type CompareTableProps = {
 export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: CompareTableProps) {
   const columnWidth = `${78 / columns.length}%`;
   return (
-    <div
+    <TableScrollRegion
+      labelledBy={labelledBy}
       className={`${TABLE_FRAME} ${TABLE_STACK}`}
-      role="region"
-      aria-labelledby={labelledBy}
-      tabIndex={0}
       style={SCROLL_HINT}
     >
       <table
@@ -62,6 +61,6 @@ export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: Co
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScrollRegion>
   );
 }

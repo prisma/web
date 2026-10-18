@@ -6,9 +6,13 @@ import * as mongoose from "@/app/compare/mongoose/_content";
 import { COMPARISON_CTA, ORM_COMPARISON_CTA } from "@/app/compare/_content";
 import { CompareTable } from "@/app/compare/compare-table";
 import { ComparisonPricingTable } from "@/app/compare/pricing-table";
+import { TABLE_FRAME } from "@/app/compare/table-styles";
 import { stripFaqAnswerMarkup } from "@/lib/faq-answer";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { Children, isValidElement, type ReactNode } from "react";
 import { COMPARISONS, COMPARISON_PATHS } from "@/app/compare/comparisons";
 import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
@@ -379,4 +383,46 @@ test("same-query line groups stay inside each tab's line count", () => {
     for (const line of group.prisma) assert.ok(line >= 0 && line < count(kysely.SAME_QUERY.prisma));
     for (const line of group.sql) assert.ok(line >= 0 && line < count(kysely.SAME_QUERY.sql));
   }
+});
+
+const compareDir = join(dirname(fileURLToPath(import.meta.url)), "../../app/compare");
+
+test("comparison tables use the border token and only tab-stop when they scroll", () => {
+  assert.match(TABLE_FRAME, /\bborder-border\b/);
+  assert.doesNotMatch(TABLE_FRAME, /border-black\/\[0\.08\]/);
+  for (const file of ["compare-table.tsx", "pricing-table.tsx"]) {
+    const source = readFileSync(join(compareDir, file), "utf8");
+    assert.doesNotMatch(source, /tabIndex=\{0\}/);
+    assert.match(source, /TableScrollRegion/);
+  }
+});
+
+test("kysely code tabs stay unmounted when closed, while Markdown still has every snippet", () => {
+  const source = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
+  assert.equal([...source.matchAll(/forceMount=\{false\}/g)].length, 5);
+  assert.doesNotMatch(source, /forceMount(?!=\{false\})/);
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes(`**Kysely**\n\n\`\`\`ts\n${kysely.SAME_QUERY.kysely}\n\`\`\``));
+  assert.ok(markdown.includes(`**Prisma ORM**\n\n\`\`\`ts\n${kysely.SAME_QUERY.prisma}\n\`\`\``));
+  assert.ok(markdown.includes(`**SQL sent**\n\n\`\`\`sql\n${kysely.SAME_QUERY.sql}\n\`\`\``));
+  assert.ok(
+    markdown.includes(`**Kysely types**\n\n\`\`\`ts\n${kysely.SWITCH_KYSELY_TYPES}\n\`\`\``),
+  );
+  assert.ok(
+    markdown.includes(`**contract.prisma**\n\n\`\`\`prisma\n${kysely.SWITCH_PRISMA_CONTRACT}\n\`\`\``),
+  );
+});
+
+test("kysely code lines pad past the Copy pill and preload the unbracketed mono face", () => {
+  const highlight = readFileSync(join(compareDir, "kysely/highlight.tsx"), "utf8");
+  assert.match(highlight, /className="line pl-4 pr-12"/);
+  const page = readFileSync(join(compareDir, "kysely/page.tsx"), "utf8");
+  assert.match(page, /src: "\.\/mona-sans-mono\.woff2"/);
+  assert.doesNotMatch(page, /preload:\s*false/);
+  const toc = readFileSync(join(compareDir, "article-toc.tsx"), "utf8");
+  assert.match(toc, /min-h-11 items-center/);
+  const heading = readFileSync(join(compareDir, "anchor-heading.tsx"), "utf8");
+  assert.match(heading, /tabIndex=\{inTabOrder \? 0 : -1\}/);
 });

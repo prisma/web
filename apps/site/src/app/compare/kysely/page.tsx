@@ -11,13 +11,16 @@ import { FAQ, KYSELY_AUTHOR, KYSELY_PATH, KYSELY_TITLE } from "./_content";
 import { getKyselyArticleFields } from "./facts";
 import { KyselyPage } from "./_sections";
 
-/** The docs' code face. Preload is off so the CSS URL and the preload URL cannot disagree. */
+/**
+ * The docs' code face. The file is a copy of MonaSansMonoVF[wght].woff2
+ * without brackets in the name so the preload href and @font-face url match
+ * (encoded `%5Bwght%5D` vs raw `[wght]` used to unused-preload the face).
+ */
 const monaSansMono = localFont({
-  src: "../../../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
+  src: "./mona-sans-mono.woff2",
   variable: "--font-code",
   display: "swap",
   weight: "200 900",
-  preload: false,
 });
 
 export const metadata = getComparisonMetadata("kysely");
