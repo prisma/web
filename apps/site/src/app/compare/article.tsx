@@ -128,7 +128,7 @@ export function comparisonClosingCta(kind: "orm" | "postgres" = "postgres") {
             href={CREATE_DB_WEB}
             className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
           >
-            Create one instantly
+            Create an instant database
           </a>
           .
         </p>

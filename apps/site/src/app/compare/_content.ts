@@ -48,7 +48,7 @@ export const ORM_HERO_CTAS = {
     href: "/docs/prisma-orm/quickstart/postgresql",
   },
   secondary: {
-    label: "Create a database",
+    label: "Create an instant database",
     href: CREATE_DB_WEB,
   },
 } as const;

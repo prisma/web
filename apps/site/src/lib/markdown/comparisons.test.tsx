@@ -302,7 +302,7 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   assert.ok(markdown.includes("Read the ORM docs"));
   assert.match(
     markdown,
-    /Need a database\? \[Create one instantly\]\(https:\/\/create-db\.prisma\.io\/web\)/,
+    /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
   );
   assert.doesNotMatch(markdown, /Free to start, no credit card required/);
   assert.doesNotMatch(markdown, /Create a database and start building in minutes/);
@@ -310,14 +310,14 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   assert.ok(
     markdown.includes("[Get started with Prisma ORM](/docs/prisma-orm/quickstart/postgresql)"),
   );
-  assert.ok(markdown.includes(`[Create a database](${CREATE_DB_WEB})`));
+  assert.ok(markdown.includes(`[Create an instant database](${CREATE_DB_WEB})`));
   assert.doesNotMatch(
     markdown.slice(0, markdown.indexOf("## Add Prisma ORM to an existing project")),
     /console\.prisma\.io/,
   );
   assert.ok(markdown.includes("[Get started with Prisma Postgres](https://console.prisma.io)"));
   assert.equal(ORM_HERO_CTAS.secondary.href, CREATE_DB_WEB);
-  assert.equal(ORM_HERO_CTAS.secondary.label, "Create a database");
+  assert.equal(ORM_HERO_CTAS.secondary.label, "Create an instant database");
   assert.doesNotMatch(CREATE_DB_WEB, /console\.prisma\.io|^\/docs/);
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /comparisonDisclosure/);
@@ -328,10 +328,10 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   const mongooseMarkdown = renderMarkdownDocument(mongoosePage);
   assert.ok(mongooseMarkdown.includes("Prisma ORM is free and open source, and always will be."));
   assert.ok(mongooseMarkdown.includes("Add the library"));
-  assert.ok(mongooseMarkdown.includes(`[Create a database](${CREATE_DB_WEB})`));
+  assert.ok(mongooseMarkdown.includes(`[Create an instant database](${CREATE_DB_WEB})`));
   assert.match(
     mongooseMarkdown,
-    /Need a database\? \[Create one instantly\]\(https:\/\/create-db\.prisma\.io\/web\)/,
+    /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
   );
   assert.doesNotMatch(mongooseMarkdown, /Free to start, no credit card required/);
   const convexPage = getMarkdownPage("/compare/convex");
