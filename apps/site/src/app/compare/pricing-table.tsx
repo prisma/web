@@ -58,7 +58,9 @@ export function ComparisonPricingTable({
       >
         <table
           className="w-full border-collapse text-left"
-          style={{ minWidth: `${12 + 11 * columns.length}rem`, overflow: "visible" }}
+          style={{
+            ["--compare-table-min-width" as string]: `${12 + 11 * columns.length}rem`,
+          }}
         >
           <thead>
             <tr>

@@ -31,7 +31,10 @@ export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: Co
       tabIndex={0}
       style={SCROLL_HINT}
     >
-      <table className="w-full border-collapse text-left" style={{ minWidth, overflow: "visible" }}>
+      <table
+        className="w-full border-collapse text-left"
+        style={{ ["--compare-table-min-width" as string]: minWidth }}
+      >
         <thead>
           <tr>
             <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "22%" }}>
