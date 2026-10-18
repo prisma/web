@@ -7,6 +7,7 @@ import {
 } from "@/lib/comparison-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
+import { comparisonAuthorPerson } from "../byline";
 import { FAQ, KYSELY_AUTHOR, KYSELY_PATH, KYSELY_TITLE } from "./_content";
 import { getKyselyArticleFields } from "./facts";
 import { KyselyPage } from "./_sections";
@@ -38,11 +39,7 @@ function articleStructuredData() {
         ...article,
         ...getKyselyArticleFields(),
         image: getComparisonOgImageUrl("kysely"),
-        author: {
-          "@type": "Person",
-          name: KYSELY_AUTHOR.name,
-          url: new URL(KYSELY_AUTHOR.path, getBaseUrl()).toString(),
-        },
+        author: comparisonAuthorPerson(KYSELY_AUTHOR, getBaseUrl()),
       },
       ...rest,
     ],

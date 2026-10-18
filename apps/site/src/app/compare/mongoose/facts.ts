@@ -8,6 +8,7 @@ import {
   PRICING,
   TOOLS,
 } from "./_content";
+import { getMongooseReadingStats } from "./_sections";
 
 export type FactValue = {
   value: string | null;
@@ -98,9 +99,12 @@ export function getMongooseAboutEntities() {
 
 /** Article JSON-LD fields that sit on top of the shared comparison graph. */
 export function getMongooseArticleFields() {
+  const { wordCount, timeRequired } = getMongooseReadingStats();
   return {
     datePublished: MONGOOSE_PUBLISHED.iso,
     dateModified: MONGOOSE_UPDATED.iso,
+    wordCount,
+    timeRequired,
     about: getMongooseAboutEntities(),
   };
 }

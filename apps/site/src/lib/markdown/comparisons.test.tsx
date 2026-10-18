@@ -1,9 +1,13 @@
 import * as convex from "@/app/compare/convex/_content";
 import * as kysely from "@/app/compare/kysely/_content";
+import { MARTIN_SOCIALS, comparisonAuthorPerson } from "@/app/compare/byline";
 import { getKyselyArticleFields, getKyselyFacts } from "@/app/compare/kysely/facts";
 import { GET as getKyselyFactsResponse } from "@/app/compare/kysely.json/route";
+import { getKyselyReadingStats } from "@/app/compare/kysely/_sections";
 import * as mongoose from "@/app/compare/mongoose/_content";
 import { getMongooseArticleFields, getMongooseFacts } from "@/app/compare/mongoose/facts";
+import { getMongooseReadingStats } from "@/app/compare/mongoose/_sections";
+import { WORDS_PER_MINUTE, readingMinutes } from "@/app/compare/reading-time";
 import { GET as getMongooseFactsResponse } from "@/app/compare/mongoose.json/route";
 import { COMPARISON_CTA, ORM_COMPARISON_CTA } from "@/app/compare/_content";
 import { CompareTable } from "@/app/compare/compare-table";
@@ -18,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { Children, isValidElement, type ReactNode } from "react";
 import { COMPARISONS, COMPARISON_PATHS } from "@/app/compare/comparisons";
 import { getComparisonMetadata, getComparisonStructuredData } from "@/lib/comparison-metadata";
+import { getBaseUrl } from "@/lib/url";
 import { getAgentMarkdownRewritePathname } from "@/lib/agent-markdown";
 import { getMarkdownPage, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { renderComparisonContent } from "./comparison-content";
@@ -116,11 +121,18 @@ test("Kysely Markdown carries the byline and each code tab as a labelled TypeScr
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
+  const minutes = getKyselyReadingStats().minutes;
   assert.ok(
     markdown.includes(
-      `By [${kysely.KYSELY_AUTHOR.name}](${kysely.KYSELY_AUTHOR.path}) · Updated ${kysely.KYSELY_UPDATED.label}`,
+      `By [${kysely.KYSELY_AUTHOR.name}](${kysely.KYSELY_AUTHOR.path}) · Updated ${kysely.KYSELY_UPDATED.label} · ${minutes} min read`,
     ),
   );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
   assert.ok(markdown.includes(`**Kysely**\n\n\`\`\`ts\n${kysely.SAME_QUERY.kysely}\n\`\`\``));
   assert.ok(markdown.includes(`**Prisma ORM**\n\n\`\`\`ts\n${kysely.SAME_QUERY.prisma}\n\`\`\``));
   assert.ok(markdown.includes(`**SQL sent**\n\n\`\`\`sql\n${kysely.SAME_QUERY.sql}\n\`\`\``));
@@ -345,10 +357,37 @@ test("kysely JSON facts carry a source and dateChecked on every value", async ()
   assert.deepEqual(await response.json(), facts);
 
   const fields = getKyselyArticleFields();
+  const stats = getKyselyReadingStats();
   assert.equal(fields.datePublished, kysely.KYSELY_PUBLISHED.iso);
   assert.equal(fields.dateModified, kysely.KYSELY_UPDATED.iso);
+  assert.equal(WORDS_PER_MINUTE, 225);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
   assert.equal(fields.about[0]?.name, "Kysely");
   assert.equal(fields.about[1]?.name, "Prisma ORM");
+});
+
+test("Kysely and Mongoose Article JSON-LD authors are a Person with confirmed sameAs", () => {
+  const hrefs = MARTIN_SOCIALS.map((social) => social.href);
+  assert.deepEqual(hrefs, [
+    "https://x.com/vanrensbird",
+    "https://www.linkedin.com/in/martjvr/",
+    "https://github.com/vanrensbird",
+  ]);
+  for (const author of [kysely.KYSELY_AUTHOR, mongoose.MONGOOSE_AUTHOR]) {
+    const person = comparisonAuthorPerson(author, getBaseUrl());
+    assert.equal(person["@type"], "Person");
+    assert.equal(person.name, author.name);
+    assert.equal(person.url, new URL(author.path, getBaseUrl()).toString());
+    assert.deepEqual(person.sameAs, hrefs);
+  }
+  for (const page of ["kysely/page.tsx", "mongoose/page.tsx"]) {
+    const source = readFileSync(join(compareDir, page), "utf8");
+    assert.match(source, /comparisonAuthorPerson\(/);
+    assert.doesNotMatch(source, /sameAs:\s*\[/);
+  }
 });
 
 test("kysely metadata advertises Markdown and JSON alternates", () => {
@@ -476,6 +515,15 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   assert.doesNotMatch(sections, /PageAiActions/);
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /kysely: "\/compare\/kysely\.md"/);
+  assert.match(article, /header className="bg-muted\/50"/);
+  assert.match(article, /overflow-x-clip/);
+  assert.doesNotMatch(article, /rounded-2xl bg-muted\/50/);
+  assert.doesNotMatch(article, /w-screen|100vw/);
+  const byline = readFileSync(join(compareDir, "byline.tsx"), "utf8");
+  assert.match(byline, /linkedin\.com\/in\/martjvr/);
+  assert.match(byline, /x\.com\/vanrensbird/);
+  assert.match(byline, /github\.com\/vanrensbird/);
+  assert.match(byline, /size-11/);
   const toc = readFileSync(join(compareDir, "article-toc.tsx"), "utf8");
   assert.match(toc, /PageAiActions/);
   assert.match(toc, /markdownPath/);
@@ -504,11 +552,18 @@ test("Mongoose Markdown carries the byline and each code tab as a labelled TypeS
   const page = getMarkdownPage("/compare/mongoose");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
+  const minutes = getMongooseReadingStats().minutes;
   assert.ok(
     markdown.includes(
-      `By [${mongoose.MONGOOSE_AUTHOR.name}](${mongoose.MONGOOSE_AUTHOR.path}) · Updated ${mongoose.MONGOOSE_UPDATED.label}`,
+      `By [${mongoose.MONGOOSE_AUTHOR.name}](${mongoose.MONGOOSE_AUTHOR.path}) · Updated ${mongoose.MONGOOSE_UPDATED.label} · ${minutes} min read`,
     ),
   );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
   assert.ok(markdown.includes(`**Mongoose**\n\n\`\`\`ts\n${mongoose.SAME_QUERY.mongoose}\n\`\`\``));
   assert.ok(markdown.includes(`**Prisma ORM**\n\n\`\`\`ts\n${mongoose.SAME_QUERY.prisma}\n\`\`\``));
   assert.ok(
@@ -659,8 +714,13 @@ test("mongoose JSON facts carry a source and dateChecked on every value", async 
   assert.deepEqual(await response.json(), facts);
 
   const fields = getMongooseArticleFields();
+  const stats = getMongooseReadingStats();
   assert.equal(fields.datePublished, mongoose.MONGOOSE_PUBLISHED.iso);
   assert.equal(fields.dateModified, mongoose.MONGOOSE_UPDATED.iso);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
   assert.equal(fields.about[0]?.name, "Mongoose");
   assert.equal(fields.about[1]?.name, "Prisma ORM");
 });

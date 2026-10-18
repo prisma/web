@@ -8,6 +8,7 @@ import {
   PRICING,
   TOOLS,
 } from "./_content";
+import { getKyselyReadingStats } from "./_sections";
 
 export type FactValue = {
   value: string | null;
@@ -98,9 +99,12 @@ export function getKyselyAboutEntities() {
 
 /** Article JSON-LD fields that sit on top of the shared comparison graph. */
 export function getKyselyArticleFields() {
+  const { wordCount, timeRequired } = getKyselyReadingStats();
   return {
     datePublished: KYSELY_PUBLISHED.iso,
     dateModified: KYSELY_UPDATED.iso,
+    wordCount,
+    timeRequired,
     about: getKyselyAboutEntities(),
   };
 }

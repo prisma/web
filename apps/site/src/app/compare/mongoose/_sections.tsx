@@ -15,6 +15,8 @@ import {
 import { TESTIMONIALS } from "@/components/sections/testimonials-data";
 import { AnchorHeading } from "../anchor-heading";
 import { CompareArticle, comparisonClosingCta, comparisonHeroCtas } from "../article";
+import { comparisonByline } from "../byline";
+import { articleReadingStats } from "../reading-time";
 import { CompareTable } from "../compare-table";
 import { ComparisonPricingTable } from "../pricing-table";
 import { QUIET_LINK, QUIET_NOTE } from "../table-styles";
@@ -151,7 +153,7 @@ function SourceLink({ href, children }: { href: string; children: string }) {
 }
 
 /** Build the shared content tree for the HTML page and its Markdown rendition. */
-export function getMongoosePageContent() {
+function buildMongoosePage(minutes: number) {
   const mongooseGroups = lineGroupMap(SAME_QUERY_LINE_GROUPS, "mongoose");
   const prismaGroups = lineGroupMap(SAME_QUERY_LINE_GROUPS, "prisma");
   const mongoGroups = lineGroupMap(SAME_QUERY_LINE_GROUPS, "mongo");
@@ -175,30 +177,7 @@ export function getMongoosePageContent() {
         and query with <code>find()</code> and <code>populate()</code>.
       </p>
       {comparisonHeroCtas("orm")}
-      <p className="mt-8 flex items-center gap-3 text-sm leading-5 text-muted-foreground">
-        <img
-          src={MONGOOSE_AUTHOR.image}
-          alt=""
-          width={28}
-          height={28}
-          className="size-7 shrink-0 rounded-full bg-neutral-200 object-cover"
-        />
-        <span className="flex flex-col sm:flex-row sm:items-center sm:gap-x-2">
-          <span>
-            By{" "}
-            <a
-              href={MONGOOSE_AUTHOR.path}
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              {MONGOOSE_AUTHOR.name}
-            </a>
-          </span>{" "}
-          <span className="hidden text-black/25 sm:inline">·</span>{" "}
-          <span>
-            Updated <time dateTime={MONGOOSE_UPDATED.iso}>{MONGOOSE_UPDATED.label}</time>
-          </span>
-        </span>
-      </p>
+      {comparisonByline({ author: MONGOOSE_AUTHOR, updated: MONGOOSE_UPDATED, minutes })}
       <p className="mt-3 max-w-[32rem] text-sm leading-6 text-muted-foreground">
         Prisma makes Prisma ORM. Mongoose figures come from the pages listed under{" "}
         <a href="#sources" className={QUIET_LINK}>
@@ -591,6 +570,17 @@ export function getMongoosePageContent() {
       </div>
     </section>,
   ];
+}
+
+const MONGOOSE_READING = articleReadingStats(buildMongoosePage(1));
+
+export function getMongooseReadingStats() {
+  return articleReadingStats(buildMongoosePage(MONGOOSE_READING.minutes));
+}
+
+/** Build the shared content tree for the HTML page and its Markdown rendition. */
+export function getMongoosePageContent() {
+  return buildMongoosePage(MONGOOSE_READING.minutes);
 }
 
 /** Render the comparison in the guide article frame. */

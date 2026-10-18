@@ -131,8 +131,9 @@ function articleParts(children: ReactNode) {
 }
 
 /**
- * The same article frame as the product guides: header card, heading list,
- * reading column, closing action, and related links. The directory stays separate.
+ * The same article frame as the product guides: full-bleed hero band, heading
+ * list, reading column, closing action, and related links. Title, dek, CTAs
+ * and byline stay on the existing content measure. The directory stays separate.
  */
 export function CompareArticle({ slug, children }: { slug: ComparisonSlug; children: ReactNode }) {
   const entry = COMPARISONS.find((item) => item.slug === slug);
@@ -141,23 +142,25 @@ export function CompareArticle({ slug, children }: { slug: ComparisonSlug; child
   const related = COMPARISONS.filter((item) => item.slug !== slug);
 
   return (
-    <article className="bg-background pb-24 pt-32 sm:pt-40">
-      <header className="mx-auto max-w-site px-6 sm:px-8">
-        <div className="sm:px-12 lg:px-16">
-          <div className="max-w-[54rem] rounded-2xl bg-muted/50 px-6 py-10 sm:px-12 sm:py-14">
-            <nav
-              aria-label="Breadcrumb"
-              className="mb-7 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
-            >
-              <Link href="/compare" className="hover:text-foreground">
-                Compare
-              </Link>
-              <ChevronRight className="size-3.5" aria-hidden />
-              <span aria-current="page" className="text-foreground">
-                {entry.competitor}
-              </span>
-            </nav>
-            {intro}
+    <article className="overflow-x-clip bg-background pb-24">
+      <header className="bg-muted/50">
+        <div className="mx-auto max-w-site px-6 sm:px-8">
+          <div className="sm:px-12 lg:px-16">
+            <div className="max-w-[54rem] px-6 pb-10 pt-32 sm:px-12 sm:pb-14 sm:pt-40">
+              <nav
+                aria-label="Breadcrumb"
+                className="mb-7 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+              >
+                <Link href="/compare" className="hover:text-foreground">
+                  Compare
+                </Link>
+                <ChevronRight className="size-3.5" aria-hidden />
+                <span aria-current="page" className="text-foreground">
+                  {entry.competitor}
+                </span>
+              </nav>
+              {intro}
+            </div>
           </div>
         </div>
       </header>

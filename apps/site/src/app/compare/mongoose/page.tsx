@@ -7,6 +7,7 @@ import {
 } from "@/lib/comparison-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
+import { comparisonAuthorPerson } from "../byline";
 import { FAQ, MONGOOSE_AUTHOR, MONGOOSE_PATH, MONGOOSE_TITLE } from "./_content";
 import { getMongooseArticleFields } from "./facts";
 import { MongoosePage } from "./_sections";
@@ -37,11 +38,7 @@ function articleStructuredData() {
         ...article,
         ...getMongooseArticleFields(),
         image: getComparisonOgImageUrl("mongoose"),
-        author: {
-          "@type": "Person",
-          name: MONGOOSE_AUTHOR.name,
-          url: new URL(MONGOOSE_AUTHOR.path, getBaseUrl()).toString(),
-        },
+        author: comparisonAuthorPerson(MONGOOSE_AUTHOR, getBaseUrl()),
       },
       ...rest,
     ],
