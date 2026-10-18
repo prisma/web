@@ -18,6 +18,7 @@ const SECTION_H2 = "font-heading text-[1.375rem] leading-[1.3] font-medium";
  */
 const AI_MARKDOWN: Partial<Record<ComparisonSlug, string>> = {
   kysely: "/compare/kysely.md",
+  mongoose: "/compare/mongoose.md",
 };
 
 const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
@@ -36,15 +37,18 @@ const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
     { id: "sources", label: "Sources" },
   ],
   mongoose: [
-    { id: "choose", label: "When to choose", also: ["choose-mongoose"] },
+    { id: "choose", label: "When to choose" },
+    { id: "same-query", label: "Same query" },
     { id: "feature-table", label: "Features" },
-    { id: "where-mongoose", label: "Where each fits", also: ["where-prisma"] },
+    { id: "databases", label: "Databases" },
     { id: "apart", label: "Why Prisma ORM" },
     { id: "pricing", label: "Pricing" },
-    { id: "wrong-choice", label: "Trade-offs" },
+    { id: "wrong-choice", label: "When it is the wrong choice" },
+    { id: "same-job", label: "Each task" },
     { id: "migrate", label: "Switching", also: ["migrate-back"] },
     { id: "proof", label: "What teams say" },
     { id: "faq", label: "FAQ", also: ["next"] },
+    { id: "sources", label: "Sources" },
   ],
   convex: [
     { id: "choose", label: "When to choose", also: ["choose-convex"] },

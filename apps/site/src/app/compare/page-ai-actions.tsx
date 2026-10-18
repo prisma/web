@@ -13,19 +13,30 @@ const COPY_LABEL = "Copy this page as Markdown";
 const ICON =
   "inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground/80 transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/70 disabled:opacity-60";
 
-/** Prompt every Open-with-AI logo prefills. `{PAGE_MD_URL}` is the page's `.md` alternate. */
-export function choosePrompt(pageMdUrl: string) {
-  return `Read this article and treat it as the source of truth:
-
-${pageMdUrl}
-
-I am choosing between Prisma ORM and Kysely for a TypeScript app. Using only what the article states, plus my answers:
+const KYSELY_PROMPT = `I am choosing between Prisma ORM and Kysely for a TypeScript app. Using only what the article states, plus my answers:
 
 1. Tell me which tool fits if I already have SQL I like vs if I want a schema-first workflow.
 2. Call out the real tradeoffs (type safety, migrations, raw SQL, dialects) without selling.
 3. Give me the first commands to try the one you recommend.
 
 Ask me up to three short questions if you need my database, team size, or whether I already write SQL.`;
+
+const MONGOOSE_PROMPT = `I am choosing between Prisma ORM and Mongoose for a TypeScript app. Using only what the article states, plus my answers:
+
+1. Tell me which tool fits if my schema lives next to the model in application code vs if I want a schema-first contract file.
+2. Call out the real tradeoffs (MongoDB-only vs PostgreSQL too, populate vs include, middleware, migrations, early access) without selling.
+3. Give me the first commands to try the one you recommend.
+
+Ask me up to three short questions if you need whether I already use MongoDB, whether I use populate on arrays of ids, or whether I need PostgreSQL as well.`;
+
+/** Prompt every Open-with-AI logo prefills. The page's `.md` alternate is the source of truth. */
+export function choosePrompt(pageMdUrl: string) {
+  const body = pageMdUrl.includes("/compare/mongoose.md") ? MONGOOSE_PROMPT : KYSELY_PROMPT;
+  return `Read this article and treat it as the source of truth:
+
+${pageMdUrl}
+
+${body}`;
 }
 
 function toolLinks(markdownUrl: string) {

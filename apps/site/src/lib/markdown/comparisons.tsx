@@ -10,6 +10,7 @@ import {
 import { getConvexPageContent } from "@/app/compare/convex/_sections";
 import { CHECKED as KYSELY_CHECKED, KYSELY_UPDATED } from "@/app/compare/kysely/_content";
 import { getKyselyPageContent } from "@/app/compare/kysely/_sections";
+import { CHECKED as MONGOOSE_CHECKED, MONGOOSE_UPDATED } from "@/app/compare/mongoose/_content";
 import { getMongoosePageContent } from "@/app/compare/mongoose/_sections";
 import type { MarkdownPage } from "@/lib/markdown-pages";
 import { heading, joinBlocks } from "./blocks";
@@ -59,7 +60,9 @@ export function getComparisonMarkdownPages(): Record<ComparisonPath, MarkdownPag
           renderBody: () => blocks.slice(2).join("\n\n"),
           ...(entry.slug === "kysely"
             ? { checked: KYSELY_CHECKED, dateModified: KYSELY_UPDATED.iso }
-            : {}),
+            : entry.slug === "mongoose"
+              ? { checked: MONGOOSE_CHECKED, dateModified: MONGOOSE_UPDATED.iso }
+              : {}),
         } satisfies MarkdownPage,
       ];
     }),

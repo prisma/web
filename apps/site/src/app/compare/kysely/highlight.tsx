@@ -57,6 +57,14 @@ const DATA_LANG: Record<HighlightLang, string> = {
   bash: "bash",
 };
 
+/** Persistent tints for same-query line groups. Cyan is the include; yellow is the filter. */
+const LINE_TINT: Record<string, string> = {
+  posts: "bg-prism-cyan-100",
+  author: "bg-prism-cyan-100",
+  email: "bg-prism-yellow-100",
+  published: "bg-prism-yellow-100",
+};
+
 /** A highlighted `pre` with the docs' code block layout: one flex row per line. */
 export function highlight(
   code: string,
@@ -79,13 +87,7 @@ export function highlight(
           index > 0 ? "\n" : null,
           <span
             key={index}
-            className={`line pl-4 pr-12 ${
-              lineGroups[index] === "posts"
-                ? "bg-prism-cyan-100"
-                : lineGroups[index] === "email"
-                  ? "bg-prism-yellow-100"
-                  : ""
-            }`}
+            className={`line pl-4 pr-12 ${LINE_TINT[lineGroups[index]] ?? ""}`}
             data-group={lineGroups[index] || undefined}
           >
             {line.length === 0

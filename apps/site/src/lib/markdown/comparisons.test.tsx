@@ -3,6 +3,8 @@ import * as kysely from "@/app/compare/kysely/_content";
 import { getKyselyArticleFields, getKyselyFacts } from "@/app/compare/kysely/facts";
 import { GET as getKyselyFactsResponse } from "@/app/compare/kysely.json/route";
 import * as mongoose from "@/app/compare/mongoose/_content";
+import { getMongooseArticleFields, getMongooseFacts } from "@/app/compare/mongoose/facts";
+import { GET as getMongooseFactsResponse } from "@/app/compare/mongoose.json/route";
 import { COMPARISON_CTA, ORM_COMPARISON_CTA } from "@/app/compare/_content";
 import { CompareTable } from "@/app/compare/compare-table";
 import { ComparisonPricingTable } from "@/app/compare/pricing-table";
@@ -490,9 +492,226 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   assert.match(ai, /Opens ChatGPT with this comparison and a prompt to help you choose/);
   assert.match(ai, /Read this article and treat it as the source of truth:/);
   assert.match(ai, /I am choosing between Prisma ORM and Kysely for a TypeScript app/);
+  assert.match(ai, /I am choosing between Prisma ORM and Mongoose for a TypeScript app/);
   assert.doesNotMatch(ai, /I want to ask questions about it/);
   assert.match(ai, /claude\.ai\/new/);
   assert.match(ai, /gemini\.google\.com\/app/);
   assert.match(ai, /perplexity\.ai\/search\/new/);
   assert.match(ai, /grok\.com/);
+});
+
+test("Mongoose Markdown carries the byline and each code tab as a labelled TypeScript fence", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(
+    markdown.includes(
+      `By [${mongoose.MONGOOSE_AUTHOR.name}](${mongoose.MONGOOSE_AUTHOR.path}) · Updated ${mongoose.MONGOOSE_UPDATED.label}`,
+    ),
+  );
+  assert.ok(markdown.includes(`**Mongoose**\n\n\`\`\`ts\n${mongoose.SAME_QUERY.mongoose}\n\`\`\``));
+  assert.ok(markdown.includes(`**Prisma ORM**\n\n\`\`\`ts\n${mongoose.SAME_QUERY.prisma}\n\`\`\``));
+  assert.ok(
+    markdown.includes(`**MongoDB sent**\n\n\`\`\`ts\n${mongoose.SAME_QUERY.mongo}\n\`\`\``),
+  );
+});
+
+test("mongoose Markdown keeps yes and no marks out of the feature table, and anchored headings intact", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const hosted = markdown.split("\n").find((line) => line.startsWith("| Hosted database |"));
+  assert.ok(hosted);
+  assert.ok(
+    hosted.startsWith("| Hosted database | None. Mongoose is a library. You bring MongoDB. |"),
+  );
+  assert.doesNotMatch(hosted, /\b(Yes|No)\b/);
+  assert.ok(markdown.includes("\n## When should I choose Mongoose or Prisma ORM?\n"));
+  assert.ok(markdown.includes("\n### The same ORM client on PostgreSQL\n"));
+  assert.ok(markdown.includes("\n### A migration plan that does not need the database\n"));
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
+});
+
+test("mongoose Markdown carries the database matrix and the task table as Markdown tables", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes("\n## Which databases do Prisma ORM and Mongoose support?\n"));
+  assert.ok(markdown.includes("| Database | Mongoose | Prisma ORM 8 | Prisma ORM 7 |"));
+  for (const row of mongoose.DATABASE_MATRIX) {
+    const cells = [row.mongoose, row.orm8, row.orm7].map((status) => status ?? "No");
+    assert.ok(
+      markdown.includes(`| ${row.database} | ${cells.join(" | ")} |`),
+      `missing matrix row: ${row.database}`,
+    );
+  }
+  assert.ok(
+    markdown.includes("| MongoDB | Supported | Early access | Use 6.19 |"),
+    "MongoDB ORM 7 follows the migrate guide, not the v7 databases page",
+  );
+  assert.ok(
+    markdown.includes("](/compare/mongoose#databases)"),
+    "Databases row links to the matrix",
+  );
+
+  assert.ok(markdown.includes("\n## How does each task look in Mongoose and Prisma ORM?\n"));
+  assert.ok(markdown.includes("| Task | Mongoose | Prisma ORM |"));
+  const plain = plainMarkdown(markdown);
+  for (const row of mongoose.SAME_JOB) {
+    const line = markdown.split("\n").find((text) => text.startsWith(`| ${row.task} |`));
+    assert.ok(line, `missing task row: ${row.task}`);
+    assert.ok(
+      plain.includes(stripFaqAnswerMarkup(row.mongoose)),
+      `missing Mongoose cell: ${row.task}`,
+    );
+    assert.ok(plain.includes(stripFaqAnswerMarkup(row.prisma)), `missing Prisma cell: ${row.task}`);
+  }
+});
+
+test("mongoose Markdown renders the remaining cards and drops the fit columns", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.equal(mongoose.APART.length, 2);
+  for (const card of mongoose.APART) {
+    assert.ok(markdown.includes(`\n### ${card.title}\n`), `missing card heading: ${card.title}`);
+  }
+  assert.doesNotMatch(markdown, /When is Mongoose the better fit\?/);
+  assert.doesNotMatch(markdown, /When is Prisma ORM the better fit\?/);
+  assert.doesNotMatch(markdown, /Where each fits/);
+  assert.doesNotMatch(markdown, /choose-mongoose/);
+});
+
+test("mongoose Markdown carries pricing as a table followed by the free tier note", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const section = markdown
+    .split("\n## How much do Prisma ORM and Mongoose cost?\n")[1]
+    ?.split("\n## ")[0];
+  assert.ok(section, "missing pricing section");
+  assert.ok(section.includes("| Cost | Mongoose | Prisma ORM |"));
+  for (const row of mongoose.PRICING) {
+    const line = section.split("\n").find((text) => text.startsWith(`| ${row.label} |`));
+    assert.ok(line, `missing pricing row: ${row.label}`);
+    assert.ok(plainMarkdown(line).includes(stripFaqAnswerMarkup(row.prisma)));
+  }
+  assert.match(
+    section.trimEnd(),
+    /\|\n\nPrisma Postgres has a Free plan: \$0 a month for 200,000 operations, 2 GB of storage, and 50 databases\. The \[pricing page\]\(\/pricing\) lists the paid plans\.$/,
+  );
+});
+
+test("mongoose Markdown opens with the check date and does not add a period after the title's question mark", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes(`dateModified: ${mongoose.MONGOOSE_UPDATED.iso}`));
+  assert.doesNotMatch(markdown, /code\?\./);
+  assert.doesNotMatch(markdown, /`[^`\n]+`\\\./);
+  assert.doesNotMatch(markdown, /\]\([^)]+\)\\\./);
+});
+
+test("mongoose Markdown carries the switch schema, contract, and commands", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(
+    markdown.includes(
+      `**Mongoose schema**\n\n\`\`\`ts\n${mongoose.SWITCH_MONGOOSE_SCHEMA}\n\`\`\``,
+    ),
+  );
+  assert.ok(
+    markdown.includes(
+      `**contract.prisma**\n\n\`\`\`prisma\n${mongoose.SWITCH_PRISMA_CONTRACT}\n\`\`\``,
+    ),
+  );
+  assert.ok(markdown.includes(`\`\`\`bash\n${mongoose.SWITCH_COMMANDS}\n\`\`\``));
+  assert.ok(markdown.includes("orm init --target mongodb"));
+  assert.doesNotMatch(markdown, /contract infer --output/);
+});
+
+test("mongoose JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getMongooseFacts();
+  assert.equal(facts.path, "/compare/mongoose");
+  assert.equal(facts.dateChecked, mongoose.MONGOOSE_UPDATED.iso);
+  assert.equal(facts.tools.mongoose.softwareVersion, "9.11.2");
+  assert.equal(facts.features.length, mongoose.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.mongoose.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.mongoose.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  for (const row of facts.databases) {
+    for (const side of [row.mongoose, row.orm8, row.orm7] as const) {
+      assert.match(side.source, /^https?:\/\//);
+      assert.equal(side.dateChecked, facts.dateChecked);
+      assert.ok(side.value === "No" || typeof side.value === "string");
+    }
+  }
+  const mongo = facts.databases.find((row) => row.database === "MongoDB");
+  assert.equal(mongo?.orm7.value, "Use 6.19");
+  assert.match(mongo?.orm7.source ?? "", /guides\/v7\/switch-to-prisma-orm\/from-mongoose/);
+  const response = getMongooseFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getMongooseArticleFields();
+  assert.equal(fields.datePublished, mongoose.MONGOOSE_PUBLISHED.iso);
+  assert.equal(fields.dateModified, mongoose.MONGOOSE_UPDATED.iso);
+  assert.equal(fields.about[0]?.name, "Mongoose");
+  assert.equal(fields.about[1]?.name, "Prisma ORM");
+});
+
+test("mongoose metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("mongoose").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/mongoose\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/mongoose\.json$/);
+});
+
+test("mongoose same-query line groups stay inside each tab's line count", () => {
+  const count = (code: string) => code.split("\n").length;
+  for (const group of mongoose.SAME_QUERY_LINE_GROUPS) {
+    for (const line of group.mongoose)
+      assert.ok(line >= 0 && line < count(mongoose.SAME_QUERY.mongoose));
+    for (const line of group.prisma)
+      assert.ok(line >= 0 && line < count(mongoose.SAME_QUERY.prisma));
+    for (const line of group.mongo) assert.ok(line >= 0 && line < count(mongoose.SAME_QUERY.mongo));
+  }
+});
+
+test("mongoose code tabs stay unmounted when closed, while Markdown still has every snippet", () => {
+  const source = readFileSync(join(compareDir, "mongoose/_sections.tsx"), "utf8");
+  assert.equal([...source.matchAll(/<CodeBlockTab /g)].length, 5);
+  assert.doesNotMatch(source, /forceMount/);
+  assert.doesNotMatch(source, /PageAiActions/);
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  assert.ok(markdown.includes("\n## Sources\n"));
+  assert.ok(markdown.includes("Prisma makes Prisma ORM"));
+});
+
+test("mongoose choose leads with the lists and Open-with-AI points at mongoose.md", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose Mongoose or Prisma ORM?"),
+    markdown.indexOf("## What does the same query look like in each?"),
+  );
+  assert.match(choose, /### Mongoose/);
+  assert.match(choose, /a contract is the file that describes your collections or tables/);
+  assert.match(markdown, /author include/);
+  assert.match(markdown, /published filter/);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /mongoose: "\/compare\/mongoose\.md"/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /pageMdUrl.includes\("\/compare\/mongoose\.md"\)/);
+  assert.match(ai, /I am choosing between Prisma ORM and Mongoose for a TypeScript app/);
+  assert.match(ai, /schema lives next to the model in application code/);
+  assert.doesNotMatch(ai, /Open-with-AI prompt pointed at `\/compare\/kysely\.md` for mongoose/);
 });
