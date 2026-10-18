@@ -180,16 +180,27 @@ test("every supported path has a markdown page, and vice versa", () => {
   assert.equal(markdownPageList.length, AGENT_MARKDOWN_PATHS.length);
 });
 
+/** Heading markers inside a fenced sample are code, not document headings. */
+function headingLines(document: string, prefix: "# " | "## ") {
+  let fenced = false;
+  return document.split("\n").filter((line) => {
+    if (line.startsWith("```")) {
+      fenced = !fenced;
+      return false;
+    }
+    return !fenced && line.startsWith(prefix);
+  });
+}
+
 for (const page of markdownPageList) {
   test(`${page.path} renders a markdown document with one H1 and real sections`, () => {
     const document = renderMarkdownDocument(page, baseUrl);
-    const lines = document.split("\n");
 
-    const h1Lines = lines.filter((line) => line.startsWith("# "));
+    const h1Lines = headingLines(document, "# ");
     assert.equal(h1Lines.length, 1, `${page.path} should have exactly one H1`);
     assert.equal(h1Lines[0], `# ${page.h1} (${page.path})`);
 
-    const h2Lines = lines.filter((line) => line.startsWith("## "));
+    const h2Lines = headingLines(document, "## ");
     assert.ok(
       h2Lines.length >= 2,
       `${page.path} should have at least two H2 sections, got ${h2Lines.length}`,
