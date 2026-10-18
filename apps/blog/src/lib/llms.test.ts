@@ -5,6 +5,8 @@ import {
   buildLlmsFullContent,
   buildLlmsIndexContent,
   buildLlmsYearContent,
+  countPostsByYear,
+  formatLinkLabel,
   formatPostLink,
   formatPostMarkdown,
   getPostSlugs,
@@ -60,6 +62,24 @@ test("a title that contains a backtick is not wrapped in a code span", () => {
   assert.ok(line.startsWith("- [The `info` argument](https://www.prisma.io/blog/info)"));
 });
 
+test("brackets in a title stay literal: in a code span, or escaped next to a backtick", () => {
+  assert.equal(formatLinkLabel("Prisma 8 [Early Access]"), "`Prisma 8 [Early Access]`");
+  assert.equal(
+    formatLinkLabel("Prisma 8 [Early Access] with the `info` argument"),
+    "Prisma 8 \\[Early Access\\] with the `info` argument",
+  );
+
+  const line = formatPostLink(
+    post({ path: "/ea", title: "Prisma 8 [Early Access] with the `info` argument" }),
+    BASE_URL,
+  );
+  assert.ok(
+    line.startsWith(
+      "- [Prisma 8 \\[Early Access\\] with the `info` argument](https://www.prisma.io/blog/ea)",
+    ),
+  );
+});
+
 test("the index lists the newest posts first and stops at the latest-post limit", () => {
   const content = buildLlmsIndexContent(posts(LATEST_POST_COUNT + 5), series, BASE_URL);
   const latest = content.split("## Latest posts")[1].split("## All posts by year")[0];
@@ -76,6 +96,10 @@ test("the index links every year that has posts, with its count", () => {
   assert.ok(content.includes("- [2026](https://www.prisma.io/blog/llms/2026.txt): 2 posts"));
   assert.ok(content.includes("- [2019](https://www.prisma.io/blog/llms/2019.txt): 1 post"));
   assert.deepEqual(getPostYears([...posts(2, 2026), ...posts(1, 2019)]), [2026, 2019]);
+  assert.deepEqual(
+    [...countPostsByYear([...posts(2, 2026), post({ path: "/undated", date: null })])],
+    [[2026, 2]],
+  );
 });
 
 test("the index lists only series that have posts", () => {
@@ -146,6 +170,20 @@ test("a post's Markdown opens with its URL and dates, and skips empty fields", (
   assert.ok(!bare.includes("Series:"));
 });
 
+test("a post served on its own carries the freshness notice and a pointer to the index", () => {
+  const standalone = formatPostMarkdown(post({ path: "/hello" }), "Body.", BASE_URL, POST_SLUGS, {
+    standalone: true,
+  });
+  const embedded = formatPostMarkdown(post({ path: "/hello" }), "Body.", BASE_URL, POST_SLUGS);
+
+  assert.ok(
+    standalone.includes("> For an index of every post, fetch https://www.prisma.io/blog/llms.txt."),
+  );
+  assert.ok(standalone.includes("https://www.prisma.io/docs/llms.txt"));
+  assert.ok(standalone.endsWith("\n\nBody."));
+  assert.ok(!embedded.includes("/blog/llms.txt"));
+});
+
 test("the full file orders posts newest first whatever order they arrive in", () => {
   const [oldest, middle, newest] = posts(3);
   const content = buildLlmsFullContent(
@@ -161,6 +199,17 @@ test("the full file orders posts newest first whatever order they arrive in", ()
   assert.ok(content.includes("3 posts"));
   assert.ok(content.indexOf("Newest body.") < content.indexOf("Middle body."));
   assert.ok(content.indexOf("Middle body.") < content.indexOf("Oldest body."));
+});
+
+test("the full file keeps a link to a post it leaves out under /blog when told its slug", () => {
+  const entries = [{ post: post({ path: "/kept" }), body: "See [the draft](/left-out)." }];
+
+  assert.ok(buildLlmsFullContent(entries, BASE_URL).includes("](https://www.prisma.io/left-out)"));
+  assert.ok(
+    buildLlmsFullContent(entries, BASE_URL, new Set(["kept", "left-out"])).includes(
+      "](https://www.prisma.io/blog/left-out)",
+    ),
+  );
 });
 
 test("post slugs come from the post paths", () => {
