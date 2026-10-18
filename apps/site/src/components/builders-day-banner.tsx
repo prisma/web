@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
+import { observeAnimationActivity } from "@/lib/animation-activity";
 
 // Dismissal persists in localStorage; the inline script hides the banner
 // before hydration (same pattern as fumadocs' Banner in the docs app), so a
@@ -23,10 +24,21 @@ const DISMISS_CLASS = "builders-day-banner-dismissed";
  */
 export function BuildersDayBanner() {
   const [open, setOpen] = useState(true);
+  const bannerRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (localStorage.getItem(DISMISS_KEY) === "true") setOpen(false);
   }, []);
+
+  // The three gradient sweeps repaint every frame and the banner scrolls away
+  // with the page, so pause them while it is out of view (see global.css).
+  useEffect(() => {
+    const banner = bannerRef.current;
+    if (!banner) return;
+    return observeAnimationActivity(banner, (active) =>
+      banner.toggleAttribute("data-paused", !active),
+    );
+  }, [open]);
 
   if (!open) return null;
 
@@ -39,6 +51,7 @@ export function BuildersDayBanner() {
         }}
       />
       <a
+        ref={bannerRef}
         id="builders-day-banner"
         href="https://pris.ly/builders-day"
         target="_blank"

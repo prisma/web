@@ -2,6 +2,7 @@ import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { Marker } from "@/components/brand/marker";
 import { Pattern } from "@/components/brand/pattern";
 import { RoleKicker } from "@/components/brand/role-kicker";
+import { SpectrumRing } from "@/components/brand/spectrum-ring";
 import { Texture } from "@/components/brand/texture";
 import { CheckBold, X } from "@/components/icons/forma";
 import { CountUp } from "@/components/motion/count-up";
@@ -302,7 +303,7 @@ export function PricingComparison() {
                 />
                 <Reveal
                   delay={0.3}
-                  className="spectrum-border spectrum-border-on relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                  className="relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border border-transparent bg-white p-6 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
                 >
                   <div
                     aria-hidden
@@ -348,6 +349,7 @@ export function PricingComparison() {
                       </div>
                     ))}
                   </dl>
+                  <SpectrumRing />
                 </Reveal>
               </div>
             </div>
