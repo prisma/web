@@ -77,7 +77,17 @@ export function highlight(
       <code style={BLOCK_CODE}>
         {tokens.flatMap((line, index) => [
           index > 0 ? "\n" : null,
-          <span key={index} className="line pl-4 pr-12" data-group={lineGroups[index] || undefined}>
+          <span
+            key={index}
+            className={`line pl-4 pr-12 ${
+              lineGroups[index] === "posts"
+                ? "bg-prism-cyan-100"
+                : lineGroups[index] === "email"
+                  ? "bg-prism-yellow-100"
+                  : ""
+            }`}
+            data-group={lineGroups[index] || undefined}
+          >
             {line.length === 0
               ? " "
               : line.map((token) => (

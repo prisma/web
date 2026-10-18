@@ -20,15 +20,15 @@ export const KYSELY_UPDATED = { iso: "2026-10-18", label: "October 2026" } as co
 export const CHOOSE_PRISMA = [
   "You want models and relations in a contract file, `contract.prisma`.",
   "You want typed model queries and a SQL query builder from the same database client.",
-  "You want `migration plan` to write a TypeScript migration from that contract.",
+  "You want `migration plan` to write a TypeScript migration from that contract. `db sign` records that the database already matches the contract.",
   "You want related records as part of the model API, as in `db.orm.public.User.include`.",
 ];
 
 export const CHOOSE_KYSELY = [
-  "You want the library itself to be the SQL query builder, with no contract file.",
+  "You want the library itself to be the SQL query builder, with no contract file — a contract is the `contract.prisma` file that describes your models.",
   "You want table types as TypeScript interfaces, written by hand or produced by a generator.",
   "You want up and down migrations as TypeScript functions you write. An optional CLI lives in `kysely-ctl`.",
-  "You need a built-in dialect for MySQL, Microsoft SQL Server, or PGlite, which Prisma ORM 8 does not ship.",
+  "You need a built-in dialect — Kysely's adapter for one database — for MySQL, Microsoft SQL Server, or PGlite, which Prisma ORM 8 does not ship.",
 ];
 
 /** One user and their posts, read from the same PostgreSQL `User` and `Post` tables. */
@@ -292,7 +292,8 @@ export const SAME_JOB: readonly { task: string; kysely: string; prisma: string }
   },
   {
     task: "Preview migration SQL",
-    kysely: "You read the SQL you wrote in the `up` function. There is no separate preview command.",
+    kysely:
+      "You read the SQL you wrote in the `up` function. There is no separate preview command.",
     prisma:
       "A CLI preview prints a migration's operations and statement preview, without connecting to the database.",
   },

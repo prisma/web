@@ -24,7 +24,11 @@ export const ORM_COMPARISON_CTA = {
   headlineMaxWidth: "max-w-[28ch]",
   body: "Prisma ORM is free and open source, and always will be.",
   bodyMaxWidth: "max-w-[52ch]",
-  checks: COMPARISON_CTA.checks,
+  checks: [
+    { label: "Add the library", color: "text-prism-cyan-500" },
+    { label: "Read the ORM docs", color: "text-prism-yellow-400" },
+    { label: "Trusted by 500K+ developers globally", color: "text-prism-red-500" },
+  ],
   primaryCta: {
     label: "Get started with Prisma ORM",
     href: "/docs/prisma-orm/quickstart/postgresql",

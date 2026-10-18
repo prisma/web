@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Link as LinkIcon } from "lucide-react";
+import { COPIED_VISIBLE_MS } from "./copied";
 
 function headingText(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -52,7 +53,7 @@ export function AnchorHeading({
     }
     setCopied(true);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(false), 1600);
+    timer.current = setTimeout(() => setCopied(false), COPIED_VISIBLE_MS);
   }
 
   return (

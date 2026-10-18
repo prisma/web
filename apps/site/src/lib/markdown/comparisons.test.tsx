@@ -267,25 +267,32 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   assert.ok(
     COMPARISON_CTA.checks.some((item) => item.label === "Trusted by 500K+ developers globally"),
   );
-  assert.equal(ORM_COMPARISON_CTA.checks, COMPARISON_CTA.checks);
-  assert.equal(
-    ORM_COMPARISON_CTA.body,
-    "Prisma ORM is free and open source, and always will be.",
+  assert.ok(
+    ORM_COMPARISON_CTA.checks.some((item) => item.label === "Trusted by 500K+ developers globally"),
   );
+  assert.ok(ORM_COMPARISON_CTA.checks.some((item) => item.label === "Add the library"));
+  assert.ok(ORM_COMPARISON_CTA.checks.some((item) => item.label === "Read the ORM docs"));
+  assert.equal(ORM_COMPARISON_CTA.body, "Prisma ORM is free and open source, and always will be.");
   assert.equal(COMPARISON_CTA.body, "Free to start, no credit card required.");
   const page = getMarkdownPage("/compare/kysely");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
   assert.ok(markdown.includes("Trusted by 500K+ developers globally"));
   assert.ok(markdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.ok(markdown.includes("Add the library"));
+  assert.ok(markdown.includes("Read the ORM docs"));
   assert.doesNotMatch(markdown, /Free to start, no credit card required/);
+  assert.doesNotMatch(markdown, /Create a database and start building in minutes/);
   assert.ok(markdown.includes("\n## Add Prisma ORM to an existing project\n"));
-  assert.ok(markdown.includes("[Get started with Prisma ORM](/docs/prisma-orm/quickstart/postgresql)"));
+  assert.ok(
+    markdown.includes("[Get started with Prisma ORM](/docs/prisma-orm/quickstart/postgresql)"),
+  );
   assert.ok(markdown.includes("[Get started with Prisma Postgres](https://console.prisma.io)"));
   const mongoosePage = getMarkdownPage("/compare/mongoose");
   assert.ok(mongoosePage);
   const mongooseMarkdown = renderMarkdownDocument(mongoosePage);
   assert.ok(mongooseMarkdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.ok(mongooseMarkdown.includes("Add the library"));
   assert.doesNotMatch(mongooseMarkdown, /Free to start, no credit card required/);
   const convexPage = getMarkdownPage("/compare/convex");
   assert.ok(convexPage);
@@ -301,7 +308,9 @@ test("kysely Markdown carries the switch types, contract, and four commands", ()
     markdown.includes(`**Kysely types**\n\n\`\`\`ts\n${kysely.SWITCH_KYSELY_TYPES}\n\`\`\``),
   );
   assert.ok(
-    markdown.includes(`**contract.prisma**\n\n\`\`\`prisma\n${kysely.SWITCH_PRISMA_CONTRACT}\n\`\`\``),
+    markdown.includes(
+      `**contract.prisma**\n\n\`\`\`prisma\n${kysely.SWITCH_PRISMA_CONTRACT}\n\`\`\``,
+    ),
   );
   assert.ok(markdown.includes(`\`\`\`bash\n${kysely.SWITCH_COMMANDS}\n\`\`\``));
 });
@@ -390,10 +399,14 @@ const compareDir = join(dirname(fileURLToPath(import.meta.url)), "../../app/comp
 test("comparison tables use the border token and only tab-stop when they scroll", () => {
   assert.match(TABLE_FRAME, /\bborder-border\b/);
   assert.doesNotMatch(TABLE_FRAME, /border-black\/\[0\.08\]/);
+  const styles = readFileSync(join(compareDir, "table-styles.ts"), "utf8");
+  assert.match(styles, /TABLE_ROW = "border-t border-border"/);
   for (const file of ["compare-table.tsx", "pricing-table.tsx"]) {
     const source = readFileSync(join(compareDir, file), "utf8");
     assert.doesNotMatch(source, /tabIndex=\{0\}/);
     assert.match(source, /TableScrollRegion/);
+    assert.match(source, /TABLE_ROW/);
+    assert.doesNotMatch(source, /border-black\/\[0\.06\]/);
   }
 });
 
@@ -411,13 +424,17 @@ test("kysely code tabs stay unmounted when closed, while Markdown still has ever
     markdown.includes(`**Kysely types**\n\n\`\`\`ts\n${kysely.SWITCH_KYSELY_TYPES}\n\`\`\``),
   );
   assert.ok(
-    markdown.includes(`**contract.prisma**\n\n\`\`\`prisma\n${kysely.SWITCH_PRISMA_CONTRACT}\n\`\`\``),
+    markdown.includes(
+      `**contract.prisma**\n\n\`\`\`prisma\n${kysely.SWITCH_PRISMA_CONTRACT}\n\`\`\``,
+    ),
   );
 });
 
 test("kysely code lines pad past the Copy pill and preload the unbracketed mono face", () => {
   const highlight = readFileSync(join(compareDir, "kysely/highlight.tsx"), "utf8");
-  assert.match(highlight, /className="line pl-4 pr-12"/);
+  assert.match(highlight, /line pl-4 pr-12/);
+  assert.match(highlight, /bg-prism-cyan-100/);
+  assert.match(highlight, /bg-prism-yellow-100/);
   const sections = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
   assert.match(sections, /not-fumadocs-codeblock/);
   assert.match(sections, /<TabCodeCopy /);
@@ -429,4 +446,37 @@ test("kysely code lines pad past the Copy pill and preload the unbracketed mono 
   assert.match(toc, /min-h-11 items-center/);
   const heading = readFileSync(join(compareDir, "anchor-heading.tsx"), "utf8");
   assert.match(heading, /tabIndex=\{inTabOrder \? 0 : -1\}/);
+  assert.match(heading, /COPIED_VISIBLE_MS/);
+  assert.match(readFileSync(join(compareDir, "copied.ts"), "utf8"), /COPIED_VISIBLE_MS = 3200/);
+  assert.match(readFileSync(join(compareDir, "tab-code-copy.tsx"), "utf8"), /COPIED_VISIBLE_MS/);
+});
+
+test("kysely choose leads with the lists and defines terms in the bullets", () => {
+  const page = getMarkdownPage("/compare/kysely");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose Kysely or Prisma ORM?"),
+    markdown.indexOf("## What does the same query look like in each?"),
+  );
+  assert.match(choose, /### Kysely/);
+  assert.doesNotMatch(choose, /A contract is the/);
+  assert.match(choose, /a contract is the `contract\.prisma` file that describes your models/);
+  assert.match(choose, /dialect — Kysely's adapter for one database/);
+  assert.match(choose, /`db sign` records that the database already matches the contract/);
+  assert.match(markdown, /posts include/);
+  assert.match(markdown, /email filter/);
+  const sections = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
+  assert.match(sections, /<PageAiActions markdownPath="\/compare\/kysely\.md" \/>/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /Open in \{tool\.name\}/);
+  assert.match(ai, /name: "ChatGPT"/);
+  assert.match(ai, /name: "Claude"/);
+  assert.match(ai, /name: "Gemini"/);
+  assert.match(ai, /name: "Perplexity"/);
+  assert.match(ai, /name: "Grok"/);
+  assert.match(ai, /claude\.ai\/new/);
+  assert.match(ai, /gemini\.google\.com\/app/);
+  assert.match(ai, /perplexity\.ai\/search\/new/);
+  assert.match(ai, /grok\.com/);
 });

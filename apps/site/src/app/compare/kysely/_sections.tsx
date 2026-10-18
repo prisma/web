@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Info } from "lucide-react";
 import {
   CodeBlock,
   CodeBlockTab,
@@ -22,6 +21,7 @@ import { QUIET_LINK, QUIET_NOTE } from "../table-styles";
 import { highlight, lineGroupMap } from "./highlight";
 import { SameQueryHighlight } from "./same-query";
 import { TabCodeCopy } from "../tab-code-copy";
+import { PageAiActions } from "../page-ai-actions";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import {
   APART,
@@ -82,14 +82,12 @@ function databaseStatus(status: DatabaseStatus) {
  * (`rounded-square`, `border-stroke-neutral`, `type-text-sm-strong`, the active
  * tab bar), so the same values are set with site utilities.
  */
-const CODE_TABS = "my-0 rounded-[0.625rem] border-black/[0.08] bg-white";
+const CODE_TABS = "my-0 overflow-hidden rounded-[0.625rem] border border-border bg-white";
 const CODE_TAB_LIST = "flex min-w-0 flex-1 flex-row overflow-x-auto px-2";
 const CODE_TAB =
   "relative inline-flex min-h-11 items-center px-2 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:text-primary data-[state=active]:[&>div]:bg-primary";
-const CODE_BLOCK =
-  "not-fumadocs-codeblock my-0 rounded-none border-black/[0.08] bg-white [&>div]:py-3.5";
-const CODE_BLOCK_WITH_COPY =
-  `${CODE_BLOCK} [&>[role=region]]:mr-11 [&_button]:relative [&_button]:text-muted-foreground [&_button]:after:absolute [&_button]:after:-inset-2.5 [&_button]:after:content-['']`;
+const CODE_BLOCK = "not-fumadocs-codeblock my-0 rounded-none border-0 bg-white [&>div]:py-3.5";
+const CODE_BLOCK_WITH_COPY = `${CODE_BLOCK} rounded-[0.625rem] border border-border [&>[role=region]]:mr-11 [&_button]:relative [&_button]:text-muted-foreground [&_button]:after:absolute [&_button]:after:-inset-2.5 [&_button]:after:content-['']`;
 
 const PROOF = TESTIMONIALS.filter(
   (item) => item.name === "Ron Cohen" || item.name === "Omar López",
@@ -203,31 +201,20 @@ export function getKyselyPageContent() {
           </span>
         </span>
       </p>
-      <aside
-        aria-label="Disclosure"
-        className="mt-3 flex gap-2.5 rounded-xl border border-black/[0.08] bg-neutral-50 px-4 py-3"
-      >
-        <Info className="mt-1 size-4 shrink-0 text-black/35" aria-hidden />
-        <p className="max-w-[32rem] text-sm leading-6 text-muted-foreground">
-          Prisma makes Prisma ORM. Kysely figures come from the pages listed under{" "}
-          <a href="#sources" className={QUIET_LINK}>
-            Sources
-          </a>
-          , checked {CHECKED}.
-        </p>
-      </aside>
+      <PageAiActions markdownPath="/compare/kysely.md" />
+      <p className="mt-3 max-w-[32rem] text-sm leading-6 text-muted-foreground">
+        Prisma makes Prisma ORM. Kysely figures come from the pages listed under{" "}
+        <a href="#sources" className={QUIET_LINK}>
+          Sources
+        </a>
+        , checked {CHECKED}.
+      </p>
     </div>,
     <div key="body" className={BODY}>
       <section className={SECTION}>
         <AnchorHeading level={2} id="choose">
           When should I choose Kysely or Prisma ORM?
         </AnchorHeading>
-        <p className="max-w-[36rem]">
-          A contract is the <code>contract.prisma</code> file that describes your models. A dialect
-          is Kysely&apos;s adapter for one database. <code>db sign</code> records that your
-          database already matches the contract. Reasons are independent lists, in alphabetical
-          order by product.
-        </p>
         <div className="grid gap-10 sm:grid-cols-2">
           <div className="flex flex-col gap-4">
             <h3 className={CHOOSE_LABEL}>Kysely</h3>
@@ -289,6 +276,23 @@ export function getKyselyPageContent() {
               </CodeBlock>
             </CodeBlockTab>
           </CodeBlockTabs>
+          <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm leading-6 text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2.5 rounded-sm bg-prism-cyan-100 ring-1 ring-prism-cyan-400"
+                aria-hidden
+              />
+              posts include
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2.5 rounded-sm bg-prism-yellow-100 ring-1 ring-prism-yellow-400"
+                aria-hidden
+              />
+              email filter
+            </span>
+            <span>Tinted lines match across the open tab. Hover one to emphasize its pair.</span>
+          </p>
         </SameQueryHighlight>
       </section>
 
@@ -327,11 +331,7 @@ export function getKyselyPageContent() {
           minWidth="34rem"
           rows={DATABASE_MATRIX.map((row) => ({
             label: row.database,
-            cells: [
-              databaseStatus(row.kysely),
-              databaseStatus(row.orm8),
-              databaseStatus(row.orm7),
-            ],
+            cells: [databaseStatus(row.kysely), databaseStatus(row.orm8), databaseStatus(row.orm7)],
           }))}
         />
         <p className={QUIET_NOTE}>
@@ -361,8 +361,12 @@ export function getKyselyPageContent() {
         </AnchorHeading>
         <div className="grid gap-8 sm:grid-cols-2">
           {APART.map((item) => (
-            <div key={item.title} className="border-t border-black/[0.08] pt-5">
-              <AnchorHeading level={3} id={item.id} className="text-base leading-snug font-semibold">
+            <div key={item.title} className="border-t border-border pt-5">
+              <AnchorHeading
+                level={3}
+                id={item.id}
+                className="text-base leading-snug font-semibold"
+              >
                 {item.title}
               </AnchorHeading>
               <p className="mt-2">{renderFaqAnswer(item.body)}</p>
@@ -439,12 +443,15 @@ export function getKyselyPageContent() {
           <Link href="/docs/prisma-orm/add-to-existing-project/postgresql" className={INLINE}>
             existing-database guide
           </Link>{" "}
-          add Prisma ORM beside the tables you already have. The Node.js versions that guide
-          expects still apply. Signing records that the database already matches the contract, so
-          the first <code>migration plan</code> starts from your tables instead of an empty
-          database. The rows stay where they are.
+          add Prisma ORM beside the tables you already have. The Node.js versions that guide expects
+          still apply. Signing records that the database already matches the contract, so the first{" "}
+          <code>migration plan</code> starts from your tables instead of an empty database. The rows
+          stay where they are.
         </p>
-        <p>Representative types for the User and Post tables in the query above, then the four commands.</p>
+        <p>
+          Representative types for the User and Post tables in the query above, then the four
+          commands.
+        </p>
         <CodeBlockTabs defaultValue="kysely-types" className={CODE_TABS}>
           <div className="flex items-center">
             <CodeBlockTabsList aria-label="Switching types" className={CODE_TAB_LIST}>
@@ -537,7 +544,7 @@ export function getKyselyPageContent() {
         <AnchorHeading level={2} id="faq">
           Frequently asked questions
         </AnchorHeading>
-        <Accordion type="single" collapsible className="border-t border-black/[0.08]">
+        <Accordion type="single" collapsible className="border-t border-border">
           {FAQ.map((faq, index) => (
             <AccordionItem key={faq.question} value={`item-${index}`}>
               <AccordionTrigger className="text-left text-base font-medium text-primary hover:no-underline">

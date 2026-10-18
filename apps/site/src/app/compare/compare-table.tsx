@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
-import { SCROLL_HINT, STICKY, TABLE_FRAME, TABLE_STACK, TD, TH_COL, TH_ROW } from "./table-styles";
+import {
+  SCROLL_HINT,
+  STICKY,
+  TABLE_FRAME,
+  TABLE_ROW,
+  TABLE_STACK,
+  TD,
+  TH_COL,
+  TH_ROW,
+} from "./table-styles";
 import { TableScrollRegion } from "./table-scroll-region";
 
 export type CompareTableRow = {
@@ -48,7 +57,7 @@ export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: Co
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.label} className="border-t border-black/[0.06]">
+            <tr key={row.label} className={TABLE_ROW}>
               <th scope="row" className={`${TH_ROW} ${STICKY}`}>
                 {row.label}
               </th>

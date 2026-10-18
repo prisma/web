@@ -5,6 +5,7 @@ import { AnchorHeading } from "@/app/compare/anchor-heading";
 import { CompareTable, type CompareTableProps } from "@/app/compare/compare-table";
 import { ComparisonPricingTable, type PricingTableProps } from "@/app/compare/pricing-table";
 import { CtaBurst } from "@/components/sections/cta-burst";
+import { PageAiActions } from "@/app/compare/page-ai-actions";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { ctaList, heading, joinBlocks, table } from "./blocks";
@@ -41,7 +42,14 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
     if (Array.isArray(value)) return value.map(render).join("");
     if (!isValidElement<ContentProps>(value)) return "";
     const { type, props } = value;
-    if (props["aria-hidden"] === true || type === RoleKicker || type === Texture) return "";
+    if (
+      props["aria-hidden"] === true ||
+      type === RoleKicker ||
+      type === Texture ||
+      type === PageAiActions
+    ) {
+      return "";
+    }
     if (type === "pre") {
       const language = typeof props["data-language"] === "string" ? props["data-language"] : "";
       return `\n\n\`\`\`${language}\n${codeText(props.children)}\n\`\`\`\n\n`;

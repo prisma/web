@@ -9,9 +9,10 @@ export const TABLE_FRAME =
  */
 export const TABLE_STACK = "compare-stack";
 
-export const TH_COL = "bg-neutral-50 text-sm font-semibold leading-6 text-primary";
+export const TH_COL = "bg-muted/50 text-sm font-semibold leading-6 text-primary";
 export const TH_ROW = "bg-background text-sm font-semibold leading-6 text-primary";
 export const TD = "text-sm leading-6 text-foreground";
+export const TABLE_ROW = "border-t border-border";
 
 /**
  * A shadow at the right edge while more columns sit off-screen. The `local`
@@ -25,7 +26,7 @@ export const SCROLL_HINT = {
 
 /** Keeps each row's label in view while the table scrolls sideways from `sm` up. */
 export const STICKY =
-  "max-sm:static max-sm:bg-transparent max-sm:before:hidden max-sm:after:hidden sticky left-0 z-10 before:absolute before:inset-y-0 before:-left-1 before:w-1 before:bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-black/[0.06]";
+  "max-sm:static max-sm:bg-transparent max-sm:before:hidden max-sm:after:hidden sticky left-0 z-10 before:absolute before:inset-y-0 before:-left-1 before:w-1 before:bg-inherit after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border";
 
 export const QUIET_NOTE = "max-w-[32rem] !text-sm !leading-6 !text-muted-foreground";
 export const QUIET_LINK =

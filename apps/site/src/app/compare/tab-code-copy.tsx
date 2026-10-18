@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Clipboard } from "lucide-react";
+import { COPIED_VISIBLE_MS } from "./copied";
 
 function tabsRoot(from: HTMLElement) {
   let node: HTMLElement | null = from;
@@ -35,7 +36,7 @@ export function TabCodeCopy({ label }: { label: string }) {
     }
     setCopied(true);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setCopied(false), 1600);
+    timer.current = setTimeout(() => setCopied(false), COPIED_VISIBLE_MS);
   }
 
   return (
@@ -50,6 +51,10 @@ export function TabCodeCopy({ label }: { label: string }) {
       ) : (
         <Clipboard className="size-4" strokeWidth={2} aria-hidden />
       )}
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute top-full left-1/2 z-10 mt-1 -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 font-sans text-[11px] leading-4 font-normal text-background transition-opacity duration-200 after:content-['Copied'] motion-reduce:transition-none ${copied ? "opacity-90" : "opacity-0"}`}
+      />
       <span role="status" className="sr-only">
         {copied ? "Copied" : ""}
       </span>
