@@ -182,26 +182,28 @@ export function PageAiActions({ markdownPath }: { markdownPath: string }) {
             {copied ? "Page copied" : ""}
           </span>
         </button>
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-col items-start gap-y-0.5 sm:flex-row sm:items-center sm:gap-1">
           <span className="pr-1 text-sm text-muted-foreground">Open with AI</span>
-          {tools.map((tool) => (
-            <Tooltip key={tool.name}>
-              <TooltipTrigger asChild>
-                <a
-                  href={tool.href}
-                  rel="noreferrer noopener"
-                  target="_blank"
-                  aria-label={tool.tooltip}
-                  className={LOGO}
-                >
-                  {tool.icon}
-                </a>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[16rem]">
-                {tool.tooltip}
-              </TooltipContent>
-            </Tooltip>
-          ))}
+          <div className="flex items-center gap-1">
+            {tools.map((tool) => (
+              <Tooltip key={tool.name}>
+                <TooltipTrigger asChild>
+                  <a
+                    href={tool.href}
+                    rel="noreferrer noopener"
+                    target="_blank"
+                    aria-label={tool.tooltip}
+                    className={LOGO}
+                  >
+                    {tool.icon}
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[16rem]">
+                  {tool.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
         </div>
       </div>
     </TooltipProvider>
