@@ -101,6 +101,8 @@ Give production and previews different values for the same variable name, so the
   Do this between production deploys. Removing a variable doesn't change running deployments, but a production deploy started in between would build without it.
 - **Netlify.** Give `DATABASE_URL` a separate [Deploy Previews value](https://docs.netlify.com/build/environment-variables/overview/#value-per-deploy-context) and a Branch deploys value, and check any per-branch Branch values, which replace both for their branch. With Netlify Database, a `DATABASE_URL` value alone changes nothing: `@netlify/database` [connects to the deploy's database branch by itself](https://docs.netlify.com/build/data-and-storage/netlify-database/api/), so pass the test database's connection string to `getDatabase({ connectionString })` from a variable you set for Deploy Previews.
 
+On Vercel, a Preview value set for one Git branch [overrides the general Preview value](https://vercel.com/docs/environment-variables#preview-environment-variables) on that branch. Run `vercel env ls preview <branch>` for each branch you preview, and if it lists its own `DATABASE_URL`, set it to the test database with `vercel env update DATABASE_URL preview <branch>`.
+
 Set any `NEXT_PUBLIC_` API URL per environment the same way. Then redeploy the preview: Vercel applies changed variables [only to new deployments](https://vercel.com/docs/environment-variables/managing-environment-variables), so a preview that is already running keeps the production value.
 
 ### 5. Make the build fail if a preview points at production
@@ -131,7 +133,11 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+const client = new pg.Client({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10_000, // fail the build instead of waiting on an unreachable database
+  query_timeout: 10_000,
+});
 await client.connect();
 const { rows } = await client.query(
   "SELECT to_regclass('ops.deployment_marker') IS NOT NULL AS marked",
@@ -156,7 +162,7 @@ Run it from the build script in `package.json`:
 "build": "node scripts/check-database.mjs && next build"
 ```
 
-Vercel sets [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/system-environment-variables) to `production`, `preview` or `development` during the build. On other hosts, set `APP_ENV=production` in the production environment only. A production build without it fails the same way, which is the safe direction to fail in. The check is for hosts that expose the deployment's variables during the build, such as Vercel and Netlify. If the database is unreachable, or the role can't read the marker table, it also fails the build, with the database error instead of the refusal message.
+Vercel sets [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/system-environment-variables) to `production`, `preview` or `development` during the build, as long as **Enable access to System Environment Variables** is selected in the project's environment variable settings. On other hosts, set `APP_ENV=production` in the production environment only. A production build without it fails the same way, which is the safe direction to fail in. The check is for hosts that expose the deployment's variables during the build, such as Vercel and Netlify. If the database is unreachable or doesn't answer within 10 seconds, or the role can't read the marker table, it also fails the build, with the database error instead of the refusal message.
 
 Pointed at the marked database from a preview, the check stops the build:
 
