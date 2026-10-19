@@ -37,7 +37,7 @@ It will prompt you to customize your setup. Choose the defaults:
 - _Would you like your code inside a `src/` directory?_ `No`
 - _Would you like to use App Router?_ (recommended) `Yes`
 - _Would you like to use Turbopack for `next dev`?_ `Yes`
-- _Would you like to customize the import alias (`@/_`by default)?*`No`
+- _Would you like to customize the import alias (`@/*` by default)?_ `No`
 
 :::
 
@@ -59,10 +59,10 @@ For this guide, the Google, Github, and Email sign in options will be used.
 
 :::
 
-Install the Clerk Next.js SDK:
+Install the Clerk Next.js SDK. This guide uses the `SignedIn` and `SignedOut` components, which exist in `@clerk/nextjs` 6; version 7 replaces them with `Show`, so pin the major version:
 
 ```npm
-npm install @clerk/nextjs
+npm install @clerk/nextjs@6
 ```
 
 Copy your Clerk keys and paste them into **.env** in the root of your project:
@@ -81,17 +81,13 @@ Create a `middleware.ts` file in the root directory of your project:
 
 ```tsx title="middleware.ts" showLineNumbers
 import { clerkMiddleware } from "@clerk/nextjs/server"; // [!code ++]
-// [!code ++]
 export default clerkMiddleware(); // [!code ++]
-// [!code ++]
 export const config = {
-  // [!code ++]
   matcher: [
-    // [!code ++]
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)", // [!code ++]
     "/(api|trpc)(.*)", // [!code ++]
   ], // [!code ++]
-}; // [!code ++]
+};
 ```
 
 ### 2.3. Add Clerk UI to your layout
@@ -128,14 +124,12 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      {" "}
-      // [!code ++]
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           {children}
         </body>
       </html>
-    </ClerkProvider> // [!code ++]
+    </ClerkProvider>
   );
 }
 ```
@@ -179,7 +173,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <Navbar /> // [!code ++]
+          <Navbar />
           {children}
         </body>
       </html>
@@ -188,28 +182,18 @@ export default function RootLayout({
 }
 
 const Navbar = () => {
-  // [!code ++]
   return (
-    // [!code ++]
     <header className="flex justify-end items-center p-4 gap-4 h-16">
-      {" "}
-      // [!code ++]
       <SignedOut>
-        {" "}
-        // [!code ++]
-        <SignInButton /> // [!code ++]
-        <SignUpButton /> // [!code ++]
-      </SignedOut>{" "}
-      // [!code ++]
+        <SignInButton />
+        <SignUpButton />
+      </SignedOut>
       <SignedIn>
-        {" "}
-        // [!code ++]
-        <UserButton /> // [!code ++]
-      </SignedIn>{" "}
-      // [!code ++]
-    </header> // [!code ++]
-  ); // [!code ++]
-}; // [!code ++]
+        <UserButton />
+      </SignedIn>
+    </header>
+  );
+};
 ```
 
 ## 3. Install and configure Prisma
@@ -342,26 +326,18 @@ In the root directory, create a `lib` directory and a `prisma.ts` file inside it
 ```tsx title="lib/prisma.ts" showLineNumbers
 import { PrismaClient } from "../app/generated/prisma/client"; // [!code ++]
 import { PrismaPg } from "@prisma/adapter-pg"; // [!code ++]
-// [!code ++]
 const adapter = new PrismaPg({
-  // [!code ++]
   connectionString: process.env.DATABASE_URL!, // [!code ++]
-}); // [!code ++]
-// [!code ++]
+});
 const globalForPrisma = global as unknown as {
-  // [!code ++]
   prisma: PrismaClient; // [!code ++]
-}; // [!code ++]
-// [!code ++]
+};
 const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
-    // [!code ++]
     adapter, // [!code ++]
-  }); // [!code ++]
-// [!code ++]
+  });
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma; // [!code ++]
-// [!code ++]
 export default prisma; // [!code ++]
 ```
 
@@ -387,22 +363,18 @@ import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
-  // [!code ++]
   try {
-    // [!code ++]
     const evt = await verifyWebhook(req); // [!code ++]
     const { id } = evt.data; // [!code ++]
     const eventType = evt.type; // [!code ++]
     console.log(
-      // [!code ++]
-      `Received webhook with ID ${id} and event type of ${eventType}`, // [!code ++]
-    ); // [!code ++]
+      `Received webhook with ID ${id} and event type of ${eventType}`,
+    );
   } catch (err) {
-    // [!code ++]
     console.error("Error verifying webhook:", err); // [!code ++]
     return new Response("Error verifying webhook", { status: 400 }); // [!code ++]
-  } // [!code ++]
-} // [!code ++]
+  }
+}
 ```
 
 When a new user is created, they need to be stored in the database.
@@ -422,20 +394,17 @@ export async function POST(req: NextRequest) {
     console.log(`Received webhook with ID ${id} and event type of ${eventType}`);
 
     if (eventType === "user.created") {
-      // [!code ++]
       const { id, email_addresses, first_name, last_name } = evt.data; // [!code ++]
       await prisma.user.upsert({
-        // [!code ++]
         where: { clerkId: id }, // [!code ++]
         update: {}, // [!code ++]
         create: {
-          // [!code ++]
           clerkId: id, // [!code ++]
           email: email_addresses[0].email_address, // [!code ++]
-          name: `${first_name} ${last_name}`, // [!code ++]
-        }, // [!code ++]
-      }); // [!code ++]
-    } // [!code ++]
+          name: [first_name, last_name].filter(Boolean).join(" ") || null, // [!code ++]
+        },
+      });
+    }
   } catch (err) {
     console.error("Error verifying webhook:", err);
     return new Response("Error verifying webhook", { status: 400 });
@@ -465,7 +434,7 @@ export async function POST(req: NextRequest) {
         create: {
           clerkId: id,
           email: email_addresses[0].email_address,
-          name: `${first_name} ${last_name}`,
+          name: [first_name, last_name].filter(Boolean).join(" ") || null,
         },
       });
     }
@@ -548,10 +517,9 @@ import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
-  // [!code ++]
   const { userId: clerkId } = await auth(); // [!code ++]
   if (!clerkId) return new Response("Unauthorized", { status: 401 }); // [!code ++]
-} // [!code ++]
+}
 ```
 
 Match the Clerk user to a user in the database. If none is found, return a `404` Not Found response:
@@ -565,10 +533,8 @@ export async function POST(req: Request) {
   if (!clerkId) return new Response("Unauthorized", { status: 401 });
 
   const user = await prisma.user.findUnique({
-    // [!code ++]
     where: { clerkId }, // [!code ++]
-  }); // [!code ++]
-  // [!code ++]
+  });
   if (!user) return new Response("User not found", { status: 404 }); // [!code ++]
 }
 ```
@@ -592,14 +558,12 @@ export async function POST(req: Request) {
   if (!user) return new Response("User not found", { status: 404 });
 
   const post = await prisma.post.create({
-    // [!code ++]
     data: {
-      // [!code ++]
       title, // [!code ++]
       content, // [!code ++]
       authorId: user.id, // [!code ++]
-    }, // [!code ++]
-  }); // [!code ++]
+    },
+  });
 
   return new Response(JSON.stringify(post), { status: 201 }); // [!code ++]
 }
@@ -615,10 +579,9 @@ In `/app`, create a `/components` directory and a `PostInputs.tsx` file inside i
 import { useState } from "react"; // [!code ++]
 
 export default function PostInputs() {
-  // [!code ++]
   const [title, setTitle] = useState(""); // [!code ++]
   const [content, setContent] = useState(""); // [!code ++]
-} // [!code ++]
+}
 ```
 
 This component uses `"use client"` to ensure the component is rendered on the client. The title and content are stored in their own `useState` hooks.
@@ -635,21 +598,17 @@ export default function PostInputs() {
   const [content, setContent] = useState("");
 
   async function createPost(e: React.FormEvent) {
-    // [!code ++]
-    e.preventDefault(); // [!code ++]
+    e.preventDefault();
     if (!title || !content) return; // [!code ++]
-    // [!code ++]
     await fetch("/api/posts", {
-      // [!code ++]
       method: "POST", // [!code ++]
-      headers: { "Content-Type": "application/json" }, // [!code ++]
-      body: JSON.stringify({ title, content }), // [!code ++]
-    }); // [!code ++]
-    // [!code ++]
-    setTitle(""); // [!code ++]
-    setContent(""); // [!code ++]
-    location.reload(); // [!code ++]
-  } // [!code ++]
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content }),
+    });
+    setTitle("");
+    setContent("");
+    location.reload();
+  }
 }
 ```
 
@@ -680,32 +639,25 @@ export default function PostInputs() {
   }
 
   return (
-    // [!code ++]
     <form onSubmit={createPost} className="space-y-2">
-      {" "}
-      // [!code ++]
-      <input // [!code ++]
+      <input
         type="text" // [!code ++]
         placeholder="Title" // [!code ++]
-        value={title} // [!code ++]
-        onChange={(e) => setTitle(e.target.value)} // [!code ++]
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
         className="w-full p-2 border border-zinc-800 rounded" // [!code ++]
-      />{" "}
-      // [!code ++]
-      <textarea // [!code ++]
+      />
+      <textarea
         placeholder="Content" // [!code ++]
-        value={content} // [!code ++]
-        onChange={(e) => setContent(e.target.value)} // [!code ++]
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
         className="w-full p-2 border border-zinc-800 rounded" // [!code ++]
-      />{" "}
-      // [!code ++]
+      />
       <button className="w-full p-2 border border-zinc-800 rounded">
-        {" "}
-        // [!code ++] Post // [!code ++]
-      </button>{" "}
-      // [!code ++]
-    </form> // [!code ++]
-  ); // [!code ++]
+        Post
+      </button>
+    </form>
+  );
 }
 ```
 
@@ -767,8 +719,8 @@ export default async function Home() {
 
   const posts = await prisma.post.findMany({ // [!code ++]
     where: { author: { clerkId: user.id } }, // [!code ++]
-    orderBy: { createdAt: "desc" }, // [!code ++]
-  }); // [!code ++]
+    orderBy: { createdAt: "desc" },
+  });
 
   return ()
 }
@@ -792,31 +744,23 @@ export default async function Home() {
 
   return (
     <main className="max-w-2xl mx-auto p-4">
-      {" "}
-      // [!code ++]
-      <PostInputs /> // [!code ++]
+      <PostInputs />
       <div className="mt-8">
-        {" "}
-        // [!code ++]
         {posts.map(
           (
             post, // [!code ++]
           ) => (
-            <div // [!code ++]
-              key={post.id} // [!code ++]
+            <div
+              key={post.id}
               className="p-4 border border-zinc-800 rounded mt-4"
             >
-              {" "}
-              // [!code ++]
-              <h2 className="font-bold">{post.title}</h2> // [!code ++]
-              <p className="mt-2">{post.content}</p> // [!code ++]
-            </div> // [!code ++]
+              <h2 className="font-bold">{post.title}</h2>
+              <p className="mt-2">{post.content}</p>
+            </div>
           ),
-        )}{" "}
-        // [!code ++]
-      </div>{" "}
-      // [!code ++]
-    </main> // [!code ++]
+        )}
+      </div>
+    </main>
   );
 }
 ```
