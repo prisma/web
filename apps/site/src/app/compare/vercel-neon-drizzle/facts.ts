@@ -54,15 +54,6 @@ export function getVercelNeonDrizzleAboutEntities() {
   return [
     {
       "@type": "SoftwareApplication",
-      name: TOOLS.combo.name,
-      softwareVersion: TOOLS.combo.softwareVersion,
-      license: TOOLS.combo.license,
-      codeRepository: TOOLS.combo.codeRepository,
-      programmingLanguage: TOOLS.combo.programmingLanguage,
-      url: TOOLS.combo.url,
-    },
-    {
-      "@type": "SoftwareApplication",
       name: TOOLS.prisma.name,
       softwareVersion: TOOLS.prisma.softwareVersion,
       license: TOOLS.prisma.license,
@@ -92,9 +83,6 @@ export function getVercelNeonDrizzleAboutEntities() {
       "@type": "SoftwareApplication",
       name: TOOLS.vercel.name,
       softwareVersion: TOOLS.vercel.softwareVersion,
-      license: TOOLS.vercel.license,
-      codeRepository: TOOLS.vercel.codeRepository,
-      programmingLanguage: TOOLS.vercel.programmingLanguage,
       url: TOOLS.vercel.url,
     },
   ];

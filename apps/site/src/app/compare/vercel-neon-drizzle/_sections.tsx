@@ -86,6 +86,7 @@ const SOURCES = [
       { label: "Prisma ORM vs Drizzle", href: DRIZZLE_ORM_COMPARE_PATH },
       { label: "Prisma Postgres", href: "/docs/postgres" },
       { label: "Prisma Compute", href: "/docs/compute" },
+      { label: "Prisma REST API", href: "/docs/rest-api" },
       { label: "Compute limitations", href: "/docs/compute/limitations" },
       { label: "Compute branching", href: "/docs/compute/branching" },
       { label: "Switch from Drizzle", href: "/docs/guides/switch-to-prisma-orm/from-drizzle" },
@@ -132,9 +133,10 @@ function buildVercelNeonDrizzlePage(minutes: number) {
           Prisma Compute
         </Link>{" "}
         with the Vercel, Neon, and Drizzle setup, where you combine a host, a database, and an ORM
-        from three separate providers. Pick Prisma when you want the data model, managed Postgres,
-        and app hosting in one platform, with shared schema context across deploys and previews.
-        Pick Vercel + Neon + Drizzle when you want to connect those three products yourself.
+        from three separate providers. Pick Prisma when you want the ORM, managed Postgres, and app
+        hosting from one platform, with one schema and one CLI across deploys and previews. Pick
+        Vercel + Neon + Drizzle when you would rather choose and connect those three products
+        yourself.
       </p>
       {comparisonHeroCtas("postgres", {
         secondary: false,
@@ -200,9 +202,9 @@ function buildVercelNeonDrizzlePage(minutes: number) {
                 Drizzle
               </a>{" "}
               is the data layer: a free, open-source, type-safe TypeScript ORM and query builder. It
-              connects to a database you host somewhere else. Prisma ORM compares to Drizzle{" "}
+              connects to a database you host somewhere else. See{" "}
               <Link href={DRIZZLE_ORM_COMPARE_PATH} className={INLINE}>
-                here
+                how Prisma ORM compares to Drizzle
               </Link>
               .
             </p>
@@ -220,8 +222,8 @@ function buildVercelNeonDrizzlePage(minutes: number) {
               is the host. It runs your frontend and full-stack app with serverless functions.
             </p>
             <p>
-              Each product handles its own layer. You connect them yourself, manage three accounts
-              and three bills, and keep environments in sync across providers.
+              Each product handles its own layer. You connect them yourself, keep environments in
+              step across providers, and watch two pricing models.
             </p>
             <ul className={LIST}>
               {COMBO_FITS.map((item) => (
@@ -242,21 +244,20 @@ function buildVercelNeonDrizzlePage(minutes: number) {
               <Link href="/docs/postgres" className={INLINE}>
                 Prisma Postgres
               </Link>{" "}
-              is managed Postgres connected to the Prisma workflow.
+              is managed Postgres in the same project as your services.
             </p>
             <p>
               <Link href="/docs/compute" className={INLINE}>
                 Prisma Compute
               </Link>{" "}
-              is TypeScript app hosting designed to work alongside Prisma Postgres.
+              hosts TypeScript apps next to Prisma Postgres, with a preview environment per branch.
             </p>
             <p>
-              The CLI and Management API are structured interfaces developers and coding agents can
-              use across the platform.
-            </p>
-            <p>
-              Prisma is designed for TypeScript teams that want the data model, database, hosting,
-              and development workflow to work together.
+              One CLI and one{" "}
+              <Link href="/docs/rest-api" className={INLINE}>
+                REST API
+              </Link>{" "}
+              manage all three, for developers and coding agents alike.
             </p>
             <ul className={LIST}>
               {PRISMA_FITS.map((item) => (
@@ -304,10 +305,10 @@ function buildVercelNeonDrizzlePage(minutes: number) {
           }))}
           note={
             <>
-              Prisma prices the whole stack through one platform. The alternative splits across
-              three providers. Prisma ORM is free and open source, and always will be. Prisma
-              Postgres Free is $0 a month for 200,000 operations, 2 GB of storage, and 50 databases.
-              No credit card required. The{" "}
+              Prisma Postgres and Prisma Compute share one set of plans. Neon and Vercel price
+              separately. Prisma ORM is free and open source, and always will be. Prisma Postgres
+              Free is $0 a month for 200,000 operations, 2 GB of storage, and 50 databases. No
+              credit card required. The{" "}
               <Link href="/pricing" className={QUIET_LINK}>
                 pricing page
               </Link>{" "}
@@ -388,9 +389,7 @@ function buildVercelNeonDrizzlePage(minutes: number) {
         <AnchorHeading level={2} id="proof">
           What do teams say about Prisma?
         </AnchorHeading>
-        <p className="max-w-[68ch]">
-          Two teams on what Prisma ORM and Prisma Postgres do for them.
-        </p>
+        <p className="max-w-[68ch]">Two teams on what Prisma does for them.</p>
         {comparisonProofCards(
           PROOF.map((item) => ({
             name: item.name,

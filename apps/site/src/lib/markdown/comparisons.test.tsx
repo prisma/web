@@ -1133,7 +1133,8 @@ test("Neon Markdown carries the byline, disclosure, and Sources on the shared ch
   assert.ok(markdown.includes("$0.222"));
   assert.ok(markdown.includes("$0.35"));
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
   assert.doesNotMatch(markdown, /the only|the first|the best/);
@@ -1249,7 +1250,8 @@ test("Supabase Markdown carries the byline, disclosure, and Sources on the share
     /HIPAA starts with Pro|HIPAA from Pro|HIPAA support starts with Pro/,
   );
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
   assert.doesNotMatch(markdown, /listed in one place/);
@@ -1346,7 +1348,8 @@ test("PlanetScale Markdown carries the byline, disclosure, and Sources on the sh
   assert.ok(markdown.includes("platform preview"));
   assert.doesNotMatch(markdown, /500 MB storage on Free/);
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
   assert.doesNotMatch(markdown, /the only|the first|the best/);
@@ -1447,7 +1450,8 @@ test("Vercel + Neon + Drizzle Markdown carries the byline, disclosure, and Sourc
   assert.doesNotMatch(markdown, /\/compare\/drizzle/);
   assert.doesNotMatch(markdown, /500 MB storage on Free/);
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
   assert.doesNotMatch(markdown, /the only|the first|the best/);
@@ -1483,7 +1487,9 @@ test("vercel-neon-drizzle JSON facts carry a source and dateChecked on every val
   const facts = getVercelNeonDrizzleFacts();
   assert.equal(facts.path, "/compare/vercel-neon-drizzle");
   assert.equal(facts.dateChecked, vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_UPDATED.iso);
-  assert.equal(facts.tools.combo.softwareVersion, "current");
+  assert.equal(facts.tools.drizzle.softwareVersion, "current");
+  assert.ok(!("combo" in facts.tools));
+  assert.ok(!("license" in facts.tools.vercel));
   assert.equal(facts.features.length, vercelNeonDrizzle.COMPARE_ROWS.length);
   for (const row of [...facts.features, ...facts.pricing]) {
     assert.match(row.combo.source, /^https?:\/\//);
@@ -1504,8 +1510,11 @@ test("vercel-neon-drizzle JSON facts carry a source and dateChecked on every val
   assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
   assert.equal(stats.minutes, readingMinutes(stats.wordCount));
   assert.ok(stats.wordCount > 800);
-  assert.equal(fields.about[0]?.name, "Vercel + Neon + Drizzle");
-  assert.equal(fields.about[1]?.name, "Prisma");
+  assert.deepEqual(
+    fields.about.map((entity) => entity.name),
+    ["Prisma", "Drizzle", "Neon", "Vercel"],
+  );
+  assert.ok(!("license" in (fields.about[3] ?? {})));
 });
 
 test("vercel-neon-drizzle metadata advertises Markdown and JSON alternates", () => {
