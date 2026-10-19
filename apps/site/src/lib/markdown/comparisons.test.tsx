@@ -14,6 +14,10 @@ import * as neon from "@/app/compare/neon/_content";
 import { getNeonArticleFields, getNeonFacts } from "@/app/compare/neon/facts";
 import { GET as getNeonFactsResponse } from "@/app/compare/neon.json/route";
 import { getNeonReadingStats } from "@/app/compare/neon/_sections";
+import * as planetscale from "@/app/compare/planetscale/_content";
+import { getPlanetScaleArticleFields, getPlanetScaleFacts } from "@/app/compare/planetscale/facts";
+import { GET as getPlanetScaleFactsResponse } from "@/app/compare/planetscale.json/route";
+import { getPlanetScaleReadingStats } from "@/app/compare/planetscale/_sections";
 import * as supabase from "@/app/compare/supabase/_content";
 import { getSupabaseArticleFields, getSupabaseFacts } from "@/app/compare/supabase/facts";
 import { GET as getSupabaseFactsResponse } from "@/app/compare/supabase.json/route";
@@ -57,7 +61,7 @@ function plainMarkdown(text: string): string {
 
 for (const entry of COMPARISONS) {
   test(`${entry.slug} Markdown preserves comparison cells and every FAQ answer`, () => {
-    const content = { convex, kysely, mongoose, neon, supabase }[entry.slug];
+    const content = { convex, kysely, mongoose, neon, planetscale, supabase }[entry.slug];
     const page = getMarkdownPage(`/compare/${entry.slug}`);
     assert.ok(page);
     const markdown = renderMarkdownDocument(page);
@@ -389,6 +393,18 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     supabaseMarkdown,
     /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
   );
+  const planetscalePage = getMarkdownPage("/compare/planetscale");
+  assert.ok(planetscalePage);
+  const planetscaleMarkdown = renderMarkdownDocument(planetscalePage);
+  assert.ok(planetscaleMarkdown.includes("Free to start, no credit card required."));
+  assert.ok(planetscaleMarkdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(
+    planetscaleMarkdown.includes("Prisma ORM is free and open source, and always will be."),
+  );
+  assert.match(
+    planetscaleMarkdown,
+    /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
+  );
   assert.equal(POSTGRES_HERO_CTAS.secondary.href, CREATE_DB_WEB);
   assert.equal(POSTGRES_HERO_CTAS.secondary.label, "Create an instant database");
   assert.equal(POSTGRES_HERO_CTAS.primary.href, "https://console.prisma.io");
@@ -457,6 +473,7 @@ test("Kysely, Mongoose, and Convex Article JSON-LD authors are a Person with con
     mongoose.MONGOOSE_AUTHOR,
     convex.CONVEX_AUTHOR,
     neon.NEON_AUTHOR,
+    planetscale.PLANETSCALE_AUTHOR,
     supabase.SUPABASE_AUTHOR,
   ]) {
     const person = comparisonAuthorPerson(author, getBaseUrl());
@@ -470,6 +487,7 @@ test("Kysely, Mongoose, and Convex Article JSON-LD authors are a Person with con
     "mongoose/page.tsx",
     "convex/page.tsx",
     "neon/page.tsx",
+    "planetscale/page.tsx",
     "supabase/page.tsx",
   ]) {
     const source = readFileSync(join(compareDir, page), "utf8");
@@ -1237,4 +1255,102 @@ test("supabase metadata advertises Markdown and JSON alternates", () => {
   assert.ok(types);
   assert.match(types["text/markdown"] ?? "", /\/compare\/supabase\.md$/);
   assert.match(types["application/json"] ?? "", /\/compare\/supabase\.json$/);
+});
+
+test("PlanetScale Markdown carries the byline, disclosure, and Sources on the shared chrome", () => {
+  const page = getMarkdownPage("/compare/planetscale");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const minutes = getPlanetScaleReadingStats().minutes;
+  assert.ok(
+    markdown.includes(
+      `By [${planetscale.PLANETSCALE_AUTHOR.name}](${planetscale.PLANETSCALE_AUTHOR.path}) · Updated ${planetscale.PLANETSCALE_UPDATED.label} · ${minutes} min read`,
+    ),
+  );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes(`dateModified: ${planetscale.PLANETSCALE_UPDATED.iso}`));
+  assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
+  assert.ok(markdown.includes("\n## Sources\n"));
+  assert.ok(markdown.includes("\n## When should I choose PlanetScale or Prisma Postgres?\n"));
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose PlanetScale or Prisma Postgres?"),
+    markdown.indexOf("## How do PlanetScale and Prisma Postgres compare?"),
+  );
+  assert.match(choose, /^\| PlanetScale \| Prisma Postgres \|$/m);
+  assert.doesNotMatch(choose, /### PlanetScale/);
+  assert.ok(markdown.includes("\n## How do PlanetScale and Prisma Postgres compare?\n"));
+  assert.ok(markdown.includes("\n## Where does each one fit?\n"));
+  assert.ok(markdown.includes("\n## How much do PlanetScale and Prisma Postgres cost?\n"));
+  assert.ok(markdown.includes("| Feature | PlanetScale | Prisma Postgres |"));
+  assert.ok(markdown.includes("| Cost | PlanetScale | Prisma Postgres |"));
+  assert.ok(markdown.includes("$5"));
+  assert.ok(markdown.includes("$50"));
+  assert.ok(markdown.includes("2 GB"));
+  assert.ok(markdown.includes("Neki"));
+  assert.ok(markdown.includes("platform preview"));
+  assert.doesNotMatch(markdown, /500 MB storage on Free/);
+  assert.doesNotMatch(markdown, /database branching/);
+  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
+  assert.doesNotMatch(markdown, /requires Prisma ORM/);
+  assert.doesNotMatch(markdown, /the only|the first|the best/);
+  assert.doesNotMatch(markdown, /listed in one place/);
+  assert.doesNotMatch(markdown, /When should I choose Kysely/);
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /planetscale: "\/compare\/planetscale\.md"/);
+  const sections = readFileSync(join(compareDir, "planetscale/_sections.tsx"), "utf8");
+  assert.match(sections, /comparisonChooseTable/);
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.match(sections, /comparisonProofCards/);
+  assert.match(sections, /comparisonDisclosure/);
+  assert.doesNotMatch(sections, /defaultValue=/);
+  assert.doesNotMatch(sections, /PageAiActions/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /pageMdUrl.includes\("\/compare\/planetscale\.md"\)/);
+  assert.match(ai, /I am choosing between Prisma Postgres and PlanetScale for a TypeScript app/);
+  assert.match(ai, /database-first Postgres SKUs, Metal, HA, or Neki/);
+});
+
+test("planetscale JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getPlanetScaleFacts();
+  assert.equal(facts.path, "/compare/planetscale");
+  assert.equal(facts.dateChecked, planetscale.PLANETSCALE_UPDATED.iso);
+  assert.equal(facts.tools.planetscale.softwareVersion, "current");
+  assert.equal(facts.features.length, planetscale.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.planetscale.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.planetscale.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  const response = getPlanetScaleFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getPlanetScaleArticleFields();
+  const stats = getPlanetScaleReadingStats();
+  assert.equal(fields.datePublished, planetscale.PLANETSCALE_PUBLISHED.iso);
+  assert.equal(fields.dateModified, planetscale.PLANETSCALE_UPDATED.iso);
+  assert.equal(WORDS_PER_MINUTE, 225);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
+  assert.equal(fields.about[0]?.name, "PlanetScale");
+  assert.equal(fields.about[1]?.name, "Prisma Postgres");
+});
+
+test("planetscale metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("planetscale").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/planetscale\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/planetscale\.json$/);
 });

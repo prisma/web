@@ -48,6 +48,12 @@ export const COMPARE_PRISMA_LINKS: CompareLink[] = [
       "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Neon Functions, Auth, Object Storage, and AI Gateway.",
   },
   {
+    label: "Prisma Postgres vs PlanetScale",
+    href: "/compare/planetscale",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or database-first SKUs, Metal, and Neki.",
+  },
+  {
     label: "Prisma Postgres vs Supabase",
     href: "/compare/supabase",
     description:

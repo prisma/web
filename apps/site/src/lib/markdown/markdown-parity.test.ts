@@ -84,6 +84,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
   "/compare/kysely": ["src/app/compare/kysely/_sections.tsx"],
   "/compare/mongoose": ["src/app/compare/mongoose/_sections.tsx"],
   "/compare/neon": ["src/app/compare/neon/_sections.tsx"],
+  "/compare/planetscale": ["src/app/compare/planetscale/_sections.tsx"],
   "/compare/supabase": ["src/app/compare/supabase/_sections.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
@@ -120,6 +121,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/compare/kysely": 10,
   "/compare/mongoose": 10,
   "/compare/neon": 10,
+  "/compare/planetscale": 10,
   "/compare/supabase": 10,
 };
 
