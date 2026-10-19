@@ -1,0 +1,143 @@
+---
+title: "My localhost:3000 link won't open for anyone else. How do I share my app?"
+description: "A localhost link only reaches the computer that opens it. Share your app over Wi-Fi, through a tunnel such as ngrok, or at a deployed URL."
+summary: "`localhost` always means the computer that opens the link, so the other person's browser looks for an app on their own machine and finds nothing. Send them an address that reaches your app instead: your computer's network address if they are on the same Wi-Fi, a tunnel URL from a tool such as Cloudflare Quick Tunnels or ngrok for a quick demo while your laptop runs the app, or a deployed URL from a host when the link has to keep working after you close the laptop. [Prisma Compute](/docs/compute) is one such host for TypeScript apps: a deploy prints a public HTTPS URL, and with deploy on push each Git branch gets its own preview URL."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "6 min read"
+faq:
+  - question: "Can someone on my Wi-Fi open localhost:3000?"
+    answer: "No. On their device, `localhost` still points to their own device. Give them your computer's network address instead, such as `http://192.168.1.20:3000`, and make sure your dev server listens on all network interfaces rather than only on `localhost`."
+  - question: "Is it safe to share my dev server through a tunnel?"
+    answer: "Treat the tunnel URL as public. Anyone who has it can reach the app running on your machine until you stop the tunnel. Use fictional data, keep secrets out of the browser, and add the tunnel's access controls, such as Cloudflare's `--allowed-mail` option or ngrok's authentication, when the demo shouldn't be open to everyone."
+  - question: "The shared page loads, but buttons and forms fail. Why?"
+    answer: "The page is probably still calling an address such as `http://localhost:4000/api` from the browser. That request goes to the visitor's machine. Use a relative path such as `/api`, or read the API's base URL from configuration, and deploy or tunnel the API as well as the frontend."
+  - question: "Do I need to pay to get a link that stays up?"
+    answer: "Not necessarily. Several hosts have a free plan; check the limits before you rely on one. [Prisma Compute's Free plan](/pricing) includes 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of outbound bandwidth a month, with no credit card."
+related:
+  - title: "Sending a client a secure HTTPS link to your app"
+    href: "/compute/share-app-with-client"
+  - title: "Deploying a TypeScript app from Cursor"
+    href: "/compute/cursor-typescript-app-hosting"
+  - title: "Hosting a test version without replacing production"
+    href: "/blog/host-a-test-version-without-replacing-production"
+cta:
+  title: "Turn your localhost app into a link anyone can open"
+  description: "Deploy a TypeScript app to Prisma Compute and send the HTTPS URL the deploy prints."
+  label: "Deploy with Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+The fix depends on who needs to open the app and for how long. A teammate at the next desk needs something different from a client who will open the link tomorrow morning. The sections below cover the cause, the three ways to share, and the mistakes that make a shared link load but not work.
+
+We make Prisma Compute and Prisma Postgres. Every third-party tool and host below links to its own documentation, checked on October 19, 2026. The same-network and tunnel options work with any framework and any host.
+
+## Why a localhost link only works on your computer
+
+`localhost` is a reserved name for the loopback address, the network address a device uses to talk to itself. [RFC 6761](https://www.rfc-editor.org/rfc/rfc6761#section-6.3) tells name-resolution software to answer `localhost` with that loopback address, so it means the local machine wherever the link is opened. When you open `http://localhost:3000`, your browser connects to port 3000 on your computer. When someone else opens the same link, their browser connects to port 3000 on their computer, where your app isn't running, so they usually see a connection error.
+
+Some dev servers also listen only on the loopback address by default. Vite's `server.host` [defaults to `localhost`](https://vite.dev/config/server-options#server-host), so even a device on the same network can't reach it until you change that setting.
+
+## How to share the app
+
+Pick the option by who needs to open the link and whether it must work when your computer is off.
+
+| Option | Who can open it | Works while your computer is off | Watch for |
+| --- | --- | --- | --- |
+| Your computer's network address | People on the same network | No | Firewall prompts, dev server bound to `localhost` only |
+| A tunnel to your machine | Anyone with the URL | No | The URL is public while the tunnel runs |
+| A deployed URL | Anyone with the URL | Yes | Environment variables, the database and API also need to be deployed |
+
+### 1. Same Wi-Fi: use your computer's network address
+
+1. Start the dev server so it listens on all network interfaces. For Vite, pass `--host`:
+
+   ```sh
+   npm run dev -- --host
+   ```
+
+   Vite then [listens on all addresses](https://vite.dev/config/server-options#server-host), including LAN addresses, and prints a `Network:` URL next to the `Local:` one. Without `--host`, that line reads `use --host to expose`. `next dev` [listens on `0.0.0.0` by default](https://nextjs.org/docs/app/api-reference/cli/next), and its `-H` option sets a different hostname. For other frameworks, look for a `host` or `hostname` option.
+
+2. Find your computer's local IP address. On most Macs, run `ipconfig getifaddr en0`. On Windows, run `ipconfig` and read the IPv4 address. On Linux, run `hostname -I`.
+
+3. Send the address with the port, for example `http://192.168.1.20:3000`. If your operating system asks whether to allow incoming connections for Node.js or your terminal, allow them on private networks.
+
+This only works while both devices are on the same network, and guest or office networks often block traffic between devices.
+
+### 2. Anyone, right now: run a tunnel
+
+A tunnel gives your local port a public HTTPS URL. Your app keeps running on your machine, and the tunnel forwards requests to it.
+
+**Cloudflare Quick Tunnels.** After [installing `cloudflared`](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/), run:
+
+```sh
+cloudflared tunnel --url http://localhost:3000
+```
+
+It prints a `trycloudflare.com` URL. You don't need a Cloudflare account or a domain. Cloudflare positions Quick Tunnels for testing and development: the hostname changes each time you start one, a tunnel handles up to 200 in-flight requests, Server-Sent Events aren't supported, and there's no uptime guarantee. The `--allowed-mail` option makes visitors confirm an email address with a one-time PIN before they see the app ([Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)).
+
+**ngrok.** ngrok needs an ngrok account and its auth token. After [installing the agent](https://ngrok.com/docs/share-localhost/quickstart), run:
+
+```sh
+ngrok config add-authtoken <your-token>
+ngrok http 3000
+```
+
+ngrok prints an HTTPS forwarding URL on a dev domain it assigns to your account, and it can add authentication in front of the app ([quickstart](https://ngrok.com/docs/share-localhost/quickstart)). The agent connects outward to ngrok, so you don't open ports on your router. The URL is public as soon as it exists and stops working when you stop the agent ([how sharing localhost works](https://ngrok.com/docs/share-localhost/tunnels)).
+
+If a Vite dev server answers the tunnel URL with a "Blocked request" error, add the exact tunnel hostname to [`server.allowedHosts`](https://vite.dev/config/server-options#server-allowedhosts). Vite allows `localhost` and IP addresses by default and warns against setting `allowedHosts` to `true`.
+
+The tunnel lasts only as long as your laptop is awake, the dev server is running and the tunnel process is open. For a link someone will open later, deploy the app.
+
+### 3. Anyone, any time: deploy the app
+
+A host builds and runs your app on its servers and gives you a URL that keeps working when your laptop is closed. Many hosts also create a separate preview URL for each branch or pull request, so you can share work in progress without replacing the live version. Listed alphabetically:
+
+| Host | How you get a shareable URL |
+| --- | --- |
+| Netlify | Opening a pull request in a connected repository builds a [Deploy Preview](https://docs.netlify.com/deploy/deploy-types/deploy-previews/) with its own URL. |
+| Prisma Compute | `prisma deploy` prints each service's public HTTPS URL. With [deploy on push](/docs/compute/deploy-on-push), every pushed branch other than the default one gets a preview with its own URL. |
+| Vercel | Pushing to a branch other than the production branch creates a [preview deployment](https://vercel.com/docs/deployments/environments) with a branch URL and a commit URL. |
+
+If the app saves data, the database has to be reachable from the host too. A SQLite file or a Postgres server on your laptop stays on your laptop.
+
+## How to deploy it with Prisma Compute
+
+Prisma Compute hosts TypeScript apps built for Node.js, Bun or Next.js, and runs deployed apps on Bun. It can deploy a [Prisma Postgres](/docs/postgres) database in the same project. Prisma ORM is optional; any Postgres client works. You describe the app's services in a [Prisma Composer](/docs/composer) module, and the Prisma CLI deploys it.
+
+1. **Make the server reachable.** Read the port from `service.port()` and listen on `0.0.0.0`. The [deploy guide](/docs/prisma-compute/deploy) explains why: a server that listens only on the loopback address can't receive outside traffic, which is the same reason your localhost link fails.
+
+   ```ts
+   import service from "./service.ts";
+
+   // handler is your existing request handler
+   Bun.serve({ port: service.port(), hostname: "0.0.0.0", fetch: handler });
+   ```
+
+2. **Declare the app.** Add a `service.ts` for the server and a root `module.ts`, and set a region in `prisma.config.ts` or `PRISMA_REGION`. The [deploy guide](/docs/prisma-compute/deploy) has the files for a new app and for porting an existing one.
+
+3. **Build and deploy.** `deploy` doesn't build the app, so build first. The CLI needs Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer.
+
+   ```sh
+   npm run build
+   npx prisma auth login
+   npx prisma deploy module.ts
+   ```
+
+   The deploy ends by printing each service and its public URL, an HTTPS address such as `https://xyz.ewr.prisma.build`.
+
+   Send that URL. It keeps working after you close your laptop.
+
+4. **Optional: a preview URL per branch.** Link the directory to the project with `npx prisma project link <project>`, connect the GitHub repository with `npx prisma git connect <repository-url>`, and add the deploy workflow from [deploy on push](/docs/compute/deploy-on-push). After that, a push to the default branch deploys production, and every other pushed branch gets a preview with its own URL, its own services and new databases for the ones the module declares. Production data isn't copied into previews, and deleting the branch removes its preview.
+
+For a client review with sign-in and demo data, see [where to publish an app to send a client a secure HTTPS link](/compute/share-app-with-client).
+
+## How to avoid broken shared links, and when these fixes don't apply
+
+- **Remove hard-coded localhost URLs.** A frontend that calls `http://localhost:4000` still calls the visitor's machine after you deploy or tunnel it. Use relative paths or a configured base URL, and update OAuth callback URLs and CORS settings to the shared address.
+- **Share the whole app.** If the frontend and API run as separate processes, both need to be deployed or tunneled.
+- **Keep real data out of public links.** A tunnel or preview URL is reachable by anyone who has it. Use test data unless the app has its own sign-in.
+
+Prisma Compute is the wrong choice when the app needs a WebSocket server (not supported), a persistent writable filesystem, or an API written in Python or Go ([known limitations](/docs/compute/limitations), [FAQ](/docs/compute/faq)). Its deploy on push works with GitHub only, and custom domains attach to production, so previews use their generated URL. For a static site with no backend, any static host works, and for a five-minute look at work in progress, a tunnel is quicker than any deploy.
