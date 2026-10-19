@@ -9,9 +9,9 @@ updatedAt: "2026-10-19"
 readingTime: "7 min read"
 faq:
   - question: "How long does a DNS change take to work?"
-    answer: "A new record is often visible within minutes, but a resolver that cached the old answer keeps it until that record's TTL runs out, and a nameserver change can take 24 to 48 hours. Query a public resolver such as `dig @1.1.1.1 app.example.com` to see what the internet sees, rather than relying on your own browser, which may have cached the old result."
+    answer: "A new record is often visible within minutes, but a resolver that cached the old answer keeps it until that record's TTL runs out, and a nameserver change can take up to 24 to 48 hours. Query a public resolver such as `dig @1.1.1.1 app.example.com` to see what the internet sees, rather than relying on your own browser, which may have cached the old result."
   - question: "Can I put a CNAME on my root domain?"
-    answer: "Not as a plain CNAME. RFC 1034 does not allow a CNAME to share a name with other records, and the root domain always carries NS records. Use the A record your host gives you, or a DNS provider that offers ALIAS, ANAME or CNAME flattening. Prisma Compute needs one of those CNAME-like records at the root; a subdomain such as `www` or `app` takes a normal CNAME."
+    answer: "Not as a plain CNAME. RFC 1034 says no other data should be present at a name that has a CNAME, and the root domain always carries NS records. Use the A record your host gives you, or a DNS provider that offers ALIAS, ANAME or CNAME flattening. Prisma Compute needs one of those CNAME-like records at the root; a subdomain such as `www` or `app` takes a normal CNAME."
   - question: "Why does HTTPS fail on my domain when the host's URL has HTTPS?"
     answer: "A certificate covers specific hostnames. The host's certificate for its generated URL does not cover your domain, so the host has to issue a new one for your name, and it can only do that once DNS points at it. Check the domain status in the host's dashboard or CLI. A CAA record that does not allow the host's certificate authority, or a proxy in front of the host, can also block issuance."
   - question: "Do I need to redeploy after changing the app's URL settings?"
@@ -32,7 +32,7 @@ cta:
 
 When the generated URL (`your-app.example-host.com`) works and your own domain does not, the app itself is running. A request to your domain fails before it reaches the app, or it reaches the app with a name the app does not expect. The fix is configuration in three places: the host's domain settings, your DNS provider and the app itself.
 
-We make Prisma Compute and Prisma Postgres. Prisma Compute doesn't require Prisma ORM or Prisma Postgres. The other providers' documentation linked on this page was checked on October 19, 2026.
+We make Prisma Compute and Prisma Postgres. The other providers' documentation linked on this page was checked on October 19, 2026.
 
 ## Which layer is failing?
 
@@ -65,7 +65,7 @@ DNS alone does not attach a domain to an app. Add the exact hostname in the host
 
 For a subdomain such as `app.example.com` or `www.example.com`, create a CNAME record whose value is the target the host shows. For the root domain, `example.com`, a plain CNAME isn't allowed: [RFC 1034](https://www.rfc-editor.org/rfc/rfc1034.txt) says that when a CNAME is present at a name, no other data should be, and the root always has NS records. Use the A record the host provides, or a DNS provider that offers a CNAME-like record at the root, such as Cloudflare's [CNAME flattening](https://developers.cloudflare.com/dns/cname-flattening/) or an ALIAS or ANAME record.
 
-Two typing mistakes are common. Many DNS providers expect only the label in the Name field (`app`, not `app.example.com`), and entering the full hostname creates `app.example.com.example.com`. Copy the value exactly as the host shows it.
+Two mistakes are common. On providers whose Name field expects only the label (`app`), entering the full hostname creates `app.example.com.example.com`. And a retyped target with a typo, or with a trailing period dropped that the host included on purpose, can point somewhere other than the host: paste the value exactly as the host shows it. [Vercel's guide](https://vercel.com/docs/domains/troubleshooting#absolute-cname-records) covers the trailing period under absolute CNAME records.
 
 ### 3. Remove conflicting records and check what resolvers see
 
@@ -78,7 +78,7 @@ dig @1.1.1.1 +short app.example.com
 dig @8.8.8.8 +short app.example.com
 ```
 
-If the answers don't match what the host expects, the problem is still DNS. Resolvers keep an old answer until its TTL expires. [Vercel's guide](https://vercel.com/docs/domains/troubleshooting) recommends lowering the old record's TTL before a switch, and notes that nameserver changes can take 24 to 48 hours.
+If the answers don't match what the host expects, the problem is still DNS. Resolvers keep an old answer until its TTL expires. [Vercel's guide](https://vercel.com/docs/domains/troubleshooting) recommends lowering the old record's TTL before a switch, and notes that nameserver changes can take up to 24 to 48 hours.
 
 ### 4. Let the certificate issue, then test HTTPS
 
@@ -131,7 +131,11 @@ A [custom domain](/docs/compute/domains) on Prisma Compute attaches to a product
    npx prisma service domain retry app.example.com --service web
    ```
 
-`show` prints the state, certificate details and any DNS hints. `retry` returns `DOMAIN_RETRY_NOT_ELIGIBLE` when the domain isn't in a retryable state. The checks in steps 3 to 5 of the general fix still apply: remove conflicting records, keep CAA records compatible with certificate issuance, and give the app's base URL, OAuth callbacks and cookies the new name. Environment variable values on Prisma Compute resolve at deploy time, so deploy again after you change them.
+`show` prints the state, certificate details and any DNS hints. `retry` returns `DOMAIN_RETRY_NOT_ELIGIBLE` when the domain isn't in a retryable state.
+
+The record has to resolve to the Switchboard target. The [launch post on custom domains](/blog/prisma-compute-custom-domains) says validation accepts "either the expected CNAME target or the underlying regional records associated with that target." A record proxied through Cloudflare answers with [Cloudflare's anycast addresses](https://developers.cloudflare.com/dns/proxy-status/) instead, so if you use Cloudflare DNS, set the record to DNS only (gray cloud). Keeping the proxy, the other option in step 4, isn't documented for Prisma Compute.
+
+Steps 3 and 5 of the general fix still apply, as does the CAA check in step 4: remove conflicting records, keep CAA records compatible with certificate issuance, and give the app's base URL, OAuth callbacks and cookies the new name. Environment variable values on Prisma Compute resolve at deploy time, so deploy again after you change them. Prisma Compute doesn't require Prisma ORM or Prisma Postgres, so this applies to any app you deploy there.
 
 The limits on the [Domains page](/docs/compute/domains) and [Known limitations](/docs/compute/limitations) decide whether this setup fits:
 
