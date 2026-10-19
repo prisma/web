@@ -1,0 +1,202 @@
+---
+title: "My AI-built app forgets new records after it restarts. How do I make the data permanent?"
+description: "Records vanish when an app keeps them in memory, in the browser or in a file on a temporary disk. Move them to a hosted database and test with a restart."
+summary: "Your app is saving new records somewhere that doesn't outlive the process: a variable in server memory, the browser's `localStorage`, a SQLite or JSON file on a disk that the host wipes on restart or deploy, or a temporary database that has expired. AI app builders often start this way so the preview works before a database exists. To make the data permanent, store it in a hosted database that runs separately from your app, such as Postgres, read and write it only from server code through a connection string in `DATABASE_URL`, and check that a new record survives a restart and a redeploy. [Prisma Postgres](/docs/postgres) is one option: its Free plan needs no credit card, and any Postgres client can connect to it."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "9 min read"
+faq:
+  - question: "Is localStorage enough to save my app's data?"
+    answer: "Only for data that belongs to one person on one device, such as a draft or a theme setting. `localStorage` lives in a single browser: other users and other devices never see it, and clearing site data deletes it. Records that several people share, or that must still exist next month, belong in a database your server reads and writes."
+  - question: "Can I keep using SQLite?"
+    answer: "Yes, if the database file sits on a disk that survives deploys and the app runs as a single instance. [Render disks](https://render.com/docs/disks), [Railway volumes](https://docs.railway.com/volumes/reference) and [Fly Volumes](https://docs.fly.io/volumes/overview) give you such a disk, each attached to one instance. Hosts without persistent disks, such as Vercel functions and Prisma Compute, can't keep a SQLite file, so use a hosted database there."
+  - question: "Will my records survive a redeploy once they are in a hosted database?"
+    answer: "Yes. The database runs separately from your app, so restarting or redeploying the app doesn't touch it. Your own code still can: a seed script that deletes rows on startup, or a reset command in a build or start script, removes data on every deploy. Keep backups as well, because a working database also saves an accidental delete."
+  - question: "Can I get back the records that already disappeared?"
+    answer: "Usually not. Data held in server memory is gone when the process stops. Data in `localStorage` exists only in the browser that wrote it. A file on a temporary disk is gone once that instance is replaced, so copy any files a running instance still has before you deploy again. An unclaimed `npx create-db` database is deleted with its data when its time runs out."
+related:
+  - title: "Hosted Postgres for a prototype's customer details"
+    href: "/postgres/prototype-customer-data"
+  - title: "Files that disappear after a redeploy"
+    href: "/compute/file-uploads-disappear-after-redeploy"
+  - title: "A separate database for AI-assisted changes"
+    href: "/postgres/typescript-test-environment"
+  - title: "Running database migrations in production"
+    href: "/postgres/production-database-migrations"
+cta:
+  title: "Give your app a database that outlives restarts"
+  description: "Create a Prisma Postgres database on the Free plan, connect it from your server with any Postgres client, and check that a new record survives a restart."
+  label: "Create a Prisma Postgres database"
+  href: "https://console.prisma.io"
+---
+
+If a record you added is there until the app restarts and gone afterwards, the app never wrote it anywhere permanent. Work out where it went, move it to a hosted database, and test the fix with a restart and a redeploy.
+
+We make Prisma Postgres and Prisma Compute. Every host and app builder behavior on this page links to that vendor's documentation, checked on October 19, 2026. The fix works with any hosted Postgres and any Postgres client.
+
+## Why new records disappear
+
+Match what you see to where the data is stored:
+
+| What you see | Where the records are | Why they disappear |
+| --- | --- | --- |
+| Records survive a page refresh but not a server restart or an edit to the code | A variable in server memory, such as an array, a `Map` or a module-level object | Memory belongs to one running process. A restart, a redeploy or a dev server reloading after a code change starts a new process with empty variables. |
+| Records are missing in another browser, on another device or after clearing site data | `localStorage`, `sessionStorage` or IndexedDB in the browser | Browser storage is local to one browser profile. Nothing is sent to a server. |
+| Records survive restarts on your laptop but vanish after a deploy or restart on the host | A SQLite database or JSON file on the host's disk | Many hosts give each deploy or restart a fresh disk, so files written at runtime are lost. |
+| Records added in the builder's preview are missing in the published app, or the reverse | Two databases, one for development and one for production | Some builders give the published app its own database. Both work; they just don't share rows. |
+| Records were there yesterday and the whole database is gone today | A temporary database that expired | Temporary databases, such as an unclaimed `npx create-db` database, are deleted when their time runs out. |
+
+SQLite has one more variant: a database opened as `:memory:` is never written to disk, and [SQLite deletes it](https://www.sqlite.org/inmemorydb.html) as soon as the connection closes.
+
+Hosts document the temporary disk in their own words:
+
+- **Fly.io**: a Machine's root filesystem is ephemeral and meant for data that can be rebuilt on deploys and restarts. [Docs](https://docs.fly.io/volumes/overview)
+- **Heroku**: files a dyno writes are discarded the moment it stops or restarts. [Docs](https://devcenter.heroku.com/articles/dynos#ephemeral-filesystem)
+- **Prisma Compute**: no persistent filesystem. [Docs](/docs/compute/limitations#runtime)
+- **Render**: changes to a service's local files are lost on every redeploy or restart, unless they are on a persistent disk. [Docs](https://render.com/docs/disks)
+- **Replit**: don't save and rely on data written to a published app's filesystem. [Docs](https://docs.replit.com/learn/projects-and-artifacts/replit-deployments)
+- **Vercel**: functions have a read-only filesystem with a writable `/tmp` of up to 500 MB, for scratch space. [Docs](https://vercel.com/docs/functions/runtimes#file-system-support)
+
+## What AI app builders do about storage
+
+Most builders can add a database for you, but they add it when a feature needs one or when you ask. A prototype that kept records in memory or in the browser keeps doing so until you, or the builder's agent, change it. Listed alphabetically:
+
+| Builder | Built-in storage, per its docs |
+| --- | --- |
+| Bolt | Creates a Bolt Database, which is built on Postgres, automatically when the project needs one. You can tell it to use local storage instead. [Database](https://support.bolt.new/bolt-cloud/database), [intro](https://support.bolt.new/reference/intro-databases) |
+| Lovable | Its built-in backend, Lovable Cloud, includes a managed Postgres database and is built on Supabase's open-source foundation. Lovable enables it when a feature needs a backend, by default without asking. [Cloud](https://docs.lovable.dev/features/cloud), [database](https://docs.lovable.dev/features/database) |
+| Replit | Each app has a development database for building, and the published app gets its own production database, separate from it. [Docs](https://docs.replit.com/features/data-and-storage/development-and-production) |
+| v0 | Has one-click integrations with Neon, Supabase, Upstash and Vercel Blob. [Docs](https://v0.app/docs/databases) |
+
+If your builder has a built-in database, the fastest fix is to ask its agent to use it. If it doesn't, or you want a database you control, create a hosted Postgres database and give the builder its connection string. Either way, a prompt like this one tells the agent what to change:
+
+```text
+Records I add disappear when the app restarts. Find where the app stores them
+(in-memory variables, localStorage, a SQLite or JSON file, or a temporary
+database) and move them to the Postgres database in DATABASE_URL. Read and write
+records only from server code, create the tables with a migration, and keep the
+rest of the app working. Then tell me how to check that a new record survives a
+restart and a redeploy.
+```
+
+## Fix: move the records into a hosted database
+
+These steps are for an app you can open in an editor or a terminal. They use Postgres and the `pg` driver, and the same approach works with any hosted database and client.
+
+### 1. Find where the app saves records
+
+Search the code for the usual suspects:
+
+```sh
+grep -rnE "localStorage|sessionStorage|:memory:|sqlite|writeFile|^(let|const) [A-Za-z_]+ = (\[\]|new Map)" \
+  --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" \
+  --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist .
+```
+
+A match in a route handler or a component that saves data, for example `records.push(...)` or `localStorage.setItem(...)`, is what you replace. Code that runs in the browser can't hold database credentials, so browser code has to call a server endpoint that writes to the database.
+
+### 2. Create a hosted Postgres database
+
+Create a database with any managed Postgres provider and copy its connection string. Set it as `DATABASE_URL` in your host's environment variables and in your local `.env`, and keep `.env` out of Git. Use a separate database for development and for the live app, so test records and schema experiments never reach real data.
+
+### 3. Create the table
+
+Create a table for each kind of record the app saves. For a list of records with a title:
+
+```sql
+CREATE TABLE records (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+```
+
+Run it once with `psql "$DATABASE_URL" -f schema.sql`, or add it as a migration in the tool your project already uses, so every database you create later gets the same table.
+
+### 4. Replace the in-memory code with queries
+
+In an Express server, the in-memory version looks like this:
+
+```js
+// Records live in this process and are lost when it restarts.
+const records = [];
+
+app.post("/api/records", (req, res) => {
+  const record = { id: records.length + 1, title: req.body.title };
+  records.push(record);
+  res.status(201).json(record);
+});
+```
+
+Install the Postgres driver with `npm install pg`, then read and write the table instead. This version uses ES modules and Express 5, which passes errors from `async` handlers to its error handler:
+
+```js
+import express from "express";
+import pg from "pg";
+
+const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const app = express();
+app.use(express.json());
+
+app.post("/api/records", async (req, res) => {
+  const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+  if (!title) return res.status(400).send("title is required");
+  const { rows } = await db.query(
+    "INSERT INTO records (title) VALUES ($1) RETURNING id, title, created_at",
+    [title],
+  );
+  res.status(201).json(rows[0]);
+});
+
+app.get("/api/records", async (_req, res) => {
+  const { rows } = await db.query(
+    "SELECT id, title, created_at FROM records ORDER BY id DESC LIMIT 100",
+  );
+  res.json(rows);
+});
+
+app.listen(process.env.PORT ?? 3000);
+```
+
+The database now assigns each id, so two instances of the app can't hand out the same one. If the app uses an ORM or a query builder, such as Prisma ORM, Drizzle or Kysely, write the same two queries with it instead.
+
+### 5. Copy the records you still have
+
+Records held in memory are gone once the process stops. If they are in a SQLite file or a JSON file that still exists, for example on your laptop or on an instance that is still running, export them and insert them into the new table before you deploy. Records in `localStorage` exist only in the browser that saved them; to keep them, open that browser and have the app send them to the new endpoint once.
+
+### 6. Check that records survive
+
+Deploy, add a record, then:
+
+1. Restart the app, or redeploy it without changes, and reload the page.
+2. Open the app in a private window or on another device.
+3. Change a line of code and save, so the dev server reloads.
+
+If the record is still there after each step, it lives in the database. Repeat the check whenever the builder's agent changes how the app stores data.
+
+## Where Prisma Postgres and Prisma Compute fit
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17. It is a regular Postgres database behind a connection string, so the `pg` example above works with it, and so do Drizzle, Kysely and `psql`. Prisma ORM is optional.
+
+The Free plan is $0 with no credit card and includes 200,000 database operations a month, 2 GB of storage and up to 50 databases; [pricing](/pricing) lists the paid plans. To get a database without signing up first, run `npx create-db@latest`: it creates a Prisma Postgres database in seconds and prints its connection string. That database is temporary. [It is deleted after 24 hours unless you claim it](/docs/postgres/npx-create-db), and claiming it is free but needs a Prisma account, so claim it before you store records you want to keep, or create a database in the [Prisma Console](https://console.prisma.io) instead.
+
+If you also need a host, [Prisma Compute](/docs/compute) runs TypeScript apps next to Prisma Postgres in one project. Compute has no persistent filesystem, so a SQLite or JSON file doesn't last there either. Apps deploy to Compute as [Prisma Composer](/docs/composer) services: declare a `rawPostgres()` dependency, and your server builds its Postgres client from `service.load().db.url` instead of `DATABASE_URL`, as the [Composer databases guide](/docs/composer/databases) shows.
+
+Limits to know before you rely on it:
+
+- **The Free plan has no backups.** Starter and Pro keep daily snapshots for 7 days, and Business for 30 days, taken on days the database has activity. There is no point-in-time recovery yet. See [backups](/docs/postgres/database/backups).
+- **When a Free workspace uses all its operations, the database stops accepting reads and writes** until you upgrade or the allowance resets at the start of the next month. A one-time 24-hour grace period lets you export data or decide. See the [Prisma Postgres FAQ](/docs/postgres/faq).
+
+## How to prevent it, and when the fix doesn't apply
+
+Decide where records live before you build a feature that saves them. Tell your builder or coding agent in its project instructions: "Store records in the Postgres database in `DATABASE_URL` and never in memory, `localStorage` or local files." Keep a restart check in your routine, because agents sometimes add a quick in-memory store while building a new feature.
+
+If the app already uses a hosted database and records still vanish, look for code that deletes them: a seed script that clears tables on every start, a reset command in a build or start script, or a migration that drops and recreates a table. Check that the published app and the preview point at the database you are looking at. On Replit, for example, the published app uses its production database and the editor keeps using the development database.
+
+A hosted database is the wrong fix in a few cases:
+
+- **Offline-first apps** that must work without a connection need local storage plus a sync layer. A hosted database alone doesn't solve that.
+- **Single-user tools on your own machine**, such as a desktop app, can keep a SQLite file on the local disk, which persists. Back the file up.
+- **Uploaded files** such as images and PDFs belong in object storage, with a row per file in the database. See [files that disappear after a redeploy](/compute/file-uploads-disappear-after-redeploy).
