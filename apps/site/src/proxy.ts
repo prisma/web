@@ -16,9 +16,10 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
  *    Agent traffic page can tell agents from people. It answers a request
  *    itself only for `/__ora/status`, or once Autopilot is switched on in the
  *    ora Portal; otherwise it returns null and the request carries on.
- * 2. The Markdown rendition of a marketing page or product guide for agents
- *    that ask for it, mirroring apps/docs/src/proxy.ts and apps/blog's posts,
- *    with a `Vary` append on both variants (see `agentMarkdown`).
+ * 2. The Markdown rendition of a marketing page, product guide or Data Guide
+ *    page for agents that ask for it, mirroring apps/docs/src/proxy.ts and
+ *    apps/blog's posts, with a `Vary` append on both variants (see
+ *    `agentMarkdown`).
  *
  * The site app is the root zone, and a proxy runs before `rewrites()`, so this
  * one file sees `/docs/*` and `/blog/*` on their way to the docs and blog
