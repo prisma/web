@@ -1,7 +1,7 @@
 ---
 title: "My AI-built app forgets new records after it restarts. How do I make the data permanent?"
 description: "Records vanish when an app keeps them in memory, in the browser or in a file on a temporary disk. Move them to a hosted database and test with a restart."
-summary: "Your app is saving new records somewhere that doesn't outlive the process: a variable in server memory, the browser's `localStorage`, a SQLite or JSON file on a disk that the host wipes on restart or deploy, or a temporary database that has expired. AI app builders usually add a database only when a feature needs one or when you ask, so a prototype can run for a while without one. To make the data permanent, store it in a hosted database that runs separately from your app, such as Postgres, read and write it only from server code through a connection string in `DATABASE_URL`, and check that a new record survives a restart and a redeploy. [Prisma Postgres](/docs/postgres) is one option: its Free plan needs no credit card, and any Postgres client can connect to it."
+summary: "Your app is saving new records somewhere that doesn't outlive the process: a variable in server memory, the browser's `localStorage`, a SQLite or JSON file on a disk that the host wipes on restart or deploy, or a temporary database that has expired. AI app builders usually add a database only when a feature needs one or when you ask, so a prototype can run for a while without one. To make the data permanent, store it in a hosted database that runs separately from your app, such as Postgres, read and write it only from server code through a connection string in `DATABASE_URL`, and check that a new record survives a restart and a redeploy."
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-19"
@@ -13,7 +13,7 @@ faq:
   - question: "Can I keep using SQLite?"
     answer: "Yes, if the database file sits on a disk that survives deploys and the app runs as a single instance. [Render disks](https://render.com/docs/disks), [Railway volumes](https://docs.railway.com/volumes/reference) and [Fly Volumes](https://docs.fly.io/volumes/overview) give you such a disk, each attached to one instance. Hosts without persistent disks, such as Vercel functions and Prisma Compute, can't keep a SQLite file, so use a hosted database there."
   - question: "Will my records survive a redeploy once they are in a hosted database?"
-    answer: "Yes. The database runs separately from your app, so restarting or redeploying the app doesn't touch it. Your own code still can: a seed script that deletes rows on startup, or a reset command in a build or start script, removes data on every deploy. Keep backups as well, because a working database also saves an accidental delete."
+    answer: "Yes. The database runs separately from your app, so restarting or redeploying the app doesn't touch it. Your own code still can: a seed script that deletes rows on startup, or a reset command in a build or start script, removes data on every deploy. Keep backups as well: the database stores an accidental delete as faithfully as any other write."
   - question: "Can I get back the records that already disappeared?"
     answer: "Usually not. Data held in server memory is gone when the process stops. Data in `localStorage` exists only in the browser that wrote it. A file on a temporary disk is gone once that instance is replaced, so copy any files a running instance still has before you deploy again. An unclaimed `npx create-db` database is deleted with its data when its time runs out."
 related:
@@ -42,11 +42,13 @@ Match what you see to where the data is stored:
 
 | What you see | Where the records are | Why they disappear |
 | --- | --- | --- |
-| Records survive a page refresh but not a server restart or an edit to the code | A variable in server memory, such as an array, a `Map` or a module-level object | Memory belongs to one running process. A restart, a redeploy or a dev server reloading after a code change starts a new process with empty variables. |
+| Records survive a page refresh but not a server restart or an edit to the code | A variable in server memory, such as an array, a `Map` or a module-level object | Memory belongs to one running process. A restart, a redeploy or a dev server reloading after a code change starts a new process or re-runs the module, with empty variables. |
 | Records are missing in another browser, on another device or after clearing site data | `localStorage`, `sessionStorage` or IndexedDB in the browser | Browser storage is local to one browser profile. Nothing is sent to a server. |
 | Records survive restarts on your laptop but vanish after a deploy or restart on the host | A SQLite database or JSON file on the host's disk | Many hosts give each deploy or restart a fresh disk, so files written at runtime are lost. |
-| Records added in the builder's preview are missing in the published app, or the reverse | Two databases, one for development and one for production | Some builders give the published app its own database. Both work; they just don't share rows. |
+| Records added in the builder's preview are missing in the published app, or the reverse | Two databases, one for development and one for production | Some builders give the published app its own database. Both work, but they don't share rows. |
 | Records were there yesterday and the whole database is gone today | A temporary database that expired | Temporary databases, such as an unclaimed `npx create-db` database, are deleted when their time runs out. |
+
+On serverless and scale-to-zero hosts, each instance has its own memory, so in-memory records can come and go between requests and are gone after the app sits idle.
 
 SQLite has one more variant: a database opened as `:memory:` is never written to disk, and [SQLite deletes it](https://www.sqlite.org/inmemorydb.html) as soon as the connection closes.
 
@@ -61,7 +63,7 @@ Hosts document the temporary disk in their own words:
 
 ## What AI app builders do about storage
 
-Most builders can add a database for you, but they add it when a feature needs one or when you ask. A prototype that kept records in memory or in the browser keeps doing so until you, or the builder's agent, change it. Listed alphabetically:
+Most builders can add a database for you, but they add it when a feature needs one or when you ask. Replit gives every app a development database, but the app uses it only once the agent writes code for it. A prototype that kept records in memory or in the browser keeps doing so until you, or the builder's agent, change it. Listed alphabetically:
 
 | Builder | Built-in storage, per its docs |
 | --- | --- |
@@ -87,7 +89,7 @@ These steps are for an app you can open in an editor or a terminal. They use Pos
 
 ### 1. Find where the app saves records
 
-Search the code for the usual suspects:
+In a JavaScript or TypeScript project, search the code for the usual suspects:
 
 ```sh
 grep -rnE "localStorage|sessionStorage|:memory:|sqlite|writeFile|^(export )?(let|const|var) [A-Za-z_]+(: [^=]+)? = (\[\]|new Map)" \
@@ -96,7 +98,7 @@ grep -rnE "localStorage|sessionStorage|:memory:|sqlite|writeFile|^(export )?(let
   --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist .
 ```
 
-A match in a route handler or a component that saves data, for example `records.push(...)` or `localStorage.setItem(...)`, is what you replace. Code that runs in the browser can't hold database credentials, so browser code has to call a server endpoint that writes to the database.
+A match in a route handler or a component that saves data, for example `records.push(...)` or `localStorage.setItem(...)`, is what you replace. In a Python app, look for module-level lists or dicts such as `records = []` and for `sqlite3.connect(...)` calls. Code that runs in the browser can't hold database credentials, so browser code has to call a server endpoint that writes to the database.
 
 ### 2. Create a hosted Postgres database
 
@@ -138,6 +140,7 @@ import express from "express";
 import pg from "pg";
 
 const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+db.on("error", (err) => console.error(err));
 const app = express();
 app.use(express.json());
 
@@ -169,13 +172,12 @@ Records held in memory are gone once the process stops. If they are in a SQLite 
 
 ### 6. Check that records survive
 
-Deploy, add a record, then:
+Locally, add a record, then change a line of code and save, so the dev server reloads. After you deploy, add a record, then:
 
 1. Restart the app, or redeploy it without changes, and reload the page.
 2. Open the app in a private window or on another device.
-3. Change a line of code and save, so the dev server reloads.
 
-If the record is still there after each step, it lives in the database. Repeat the check whenever the builder's agent changes how the app stores data.
+If the record is still there after each check, it lives in the database. Repeat the check whenever the builder's agent changes how the app stores data.
 
 ## Where Prisma Postgres and Prisma Compute fit
 
@@ -183,7 +185,7 @@ If the record is still there after each step, it lives in the database. Repeat t
 
 The Free plan is $0 with no credit card and includes 200,000 database operations a month, 2 GB of storage and up to 50 databases; [pricing](/pricing) lists the paid plans. To get a database without signing up first, run `npx create-db@latest`: it creates a Prisma Postgres database in seconds and prints its connection string. That database is temporary. [It is deleted after 24 hours by default unless you claim it](/docs/postgres/npx-create-db), and claiming it is free but needs a Prisma account, so claim it before you store records you want to keep, or create a database in the [Prisma Console](https://console.prisma.io) instead.
 
-If you also need a host, [Prisma Compute](/docs/compute) runs TypeScript apps next to Prisma Postgres in one project. Compute has no persistent filesystem, so a SQLite or JSON file doesn't last there either. Most of the [documented deploy paths](/docs/compute/deployments) run your app as a [Prisma Composer](/docs/composer) service, and the Express server above changes in a few places when you [port it](/docs/composer/porting-an-app): it reads its port from `service.port()` and binds `0.0.0.0`, and it can get its database through a `rawPostgres()` dependency and build the `pg` client from `service.load().db.url`, as the [Composer databases guide](/docs/composer/databases) shows. Keep the pool small, with a short idle timeout, because Compute scales to zero and closes idle connections. The guide's example uses one connection and a 10-second timeout.
+If you also need a host, [Prisma Compute](/docs/compute) runs TypeScript apps next to Prisma Postgres in one project. Compute has no persistent filesystem, so a SQLite or JSON file doesn't last there either. The Compute docs say to declare your app with [Prisma Composer](/docs/composer), whether it has one service or several, and the Express server above changes in a few places when you [port it](/docs/composer/porting-an-app): it reads its port from `service.port()` and binds `0.0.0.0`, and it can get its database through a `rawPostgres()` dependency and build the `pg` client from `service.load().db.url`, as the [Composer databases guide](/docs/composer/databases) shows. Keep the pool small, with a short idle timeout, because Compute scales to zero and closes idle connections. The guide's example uses one connection and a 10-second timeout.
 
 Limits to know before you rely on it:
 
@@ -196,7 +198,7 @@ Decide where records live before you build a feature that saves them. Tell your 
 
 If the app already uses a hosted database and records still vanish, look for code that deletes them: a seed script that clears tables on every start, a reset command in a build or start script, or a migration that drops and recreates a table. Check that the published app and the preview point at the database you are looking at. On Replit, for example, the published app uses its production database and the editor keeps using the development database.
 
-A hosted database is the wrong fix in a few cases:
+A hosted database is the wrong fix for:
 
 - **Offline-first apps** that must work without a connection need local storage plus a sync layer. A hosted database alone doesn't solve that.
 - **Single-user tools on your own machine**, such as a desktop app, can keep a SQLite file on the local disk, which persists. Back the file up.
