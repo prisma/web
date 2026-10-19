@@ -53,7 +53,7 @@ Without PromptWatch, run the prompt in two or three assistants with web search o
 
 Two Prisma pages that answer the same question compete with each other.
 
-1. Search the repo for pages that already answer the prompt: `apps/blog/content/blog/`, `apps/site/src/app/` (product pages, `/postgres/*`, `/compute/*`, comparisons) and `apps/docs/content/docs/`. Search by the competitor, framework or error message and by the problem words, not only by title.
+1. Search the repo for pages that already answer the prompt: `apps/blog/content/blog/`, `apps/site/src/app/` (product pages, `/postgres/*`, `/compute/*`, `/compare/*`) and `apps/docs/content/docs/`. Search by the competitor, framework or error message and by the problem words, not only by title.
 2. If an existing page answers most of the prompt, refresh that page instead of writing a new one. Keep its slug, follow the refresh rules in `content-seo-geo` (`updatedAt` plus an "Updated" callout), and put its URL in the tracker's "Existing page" column.
 3. If two tracker rows ask the same question, one page can serve both. Put the same URL on both rows and say so in Notes.
 
@@ -63,9 +63,9 @@ The prompt's shape decides the page type. New pages don't go under `/blog` unles
 
 | Prompt shape | Page type | URL |
 |---|---|---|
-| "Prisma Postgres vs Neon", "Neon vs Supabase" | Head-to-head comparison | `/comparisons/prisma-vs-<competitor>`, or `/comparisons/<a>-vs-<b>` when Prisma isn't one side |
-| "Neon alternatives", "moving off Heroku Postgres" | Alternatives | `/comparisons/<competitor>-alternatives` |
-| "best PostgreSQL hosting for developers" | Roundup | `/comparisons/<category>`, for example `/comparisons/postgres-hosting` |
+| "Prisma Postgres vs Neon", "Neon vs Supabase" | Head-to-head comparison | `/compare/<competitor>` (for example `/compare/neon`), or `/compare/<a>-vs-<b>` when Prisma isn't one side |
+| "Neon alternatives", "moving off Heroku Postgres" | Alternatives | `/compare/<competitor>-alternatives` |
+| "best PostgreSQL hosting for developers" | Roundup | `/compare/<category>`, for example `/compare/postgres-hosting` |
 | "Postgres for small teams", "where to host a Hono API" | Use-case guide | `/postgres/<topic>` or `/compute/<topic>` |
 | "my app says too many connections" | Troubleshooting | `/postgres/<topic>`, `/compute/<topic>`, or `/orm/<topic>` |
 
@@ -75,7 +75,7 @@ A prompt about the whole platform goes under the product that answers most of it
 
 **Template.** Conversion Factory designed two templates: a comparison page (for head-to-heads, alternatives and roundups) and an article page (for use-case guides and troubleshooting). The links are in the AI content drive thread in #developer-relations. Use their layout and section order, which "Page outlines" below follows, and apply this skill's writing rules on top. Never copy their sample copy: it uses labels and claims this skill rules out, such as a "Recommended" column and database branching. The article template's header has an empty block above the title; leave it out.
 
-**Where the files go.** Before writing, find how the target section is built: look for the route under `apps/site/src/app/` (for example `comparisons/`) and read how its newest page is authored (a TSX page with `_content.ts`, like `postgres/hipaa/`, or an MDX collection). Copy that pattern. If the section doesn't exist yet, stop and tell the operator that it has to be built first, and ask the content lead who owns the URL structure. Use `/blog` only if the operator explicitly approves it.
+**Where the files go.** Before writing, find how the target section is built: look for the route under `apps/site/src/app/` (for example `compare/`) and read how its newest page is authored (a TSX page with `_content.ts`, like `postgres/hipaa/`, or an MDX collection). Copy that pattern. A comparison page is a folder `apps/site/src/app/compare/<slug>/` with `page.tsx`, `_content.ts`, `_sections.tsx` and `facts.ts`, plus `apps/site/src/app/compare/<slug>.json/route.ts`, registered the way the "Comparison pages" section of `apps/site/CLAUDE.md` describes (`compare/comparisons.ts`, `lib/markdown/comparisons.tsx` and `next.config.mjs`). If the section doesn't exist yet, stop and tell the operator that it has to be built first, and ask the content lead who owns the URL structure. Use `/blog` only if the operator explicitly approves it.
 
 ## Step 5: Write the page
 
@@ -118,7 +118,7 @@ Do all of this in the same pull request as the page.
 1. **Sitemap.** The site sitemap (`apps/site/src/lib/sitemap.ts`) picks up static `page.tsx` routes automatically, but it **skips dynamic segments** such as `[slug]`. If the section renders its pages from a content collection through a dynamic route, add those pages to `getSiteSitemapEntries`, the way changelog and extensions entries are added. Then serve the site and confirm `/sitemap-site.xml` lists the URL. Blog and docs pages are in their own sitemaps automatically.
 2. **Links within the series.** A roundup links to each head-to-head and alternatives page it covers. Each head-to-head links back to the roundup and to the alternatives page for that competitor. Use the question or the topic as anchor text.
 3. **Links from the rest of the site.** Link to the new page from at least two related pages: the product or docs page it extends, and a related blog post. A page that nothing links to is crawled late or not at all.
-4. **Section index and footer.** Add the page to its section's index page (for example `/comparisons`). The index page must be linked from the footer (`packages/ui/src/data/footer.ts`). If it isn't yet, add that footer link once.
+4. **Section index and footer.** Add the page to its section's index page (for example `/compare`, which lists the entries in `apps/site/src/app/compare/comparisons.ts`). The index page must be linked from the footer (`packages/ui/src/data/footer.ts`). If it isn't yet, add that footer link once.
 5. **llms.txt and Markdown.** These are hygiene: no engine has been seen reading them, but they cost little. Blog posts appear in `/blog/llms.txt` automatically. Site pages don't: `/llms.txt` is built in `apps/site/src/app/llms-content.ts` from `markdownPageList` plus `additionalPages`, so add the page there or add its section index once the section has one. For the `.md` rendition, check whether the section supports one (`apps/site/src/lib/agent-markdown.ts`) and register the page if it does.
 6. **IndexNow runs by itself.** `.github/workflows/indexnow.yml` submits changed sitemap URLs to IndexNow after every production deploy of the site, docs and blog apps. There is nothing to submit by hand, but it only sees URLs that item 1 put in the sitemap.
 7. **Check the served page.** Serve it and run `content-seo-geo` Step 7 against the rendered HTML, not the source file. Confirm the `<title>` and the H1 match.
@@ -138,7 +138,7 @@ Once the page is live on www.prisma.io:
 
 The comparison outlines follow Conversion Factory's comparison template, and the use-case and troubleshooting outlines follow its article template, with the additions this skill requires (disclosure, sources and dates, a "wrong choice" section, migration, FAQ). Each page ends with an FAQ in the site's accordion format (`content-seo-geo` Step 3). The numbers give the order of the sections.
 
-### Head-to-head (`/comparisons/prisma-vs-<x>`)
+### Head-to-head (`/compare/<x>`)
 
 1. Hero: H1 in the form "<Prisma product> vs <X>: <the decision in a few words>", a decision paragraph that says who should pick which, the disclosure that Prisma makes one of the two, and the call to action
 2. "Choose <Prisma product> if..." and "Choose <X> if...", side by side
@@ -151,7 +151,7 @@ The comparison outlines follow Conversion Factory's comparison template, and the
 9. Proof: customer quotes only from those currently on prisma.io, and none if there isn't a relevant one
 10. FAQ, then the closing call to action
 
-### Alternatives (`/comparisons/<x>-alternatives`)
+### Alternatives (`/compare/<x>-alternatives`)
 
 1. Hero: H1 in the form "<X> alternatives in <year>: <n> options compared", a decision paragraph naming the reasons people look beyond X and which option fits each reason, and the disclosure
 2. What X does well, so the reader knows what they would give up
@@ -160,7 +160,7 @@ The comparison outlines follow Conversion Factory's comparison template, and the
 5. How to move off X
 6. FAQ, then the closing call to action
 
-### Roundup (`/comparisons/<category>`)
+### Roundup (`/compare/<category>`)
 
 1. Hero: H1 in the form "<Category> in <year>: <n> options compared", a decision paragraph with the short list and the situation each option fits, and the disclosure
 2. The criteria, as a checklist, before any option
