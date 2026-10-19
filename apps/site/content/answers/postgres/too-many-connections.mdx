@@ -9,7 +9,7 @@ updatedAt: "2026-10-19"
 readingTime: "8 min read"
 faq:
   - question: "Should I just raise max_connections?"
-    answer: "Only after the app reuses its pools and goes through a pooler. Each PostgreSQL connection is its own server process, and PostgreSQL sizes shared memory by `max_connections`, so the limit can't grow for free. On many managed hosts it is tied to the plan or compute size (Neon sets it by compute size), so raising it often means an upgrade. AWS RDS lets you set it in a DB parameter group and Supabase through its CLI config, but the memory each connection uses still bounds how far you can go. A pooler gets more out of the connections you have: Neon's PgBouncer, for example, accepts up to 10,000 client connections."
+    answer: "Only after the app reuses its pools and goes through a pooler. Each PostgreSQL connection is its own server process, and PostgreSQL sizes shared memory by `max_connections`, so the limit can't grow for free. On many managed hosts it is tied to the plan or compute size (Neon sets it by compute size), so raising it often means an upgrade. AWS RDS lets you set it in a DB parameter group and Supabase with its CLI's `postgres-config` command (which restarts the database), but the memory each connection uses still bounds how far you can go. A pooler gets more out of the connections you have: Neon's PgBouncer, for example, accepts up to 10,000 client connections."
   - question: "What pool size should I use in serverless functions?"
     answer: "It depends on how many requests one instance serves at a time. Supabase recommends a pool of 1 per function instance, because each warm instance holds its own pool and you don't control how many are warm. Vercel's guidance for Fluid compute, where one instance serves several invocations at once, is the opposite: keep the pool at module scope, avoid a maximum of 1, use a short idle timeout of about 5 seconds and call `attachDatabasePool` from `@vercel/functions`. In both cases, instances times pool size has to fit under the limit."
   - question: "Why does my database show so many idle connections?"
@@ -32,7 +32,7 @@ cta:
   href: "/docs/postgres/database/connecting-to-your-database"
 ---
 
-When the app works with a few users and fails as soon as more people open it, the database has run out of connection slots. The usual causes are a new connection or pool per request, more app instances than the limit allows for, or connections that are never returned. Reuse one pool per process, size it for the number of instances, and move app traffic to your provider's pooled connection string. Every step below works on any host and with any Postgres client.
+When the app works with a few users and fails as soon as more people open it, the database has run out of connection slots. The usual causes are a new connection or pool per request, more app instances than the limit allows for, or connections that are never returned. Reuse one pool per process, size it for the number of instances, and move app traffic to your provider's pooled connection string. Every step below works on any host. The code uses node-postgres, and the same steps apply with other clients.
 
 We make Prisma Postgres and Prisma Compute. PostgreSQL, PgBouncer, node-postgres and provider behavior on this page links to each project's or provider's documentation, checked on October 19, 2026.
 
@@ -55,7 +55,9 @@ The connections usually come from one of these:
 
 ### 1. See what holds the connections
 
-Connect with `psql` or your database GUI and run:
+If `psql` or your database GUI gets the same error, free some slots first. Restart or scale down the app, worker or function that holds them. To see who holds them without connecting, use your provider's connection metrics. The 3 reserved slots only help superusers, and the role a managed host gives you usually isn't one.
+
+Once you can connect, run:
 
 ```sql
 SHOW max_connections;
@@ -69,6 +71,17 @@ ORDER BY count(*) DESC;
 ```
 
 Many rows from your app's user in `idle` state are your pools holding connections open. Rows in `idle in transaction` point to a transaction that was never finished. If your app's row count is close to the instance count times the pool size, the pools are the cause, and step 3 resizes them. Behind a pooler, these rows are the pooler's connections, not your app's. Unless your role is a superuser or has `pg_read_all_stats`, it [sees every session](https://www.postgresql.org/docs/current/monitoring-stats.html) but gets null in many columns for sessions of other roles, including `backend_type`, `state` and `client_addr`. That is why the query keeps rows with an empty `backend_type`: other roles' sessions still count toward the total under their `usename`, they just show no detail. The `usename` check leaves out PostgreSQL's own background processes. Run the query as the role your app uses to see its states, or use your provider's connection metrics.
+
+To end sessions stuck in an open transaction, run this as the same role. Ending a session rolls back its open transaction:
+
+```sql
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE state = 'idle in transaction'
+  AND usename = current_user;
+```
+
+A role can [end only the sessions](https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADMIN-SIGNAL) of roles it is a member of, or other non-superuser sessions if it has the privileges of `pg_signal_backend`. This frees slots for now; the next steps stop them from filling up again.
 
 ### 2. Create one pool per process
 
@@ -129,7 +142,7 @@ A pooler such as [PgBouncer](https://www.pgbouncer.org/features.html) accepts ma
 | AWS RDS and Aurora | [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) | Create a proxy for the database and connect to its endpoint | A separate AWS resource, billed separately. It queues or throttles connections it can't serve right away and rejects those beyond the limits you set |
 | Neon | [PgBouncer, transaction mode](https://neon.com/docs/connect/connection-pooling) | Add `-pooler` to the endpoint ID in the hostname | Up to 10,000 client connections. Each user-and-database pool holds up to 90% of `max_connections` |
 | Prisma Postgres | [PgBouncer, transaction mode](/docs/postgres/database/connection-pooling) | Use the pooled host `pooled.db.prisma.io` | 10, 100, 500 or 1,000 pooled connections by plan. The direct host is `db.prisma.io` |
-| Railway | [PgBouncer](https://docs.railway.com/databases/postgresql-pgbouncer) | Add it under **Database**, **Config**, **Connection Pooling**, or with `railway postgres pgbouncer add` | Transaction mode by default. `DATABASE_URL` moves to PgBouncer and `DATABASE_UNPOOLED_URL` stays direct |
+| Railway | [PgBouncer](https://docs.railway.com/databases/postgresql-pgbouncer) | Add it under **Database**, **Config**, **Connection Pooling**, or with [`railway postgres pgbouncer add`](https://docs.railway.com/cli/postgres) | Transaction mode by default. `DATABASE_URL` moves to PgBouncer and `DATABASE_UNPOOLED_URL` stays direct |
 | Render | [Integrated PgBouncer, transaction mode](https://render.com/docs/postgresql-connection-pooling) | Enable the connection pool on the database, then use its pool URL on port 6432 | Not available for free databases. Enabling it restarts the database, or fails over on HA |
 | Supabase | [Shared pooler (Supavisor), plus a dedicated PgBouncer on paid plans](https://supabase.com/docs/guides/database/connecting-to-postgres) | Use transaction mode on port 6543 for serverless functions | Turn off prepared statements in your client for transaction mode |
 
@@ -165,7 +178,7 @@ Transaction mode returns the database connection to the pool after every transac
 
 5 direct connections are reserved for platform operations and are not available to your workload. Idle pooled connections are closed after 60 minutes. For edge and other runtimes without PostgreSQL over TCP, the [serverless driver](/docs/postgres/database/serverless-driver) (`@prisma/ppg`) does not open a TCP connection and uses Prisma Postgres connection pooling by default.
 
-If you also want to host the app, [Prisma Compute](/docs/compute) runs TypeScript apps in the same Prisma project as the database. It scales idle instances to zero and closes idle database connections, so the [deploying docs](/docs/composer/deploying#production-behavior) recommend a small, reconnect-friendly pool.
+If you also want to host the app, [Prisma Compute](/docs/compute) runs TypeScript apps in the same Prisma project as the database. Compute scales to zero, and idle database connections get closed, so the [deploying docs](/docs/composer/deploying#production-behavior) recommend a small, reconnect-friendly pool.
 
 Know the limits before you rely on them:
 
