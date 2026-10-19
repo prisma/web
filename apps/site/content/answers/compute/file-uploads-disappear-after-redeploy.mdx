@@ -1,19 +1,19 @@
 ---
 title: "Files uploaded to my Node app disappear after a redeploy. Where should I store them?"
 description: "Uploads vanish because most hosts give each deploy a fresh disk. Move them to S3-compatible object storage and keep a reference to each file in your database."
-summary: "Most hosts start every deployment from a clean copy of your build, so anything your app wrote to its local disk, such as an `uploads/` folder, is gone after the next deploy or restart. Store customer uploads in S3-compatible object storage (AWS S3, Cloudflare R2, or the bucket service your host offers) and save each file's key, owner and type in your database. A persistent volume also works, but it ties the app to a single instance. On [Prisma Compute](/docs/compute), which has no persistent filesystem, uploads go to an [Object Store bucket](/docs/compute/object-storage) in the same Prisma project as your database."
+summary: "Most hosts start every deployment from a clean copy of your build, so anything your app wrote to its local disk, such as an `uploads/` folder, is gone after the next deploy or restart. Store customer uploads in S3-compatible object storage (AWS S3, Cloudflare R2, or the bucket service your host offers) and save each file's key, owner and type in your database. A persistent disk or volume also works, but each one belongs to a single instance, so the app either runs as one instance or ends up with files split across instances. On [Prisma Compute](/docs/compute), which has no persistent filesystem, uploads go to an [Object Store bucket](/docs/compute/object-storage) in the same Prisma project as your database."
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-19"
 updatedAt: "2026-10-19"
-readingTime: "7 min read"
+readingTime: "8 min read"
 faq:
   - question: "Should I store uploaded files in Postgres instead?"
     answer: "Only small ones. Postgres can hold file contents in a `bytea` column, which keeps everything in one place, but every upload then makes the database and its backups larger and every download goes through a database query. For customer uploads such as photos, PDFs and CSVs, put the file in object storage and keep a row in Postgres with its key, owner, name, type and size."
   - question: "Can I use a persistent disk or volume instead of object storage?"
-    answer: "Yes, if one instance of your app is enough. [Render disks](https://render.com/docs/disks), [Railway volumes](https://docs.railway.com/reference/volumes) and [Fly Volumes](https://docs.fly.io/volumes/overview) keep files across deploys, but each is attached to a single instance: Render can't scale a service with a disk to more instances, Railway can't use replicas with a volume, and a Fly Volume attaches to one Machine. Render and Railway also note a short downtime on each deploy of a service with a disk or volume. Object storage isn't tied to an instance, so it avoids these trade-offs."
+    answer: "Yes, if one instance of your app is enough. [Render disks](https://render.com/docs/disks), [Railway volumes](https://docs.railway.com/volumes/reference) and [Fly Volumes](https://docs.fly.io/volumes/overview) keep files across deploys, but each is attached to a single instance: Render can't scale a service with a disk to more instances, Railway can't use replicas with a volume, and a Fly Volume attaches to one Machine. Render and Railway also note a short downtime on each deploy of a service with a disk or volume. Object storage isn't tied to an instance, so it avoids these trade-offs."
   - question: "Can I get back files that disappeared after a redeploy?"
-    answer: "Usually not from the host. [Heroku](https://devcenter.heroku.com/articles/dynos#ephemeral-filesystem), for example, discards files a dyno wrote as soon as it stops or restarts. Check whether copies exist elsewhere: a CDN cache, an email attachment, a backup job or the customer's own device. Files written since the last deploy may still be on the running instance, so copy them to the bucket before you deploy again."
+    answer: "Usually not from the host. [Heroku](https://devcenter.heroku.com/articles/dynos#ephemeral-filesystem), for example, discards files a dyno wrote as soon as it stops or restarts. Check whether copies exist elsewhere: a CDN cache, an email attachment, a backup job or the customer's own device. Files written since the last deploy or restart may still be on the running instance, so copy them to the bucket before you deploy again."
   - question: "How should customers download files that are stored privately?"
     answer: "Keep the bucket private and have your app hand out a presigned URL after it checks that the signed-in customer may see the file. A presigned URL works without storage credentials and expires after the time you set, for example 5 minutes. Make a bucket or a path public only for files meant for everyone, such as product images."
 related:
@@ -45,7 +45,7 @@ Hosts document this in their own words:
 | Fly.io | A Machine's root filesystem is ephemeral, meant for data that can be rebuilt on deploys and restarts. A Fly Volume keeps files, attached to one Machine. [Docs](https://docs.fly.io/volumes/overview) |
 | Heroku | Each dyno gets a fresh copy of the latest deploy, and files it writes are discarded when it stops or restarts. Dynos restart daily. [Docs](https://devcenter.heroku.com/articles/dynos#ephemeral-filesystem), [S3 guide](https://devcenter.heroku.com/articles/s3) |
 | Prisma Compute | No persistent filesystem. Files you keep go to an Object Store bucket or the database. [Docs](/docs/compute/limitations#runtime), [FAQ](/docs/compute/faq) |
-| Railway | Files persist inside a mounted volume, one volume per service. Data written to the volume path at build time is not kept. [Docs](https://docs.railway.com/reference/volumes), [guide](https://docs.railway.com/guides/volumes) |
+| Railway | Files persist inside a mounted volume, one volume per service. Data written to the volume path at build time is not kept. [Docs](https://docs.railway.com/volumes/reference), [guide](https://docs.railway.com/volumes) |
 | Render | Changes to a service's local files are lost on every redeploy or restart, unless they are on a persistent disk. [Docs](https://render.com/docs/disks) |
 | Vercel | Functions have a read-only filesystem with a writable `/tmp` of up to 500 MB, for scratch space only. [Docs](https://vercel.com/docs/functions/runtimes#file-system-support) |
 
@@ -134,6 +134,7 @@ app.post("/files", upload.single("file"), async (req, res) => {
 });
 
 app.get("/files/:id", async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return res.sendStatus(404);
   const ownerId = "customer-123"; // replace with the signed-in customer's id
   const { rows } = await db.query(
     "SELECT object_key FROM uploads WHERE id = $1 AND owner_id = $2",
@@ -153,13 +154,13 @@ app.get("/files/:id", async (req, res) => {
 app.listen(process.env.PORT ?? 3000);
 ```
 
-Generate the key yourself instead of using the customer's file name, so two files called `invoice.pdf` don't overwrite each other and nobody can write outside their own prefix. If your provider's documentation asks for path-style URLs, add `forcePathStyle: true` to the client options.
+Generate the key yourself instead of using the customer's file name, so two files called `invoice.pdf` don't overwrite each other and nobody can write outside their own prefix. If your provider's documentation asks for path-style URLs, add `forcePathStyle: true` to the client options. If it rejects the checksum headers that recent AWS SDK versions send by default, add `requestChecksumCalculation: "WHEN_REQUIRED"`.
 
 For large files such as videos, you can skip the app server: your app creates a presigned PUT URL and the browser uploads straight to the bucket. [AWS documents this flow](https://docs.aws.amazon.com/AmazonS3/latest/userguide/PresignedUrlUploadObject.html), and other S3-compatible services support it to different degrees, so check yours.
 
 ### 4. Copy the files that are still on disk
 
-Files written since the last deploy exist only on the running instance. Before you deploy the fix, copy them into the bucket if your host gives you a shell or a volume to read from, then insert a row for each one. Any S3 tool works, for example the AWS CLI with the bucket's key set as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`:
+Files written since the last deploy or restart exist only on the running instance. Before you deploy the fix, copy them into the bucket if your host gives you a shell on that instance or a volume to read from, then insert a row for each one. Run an S3 tool or a short script on that instance, not on a fresh one: on Heroku, for example, `heroku run` starts a new one-off dyno that doesn't have the web dyno's files. With the AWS CLI installed there and the bucket's key set as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`:
 
 ```sh
 aws s3 cp ./uploads "s3://$S3_BUCKET/uploads/" --recursive --endpoint-url "$S3_ENDPOINT"
@@ -175,32 +176,58 @@ Deploy, upload a test file, deploy again without changes, and open the file. If 
 
 [Prisma Compute](/docs/compute) has no persistent filesystem, so the local `uploads/` folder from the start of this page doesn't work there either. Its storage option is an Object Store bucket: S3-compatible storage that lives in the same Prisma project as your [Prisma Postgres](/docs/postgres) database, managed from the Console, the CLI or the REST API.
 
-Create a bucket and an access key with the CLI, or in the Console:
+To run the Express example above on Compute, deploy it as a [Prisma Composer](/docs/composer) service, which is how apps deploy to Compute. Declare the service with `compute()` and two dependencies from `@prisma/composer-prisma-cloud`, `store: bucket()` and `db: rawPostgres()`, then provision both in your `module.ts`:
+
+```ts
+const store = provision(bucket({ name: "uploads" }));
+const database = provision(rawPostgres({ name: "database" }));
+provision(uploadsService, { deps: { store, db: database } });
+```
+
+Provisioning the bucket also mints its access key, so there are no storage credentials to copy. The server code changes in three places, following [porting an app](/docs/composer/porting-an-app) and [object storage in Composer](/docs/composer/object-storage):
+
+```ts
+import service from "./service.ts";
+
+const { store, db: database } = service.load();
+
+// 1. The S3 client takes the bucket's endpoint and key from the dependency.
+const s3 = new S3Client({
+  region: "auto", // ignored by S3-compatible endpoints, but the SDK requires one
+  endpoint: store.url,
+  credentials: { accessKeyId: store.accessKeyId, secretAccessKey: store.secretAccessKey },
+});
+const bucket = store.bucket;
+
+// 2. The pg Pool takes the database URL from the dependency.
+const db = new pg.Pool({ connectionString: database.url });
+
+// ...the multer setup and routes stay as they are...
+
+// 3. The port comes from the service, bound to all interfaces.
+app.listen(service.port(), "0.0.0.0");
+```
+
+Your build has to produce a self-contained entry file, and `npx prisma dev module.ts` runs the app locally against a stand-in bucket and database; [porting an app](/docs/composer/porting-an-app) covers the build and the `service.ts` declaration. The `uploads` table goes in the provisioned Prisma Postgres database. To keep an existing Postgres database instead, pass its connection string as a secret [service input](/docs/composer/service-input) rather than declaring `rawPostgres()`. Prisma ORM is optional either way: the example uses the `pg` driver.
+
+The [object storage guide](/docs/compute/object-storage) shows the other route: create the bucket and a key yourself, store the four values as environment variables, and read them with Bun's built-in S3 client (`Bun.s3`), which picks up these names without configuration:
 
 ```sh
 npx prisma bucket create --name uploads
 npx prisma bucket key create <bucket-id>
-```
-
-The key's secret is shown once, so copy it right away. The uploading app needs a key with the `read_write` role, because a write with a `read` key fails with `AccessDenied`; the [object storage guide](/docs/compute/object-storage#2-mint-an-access-key) mints a key with that role through the REST API. Then store the values your app reads as environment variables for production:
-
-```sh
 npx prisma project env add S3_ENDPOINT=<endpoint> --role production
 npx prisma project env add S3_BUCKET=<bucketName> --role production
 npx prisma project env add S3_ACCESS_KEY_ID=<accessKeyId> --role production
 npx prisma project env add S3_SECRET_ACCESS_KEY=<secretAccessKey> --role production
 ```
 
-Values resolve at deploy time, so set them before you deploy. Compute runs your app on Bun, whose built-in S3 client reads these four names, and the [object storage guide](/docs/compute/object-storage) shows a Hono route that writes a file and serves it through a presigned URL. An existing Express app deploys as a [Prisma Composer](/docs/composer) app: the port comes from `service.port()` and other `process.env` reads become service input, as [porting an app](/docs/composer/porting-an-app) shows. A Composer service can also declare a [`bucket()` dependency](/docs/composer/object-storage) that hands it the bucket's endpoint and credentials, and `dev` gives you a local stand-in bucket.
-
-The `uploads` table goes in Prisma Postgres or any other Postgres database. Prisma ORM is optional: Prisma Postgres works with any Postgres client, including the `pg` driver above. Prisma Compute doesn't require Prisma ORM or Prisma Postgres either.
+`bucket key create` mints a `read_write` key unless you pass `--role read`. Its secret is shown once, so copy it right away. A deployment that only serves files can hold a `read` key, but a write with a `read` key fails with `AccessDenied`. Values resolve at deploy time, so set them before you deploy.
 
 Things to know before you rely on it:
 
-- **Object Store pricing and plan limits are not published yet.** The Prisma Postgres Free plan includes 2 GB of database storage; [pricing](/pricing) has the other plans.
+- **Object Store pricing and plan limits are not published yet.** The Free plan's 2 GB is Prisma Postgres database storage, which holds the `uploads` table, not the files; [pricing](/pricing) has the other plans.
 - **Deleting a bucket deletes its files and keys in one step**, even when it isn't empty, and can't be undone.
 - **Requests have 60 seconds to start responding.** An upload that passes through your app has to finish arriving before your handler can respond, so it has to fit in that window; see [request timeout](/docs/compute/request-timeout).
-- **Each service runs in one region**, and WebSocket servers are not supported; see [limitations](/docs/compute/limitations).
 
 ## How to prevent it, and when the fix doesn't apply
 
