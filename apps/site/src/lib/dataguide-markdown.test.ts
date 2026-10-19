@@ -232,6 +232,61 @@ test("Data Guide files and .md URLs pass the proxy untouched", async () => {
   }
 });
 
+/** The request headers a `next()` or rewrite forwards, as Next encodes them. */
+function forwardedHeaderNames(response: Response) {
+  return (response.headers.get("x-middleware-override-headers") ?? "").split(",").filter(Boolean);
+}
+
+test("a client-sent negotiation header is dropped when the proxy does not rewrite", async () => {
+  const spoofed = {
+    "x-prisma-agent-markdown": "user-agent",
+    "x-prisma-agent-markdown-path": "/dataguide/intro",
+  };
+  const cases: [string, Record<string, string>, string?][] = [
+    // A .md URL: the route has to treat it as a .md URL.
+    ["/dataguide/intro.md", {}],
+    ["/dataguide/intro.md", AGENTS[0]],
+    // A Data Guide HTML URL for a browser, and a non-read on one.
+    ["/dataguide/intro", NOT_AGENTS[0]],
+    ["/dataguide/intro", AGENTS[0], "POST"],
+    // Anything else under the proxy.
+    ["/pricing", NOT_AGENTS[0]],
+    ["/llms.mdx/dataguide/intro", {}],
+  ];
+  for (const [path, headers, method] of cases) {
+    const response = await proxy(request(path, { ...headers, ...spoofed }, method), event);
+    const label = `${method ?? "GET"} ${path} ${JSON.stringify(headers)}`;
+    assert.equal(response.headers.get("x-middleware-next"), "1", label);
+    assert.equal(response.headers.get("x-middleware-rewrite"), null, label);
+    // The override is there, and it leaves both headers out.
+    assert.notEqual(response.headers.get("x-middleware-override-headers"), null, label);
+    const forwarded = forwardedHeaderNames(response);
+    assert.ok(!forwarded.includes("x-prisma-agent-markdown"), label);
+    assert.ok(!forwarded.includes("x-prisma-agent-markdown-path"), label);
+    assert.equal(response.headers.get("x-middleware-request-x-prisma-agent-markdown"), null, label);
+  }
+});
+
+test("a request without the negotiation headers gets no header override", async () => {
+  for (const path of ["/dataguide/intro.md", "/dataguide/intro", "/pricing"]) {
+    const response = await proxy(request(path, NOT_AGENTS[0]), event);
+    assert.equal(response.headers.get("x-middleware-override-headers"), null, path);
+  }
+});
+
+test("the rewrite for an agent sets the negotiation headers itself", async () => {
+  const response = await proxy(
+    request("/dataguide/intro", { ...AGENTS[0], "x-prisma-agent-markdown": "accept" }),
+    event,
+  );
+  assert.ok(response.headers.get("x-middleware-rewrite"));
+  assert.equal(response.headers.get("x-middleware-request-x-prisma-agent-markdown"), "user-agent");
+  assert.equal(
+    response.headers.get("x-middleware-request-x-prisma-agent-markdown-path"),
+    "/dataguide/intro",
+  );
+});
+
 // --- the route ----------------------------------------------------------------
 
 type FetchStub = (url: string, init?: RequestInit) => Response | Promise<Response>;
