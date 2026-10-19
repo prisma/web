@@ -420,7 +420,11 @@ function buildVercelNeonDrizzlePage(minutes: number) {
         </Accordion>
       </section>
     </div>,
-    comparisonClosingCta("postgres", { instantDatabase: false, secondary: false }),
+    comparisonClosingCta("postgres", {
+      instantDatabase: false,
+      secondary: false,
+      firstCheck: "Get started with Prisma and start building in minutes",
+    }),
     <section
       key="sources"
       id="sources"

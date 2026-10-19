@@ -432,7 +432,12 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     vercelNeonDrizzleMarkdown.includes("[Get started with Prisma](https://console.prisma.io)"),
   );
   assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Get started with Prisma Postgres/);
+  assert.ok(
+    vercelNeonDrizzleMarkdown.includes("Get started with Prisma and start building in minutes"),
+  );
+  assert.ok(vercelNeonDrizzleMarkdown.includes("Read the docs for guides and API reference"));
   assert.ok(vercelNeonDrizzleMarkdown.includes("[Get started free](https://console.prisma.io)"));
+  assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Create a database and start building in minutes/);
   assert.doesNotMatch(vercelNeonDrizzleMarkdown, /create-db\.prisma\.io/);
   assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Create an instant database/);
   assert.doesNotMatch(vercelNeonDrizzleMarkdown, /\[Talk to us\]/);
@@ -1460,6 +1465,7 @@ test("Vercel + Neon + Drizzle Markdown carries the byline, disclosure, and Sourc
   assert.match(sections, /secondary: false/);
   assert.match(sections, /instantDatabase: false/);
   assert.match(sections, /primaryLabel: "Get started with Prisma"/);
+  assert.match(sections, /firstCheck: "Get started with Prisma and start building in minutes"/);
   assert.doesNotMatch(sections, /create-db\.prisma\.io/);
   assert.doesNotMatch(sections, /defaultValue=/);
   assert.doesNotMatch(sections, /PageAiActions/);

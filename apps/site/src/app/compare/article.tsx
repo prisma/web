@@ -212,9 +212,14 @@ export function comparisonHeroCtas(
 /** Closing action. ORM pages keep the 500K+ Prisma ORM figure and ORM-specific buttons. */
 export function comparisonClosingCta(
   kind: "orm" | "postgres" = "postgres",
-  options?: { instantDatabase?: boolean; secondary?: boolean },
+  options?: { instantDatabase?: boolean; secondary?: boolean; firstCheck?: string },
 ) {
   const cta = kind === "orm" ? ORM_COMPARISON_CTA : COMPARISON_CTA;
+  const checks = options?.firstCheck
+    ? cta.checks.map((item, index) =>
+        index === 0 ? { ...item, label: options.firstCheck as string } : item,
+      )
+    : cta.checks;
   const showInstantDatabase = options?.instantDatabase !== false;
   const showSecondary = options?.secondary !== false;
   return (
@@ -234,7 +239,7 @@ export function comparisonClosingCta(
         </p>
       ) : null}
       <ul className="mt-4 max-w-[36rem] list-disc pl-5">
-        {cta.checks.map((item) => (
+        {checks.map((item) => (
           <li key={item.label}>{item.label}</li>
         ))}
       </ul>
