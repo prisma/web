@@ -1,7 +1,7 @@
 export const SUPABASE_PATH = "/compare/supabase";
 
 export const SUPABASE_TITLE =
-  "Prisma Postgres vs Supabase: TypeScript app hosting or a Postgres backend platform?";
+  "Prisma Postgres vs Supabase: what's the difference and which should I pick?";
 
 export const SUPABASE_DESCRIPTION =
   "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Supabase for Auth, Storage, Realtime, and Edge Functions. Checked October 2026.";

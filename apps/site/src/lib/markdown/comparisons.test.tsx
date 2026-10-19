@@ -1160,6 +1160,19 @@ test("Supabase Markdown carries the byline, disclosure, and Sources on the share
   const page = getMarkdownPage("/compare/supabase");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
+  assert.equal(
+    supabase.SUPABASE_TITLE,
+    "Prisma Postgres vs Supabase: what's the difference and which should I pick?",
+  );
+  assert.equal(page.title, supabase.SUPABASE_TITLE);
+  assert.equal(page.h1, supabase.SUPABASE_TITLE);
+  assert.ok(markdown.startsWith(`# ${supabase.SUPABASE_TITLE} (${supabase.SUPABASE_PATH})\n`));
+  assert.doesNotMatch(markdown, /TypeScript app hosting or a Postgres backend platform/);
+  assert.equal(
+    getComparisonStructuredData("supabase")["@graph"][0]?.headline,
+    supabase.SUPABASE_TITLE,
+  );
+  assert.equal(getComparisonMetadata("supabase").openGraph?.title, supabase.SUPABASE_TITLE);
   const minutes = getSupabaseReadingStats().minutes;
   assert.ok(
     markdown.includes(
