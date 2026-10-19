@@ -11,6 +11,7 @@ import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
+import { PromptwatchScript } from "@prisma-docs/ui/components/promptwatch-script";
 
 // Inter is vendored inside @prisma/eclipse now, so load the same files here
 // rather than pulling a second copy from Google.
@@ -85,6 +86,8 @@ export default function Layout({ children }: LayoutProps<"/">) {
         <GoogleTagManager section="blog" />
         {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
         <OpenAiPixel />
+        {/* Promptwatch visitor analytics — cookieless, loaded without a consent gate */}
+        <PromptwatchScript />
       </head>
       <body className="flex flex-col min-h-screen relative">
         <div className="bg-blog absolute inset-0 -z-1 overflow-hidden" />
