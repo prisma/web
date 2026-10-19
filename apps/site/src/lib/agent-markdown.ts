@@ -80,9 +80,10 @@ export type AgentMarkdownSignal = "accept" | "user-agent";
  * The proxy cannot load the content collection, so this is a shape check, as
  * in apps/blog: one slug segment under a product that has guides, minus the
  * static routes that sit beside the guides. An unknown slug still 404s, from
- * the Markdown route instead of the page. `agent-markdown.test.ts` checks that
- * every guide matches and that every static route under the two products is
- * listed here; `ANSWER_PAGE_HEADER_SOURCES` in next.config.mjs has to agree.
+ * the Markdown route instead of the page. `answer-page-markdown.test.ts` checks
+ * that every guide matches and that every static route under the two products
+ * is listed here; `ANSWER_PAGE_HEADER_SOURCES` in next.config.mjs has to agree.
+ * `proxy-matcher.test.ts` checks the proxy end to end on every guide.
  */
 export const ANSWER_PAGE_RESERVED_SEGMENTS: Readonly<Record<string, readonly string[]>> = {
   postgres: ["guides", "hipaa"],
