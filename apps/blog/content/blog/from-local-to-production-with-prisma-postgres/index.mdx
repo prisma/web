@@ -275,7 +275,7 @@ Do not declare victory on a successful restore. Three checks, then the switch:
 
 3. **Smoke test.** Start the app locally, with `.env` still on the hosted database, and click through the main flows. You are verifying config, not code, so the reads carry most of the signal; if you imported real data, keep the writes to records you can clean up afterwards, because cascades, sequence values and anything that sends mail do not come back with a `DELETE`.
 
-4. **Deploy.** Set `DATABASE_URL` and `DIRECT_URL` in the hosting platform, add `npx prisma@7 migrate deploy` to the deploy pipeline so future migrations apply automatically, and ship.
+4. **Deploy.** Set `DATABASE_URL` and `DIRECT_URL` in the hosting platform, add `npx prisma@7 migrate deploy` to the deploy pipeline so future migrations apply automatically, and ship. Many hosts pass a new variable only to the next deployment, so redeploy after setting it; if the deployed app still reports that [`DATABASE_URL` is missing](https://www.prisma.io/postgres/database-url-missing), check the variable's environment and build scope.
 
 Then put both local URLs back in `.env` in the same edit and keep the loop: `migrate dev` against `prisma dev` locally, commit the migration files, and let the pipeline replay them in production. A leftover `DIRECT_URL` points the CLI at production while your app runs local, and a leftover `DATABASE_URL` is worse: the app reads and writes production while everything looks local. Keep the old local database until production has run for a while, because `docker compose down -v` or `npx prisma@7 dev rm <name>` deletes the last live copy of that data.
 

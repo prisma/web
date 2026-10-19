@@ -1,0 +1,131 @@
+---
+title: "My deployed Next.js app says DATABASE_URL is missing and I have no database yet. What do I need to do?"
+description: "DATABASE_URL holds your database's connection string. Create a Postgres database, set the variable on your host, apply your schema and redeploy."
+summary: "`DATABASE_URL` is the environment variable that holds your database's connection string, and the deployed app can't find it because there is no database yet and your host has no value for it. A local `.env` file is usually kept out of Git, so the deployment doesn't have it. Create a Postgres database with any managed provider, copy its connection string, add it as `DATABASE_URL` in your host's environment settings for production (and for the build if your pages query the database while building), apply your schema to the new database, then redeploy, because many hosts pass new variables only to new deployments. With [Prisma Postgres](/docs/postgres), `npx create-db@latest` gives you a temporary database with no account in a few seconds, and the [Prisma Console](https://console.prisma.io) or the Vercel Marketplace integration gives you one that stays."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "8 min read"
+faq:
+  - question: "Can I commit my .env file so the host gets DATABASE_URL?"
+    answer: "No. The connection string contains the database password, and anyone who can read the repository could then read and change your data. Next.js's `create-next-app` adds `.env` files to `.gitignore` for that reason. Set the value in your host's environment settings instead, and keep a copy in a password manager or secret store."
+  - question: "Why does the build still say DATABASE_URL is missing after I added it?"
+    answer: "Check four things. The variable must be set for the environment you deployed (Production and Preview are separate on Vercel), and for the build if your host scopes variables (on Netlify, values in `netlify.toml` don't reach Functions). The deployment must be new, because Vercel and Netlify apply changed variables only to new deploys. And with Prisma ORM 7, `env(\"DATABASE_URL\")` in `prisma.config.ts` throws during `prisma generate` even though generate doesn't connect; the [Prisma docs](/docs/orm/v7/reference/prisma-config-reference) suggest `process.env.DATABASE_URL` when the variable may be absent."
+  - question: "Should DATABASE_URL be the pooled or the direct connection string?"
+    answer: "On serverless hosts such as Vercel or Netlify, point the app at a pooled connection string, because every function instance opens its own connection. Run migrations over the direct string. With Prisma Postgres, the pooled host is `pooled.db.prisma.io` and the direct host is `db.prisma.io`; many apps keep the pooled string in `DATABASE_URL` and the direct one in a second variable such as `DIRECT_URL`."
+  - question: "Can I use a database from npx create-db for my deployed app?"
+    answer: "For a test deploy, yes: it is a regular Prisma Postgres database with a standard connection string. It is deleted after 24 hours unless you claim it, so claim it with a free Prisma account before real users depend on it, or create the production database in the Prisma Console instead. The Free plan has no backups, so move to a paid plan before the data matters."
+related:
+  - title: "Run database migrations safely in production"
+    href: "/postgres/production-database-migrations"
+  - title: "Connecting to your Prisma Postgres database"
+    href: "/docs/postgres/database/connecting-to-your-database"
+  - title: "create-db: a Postgres database without an account"
+    href: "/docs/postgres/npx-create-db"
+  - title: "Prisma Postgres on the Vercel Marketplace"
+    href: "/docs/guides/postgres/vercel"
+cta:
+  title: "Get a connection string in a few seconds"
+  description: "Run `npx create-db@latest` for a Prisma Postgres database with no account, set it as DATABASE_URL on your host, and claim it to keep it."
+  label: "Create a database"
+  href: "/docs/postgres/npx-create-db"
+---
+
+Your app reads `process.env.DATABASE_URL` to find its database, and on the server it was deployed to, nothing sets that variable. Because you haven't created a database yet, there is no connection string to give it. To fix it, create a database, put its connection string into your host's environment settings, create your tables in the new database and deploy again.
+
+We make Prisma Postgres and Prisma Compute. The steps below work with any Postgres provider, host and database client. Every host behavior on this page links to that host's documentation, checked on October 19, 2026.
+
+## What DATABASE_URL is and why the deploy can't find it
+
+`DATABASE_URL` is the conventional name for an environment variable that holds a PostgreSQL connection string such as `postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require`. Next.js doesn't define it. Your code, your ORM's config or the starter template you used reads `process.env.DATABASE_URL` and passes the value to the database client. Prisma ORM's [default config](/docs/orm/v7/reference/prisma-config-reference) uses that name, and so do many templates.
+
+On your machine, [Next.js loads `.env*` files](https://nextjs.org/docs/app/guides/environment-variables) from the project root into `process.env`. In a `create-next-app` project those files are in `.gitignore`, so a deploy from your Git repository doesn't include them. The host only knows the variables you set in its dashboard, CLI or config, and a template that expects a database can't get a value from anywhere until you create one.
+
+The message depends on what reads the variable:
+
+- **Prisma ORM 7:** `PrismaConfigEnvError: Missing required environment variable: DATABASE_URL`, from the `env()` helper in `prisma.config.ts`. It appears during `prisma generate`, often in a `postinstall` script, even though generate doesn't connect to the database ([config reference](/docs/orm/v7/reference/prisma-config-reference)).
+- **Prisma ORM 6:** `Environment variable not found: DATABASE_URL.` from `env("DATABASE_URL")` in `schema.prisma` ([error reference](/docs/orm/v6/reference/error-reference)).
+- **Your own code or a template:** a check such as `throw new Error("DATABASE_URL is not set")`, or a connection error from the driver when it gets `undefined`.
+
+It can fail at two moments. During the build, `prisma generate` and any page that `next build` prerenders by querying the database need the variable. At runtime, the first request to a route that queries the database needs it.
+
+## How do I fix it?
+
+### 1. Create a Postgres database
+
+Any managed PostgreSQL works. Pick the one that fits where your app runs:
+
+- **A provider through your host.** On Vercel, the old Vercel Postgres product is gone; Postgres now comes from [Marketplace integrations](https://vercel.com/docs/postgres) that create the database and add its variables to your project.
+- **A database on the same host.** On Railway, for example, a PostgreSQL service exposes `DATABASE_URL` and other variables that your app service [references](https://docs.railway.com/databases/postgresql).
+- **A separate Postgres provider.** Create the database in its dashboard and copy the connection string.
+
+For a Prisma Postgres database, see [Where do Prisma Postgres and Prisma Compute fit?](#where-do-prisma-postgres-and-prisma-compute-fit) below.
+
+### 2. Copy the connection string
+
+Copy the string the provider gives you, with `sslmode=require` if it includes one. If the provider offers a pooled and a direct string, use the pooled one for the app on a serverless host and keep the direct one for migrations.
+
+Put it in your local `.env` too, so local runs and migrations use the same database:
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
+```
+
+Don't add a `NEXT_PUBLIC_` prefix. Next.js [inlines `NEXT_PUBLIC_` variables](https://nextjs.org/docs/app/guides/environment-variables#bundling-environment-variables-for-the-browser) into the JavaScript sent to the browser, which would publish your password. Server Components, Route Handlers and Server Actions can read `DATABASE_URL` without it.
+
+### 3. Set DATABASE_URL on your host
+
+Add the variable in your host's settings for production. Where to set it, and when the running app picks it up:
+
+| Host | Where to set it | When it applies |
+| --- | --- | --- |
+| [Fly.io](https://fly.io/docs/apps/secrets/) | `fly secrets set DATABASE_URL=...` | Machines restart with the new secret. Secrets are not available while the Docker image builds; Fly documents build secrets for that |
+| [Netlify](https://docs.netlify.com/build/environment-variables/get-started/) | Project configuration, Environment variables, or `netlify env:set` | After the next build and deploy. Values set in `netlify.toml` reach the build but [not Functions](https://docs.netlify.com/build/environment-variables/overview/), which [run Next.js server rendering, Route Handlers and Server Actions](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/) |
+| [Prisma Compute](/docs/compute/environment-variables) | `npx prisma project env add DATABASE_URL --role production`, which reads the value from your shell | On the next deploy |
+| [Railway](https://docs.railway.com/variables) | The app service's Variables tab, for example `DATABASE_URL=${{Postgres.DATABASE_URL}}` to reference a database service named Postgres | After you review and deploy the staged changes |
+| [Render](https://render.com/docs/configure-environment-variables) | The service's Environment page | When you pick a save option that deploys; "Save only" waits for the next deploy |
+| [Vercel](https://vercel.com/docs/environment-variables/managing-environment-variables) | The project's Environment Variables page, or `vercel env add DATABASE_URL production` | Only on new deployments, so redeploy |
+
+Hosts are listed alphabetically. On Vercel and Netlify, a variable can apply to some environments or deploy contexts and not others, so make sure production is selected. Set preview too if you test preview deployments, ideally with a separate database so tests don't write to production data.
+
+### 4. Make the variable available where it's read
+
+If the build fails, the variable has to exist during the build, not only at runtime. Railway passes variables to [both the build and the running service](https://docs.railway.com/variables), and Vercel lets code read them in the [Build Step and in Functions](https://vercel.com/docs/environment-variables). On other hosts, check the scope.
+
+You can also keep the database out of the build:
+
+- **Pages that query the database while prerendering.** Render them at request time instead. In the App Router, `await connection()` from `next/server` makes a page [read environment variables at runtime](https://nextjs.org/docs/app/guides/environment-variables#runtime-environment-variables).
+- **Prisma ORM 7's `prisma generate`.** Generate doesn't need a database. Replace `env("DATABASE_URL")` in `prisma.config.ts` with `process.env.DATABASE_URL`, as the [config reference](/docs/orm/v7/reference/prisma-config-reference) suggests, and the build no longer depends on the variable.
+
+### 5. Create your tables, then redeploy
+
+A new database is empty. Apply your schema before the app takes traffic, with your migration tool's production command and the new connection string, for example `npx prisma migrate deploy` (Prisma ORM 7), `npx drizzle-kit migrate` or `npx knex migrate:latest`. [Running database migrations safely in production](/postgres/production-database-migrations) covers each tool and how to make this a step in every deploy.
+
+Then deploy again: push a commit, run your host's redeploy command (`vercel redeploy` on Vercel), or use the redeploy button. Open a page that reads from the database and check the function or server logs if it fails. A message that changes from "missing" to an authentication or `relation does not exist` error means the variable now arrives and the next problem is the credentials or the schema.
+
+## If DATABASE_URL is still missing
+
+- **The variable is set but still missing.** Compare the exact name your code reads with the name on the host. Integrations often set several names: the Prisma Postgres integration on Vercel sets `DATABASE_URL`, `POSTGRES_URL` and `PRISMA_DATABASE_URL`, and other integrations choose their own names, so check what was added. Also check the environment (Production versus Preview) and that you redeployed after adding it.
+- **It's `undefined` in the browser.** Code in a Client Component runs in the browser, where server variables don't exist. Query the database in a Server Component, Route Handler or Server Action and pass the data down.
+- **Your app lives in a subfolder or a monorepo.** Next.js loads `.env` files from the project root, not from `src/`. On the host, set the variable on the project or service that builds the Next.js app.
+
+To catch this before a deploy, commit a `.env.example` that lists `DATABASE_URL` with a placeholder value, and have your database module throw a clear error at startup when the variable is empty, so the log names the missing variable instead of a driver error.
+
+## Where do Prisma Postgres and Prisma Compute fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17 with a connection pooler for every database. Your app sees a regular connection string, so any PostgreSQL client works and Prisma ORM is optional. There are three ways to get one:
+
+- **No account, a few seconds:** `npx create-db@latest` (Node.js 20.5 or newer) prints a connection string and a claim URL. `npx create-db@latest --env .env` writes `DATABASE_URL` and `CLAIM_URL` to `.env` instead, appending them if the file exists. The database is deleted after 24 hours unless you claim it, and claiming it, which is free, needs a Prisma account. See [create-db](/docs/postgres/npx-create-db).
+- **A database that stays:** create a project and a database in the [Prisma Console](https://console.prisma.io), then click **Connect to your database** to generate the pooled and direct strings. From a terminal, `npx prisma@latest auth login` signs you in, `npx prisma@latest project create <name>` creates a project and links the directory to it, and `npx prisma@latest postgres create <name>` creates a database in that project and [prints its connection URL once](/docs/cli/postgres).
+- **On Vercel:** install the [Prisma Postgres integration](/docs/guides/postgres/vercel) from the Vercel Marketplace, create a database from the Storage tab and connect it to your project. The integration sets `DATABASE_URL` to the direct connection string on the environments you choose. Redeploy afterwards, and add the pooled string as a second variable before production traffic, because direct connections are capped at 10 on the Free and Starter plans, and 5 of those are reserved for platform operations.
+
+If you deploy the app itself on [Prisma Compute](/docs/compute), it hosts Next.js apps built with `output: "standalone"`, and the database can live in the same project. A database declared in your app's module is created when you deploy and its connection is injected into the app, so you don't set `DATABASE_URL` by hand. If you keep `DATABASE_URL`, set it with `npx prisma project env add` and deploy again. Pages that read runtime configuration need `export const dynamic = "force-dynamic"` ([Compute FAQ](/docs/compute/faq)).
+
+Know the limits before you pick it:
+
+- The Free plan has no backups, and Prisma Postgres has no point-in-time recovery yet. Paid plans take daily snapshots on days with database activity.
+- Prisma Compute runs each app in one region and is not a CDN. If a globally cached frontend matters most, keep the Next.js app on Vercel and use Prisma Postgres as its database.
+- Prisma Compute does not support WebSocket servers.
+
+The Free plan includes 200,000 operations a month and 2 GB of Prisma Postgres storage, with no credit card. See [pricing](/pricing) for the paid plans.
