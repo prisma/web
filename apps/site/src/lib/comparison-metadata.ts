@@ -17,7 +17,7 @@ export function getComparisonMetadata(slug: ComparisonSlug) {
   const types: Record<string, string> = {
     "text/markdown": new URL(`${page.path}.md`, baseUrl).toString(),
   };
-  if (slug === "kysely" || slug === "mongoose" || slug === "convex") {
+  if (slug === "kysely" || slug === "mongoose" || slug === "convex" || slug === "neon") {
     types["application/json"] = new URL(`${page.path}.json`, baseUrl).toString();
   }
   return {

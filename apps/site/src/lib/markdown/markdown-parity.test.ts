@@ -83,6 +83,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
   "/compare/convex": ["src/app/compare/convex/_sections.tsx"],
   "/compare/kysely": ["src/app/compare/kysely/_sections.tsx"],
   "/compare/mongoose": ["src/app/compare/mongoose/_sections.tsx"],
+  "/compare/neon": ["src/app/compare/neon/_sections.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
     "src/app/mcp/_components/mcp-hero-section.tsx",
@@ -117,6 +118,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/compare/convex": 10,
   "/compare/kysely": 10,
   "/compare/mongoose": 10,
+  "/compare/neon": 10,
 };
 
 const HEADING_PATTERN =

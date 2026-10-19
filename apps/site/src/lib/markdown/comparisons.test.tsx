@@ -10,6 +10,10 @@ import { getKyselyReadingStats } from "@/app/compare/kysely/_sections";
 import * as mongoose from "@/app/compare/mongoose/_content";
 import { getMongooseArticleFields, getMongooseFacts } from "@/app/compare/mongoose/facts";
 import { getMongooseReadingStats } from "@/app/compare/mongoose/_sections";
+import * as neon from "@/app/compare/neon/_content";
+import { getNeonArticleFields, getNeonFacts } from "@/app/compare/neon/facts";
+import { GET as getNeonFactsResponse } from "@/app/compare/neon.json/route";
+import { getNeonReadingStats } from "@/app/compare/neon/_sections";
 import { WORDS_PER_MINUTE, readingMinutes } from "@/app/compare/reading-time";
 import { GET as getMongooseFactsResponse } from "@/app/compare/mongoose.json/route";
 import {
@@ -49,7 +53,7 @@ function plainMarkdown(text: string): string {
 
 for (const entry of COMPARISONS) {
   test(`${entry.slug} Markdown preserves comparison cells and every FAQ answer`, () => {
-    const content = { convex, kysely, mongoose }[entry.slug];
+    const content = { convex, kysely, mongoose, neon }[entry.slug];
     const page = getMarkdownPage(`/compare/${entry.slug}`);
     assert.ok(page);
     const markdown = renderMarkdownDocument(page);
@@ -361,6 +365,16 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     convexMarkdown,
     /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
   );
+  const neonPage = getMarkdownPage("/compare/neon");
+  assert.ok(neonPage);
+  const neonMarkdown = renderMarkdownDocument(neonPage);
+  assert.ok(neonMarkdown.includes("Free to start, no credit card required."));
+  assert.ok(neonMarkdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(neonMarkdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.match(
+    neonMarkdown,
+    /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
+  );
   assert.equal(POSTGRES_HERO_CTAS.secondary.href, CREATE_DB_WEB);
   assert.equal(POSTGRES_HERO_CTAS.secondary.label, "Create an instant database");
   assert.equal(POSTGRES_HERO_CTAS.primary.href, "https://console.prisma.io");
@@ -424,14 +438,19 @@ test("Kysely, Mongoose, and Convex Article JSON-LD authors are a Person with con
     "https://www.linkedin.com/in/martjvr/",
     "https://github.com/vanrensbird",
   ]);
-  for (const author of [kysely.KYSELY_AUTHOR, mongoose.MONGOOSE_AUTHOR, convex.CONVEX_AUTHOR]) {
+  for (const author of [
+    kysely.KYSELY_AUTHOR,
+    mongoose.MONGOOSE_AUTHOR,
+    convex.CONVEX_AUTHOR,
+    neon.NEON_AUTHOR,
+  ]) {
     const person = comparisonAuthorPerson(author, getBaseUrl());
     assert.equal(person["@type"], "Person");
     assert.equal(person.name, author.name);
     assert.equal(person.url, new URL(author.path, getBaseUrl()).toString());
     assert.deepEqual(person.sameAs, hrefs);
   }
-  for (const page of ["kysely/page.tsx", "mongoose/page.tsx", "convex/page.tsx"]) {
+  for (const page of ["kysely/page.tsx", "mongoose/page.tsx", "convex/page.tsx", "neon/page.tsx"]) {
     const source = readFileSync(join(compareDir, page), "utf8");
     assert.match(source, /comparisonAuthorPerson\(/);
     assert.doesNotMatch(source, /sameAs:\s*\[/);
@@ -1001,4 +1020,99 @@ test("convex metadata advertises Markdown and JSON alternates", () => {
   assert.ok(types);
   assert.match(types["text/markdown"] ?? "", /\/compare\/convex\.md$/);
   assert.match(types["application/json"] ?? "", /\/compare\/convex\.json$/);
+});
+
+test("Neon Markdown carries the byline, disclosure, and Sources on the shared chrome", () => {
+  const page = getMarkdownPage("/compare/neon");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const minutes = getNeonReadingStats().minutes;
+  assert.ok(
+    markdown.includes(
+      `By [${neon.NEON_AUTHOR.name}](${neon.NEON_AUTHOR.path}) · Updated ${neon.NEON_UPDATED.label} · ${minutes} min read`,
+    ),
+  );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes(`dateModified: ${neon.NEON_UPDATED.iso}`));
+  assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
+  assert.ok(markdown.includes("\n## Sources\n"));
+  assert.ok(markdown.includes("\n## When should I choose Neon or Prisma Postgres?\n"));
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose Neon or Prisma Postgres?"),
+    markdown.indexOf("## How do Neon and Prisma Postgres compare?"),
+  );
+  assert.match(choose, /^\| Neon \| Prisma Postgres \|$/m);
+  assert.doesNotMatch(choose, /### Neon/);
+  assert.ok(markdown.includes("\n## How do Neon and Prisma Postgres compare?\n"));
+  assert.ok(markdown.includes("\n## Where does each one fit?\n"));
+  assert.ok(markdown.includes("\n## How much do Neon and Prisma Postgres cost?\n"));
+  assert.ok(markdown.includes("| Feature | Neon | Prisma Postgres |"));
+  assert.ok(markdown.includes("| Cost | Neon | Prisma Postgres |"));
+  assert.ok(markdown.includes("$0.106"));
+  assert.ok(markdown.includes("$0.222"));
+  assert.ok(markdown.includes("$0.35"));
+  assert.doesNotMatch(markdown, /database branching/);
+  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
+  assert.doesNotMatch(markdown, /requires Prisma ORM/);
+  assert.doesNotMatch(markdown, /the only|the first|the best/);
+  assert.doesNotMatch(markdown, /listed in one place/);
+  assert.doesNotMatch(markdown, /When should I choose Kysely/);
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /neon: "\/compare\/neon\.md"/);
+  const sections = readFileSync(join(compareDir, "neon/_sections.tsx"), "utf8");
+  assert.match(sections, /comparisonChooseTable/);
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.match(sections, /comparisonProofCards/);
+  assert.match(sections, /comparisonDisclosure/);
+  assert.doesNotMatch(sections, /defaultValue=/);
+  assert.doesNotMatch(sections, /PageAiActions/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /pageMdUrl.includes\("\/compare\/neon\.md"\)/);
+  assert.match(ai, /I am choosing between Prisma Postgres and Neon for a TypeScript app/);
+  assert.match(ai, /Neon Functions, Auth, Object Storage, and AI Gateway/);
+});
+
+test("neon JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getNeonFacts();
+  assert.equal(facts.path, "/compare/neon");
+  assert.equal(facts.dateChecked, neon.NEON_UPDATED.iso);
+  assert.equal(facts.tools.neon.softwareVersion, "current");
+  assert.equal(facts.features.length, neon.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.neon.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.neon.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  const response = getNeonFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getNeonArticleFields();
+  const stats = getNeonReadingStats();
+  assert.equal(fields.datePublished, neon.NEON_PUBLISHED.iso);
+  assert.equal(fields.dateModified, neon.NEON_UPDATED.iso);
+  assert.equal(WORDS_PER_MINUTE, 225);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
+  assert.equal(fields.about[0]?.name, "Neon");
+  assert.equal(fields.about[1]?.name, "Prisma Postgres");
+});
+
+test("neon metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("neon").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/neon\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/neon\.json$/);
 });
