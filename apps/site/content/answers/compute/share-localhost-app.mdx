@@ -6,7 +6,7 @@ author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-19"
 updatedAt: "2026-10-19"
-readingTime: "6 min read"
+readingTime: "8 min read"
 faq:
   - question: "Can someone on my Wi-Fi open localhost:3000?"
     answer: "No. On their device, `localhost` still points to their own device. Give them your computer's network address instead, such as `http://192.168.1.20:3000`, and make sure your dev server listens on all network interfaces rather than only on `localhost`."
@@ -30,7 +30,7 @@ cta:
   href: "/docs/compute/getting-started"
 ---
 
-The fix depends on who needs to open the app and for how long. A teammate at the next desk needs something different from a client who will open the link tomorrow morning. The sections below cover the cause, the three ways to share, and the mistakes that make a shared link load but not work.
+The fix depends on who needs to open the app and for how long. A teammate at the next desk needs something different from a client who will open the link tomorrow morning.
 
 We make Prisma Compute and Prisma Postgres. Every third-party tool and host below links to its own documentation, checked on October 19, 2026. The same-network and tunnel options work with any framework and any host.
 
@@ -60,9 +60,11 @@ Pick the option by who needs to open the link and whether it must work when your
 
    Vite then [listens on all addresses](https://vite.dev/config/server-options#server-host), including LAN addresses, and prints a `Network:` URL next to the `Local:` one. Without `--host`, that line reads `use --host to expose`. `next dev` [listens on `0.0.0.0` by default](https://nextjs.org/docs/app/api-reference/cli/next), and its `-H` option sets a different hostname. For other frameworks, look for a `host` or `hostname` option.
 
-2. Find your computer's local IP address. On most Macs, run `ipconfig getifaddr en0`. On Windows, run `ipconfig` and read the IPv4 address. On Linux, run `hostname -I`.
+   Next.js also [blocks cross-origin requests to its dev-only assets and endpoints](https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins) from any hostname other than `localhost`, its subdomains and the hostname the dev server started with. If another device opens `next dev` at your network address, add that address to `allowedDevOrigins` in `next.config`. Vite allows IP addresses by default.
 
-3. Send the address with the port, for example `http://192.168.1.20:3000`. If your operating system asks whether to allow incoming connections for Node.js or your terminal, allow them on private networks.
+2. Find your computer's local IP address. On most Macs, run `ipconfig getifaddr en0`. On Windows, run `ipconfig` and read the IPv4 address. On Linux, run `hostname -I`, or `ip -4 addr` if your `hostname` doesn't support `-I`.
+
+3. Send the address with the port your dev server prints, for example `http://192.168.1.20:3000` for Next.js or `http://192.168.1.20:5173` for Vite, whose [default port](https://vite.dev/config/server-options#server-port) is 5173. If your operating system asks whether to allow incoming connections for Node.js or your terminal, allow them on private networks.
 
 This only works while both devices are on the same network, and guest or office networks often block traffic between devices.
 
@@ -87,7 +89,10 @@ ngrok http 3000
 
 ngrok prints an HTTPS forwarding URL on a dev domain it assigns to your account, and it can add authentication in front of the app ([quickstart](https://ngrok.com/docs/share-localhost/quickstart)). The agent connects outward to ngrok, so you don't open ports on your router. The URL is public as soon as it exists and stops working when you stop the agent ([how sharing localhost works](https://ngrok.com/docs/share-localhost/tunnels)).
 
-If a Vite dev server answers the tunnel URL with a "Blocked request" error, add the exact tunnel hostname to [`server.allowedHosts`](https://vite.dev/config/server-options#server-allowedhosts). Vite allows `localhost` and IP addresses by default and warns against setting `allowedHosts` to `true`.
+Both Vite and Next.js check which hostnames their dev server answers, so a tunnel hostname needs to be allowed:
+
+- **Vite.** If the tunnel URL answers with a "Blocked request" error, add the exact tunnel hostname to [`server.allowedHosts`](https://vite.dev/config/server-options#server-allowedhosts). Vite allows `localhost` and IP addresses by default and warns against setting `allowedHosts` to `true`.
+- **Next.js.** `next dev` blocks cross-origin requests to its dev-only assets and endpoints by default. Add the tunnel hostname to [`allowedDevOrigins`](https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins) in `next.config`, without the scheme or port, for example `allowedDevOrigins: ["*.trycloudflare.com"]`. A `*` matches exactly one label of the hostname.
 
 The tunnel lasts only as long as your laptop is awake, the dev server is running and the tunnel process is open. For a link someone will open later, deploy the app.
 
@@ -99,7 +104,7 @@ A host builds and runs your app on its servers and gives you a URL that keeps wo
 | --- | --- |
 | Netlify | Opening a pull request in a connected repository builds a [Deploy Preview](https://docs.netlify.com/deploy/deploy-types/deploy-previews/) with its own URL. |
 | Prisma Compute | `prisma deploy` prints each service's public HTTPS URL. With [deploy on push](/docs/compute/deploy-on-push), every pushed branch other than the default one gets a preview with its own URL. |
-| Vercel | Pushing to a branch other than the production branch creates a [preview deployment](https://vercel.com/docs/deployments/environments) with a branch URL and a commit URL. |
+| Vercel | Pushing to a branch other than the production branch creates a [preview deployment](https://vercel.com/docs/deployments/environments) with a branch URL and a commit URL. A new project's first deployment is always production, so previews start after that. |
 
 If the app saves data, the database has to be reachable from the host too. A SQLite file or a Postgres server on your laptop stays on your laptop.
 
@@ -116,9 +121,21 @@ Prisma Compute hosts TypeScript apps built for Node.js, Bun or Next.js, and runs
    Bun.serve({ port: service.port(), hostname: "0.0.0.0", fetch: handler });
    ```
 
-2. **Declare the app.** Add a `service.ts` for the server and a root `module.ts`, and set a region in `prisma.config.ts` or `PRISMA_REGION`. The [deploy guide](/docs/prisma-compute/deploy) has the files for a new app and for porting an existing one.
+2. **Declare the app and its build.** Add a `service.ts` for the server and a root `module.ts`, and set a region in `prisma.config.ts` or `PRISMA_REGION`. The [deploy guide](/docs/prisma-compute/deploy) has the files for a new app and for porting an existing one. You need [Bun](https://bun.sh) installed, and Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer.
 
-3. **Build and deploy.** `deploy` doesn't build the app, so build first. The CLI needs Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer.
+   Composer doesn't build your app; it deploys what your build produces. That has to be one self-contained entry file per service, with everything inlined except runtime built-ins, and `service.ts` points at it. Keep your build if it already produces such a file. Otherwise, for a Node.js or Bun server, a build script like the one in the deploy guide does:
+
+   ```json
+   {
+     "scripts": {
+       "build": "bun build src/server.ts --target=bun --outfile dist/server.mjs"
+     }
+   }
+   ```
+
+   For a Next.js app, use the `nextjs` build adapter instead of `node` and set `output: "standalone"` in `next.config`, and add `nextjsBuild()` to the `composer` extensions in `prisma.config.ts`; then `next build` is the whole build ([port an existing app](/docs/composer/porting-an-app)).
+
+3. **Build and deploy.** Run the build script that produces that entry file, sign in, and deploy:
 
    ```sh
    npm run build
