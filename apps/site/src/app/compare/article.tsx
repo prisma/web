@@ -181,28 +181,42 @@ export function comparisonChooseTable({
 }
 
 /** Buttons under the introduction. ORM pages lead with the ORM quickstart. */
-export function comparisonHeroCtas(kind: "orm" | "postgres" = "postgres") {
+export function comparisonHeroCtas(
+  kind: "orm" | "postgres" = "postgres",
+  options?: { secondary?: boolean },
+) {
   const primary = kind === "orm" ? ORM_HERO_CTAS.primary : POSTGRES_HERO_CTAS.primary;
   const secondary = kind === "orm" ? ORM_HERO_CTAS.secondary : POSTGRES_HERO_CTAS.secondary;
+  const showSecondary = options?.secondary !== false;
   return (
     <p className="mt-8 flex flex-wrap items-center gap-3">
       <PrismButton href={primary.href} ctaLocation="compare-intro">
         {primary.label}
-      </PrismButton>{" "}
-      <PrismButtonOutline
-        href={secondary.href}
-        ctaLocation="compare-intro"
-        {...(secondary.href === CREATE_DB_WEB ? CREATE_DB_NEW_TAB : {})}
-      >
-        {secondary.label}
-      </PrismButtonOutline>
+      </PrismButton>
+      {showSecondary ? (
+        <>
+          {" "}
+          <PrismButtonOutline
+            href={secondary.href}
+            ctaLocation="compare-intro"
+            {...(secondary.href === CREATE_DB_WEB ? CREATE_DB_NEW_TAB : {})}
+          >
+            {secondary.label}
+          </PrismButtonOutline>
+        </>
+      ) : null}
     </p>
   );
 }
 
 /** Closing action. ORM pages keep the 500K+ Prisma ORM figure and ORM-specific buttons. */
-export function comparisonClosingCta(kind: "orm" | "postgres" = "postgres") {
+export function comparisonClosingCta(
+  kind: "orm" | "postgres" = "postgres",
+  options?: { instantDatabase?: boolean; secondary?: boolean },
+) {
   const cta = kind === "orm" ? ORM_COMPARISON_CTA : COMPARISON_CTA;
+  const showInstantDatabase = options?.instantDatabase !== false;
+  const showSecondary = options?.secondary !== false;
   return (
     <section
       key="next"
@@ -224,25 +238,32 @@ export function comparisonClosingCta(kind: "orm" | "postgres" = "postgres") {
           <li key={item.label}>{item.label}</li>
         ))}
       </ul>
-      <p className="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground">
-        Need a database?{" "}
-        <a
-          href={CREATE_DB_WEB}
-          target={CREATE_DB_NEW_TAB.target}
-          rel={CREATE_DB_NEW_TAB.rel}
-          className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
-        >
-          Create an instant database
-        </a>
-        .
-      </p>
+      {showInstantDatabase ? (
+        <p className="mt-3 max-w-[36rem] text-sm leading-6 text-muted-foreground">
+          Need a database?{" "}
+          <a
+            href={CREATE_DB_WEB}
+            target={CREATE_DB_NEW_TAB.target}
+            rel={CREATE_DB_NEW_TAB.rel}
+            className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
+          >
+            Create an instant database
+          </a>
+          .
+        </p>
+      ) : null}
       <p className="mt-7 flex flex-wrap items-center gap-3">
         <PrismButton href={cta.primaryCta.href} ctaLocation="compare-close">
           {cta.primaryCta.label}
-        </PrismButton>{" "}
-        <PrismButtonOutline href={cta.secondaryCta.href} ctaLocation="compare-close">
-          {cta.secondaryCta.label}
-        </PrismButtonOutline>
+        </PrismButton>
+        {showSecondary ? (
+          <>
+            {" "}
+            <PrismButtonOutline href={cta.secondaryCta.href} ctaLocation="compare-close">
+              {cta.secondaryCta.label}
+            </PrismButtonOutline>
+          </>
+        ) : null}
       </p>
     </section>
   );

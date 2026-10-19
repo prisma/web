@@ -136,7 +136,7 @@ function buildVercelNeonDrizzlePage(minutes: number) {
         and app hosting in one platform, with shared schema context across deploys and previews.
         Pick Vercel + Neon + Drizzle when you want to connect those three products yourself.
       </p>
-      {comparisonHeroCtas("postgres")}
+      {comparisonHeroCtas("postgres", { secondary: false })}
       {comparisonByline({
         author: VERCEL_NEON_DRIZZLE_AUTHOR,
         updated: VERCEL_NEON_DRIZZLE_UPDATED,
@@ -417,7 +417,7 @@ function buildVercelNeonDrizzlePage(minutes: number) {
         </Accordion>
       </section>
     </div>,
-    comparisonClosingCta("postgres"),
+    comparisonClosingCta("postgres", { instantDatabase: false, secondary: false }),
     <section
       key="sources"
       id="sources"
