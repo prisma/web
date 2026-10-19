@@ -73,6 +73,19 @@ const AGENT_MARKDOWN_PATH_SET: ReadonlySet<string> = new Set(AGENT_MARKDOWN_PATH
 export type AgentMarkdownSignal = "accept" | "user-agent";
 
 /**
+ * The `Vary` value for a Markdown rendition. A page URL answers Markdown on
+ * either signal above, so a shared cache has to key on both request headers.
+ *
+ * Both the proxy and the Markdown route send it, because on Vercel each one
+ * covers a different response (measured on www.prisma.io, 2026-10-19). A 200
+ * carries the route's own `Vary` and drops the proxy's: the proxy sent
+ * `Accept, User-Agent` and the client got the route's `Accept`. A CDN 304 on
+ * a page URL carries the proxy's `Vary` and not the route's. A 304 on a `.md`
+ * or `/llms.mdx/*` URL, which the proxy never sees, carries no `Vary` at all.
+ */
+export const AGENT_MARKDOWN_VARY = "Accept, User-Agent";
+
+/**
  * The product guides in `content/answers` (`/postgres/<slug>`,
  * `/compute/<slug>`), served by `src/app/{postgres,compute}/[slug]`. They get
  * the same Markdown negotiation as the pages above.
