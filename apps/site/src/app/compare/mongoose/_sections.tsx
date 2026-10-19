@@ -16,6 +16,7 @@ import { TESTIMONIALS } from "@/components/sections/testimonials-data";
 import { AnchorHeading } from "../anchor-heading";
 import {
   CompareArticle,
+  comparisonChooseTable,
   comparisonClosingCta,
   comparisonDisclosure,
   comparisonHeroCtas,
@@ -70,7 +71,6 @@ const BODY =
 const SECTION = "flex flex-col gap-5";
 const LIST = "list-disc space-y-2 pl-5 marker:text-black/25";
 const STEPS = "list-decimal space-y-2 pl-5 marker:text-muted-foreground";
-const CHOOSE_LABEL = "font-heading text-lg leading-snug font-medium";
 
 /**
  * Full support reads as body text; preview and ORM 7 labels are muted; No is
@@ -201,24 +201,12 @@ function buildMongoosePage(minutes: number) {
         <AnchorHeading level={2} id="choose">
           When should I choose Mongoose or Prisma ORM?
         </AnchorHeading>
-        <div className="grid gap-10 sm:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <h3 className={CHOOSE_LABEL}>Mongoose</h3>
-            <ul className={LIST}>
-              {CHOOSE_MONGOOSE.map((item) => (
-                <li key={item}>{renderFaqAnswer(item)}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex flex-col gap-4">
-            <h3 className={CHOOSE_LABEL}>Prisma ORM</h3>
-            <ul className={LIST}>
-              {CHOOSE_PRISMA.map((item) => (
-                <li key={item}>{renderFaqAnswer(item)}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        {comparisonChooseTable({
+          competitor: "Mongoose",
+          prisma: "Prisma ORM",
+          competitorItems: CHOOSE_MONGOOSE,
+          prismaItems: CHOOSE_PRISMA,
+        })}
         <p className="max-w-[68ch]">
           MongoDB&apos;s May 2026 post{" "}
           <a href={MONGO_BLOG_PRISMA_NEXT} className={INLINE}>

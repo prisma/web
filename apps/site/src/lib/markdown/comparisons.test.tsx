@@ -463,6 +463,21 @@ test("stacked comparison tables label every cell for the phone card layout", () 
   });
   assert.deepEqual(dataLabels(feature), ["Kysely", "Prisma ORM"]);
 
+  const choose = CompareTable({
+    labelledBy: "choose",
+    columns: ["Kysely", "Prisma ORM"],
+    minWidth: "40rem",
+    rows: [
+      {
+        cells: [
+          "You want the library itself to be the SQL query builder.",
+          "You want a contract file.",
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(dataLabels(choose), ["Kysely", "Prisma ORM"]);
+
   const pricing = ComparisonPricingTable({
     labelledBy: "pricing",
     corner: "Cost",
@@ -567,7 +582,8 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
     markdown.indexOf("## When should I choose Kysely or Prisma ORM?"),
     markdown.indexOf("## What does the same query look like in each?"),
   );
-  assert.match(choose, /### Kysely/);
+  assert.match(choose, /\| Kysely \| Prisma ORM \|/);
+  assert.doesNotMatch(choose, /### Kysely/);
   assert.doesNotMatch(choose, /A contract is the/);
   assert.match(choose, /a contract is the `contract\.prisma` file that describes your models/);
   assert.match(choose, /dialect — Kysely's adapter for one database/);
@@ -576,7 +592,10 @@ test("kysely choose leads with the lists and defines terms in the bullets", () =
   assert.match(markdown, /email filter/);
   const sections = readFileSync(join(compareDir, "kysely/_sections.tsx"), "utf8");
   assert.doesNotMatch(sections, /PageAiActions/);
+  assert.match(sections, /comparisonChooseTable/);
+  assert.doesNotMatch(sections, /grid gap-10 sm:grid-cols-2/);
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /function comparisonChooseTable/);
   assert.match(article, /kysely: "\/compare\/kysely\.md"/);
   assert.match(article, /pt-32 sm:pt-40/);
   assert.match(article, /header className="mx-auto max-w-site px-6 sm:px-8"/);
@@ -873,13 +892,16 @@ test("mongoose choose leads with the lists and Open-with-AI points at mongoose.m
     markdown.indexOf("## When should I choose Mongoose or Prisma ORM?"),
     markdown.indexOf("## What does the same query look like in each?"),
   );
-  assert.match(choose, /### Mongoose/);
+  assert.match(choose, /\| Mongoose \| Prisma ORM \|/);
+  assert.doesNotMatch(choose, /### Mongoose/);
   assert.match(choose, /a contract is the file that describes your collections or tables/);
   assert.match(markdown, /author include/);
   assert.match(markdown, /published filter/);
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /mongoose: "\/compare\/mongoose\.md"/);
   const sections = readFileSync(join(compareDir, "mongoose/_sections.tsx"), "utf8");
+  assert.match(sections, /comparisonChooseTable/);
+  assert.doesNotMatch(sections, /grid gap-10 sm:grid-cols-2/);
   assert.match(sections, /max-w-4xl text-balance font-heading/);
   assert.match(sections, /mt-6 max-w-3xl text-pretty/);
   assert.doesNotMatch(sections, /max-w-2xl/);
@@ -912,6 +934,12 @@ test("Convex Markdown carries the byline, disclosure, and Sources on the shared 
   assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
   assert.ok(markdown.includes("\n## Sources\n"));
   assert.ok(markdown.includes("\n## When should I choose Convex or Prisma Postgres?\n"));
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose Convex or Prisma Postgres?"),
+    markdown.indexOf("## How do Convex and Prisma Postgres compare?"),
+  );
+  assert.match(choose, /^\| Convex \| Prisma Postgres \|$/m);
+  assert.doesNotMatch(choose, /### Convex/);
   assert.ok(markdown.includes("\n## How do Convex and Prisma Postgres compare?\n"));
   assert.ok(markdown.includes("\n## Where does each one fit?\n"));
   assert.ok(markdown.includes("\n## How much do Convex and Prisma Postgres cost?\n"));
@@ -923,6 +951,7 @@ test("Convex Markdown carries the byline, disclosure, and Sources on the shared 
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /convex: "\/compare\/convex\.md"/);
   const sections = readFileSync(join(compareDir, "convex/_sections.tsx"), "utf8");
+  assert.match(sections, /comparisonChooseTable/);
   assert.match(sections, /max-w-4xl text-balance font-heading/);
   assert.match(sections, /mt-6 max-w-3xl text-pretty/);
   assert.match(sections, /comparisonProofCards/);

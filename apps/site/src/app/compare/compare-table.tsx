@@ -12,27 +12,29 @@ import {
 import { TableScrollRegion } from "./table-scroll-region";
 
 export type CompareTableRow = {
-  label: string;
+  /** Omit on choose tables: those are competitor | Prisma columns only. */
+  label?: string;
   cells: readonly ReactNode[];
 };
 
 export type CompareTableProps = {
   /** Id of the section heading that names the table for screen readers. */
   labelledBy: string;
-  /** Header over the row labels. */
-  corner: string;
+  /** Header over the row labels. Omit with unlabelled choose rows. */
+  corner?: string;
   columns: readonly string[];
   rows: readonly CompareTableRow[];
   minWidth: string;
 };
 
 /**
- * Feature, database, and task matrices. Below 640px each row stacks as a card
- * with `data-label` on every cell. The Markdown serializer reads these props
- * directly, so it never renders this component.
+ * Feature, database, task, and choose matrices. Below 640px each row stacks as
+ * a card with `data-label` on every cell. The Markdown serializer reads these
+ * props directly, so it never renders this component.
  */
 export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: CompareTableProps) {
-  const columnWidth = `${78 / columns.length}%`;
+  const labelled = Boolean(corner);
+  const columnWidth = `${(labelled ? 78 : 100) / columns.length}%`;
   return (
     <TableScrollRegion
       labelledBy={labelledBy}
@@ -45,9 +47,11 @@ export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: Co
       >
         <thead>
           <tr>
-            <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "22%" }}>
-              {corner}
-            </th>
+            {labelled ? (
+              <th scope="col" className={`${TH_COL} ${STICKY}`} style={{ width: "22%" }}>
+                {corner}
+              </th>
+            ) : null}
             {columns.map((column) => (
               <th key={column} scope="col" className={TH_COL} style={{ width: columnWidth }}>
                 {column}
@@ -56,11 +60,13 @@ export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: Co
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.label} className={TABLE_ROW}>
-              <th scope="row" className={`${TH_ROW} ${STICKY}`}>
-                {row.label}
-              </th>
+          {rows.map((row, rowIndex) => (
+            <tr key={row.label ?? rowIndex} className={TABLE_ROW}>
+              {labelled ? (
+                <th scope="row" className={`${TH_ROW} ${STICKY}`}>
+                  {row.label}
+                </th>
+              ) : null}
               {row.cells.map((cell, index) => (
                 <td key={columns[index]} className={TD} data-label={columns[index]}>
                   {cell}

@@ -9,6 +9,7 @@ import { TESTIMONIALS } from "@/components/sections/testimonials-data";
 import { AnchorHeading } from "../anchor-heading";
 import {
   CompareArticle,
+  comparisonChooseTable,
   comparisonClosingCta,
   comparisonDisclosure,
   comparisonHeroCtas,
@@ -151,24 +152,12 @@ function buildConvexPage(minutes: number) {
         <AnchorHeading level={2} id="choose">
           When should I choose Convex or Prisma Postgres?
         </AnchorHeading>
-        <div className="grid gap-10 sm:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <h3 className={CHOOSE_LABEL}>Convex</h3>
-            <ul className={LIST}>
-              {CHOOSE_CONVEX.map((item) => (
-                <li key={item}>{renderFaqAnswer(item)}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex flex-col gap-4">
-            <h3 className={CHOOSE_LABEL}>Prisma Postgres</h3>
-            <ul className={LIST}>
-              {CHOOSE_PRISMA.map((item) => (
-                <li key={item}>{renderFaqAnswer(item)}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        {comparisonChooseTable({
+          competitor: "Convex",
+          prisma: "Prisma Postgres",
+          competitorItems: CHOOSE_CONVEX,
+          prismaItems: CHOOSE_PRISMA,
+        })}
       </section>
 
       <section className={SECTION}>

@@ -101,9 +101,16 @@ export function renderComparisonContent(node: ReactNode, path: string): string {
     if (type === CompareTable) {
       const { corner, columns, rows } = props as unknown as CompareTableProps;
       const cell = (node: ReactNode) => render(node).trim().replace(/\s+/g, " ");
+      const labelled = Boolean(corner);
       return `\n\n${table(
-        [escapeText(corner), ...columns.map((column) => escapeText(column))],
-        rows.map((row) => [escapeText(row.label), ...row.cells.map(cell)]),
+        [
+          ...(labelled ? [escapeText(corner ?? "")] : []),
+          ...columns.map((column) => escapeText(column)),
+        ],
+        rows.map((row) => [
+          ...(labelled ? [escapeText(row.label ?? "")] : []),
+          ...row.cells.map(cell),
+        ]),
       )}\n\n`;
     }
 

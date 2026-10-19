@@ -12,7 +12,9 @@ import {
 } from "./_content";
 import { ArticleToc, ArticleTocDisclosure, type TocItem } from "./article-toc";
 import { COMPARISONS, type ComparisonSlug } from "./comparisons";
+import { CompareTable } from "./compare-table";
 import { QUIET_LINK } from "./table-styles";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 
 const PROSE =
   "answer-prose prose max-w-none text-foreground selection:bg-prism-cyan-100 prose-headings:scroll-mt-28 prose-headings:font-heading prose-headings:font-medium prose-headings:text-balance prose-h2:mt-14 prose-h2:text-2xl prose-h3:mt-8 prose-h3:text-xl prose-p:text-pretty prose-p:leading-[1.8] prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 prose-a:hover:text-prism-cyan-700 prose-strong:font-semibold prose-li:leading-[1.8] prose-code:break-words prose-th:text-left [&_:focus-visible]:outline-2 [&_:focus-visible]:outline-offset-2 [&_:focus-visible]:outline-foreground/70";
@@ -94,6 +96,35 @@ export function comparisonDisclosure({
       </a>
       , checked {checked}.
     </p>
+  );
+}
+
+/**
+ * First body section: one row per choose contrast, competitor | Prisma.
+ * Same CompareTable chrome and stacked-card phone layout as Features.
+ */
+export function comparisonChooseTable({
+  competitor,
+  prisma,
+  competitorItems,
+  prismaItems,
+  labelledBy = "choose",
+}: {
+  competitor: string;
+  prisma: string;
+  competitorItems: readonly string[];
+  prismaItems: readonly string[];
+  labelledBy?: string;
+}) {
+  return (
+    <CompareTable
+      labelledBy={labelledBy}
+      columns={[competitor, prisma]}
+      minWidth="40rem"
+      rows={competitorItems.map((item, index) => ({
+        cells: [renderFaqAnswer(item), renderFaqAnswer(prismaItems[index] ?? "")],
+      }))}
+    />
   );
 }
 
