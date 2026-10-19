@@ -11,7 +11,7 @@ faq:
   - question: "What is the difference between prisma migrate dev and prisma migrate deploy?"
     answer: "In Prisma ORM 7, `prisma migrate dev` is for development only: it uses a shadow database to detect drift, generates a new migration from schema changes and applies it. `prisma migrate deploy` applies pending migrations from the migrations folder and does not look for drift, reset the database or generate anything, so it is the command for staging and production. In Prisma ORM 8, `prisma migration plan` writes the migration and `prisma db migrate` applies it."
   - question: "Can I use drizzle-kit push in production?"
-    answer: "Drizzle recommends `drizzle-kit push` for rapid prototyping and notes that some teams use it as their main migration flow in production. Push applies schema changes directly without writing SQL migration files. `--explain` previews the SQL, but no reviewed file is committed, and Git holds no record of what changed. For a production database with real data, `drizzle-kit generate` plus `drizzle-kit migrate` gives you a reviewed file per change and a history table in the database."
+    answer: "Drizzle recommends `drizzle-kit push` for rapid prototyping and notes that some teams use it as their main migration flow in production. Push applies schema changes directly without writing SQL migration files. `--explain` previews the SQL, but no reviewed file is committed, and Git holds no record of the SQL that ran. For a production database with real data, `drizzle-kit generate` plus `drizzle-kit migrate` gives you a reviewed file per change and a history table in the database."
   - question: "Should my app run migrations when it starts?"
     answer: "Prefer a separate deploy step that runs once. When every instance runs migrations at startup, several instances can try at the same time, a slow migration delays every start, and a failure can leave instances restarting in a loop. Some tools serialize concurrent runs: Knex keeps a lock table, and Prisma ORM 8 makes a second run on PostgreSQL wait until the earlier one finishes. A single step in the pipeline is still easier to watch and stop."
   - question: "How do I roll back a migration that broke production?"
@@ -44,7 +44,7 @@ The usual causes:
 - **Wrong database.** The production `DATABASE_URL` points at a different database, schema or branch than the one you checked.
 - **Missing files.** The migration was never generated or committed, or the build output does not include the migrations folder.
 - **A failed step.** The migration ran and failed, for example because the migration CLI was in `devDependencies` and the host pruned it, or because the database user lacks permission to create tables. Read the deploy log before rerunning anything.
-- **Schema sync in development only.** `prisma db push`, `drizzle-kit push` or TypeORM's `synchronize: true` changed your local database directly, so no migration file exists to apply.
+- **Schema sync in development only.** `prisma db push` (`prisma db update` in Prisma ORM 8), `drizzle-kit push` or TypeORM's `synchronize: true` changed your local database directly, so no migration file exists to apply.
 
 ## How do I fix it?
 
@@ -61,16 +61,16 @@ Run your tool's status command with the production connection string, or read it
 | [Drizzle Kit](https://orm.drizzle.team/docs/drizzle-kit-migrate) | `drizzle-kit generate` | `drizzle-kit migrate` | Query the history table | `drizzle.__drizzle_migrations` |
 | [Knex](https://knexjs.org/guide/migrations.html) | `knex migrate:make <name>` | `knex migrate:latest` | `knex migrate:list` | `knex_migrations` |
 | [Prisma ORM 7](/docs/orm/v7/prisma-client/deployment/deploy-database-changes-with-prisma-migrate) | `prisma migrate dev` | `prisma migrate deploy` | `prisma migrate status` | `_prisma_migrations` |
-| [Prisma ORM 8](/docs/cli/db-migrate) | `prisma migration plan` | `prisma db migrate` | `prisma migration status` | A marker row that records the contract state |
+| [Prisma ORM 8](/docs/cli/db-migrate) | `prisma contract emit`, then `prisma migration plan` | `prisma db migrate` | `prisma migration status` | A marker row that records the contract state |
 | [TypeORM](https://typeorm.io/docs/migrations/executing) | `typeorm migration:generate` | `typeorm migration:run` | `typeorm migration:show` | Set by `migrationsTableName` |
 
-Tools are listed alphabetically. Prisma ORM 8 is a [release candidate](/docs/orm/release-status), and Prisma ORM 7 remains supported. The table shows default history table names; your configuration can change them.
+Tools are listed alphabetically. Prisma ORM 8 is a [release candidate](/docs/orm/release-status), and Prisma ORM 7 remains supported. The last column shows each tool's default history table, or the option that sets it; your configuration can change the name.
 
 If the status shows the new migration as pending, continue to step 3. If it shows the migration as failed, fix its cause before applying anything else. Prisma ORM 7, for example, stores the error in the `logs` column of `_prisma_migrations`, and [`prisma migrate resolve`](/docs/orm/v7/prisma-migrate/workflows/patching-and-hotfixing) marks the migration rolled back or applied once you have dealt with it. If the migration file is missing, generate and commit it from your development setup first.
 
 ### 3. Apply the pending migrations
 
-Take a backup or snapshot, then run the production command once from a machine or CI job that has the production connection string:
+Take a backup or snapshot, then run the one line for your tool, once, from a machine or CI job that has the production connection string:
 
 ```bash
 npx drizzle-kit migrate                             # Drizzle Kit, connection from drizzle.config.ts
@@ -86,7 +86,7 @@ Run migrations over a direct connection, not through a pooler in transaction mod
 
 ### 4. Add the migration to every deploy
 
-Make the migration its own step, run once per deploy, ahead of the release. In GitHub Actions, a job the deploy depends on works on most hosts:
+Make the migration its own step, run once per deploy, ahead of the release. In GitHub Actions, that can be a job the deploy depends on:
 
 ```yaml
 name: Deploy production
@@ -116,18 +116,18 @@ jobs:
       - run: echo "Run your host's deploy command here"
 ```
 
-`needs: migrate` stops the deploy when the migration fails, and the `concurrency` group keeps two pushes from migrating at once. If your host has a release or pre-deploy phase, running the same command there works too. Keep the migration CLI in `dependencies` if your host prunes development dependencies before that phase runs.
+`needs: migrate` stops the deploy when the migration fails, and the `concurrency` group keeps two pushes from migrating at once. That only holds if this workflow is the one path to production. Many hosts also deploy on their own from every push to `main`, and that deploy runs alongside this job, so new code can take traffic before the migration finishes or after it fails. Turn off the host's automatic Git deploys and call its deploy hook or CLI from the `deploy` job, or run the migration in the host's release or pre-deploy phase instead. Keep the migration CLI in `dependencies` if your host prunes development dependencies before that phase runs.
 
 ## How do I change a production schema safely?
 
 Adding a table or a nullable column is usually backward compatible in one step, as long as you apply it before the code that uses it. For renames, type changes, `NOT NULL` constraints and drops, keep the running version working while the schema changes:
 
 1. **Expand.** Add the new table or column next to the old one. Deploy code that writes to both and still reads the old one.
-2. **Backfill.** Copy existing rows in batches, so a single long transaction doesn't hold locks.
+2. **Backfill.** Copy existing rows in batches, so a single long transaction doesn't hold locks. A backfill inside the migration itself is fine for small tables.
 3. **Switch.** Deploy code that reads and writes only the new structure.
 4. **Contract.** In a later release, after nothing reads the old column, drop it in its own migration.
 
-Each phase ships in its own deploy, so you can stop or roll the app back between them. Prisma's [expand-and-contract guide](/docs/guides/database/data-migration) walks through the pattern with a backfill inside a migration, and the steps apply to any tool.
+Each phase ships in its own deploy, so you can stop or roll the app back between them. Prisma's expand-and-contract guide, for [Prisma ORM 7](/docs/guides/v7/database/data-migration) and [Prisma ORM 8](/docs/guides/database/data-migration), walks through the pattern with a backfill that runs in the same transaction as the schema change, which suits small tables. The steps apply to any tool.
 
 Watch the locks as well. In PostgreSQL, [`ALTER TABLE`](https://www.postgresql.org/docs/current/sql-altertable.html) takes an `ACCESS EXCLUSIVE` lock unless the docs note otherwise for a subcommand, and that lock [conflicts with every other lock mode](https://www.postgresql.org/docs/current/explicit-locking.html), including plain reads. Set [`lock_timeout`](https://www.postgresql.org/docs/current/runtime-config-client.html) for the migration session, so a statement that can't get its lock quickly fails instead of waiting, and retry it at a quieter time. Build large indexes with [`CREATE INDEX CONCURRENTLY`](https://www.postgresql.org/docs/current/sql-createindex.html), which does not block writes but cannot run inside a transaction block, so check how your tool wraps migrations in transactions.
 
@@ -136,7 +136,7 @@ Before a destructive step, confirm you have a backup you can restore, and test t
 ### When this fix does not apply
 
 - **The tables exist but the app can't see them.** Check the schema name in the connection string and the database user's permissions.
-- **Production was created without migrations.** Applying the full history to a database that already has the tables usually fails at its opening `CREATE TABLE`. Baseline it first, so the tool records the existing schema as applied: Prisma ORM 8 uses `prisma db sign`, TypeORM has `migration:run --fake`, and other tools document their own baselining step.
+- **Production was created without migrations.** Applying the full history to a database that already has the tables usually fails at its opening `CREATE TABLE`. Baseline it first, so the tool records the existing schema as applied: Prisma ORM 7 uses [`prisma migrate resolve --applied <baseline>`](/docs/orm/v7/prisma-migrate/workflows/baselining), Prisma ORM 8 uses `prisma db sign`, TypeORM has `migration:run --fake`, and other tools document their own baselining step.
 
 ## Where do Prisma Compute and Prisma Postgres fit?
 
@@ -144,7 +144,7 @@ Before a destructive step, confirm you have a backup you can restore, and test t
 
 - **A `postgres()` database in Prisma Composer.** The database is typed by a Prisma ORM contract. You generate migrations with `migration plan` and commit them, and each deploy [applies the `migrations/` folder before the service starts](/docs/composer/databases). The deploy fails before touching the database when the emitted contract is missing or does not match.
 - **A `rawPostgres()` database, or one you connect through `DATABASE_URL`.** Your code gets a connection string and can use any PostgreSQL client, such as Drizzle, Kysely or `node-postgres`. Prisma ORM is optional. Prisma Compute doesn't run migrations for these, so add the step from this page to your pipeline. The [Compute FAQ](/docs/compute/faq) states the same split.
-- **Previews.** With [deploy on push](/docs/compute/deploy-on-push), each pushed branch other than the default one gets its own services and, for databases declared in the Composer module, its own new database with your migrations applied. Production data is not copied, so seed test records. A preview that reads `DATABASE_URL` is only as separate as that value.
+- **Previews.** With [deploy on push](/docs/compute/deploy-on-push), each pushed branch other than the default one gets its own services and its own new database for each database declared in the Composer module. A `postgres()` database gets your migrations applied before the service starts; a `rawPostgres()` one needs your own migration step. Production data is not copied, so seed test records. A preview that reads `DATABASE_URL` is only as separate as that value.
 
 Know the limits before you rely on them:
 
