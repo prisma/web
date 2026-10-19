@@ -54,7 +54,7 @@ The last cause is easy to miss, because the preview does have its own database: 
 
 ### 1. Restrict who can open the preview
 
-Do this before anything else, because the preview is serving customer records right now. On Vercel, [Standard Protection](https://vercel.com/docs/deployment-protection) is available on every plan and requires authentication on every URL except production domains. On other hosts, check their access settings, or delete the preview deployment until the fix is in. If people outside your team had the link, follow your own process for handling a possible data exposure.
+Do this before anything else, because the preview is serving customer records right now. On Vercel, [Standard Protection](https://vercel.com/docs/deployment-protection) is available on every plan and protects every URL except production domains, combined with a method such as Vercel Authentication. On other hosts, check their access settings, or delete the preview deployment until the fix is in. If people outside your team had the link, follow your own process for handling a possible data exposure.
 
 ### 2. Find where the preview gets its connection string
 
@@ -76,20 +76,20 @@ INSERT INTO customers (name, email) VALUES
   ('Test Customer Two', 'two@example.com');
 ```
 
-Use `example.com` addresses, a domain [reserved for examples](https://www.rfc-editor.org/rfc/rfc2606.html), so mail sent from a preview can't reach a real person. If your previews use a copy-based setup, such as Neon branches or Netlify Database, switch to a database that starts from your seed, and delete the preview copies that already hold customer data. With Neon's Vercel-managed integration, a preview branch is [deleted only when Vercel removes its preview deployment](https://neon.com/docs/guides/vercel-managed-integration), and Vercel keeps preview deployments for 6 months by default.
+Use `example.com` addresses, a domain [reserved for examples](https://www.rfc-editor.org/rfc/rfc2606.html), so mail sent from a preview can't reach a real person. If your previews use a copy-based setup, such as Neon branches or Netlify Database, switch to a database that starts from your seed, and delete the preview copies that already hold customer data. Neon's Vercel-managed integration [deletes a preview branch automatically](https://neon.com/docs/guides/vercel-managed-integration) only when Vercel removes the preview deployment, and Vercel keeps preview deployments for 6 months by default, so delete those branches yourself in the Neon Console or CLI.
 
 ### 4. Scope the connection string to previews and redeploy
 
 Give production and previews different values for the same variable name, so the code doesn't change:
 
-- **Vercel, variable you added yourself.** Remove the preview value and add the test database's connection string for Preview only:
+- **Vercel, variable you added yourself.** Remove the preview value and add the test database's connection string for Preview only. Update the CLI first (`npm i -g vercel@latest`): versions before 59.20 remove the variable from every environment, production included. Check that the confirmation prompt names only Preview before you accept it, or change the variable's environments in the dashboard instead:
 
   ```bash
   vercel env rm DATABASE_URL preview
   vercel env add DATABASE_URL preview
   ```
 
-  `vercel env add` prompts for the value, so it stays out of your shell history. Add a value for `development` too, so local runs don't use production either.
+  `vercel env add` prompts for the value, so it stays out of your shell history. Do the same for `development`, so local runs don't use production either.
 - **Vercel, variable set by an integration.** Reconnect the production database to Production only, and connect a separate test database to Preview and Development:
 
   ```bash
@@ -99,7 +99,7 @@ Give production and previews different values for the same variable name, so the
   ```
 
   Do this between production deploys. Removing a variable doesn't change running deployments, but a production deploy started in between would build without it.
-- **Netlify.** Give `DATABASE_URL` a separate [Deploy Previews value](https://docs.netlify.com/build/environment-variables/overview/#value-per-deploy-context), and a Branch value for any branch deploys.
+- **Netlify.** Give `DATABASE_URL` a separate [Deploy Previews value](https://docs.netlify.com/build/environment-variables/overview/#value-per-deploy-context) and a Branch deploys value, and check any per-branch Branch values, which replace both for their branch. With Netlify Database, a `DATABASE_URL` value alone changes nothing: `@netlify/database` [connects to the deploy's database branch by itself](https://docs.netlify.com/build/data-and-storage/netlify-database/api/), so pass the test database's connection string to `getDatabase({ connectionString })` from a variable you set for Deploy Previews.
 
 Set any `NEXT_PUBLIC_` API URL per environment the same way. Then redeploy the preview: Vercel applies changed variables [only to new deployments](https://vercel.com/docs/environment-variables/managing-environment-variables), so a preview that is already running keeps the production value.
 
@@ -113,7 +113,7 @@ CREATE TABLE ops.deployment_marker (environment text NOT NULL);
 INSERT INTO ops.deployment_marker (environment) VALUES ('production');
 ```
 
-Then run a check before `next build`. It loads environment files the way Next.js does, using [`@next/env`](https://nextjs.org/docs/app/guides/environment-variables#test-environment-variables), and refuses to build a non-production deployment whose database carries the production marker. A copy of production carries the marker too, so the check catches copy-based previews as well. Install `pg` and `@next/env`, then save the script as `scripts/check-database.mjs`:
+Then run a check before `next build`. It loads environment files the way Next.js does, using [`@next/env`](https://nextjs.org/docs/app/guides/environment-variables#test-environment-variables), and refuses to build a non-production deployment whose database carries the production marker. A full copy of production carries the marker too, so the check also catches copy-based previews whose connection string comes from `DATABASE_URL`. If your app reads another variable, such as `POSTGRES_URL` or a pooled URL, point the script at that one. It doesn't see a connection that `@netlify/database` picks by itself. Install `pg` and `@next/env`, then save the script as `scripts/check-database.mjs`:
 
 ```js
 // Fails the build when a non-production deployment points at the production database.
@@ -156,13 +156,15 @@ Run it from the build script in `package.json`:
 "build": "node scripts/check-database.mjs && next build"
 ```
 
-Vercel sets [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/system-environment-variables) to `production`, `preview` or `development` during the build. On other hosts, set `APP_ENV=production` in the production environment only. A production build without it fails the same way, which is the safe direction to fail in. The check needs the deployment's variables during the build, as Vercel and Netlify provide them. On Prisma Compute, variables are resolved at deploy time, after your CI build has run, so the check there needs `DATABASE_URL` set in the workflow itself.
+Vercel sets [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/system-environment-variables) to `production`, `preview` or `development` during the build. On other hosts, set `APP_ENV=production` in the production environment only. A production build without it fails the same way, which is the safe direction to fail in. The check is for hosts that expose the deployment's variables during the build, such as Vercel and Netlify. If the database is unreachable, or the role can't read the marker table, it also fails the build, with the database error instead of the refusal message.
 
 Pointed at the marked database from a preview, the check stops the build:
 
 ```text
 Refusing to build: this preview deployment is connected to the production database or a copy of it.
 ```
+
+On Prisma Compute, keep the check out of `build-command`: the [deploy action](/docs/compute/deploy-on-push) runs your build in GitHub Actions, and variables are resolved later, at deploy time, so the check would see none of them. There, a database declared in your Composer module is new for each preview. For an app that reads `DATABASE_URL`, `npx prisma project env list --branch <name>` shows which variables that branch's preview receives, so you can confirm it gets a preview value.
 
 ## How to prevent it, and when this fix doesn't apply
 
