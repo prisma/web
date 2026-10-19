@@ -11,7 +11,7 @@ faq:
   - question: "Is it safe to turn off prepared statements?"
     answer: "Yes, for correctness and security. Queries still send their parameters separately from the SQL text, so binding still protects against SQL injection. What you give up is speed: the server parses and plans each query again instead of reusing a plan. Bun's documentation notes that this can slow down queries that run often with different parameters, and node-postgres notes that most queries don't gain much from prepared statements in the first place."
   - question: "Should I add pgbouncer=true to my Prisma connection string?"
-    answer: "Only behind PgBouncer older than 1.21.0. Prisma's PgBouncer guides for [Prisma ORM 6](/docs/orm/v6/prisma-client/setup-and-configuration/databases-connections/pgbouncer) and [Prisma ORM 7](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/pgbouncer) recommend not setting it on PgBouncer 1.21.0 or later, and ask for `max_prepared_statements` above zero instead. Prisma ORM 8 has no `pgbouncer` URL flag: it connects through node-postgres, so the driver settings on this page apply."
+    answer: "Yes on Prisma ORM 6 and 7, behind PgBouncer older than 1.21.0 or behind a pooler that does not track prepared statements, such as Supabase's transaction mode on port 6543. Prisma's PgBouncer guides for [Prisma ORM 6](/docs/orm/v6/prisma-client/setup-and-configuration/databases-connections/pgbouncer) and [Prisma ORM 7](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/pgbouncer) say to add it there, and [Supabase's docs](https://supabase.com/docs/guides/database/connecting-to-postgres) list `pgbouncer=true` as the Prisma setting for transaction mode. On PgBouncer 1.21.0 or later, the guides recommend leaving it off and setting `max_prepared_statements` above zero. [Prisma ORM 8](/docs/orm) has no `pgbouncer` URL flag; it connects through node-postgres. Its [`db.prepare()`](/docs/orm/reference/transactions-and-runtime#prepared-statements-postgresql) API creates prepared statements, so behind a transaction-mode pooler that does not track them (PgBouncer below 1.21, `max_prepared_statements = 0`, or Supabase's transaction mode), run that code over the direct connection."
   - question: "Can I use PREPARE and EXECUTE in SQL through PgBouncer?"
     answer: "Not in transaction mode. PgBouncer tracks only protocol-level prepared statements and forwards SQL-level `PREPARE`, `EXECUTE` and `DEALLOCATE` straight to whichever server connection the transaction got, so a later `EXECUTE` can land on a connection that never saw the `PREPARE`. Run code that uses SQL-level prepared statements over a direct connection or in session mode."
   - question: "Why does the error show up only after a deploy or under load?"
@@ -32,7 +32,7 @@ cta:
   href: "/docs/postgres/database/connecting-to-your-database"
 ---
 
-`ERROR: prepared statement "s0" already exists` (SQLSTATE `42P05`) through a pooler comes from a session mismatch: your driver names statements per connection, and the pooler shares server connections between clients. Below: why it happens, how to fix it on any host and with any driver, and what each managed pooler documents.
+`ERROR: prepared statement "s0" already exists` (SQLSTATE `42P05`) through a pooler comes from a session mismatch: your driver names statements per connection, and the pooler shares server connections between clients. The fix: turn off named prepared statements in the driver, or let the pooler track them, and run migrations over the direct connection.
 
 Every claim on this page links to its source, checked October 19, 2026. We make Prisma Postgres, one of the managed databases covered here.
 
@@ -88,9 +88,11 @@ This works with any pooler and any PgBouncer version. Each driver has its own se
 | [asyncpg](https://magicstack.github.io/asyncpg/current/faq.html) (Python) | Caches prepared statements | `statement_cache_size=0` on `connect()` and `create_pool()`, and no `Connection.prepare()` |
 | [Bun SQL](https://bun.com/docs/runtime/sql) | Named statements for static queries | `prepare: false` |
 | [node-postgres](https://node-postgres.com/features/queries) (`pg`) | Named only when a query has a `name` | Leave `name` off queries that go through the pooler |
+| [pgJDBC](https://jdbc.postgresql.org/documentation/server-prepare/) (Java) | Server-side prepared after `prepareThreshold` executions | `prepareThreshold=0` |
 | [pgx](https://github.com/jackc/pgx/blob/master/doc.go) (Go) | `cache_statement` | `default_query_exec_mode=exec`, or `QueryExecModeExec` in code |
 | [postgres.js](https://github.com/porsager/postgres#prepared-statements) | `prepare: true` | `prepare: false` |
-| [Prisma ORM 7 with `@prisma/adapter-pg`](/changelog/2026-03-27) | Unnamed, unless `statementNameGenerator` is set | Leave `statementNameGenerator` unset |
+| [Prisma ORM 7 with `@prisma/adapter-pg`](/changelog/2026-03-27) | Unnamed; the adapter names and caches statements only when `statementNameGenerator` is set | Leave `statementNameGenerator` unset |
+| [psycopg 3](https://www.psycopg.org/psycopg3/docs/advanced/prepare.html) (Python) | Prepared after `prepare_threshold` executions | `prepare_threshold=None` |
 
 Drivers are listed alphabetically. Query builders and ORMs that run on these drivers take the driver's setting. Drizzle's [Supabase guide](https://orm.drizzle.team/docs/connect-supabase), for example, passes `prepare: false` to postgres.js for transaction pool mode:
 
@@ -114,6 +116,7 @@ Parameters are still sent separately from the SQL text, so this doesn't open you
 If you run PgBouncer yourself, version 1.21.0 [added support for protocol-level named prepared statements](https://www.pgbouncer.org/changelog.html) in transaction and statement mode, and 1.24.0 turned it on by default with `max_prepared_statements = 200`. With a value above zero, [PgBouncer tracks the names each client uses](https://www.pgbouncer.org/config.html), prepares each query on the server under its own internal name, and prepares it on any server connection that doesn't have it yet. Drivers can keep their default settings.
 
 ```ini title="pgbouncer.ini"
+; excerpt: keep your [databases] section
 [pgbouncer]
 pool_mode = transaction
 max_prepared_statements = 200
@@ -151,12 +154,12 @@ Providers are listed alphabetically. Check your provider's page before you chang
 
 For app traffic on the pooled host, use a driver setting from step 3: node-postgres and `@prisma/adapter-pg` with their defaults, or `prepare: false` for postgres.js and Bun SQL.
 
-The same error can appear on your laptop. The local Postgres that `npx prisma dev` runs shares one session across client connections, so after a pool reconnects, the first query fails with `prepared statement "..." already exists` unless prepared statements are off. The [Prisma Composer database docs](/docs/composer/databases) use `prepare: false` with Bun SQL for that reason, and the same code runs on [Prisma Compute](/docs/compute).
+The same error can appear on your laptop. The local Postgres that `npx prisma dev` runs shares one session across client connections, so after a pool reconnects, the first query fails with `prepared statement "..." already exists` unless prepared statements are off. The [Prisma Composer database docs](/docs/composer/databases) use `prepare: false` with Bun SQL for that reason.
 
 Know the limits before you move a workload:
 
 - [Pooled connections](/docs/postgres/database/connection-pooling) are capped at 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business. Direct connections are capped at 10, 10, 50 and 100, and 5 of them are reserved for platform operations.
 - Pooled queries end after 10 minutes. Long jobs go over the direct connection.
-- [Daily backups](/docs/postgres/database/backups) are on Starter, Pro and Business only, and there is no point-in-time recovery yet.
+- [Daily backups](/docs/postgres/database/backups) are on Starter, Pro and Business only, taken on days the database has activity, and there is no point-in-time recovery yet.
 
 The Free plan includes 2 GB of storage and needs no credit card. See [pricing](/pricing) for the paid plans.
