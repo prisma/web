@@ -671,7 +671,7 @@ test("mongoose Markdown keeps yes and no marks out of the feature table, and anc
   assert.doesNotMatch(hosted, /\b(Yes|No)\b/);
   assert.ok(markdown.includes("\n## When should I choose Mongoose or Prisma ORM?\n"));
   assert.ok(markdown.includes("\n### The same ORM client on PostgreSQL\n"));
-  assert.ok(markdown.includes("\n### A migration plan that does not need the database\n"));
+  assert.ok(markdown.includes("\n### Migrations for indexes and validators\n"));
   assert.doesNotMatch(markdown, /Copy link|Copied/);
 });
 
