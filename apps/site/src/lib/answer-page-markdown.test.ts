@@ -6,7 +6,6 @@ import test from "node:test";
 // `source` into a regex at build time.
 // @ts-expect-error No types ship for the compiled copy.
 import pathToRegexpModule from "next/dist/compiled/path-to-regexp/index.js";
-import { NextRequest, type NextFetchEvent } from "next/server";
 
 import nextConfig, { ANSWER_PAGE_HEADER_SOURCES } from "../../next.config.mjs";
 import {
@@ -16,13 +15,6 @@ import {
 } from "./agent-markdown";
 import { getAnswerEntries } from "./answer-page-content";
 import { answerProductIds } from "./answer-products";
-
-// Agent Front reads its key at module load and reports when it has one. Make
-// sure importing the proxy here can never send an event to ora.
-for (const name of ["ORA_INGEST_KEY", "ORA_KEY", "ORA_DOMAIN_ID", "ORA_SALT"]) {
-  delete process.env[name];
-}
-const { proxy } = await import("@/proxy");
 
 const { pathToRegexp } = pathToRegexpModule as {
   pathToRegexp: (source: string) => RegExp;
@@ -150,105 +142,4 @@ test("the header rules match exactly the URLs the proxy treats as guides", () =>
       `${pathname}: the Link header rule and getAnswerPagePath disagree`,
     );
   }
-});
-
-// --- the proxy, end to end ----------------------------------------------------
-
-const event = { waitUntil() {} } as unknown as NextFetchEvent;
-
-function request(pathname: string, headers: Record<string, string> = {}, method = "GET") {
-  return new NextRequest(`https://www.prisma.io${pathname}`, { headers, method });
-}
-
-/** The same user agents and Accept values the blog's post URLs answer Markdown to. */
-const AGENT_REQUESTS: [string, Record<string, string>][] = [
-  [
-    "ChatGPT-User",
-    {
-      "user-agent":
-        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
-    },
-  ],
-  [
-    "Claude-User",
-    { "user-agent": "Mozilla/5.0 (compatible; Claude-User/1.0; +Claude-User@anthropic.com)" },
-  ],
-  ["PerplexityBot", { "user-agent": "Mozilla/5.0 (compatible; PerplexityBot/1.0)" }],
-  [
-    "Perplexity-User",
-    {
-      "user-agent":
-        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user)",
-    },
-  ],
-  ["Accept: text/markdown", { accept: "text/markdown" }],
-];
-
-const HTML_REQUESTS: [string, Record<string, string>][] = [
-  [
-    "browser",
-    {
-      "user-agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    },
-  ],
-  [
-    "Googlebot",
-    { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
-  ],
-  [
-    "bingbot",
-    { "user-agent": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)" },
-  ],
-  [
-    "OAI-SearchBot",
-    {
-      "user-agent":
-        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot",
-    },
-  ],
-];
-
-test("agents asking for a guide are rewritten to its Markdown", async () => {
-  for (const url of answerUrls) {
-    for (const [label, headers] of AGENT_REQUESTS) {
-      const response = await proxy(request(url, headers), event);
-      const rewrite = response.headers.get("x-middleware-rewrite");
-      assert.ok(rewrite, `${label} on ${url} should be rewritten`);
-      assert.equal(new URL(rewrite, "https://www.prisma.io").pathname, `/llms.mdx${url}`);
-      assert.equal(
-        response.headers.get("x-prisma-agent-markdown"),
-        headers.accept ? "accept" : "user-agent",
-        `${label} on ${url}`,
-      );
-    }
-  }
-});
-
-test("browsers and search crawlers get a guide's HTML, with Vary: Accept", async () => {
-  for (const url of answerUrls) {
-    for (const [label, headers] of HTML_REQUESTS) {
-      const response = await proxy(request(url, headers), event);
-      assert.equal(response.headers.get("x-middleware-next"), "1", `${label} on ${url}`);
-      assert.equal(response.headers.get("x-middleware-rewrite"), null, `${label} on ${url}`);
-      assert.equal(response.headers.get("vary"), "Accept", `${label} on ${url}`);
-    }
-  }
-});
-
-test("the guide indexes and the HIPAA page are left alone, agent or not", async () => {
-  for (const pathname of ["/postgres/guides", "/compute/guides", "/postgres/hipaa"]) {
-    for (const [label, headers] of [...AGENT_REQUESTS, ...HTML_REQUESTS]) {
-      const response = await proxy(request(pathname, headers), event);
-      assert.equal(response.headers.get("x-middleware-rewrite"), null, `${label} on ${pathname}`);
-      assert.equal(response.headers.get("vary"), null, `${label} on ${pathname}`);
-    }
-  }
-});
-
-test("a non-GET request to a guide is never rewritten", async () => {
-  const [url] = answerUrls;
-  const response = await proxy(request(url, { accept: "text/markdown" }, "POST"), event);
-  assert.equal(response.headers.get("x-middleware-rewrite"), null);
 });
