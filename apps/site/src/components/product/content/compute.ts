@@ -132,6 +132,7 @@ export const computeContent: ProductPageContent = {
         name: "A preview per feature branch",
         description:
           "Once deploy on push is set up, every feature branch (any branch except the default) gets its own services and a new database for each one the Composer module declares, and deleting the branch tears them down. A database typed by a Prisma ORM contract gets your migrations applied on deploy; one declared with rawPostgres() keeps your own migration step. No shared test DB that passes tests production fails.",
+        href: "/docs/compute/deploy-on-push",
         illustration: "branchedStack",
       },
       {
@@ -169,7 +170,7 @@ export const computeContent: ProductPageContent = {
     {
       question: "Can I host my existing GitHub repo with a TypeScript frontend and Node API here?",
       answer:
-        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts); the porting guide in the docs has a prompt your coding agent can write it from. Run your build, then deploy with npx prisma deploy module.ts. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every feature branch gets a preview with its own declared databases.",
+        "Yes, when the frontend and the API are TypeScript services built for Node.js, Bun or Next.js. Add a Composer declaration around the server code you already have (a service.ts per service and one module.ts); the porting guide in the docs has a prompt your coding agent can write it from. Run your build, then deploy with npx prisma deploy module.ts. For deploy on push, connect the repository and add the prisma/cloud-deploy-action workflow; from then on every feature branch gets a preview with its own declared databases. For the same workflow on other hosts, see [how to host a test version of your app without replacing production](/blog/host-a-test-version-without-replacing-production).",
     },
     {
       question: "What does Prisma Compute not do?",

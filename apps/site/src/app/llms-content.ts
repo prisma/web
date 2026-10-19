@@ -49,6 +49,31 @@ const additionalPages: LlmsPage[] = [
   },
 ];
 
+/**
+ * Key Pages served by the blog and docs apps rather than this one.
+ *
+ * Both apps serve a Markdown rendition at the page's `.md` URL and honour
+ * `Accept: text/markdown`, so these entries carry a [Markdown] link like the
+ * site's own Key Pages. Titles are the pages' metaTitle frontmatter
+ * (apps/blog/content/blog/host-a-test-version-without-replacing-production/index.mdx
+ * and apps/docs/content/docs/compute/deploy-on-push.mdx); keep them in sync if
+ * those change.
+ */
+const crossAppKeyPages: LlmsPage[] = [
+  {
+    path: "/blog/host-a-test-version-without-replacing-production",
+    title: "How to host a test version of your app without replacing production (2026)",
+    description:
+      "Deploy the new version from a Git branch to a preview or staging environment with its own URL and test database; only the main branch deploys production. Covers Fly.io, Netlify, Prisma Compute, Railway, Render and Vercel.",
+  },
+  {
+    path: "/docs/compute/deploy-on-push",
+    title: "Preview and staging environments per Git branch | Prisma Compute",
+    description:
+      "Set up deploy on push for Prisma Compute: every branch you push other than the default one gets a preview environment with its own URL and services, and the default branch deploys production. Production data is not copied, and a branch you keep, such as staging, works as a staging environment.",
+  },
+];
+
 /** Resolve a root-relative page path against the requested website origin. */
 function toAbsoluteUrl(baseUrl: string, path: string) {
   return new URL(path, baseUrl).toString();
@@ -65,7 +90,7 @@ export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
   // Each rendition-backed page advertises its .md URL next to the HTML one, so
   // an agent reading llms.txt does not have to guess the suffix or make a
   // second request to discover it.
-  const pagesList = markdownPageList
+  const pagesList = [...markdownPageList, ...crossAppKeyPages]
     .map((page) => {
       const url = toAbsoluteUrl(baseUrl, page.path);
       const markdownUrl = toAbsoluteUrl(baseUrl, getMarkdownUrlPath(page.path));
