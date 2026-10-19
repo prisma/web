@@ -3,7 +3,7 @@ title: Local development
 description: Run the whole app on your machine with prisma dev, with no cloud credentials, and tail its logs through the control API.
 url: /composer/local-development
 metaTitle: Local development | Prisma Composer
-metaDescription: Run a Prisma Composer app locally with prisma dev, tail merged service logs through the control API, and understand warm restarts, --fresh, and local emulators.
+metaDescription: Run a Prisma Composer app locally with prisma dev, find a running service's URL with prisma dev url, run the app in the background, and understand ports, warm restarts, --fresh, and local emulators.
 ---
 
 One command brings your whole app up on your machine, every service, its databases and buckets, wired together, with no cloud credentials. `dev` runs the same pipeline a deploy runs, but against local stand-ins for Prisma Compute and Prisma Postgres, so what you run locally is what you ship. Logs are read separately, through the control API's `log` operation.
@@ -11,9 +11,16 @@ One command brings your whole app up on your machine, every service, its databas
 | You want to... | Run |
 | --- | --- |
 | Bring the app up locally | `npx prisma dev module.ts` |
-| Start clean (wipe local data first) | `npx prisma dev module.ts --fresh` (fails for apps with a database in this release; see [the reset steps](#whats-local-vs-whats-real)) |
+| Find where a service answers | `npx prisma dev url <address>` |
+| Run the app in the background | `npx prisma dev module.ts --detach` |
+| Stop the app | `Ctrl-C`, or `npx prisma dev stop` |
+| Start clean (wipe local data first) | `npx prisma dev module.ts --fresh` |
+| See everything running on this machine | `npx prisma emulator list` |
+| Watch the app's logs | the `log` operation (see [Logs](#logs)) |
 
 `module.ts` is your entry file, the one whose default export is the root module, the same file you pass to `deploy`. No `PRISMA_*` variables are needed. Local dev never talks to the platform.
+
+`prisma dev url`, `prisma dev stop`, `--detach`, and `prisma emulator list` are available from the `prisma` release after `8.0.0-rc.23`. Check your version with `npx prisma --version`.
 
 ## Bring it up
 
@@ -32,20 +39,125 @@ gateway: http://localhost:3001
 quotes: http://localhost:3000
 ```
 
+`dev` prints `ready` only once every service accepts connections on its port, so a request to a printed URL right away connects. If a service exits before it listens, or does not listen within 30 seconds, `dev` fails instead, stops the app's other services, and names the service, its port, and its log file.
+
 From here `dev` keeps running: it watches your built output and, when a service's build changes, restarts only that service. Rebuild in another terminal and the affected service picks up the change.
 
-`Ctrl-C` stops your app's service processes and exits. The local databases, buckets, and their data stay up, so the next `dev` is a warm start: same ports, same data. `--fresh` wipes this app's local instances and data before starting.
-
 `dev` does not print service logs. With several services running, streaming them all inline would bury the URL list and the restart notices, so logs are read separately.
+
+## Ports
+
+On a fresh start, each service gets the lowest free port from 3000 up. A service gets its port before the services that call it, so in the example above `quotes` gets 3000 and `gateway`, which calls it, gets 3001. A port that another program already uses is skipped.
+
+A service or database keeps its port from one `dev` to the next in the same directory, even while it is stopped. If another directory has taken that port in the meantime, the instance gets the lowest free one, and `dev` prints one line naming it:
+
+```text no-copy
+[dev] service "gateway" now uses port 3004: its previous port 3001 is in use
+```
+
+Because ports differ from one machine and one directory to the next, do not hard-code `localhost:3001` in scripts or notes. Ask `dev url` instead.
+
+## Find a running service
+
+From another terminal in the same directory, ask where a service of the running app answers, by its address:
+
+```npm
+npx prisma dev url gateway
+```
+
+```text no-copy
+✔ The service gateway is running at http://localhost:3001
+```
+
+The address is the name `dev` printed next to the URL at startup. `dev url` also works for the app's databases and buckets: a database or bucket inside a module has a dotted address, such as `catalog.database`. For a database, `dev url` prints its connection string with the local credentials, and for a bucket, its S3 endpoint followed by `/<bucket>`.
+
+When its output is captured by `$(...)` or piped, `dev url` writes the URL alone, so a script can use it directly. Check the exit status first, so a failure does not run `curl` with an empty URL:
+
+```bash
+url=$(npx prisma dev url gateway) && curl "$url"
+```
+
+`dev url` prints a URL only for a node that is running. When the app is stopped, or `prisma dev` never ran in this directory, it fails with an error code a script can check; the [`dev url` reference](/cli/dev#dev-url) lists them.
+
+## Run it in the background
+
+`--detach` brings the app up as `dev` does, prints the same URLs, and then exits with code `0`, leaving the app running. Use it in scripts, CI, and coding agents, which then have no long-running process to manage:
+
+```npm
+npm run build
+npx prisma dev module.ts --detach
+curl "$(npx prisma dev url gateway)"
+npx prisma dev stop
+```
+
+A detached app does not pick up rebuilds. To apply a new build, run `prisma dev module.ts --detach` again, or run `prisma dev module.ts` in the foreground: it applies the current build to the running app, then watches for rebuilds as usual, and `Ctrl-C` stops the app.
+
+If a detached start fails before every service answers, `dev` stops the whole app and exits non-zero. That includes an app an earlier `--detach` left running, because the failed start has already replaced some of its services. Fix the build and run `prisma dev module.ts --detach` again.
+
+## Stop the app
+
+`Ctrl-C` stops your app's service processes and its local Postgres servers, and exits. The emulators that ran them keep running for the next start. So does `dev` ending on a failure. A detached app keeps running until you stop it:
+
+```npm
+npx prisma dev stop
+```
+
+`dev stop` stops the app that `prisma dev` last ran from this directory and lists what it stopped. When nothing of the app was running, it prints `Nothing of my-app was running.` and still succeeds, with `my-app` replaced by your app's name. Use it too when `prisma dev` was killed without a chance to stop the app.
+
+Stopping keeps the data and the ports, so the next `dev` is a warm start: same ports, same data.
+
+## Each directory runs its own app
+
+The services, databases, and buckets `dev` runs belong to the directory you run it in. Two checkouts of the same app, such as two clones of its repository, run separate service processes on separate ports, with separate databases and separate buckets. A rebuild in one never restarts the other's services, and a row or an object written in one is not visible in the other.
+
+A directory keeps the local state of every app you run from it. If you run a different app from the same directory (another entry file, or the same one under another name with `--name`), `dev` first stops the previous app's services and databases, keeps their data and ports, and says so:
+
+```text no-copy
+[dev] stopped the local services of "shop", the app run here before; its data is kept
+```
+
+Running `shop` again with `prisma dev` resumes it.
+
+A stopped service or database keeps its port reserved, and a database keeps its data, even after you delete the checkout. There is no command to remove them yet.
+
+## Start clean with `--fresh`
+
+`--fresh` deletes this app's local services, databases, and buckets, with their data, before starting. The next start creates them again, empty, and gives the services the lowest free ports. Other apps run from the same directory keep theirs. Use it when your local data is disposable, which during development it usually is:
+
+```npm
+npx prisma dev module.ts --fresh
+```
+
+Run with `--fresh` too if `dev` fails after you upgrade Composer with an error such as `No provider is registered for resource type 'PrismaComposer.Database'`. Local state from an older Composer version is not converted for the new one.
+
+## See everything on this machine
+
+An emulator is the program on your machine that stands in for Prisma Compute, Prisma Postgres, or a bucket, and holds one instance for each service, database, or bucket that `dev` started. The emulators are shared by every directory on the machine. `emulator list` shows each emulator, whether it is running, and every instance it holds, with the address and directory it belongs to. It works from any directory:
+
+```npm
+npx prisma emulator list
+```
+
+See the [`emulator` reference](/cli/emulator) for the output and its piped form.
 
 ## Logs
 
 The unified CLI has no `log` command. Tail the merged logs of the already-running app with the `log` operation from `@prisma/composer/control`, the same in-process API that backs `deploy` and `dev` (see [the control API](/cli/deploy#the-control-api)):
 
 ```ts title="logs.ts"
+import { fileURLToPath } from 'node:url';
 import { log } from '@prisma/composer/control';
+import prismaConfig from './prisma.config.ts';
 
-const result = await log({ entry: 'module.ts', tail: 20, signal: AbortSignal.timeout(60_000) });
+const result = await log({
+  entry: 'module.ts',
+  config: {
+    value: prismaConfig.composer,
+    file: fileURLToPath(new URL('./prisma.config.ts', import.meta.url)),
+  },
+  tail: 20,
+  signal: AbortSignal.timeout(60_000),
+});
 if (!result.ok) throw new Error(result.failure.message);
 
 for await (const { service, line } of result.value.lines) {
@@ -53,7 +165,7 @@ for await (const { service, line } of result.value.lines) {
 }
 ```
 
-Run it with `node logs.ts` next to a running `dev`. `log` attaches to the running app and hands back the merged stream as `lines`, an async iterable, so nothing prints until you iterate it. The `signal` ends the stream, here after a minute, so the script exits on its own; leave it out and stop with `Ctrl-C`. Each line carries the service it came from:
+`log` reads the `composer` section of your `prisma.config.ts`, so the script imports it and passes it as `config`. Run it with `node logs.ts` from the directory you run `dev` in, while `dev` runs. `log` attaches to the running app and returns the merged stream as `lines`, an async iterable, so nothing prints until you iterate it. The `signal` ends the stream, here after a minute, so the script exits on its own; leave it out and stop with `Ctrl-C`. Each line carries the service it came from:
 
 ```text no-copy
 [quotes] serving a quote
@@ -62,9 +174,9 @@ Run it with `node logs.ts` next to a running `dev`. `log` attaches to the runnin
 
 It follows live, like `tail -f`. It only reads the running app. It never builds, provisions, starts, or stops anything, so you can start and stop it freely alongside a running `dev`.
 
-- **One service:** pass its dotted address, for example `cron.runner`, exactly as the startup output prints it.
-- **How much history:** a tail option sets how many recent lines to show before going live (default 20; `0` for live-only). Each service's log is cleared when it starts fresh, so you are never scrolling back through past sessions.
-- **No running app:** if you have not run `dev` (or you stopped it), the operation says so and points you at `dev`.
+- **One service:** pass `address`, for example `address: 'cron.runner'`, exactly as the startup output prints it.
+- **How much history:** `tail` sets how many recent lines to show before going live (default `0`, live only). Each service's log is cleared when it starts fresh, so you are never scrolling back through past sessions.
+- **No running app:** if you have not run `dev` (or you stopped it), `log` succeeds with an empty `services` list and a stream that has already ended, so the script prints nothing and exits.
 
 ## What's local vs. what's real
 
@@ -72,8 +184,7 @@ Everything above the cloud boundary is real: your actual service code, real data
 
 - **Direct RPC probes get `401` here too.** `dev` runs the deploy pipeline, so providers only accept their wired consumers, exactly as in production. Exercise a provider through a consumer, or in [tests](/composer/testing), where nothing is provisioned and every call passes through.
 - **Unset secrets do not stop the app.** A secret you have not set in your shell gets a local placeholder and a one-line warning. The app boots and serves. Only the code path that actually uses that secret fails, at the real external service it calls. Set the secret in your shell to exercise that path.
-- **The emulators outlive a session.** They are shared, machine-wide daemons, so your data survives `Ctrl-C` and even a reboot until you pass `--fresh`. That is what makes restarts warm. Because they are shared, `dev` currently lists every app the emulators know about, including apps you started earlier and stopped, so ignore endpoints whose names are not in your `module.ts`.
-- **`--fresh` currently fails for an app with a database.** The Postgres emulator declines to close the app's local server, the recreate step cannot connect, and a plain `dev` afterwards waits forever on the missing database. To recover, stop the stuck `dev`, remove the app's local server with `npx prisma dev rm pcdev-<app>-<database>` (run it from a directory without a Prisma ORM config), delete `.prisma-composer/dev` and `.alchemy` in the project, and run `dev` again. It re-provisions from scratch. The same reset fixes a `dev` that reports ready with none of its services listed, which happens when the emulators were restarted underneath a project.
+- **The emulators outlive a session.** They are shared, machine-wide programs, so your data survives `Ctrl-C` and even a reboot until you pass `--fresh`. That is what makes restarts warm.
 
 Windows is not supported yet; see [Limitations](/composer/limitations).
 
