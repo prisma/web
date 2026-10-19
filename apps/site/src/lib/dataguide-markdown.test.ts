@@ -9,7 +9,7 @@ import pathToRegexpModule from "next/dist/compiled/path-to-regexp/index.js";
 import { NextRequest, type NextFetchEvent } from "next/server";
 
 import nextConfig from "../../next.config.mjs";
-import { getAgentMarkdownRewritePathname } from "./agent-markdown";
+import { AGENT_MARKDOWN_VARY, getAgentMarkdownRewritePathname } from "./agent-markdown";
 import {
   DATAGUIDE_ORIGIN,
   getDataguideMarkdownPath,
@@ -202,7 +202,7 @@ test("agents asking for a Data Guide page are rewritten to its Markdown", async 
         new URL(rewrite, "https://www.prisma.io").pathname,
         path === "/dataguide" ? "/llms.mdx/dataguide/index" : `/llms.mdx${path}`,
       );
-      assert.equal(response.headers.get("vary"), "Accept, User-Agent");
+      assert.equal(response.headers.get("vary"), AGENT_MARKDOWN_VARY);
     }
   }
 });
@@ -318,6 +318,20 @@ test("an HTML answer with status 200 is never passed off as Markdown", async () 
     async () => {
       const response = await callRoute(["intro"]);
       assert.equal(response.status, 404);
+    },
+  );
+});
+
+test("Markdown chosen for an HTML URL varies on Accept and User-Agent", async () => {
+  await withFetch(
+    () => new Response(ARTICLE_MARKDOWN, { headers: { "content-type": "text/markdown" } }),
+    async () => {
+      const response = await callRoute(["postgresql", "5-ways-to-host-postgresql"], {
+        "x-prisma-agent-markdown": "user-agent",
+      });
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("vary"), AGENT_MARKDOWN_VARY);
+      assert.equal(await response.text(), ARTICLE_MARKDOWN);
     },
   );
 });

@@ -1,3 +1,4 @@
+import { AGENT_MARKDOWN_VARY } from "@/lib/agent-markdown";
 import {
   DATAGUIDE_ORIGIN,
   getDataguideMarkdownPath,
@@ -112,6 +113,10 @@ export async function GET(
   const baseUrl = getBaseUrl();
   return new Response(await upstream.text(), {
     headers: markdownHeaders({
+      // A route's own `Vary` replaces the one src/proxy.ts appends to its
+      // rewrite, so when the proxy chose Markdown by `Accept` or User-Agent,
+      // say both here.
+      ...(negotiated ? { Vary: AGENT_MARKDOWN_VARY } : {}),
       Link: `<${new URL(pagePath, baseUrl)}>; rel="canonical", <${new URL("/dataguide/llms.txt", baseUrl)}>; rel="llms-txt"`,
     }),
   });
