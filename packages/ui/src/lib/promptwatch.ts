@@ -3,9 +3,10 @@
  * storage, no personal data. Official docs say no consent banner is required;
  * the script is loaded ungated on site, blog, and docs (product decision).
  *
- * The browser client reads `data-project-id` from `document.currentScript`, so
- * callers must render a native `<script>` tag — next/script can inject the
- * tag after load and leave `currentScript` null.
+ * The browser client reads `data-project-id` from `document.currentScript`
+ * when it first runs, so callers render a native `<script async>` tag:
+ * `currentScript` is set for async classic scripts, and async keeps the
+ * request off the render path (the file is served with `max-age=0`).
  */
 export const PROMPTWATCH_SCRIPT_SRC = "https://ingest.promptwatch.com/js/client.min.js";
 

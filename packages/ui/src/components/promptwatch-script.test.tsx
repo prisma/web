@@ -15,10 +15,10 @@ const appLayouts = [
   "apps/docs/src/app/layout.tsx",
 ];
 
-test("the snippet is a native script with Prisma's project id and errors off", () => {
+test("the snippet is a native async script with Prisma's project id and errors off", () => {
   const html = renderToStaticMarkup(<PromptwatchScript />);
 
-  assert.match(html, /<script\b/);
+  assert.match(html, /<script\b[^>]*\basync\b/);
   assert.ok(html.includes(`src="${PROMPTWATCH_SCRIPT_SRC}"`));
   assert.ok(html.includes(`data-project-id="${PROMPTWATCH_PROJECT_ID}"`));
   assert.ok(html.includes('data-track-errors="false"'));
