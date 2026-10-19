@@ -26,7 +26,7 @@ export const CHOOSE_PRISMA = [
 ];
 
 export const CHOOSE_NEON = [
-  "You want Neon Functions, Managed Better Auth, Object Storage, and AI Gateway next to Postgres, declared in one neon.ts.",
+  "You want Neon Functions, Managed Better Auth, Object Storage, and AI Gateway next to Postgres, declared in one `neon.ts`.",
   "You want the UI on a host such as Vercel or Netlify, with Neon running the backend next to the database.",
   "You want copy-on-write database branches that include parent data, and instant restore within the plan's history window.",
   "You want database compute billed in CU-hours that go to $0 while scale-to-zero has suspended the compute.",
@@ -93,7 +93,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   },
   {
     feature: "Auth, object storage, and AI gateway",
-    neon: "Managed Better Auth, S3-compatible Object Storage, and an AI Gateway ship as Neon backend primitives, declared in neon.ts.",
+    neon: "Managed Better Auth, S3-compatible Object Storage, and an AI Gateway ship as Neon backend primitives, declared in `neon.ts`.",
     prisma: "Not included. Use integrations with other tools.",
     sources: {
       neon: "https://neon.com/docs/get-started/backend-overview",

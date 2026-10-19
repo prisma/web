@@ -67,7 +67,10 @@ const SOURCES = [
     product: "Supabase",
     links: [
       { label: "Supabase pricing", href: "https://supabase.com/pricing" },
-      { label: "Spend Cap", href: "https://supabase.com/docs/guides/platform/spend-cap" },
+      {
+        label: "Spend Cap",
+        href: "https://supabase.com/docs/guides/platform/cost-control#spend-cap",
+      },
       { label: "Branching", href: "https://supabase.com/docs/guides/deployment/branching" },
       {
         label: "Apache License 2.0",

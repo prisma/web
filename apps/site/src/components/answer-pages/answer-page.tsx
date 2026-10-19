@@ -68,9 +68,9 @@ export function AnswerPage({ page }: { page: AnswerPageContent }) {
           <h1 className="max-w-4xl text-balance font-heading text-3xl leading-[1.15] font-medium tracking-[-0.03em] sm:text-4xl lg:text-5xl">
             {data.title}
           </h1>
-          <p className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-foreground">
+          <div className="mt-6 max-w-3xl text-pretty text-lg leading-relaxed text-foreground">
             {renderFaqAnswer(data.summary)}
-          </p>
+          </div>
           <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
             <span>
               By{" "}

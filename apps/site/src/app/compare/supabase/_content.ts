@@ -39,7 +39,7 @@ export type CompareRow = {
   sources: { supabase: string; prisma: string };
 };
 
-/** Columns run Feature, Prisma Postgres, Supabase on the page? Chrome keeps competitor | Prisma like Neon. */
+/** Columns run Feature, Supabase, Prisma Postgres: competitor first, like the Neon page. */
 export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "Database",
@@ -200,7 +200,7 @@ export const PRICING: readonly {
       "Spend Cap is on by default on Pro. It does not cover Compute, Branching Compute, Read Replica Compute, or Point-in-Time Recovery.",
     prisma: "Spend limits on Starter, Pro, and Business.",
     sources: {
-      supabase: "https://supabase.com/docs/guides/platform/spend-cap",
+      supabase: "https://supabase.com/docs/guides/platform/cost-control#spend-cap",
       prisma: "https://www.prisma.io/pricing",
     },
   },

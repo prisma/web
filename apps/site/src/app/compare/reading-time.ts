@@ -1,6 +1,19 @@
 import { isValidElement, type ReactNode } from "react";
 
 /**
+ * `CompareTable` and `ComparisonPricingTable` carry their text in props, not
+ * children, so the walker reads the same props the Markdown serializer does.
+ */
+type TableLikeProps = {
+  children?: ReactNode;
+  "aria-hidden"?: boolean | "true";
+  corner?: string;
+  columns?: readonly (string | { label: string })[];
+  rows?: readonly { label?: string; cells: readonly ReactNode[] }[];
+  note?: ReactNode;
+};
+
+/**
  * Midpoint of the usual 200–250 words-per-minute silent-reading range.
  * Minutes are rounded to the nearest whole minute, at least 1.
  */
@@ -19,10 +32,20 @@ export function countWords(node: ReactNode): number {
       value.forEach(walk);
       return;
     }
-    if (!isValidElement<{ children?: ReactNode; "aria-hidden"?: boolean | "true" }>(value)) {
+    if (!isValidElement<TableLikeProps>(value)) {
       return;
     }
     if (value.props["aria-hidden"] === true || value.props["aria-hidden"] === "true") return;
+    const { corner, columns, rows, note } = value.props;
+    if (Array.isArray(rows)) {
+      walk(corner);
+      for (const column of columns ?? []) walk(typeof column === "string" ? column : column.label);
+      for (const row of rows) {
+        walk(row.label);
+        row.cells.forEach(walk);
+      }
+      walk(note);
+    }
     walk(value.props.children);
   }
   walk(node);

@@ -239,7 +239,7 @@ export const TOOLS = {
   planetscale: {
     name: "PlanetScale",
     softwareVersion: "current",
-    license: "https://planetscale.com/legal",
+    license: "https://planetscale.com/legal/siteterms",
     codeRepository: "https://github.com/planetscale",
     programmingLanguage: "Go",
     url: "https://planetscale.com",

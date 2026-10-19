@@ -1172,7 +1172,8 @@ test("Supabase Markdown carries the byline, disclosure, and Sources on the share
     getComparisonStructuredData("supabase")["@graph"][0]?.headline,
     supabase.SUPABASE_TITLE,
   );
-  assert.equal(getComparisonMetadata("supabase").openGraph?.title, supabase.SUPABASE_TITLE);
+  const openGraph = getComparisonMetadata("supabase").openGraph as { title?: unknown } | undefined;
+  assert.equal(openGraph?.title, supabase.SUPABASE_TITLE);
   const minutes = getSupabaseReadingStats().minutes;
   assert.ok(
     markdown.includes(

@@ -35,6 +35,16 @@ export const comparisonContent = {
   supabase: getSupabasePageContent,
 } satisfies Record<ComparisonSlug, () => ReactNode>;
 
+/** Last-checked date and modification time per comparison; every slug needs an entry. */
+const comparisonFreshness = {
+  convex: { checked: CONVEX_CHECKED, dateModified: CONVEX_UPDATED.iso },
+  kysely: { checked: KYSELY_CHECKED, dateModified: KYSELY_UPDATED.iso },
+  mongoose: { checked: MONGOOSE_CHECKED, dateModified: MONGOOSE_UPDATED.iso },
+  neon: { checked: NEON_CHECKED, dateModified: NEON_UPDATED.iso },
+  planetscale: { checked: PLANETSCALE_CHECKED, dateModified: PLANETSCALE_UPDATED.iso },
+  supabase: { checked: SUPABASE_CHECKED, dateModified: SUPABASE_UPDATED.iso },
+} satisfies Record<ComparisonSlug, { checked: string; dateModified: string }>;
+
 /** Register complete comparison renditions using the same trees as the HTML pages. */
 export function getComparisonMarkdownPages(): Record<ComparisonPath, MarkdownPage> {
   const index: MarkdownPage = {
@@ -71,19 +81,7 @@ export function getComparisonMarkdownPages(): Record<ComparisonPath, MarkdownPag
           h1: entry.title,
           subheadline: blocks[1],
           renderBody: () => blocks.slice(2).join("\n\n"),
-          ...(entry.slug === "kysely"
-            ? { checked: KYSELY_CHECKED, dateModified: KYSELY_UPDATED.iso }
-            : entry.slug === "mongoose"
-              ? { checked: MONGOOSE_CHECKED, dateModified: MONGOOSE_UPDATED.iso }
-              : entry.slug === "convex"
-                ? { checked: CONVEX_CHECKED, dateModified: CONVEX_UPDATED.iso }
-                : entry.slug === "neon"
-                  ? { checked: NEON_CHECKED, dateModified: NEON_UPDATED.iso }
-                  : entry.slug === "planetscale"
-                    ? { checked: PLANETSCALE_CHECKED, dateModified: PLANETSCALE_UPDATED.iso }
-                    : entry.slug === "supabase"
-                      ? { checked: SUPABASE_CHECKED, dateModified: SUPABASE_UPDATED.iso }
-                      : {}),
+          ...comparisonFreshness[entry.slug],
         } satisfies MarkdownPage,
       ];
     }),

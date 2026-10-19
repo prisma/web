@@ -77,7 +77,7 @@ const SOURCES = [
         label: "Neki platform preview limitations",
         href: "https://planetscale.com/docs/neki/platform-preview-limitations",
       },
-      { label: "Legal", href: "https://planetscale.com/legal" },
+      { label: "Site terms", href: "https://planetscale.com/legal/siteterms" },
     ],
   },
   {
