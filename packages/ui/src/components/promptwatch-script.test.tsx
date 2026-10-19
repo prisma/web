@@ -19,11 +19,11 @@ test("the snippet is a native script with Prisma's project id and errors off", (
   const html = renderToStaticMarkup(<PromptwatchScript />);
 
   assert.match(html, /<script\b/);
-  assert.match(html, new RegExp(`src="${PROMPTWATCH_SCRIPT_SRC.replace(/\./g, "\\.")}"`));
-  assert.match(html, new RegExp(`data-project-id="${PROMPTWATCH_PROJECT_ID}"`));
-  assert.match(html, /data-track-errors="false"/);
-  assert.doesNotMatch(html, /type="text\/plain"/);
-  assert.doesNotMatch(html, /cookieyes/i);
+  assert.ok(html.includes(`src="${PROMPTWATCH_SCRIPT_SRC}"`));
+  assert.ok(html.includes(`data-project-id="${PROMPTWATCH_PROJECT_ID}"`));
+  assert.ok(html.includes('data-track-errors="false"'));
+  assert.ok(!html.includes('type="text/plain"'));
+  assert.ok(!html.toLowerCase().includes("cookieyes"));
 });
 
 test("site, blog, and docs mount the shared snippet instead of an inline gated tag", () => {
