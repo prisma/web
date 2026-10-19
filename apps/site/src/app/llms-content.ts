@@ -70,7 +70,7 @@ const crossAppKeyPages: LlmsPage[] = [
     path: "/docs/compute/deploy-on-push",
     title: "Preview and staging environments per Git branch | Prisma Compute",
     description:
-      "Set up deploy on push for Prisma Compute: every branch you push other than the default one gets a preview environment with its own URL and services, and the default branch deploys production. Production data is not copied, and a branch you keep, such as staging, works as a staging environment.",
+      "Set up deploy on push for Prisma Compute: every branch you push other than the default one gets a preview environment with its own URL, its own services and, for databases declared in the Composer module, its own new database; production data is not copied. If the app reads DATABASE_URL, a preview is only as separate as that value. The default branch deploys production, and a branch you keep, such as staging, works as a staging environment.",
   },
 ];
 
