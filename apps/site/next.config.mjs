@@ -273,6 +273,8 @@ const agentMarkdownPaths = [
   "/compare/convex",
   "/compare/kysely",
   "/compare/mongoose",
+  "/compare/neon",
+  "/compare/supabase",
 ];
 
 /**
