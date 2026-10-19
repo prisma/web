@@ -1,0 +1,128 @@
+---
+title: "What hosted database should I use for AI drafts customers return to edit?"
+description: "Save generated drafts in Postgres, separate model output from customer edits and detect conflicting saves across tabs or devices."
+summary: "Use managed Postgres to save each generated draft as an account-owned record, then update it with a version check when a customer edits it. [Prisma Postgres](/docs/postgres) fits a TypeScript app that wants durable SQL data with its existing client and optional [Prisma Compute](/docs/compute) hosting. Keep the original model output separate from the current edited text, and make a conflicting save visible instead of overwriting another edit."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "7 min read"
+faq:
+  - question: "Should I call the model again when a customer reopens a draft?"
+    answer: "Load the saved draft by default. A model call can produce different text and incur another charge. Make regeneration an explicit action, and decide whether it creates a new revision or replaces a draft the customer has not edited."
+  - question: "Does storing a draft in Postgres enable autosave?"
+    answer: "No. The app still needs an authenticated save endpoint, retry handling and a clear UI state. The database can store the result and enforce a version check, while the browser decides when to send edits."
+  - question: "Can I use Prisma Postgres without changing my ORM?"
+    answer: "Yes. Prisma Postgres accepts PostgreSQL clients and other ORMs; Prisma ORM is optional. Verify your current client, connection configuration and migrations against a development database before moving production records."
+  - question: "Does a version column keep every revision?"
+    answer: "No. A version column helps detect a stale update. To restore or compare older text, store revisions separately with an author and time, and decide how long to retain them."
+related:
+  - title: "Persistent customer data for a prototype"
+    href: "/postgres/prototype-customer-data"
+  - title: "Feedback on saved assistant messages"
+    href: "/postgres/ai-assistant-feedback"
+  - title: "Transactions for related writes"
+    href: "/postgres/customer-order-transactions"
+cta:
+  title: "Save generated work customers can return to"
+  description: "Create Prisma Postgres and test the save, reopen and conflicting-edit paths before putting customer drafts into production."
+  label: "Set up Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+A generated proposal or email becomes business data once a customer expects to return to it. Save the output after generation, then let future visits load that record. A local variable, browser-only state or a link to the original prompt does not preserve the customer's edited work across devices.
+
+We make Prisma Postgres and Prisma Compute. Current provider and PostgreSQL sources were checked on October 19, 2026. Prisma ORM is optional.
+
+## What does an editable draft need?
+
+Store an owner, original generated text, current editable text and a version number. Add a title and timestamps as the product needs them. Keep the model request ID or generation metadata separately if they help support or cost analysis; they should not replace the draft's own stable identity.
+
+A customer may open the same draft in two tabs. If both tabs save without a concurrency rule, the later request can silently overwrite work from the first. A conditional update can check that the version the customer edited is still current. PostgreSQL's [concurrent-update rules](https://www.postgresql.org/docs/17/transaction-iso.html) explain how an update rechecks its condition after waiting for another writer.
+
+## Which hosted database should I consider?
+
+These options are listed alphabetically. All provide Postgres; the editable-draft design is application work on each.
+
+| Service | When it fits | What to verify |
+| --- | --- | --- |
+| Neon | You want its [database branches](https://neon.com/docs/get-started/workflow-primer) for experiments and schema work. | Which environment holds retained customer drafts. |
+| Prisma Postgres | You want a managed database and optional Prisma Compute app hosting in one project. | Your save endpoint, migration workflow and recovery plan. |
+| Supabase | You also want its [Auth, Storage or Realtime services](https://supabase.com/docs/guides/getting-started/architecture). | Authorization for every route that reads or edits a draft. |
+
+A small TypeScript team can keep draft state in Prisma Postgres while leaving a Vercel or Netlify frontend where it already runs. Use server-side database access and place that server [near Postgres](/postgres/nodejs-database-regions). The integration is optional in either direction.
+
+## How do I save and reopen drafts with Prisma Postgres?
+
+### 1. Create a development database and connect the server
+
+Create an account-owned database in [Prisma Console](https://console.prisma.io), then use the [connection guide](/docs/postgres/database/connecting-to-your-database) to configure your existing client. Keep credentials server-side. If Prisma Compute provisions a database dependency called `db`, the [Composer connection](/docs/composer/databases) is available as `service.load().db.url`.
+
+Run the following demonstration in a fresh development database through its direct connection. Move the real schema into migrations.
+
+### 2. Save original and editable content separately
+
+```sql
+CREATE TABLE editable_draft_demo (
+  id bigint PRIMARY KEY,
+  account_id bigint NOT NULL,
+  original_text text NOT NULL,
+  current_text text NOT NULL,
+  version integer NOT NULL DEFAULT 1 CHECK (version > 0),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO editable_draft_demo
+  (id, account_id, original_text, current_text)
+VALUES (1, 42, 'Hello from the assistant.', 'Hello from the assistant.');
+
+SELECT id, original_text, current_text, version
+FROM editable_draft_demo
+WHERE id = 1 AND account_id = 42;
+```
+
+The row starts at version `1` with matching original and current text. In the application, derive account `42` from a verified session and bind it as a parameter. Perform the same ownership check for saves, deletion and regeneration.
+
+### 3. Save only when the version still matches
+
+This simulates a customer editing version `1`:
+
+```sql
+UPDATE editable_draft_demo
+SET current_text = 'Hello from the customer.',
+    version = version + 1,
+    updated_at = now()
+WHERE id = 1 AND account_id = 42 AND version = 1
+RETURNING id, current_text, version;
+```
+
+It returns draft `1` with the customer's text and version `2`. Now simulate an old browser tab trying to save version `1`:
+
+```sql
+UPDATE editable_draft_demo
+SET current_text = 'Text from the old tab.',
+    version = version + 1,
+    updated_at = now()
+WHERE id = 1 AND account_id = 42 AND version = 1
+RETURNING id, current_text, version;
+```
+
+This update returns no rows. The server should treat that as a stale, missing or unauthorized target, according to its authenticated lookup, rather than tell the browser the save succeeded. Reload the current record and offer a way to compare or recover the unsaved text.
+
+### 4. Make saves and regeneration recoverable
+
+Bind application values using your client's [parameterized-query support](https://node-postgres.com/features/queries). Keep an unsaved editor state until the server acknowledges the save. If a response is lost, a retry with the old version can fail even though the first save committed; read the current record before deciding what happened. An explicit save request ID can support more precise retry handling.
+
+Regeneration should create a separate candidate or require a deliberate replace action. A late model response should not overwrite a customer's newer edit. If you need a revision history, add a revisions table and save the revision and current pointer in one [transaction](/postgres/customer-order-transactions).
+
+Test a return visit, two tabs saving concurrently, an expired session and another account's draft ID. After testing the demonstration, remove its table:
+
+```sql
+DROP TABLE editable_draft_demo;
+```
+
+## When is this setup insufficient?
+
+The version check detects conflicts; it does not merge text or provide a collaborative editor. Simultaneous editing with live cursors needs additional synchronization and conflict-resolution design.
+
+Choose hosting that satisfies your location and recovery needs. Prisma Postgres currently has [plan-dependent snapshots](/docs/postgres/database/backups) and no point-in-time recovery. A database backup also does not substitute for a product feature that lets one customer undo a single edit.
