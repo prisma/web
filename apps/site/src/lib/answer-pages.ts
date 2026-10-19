@@ -3,6 +3,7 @@ import { toFumadocsSource } from "fumadocs-mdx/runtime/server";
 import { answerPages } from "../../.source/server";
 import { createPageMetadata } from "./page-metadata";
 import { getAnswerProduct, type AnswerProduct } from "./answer-products";
+import { getBaseUrl } from "./url";
 
 export const answerPageSource = loader({
   baseUrl: "/",
@@ -24,7 +25,11 @@ export function getAnswerPage(product: AnswerProduct, slug: string) {
   return answerPageSource.getPage([product, slug]);
 }
 
-/** Build article metadata with a canonical URL and the same question as the visible H1. */
+/**
+ * Build article metadata with a canonical URL, the same question as the
+ * visible H1, and the guide's Markdown rendition as an alternate (as blog posts
+ * and comparison pages do). next.config.mjs sends the same URL in a Link header.
+ */
 export function getAnswerPageMetadata(page: AnswerPage) {
   const product = getAnswerProduct(page.slugs[0]);
   const metadata = createPageMetadata({
@@ -39,6 +44,10 @@ export function getAnswerPageMetadata(page: AnswerPage) {
   return {
     ...metadata,
     title: { absolute: page.data.title },
+    alternates: {
+      ...metadata.alternates,
+      types: { "text/markdown": new URL(`${page.url}.md`, getBaseUrl()).toString() },
+    },
     openGraph: {
       ...metadata.openGraph,
       type: "article" as const,

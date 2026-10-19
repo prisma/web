@@ -45,11 +45,13 @@ const AGENT_USER_AGENT_PATTERNS = [
  * The site pages that have a Markdown rendition. This is a closed list on
  * purpose: the site app owns `/` and the marketing routes, but it also
  * rewrites `/docs/*` and `/blog/*` into the docs and blog zones, which serve
- * their own Markdown. Anything not named here is left alone.
+ * their own Markdown. Anything not named here, other than the product guides
+ * matched by `getAnswerPagePath` below, is left alone.
  *
  * Keep in sync with `markdownPages` in `@/lib/markdown-pages` (asserted by
  * `src/lib/agent-markdown.test.ts`). `src/proxy.ts` runs on every page for
- * Agent Front, so this list, not its matcher, is what bounds the rewrite.
+ * Agent Front, so this list and `getAnswerPagePath`, not its matcher, are what
+ * bound the rewrite.
  */
 export const AGENT_MARKDOWN_PATHS = [
   "/",
@@ -69,6 +71,27 @@ export type AgentMarkdownPath = (typeof AGENT_MARKDOWN_PATHS)[number];
 const AGENT_MARKDOWN_PATH_SET: ReadonlySet<string> = new Set(AGENT_MARKDOWN_PATHS);
 
 export type AgentMarkdownSignal = "accept" | "user-agent";
+
+/**
+ * The product guides in `content/answers` (`/postgres/<slug>`,
+ * `/compute/<slug>`), served by `src/app/{postgres,compute}/[slug]`. They get
+ * the same Markdown negotiation as the pages above.
+ *
+ * The proxy cannot load the content collection, so this is a shape check, as
+ * in apps/blog: one slug segment under a product that has guides, minus the
+ * static routes that sit beside the guides. An unknown slug still 404s, from
+ * the Markdown route instead of the page. `answer-page-markdown.test.ts` checks
+ * that every guide matches and that every static route under the two products
+ * is listed here; `ANSWER_PAGE_HEADER_SOURCES` in next.config.mjs has to agree.
+ * `proxy-matcher.test.ts` checks the proxy end to end on every guide.
+ */
+export const ANSWER_PAGE_RESERVED_SEGMENTS: Readonly<Record<string, readonly string[]>> = {
+  postgres: ["guides", "hipaa"],
+  compute: ["guides"],
+};
+
+/** A guide's filename-derived slug: lowercase words joined by single hyphens. */
+const ANSWER_PAGE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /**
  * `/mcp` is both a marketing page and the conventional MCP Streamable HTTP
@@ -122,6 +145,24 @@ export function getAgentMarkdownPath(pathname: string): AgentMarkdownPath | unde
 }
 
 /**
+ * Normalises a request pathname to a product guide URL (`/postgres/<slug>` or
+ * `/compute/<slug>`), or undefined if it does not have a guide's shape. Only a
+ * trailing slash is forgiven.
+ */
+export function getAnswerPagePath(pathname: string): string | undefined {
+  const normalized =
+    pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+
+  const [empty, product, slug, ...rest] = normalized.split("/");
+  if (empty !== "" || !product || !slug || rest.length > 0) return undefined;
+  if (!Object.hasOwn(ANSWER_PAGE_RESERVED_SEGMENTS, product)) return undefined;
+  if (ANSWER_PAGE_RESERVED_SEGMENTS[product].includes(slug)) return undefined;
+  if (!ANSWER_PAGE_SLUG.test(slug)) return undefined;
+
+  return normalized;
+}
+
+/**
  * The internal route that serves a supported page's Markdown, or undefined
  * when the request should be left to the normal HTML route.
  *
@@ -133,6 +174,9 @@ export function getAgentMarkdownPath(pathname: string): AgentMarkdownPath | unde
  * homepage — the same slug `/index.md` produces.
  */
 export function getAgentMarkdownRewritePathname(pathname: string): string | undefined {
+  const answerPath = getAnswerPagePath(pathname);
+  if (answerPath) return `/llms.mdx${answerPath}`;
+
   const path = getAgentMarkdownPath(pathname);
   if (!path) return undefined;
   return path === "/" ? "/llms.mdx/index" : `/llms.mdx${path}`;
