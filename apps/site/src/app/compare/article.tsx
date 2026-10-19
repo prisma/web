@@ -183,7 +183,7 @@ export function comparisonChooseTable({
 /** Buttons under the introduction. ORM pages lead with the ORM quickstart. */
 export function comparisonHeroCtas(
   kind: "orm" | "postgres" = "postgres",
-  options?: { secondary?: boolean },
+  options?: { secondary?: boolean; primaryLabel?: string },
 ) {
   const primary = kind === "orm" ? ORM_HERO_CTAS.primary : POSTGRES_HERO_CTAS.primary;
   const secondary = kind === "orm" ? ORM_HERO_CTAS.secondary : POSTGRES_HERO_CTAS.secondary;
@@ -191,7 +191,7 @@ export function comparisonHeroCtas(
   return (
     <p className="mt-8 flex flex-wrap items-center gap-3">
       <PrismButton href={primary.href} ctaLocation="compare-intro">
-        {primary.label}
+        {options?.primaryLabel ?? primary.label}
       </PrismButton>
       {showSecondary ? (
         <>

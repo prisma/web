@@ -429,10 +429,9 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     vercelNeonDrizzleMarkdown.includes("Prisma ORM is free and open source, and always will be."),
   );
   assert.ok(
-    vercelNeonDrizzleMarkdown.includes(
-      "[Get started with Prisma Postgres](https://console.prisma.io)",
-    ),
+    vercelNeonDrizzleMarkdown.includes("[Get started with Prisma](https://console.prisma.io)"),
   );
+  assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Get started with Prisma Postgres/);
   assert.ok(vercelNeonDrizzleMarkdown.includes("[Get started free](https://console.prisma.io)"));
   assert.doesNotMatch(vercelNeonDrizzleMarkdown, /create-db\.prisma\.io/);
   assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Create an instant database/);
@@ -1460,6 +1459,7 @@ test("Vercel + Neon + Drizzle Markdown carries the byline, disclosure, and Sourc
   assert.match(sections, /comparisonDisclosure/);
   assert.match(sections, /secondary: false/);
   assert.match(sections, /instantDatabase: false/);
+  assert.match(sections, /primaryLabel: "Get started with Prisma"/);
   assert.doesNotMatch(sections, /create-db\.prisma\.io/);
   assert.doesNotMatch(sections, /defaultValue=/);
   assert.doesNotMatch(sections, /PageAiActions/);

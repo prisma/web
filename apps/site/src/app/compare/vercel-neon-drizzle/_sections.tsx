@@ -136,7 +136,10 @@ function buildVercelNeonDrizzlePage(minutes: number) {
         and app hosting in one platform, with shared schema context across deploys and previews.
         Pick Vercel + Neon + Drizzle when you want to connect those three products yourself.
       </p>
-      {comparisonHeroCtas("postgres", { secondary: false })}
+      {comparisonHeroCtas("postgres", {
+        secondary: false,
+        primaryLabel: "Get started with Prisma",
+      })}
       {comparisonByline({
         author: VERCEL_NEON_DRIZZLE_AUTHOR,
         updated: VERCEL_NEON_DRIZZLE_UPDATED,
