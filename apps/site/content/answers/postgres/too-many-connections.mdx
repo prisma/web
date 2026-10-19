@@ -72,13 +72,24 @@ ORDER BY count(*) DESC;
 
 Many rows from your app's user in `idle` state are your pools holding connections open. Rows in `idle in transaction` point to a transaction that was never finished. If your app's row count is close to the instance count times the pool size, the pools are the cause, and step 3 resizes them. Behind a pooler, these rows are the pooler's connections, not your app's. Unless your role is a superuser or has `pg_read_all_stats`, it [sees every session](https://www.postgresql.org/docs/current/monitoring-stats.html) but gets null in many columns for sessions of other roles, including `backend_type`, `state` and `client_addr`. That is why the query keeps rows with an empty `backend_type`: other roles' sessions still count toward the total under their `usename`, they just show no detail. The `usename` check leaves out PostgreSQL's own background processes. Run the query as the role your app uses to see its states, or use your provider's connection metrics.
 
-To end sessions stuck in an open transaction, run this as the same role. Ending a session rolls back its open transaction:
+A transaction that pauses between statements also shows as `idle in transaction`, so list the candidates and how long they have been idle before you end anything:
+
+```sql
+SELECT pid, application_name, now() - state_change AS idle_for, query
+FROM pg_stat_activity
+WHERE state = 'idle in transaction'
+  AND usename = current_user
+ORDER BY state_change;
+```
+
+Then end only the sessions that have been idle far longer than any request in your app takes, run as the same role. Ending a session rolls back its open transaction:
 
 ```sql
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE state = 'idle in transaction'
-  AND usename = current_user;
+  AND usename = current_user
+  AND state_change < now() - interval '10 minutes';
 ```
 
 A role can [end only the sessions](https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-ADMIN-SIGNAL) of roles it is a member of, or other non-superuser sessions if it has the privileges of `pg_signal_backend`. This frees slots for now; the next steps stop them from filling up again.
@@ -97,7 +108,7 @@ export const pool = new pg.Pool({
 });
 ```
 
-Use `pool.query()` for single statements. When you check out a client with `pool.connect()`, for example for a transaction, call `client.release()` in a `finally` block, because node-postgres warns that an unreleased client [stays out of the pool for good](https://node-postgres.com/features/pooling). In development, hot reloading in frameworks such as Next.js can run the module again and [create another instance](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections#prevent-hot-reloading-from-creating-new-instances-of-prismaclient) on every change, so keep the pool on `globalThis` outside production:
+Use `pool.query()` for single statements. When you check out a client with `pool.connect()`, for example for a transaction, call `client.release()` in a `finally` block, because node-postgres warns that an unreleased client [stays out of the pool for good](https://node-postgres.com/features/pooling). If a statement in the transaction fails, run `ROLLBACK` in the `catch` block before that release, as the [node-postgres transaction example](https://node-postgres.com/features/transactions) does, so the next request doesn't get a client inside a failed transaction. If the rollback itself fails, pass the error to `client.release(err)`, which destroys the client instead of returning it to the pool. In development, hot reloading in frameworks such as Next.js can run the module again and [create another instance](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections#prevent-hot-reloading-from-creating-new-instances-of-prismaclient) on every change, so keep the pool on `globalThis` outside production:
 
 ```ts
 // db.ts, safe with hot reloading

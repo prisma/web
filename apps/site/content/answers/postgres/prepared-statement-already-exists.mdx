@@ -103,6 +103,8 @@ import postgres from "postgres";
 const sql = postgres(process.env.DATABASE_URL!, { prepare: false });
 ```
 
+`prepare: false` fixes the prepared-statement error but doesn't stop postgres.js from pipelining queries, which it does by default. Supabase [warns](https://supabase.com/docs/guides/database/postgres-js) that pipelining through its shared pooler in transaction mode can hang queries or return mismatched rows, and that `max_pipeline: 0` is not a fix because it breaks `sql.begin()` transactions. On Supabase, use the session pooler or a direct connection for postgres.js if you see those symptoms.
+
 ```ts
 import { SQL } from "bun";
 
@@ -154,7 +156,7 @@ Providers are listed alphabetically. Check your provider's page before you chang
 
 For app traffic on the pooled host, use a driver setting from step 3: node-postgres and `@prisma/adapter-pg` with their defaults, or `prepare: false` for postgres.js and Bun SQL.
 
-The same error can appear on your laptop. The local Postgres that `npx prisma dev` runs shares one session across client connections, so after a pool reconnects, the first query fails with `prepared statement "..." already exists` unless prepared statements are off. The [Prisma Composer database docs](/docs/composer/databases) use `prepare: false` with Bun SQL for that reason.
+The same error can appear on your laptop. In a Prisma Composer app, the local Postgres that `npx prisma dev` provisions shares one session across client connections, so after a pool reconnects, the first query fails with `prepared statement "..." already exists` unless prepared statements are off. The [Prisma Composer database docs](/docs/composer/databases) use `prepare: false` with Bun SQL for that reason. With Prisma ORM 7, the local database command is `npx prisma@7 dev` ([local development](/docs/local-development/postgres)).
 
 Know the limits before you move a workload:
 

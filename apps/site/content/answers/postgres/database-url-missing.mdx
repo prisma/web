@@ -66,10 +66,10 @@ For a Prisma Postgres database, see [Where do Prisma Postgres and Prisma Compute
 
 Copy the string the provider gives you, with `sslmode=require` if it includes one. If the provider offers a pooled and a direct string, use the pooled one for the app on a serverless host and keep the direct one for migrations.
 
-Put it in your local `.env` too, so local runs and migrations use the same database:
+For local runs, put the connection string of a separate development database in your local `.env`, so local work and schema experiments never write to production data:
 
 ```bash title=".env"
-DATABASE_URL="postgres://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
+DATABASE_URL="postgres://USER:PASSWORD@DEV_HOST:5432/DATABASE?sslmode=require"
 ```
 
 Don't add a `NEXT_PUBLIC_` prefix. Next.js [inlines `NEXT_PUBLIC_` variables](https://nextjs.org/docs/app/guides/environment-variables#bundling-environment-variables-for-the-browser) into the JavaScript sent to the browser, which would publish your password. Server Components, Route Handlers and Server Actions can read `DATABASE_URL` without it.
@@ -100,7 +100,7 @@ You can also keep the database out of the build:
 
 ### 5. Create your tables, then redeploy
 
-A new database is empty. Apply your schema before the app takes traffic, with your migration tool's production command and the new connection string, for example `npx prisma@7 migrate deploy` (Prisma ORM 7), `npx drizzle-kit migrate` or `npx knex migrate:latest`. [Running database migrations safely in production](/postgres/production-database-migrations) covers each tool and how to make this a step in every deploy.
+A new database is empty. Apply your schema before the app takes traffic, with your migration tool's production command pointed at the production database. Use the direct connection string if the provider gave you a pooled and a direct one, because migrations need a stable session that a pooler in transaction mode doesn't keep. For example, `DATABASE_URL="<direct connection string>" npx prisma@7 migrate deploy` (Prisma ORM 7, with `prisma.config.ts` reading `DATABASE_URL`), `npx drizzle-kit migrate` or `npx knex migrate:latest` with the same variable set. [Running database migrations safely in production](/postgres/production-database-migrations) covers each tool and how to make this a step in every deploy.
 
 Then deploy again: push a commit, run your host's redeploy command (`vercel redeploy <deployment-url>` on Vercel), or use the redeploy button in the dashboard. Open a page that reads from the database and check the function or server logs if it fails. A message that changes from "missing" to an authentication or `relation does not exist` error means the variable now arrives and the next problem is the credentials or the schema.
 
