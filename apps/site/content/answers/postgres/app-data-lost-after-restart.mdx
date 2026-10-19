@@ -48,7 +48,7 @@ Match what you see to where the data is stored:
 | Records added in the builder's preview are missing in the published app, or the reverse | Two databases, one for development and one for production | Some builders give the published app its own database. Both work, but they don't share rows. |
 | Records were there yesterday and the whole database is gone today | A temporary database that expired | Temporary databases, such as an unclaimed `npx create-db` database, are deleted when their time runs out. |
 
-On serverless and scale-to-zero hosts, each instance has its own memory, so in-memory records can come and go between requests and are gone after the app sits idle.
+On serverless and scale-to-zero hosts, each instance has its own memory, so in-memory records can come and go between requests, and a restart or redeploy loses them. Some hosts keep memory across idle periods: Prisma Compute [resumes an idle instance from a memory snapshot](/docs/compute/keeping-instances-awake). A record that is still there after the app sat idle hasn't been saved, so test with a restart or a redeploy.
 
 SQLite has one more variant: a database opened as `:memory:` is never written to disk, and [SQLite deletes it](https://www.sqlite.org/inmemorydb.html) as soon as the connection closes.
 
@@ -102,7 +102,7 @@ A match in a route handler or a component that saves data, for example `records.
 
 ### 2. Create a hosted Postgres database
 
-Create a database with any managed Postgres provider and copy its connection string. Set it as `DATABASE_URL` in your host's environment variables and in your local `.env`, and keep `.env` out of Git. Use a separate database for development and for the live app, so test records and schema experiments never reach real data.
+Create two databases with any managed Postgres provider, one for the live app and one for development, so test records and schema experiments never reach real data. Set the live database's connection string as `DATABASE_URL` in your host's environment variables, and the development database's connection string as `DATABASE_URL` in your local `.env`. Keep `.env` out of Git.
 
 ### 3. Create the table
 
@@ -116,7 +116,7 @@ CREATE TABLE records (
 );
 ```
 
-Run it once with `psql '<your connection string>' -f schema.sql`, pasting the string from step 2 between the single quotes so the shell doesn't expand characters such as `$` or `!` in the password, because your terminal doesn't read `.env` (`psql` comes with the PostgreSQL client tools). Or add it as a migration in the tool your project already uses, so every database you create later gets the same table.
+Run it once against each database with `psql '<connection string>' -f schema.sql`, pasting each connection string from step 2 between the single quotes so the shell doesn't expand characters such as `$` or `!` in the password, because your terminal doesn't read `.env` (`psql` comes with the PostgreSQL client tools). Or add it as a migration in the tool your project already uses, so every database you create later gets the same table.
 
 ### 4. Replace the in-memory code with queries
 

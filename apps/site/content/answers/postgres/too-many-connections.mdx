@@ -156,10 +156,10 @@ export const prisma = new PrismaClient({ adapter });
 Add up what can connect at the same time and keep it under the limit:
 
 ```text
-instances x pool max + workers + migrations and admin tools <= connections your role can use
+app instances x app pool max + worker instances x worker pool max + migrations and admin tools <= connections your role can use
 ```
 
-The connections your role can use are `max_connections` minus any reserved slots. With a limit of 100, of which 3 are reserved for superusers, 10 kept for migrations and admin tools, and 6 app instances, each pool gets at most 14. If the platform can start more instances than you planned for, cap the instance count or the function concurrency in its settings, or lower the pool size.
+The connections your role can use are `max_connections` minus any reserved slots. With a limit of 100, of which 3 are reserved for superusers, 10 kept for migrations and admin tools, 6 app instances and no workers, each app pool gets at most 14. A worker or queue consumer with its own pool counts once per connection its pool can open, not once per process. If the platform can start more instances than you planned for, cap the instance count or the function concurrency in its settings, or lower the pool size.
 
 Serverless functions need small pools, and the right size depends on how many requests one instance serves at a time. Supabase recommends a [pool of 1 per function instance](https://supabase.com/docs/guides/database/connecting-to-postgres#configure-your-client). Vercel's [connection pooling guide](https://vercel.com/kb/guide/connection-pooling-with-functions) is written for Fluid compute, where one instance serves several invocations at once: it keeps the pool at module scope, advises against a maximum of 1, suggests an idle timeout of about 5 seconds and attaches the pool with `attachDatabasePool` from `@vercel/functions`, so idle connections close before the instance is suspended.
 
