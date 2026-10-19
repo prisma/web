@@ -313,6 +313,33 @@ function agentMarkdownHeaders(path) {
   };
 }
 
+/**
+ * The product guides in content/answers, at `/postgres/<slug>` and
+ * `/compute/<slug>`, get the same two headers, with each guide's own `.md`
+ * URL in the `Link`. A guide URL is one lowercase, hyphenated slug segment
+ * that is not one of the static routes beside the guides. Keep the reserved
+ * segments in step with `ANSWER_PAGE_RESERVED_SEGMENTS` and `getAnswerPagePath`
+ * in src/lib/agent-markdown.ts; src/lib/answer-page-markdown.test.ts checks
+ * that the two agree.
+ */
+export const ANSWER_PAGE_HEADER_SOURCES = {
+  postgres: "/postgres/:slug((?!(?:guides|hipaa)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
+  compute: "/compute/:slug((?!(?:guides)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
+};
+
+function answerPageMarkdownHeaders([product, source]) {
+  return {
+    source,
+    headers: [
+      { key: "Vary", value: "Accept" },
+      {
+        key: "Link",
+        value: `</${product}/:slug.md>; rel="alternate"; type="text/markdown", </llms.txt>; rel="llms-txt"`,
+      },
+    ],
+  };
+}
+
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
@@ -1044,6 +1071,7 @@ const config = {
       // Extends, rather than replaces, the rule above: Next.js applies every
       // matching headers() entry.
       ...agentMarkdownPaths.map(agentMarkdownHeaders),
+      ...Object.entries(ANSWER_PAGE_HEADER_SOURCES).map(answerPageMarkdownHeaders),
       {
         source: "/console-analytics.html",
         headers: [
