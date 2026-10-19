@@ -1,7 +1,10 @@
 /**
  * Promptwatch visitor analytics. Cookieless: no cookies, no local/session
- * storage, no personal data. Official docs say no consent banner is required;
- * the script is loaded ungated on site, blog, and docs (product decision).
+ * storage. Each page view POSTs the URL, referrer, locale, and timezone
+ * (`credentials: "omit"`); like any third-party request, Promptwatch's server
+ * also sees the visitor's IP and user agent. Official docs say no consent
+ * banner is required; the script is loaded ungated on site, blog, and docs
+ * (product decision).
  *
  * The browser client reads `data-project-id` from `document.currentScript`
  * when it first runs, so callers render a native `<script async>` tag:
