@@ -22,6 +22,11 @@ import {
 import { getPlanetScalePageContent } from "@/app/compare/planetscale/_sections";
 import { CHECKED as SUPABASE_CHECKED, SUPABASE_UPDATED } from "@/app/compare/supabase/_content";
 import { getSupabasePageContent } from "@/app/compare/supabase/_sections";
+import {
+  CHECKED as VERCEL_NEON_DRIZZLE_CHECKED,
+  VERCEL_NEON_DRIZZLE_UPDATED,
+} from "@/app/compare/vercel-neon-drizzle/_content";
+import { getVercelNeonDrizzlePageContent } from "@/app/compare/vercel-neon-drizzle/_sections";
 import type { MarkdownPage } from "@/lib/markdown-pages";
 import { heading, joinBlocks } from "./blocks";
 import { renderComparisonContent } from "./comparison-content";
@@ -33,6 +38,7 @@ export const comparisonContent = {
   neon: getNeonPageContent,
   planetscale: getPlanetScalePageContent,
   supabase: getSupabasePageContent,
+  "vercel-neon-drizzle": getVercelNeonDrizzlePageContent,
 } satisfies Record<ComparisonSlug, () => ReactNode>;
 
 /** Last-checked date and modification time per comparison; every slug needs an entry. */
@@ -43,6 +49,10 @@ const comparisonFreshness = {
   neon: { checked: NEON_CHECKED, dateModified: NEON_UPDATED.iso },
   planetscale: { checked: PLANETSCALE_CHECKED, dateModified: PLANETSCALE_UPDATED.iso },
   supabase: { checked: SUPABASE_CHECKED, dateModified: SUPABASE_UPDATED.iso },
+  "vercel-neon-drizzle": {
+    checked: VERCEL_NEON_DRIZZLE_CHECKED,
+    dateModified: VERCEL_NEON_DRIZZLE_UPDATED.iso,
+  },
 } satisfies Record<ComparisonSlug, { checked: string; dateModified: string }>;
 
 /** Register complete comparison renditions using the same trees as the HTML pages. */

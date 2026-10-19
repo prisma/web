@@ -4,6 +4,10 @@ import { MONGOOSE_DESCRIPTION, MONGOOSE_TITLE } from "./mongoose/_content";
 import { NEON_DESCRIPTION, NEON_TITLE } from "./neon/_content";
 import { PLANETSCALE_DESCRIPTION, PLANETSCALE_TITLE } from "./planetscale/_content";
 import { SUPABASE_DESCRIPTION, SUPABASE_TITLE } from "./supabase/_content";
+import {
+  VERCEL_NEON_DRIZZLE_DESCRIPTION,
+  VERCEL_NEON_DRIZZLE_TITLE,
+} from "./vercel-neon-drizzle/_content";
 
 export const COMPARISON_INDEX = {
   path: "/compare",
@@ -83,6 +87,13 @@ export const COMPARISONS = [
     competitor: "Supabase",
     title: SUPABASE_TITLE,
     description: SUPABASE_DESCRIPTION,
+  },
+  {
+    slug: "vercel-neon-drizzle",
+    category: "platform",
+    competitor: "Vercel + Neon + Drizzle",
+    title: VERCEL_NEON_DRIZZLE_TITLE,
+    description: VERCEL_NEON_DRIZZLE_DESCRIPTION,
   },
 ] as const satisfies readonly ComparisonEntry[];
 
