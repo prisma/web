@@ -56,10 +56,10 @@ const additionalPages: LlmsPage[] = [
  * `Accept: text/markdown`, so these entries carry a [Markdown] link like the
  * site's own Key Pages. Titles are the pages' metaTitle frontmatter
  * (apps/blog/content/blog/host-a-test-version-without-replacing-production/index.mdx
- * and apps/docs/content/docs/compute/deploy-on-push.mdx); keep them in sync if
- * those change.
+ * and apps/docs/content/docs/compute/deploy-on-push.mdx); llms-content.test.ts
+ * fails if they drift.
  */
-const crossAppKeyPages: LlmsPage[] = [
+export const crossAppKeyPages: LlmsPage[] = [
   {
     path: "/blog/host-a-test-version-without-replacing-production",
     title: "How to host a test version of your app without replacing production (2026)",
