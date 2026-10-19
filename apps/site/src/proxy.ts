@@ -78,7 +78,12 @@ function agentMarkdown(request: NextRequest) {
     },
   });
   response.headers.set("x-prisma-agent-markdown", signal);
-  response.headers.append("Vary", "Accept");
+  // The Markdown variant is chosen by `Accept` or by the agent's User-Agent, so
+  // it varies on both: a shared cache must not hand it to a browser that sends
+  // the same `Accept`. The HTML variant keeps `Vary: Accept` only; an agent
+  // served cached HTML still gets a correct page, and keying every page's HTML
+  // on User-Agent would split shared caches per browser build.
+  response.headers.append("Vary", "Accept, User-Agent");
 
   return response;
 }

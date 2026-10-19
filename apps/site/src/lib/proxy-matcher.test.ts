@@ -124,6 +124,7 @@ test("an agent asking for a marketing page is rewritten to its Markdown", async 
   assert.ok(rewrite, "expected a rewrite");
   assert.equal(new URL(rewrite, "https://www.prisma.io").pathname, "/llms.mdx/pricing");
   assert.equal(response.headers.get("x-prisma-agent-markdown"), "accept");
+  assert.equal(response.headers.get("vary"), "Accept, User-Agent");
 });
 
 test("an agent user agent on a marketing page is rewritten to its Markdown", async () => {
@@ -143,6 +144,7 @@ test("an agent user agent on a marketing page is rewritten to its Markdown", asy
     assert.ok(rewrite, `${userAgent} should be rewritten`);
     assert.equal(new URL(rewrite, "https://www.prisma.io").pathname, "/llms.mdx/pricing");
     assert.equal(response.headers.get("x-prisma-agent-markdown"), "user-agent", userAgent);
+    assert.equal(response.headers.get("vary"), "Accept, User-Agent", userAgent);
   }
 });
 
@@ -295,6 +297,7 @@ test("agents asking for a guide are rewritten to its Markdown", async () => {
         headers.accept ? "accept" : "user-agent",
         `${label} on ${url}`,
       );
+      assert.equal(response.headers.get("vary"), "Accept, User-Agent", `${label} on ${url}`);
     }
   }
 });
