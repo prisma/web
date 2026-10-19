@@ -70,6 +70,9 @@ for (const entry of COMPARISONS) {
     assert.match(markdown, /\n## (Pricing|How much do .+ cost\?)\n/);
     assert.match(markdown, /\n## (What teams on Prisma say|What do teams say about .+\?)\n/);
     assert.match(markdown, /\n## (Move from|How do I switch from) /);
+    assert.doesNotMatch(markdown, /listed in one place/);
+    const sections = readFileSync(join(compareDir, `${entry.slug}/_sections.tsx`), "utf8");
+    assert.doesNotMatch(sections, /listed in one place/);
   });
 
   test(`${entry.slug} article schema agrees with the page metadata and directory`, () => {

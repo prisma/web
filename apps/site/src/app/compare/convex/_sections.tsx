@@ -133,11 +133,7 @@ function buildConvexPage(minutes: number) {
           Convex
         </a>{" "}
         when you want a reactive database and TypeScript query functions, with the frontend on a
-        host such as Vercel or Netlify. All{" "}
-        <Link href="/compare" className={INLINE}>
-          Prisma comparisons
-        </Link>{" "}
-        are listed in one place.
+        host such as Vercel or Netlify.
       </p>
       {comparisonHeroCtas("postgres")}
       {comparisonByline({ author: CONVEX_AUTHOR, updated: CONVEX_UPDATED, minutes })}
