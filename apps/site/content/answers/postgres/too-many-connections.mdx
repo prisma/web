@@ -1,7 +1,7 @@
 ---
 title: "Hosted Postgres says \"too many connections\" when people open my app. How do I fix it without managing extra servers?"
 description: "Every app instance opens its own connections until Postgres runs out. Reuse one small pool per process and switch to your provider's pooled connection string."
-summary: "Postgres accepts a fixed number of connections, and every running copy of your app holds its own pool of them, so more traffic, more instances or a new client per request uses them up and new connections fail with `too many connections` or `sorry, too many clients already`. You don't need another server to fix it. Create one pool per process, size it by how many instances run, and send app traffic through the pooler your provider runs or lets you turn on, such as Neon's `-pooler` host, Supabase's port 6543, Render's port 6432 or Prisma Postgres's `pooled.db.prisma.io`. Keep migrations and admin tools on the direct connection."
+summary: "Postgres accepts a fixed number of connections, and every running copy of your app holds its own pool of them, so more traffic, more instances or a new client per request uses them up and new connections fail with errors such as `sorry, too many clients already` or `too many connections for role`. You don't need another server to fix it. Create one pool per process, size it by how many instances run, and send app traffic through the pooler your provider runs or lets you turn on, such as Neon's `-pooler` host, Supabase's port 6543, Render's port 6432 or Prisma Postgres's `pooled.db.prisma.io`. Keep migrations and admin tools on the direct connection."
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-19"
@@ -9,13 +9,13 @@ updatedAt: "2026-10-19"
 readingTime: "8 min read"
 faq:
   - question: "Should I just raise max_connections?"
-    answer: "Only after the app reuses its pools and goes through a pooler. Each PostgreSQL connection is its own server process, and PostgreSQL sizes shared memory by `max_connections`, so the limit can't grow for free. On a managed host it comes with the plan or instance size, which makes raising it an upgrade. A pooler gets more out of the connections you have: Neon's PgBouncer accepts up to 10,000 client connections, and one Railway PgBouncer replica shares 20 server connections among up to 1,000 clients by default."
+    answer: "Only after the app reuses its pools and goes through a pooler. Each PostgreSQL connection is its own server process, and PostgreSQL sizes shared memory by `max_connections`, so the limit can't grow for free. On many managed hosts it is tied to the plan or compute size (Neon sets it by compute size), so raising it often means an upgrade. AWS RDS lets you set it in a DB parameter group and Supabase through its CLI config, but the memory each connection uses still bounds how far you can go. A pooler gets more out of the connections you have: Neon's PgBouncer, for example, accepts up to 10,000 client connections."
   - question: "What pool size should I use in serverless functions?"
     answer: "It depends on how many requests one instance serves at a time. Supabase recommends a pool of 1 per function instance, because each warm instance holds its own pool and you don't control how many are warm. Vercel's guidance for Fluid compute, where one instance serves several invocations at once, is the opposite: keep the pool at module scope, avoid a maximum of 1, use a short idle timeout of about 5 seconds and call `attachDatabasePool` from `@vercel/functions`. In both cases, instances times pool size has to fit under the limit."
   - question: "Why does my database show so many idle connections?"
-    answer: "Pools keep connections open between queries so the next request doesn't pay for a new one. node-postgres closes an idle pooled client after 10 seconds by default (`idleTimeoutMillis`), and PgBouncer closes idle server connections after 600 seconds (`server_idle_timeout`). Plain `idle` rows are usually this reuse. Rows in `idle in transaction` are different: a transaction was opened and not finished, which points to a client that was never released or a missing commit."
+    answer: "Pools keep connections open between queries so the next request doesn't pay for a new one. node-postgres closes an idle pooled client after 10 seconds by default (`idleTimeoutMillis`), and PgBouncer closes idle server connections after 600 seconds by default (`server_idle_timeout`). Plain `idle` rows are usually this reuse. Rows in `idle in transaction` are different: a transaction was opened and not finished, which points to a client that was never released or a missing commit."
   - question: "Do I need to run PgBouncer myself?"
-    answer: "Not if your provider runs a pooler for you. AWS RDS has RDS Proxy, Neon and Prisma Postgres include PgBouncer, Railway adds PgBouncer from the database's settings, Render runs it on paid databases once you enable it, and Supabase has a shared pooler plus a dedicated one on paid plans. You run PgBouncer yourself only when you host Postgres on your own machine or your provider has no pooler."
+    answer: "Not if your provider runs a pooler for you. AWS RDS has RDS Proxy (billed separately), Neon and Prisma Postgres include PgBouncer, Railway adds PgBouncer from the database's settings, Render runs it on paid databases once you enable it, and Supabase has a shared pooler plus a dedicated one on paid plans. You run PgBouncer yourself only when you host Postgres on your own machine or your provider has no pooler."
 related:
   - title: "Prisma Postgres connection pooling and limits"
     href: "/docs/postgres/database/connection-pooling"
@@ -63,11 +63,12 @@ SHOW max_connections;
 SELECT usename, application_name, client_addr, state, count(*)
 FROM pg_stat_activity
 WHERE backend_type = 'client backend'
+   OR (backend_type IS NULL AND usename IS NOT NULL)
 GROUP BY 1, 2, 3, 4
 ORDER BY count(*) DESC;
 ```
 
-Many rows from your app's user in `idle` state are your pools holding connections open. Rows in `idle in transaction` point to a transaction that was never finished. If your app's row count is close to the instance count times the pool size, the pools are the cause, and step 3 resizes them. Behind a pooler, these rows are the pooler's connections, not your app's. Ordinary roles [see every session](https://www.postgresql.org/docs/current/monitoring-stats.html) but get null in many columns for sessions of other roles, so run this as the role your app uses, or use your provider's connection metrics.
+Many rows from your app's user in `idle` state are your pools holding connections open. Rows in `idle in transaction` point to a transaction that was never finished. If your app's row count is close to the instance count times the pool size, the pools are the cause, and step 3 resizes them. Behind a pooler, these rows are the pooler's connections, not your app's. Unless your role is a superuser or has `pg_read_all_stats`, it [sees every session](https://www.postgresql.org/docs/current/monitoring-stats.html) but gets null in many columns for sessions of other roles, including `backend_type`, `state` and `client_addr`. That is why the query keeps rows with an empty `backend_type`: other roles' sessions still count toward the total under their `usename`, they just show no detail. The `usename` check leaves out PostgreSQL's own background processes. Run the query as the role your app uses to see its states, or use your provider's connection metrics.
 
 ### 2. Create one pool per process
 
@@ -83,7 +84,19 @@ export const pool = new pg.Pool({
 });
 ```
 
-Use `pool.query()` for single statements. When you check out a client with `pool.connect()`, for example for a transaction, call `client.release()` in a `finally` block, because node-postgres warns that an unreleased client [stays out of the pool for good](https://node-postgres.com/features/pooling). In development, hot reloading in frameworks such as Next.js can run the module again and [create another instance](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections#prevent-hot-reloading-from-creating-new-instances-of-prismaclient) on every change, so keep the pool on `globalThis` outside production.
+Use `pool.query()` for single statements. When you check out a client with `pool.connect()`, for example for a transaction, call `client.release()` in a `finally` block, because node-postgres warns that an unreleased client [stays out of the pool for good](https://node-postgres.com/features/pooling). In development, hot reloading in frameworks such as Next.js can run the module again and [create another instance](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections#prevent-hot-reloading-from-creating-new-instances-of-prismaclient) on every change, so keep the pool on `globalThis` outside production:
+
+```ts
+// db.ts, safe with hot reloading
+import pg from "pg";
+
+const globalForDb = globalThis as unknown as { pool?: pg.Pool };
+
+export const pool =
+  globalForDb.pool ?? new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+
+if (process.env.NODE_ENV !== "production") globalForDb.pool = pool;
+```
 
 Prisma ORM 7 with the `pg` adapter takes the same pool settings, and the [pool size defaults to 10](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool):
 
@@ -100,10 +113,10 @@ export const prisma = new PrismaClient({ adapter });
 Add up what can connect at the same time and keep it under the limit:
 
 ```text
-instances x pool max + workers + migrations and admin tools <= connection limit
+instances x pool max + workers + migrations and admin tools <= connections your role can use
 ```
 
-With a limit of 100, 10 connections kept for migrations and admin tools, and 6 app instances, each pool gets at most 15. If the platform can start more instances than you planned for, cap the instance count or the function concurrency in its settings, or lower the pool size.
+The connections your role can use are `max_connections` minus any reserved slots. With a limit of 100, of which 3 are reserved for superusers, 10 kept for migrations and admin tools, and 6 app instances, each pool gets at most 14. If the platform can start more instances than you planned for, cap the instance count or the function concurrency in its settings, or lower the pool size.
 
 Serverless functions need small pools, and the right size depends on how many requests one instance serves at a time. Supabase recommends a [pool of 1 per function instance](https://supabase.com/docs/guides/database/connecting-to-postgres#configure-your-client). Vercel's [connection pooling guide](https://vercel.com/kb/guide/connection-pooling-with-functions) is written for Fluid compute, where one instance serves several invocations at once: it keeps the pool at module scope, advises against a maximum of 1, suggests an idle timeout of about 5 seconds and attaches the pool with `attachDatabasePool` from `@vercel/functions`, so idle connections close before the instance is suspended.
 
@@ -113,7 +126,7 @@ A pooler such as [PgBouncer](https://www.pgbouncer.org/features.html) accepts ma
 
 | Provider | Pooler | How to use it | Good to know |
 | --- | --- | --- | --- |
-| AWS RDS and Aurora | [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) | Create a proxy for the database and connect to its endpoint | A separate AWS resource. It queues or throttles connections it can't serve right away and rejects those beyond the limits you set |
+| AWS RDS and Aurora | [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) | Create a proxy for the database and connect to its endpoint | A separate AWS resource, billed separately. It queues or throttles connections it can't serve right away and rejects those beyond the limits you set |
 | Neon | [PgBouncer, transaction mode](https://neon.com/docs/connect/connection-pooling) | Add `-pooler` to the endpoint ID in the hostname | Up to 10,000 client connections. Each user-and-database pool holds up to 90% of `max_connections` |
 | Prisma Postgres | [PgBouncer, transaction mode](/docs/postgres/database/connection-pooling) | Use the pooled host `pooled.db.prisma.io` | 10, 100, 500 or 1,000 pooled connections by plan. The direct host is `db.prisma.io` |
 | Railway | [PgBouncer](https://docs.railway.com/databases/postgresql-pgbouncer) | Add it under **Database**, **Config**, **Connection Pooling**, or with `railway postgres pgbouncer add` | Transaction mode by default. `DATABASE_URL` moves to PgBouncer and `DATABASE_UNPOOLED_URL` stays direct |
@@ -130,7 +143,7 @@ Transaction mode returns the database connection to the pool after every transac
 
 - **Shorten transactions.** A transaction holds its connection until it ends, including through the pooler. Don't call external APIs inside one. [`idle_in_transaction_session_timeout`](https://www.postgresql.org/docs/current/runtime-config-client.html) ends sessions that sit idle in an open transaction (it is off by default).
 - **Check the pooler's own limits.** A pooler has a client limit too. Neon's PgBouncer answers connection 10,001 with `no more connections allowed (max_client_conn)`. When every database connection in the pool is busy, PgBouncer queues clients and, with the default `query_wait_timeout` of 120 seconds, disconnects one that waits longer.
-- **Raise the limit last.** On a managed host that usually means a bigger plan or instance, which is worth it once the pools are sized and the traffic still needs more.
+- **Raise the limit last.** On a managed host that usually means a bigger plan or instance, or a changed setting where the host allows it, which is worth it once the pools are sized and the traffic still needs more.
 - **For runtimes without TCP,** such as edge functions, use your provider's HTTP driver, if it has one, instead of a TCP pool.
 
 ## When does this fix not apply?
@@ -157,7 +170,5 @@ If you also want to host the app, [Prisma Compute](/docs/compute) runs TypeScrip
 Know the limits before you rely on them:
 
 - The pooled limit is per plan. On Free, a single instance with the default pool of 10 can take all 10 pooled connections, so set `max` low or move to Starter.
-- The pooler runs in transaction mode. Session features go over the direct host, which allows 10 connections on Free and Starter.
+- The pooler runs in transaction mode. Session features go over the direct host, whose limit is 10 connections on Free and Starter, and 5 direct connections are reserved for platform operations.
 - Queries through the pooler are stopped after 10 minutes. Run longer jobs over the direct connection.
-
-The Free plan includes 2 GB of storage and needs no credit card. See [pricing](/pricing) for the paid plans.
