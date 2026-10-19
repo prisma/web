@@ -37,6 +37,14 @@ const CONVEX_PROMPT = `I am choosing between Prisma Postgres and Convex for a Ty
 
 Ask me up to three short questions if you need whether I need live query updates, whether I want SQL, or whether I already have a Postgres database.`;
 
+const SUPABASE_PROMPT = `I am choosing between Prisma Postgres and Supabase for a TypeScript app. Using only what the article states, plus my answers:
+
+1. Tell me which fits if I want Prisma ORM optional plus Prisma Compute in one project vs if I want Auth, Storage, Realtime, and Edge Functions next to Postgres with the UI elsewhere.
+2. Call out the real tradeoffs (operations vs plan-plus-hourly-compute, spend limits vs Spend Cap exclusions, HIPAA on Business $129 vs Team $599 plus add-on, preview branches) without selling.
+3. Give me the first steps to try the one you recommend.
+
+Ask me up to three short questions if I need Auth/Storage/Realtime out of the box, whether I want the TypeScript app hosted next to Postgres, or whether HIPAA/SOC 2/ISO 27001 matter.`;
+
 const NEON_PROMPT = `I am choosing between Prisma Postgres and Neon for a TypeScript app. Using only what the article states, plus my answers:
 
 1. Tell me which fits if I want Prisma ORM optional plus Prisma Compute in one project vs if I want Neon Functions, Auth, Object Storage, and AI Gateway with the UI elsewhere.
@@ -47,13 +55,15 @@ Ask me up to three short questions if I need a copy of production data on previe
 
 /** Prompt every Open-with-AI logo prefills. The page's `.md` alternate is the source of truth. */
 export function choosePrompt(pageMdUrl: string) {
-  const body = pageMdUrl.includes("/compare/neon.md")
-    ? NEON_PROMPT
-    : pageMdUrl.includes("/compare/convex.md")
-      ? CONVEX_PROMPT
-      : pageMdUrl.includes("/compare/mongoose.md")
-        ? MONGOOSE_PROMPT
-        : KYSELY_PROMPT;
+  const body = pageMdUrl.includes("/compare/supabase.md")
+    ? SUPABASE_PROMPT
+    : pageMdUrl.includes("/compare/neon.md")
+      ? NEON_PROMPT
+      : pageMdUrl.includes("/compare/convex.md")
+        ? CONVEX_PROMPT
+        : pageMdUrl.includes("/compare/mongoose.md")
+          ? MONGOOSE_PROMPT
+          : KYSELY_PROMPT;
   return `Read this article and treat it as the source of truth:
 
 ${pageMdUrl}

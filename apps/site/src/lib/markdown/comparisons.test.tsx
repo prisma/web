@@ -14,6 +14,10 @@ import * as neon from "@/app/compare/neon/_content";
 import { getNeonArticleFields, getNeonFacts } from "@/app/compare/neon/facts";
 import { GET as getNeonFactsResponse } from "@/app/compare/neon.json/route";
 import { getNeonReadingStats } from "@/app/compare/neon/_sections";
+import * as supabase from "@/app/compare/supabase/_content";
+import { getSupabaseArticleFields, getSupabaseFacts } from "@/app/compare/supabase/facts";
+import { GET as getSupabaseFactsResponse } from "@/app/compare/supabase.json/route";
+import { getSupabaseReadingStats } from "@/app/compare/supabase/_sections";
 import { WORDS_PER_MINUTE, readingMinutes } from "@/app/compare/reading-time";
 import { GET as getMongooseFactsResponse } from "@/app/compare/mongoose.json/route";
 import {
@@ -53,7 +57,7 @@ function plainMarkdown(text: string): string {
 
 for (const entry of COMPARISONS) {
   test(`${entry.slug} Markdown preserves comparison cells and every FAQ answer`, () => {
-    const content = { convex, kysely, mongoose, neon }[entry.slug];
+    const content = { convex, kysely, mongoose, neon, supabase }[entry.slug];
     const page = getMarkdownPage(`/compare/${entry.slug}`);
     assert.ok(page);
     const markdown = renderMarkdownDocument(page);
@@ -375,6 +379,16 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     neonMarkdown,
     /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
   );
+  const supabasePage = getMarkdownPage("/compare/supabase");
+  assert.ok(supabasePage);
+  const supabaseMarkdown = renderMarkdownDocument(supabasePage);
+  assert.ok(supabaseMarkdown.includes("Free to start, no credit card required."));
+  assert.ok(supabaseMarkdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(supabaseMarkdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.match(
+    supabaseMarkdown,
+    /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
+  );
   assert.equal(POSTGRES_HERO_CTAS.secondary.href, CREATE_DB_WEB);
   assert.equal(POSTGRES_HERO_CTAS.secondary.label, "Create an instant database");
   assert.equal(POSTGRES_HERO_CTAS.primary.href, "https://console.prisma.io");
@@ -443,6 +457,7 @@ test("Kysely, Mongoose, and Convex Article JSON-LD authors are a Person with con
     mongoose.MONGOOSE_AUTHOR,
     convex.CONVEX_AUTHOR,
     neon.NEON_AUTHOR,
+    supabase.SUPABASE_AUTHOR,
   ]) {
     const person = comparisonAuthorPerson(author, getBaseUrl());
     assert.equal(person["@type"], "Person");
@@ -450,7 +465,13 @@ test("Kysely, Mongoose, and Convex Article JSON-LD authors are a Person with con
     assert.equal(person.url, new URL(author.path, getBaseUrl()).toString());
     assert.deepEqual(person.sameAs, hrefs);
   }
-  for (const page of ["kysely/page.tsx", "mongoose/page.tsx", "convex/page.tsx", "neon/page.tsx"]) {
+  for (const page of [
+    "kysely/page.tsx",
+    "mongoose/page.tsx",
+    "convex/page.tsx",
+    "neon/page.tsx",
+    "supabase/page.tsx",
+  ]) {
     const source = readFileSync(join(compareDir, page), "utf8");
     assert.match(source, /comparisonAuthorPerson\(/);
     assert.doesNotMatch(source, /sameAs:\s*\[/);
@@ -1115,4 +1136,105 @@ test("neon metadata advertises Markdown and JSON alternates", () => {
   assert.ok(types);
   assert.match(types["text/markdown"] ?? "", /\/compare\/neon\.md$/);
   assert.match(types["application/json"] ?? "", /\/compare\/neon\.json$/);
+});
+
+test("Supabase Markdown carries the byline, disclosure, and Sources on the shared chrome", () => {
+  const page = getMarkdownPage("/compare/supabase");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const minutes = getSupabaseReadingStats().minutes;
+  assert.ok(
+    markdown.includes(
+      `By [${supabase.SUPABASE_AUTHOR.name}](${supabase.SUPABASE_AUTHOR.path}) · Updated ${supabase.SUPABASE_UPDATED.label} · ${minutes} min read`,
+    ),
+  );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes(`dateModified: ${supabase.SUPABASE_UPDATED.iso}`));
+  assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
+  assert.ok(markdown.includes("\n## Sources\n"));
+  assert.ok(markdown.includes("\n## When should I choose Supabase or Prisma Postgres?\n"));
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose Supabase or Prisma Postgres?"),
+    markdown.indexOf("## How do Supabase and Prisma Postgres compare?"),
+  );
+  assert.match(choose, /^\| Supabase \| Prisma Postgres \|$/m);
+  assert.doesNotMatch(choose, /### Supabase/);
+  assert.ok(markdown.includes("\n## How do Supabase and Prisma Postgres compare?\n"));
+  assert.ok(markdown.includes("\n## Where does each one fit?\n"));
+  assert.ok(markdown.includes("\n## How much do Supabase and Prisma Postgres cost?\n"));
+  assert.ok(markdown.includes("| Feature | Supabase | Prisma Postgres |"));
+  assert.ok(markdown.includes("| Cost | Supabase | Prisma Postgres |"));
+  assert.ok(markdown.includes("$25"));
+  assert.ok(markdown.includes("$599"));
+  assert.ok(markdown.includes("2 GB"));
+  assert.ok(markdown.includes("500 MB"));
+  assert.ok(markdown.includes("Business plan at $129"));
+  assert.doesNotMatch(markdown, /500 MB storage on Free/);
+  assert.doesNotMatch(
+    markdown,
+    /HIPAA starts with Pro|HIPAA from Pro|HIPAA support starts with Pro/,
+  );
+  assert.doesNotMatch(markdown, /database branching/);
+  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
+  assert.doesNotMatch(markdown, /requires Prisma ORM/);
+  assert.doesNotMatch(markdown, /listed in one place/);
+  assert.doesNotMatch(markdown, /When should I choose Kysely/);
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /supabase: "\/compare\/supabase\.md"/);
+  const sections = readFileSync(join(compareDir, "supabase/_sections.tsx"), "utf8");
+  assert.match(sections, /comparisonChooseTable/);
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.match(sections, /comparisonProofCards/);
+  assert.match(sections, /comparisonDisclosure/);
+  assert.doesNotMatch(sections, /defaultValue=/);
+  assert.doesNotMatch(sections, /PageAiActions/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /pageMdUrl.includes\("\/compare\/supabase\.md"\)/);
+  assert.match(ai, /I am choosing between Prisma Postgres and Supabase for a TypeScript app/);
+  assert.match(ai, /Auth, Storage, Realtime, and Edge Functions/);
+});
+
+test("supabase JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getSupabaseFacts();
+  assert.equal(facts.path, "/compare/supabase");
+  assert.equal(facts.dateChecked, supabase.SUPABASE_UPDATED.iso);
+  assert.equal(facts.tools.supabase.softwareVersion, "current");
+  assert.equal(facts.features.length, supabase.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.supabase.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.supabase.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  const response = getSupabaseFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getSupabaseArticleFields();
+  const stats = getSupabaseReadingStats();
+  assert.equal(fields.datePublished, supabase.SUPABASE_PUBLISHED.iso);
+  assert.equal(fields.dateModified, supabase.SUPABASE_UPDATED.iso);
+  assert.equal(WORDS_PER_MINUTE, 225);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
+  assert.equal(fields.about[0]?.name, "Supabase");
+  assert.equal(fields.about[1]?.name, "Prisma Postgres");
+});
+
+test("supabase metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("supabase").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/supabase\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/supabase\.json$/);
 });

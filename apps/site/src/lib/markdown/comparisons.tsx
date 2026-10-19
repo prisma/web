@@ -15,6 +15,8 @@ import { CHECKED as MONGOOSE_CHECKED, MONGOOSE_UPDATED } from "@/app/compare/mon
 import { getMongoosePageContent } from "@/app/compare/mongoose/_sections";
 import { CHECKED as NEON_CHECKED, NEON_UPDATED } from "@/app/compare/neon/_content";
 import { getNeonPageContent } from "@/app/compare/neon/_sections";
+import { CHECKED as SUPABASE_CHECKED, SUPABASE_UPDATED } from "@/app/compare/supabase/_content";
+import { getSupabasePageContent } from "@/app/compare/supabase/_sections";
 import type { MarkdownPage } from "@/lib/markdown-pages";
 import { heading, joinBlocks } from "./blocks";
 import { renderComparisonContent } from "./comparison-content";
@@ -24,6 +26,7 @@ export const comparisonContent = {
   kysely: getKyselyPageContent,
   mongoose: getMongoosePageContent,
   neon: getNeonPageContent,
+  supabase: getSupabasePageContent,
 } satisfies Record<ComparisonSlug, () => ReactNode>;
 
 /** Register complete comparison renditions using the same trees as the HTML pages. */
@@ -70,7 +73,9 @@ export function getComparisonMarkdownPages(): Record<ComparisonPath, MarkdownPag
                 ? { checked: CONVEX_CHECKED, dateModified: CONVEX_UPDATED.iso }
                 : entry.slug === "neon"
                   ? { checked: NEON_CHECKED, dateModified: NEON_UPDATED.iso }
-                  : {}),
+                  : entry.slug === "supabase"
+                    ? { checked: SUPABASE_CHECKED, dateModified: SUPABASE_UPDATED.iso }
+                    : {}),
         } satisfies MarkdownPage,
       ];
     }),

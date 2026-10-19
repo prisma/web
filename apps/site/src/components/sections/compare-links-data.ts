@@ -48,6 +48,12 @@ export const COMPARE_PRISMA_LINKS: CompareLink[] = [
       "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Neon Functions, Auth, Object Storage, and AI Gateway.",
   },
   {
+    label: "Prisma Postgres vs Supabase",
+    href: "/compare/supabase",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Auth, Storage, Realtime, and Edge Functions.",
+  },
+  {
     label: "Neon vs Prisma Postgres for hosting and the database in one place",
     href: "/blog/neon-vs-prisma-postgres-app-hosting-in-one-place",
     description: "Neon alternatives when the app and its database should live in one project.",
