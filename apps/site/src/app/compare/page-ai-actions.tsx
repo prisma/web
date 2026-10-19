@@ -24,7 +24,7 @@ Ask me up to three short questions if you need my database, team size, or whethe
 const MONGOOSE_PROMPT = `I am choosing between Prisma ORM and Mongoose for a TypeScript app. Using only what the article states, plus my answers:
 
 1. Tell me which tool fits if my schema lives next to the model in application code vs if I want a schema-first contract file.
-2. Call out the real tradeoffs (MongoDB-only vs PostgreSQL too, populate vs include, middleware, migrations, early access) without selling.
+2. Call out the real tradeoffs (MongoDB-only vs PostgreSQL too, populate vs include, untyped vs typed aggregations, middleware, migrations, early access) without selling.
 3. Give me the first commands to try the one you recommend.
 
 Ask me up to three short questions if you need whether I already use MongoDB, whether I use populate on arrays of ids, or whether I need PostgreSQL as well.`;

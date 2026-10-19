@@ -4,7 +4,7 @@ export const MONGOOSE_TITLE =
   "Prisma ORM vs Mongoose: contract file or schema in application code?";
 
 export const MONGOOSE_DESCRIPTION =
-  "Prisma ORM 8 drives typed queries and migrations from a contract file. Mongoose models MongoDB documents in application code. Checked October 2026.";
+  "Prisma ORM 8 types MongoDB queries, aggregations, and migrations from a contract file. Mongoose models documents in application code. Checked October 2026.";
 
 export const CHECKED = "October 2026";
 
@@ -16,12 +16,18 @@ export const MONGOOSE_AUTHOR = {
 } as const;
 
 export const MONGOOSE_PUBLISHED = { iso: "2026-10-16", label: "October 2026" } as const;
-export const MONGOOSE_UPDATED = { iso: "2026-10-18", label: "October 2026" } as const;
+export const MONGOOSE_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
+
+/** Pages this comparison cites in the body, not only under Sources. */
+export const MONGO_BLOG_PRISMA_NEXT =
+  "https://www.mongodb.com/company/blog/technical/prisma-next-typescript-odm-you-always-wanted";
+export const PRISMA_MONGODB_PAGE = "/mongodb";
+export const PRISMA_MONGODB_BLOG = "/blog/mongodb-without-compromise";
 
 export const CHOOSE_PRISMA = [
   "You want models in a contract file, `contract.prisma` — a contract is the file that describes your collections or tables.",
   "You want `contract emit` to write the query types. Prisma ORM 8 does not use the `@prisma/client` package. That package is Prisma ORM 7.",
-  "You want `migration plan` to write `migration.ts` from that contract. `db migrate` runs `ops.json`.",
+  "You want a typed aggregation pipeline, polymorphic collections from `@@discriminator`, and `migration plan` to write `migration.ts` for indexes and JSON Schema validators. `db migrate` runs `ops.json`.",
   "You also ship on PostgreSQL, where the release candidate includes the ORM client, a SQL query builder, and relation filters.",
 ];
 
@@ -116,7 +122,38 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
       "An ORM client, `db.orm.<collection>`, addressed by the storage name (`db.orm.posts`, not `db.orm.Post`). A pipeline builder for aggregation, and raw commands for anything the two APIs do not cover.",
     sources: {
       mongoose: "https://mongoosejs.com/docs/",
-      prisma: "https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-mongoose",
+      prisma: "https://www.prisma.io/docs/orm/reference",
+    },
+  },
+  {
+    feature: "Embedded documents",
+    mongoose: "Nested schemas and subdocuments on the parent document.",
+    prisma:
+      "A `type` block in the contract, used as a field. Embedded values have no `_id` and no collection of their own.",
+    sources: {
+      mongoose: "https://mongoosejs.com/docs/subdocs.html",
+      prisma: "https://www.prisma.io/docs/orm/data-modeling/mongodb",
+    },
+  },
+  {
+    feature: "Polymorphic collections",
+    mongoose:
+      "`Model.discriminator()` stores variants in one collection. Variant fields are optional or split across schemas you keep in application code.",
+    prisma:
+      "`@@discriminator` on the base model and `@@base` on each variant. `db.orm.posts.variant('article')` narrows the TypeScript type. Query all posts and you get the union.",
+    sources: {
+      mongoose: "https://mongoosejs.com/docs/discriminators.html",
+      prisma: "https://www.prisma.io/docs/orm/data-modeling/mongodb",
+    },
+  },
+  {
+    feature: "Aggregation",
+    mongoose: "`Model.aggregate()` takes a pipeline array. Stages are not type-checked.",
+    prisma:
+      "The pipeline builder at `db.query` types field names and each stage's output. Raw commands cover stages the builder does not.",
+    sources: {
+      mongoose: "https://mongoosejs.com/docs/api/aggregate.html",
+      prisma: "https://www.prisma.io/docs/orm/reference/pipeline-builder",
     },
   },
   {
@@ -144,10 +181,10 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Migrations",
     mongoose: "The getting started guide has no migration command.",
     prisma:
-      "`migration plan` writes `migration.ts` from the contract. Planning does not connect to a database. `db migrate` runs `ops.json`, not the TypeScript file.",
+      "`migration plan` writes `migration.ts` from the contract. Planning does not connect to a database. `db migrate` runs `ops.json`. On MongoDB that file can create collections, indexes, and JSON Schema validators, and it can run a `dataTransform`.",
     sources: {
       mongoose: "https://mongoosejs.com/docs/",
-      prisma: "https://www.prisma.io/docs/orm",
+      prisma: "https://www.prisma.io/docs/orm/reference/migration-api",
     },
   },
   {
@@ -261,7 +298,19 @@ export const SAME_JOB: readonly { task: string; mongoose: string; prisma: string
   {
     task: "Write a migration",
     mongoose: "The getting started guide has no migration command. You change documents in code.",
-    prisma: "`migration plan` writes `migration.ts` from the contract.",
+    prisma:
+      "`migration plan` writes `migration.ts`. On MongoDB that can include `createIndex`, `setValidation`, and `dataTransform`.",
+  },
+  {
+    task: "Run an aggregation",
+    mongoose: "`Model.aggregate([...])` with untyped pipeline stages.",
+    prisma: "`db.query.from('<collection>')`, then `runtime.query(...)` or `runtime.execute(...)`.",
+  },
+  {
+    task: "Query a polymorphic collection",
+    mongoose: "`Model.discriminator()` and query the discriminator model.",
+    prisma:
+      "`@@discriminator` / `@@base` in the contract, then `.variant('article')` on the base collection.",
   },
   {
     task: "Load a related document",
@@ -283,14 +332,24 @@ export const SAME_JOB: readonly { task: string; mongoose: string; prisma: string
 
 export const APART = [
   {
+    id: "typed-pipeline",
+    title: "A typed aggregation pipeline",
+    body: `Mongoose's \`aggregate()\` takes a pipeline array. Prisma ORM 8's MongoDB library has a pipeline builder that types field names and the shape after each stage, then you drop to raw commands when the builder does not cover a stage. [MongoDB without compromise](${PRISMA_MONGODB_BLOG}) is the Prisma write-up of that stack, checked against the [pipeline builder](/docs/orm/reference/pipeline-builder).`,
+  },
+  {
+    id: "polymorphic-collections",
+    title: "Polymorphic collections from the contract",
+    body: `\`@@discriminator\` and \`@@base\` declare variants in one collection, and \`.variant('article')\` narrows the TypeScript union. Mongoose has [\`discriminator()\`](https://mongoosejs.com/docs/discriminators.html) too; the Prisma side generates the unions from the contract. MongoDB's [Prisma Next post](${MONGO_BLOG_PRISMA_NEXT}) says their Driver team named this as the top missing feature in earlier Prisma ORM. The [MongoDB data modeling](/docs/orm/data-modeling/mongodb) docs are the current syntax.`,
+  },
+  {
+    id: "mongo-migrations",
+    title: "Migrations for indexes and validators",
+    body: `\`migration plan\` writes \`migration.ts\` without connecting to the database. On MongoDB, \`db migrate\` can create collections, indexes, and JSON Schema validators, and it can run a \`dataTransform\`. The April 2026 [MongoDB without compromise](${PRISMA_MONGODB_BLOG}) post said data migrations were still coming; the [migration API](/docs/orm/reference/migration-api) now documents \`dataTransform\` on MongoDB.`,
+  },
+  {
     id: "postgres-too",
     title: "The same ORM client on PostgreSQL",
     body: "Mongoose speaks MongoDB. Prisma ORM 8's PostgreSQL library is a release candidate: the ORM client, a SQL query builder, and relation filters (`some`, `none`, `every`) that the MongoDB client does not have.",
-  },
-  {
-    id: "offline-migration-plan",
-    title: "A migration plan that does not need the database",
-    body: "`migration plan` reads the contract and writes the migration. Planning does not connect to a database, so it can run without database credentials.",
   },
 ];
 
@@ -302,14 +361,12 @@ export const WRONG_CHOICE = [
 
 export const FAQ: readonly { question: string; answer: string }[] = [
   {
-    question: "Is Mongoose an ORM?",
-    answer:
-      "Mongoose is a MongoDB object modeling tool. The getting started guide builds a Schema, compiles it with `mongoose.model`, and queries with `find()`. It does not generate a client from a separate contract file. Source: [Mongoose README](https://github.com/Automattic/mongoose/blob/master/README.md) and [getting started](https://mongoosejs.com/docs/), October 2026.",
+    question: "Is Prisma Next a different product from Prisma ORM 8?",
+    answer: `No. MongoDB's May 2026 post [Prisma Next: The TypeScript ODM You Always Wanted](${MONGO_BLOG_PRISMA_NEXT}) uses that name for the TypeScript ODM built with Prisma. On prisma.io the same work is Prisma ORM 8's MongoDB library, \`@prisma/orm-mongo\`, which is early access. \`npm install prisma\` installs Prisma ORM 8. The post's \`npx prisma-next init\` command is not the current install path; the docs use \`npx prisma@latest orm init --target mongodb\`. Source: that MongoDB post, [MongoDB without compromise](${PRISMA_MONGODB_BLOG}), and [supported databases](/docs/orm/supported-databases), October 2026.`,
   },
   {
-    question: "Is Prisma ORM 8 a final release?",
-    answer:
-      "No. Prisma ORM 8 is a release candidate, and it is what `npm install prisma` gives you today. PostgreSQL is the release-candidate database. MongoDB is early access, and SQLite is experimental. Source: [Prisma ORM](/docs/orm) and [supported databases](/docs/orm/supported-databases), October 2026.",
+    question: "Does Prisma ORM work with MongoDB?",
+    answer: `Yes. The [MongoDB product page](${PRISMA_MONGODB_PAGE}) describes Prisma's schema and a type-safe client for MongoDB, including filters, pagination, ordering, embedded documents, and references. Its query samples use Prisma Client's \`findMany\` API from earlier Prisma ORM lines. Prisma ORM 8 queries go through \`db.orm.<collection>\`. MongoDB on Prisma ORM 8 is early access: the ORM client, pipeline builder, and migrations work; \`db.transaction()\` does not. Source: [MongoDB product page](${PRISMA_MONGODB_PAGE}), [supported databases](/docs/orm/supported-databases), October 2026.`,
   },
   {
     question: "Can Prisma ORM and Mongoose use the same MongoDB database?",

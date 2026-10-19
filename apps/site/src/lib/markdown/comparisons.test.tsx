@@ -14,6 +14,7 @@ import { WORDS_PER_MINUTE, readingMinutes } from "@/app/compare/reading-time";
 import { GET as getMongooseFactsResponse } from "@/app/compare/mongoose.json/route";
 import {
   COMPARISON_CTA,
+  CREATE_DB_NEW_TAB,
   CREATE_DB_WEB,
   ORM_COMPARISON_CTA,
   ORM_HERO_CTAS,
@@ -322,11 +323,20 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
   assert.ok(markdown.includes("[Get started with Prisma Postgres](https://console.prisma.io)"));
   assert.equal(ORM_HERO_CTAS.secondary.href, CREATE_DB_WEB);
   assert.equal(ORM_HERO_CTAS.secondary.label, "Create an instant database");
+  assert.equal(CREATE_DB_NEW_TAB.target, "_blank");
+  assert.equal(CREATE_DB_NEW_TAB.rel, "noopener noreferrer");
   assert.doesNotMatch(CREATE_DB_WEB, /console\.prisma\.io|^\/docs/);
   const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
   assert.match(article, /comparisonDisclosure/);
   assert.match(article, /w-full min-w-0/);
+  assert.match(article, /CREATE_DB_NEW_TAB/);
   assert.doesNotMatch(article, /max-w-\[32rem\].*Prisma makes Prisma ORM/);
+  const prismButton = readFileSync(
+    join(compareDir, "../../components/brand/prism-button.tsx"),
+    "utf8",
+  );
+  assert.match(prismButton, /target\?: React\.HTMLAttributeAnchorTarget/);
+  assert.match(prismButton, /target=\{href \? target : undefined\}/);
   const mongoosePage = getMarkdownPage("/compare/mongoose");
   assert.ok(mongoosePage);
   const mongooseMarkdown = renderMarkdownDocument(mongoosePage);
@@ -705,7 +715,7 @@ test("mongoose Markdown renders the remaining cards and drops the fit columns", 
   const page = getMarkdownPage("/compare/mongoose");
   assert.ok(page);
   const markdown = renderMarkdownDocument(page);
-  assert.equal(mongoose.APART.length, 2);
+  assert.equal(mongoose.APART.length, 4);
   for (const card of mongoose.APART) {
     assert.ok(markdown.includes(`\n### ${card.title}\n`), `missing card heading: ${card.title}`);
   }
@@ -713,6 +723,28 @@ test("mongoose Markdown renders the remaining cards and drops the fit columns", 
   assert.doesNotMatch(markdown, /When is Prisma ORM the better fit\?/);
   assert.doesNotMatch(markdown, /Where each fits/);
   assert.doesNotMatch(markdown, /choose-mongoose/);
+});
+
+test("mongoose Markdown cites the MongoDB Prisma Next post, /mongodb, and MongoDB without compromise in the body and Sources", () => {
+  const page = getMarkdownPage("/compare/mongoose");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const sourcesAt = markdown.indexOf("\n## Sources\n");
+  assert.ok(sourcesAt > 0, "missing Sources heading");
+  const body = markdown.slice(0, sourcesAt);
+  const sources = markdown.slice(sourcesAt);
+  const cites = [
+    mongoose.MONGO_BLOG_PRISMA_NEXT,
+    mongoose.PRISMA_MONGODB_PAGE,
+    mongoose.PRISMA_MONGODB_BLOG,
+  ];
+  for (const href of cites) {
+    assert.ok(body.includes(`](${href})`), `body missing ${href}`);
+    assert.ok(sources.includes(`](${href})`), `Sources missing ${href}`);
+  }
+  assert.match(body, /Driver team named this as the top missing feature/);
+  assert.match(body, /findMany/);
+  assert.match(body, /data migrations were still coming/);
 });
 
 test("mongoose Markdown carries pricing as a table followed by the free tier note", () => {

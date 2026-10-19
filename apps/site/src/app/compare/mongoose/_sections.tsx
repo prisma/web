@@ -40,6 +40,9 @@ import {
   MONGOOSE_AUTHOR,
   MONGOOSE_TITLE,
   MONGOOSE_UPDATED,
+  MONGO_BLOG_PRISMA_NEXT,
+  PRISMA_MONGODB_BLOG,
+  PRISMA_MONGODB_PAGE,
   PRICING,
   SAME_QUERY,
   SAME_QUERY_LINE_GROUPS,
@@ -112,6 +115,7 @@ const SOURCES = [
       { label: "Getting started", href: "https://mongoosejs.com/docs/" },
       { label: "mongoose on npm", href: "https://www.npmjs.com/package/mongoose" },
       { label: "Populate", href: "https://mongoosejs.com/docs/populate.html" },
+      { label: "Discriminators", href: "https://mongoosejs.com/docs/discriminators.html" },
       { label: "Middleware", href: "https://mongoosejs.com/docs/middleware.html" },
       { label: "README", href: "https://github.com/Automattic/mongoose/blob/master/README.md" },
       {
@@ -142,6 +146,12 @@ const SOURCES = [
       { label: "db migrate", href: "/docs/cli/db-migrate" },
       { label: "Apache License 2.0", href: "https://github.com/prisma/prisma/blob/main/LICENSE" },
       { label: "Prisma Postgres pricing", href: "/pricing" },
+      { label: "Prisma + MongoDB", href: PRISMA_MONGODB_PAGE },
+      { label: "MongoDB without compromise", href: PRISMA_MONGODB_BLOG },
+      {
+        label: "Prisma Next: The TypeScript ODM You Always Wanted",
+        href: MONGO_BLOG_PRISMA_NEXT,
+      },
     ],
   },
 ] as const;
@@ -174,8 +184,8 @@ function buildMongoosePage(minutes: number) {
         <Link href="/docs/orm" className={INLINE}>
           Prisma ORM
         </Link>{" "}
-        starts from a contract file: you describe your collections once, and typed queries and
-        migrations follow from it.{" "}
+        starts from a contract file: you describe your collections once, and typed queries,
+        aggregations, and migrations follow from it.{" "}
         <a href="https://mongoosejs.com" className={INLINE}>
           Mongoose
         </a>{" "}
@@ -209,6 +219,15 @@ function buildMongoosePage(minutes: number) {
             </ul>
           </div>
         </div>
+        <p className="max-w-[68ch]">
+          MongoDB&apos;s May 2026 post{" "}
+          <a href={MONGO_BLOG_PRISMA_NEXT} className={INLINE}>
+            Prisma Next: The TypeScript ODM You Always Wanted
+          </a>{" "}
+          is their write-up of this work: typed documents, a typed aggregation pipeline, and
+          migrations for indexes instead of a deploy script. On prisma.io the same library is Prisma
+          ORM 8&apos;s MongoDB early access, not a separate product named Prisma Next.
+        </p>
       </section>
 
       <section className={SECTION}>
@@ -278,9 +297,10 @@ function buildMongoosePage(minutes: number) {
           How do Prisma ORM and Mongoose compare feature by feature?
         </AnchorHeading>
         <p className="max-w-[68ch]">
-          Mongoose models MongoDB documents in application code. Prisma ORM is a contract-based ORM.
-          On MongoDB the PostgreSQL APIs (SQL query builder, relation filters) are absent. Columns
-          are in alphabetical order.
+          Mongoose models MongoDB documents in application code. Prisma ORM is a contract-based ORM
+          with a typed pipeline, polymorphic collections, and MongoDB migrations for indexes and
+          validators. On MongoDB the PostgreSQL APIs (SQL query builder, relation filters) are
+          absent. Columns are in alphabetical order.
         </p>
         <CompareTable
           labelledBy="feature-table"
@@ -300,7 +320,14 @@ function buildMongoosePage(minutes: number) {
         </AnchorHeading>
         <p>
           Mongoose&apos;s MongoDB support next to the two Prisma ORM lines. Prisma ORM 7 is the
-          generally available release. No means no support.
+          generally available release. No means no support. The{" "}
+          <Link href={PRISMA_MONGODB_PAGE} className={INLINE}>
+            MongoDB product page
+          </Link>{" "}
+          describes Prisma&apos;s schema and type-safe client for MongoDB, including embedded
+          documents and references. Its query samples use Prisma Client&apos;s <code>findMany</code>{" "}
+          API from earlier Prisma ORM lines. Prisma ORM 8 queries go through{" "}
+          <code>db.orm.&lt;collection&gt;</code>.
         </p>
         <CompareTable
           labelledBy="databases"

@@ -4,6 +4,7 @@ import { ArrowRight, ChevronRight } from "lucide-react";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
 import {
   COMPARISON_CTA,
+  CREATE_DB_NEW_TAB,
   CREATE_DB_WEB,
   ORM_COMPARISON_CTA,
   ORM_HERO_CTAS,
@@ -105,7 +106,11 @@ export function comparisonHeroCtas(kind: "orm" | "postgres" = "postgres") {
       <PrismButton href={primary.href} ctaLocation="compare-intro">
         {primary.label}
       </PrismButton>{" "}
-      <PrismButtonOutline href={secondary.href} ctaLocation="compare-intro">
+      <PrismButtonOutline
+        href={secondary.href}
+        ctaLocation="compare-intro"
+        {...(secondary.href === CREATE_DB_WEB ? CREATE_DB_NEW_TAB : {})}
+      >
         {secondary.label}
       </PrismButtonOutline>
     </p>
@@ -140,6 +145,8 @@ export function comparisonClosingCta(kind: "orm" | "postgres" = "postgres") {
         Need a database?{" "}
         <a
           href={CREATE_DB_WEB}
+          target={CREATE_DB_NEW_TAB.target}
+          rel={CREATE_DB_NEW_TAB.rel}
           className="underline underline-offset-4 decoration-black/35 transition-colors hover:text-foreground hover:decoration-black/50"
         >
           Create an instant database
