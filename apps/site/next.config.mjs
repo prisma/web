@@ -431,6 +431,7 @@ const config = {
       { source: "/privacy", destination: "/legal/privacy", permanent: true },
       { source: "/terms", destination: "/legal/terms", permanent: true },
       { source: "/sla", destination: "/legal/sla", permanent: true },
+      { source: "/security", destination: "/legal/security-and-compliance", permanent: true },
       { source: "/startups", destination: "/programs/startups", permanent: true },
       { source: "/partners", destination: "/programs/partners", permanent: true },
       { source: "/oss-friends", destination: "/programs/oss-friends", permanent: true },
