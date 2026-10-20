@@ -659,7 +659,7 @@ const config = {
       {
         permanent: true,
         source: "/with-rest",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/rest",
+        destination: "/docs/orm/v7/core-concepts/api-patterns",
       },
       {
         permanent: true,
