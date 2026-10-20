@@ -283,6 +283,91 @@ const config = {
         destination: "/",
         permanent: true,
       },
+      // Recovered dead slugs. Exact series URLs only, so live /blog/series/* pages stay.
+      {
+        source: "/graphqlgen-fj3s0ssc1jsx",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      {
+        source: "/series/what-is-nexus-wsobadcm7oju",
+        destination:
+          "/introducing-graphql-nexus-code-first-graphql-server-development-ll6s1yy5cxl5",
+        permanent: true,
+      },
+      {
+        source: "/experimental-graphql-106b07424435",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      {
+        source: "/prisma-2-is-coming-soon-mwwfhevie993",
+        destination: "/announcing-prisma-2-n0v98rzc8br1",
+        permanent: true,
+      },
+      {
+        source: "/series/modern-backend-bdes2ps5kibb",
+        destination: "/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1",
+        permanent: true,
+      },
+      {
+        source: "/series/e2e-typesafety-graphql-react-yiw81oBkun",
+        destination: "/e2e-type-safety-graphql-react-1-I2GxIfxkSZ",
+        permanent: true,
+      },
+      {
+        source: "/how-prisma-orm-became-the-mostdownloaded-orm-for-node-js",
+        destination: "/how-prisma-orm-became-the-most-downloaded-orm-for-node-js",
+        permanent: true,
+      },
+      {
+        source:
+          "/graphql-server-basics-demystifying-the-info-argumentin-graphql-resolvers-6f26249f613a",
+        destination:
+          "/graphql-server-basics-demystifying-the-info-argument-in-graphql-resolvers-6f26249f613a",
+        permanent: true,
+      },
+      // Stray ] in an inbound URL. Next.js matches the decoded path; keep the
+      // encoded form too in case the request is not decoded first.
+      {
+        source: "/graphql-server-basics-the-network-layer-51d97d21861]",
+        destination: "/graphql-server-basics-the-network-layer-51d97d21861",
+        permanent: true,
+      },
+      {
+        source: "/graphql-server-basics-the-network-layer-51d97d21861%5D",
+        destination: "/graphql-server-basics-the-network-layer-51d97d21861",
+        permanent: true,
+      },
+      { source: "/prisma-7", destination: "/announcing-prisma-orm-7-0-0", permanent: true },
+      { source: "/trpc-a-new-way-to-build-apis-tRPC-yQvVq00oF", destination: "/", permanent: true },
+      {
+        source: "/vscode-thieghu7shoo",
+        destination: "/vscode-extension-prisma-rust-webassembly",
+        permanent: true,
+      },
+      {
+        source: "/reusing-and-composing-graphql-apis-with-graphql-bindings-80a4aa37cff5",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      {
+        source: "/prisma-client-beta-ahph4o1umail",
+        destination: "/prisma-client-preview-ahph4o1umail",
+        permanent: true,
+      },
+      {
+        source: "/performance-release-aeduv0rei0ji",
+        destination: "/prisma-orm-without-rust-latest-performance-benchmarks",
+        permanent: true,
+      },
+      {
+        source:
+          "/graphql-binding-2-0-improved-api-schema-transforms-automatic-codegen-5934cd039db1",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      { source: "/state-of-databases-2024", destination: "/", permanent: true },
       {
         source: "/the-database-should-not-become-the-product",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",

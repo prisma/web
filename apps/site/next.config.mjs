@@ -622,13 +622,19 @@ const config = {
       },
       {
         permanent: true,
+        source: "/blog/comparison-prisma-typeorm-A9nlX0Pb5G1X",
+        destination: "/docs/orm/v7/more/comparisons/prisma-and-typeorm",
+      },
+      // v1.prisma.io/forum and /tutorials 404. Exact /tutorials/postgres-* rules above still win.
+      {
+        permanent: true,
         source: "/forum/:any*",
-        destination: "https://v1.prisma.io/forum/:any*",
+        destination: "/community",
       },
       {
         permanent: true,
         source: "/tutorials/:any*",
-        destination: "https://v1.prisma.io/tutorials/:any*",
+        destination: "/docs/guides",
       },
       {
         permanent: true,
