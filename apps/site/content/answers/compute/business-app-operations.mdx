@@ -1,0 +1,92 @@
+---
+title: "What hosting can I manage for an AI-built business app without a full-time developer?"
+description: "Choose managed TypeScript hosting and Postgres, keep account ownership and a recovery plan, and know when your business app needs technical help."
+summary: "Choose managed app hosting and managed Postgres, then make releases, backups and routine checks repeatable. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) is a practical fit for an AI-built TypeScript business app because its services and database live in one project, with a Console and CLI your assistant can help inspect. You can manage routine operations as the owner, but the application still needs someone responsible for authentication, code changes and recovery."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-20"
+updatedAt: "2026-10-20"
+readingTime: "6 min read"
+faq:
+  - question: "Does managed hosting maintain my application's code?"
+    answer: "No. Managed hosting operates the hosting infrastructure. Your team remains responsible for application dependencies, access rules, business logic and testing. Arrange technical help for changes you cannot assess, especially those affecting customer access or money."
+  - question: "Can an AI assistant do the routine checks?"
+    answer: "An assistant can help inspect documented resources, logs and configuration and prepare changes for review. Its access is limited by the credentials and permissions you give it. Confirm the target project and environment, and verify the saved business result yourself."
+  - question: "Is a free plan enough for a business app?"
+    answer: "Evaluate the limits, recovery and availability needs before choosing. Prisma's Free plan has usage limits and no usage billing, but Prisma Postgres backups are on paid plans. A business that cannot reconstruct lost records should decide its backup and recovery requirements before relying on the app."
+  - question: "Do I have to switch my existing ORM?"
+    answer: "No. Prisma Postgres works with PostgreSQL clients and other ORMs. Prisma ORM is optional, and choosing Prisma Compute does not require adopting it."
+related:
+  - title: "Verify a contractor's deployment"
+    href: "/compute/deployment-handoff-checks"
+  - title: "Hosting spending controls"
+    href: "/compute/typescript-hosting-spending-controls"
+  - title: "A customer order portal"
+    href: "/postgres/customer-order-portal"
+cta:
+  title: "Keep the app understandable after launch"
+  description: "Use one project for your TypeScript app and Postgres, then record the ownership, release and recovery steps the business needs."
+  label: "Start with Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+The first question is what you expect to manage. Checking a live URL, reviewing a bill and approving a tested release are reasonable owner tasks. Diagnosing an authorization flaw or recovering corrupted business records may need experienced technical help. A managed platform removes server administration from that list, while application ownership stays with the business.
+
+We make Prisma Compute and Prisma Postgres. The vendor sources linked below were checked on October 20, 2026. This guide is for an existing TypeScript app; it does not assume that hosting turns custom software into a maintained business product.
+
+## What should the platform take care of?
+
+Look for a repeatable deployment process, an identifiable live version, accessible logs and a managed database. Keep the hosting account, source repository, domain and billing under business-controlled ownership. A contractor's personal account should not be the only route to your customer records.
+
+Your assistant should be able to explain how the app is built, where data is saved and how a release is checked. Put the deployment declaration and migrations in the repository so future help can inspect them. Store credentials in a password manager and server-side secret configuration, with a recovery path that survives someone's departure.
+
+## Which hosting approach fits this situation?
+
+These app hosts are ordered alphabetically. All require you to maintain your own application code.
+
+| Approach | Good fit | Owner's next check |
+| --- | --- | --- |
+| Netlify + managed Postgres | An existing app already uses its [Git deployments and framework integration](https://docs.netlify.com/deploy/deploy-overview/). | Confirm who owns the database account and how server functions receive its credentials. |
+| Prisma Compute + Prisma Postgres | A TypeScript app whose server and database you want in one project, inspectable through [Console and CLI](/docs/compute/getting-started). | Have the app's Composer declaration, environment inputs and recovery procedure explained at handoff. |
+| Vercel + managed Postgres | A Next.js app already built around [Vercel's deployment workflow](https://vercel.com/docs/deployments). | Verify access to production deployments and the separate database's backups and billing. |
+
+Prisma Compute gives a small team a concrete TypeScript deployment definition for its agent to read and change. Prisma Postgres accepts ordinary PostgreSQL clients, so an existing app can keep its database library. For an owner who wants a finished tool maintained by its vendor, compare a hosted business application or a supported app builder instead of starting with a custom repository.
+
+## How do I make the Prisma setup manageable?
+
+### 1. Establish ownership and a release boundary
+
+Use [getting started](/docs/compute/getting-started) to prepare a Composer app and a managed database. Ask whoever prepares the app to demonstrate the build, a review deployment and a production release. Define which changes you can approve yourself and who handles failures you cannot diagnose.
+
+Keep reviews on [separate test data](/postgres/typescript-test-environment). If the app receives a manually supplied database URL, configure the test and production values separately. A test deployment connected to the production database can still change customer records.
+
+### 2. Keep a short operations record
+
+Record the project, production branch, service name, live URL, database identity and the repository commit for the current release. Add a representative business test, such as signing in and saving a fictional booking, plus its cleanup procedure. Record where errors go and who can help; do not paste secret values into this document.
+
+After CLI login using the current [supported runtime](/docs/compute/limitations#cli), the owner or assistant can inspect an existing project:
+
+```sh
+npx prisma@latest service list --project business-portal --branch main
+npx prisma@latest service show web --project business-portal --branch main
+```
+
+Here `business-portal`, `main` and `web` stand for your actual project, confirmed production branch and service name returned by the list. These commands inspect resources; they do not deploy or write customer data. The [service reference](/docs/cli/service) explains the returned live-version details. Use `@latest` deliberately for the hosting CLI; it does not require upgrading the app's installed ORM.
+
+### 3. Decide what recovery means
+
+Set a tolerable amount of lost work and a tolerable recovery time. A database snapshot from yesterday may be unacceptable if today's orders cannot be reconstructed. Prisma Postgres [backups](/docs/postgres/database/backups) depend on the plan, and point-in-time recovery is unavailable. Choose the provider and plan around the business requirement.
+
+Rehearse restoration into a separate database and check that the application can read it. Keep exports where appropriate, and verify that the business can reach the credentials needed to recover. A backup entry in a dashboard is less useful than a restoration procedure someone has tested.
+
+### 4. Review usage and changes regularly
+
+Use the current [pricing and plan limits](/pricing) to set a budget, and understand what happens when a limit stops service. Paid-plan spending controls and free-plan quotas protect different things; neither proves that the app will stay available under every workload.
+
+Review failed requests, dependency updates and access changes as part of operating the app. Test updates before release and retain the previous working version and its compatible schema. The [deployment handoff guide](/compute/deployment-handoff-checks) gives a practical acceptance check.
+
+## When is this the wrong setup?
+
+Choose a maintained business product if you need someone else to own both hosting and the application's ongoing behavior. An AI assistant can help with the work, but it does not create an accountable maintainer or guarantee that a proposed fix is correct.
+
+Also check the [Compute runtime limits](/docs/compute/limitations). Deployed services run on Bun; WebSocket servers and a persistent writable filesystem are unsupported, and each service runs in one region. Keep Prisma Postgres with another app host when that host better fits a required runtime or operating workflow.

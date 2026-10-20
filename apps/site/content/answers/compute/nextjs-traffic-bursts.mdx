@@ -1,0 +1,87 @@
+---
+title: "What hosting should I use before emailing customers a link to my Next.js app?"
+description: "Prepare a Next.js app for a short visitor burst by testing the real workflow, pooled database traffic, upstream limits and a staged email send."
+summary: "Use managed Next.js hosting with a database close to its server, then test the actual customer workflow before sending the email. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) is a good fit when you want TypeScript hosting and pooled Postgres in one project. Vercel and Netlify are also practical choices for an app already using their Next.js workflow. The number of email recipients alone cannot tell you whether a host will cope; request volume, query cost and upstream services decide the workload."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-20"
+updatedAt: "2026-10-20"
+readingTime: "7 min read"
+faq:
+  - question: "Does emailing 3,000 people mean 3,000 concurrent users?"
+    answer: "No. Recipients arrive over time, and some may never visit. Concurrent work depends on arrival rate, requests per visit and how long each request takes. Use those assumptions to design a test, then adjust them with measured results."
+  - question: "Will a connection pool fix slow SQL?"
+    answer: "No. A pool helps manage database connections. Expensive queries, missing indexes, lock contention and too much database work per page need their own fixes. Measure representative queries under the expected workload."
+  - question: "Can I cache every customer page before sending the email?"
+    answer: "No. Public shared content can be cached when its freshness requirements permit it. Customer-specific pages and responses need appropriate private handling so one customer's data is not served to another. Follow the framework's caching rules and test authorization."
+  - question: "Should I change hosting immediately before the campaign?"
+    answer: "Usually keep a working, tested deployment if it meets the requirements. A migration adds configuration and runtime changes to validate. Choose a new host early enough to test login, database access, limits and recovery before the send."
+related:
+  - title: "Choose the app and database region"
+    href: "/postgres/nodejs-database-regions"
+  - title: "Inspect slow queries and indexes"
+    href: "/postgres/managed-postgres-query-monitoring"
+  - title: "Understand hosting spending controls"
+    href: "/compute/typescript-hosting-spending-controls"
+cta:
+  title: "Rehearse the customer visit before the send"
+  description: "Deploy the TypeScript app with Prisma Postgres, measure a representative workflow and stage the rollout around the result."
+  label: "Explore Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+Imagine 3,000 people arriving over ten minutes. That is five arrivals per second on average. If each visit makes six server requests, the average becomes 30 requests per second before retries and later interactions. Those are illustrative assumptions, not a hosting benchmark or a prediction that visits arrive evenly.
+
+We make Prisma Compute and Prisma Postgres. Provider sources linked here were checked on October 20, 2026. The decision should follow a measured workload rather than an unsupported promise that a particular visitor count is safe.
+
+## What can become the bottleneck?
+
+Separate the landing page from what customers do next. A cached public page, a signed-in dashboard and an AI response have different resource costs. List the server requests for a typical visit, including sign-in callbacks, database reads, image processing and any business API or model call.
+
+Check the services outside your app host too. An email link can produce a burst at the authentication provider, payment API or database even when the app server has capacity. Set bounded timeouts and a useful failure response rather than letting requests accumulate indefinitely.
+
+## Which hosting workflow should I consider?
+
+These hosts are ordered alphabetically. Compare the complete Next.js path, including dynamic routes and dependencies, rather than just the home page.
+
+| Host | Useful fit | Check before the email |
+| --- | --- | --- |
+| Netlify | You already use its framework deployment and [managed functions](https://docs.netlify.com/build/functions/overview/). | Function limits, database connection behavior and whether the tested request path uses caching or server execution. |
+| Prisma Compute | You want the TypeScript service near Prisma Postgres in one project, with an inspectable deployment declaration. | The deployed Bun runtime, [request limits](/docs/compute/limitations), actual query cost and the budget for the burst. |
+| Vercel | Your Next.js app already uses its deployment workflow and [function concurrency scaling](https://vercel.com/docs/functions/concurrency-scaling). | Your plan's concurrency and duration limits, plus the capacity of the database and external APIs. |
+
+Prisma Postgres includes [connection pooling](/docs/postgres/database/connection-pooling), and Prisma ORM is optional. You can use it from any of these hosts. Keep the database-calling server [in the same or a nearby region](/postgres/nodejs-database-regions), then measure the real transaction; moving only the browser-facing assets does not shorten a cross-region database round trip.
+
+## How should I prepare on Prisma Compute?
+
+### 1. Freeze and verify the release
+
+Follow [getting started](/docs/compute/getting-started) to prepare the Next.js Composer service, build its artifact and deploy. Keep the source commit and live version together. If deployments run on Git pushes, make sure the repository has the [deploy workflow](/docs/compute/deploy-on-push); connecting GitHub alone does not deploy a push.
+
+Use a separate test database with representative fictional records. Configure manually supplied database URLs per environment, and use the pooled application endpoint for normal Prisma Postgres queries. Keep the pool bounded in each application instance, so more instances do not each open an unnecessarily large pool.
+
+### 2. Test the work the customer will perform
+
+Run a bounded load test against the environment you control, using an appropriate testing tool and the host's testing policy. Start below the estimated arrival rate and increase gradually. A test that fetches only `/` does not exercise sign-in, a dashboard query or a save operation.
+
+Measure response latency, error rate and completed business actions. Check the slow end of the latency distribution, not only the average. Include the real indexes and a representative quantity of records; ten empty accounts tell you little about a dashboard that scans years of orders.
+
+Use fictional identities and isolate external side effects. For example, route emails to a test destination and use a payment provider's test mode. The goal is to exercise the application without sending real customer messages or creating real charges.
+
+### 3. Remove avoidable work and retest
+
+Investigate [slow queries and indexes](/postgres/managed-postgres-query-monitoring), repeated reads and long transactions before changing capacity. Fetch only the fields and rows the page needs. Move large exports out of a page request and serve static assets through the appropriate asset path.
+
+Use the [Next.js production checklist](https://nextjs.org/docs/app/guides/production-checklist) to review rendering and caching. Cache public information when appropriate, while keeping customer-specific responses isolated. Confirm in tests that customer A never receives customer B's saved data.
+
+### 4. Budget the send and watch the first group
+
+Estimate requests, active CPU, provisioned memory and outbound bandwidth from the rehearsal using the current [Compute pricing](/docs/compute/pricing). Add database operations and any external API charges. A free allowance is a usage limit, not a demonstrated peak-traffic capacity.
+
+Send to a small initial group before the full list. Watch real errors, login completion and database behavior, and decide in advance what would make you pause the remaining send. Retain the [rollback procedure](/compute/roll-back-deployment), while remembering that code rollback does not undo customer writes.
+
+## When should I choose another setup?
+
+Choose the platform that meets a requirement your rehearsal reveals. For a globally distributed static-heavy frontend, evaluate a host's CDN and caching workflow. For a backend requiring multi-region deployment or a WebSocket server, Prisma Compute's current [limitations](/docs/compute/limitations) may rule it out; Prisma Postgres can still serve another app host.
+
+Compute gives a request 60 seconds to start responding. A stream that has started is not cut off at that deadline, but streaming a response does not make an expensive database query faster. Move long work into a durable workflow and test its retries rather than holding the customer's request while it finishes.
