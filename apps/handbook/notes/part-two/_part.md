@@ -115,3 +115,21 @@ not with ChatGPT sites."
   the AI run development commands in its cloud environment.
 - Verify deployment authorization separately from the Prisma plugin connection
   during the pending walkthroughs. No successful end-to-end trial is implied.
+
+## Deployment review follow-up (2026-10-20)
+
+- Checked the deployment claims against the published
+  [MCP tools reference](https://www.prisma.io/docs/ai/mcp-tools) and
+  [deploy-on-push guide](https://www.prisma.io/docs/compute/deploy-on-push).
+  The MCP tools inspect existing apps, deployments, and runtime logs. Building
+  and uploading code requires the project's deployment tools.
+- The deployment chapter now asks readers to check their session's build tools
+  and authorization before continuing. The GitHub path explicitly requires both
+  a repository connection and a deploy workflow.
+- TODO(shane): Complete the ChatGPT Work fresh-account trial, including plan
+  access, cloud build tools, deployment authorization, and updating the same app.
+- TODO(shane): Complete the Claude Code fresh-account trial, including saving
+  the tested branch and deploying through the configured Prisma workflow.
+- TODO(shane): Record the resulting app URL, Console deployment view, log access,
+  and redeploy steps for each trial. These remain walkthrough checks, separate
+  from the documented Prisma capabilities above.

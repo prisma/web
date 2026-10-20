@@ -36,7 +36,8 @@ export function BuildingToolProvider({ children }: { children: ReactNode }) {
     let storage: Storage;
     try {
       storage = window.localStorage;
-      setTool(parseTool(storage.getItem(STORAGE_KEY)));
+      const stored = parseTool(storage.getItem(STORAGE_KEY));
+      setTool((current) => current ?? stored);
     } catch {
       // The reader can still choose a tool when browser storage is unavailable.
       return;
