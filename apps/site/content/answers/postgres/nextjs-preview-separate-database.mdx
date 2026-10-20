@@ -124,11 +124,12 @@ Then run a check before `next build`. It loads environment files the way Next.js
 import nextEnv from "@next/env";
 import pg from "pg";
 
-// Load .env files the same way `next build` does, so the check sees the same value.
-nextEnv.loadEnvConfig(process.cwd());
-
-const deployment = process.env.VERCEL_ENV ?? process.env.APP_ENV ?? "unknown";
+// Read the deployment from the host before .env files can fill it in.
+const deployment = process.env.VERCEL_ENV ?? process.env.CONTEXT ?? process.env.APP_ENV ?? "unknown";
 if (deployment === "production") process.exit(0);
+
+// Load .env files the same way `next build` does, so the check sees the same DATABASE_URL.
+nextEnv.loadEnvConfig(process.cwd());
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is not set for this deployment.");
@@ -164,7 +165,7 @@ Run it from the build script in `package.json`:
 "build": "node scripts/check-database.mjs && next build"
 ```
 
-Vercel sets [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/system-environment-variables) to `production`, `preview` or `development` during the build, as long as **Enable access to System Environment Variables** is selected in the project's environment variable settings. On other hosts, set `APP_ENV=production` in the production environment only. A production build without it fails the same way, which is the safe direction to fail in. The check is for hosts that expose the deployment's variables during the build, such as Vercel and Netlify. If the database is unreachable or doesn't answer within 10 seconds, or the role can't read the marker table, it also fails the build, with the database error instead of the refusal message.
+Vercel sets [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/system-environment-variables) to `production`, `preview` or `development` during the build, as long as **Enable access to System Environment Variables** is selected in the project's environment variable settings. Netlify sets [`CONTEXT`](https://docs.netlify.com/build/configure-builds/environment-variables/#build-metadata) to `production`, `deploy-preview` or `branch-deploy`. On other hosts, set `APP_ENV=production` in the production environment's settings only, not in a `.env` file: `next build` loads `.env.production` for previews too, which is why the script reads the deployment before loading those files. A production build without `APP_ENV` fails the same way, which is the safe direction to fail in. The check is for hosts that expose the deployment's variables during the build, such as Vercel and Netlify. If the database is unreachable or doesn't answer within 10 seconds, or the role can't read the marker table, it also fails the build, with the database error instead of the refusal message.
 
 Pointed at the marked database from a preview, the check stops the build:
 
