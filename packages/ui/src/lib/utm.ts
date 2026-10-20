@@ -1,5 +1,6 @@
 export const CONSOLE_HOST = "console.prisma.io";
 export const UTM_ATTRIBUTION_STORAGE_KEY = "prisma_utm_attribution";
+const ATTRIBUTION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
 export type UtmParams = Record<string, string>;
 export interface UtmAttribution {
@@ -27,6 +28,7 @@ const CLICK_ID_KEYS = new Set([
   "gclid", // Google Ads
   "wbraid", // Google Ads, web-to-app, iOS
   "gbraid", // Google Ads, app-to-web, iOS
+  "oppref", // ChatGPT ads (OpenAI); the pixel keeps it in its own cookie too
   "msclkid", // Microsoft Advertising
   "fbclid", // Meta
   "li_fat_id", // LinkedIn
@@ -38,7 +40,7 @@ function isClickIdKey(key: string) {
   return CLICK_ID_KEYS.has(key);
 }
 
-/** Keys that are rewritten onto internal links. */
+/** Campaign keys carried at the Console handoff. */
 function isAttributionKey(key: string) {
   return key.startsWith("utm_") || key === "ref";
 }
@@ -162,11 +164,11 @@ export function syncUtmAttribution(
   attribution: UtmAttribution,
   options: { includeFirstTouch?: boolean } = {},
 ) {
-  let updated = syncUtmParams(url, attribution.last);
-
   if (!options.includeFirstTouch) {
-    return updated;
+    return false;
   }
+
+  let updated = syncUtmParams(url, attribution.last);
 
   const firstTouchParams = Object.fromEntries(
     Object.entries(attribution.first).map(([key, value]) => [`first_${key}`, value]),
@@ -209,6 +211,42 @@ export function syncUtmAttribution(
   return updated;
 }
 
+/**
+ * The `ref` stamped on Console links for visitors who carry no campaign
+ * attribution: the prisma.io page that handed them off, e.g. `prisma.io/postgres`.
+ * The homepage is `prisma.io`. Shaped like the referrer domains partners already
+ * send in `ref` (`producthunt`, `laconsole.dev`), so it reads naturally next to
+ * them in the console's `signup_first_ref` / `signup_last_ref`.
+ */
+export function buildSiteRef(pathname: string) {
+  return `prisma.io${pathname === "/" ? "" : pathname}`;
+}
+
+/**
+ * Stamps `ref` on a Console link that carries no attribution at all.
+ *
+ * This is the fallback for organic and direct visitors. It deliberately uses
+ * `ref` and not `utm_source`: PostHog treats `utm_*` and ad click IDs as
+ * campaign parameters and freezes the first value it sees into the person's
+ * `$initial_utm_source`, which is what the removed `utm_source=website` default
+ * used to pollute. `ref` is not a campaign parameter, so the console still
+ * records it on the signup while the person's first-touch channel stays whatever
+ * it really was.
+ *
+ * A link that already carries any captured key or first-touch key is left
+ * alone: real attribution always wins over the fallback.
+ */
+export function syncFallbackRef(url: URL, ref: string) {
+  for (const key of url.searchParams.keys()) {
+    if (isCapturedKey(key) || key.startsWith("first_")) {
+      return false;
+    }
+  }
+
+  url.searchParams.set("ref", ref);
+  return true;
+}
+
 export function readStoredUtmAttribution(storageKey: string) {
   if (typeof window === "undefined") {
     return undefined;
@@ -221,7 +259,22 @@ export function readStoredUtmAttribution(storageKey: string) {
       return undefined;
     }
 
-    return sanitizeUtmAttribution(JSON.parse(storedAttribution));
+    const attribution = sanitizeUtmAttribution(JSON.parse(storedAttribution));
+    const firstSeenAt = Date.parse(attribution?.firstSeenAt ?? "");
+    const lastSeenAt = Date.parse(attribution?.lastSeenAt ?? "");
+    const now = Date.now();
+    if (
+      !attribution ||
+      !Number.isFinite(firstSeenAt) ||
+      !Number.isFinite(lastSeenAt) ||
+      firstSeenAt > lastSeenAt ||
+      lastSeenAt > now ||
+      now - firstSeenAt >= ATTRIBUTION_MAX_AGE_MS
+    ) {
+      window.localStorage.removeItem(storageKey);
+      return undefined;
+    }
+    return attribution;
   } catch {
     return undefined;
   }

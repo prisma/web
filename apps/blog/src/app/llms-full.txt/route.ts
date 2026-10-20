@@ -1,11 +1,21 @@
 import { blog as source } from "@/lib/source";
-import { getLLMText } from "@/lib/get-llm-text";
+import { buildLlmsFullContent } from "@/lib/llms";
+import { toLlmsPost } from "@/lib/llms-source";
+import { getBaseUrl } from "@/lib/url";
 
 export const revalidate = false;
 
 export async function GET() {
-  const scan = source.getPages().map(getLLMText);
-  const scanned = await Promise.all(scan);
+  const entries = await Promise.all(
+    source.getPages().map(async (page) => ({
+      post: toLlmsPost(page),
+      body: await page.data.getText("processed"),
+    })),
+  );
 
-  return new Response(scanned.join("\n\n"));
+  return new Response(buildLlmsFullContent(entries, getBaseUrl()), {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
 }

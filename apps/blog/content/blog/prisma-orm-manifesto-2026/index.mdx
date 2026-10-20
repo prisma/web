@@ -1,0 +1,114 @@
+---
+title: "Prisma ORM Manifesto 2026: Open, Extensible, Collaborative"
+slug: "prisma-orm-manifesto-2026"
+date: "2026-10-02"
+authors:
+  - "Will Madden"
+metaTitle: "Prisma ORM Manifesto 2026: Open, Extensible, Collaborative"
+metaDescription: "The five principles behind Prisma ORM 8: an open framework and ecosystem, tools that are safe to delegate, exceptional DX, modern JavaScript, and stewardship."
+heroImagePath: "/prisma-orm-manifesto-2026/imgs/hero.svg"
+heroImageAlt: "The Prisma mark above the words Prisma ORM Manifesto 2026, connected by colored lines to a globe labeled Open, expanding arrows labeled Extensible, and a handshake labeled Collaborative"
+metaImagePath: "/prisma-orm-manifesto-2026/imgs/meta.png"
+tags:
+  - "orm"
+  - "announcement"
+series: prisma-8
+seriesIndex: 16
+---
+
+When we first built Prisma ORM, it was a small GraphQL library. Since then, it has grown into one of the most popular JavaScript ORMs. With Prisma ORM 8, we’re completing that evolution by **opening it to the community as a framework** which we hope will become the foundation on which the ecosystem builds its database tools.
+
+For an open source framework to serve its community effectively, its codebase must be accessible to anyone who wants to extend it, it must be safe for both humans and agents to use, and working with it should be a pleasure. It also needs to fit modern JavaScript tooling, and it must be maintained over time as the JavaScript landscape and the community’s needs change.
+
+This manifesto sets out **the principles that shaped Prisma ORM 8 and that will guide decisions about the framework from here**. They set the standard for everything that the core team maintains, whether it comes from the team or from a contributor.
+
+## 1. Prisma ORM is an open framework and an open ecosystem
+
+> The core team must never be the bottleneck. The codebase is accessible, so anyone can fix a bug or contribute a feature, and extensions enable the community to build what they choose to prioritize, independent of the core team.
+
+Prisma ORM 8 is built in TypeScript, the language of our community, and composed of interchangeable components. This, and its extensive documentation, makes the codebase accessible: **anyone can read it, fix what is broken, and contribute anything that is missing**.
+
+In earlier versions, Prisma ORM was a single, tightly coupled system, partly written in Rust. Only the core team and a few external developers could work on it, so every fix and every feature depended on a small group of people. With Prisma ORM 8, *that limitation no longer exists*.
+
+Beyond contributing to the codebase, the community can build extensions[^extension] of their own, from support for new databases to custom integrations, **without requiring the core team’s involvement at all**. Two standout examples are the [IndexedDB](https://github.com/prisma-idb/prisma-idb) and [CipherStash](https://cipherstash.com/docs/integrations/prisma) extensions.
+
+To ensure that this is possible, **every part of Prisma ORM 8 is itself an extension**: support for each database, the ORM client, and the query builders are all independent extensions that you install into the framework. The framework fundamentally knows *nothing* about any database, query language, or schema format, and the core team builds its extensions with the same tools that are available to everyone else.
+
+We maintain the framework core, and we will build and maintain an extension for every one of our [first-class databases](https://github.com/prisma/orm/issues/25843). **Where Prisma ORM goes next is decided by the community**; by everyone who contributes to it or extends it.
+
+## 2. Database tools must be safe to delegate
+
+> Database tools must be safe to hand to an agent, without depending on a human to check every operation. Database changes must therefore be explicit and predictable, and the system itself must verify that they had the intended effect and limit the damage when something goes wrong.
+
+More and more people rely on agents to build their applications; many of them are not software developers and they cannot check what the agent does to their database. Traditional database tools leave that responsibility with whoever runs them, which makes them *only as safe as their operator*.
+
+**A tool that is safe to delegate takes on that responsibility itself.** Whoever uses it says what they want, and the tool works out how to get there. It shows what it will do before it does it, checks its own work afterwards, and asks before it destroys anything.
+
+Migrations in Prisma ORM 8 work this way. You describe the data you want in your contract[^contract], and the framework plans the change as named operations that you can read before anything runs. Each operation is checked before and after it runs, destructive changes require explicit approval, and **there is no command that resets your database**.
+
+These protections are *not only* there for agents. Working with an agent means that you meet these risks more often and have less time to catch a mistake. However, anyone who changes a database faces them too, whether they work in a team or alone, this approach serves everyone.
+
+## 3. Developer experience must be exceptional
+
+> Whether you’re writing it or reviewing it, code written with Prisma ORM must say what it means and do what you expect.
+
+Developer experience is what brought many of you to Prisma, and it matters to us as much as ever. In Prisma ORM 8, this covers more than just the shape of the query API: it spans the contract, migrations, and the command line tools, and includes parts that are written by authors outside the core team. So we have established **standards that anyone building on Prisma ORM can apply**:
+
+- **High-level abstractions must have escape hatches.** For example, the ORM client lets you drop down to a typed SQL query builder on the same contract, and from there to raw SQL
+- **What you learn on one database must carry over to another.** For example, the MongoDB and Postgres interfaces are not identical, but if you are familiar with one you will be familiar with the other
+- **Your code must speak in the terms of your application.** For example, when you query with the ORM client, you talk in terms of the models and relations you wrote in your contract, not tables and indexes
+- **Code must be explicit and unambiguous, never magical.** For example, you can read exactly what any migration does, down to its raw SQL
+
+We will hold *every part* of the framework to these standards, and they will determine how we choose between potential designs.
+
+## 4. Prisma ORM must fit the modern JavaScript landscape
+
+> Prisma ORM must run wherever your JavaScript runs, and work with the frameworks and build tools you already use, today and as they change.
+
+Prisma ORM 8 is written entirely in TypeScript and ships as ES modules. This means it is tree-shakeable: you only carry what you import, and its query results stream as async iterables. Because there is no native binary, **it runs wherever your JavaScript runs**: in your framework, in serverless and edge environments, in a mobile app, and in the browser.
+
+Earlier versions could not run in all of those places: Prisma ORM 6 still shipped a native Rust binary, which was hard to bundle and difficult to run in serverless and edge environments. Prisma ORM 7 removed the binary from the client, but the result proved too complex to maintain.
+
+**Prisma ORM 8 is also faster than Prisma ORM 7.** A high-level API will always cost something compared to a query written by hand, which is why the escape hatches exist: *you* decide where paying that cost is worthwhile.
+
+The landscape will keep changing, and we commit to changing with it, but **there will not be another shift like the one from Prisma ORM 7 to Prisma ORM 8**. We needed a change of that size to leave an architecture that we could no longer sustain. With that done, from here on every step will be smaller, incremental, and in accordance with these principles. **Prisma ORM 7 remains supported for eighteen months** after the release of Prisma ORM 8, and you can run the two side by side while you make the move.
+
+## 5. We are stewards, not gatekeepers
+
+> The core team’s role is to maintain the foundation of Prisma ORM and to foster the ecosystem of extensions that add features and database support. It gives community authors tools they can build on with confidence.
+
+For most of Prisma ORM’s history, the core team had to be the gatekeepers: the codebase was inaccessible and realistically, nobody else could change it. Prisma ORM 8 ends that. The codebase is accessible and every part of it is an extension, so the core team’s role has changed from *deciding what Prisma ORM does*, to *looking after what the community builds on*.
+
+Looking after the foundation means keeping it stable, documenting it, and giving extension authors the same tools that the core team uses. Prisma is a privately funded company, and its incentives determine where we focus our efforts. However, **we never want to limit what you can build**: this is why the framework of Prisma ORM 8 is open. Prisma’s hosted products are built on the same foundation as every other extension, with *the same access and no more*, so Prisma ORM works in the same way, wherever a database is hosted.
+
+It also means recognizing when someone else is better placed to maintain a part of the project. If someone shows that they are more capable and more committed, whether for a database extension or for something larger, **the core team will step aside**. The best way for us to serve the community is to move forward together.
+
+## Continuing the spirit of the first manifesto
+
+Two years ago we published [the first Prisma ORM manifesto](/prisma-orm-manifesto) and committed to clarity and collaboration. This manifesto supersedes it, keeping its spirit but taking it further. The first manifesto asked the community for its *voice*; this one gives you **the means to act**.
+
+This is what became of its four commitments:
+
+- **First-class databases.** We are building an extension for each one: Postgres and MongoDB exist today, and MySQL, SQLite, and MariaDB will follow
+- **Better issue management.** Most issues used to depend upon the core team; now, anyone can act on them
+- **A predictable preview lifecycle.** Prisma ORM 8 has no preview features: a feature is either present or it is not
+- **Community extension.** Prisma ORM 8 was built with this promise at its core
+
+We continue to recognize these commitments, which have all played a part in shaping the principles set out here.
+
+## Let’s build the Prisma ORM that you want
+
+**The foundation of Prisma ORM is settled; what we build on it is up to all of us.**
+
+If you want a database to be supported, build the extension; we will help you. If you want to take ownership of something that we maintain today, tell us. If you hit an obstacle while getting started or upgrading from Prisma ORM 7, let us know: on [Discord](https://pris.ly/discord), in an issue, or in a pull request. We’re building this together, and we will do all we can to support you.
+
+**If we ever contradict the principles in this document, call us out.**
+
+—
+
+Will Madden<br />
+*Prisma Product Architect*
+
+[^extension]: An extension is a package that adds a capability to Prisma ORM, such as support for a database. It is not the same thing as a Client extension in Prisma ORM 7.
+
+[^contract]: Your contract is the file where you describe your data: your models, their fields, and how they relate. It takes the place of `schema.prisma`.

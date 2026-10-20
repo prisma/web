@@ -1,0 +1,98 @@
+---
+title: "Where should I publish my app to send a client a secure HTTPS link?"
+description: "Choose hosting for a client demo, publish a TypeScript app over HTTPS, and protect access to the app and its database."
+summary: "Publish the app to a managed host that runs your framework and gives you an HTTPS URL. [Prisma Compute](/docs/compute) is a good fit for a TypeScript app with [Prisma Postgres](/docs/postgres): you can deploy the server and database in one project. Vercel and Netlify also work well when your app already uses their deployment workflows. Before sharing, add appropriate access control and use a separate demo database."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-17"
+updatedAt: "2026-10-17"
+readingTime: "5 min read"
+faq:
+  - question: "Can I send my client a localhost link?"
+    answer: "A localhost address points to the device opening it. Your client cannot use it to reach your laptop. Publish the app to a host for a URL that continues working when your laptop is closed. A temporary tunnel can help with a supervised demo, but its availability depends on the process running on your machine. See [how to share a localhost app](/compute/share-localhost-app) for both options."
+  - question: "Does HTTPS make a client demo private?"
+    answer: "HTTPS encrypts traffic between the browser and host. It does not decide who may open the app or read a record. Use application login and authorization for sensitive demos, and check any hosting-level deployment protection before sharing the link."
+  - question: "Do I need a custom domain before sharing the app?"
+    answer: "No. A working HTTPS URL supplied by the host is enough for an initial review. Add a custom domain when you need a stable branded address, then check its certificate, login redirects and callback URLs."
+  - question: "Can I host the frontend elsewhere and keep Prisma Postgres?"
+    answer: "Yes. Prisma Postgres works with any PostgreSQL client, so Prisma ORM is optional. Keep database credentials in the server environment on your chosen app host, and make browser requests through an authenticated API."
+related:
+  - title: "Sharing an app that only opens on localhost"
+    href: "/compute/share-localhost-app"
+  - title: "Deploying a TypeScript app from Cursor"
+    href: "/compute/cursor-typescript-app-hosting"
+  - title: "A test app with a separate database"
+    href: "/postgres/typescript-test-environment"
+  - title: "Keeping prototype customer data"
+    href: "/postgres/prototype-customer-data"
+cta:
+  title: "Give your client a working app to review"
+  description: "Set up Prisma Compute, connect a demo database and verify the deployed app before sharing its HTTPS URL."
+  label: "Deploy with Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+For a client review, the useful deliverable is a deployed app with a working server, sample data and an address the client can open independently. Uploading the frontend alone is insufficient if saving a form still calls an API on your laptop.
+
+We make Prisma Compute and Prisma Postgres. The hosting features linked below were checked on October 17, 2026. Prisma ORM is optional for the database examples and hosting choices in this guide.
+
+## What should the hosting setup include?
+
+Start with your app's runtime. A static frontend needs its compiled assets served. A full-stack app also needs its API routes or server process deployed. A form that stores customer details needs a database that stays available after the app restarts.
+
+Then decide what the client should see. An ordinary public demo can use fictional records. A demo containing confidential work needs authentication and server-side checks that limit which records each signed-in person can access. An obscure URL is not an access policy.
+
+For review work, create a [test environment with its own database](/postgres/typescript-test-environment). That lets the client try actions without changing customer data. Also check that demo emails, payment requests and other external actions use test accounts or are disabled.
+
+## Which app host fits a client demo?
+
+These options are ordered alphabetically by host name. Each can give you an HTTPS address; choose by the application you need to run and the workflow you already use.
+
+| App host | Choose it when | What to configure |
+| --- | --- | --- |
+| Netlify | Your app already uses its Git-based deploys or framework integrations. | Follow its [deployment workflow](https://docs.netlify.com/deploy/create-deploys/) and verify that the backend is deployed too. Netlify supplies [HTTPS and managed certificates](https://docs.netlify.com/manage/domains/secure-domains-with-https/https-ssl/). |
+| Prisma Compute | You want the TypeScript server and Prisma Postgres declared and deployed in one project. | Define the app's services with Prisma Composer, build the app and deploy it. The service receives a [managed HTTPS URL](/docs/prisma-compute/deploy). |
+| Vercel | Your app already follows its framework and preview deployment workflow. | Import the project or use its [CLI deployment workflow](https://vercel.com/docs/projects/deploy-from-cli). Configure the database and check deployment access before inviting a client. |
+
+There is no need to move an already working app just to change the URL. Prisma Postgres can serve an app on these hosts through its PostgreSQL connection string. Put the database-calling server [near the database](/postgres/nodejs-database-regions).
+
+## How do I publish it with Prisma Compute?
+
+A Prisma Composer module is a TypeScript file that declares the app's services, database dependencies and environment inputs. It gives the deployment command the resource configuration it needs.
+
+### 1. Prepare the app's deployment declaration
+
+Follow the [Prisma Compute deployment guide](/docs/prisma-compute/deploy) for your framework. It covers the supported Node.js versions for the tooling, the Composer module and how to build the deployable artifact. An existing dev command alone is not a Composer module.
+
+For a server app, configure it to listen on the service's assigned port and `0.0.0.0`. For Next.js, follow the framework-specific adapter instructions rather than copying a generic server build. Prisma Compute runs deployed services on Bun, so check dependencies that require a particular Node.js runtime.
+
+### 2. Connect demo data and server secrets
+
+Declare a Prisma Postgres database with the app, or configure a separate existing demo database. Use fictional seed records that make the review useful: for example, a few customer accounts with different statuses and an empty state the client can try.
+
+For a [declared database dependency](/docs/composer/databases) named `db`, read `service.load().db.url` in server code and pass it to your PostgreSQL client. Composer supplies this connection; it does not require a separate database URL environment variable. For a separately managed database, configure its URL as a server-side environment input instead. Keep session secrets and integration credentials server-side too. Never put database credentials in browser code or a public environment variable. Make the app's database access depend on the authenticated user, rather than trusting a customer ID sent by the browser.
+
+### 3. Build and deploy a review stage
+
+Once the Composer module and its inputs are configured, run the build specified by your framework guide, then authenticate and deploy. For a module named `module.ts`, the deployment command is:
+
+```sh
+npx prisma auth login
+npx prisma deploy module.ts --stage client-review
+```
+
+The deploy command does not build the application for you. It deploys the prepared artifacts and reports the service URL. Copy the actual HTTPS URL from that result; its hostname ends in `.prisma.build`. For a declared database, open Prisma Console and locate the database resource belonging to the `client-review` stage you just deployed, then get its direct connection string for migration tools that need one. For a separately managed database, get the migration connection from that database's provider and verify that it targets the database configured for the review app. In either case, check the database ID against production before running migrations or seeds.
+
+### 4. Test as the client before sending the link
+
+Open the URL in a separate browser profile, submit a form, reload the page and confirm the saved record remains. For a private demo, sign in with the intended demo account first, then try an API request without a session and confirm it cannot read private records. Check that login callbacks and links return to the deployed address.
+
+Use the assigned HTTPS URL for the review stage. [Custom domains](/docs/compute/domains) currently attach only to production apps. For a branded demo domain, use a separate demo project's production deployment and follow its DNS and certificate setup. Wait for HTTPS to work on the final address before sharing it. If the generated URL works and the custom domain doesn't, see [what to configure when a custom domain fails](/compute/custom-domain-not-working). Remove review access and clean up demo resources when the review ends.
+
+## When should I choose another setup?
+
+Choose another host if the application needs a runtime feature outside [Prisma Compute's limitations](/docs/compute/limitations), such as a persistent writable filesystem or a WebSocket server. Store persistent customer records in a database, and [uploaded files in object storage](/compute/file-uploads-disappear-after-redeploy), even when the application host offers local disk.
+
+If your team relies on a host's built-in reviewer invitation or deployment protection workflow, verify that feature's availability on your plan and use it. Prisma Compute's HTTPS URL does not supply application authentication. For a simple public static mockup with no backend, publishing the compiled frontend to an existing static host may be all you need.
+
+At contractor handoff, use the [deployment acceptance checks](/compute/deployment-handoff-checks) to verify the live version, runtime evidence and a saved business action under an account the business controls.

@@ -15,6 +15,7 @@ const ContentSecurityPolicy = `
     https://tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzrcdn.openai.com
     https://widget.kapa.ai
     https://www.google.com
     https://www.gstatic.com
@@ -56,6 +57,7 @@ const ContentSecurityPolicy = `
 
   img-src 'self' data:
     https://www.googletagmanager.com
+    https://bzr.openai.com
     https://cdn.sanity.io
     https://prismalens.vercel.app
     https://api.producthunt.com
@@ -94,6 +96,8 @@ const ContentSecurityPolicy = `
     https://*.tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzr.openai.com
+    https://bzrcdn.openai.com
     https://www.google.com
     https://www.gstatic.com
     https://kapa-widget-proxy-la7dkmplpq-uc.a.run.app
@@ -152,7 +156,6 @@ const ContentSecurityPolicy = `
     https://pagead2.googlesyndication.com
     https://googleads.g.doubleclick.net
     https://td.doubleclick.net
-    https://calculator.prisma.io/
     https://ppg-pricing-calculator.vercel.app
     https://hcaptcha.com
     https://*.hcaptcha.com;
@@ -205,6 +208,35 @@ const securityHeaders = [
     value: "max-age=63072000; includeSubDomains; preload",
   },
 ];
+
+/**
+ * `Link` headers that point agents at the blog's Markdown, the way apps/docs
+ * and apps/site point at theirs. Every page names /blog/llms.txt, and a post
+ * also names its own `.md` rendition. When two rules set `Link` on the same
+ * path, Next.js keeps the later one, so the post rule repeats the llms.txt
+ * entry.
+ */
+const llmsTxtHeader = {
+  key: "Link",
+  value: '</blog/llms.txt>; rel="llms-txt"',
+};
+
+const postMarkdownHeaders = [
+  {
+    key: "Link",
+    value:
+      '</blog/:slug.md>; rel="alternate"; type="text/markdown", </blog/llms.txt>; rel="llms-txt"',
+  },
+];
+
+/**
+ * A post URL: one path segment of letters, digits, `-` and `_` that is not one
+ * of the blog's other routes. Keep it in step with `getPostSlug` and
+ * `RESERVED_SEGMENTS` in src/lib/agent-markdown.ts; post-markdown-headers.test.ts
+ * checks that the two agree.
+ */
+export const POST_HEADER_SOURCE =
+  "/:slug((?!(?:api|author|blog-static|llms|monitoring|og|page|series|sitemap|tag)$)[A-Za-z0-9_-]+)";
 
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
@@ -355,7 +387,11 @@ const config = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders,
+        headers: [...securityHeaders, llmsTxtHeader],
+      },
+      {
+        source: POST_HEADER_SOURCE,
+        headers: postMarkdownHeaders,
       },
     ];
   },

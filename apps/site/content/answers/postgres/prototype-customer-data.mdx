@@ -1,0 +1,97 @@
+---
+title: "Is hosted Postgres a good place to save my prototype's customer details?"
+description: "Move customer details beyond browser storage or server memory with hosted Postgres, server-side access and a deliberate recovery plan."
+summary: "Yes. Hosted Postgres is a good choice when customer details must survive app restarts and be shared across signed-in users and devices. [Prisma Postgres](/docs/postgres) gives a TypeScript prototype a managed database without running a database server yourself. You can host the app on [Prisma Compute](/docs/compute), Vercel or Netlify; keep the database connection on the server and choose a backup plan before relying on it for customer data."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-17"
+updatedAt: "2026-10-17"
+readingTime: "5 min read"
+faq:
+  - question: "Will customer records survive a new app deployment?"
+    answer: "Records stored in a separate hosted database do not depend on the app process staying alive. A deployment can still change or delete data through migrations or application code. Test those changes with a separate database and keep a recovery plan."
+  - question: "Is an unclaimed database from npx create-db permanent?"
+    answer: "No. The [create-db documentation](/docs/postgres/npx-create-db) says an unclaimed database expires after its selected lifetime, which defaults to 24 hours. Claim it through the supplied link within that window, or create an account-owned database in Prisma Console before storing data you need to keep."
+  - question: "Does Prisma Postgres require Prisma ORM?"
+    answer: "No. Prisma Postgres accepts any PostgreSQL client. You can keep the app's existing SQL client or ORM and configure its server-side connection. Prisma ORM is an optional choice for typed queries and migrations."
+  - question: "Does managed hosting mean I never need backups?"
+    answer: "No. Persistent storage and backups solve different problems. A working database can faithfully save an accidental deletion. Check your plan's backup availability and retention, test a restore, and decide how much recent data the business can afford to lose."
+related:
+  - title: "Customer records with flexible JSON attributes"
+    href: "/postgres/customer-records-json"
+  - title: "A separate database for AI-assisted changes"
+    href: "/postgres/typescript-test-environment"
+  - title: "Publishing an app for a client"
+    href: "/compute/share-app-with-client"
+cta:
+  title: "Give your prototype a database you own"
+  description: "Create an account-owned Prisma Postgres database, connect it from your server and verify the customer-saving workflow."
+  label: "Create a Prisma Postgres database"
+  href: "https://console.prisma.io"
+---
+
+If a customer disappears when the server restarts, the app probably saved the record in process memory. If the record appears on one laptop but not another, it may live in browser storage. Both can be useful for a mockup, but neither gives a team a shared customer database.
+
+We make Prisma Postgres and Prisma Compute. The provider documentation linked below was checked on October 17, 2026. Prisma ORM is optional: Prisma Postgres works with ordinary PostgreSQL clients.
+
+## What does "saved permanently" mean for a prototype?
+
+You usually need records to survive a process restart, a new app deployment and a user changing devices. A database stores those records independently of the web server. It also gives the application a central place to enforce relationships and update related records in a transaction.
+
+That does not mean the records are guaranteed to exist forever. Someone can delete a database, application code can overwrite a field, and an account can run into plan or billing limits. Decide who owns the database account, who can change production and what recovery process you will use.
+
+If the prototype contains personal information, add login and server-side authorization before making it public. A shared database should not mean that every user can read every customer. Develop against fictional or sanitized records, especially when an AI assistant is making schema changes.
+
+## Where should I get hosted Postgres?
+
+These options are listed alphabetically. Each can store relational customer data; the surrounding workflow is the useful distinction.
+
+| Service | Choose it when | Before using real customer data |
+| --- | --- | --- |
+| Neon | You want its [database branching workflow](https://neon.com/docs/get-started/workflow-primer) for development and testing. | Verify the chosen plan's retention, region and operating limits. |
+| Prisma Postgres | You want managed Postgres for a TypeScript app, with optional Prisma Compute hosting in the same project. | Use an account-owned database and choose appropriate [backups](/docs/postgres/database/backups). |
+| Supabase | Your application also needs its integrated [Auth, Storage or Realtime](https://supabase.com/docs/guides/getting-started/architecture). | Configure authorization and confirm the plan's backup and recovery options. |
+
+Prisma Postgres is useful when a prototype is becoming an application: keep PostgreSQL as the durable store, keep your preferred client, and add Prisma Compute if you want to manage the app and database together. Another app host can connect to the same database through its server environment.
+
+## How do I start saving customer details with Prisma Postgres?
+
+### 1. Create an account-owned database
+
+Choose one creation workflow. For a separately managed database, sign in to [Prisma Console](https://console.prisma.io), create or choose the intended project and create a Prisma Postgres database. If you use the Composer dependency workflow in step 2, let the module provision the database in your account instead; you do not need to create a second database in Console. In either workflow, choose a region near the app server and use names that distinguish development from production.
+
+If you previously tried `npx create-db`, check whether you claimed that database. An [unclaimed database expires when its selected lifetime ends](/docs/postgres/npx-create-db), which defaults to 24 hours and can be shorter. Do not treat a temporary playground URL as the permanent home for customer records.
+
+### 2. Connect from the server
+
+Keep database access on the server. Choose the connection workflow that matches how you created the database; never put database credentials in browser code.
+
+For an app on Prisma Compute, follow the [Composer database dependency guide](/docs/composer/databases): declare a `rawPostgres()` dependency for your service, provision the database in the module and wire it into the service. If that dependency is named `db`, server code reads its connection from `service.load().db.url` and passes it to the PostgreSQL client. This workflow does not require a separate `DATABASE_URL` environment variable.
+
+For a separately managed database on Prisma Compute, or an app on Vercel or Netlify, get the [connection strings](/docs/postgres/database/connecting-to-your-database) and configure the pooled URL in the host's server environment instead. Keep the direct connection for migration and administrative workflows that need it. Use distinct databases for development, review and production. The [test-environment guide](/postgres/typescript-test-environment) explains how to keep an assistant's changes away from customer data.
+
+### 3. Add a customer table and authenticated save endpoint
+
+Start with fields the app actually needs: an ID, account ownership, email and creation time. Apply the table definition through a recorded migration. If the prototype has variable onboarding answers, use the [customer records and JSONB example](/postgres/customer-records-json) for a concrete schema.
+
+Make the browser call a server endpoint. That endpoint should verify the session, validate incoming values, derive the authorized account and issue a parameterized insert. Show success only after the write succeeds. On reads, apply the same account restrictions rather than returning the entire customer table.
+
+### 4. Check that persistence works beyond one session
+
+Create a fictional customer through the app and note its ID. Reload the page, restart the app process and read the record again. Sign in on a second browser or device with the same authorized account and confirm it appears there too. Check that another account cannot read it.
+
+This verifies the write/read path and shared storage, but recovery from a deletion needs its own test: rehearse restoring the data into a safe environment.
+
+### 5. Set the recovery and cost expectations
+
+Prisma Postgres's [backup documentation](/docs/postgres/database/backups) describes automated snapshots on Starter, Pro and Business plans. Snapshots are daily on days with database activity; a restore may omit changes made after the snapshot. The service currently has no point-in-time recovery.
+
+Choose a plan based on what the business can afford to lose, and rehearse restoring into a safe environment. If you maintain manual exports, protect them as carefully as the original records. Review current [pricing and limits](/pricing) before inviting more users; an early prototype's usage is not a forecast of its production bill.
+
+## When should I choose a different setup?
+
+If your app must work offline, it may need local storage plus synchronization; a hosted database alone does not solve that. If required data residency or recovery features are unavailable in Prisma Postgres, choose a service that meets those requirements.
+
+For a disposable mockup with no shared data, browser storage may be enough. Once real customers rely on saved records, give the database an accountable owner, restricted access and a tested recovery process. Hosting the app somewhere else does not remove those database responsibilities.
+
+If the prototype already queries with the pg package, see [hosted Postgres for an existing node-postgres app](/postgres/node-postgres-hosting) for a connection probe and the configuration to check before moving data.

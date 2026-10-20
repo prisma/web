@@ -1,13 +1,13 @@
 ---
-title: "Prisma vs Netlify: where should you build your next TypeScript app?"
+title: "Netlify alternatives for a full-stack TypeScript app with Postgres (2026)"
 slug: "prisma-vs-netlify"
 date: "2026-09-16"
-updatedAt: "2026-09-26"
+updatedAt: "2026-10-19"
 authors:
   - "Shane Neubauer"
-metaTitle: "Netlify alternatives for a full-stack TypeScript app"
-metaDescription: "Netlify alternatives for a TypeScript app with Postgres: why teams leave, short profiles of Prisma, Vercel, Render, Railway, Supabase and Neon, and a feature-parity table."
-excerpt: "Prisma catches a service wired to the wrong API or the wrong database before it deploys. Netlify gives every preview a copy of production and runs background jobs for minutes. Here is how to choose."
+metaTitle: "Netlify alternatives for a full-stack TypeScript app with Postgres (2026)"
+metaDescription: "Five Netlify alternatives for a full-stack TypeScript app with Postgres: Prisma Compute with Prisma Postgres, Railway, Render, Fly.io, and Vercel with a Marketplace database, compared."
+excerpt: "Five Netlify alternatives for a full-stack TypeScript app with Postgres: Prisma Compute with Prisma Postgres, Railway, Render, Fly.io, and Vercel with a Marketplace database. Also covered: Supabase, Neon, PlanetScale, and Amazon Aurora, and when staying on Netlify is the better choice."
 heroImagePath: "/prisma-vs-netlify/imgs/hero.svg"
 heroImageAlt: "Prisma and Netlify logos side by side"
 metaImagePath: "/prisma-vs-netlify/imgs/meta.png"
@@ -17,27 +17,43 @@ tags:
   - "orm"
 ---
 
-If your app is a few TypeScript services that share a Postgres database, and those services can run on Bun in one region, **Prisma is the better fit**. You declare each service, its database, and the calls between them in TypeScript, and a root module wires them together. The compiler rejects a service that points at the wrong API or the wrong database schema, and one deploy command creates everything the root module describes.
+Five Netlify alternatives host a full-stack TypeScript app's server and its Postgres database: Prisma Compute with Prisma Postgres, Railway, Render, Fly.io, and Vercel with a Marketplace database. Prisma Compute runs your Node.js, Bun or Next.js server on Bun as an instance next to managed PostgreSQL 17 with pooling, in one project and region; you add a declaration for Prisma Composer and deploy with `npx prisma deploy module.ts`, with no Dockerfile. Vercel runs the backend as functions and adds Postgres from its Marketplace, where Prisma Postgres, Neon and Supabase are listed. We make Prisma Compute and Prisma Postgres.
 
-Netlify builds and publishes your site and its functions together. The connections between separate services, and the database each one uses, are yours to set up and keep correct.
+You declare each service, its database, and the calls between them in TypeScript, and a root module wires them together. The compiler rejects a service that points at the wrong API or the wrong database schema, and one deploy command creates everything the root module describes.
 
-**Netlify is the better fit** when your app is mostly pages and assets, or when your code depends on Node.js behavior that Bun does not provide. It is also the better fit if you need background jobs that run for minutes, or if you want every preview to start with a copy of production data.
-
-Prisma's hosting runs on Bun in one region and gives each request 60 seconds to start responding. A preview gets a database only when you create one or a Composer stage deploy does, and that database starts *empty*.
+Netlify builds and publishes your site and its functions together, and Netlify Database can provision and migrate their Postgres database for you. The connections between separate services are yours to set up and keep correct.
 
 "Prisma" here means more than the ORM:
 
-- [Prisma ORM 8](https://www.prisma.io/docs/orm) is the typed data layer. It is a release candidate, with general availability expected in October 2026, and it runs on any host, including Netlify.
+- [Prisma ORM 8](https://www.prisma.io/docs/orm) is the typed data layer. It is the version npm installs by default, and it runs on any host, including Netlify.
 - [Prisma Postgres](https://www.prisma.io/docs/postgres) is the managed database.
 - [Prisma Compute](https://www.prisma.io/docs/compute) hosts TypeScript services.
-- [Prisma Composer](https://www.prisma.io/docs/composer), in early access, declares how services and databases connect and deploys them to Compute and Prisma Postgres. Deploys on a Git push go through Composer too.
+- [Prisma Composer](https://www.prisma.io/docs/composer) declares how services and databases connect and deploys them to Compute and Prisma Postgres. Deploys on a Git push go through Composer too.
 
 This post first looks at why teams leave Netlify and at the main alternatives. It then compares Prisma Compute and Prisma Postgres, including the Composer deploy path, with Netlify in detail. A later section covers running Prisma ORM and Prisma Postgres on Netlify.
 
-**Updated (September 2026):** added the reasons teams move off Netlify, short profiles of the other
-alternatives, a feature-parity table, and connection pooling and scale-to-zero in the runtime
-section. Prisma, Netlify, and other vendor figures were checked against each vendor's own
-documentation between 2026-09-24 and 2026-09-26.
+## Pick by app type
+
+Each row is an app shape. Rows run from shapes Prisma Compute fits to shapes where another host fits
+better, and the last column says why.
+
+| App | Good fits | Why |
+| --- | --- | --- |
+| Full-stack TypeScript app leaving Netlify | Prisma Compute + Prisma Postgres; Railway; Render; Fly.io; or Vercel + a Marketplace Postgres | Compute runs the app's Node.js, Bun or Next.js server on Bun next to managed PostgreSQL 17 with pooling, in one project, deployed from one repo, with one region per service; WebSocket servers are not supported on Compute; Railway, Render and Fly.io run any long-lived process; Vercel runs the backend as functions |
+| Next.js SaaS with Postgres | Prisma Compute + Prisma Postgres; or Vercel + a Marketplace Postgres (Prisma Postgres, Neon or Supabase) when a global CDN matters | Compute runs the Next.js server next to the database; Vercel serves from its CDN and runs functions |
+| Express, Hono or NestJS API with a frontend served by Next.js, Astro, TanStack Start or your own Node.js or Bun server | Prisma Compute + Prisma Postgres; Railway; Render | Compute runs the whole HTTP server as an instance next to the database; Railway and Render run any long-lived process |
+| MVP on a free plan | Prisma Free (app and database, no usage billing, no credit card); Neon Free or Supabase Free when you need only the database | Prisma Free includes Compute plus 200,000 database operations a month, 2 GB of storage and 50 databases; Neon Free has 1 GB of storage per project; Supabase Free has a 500 MB database and pauses projects after a week of inactivity |
+| Realtime app holding WebSocket connections, or background workers | Render, Railway or Fly.io | All three run WebSocket servers and always-on workers; Compute does not run WebSocket servers, and its background work runs after a request under `waitUntil` |
+| Several regions | Fly.io | One Fly.io app can run in several regions at once; each Compute service runs in one region |
+| Mostly static pages and assets, with functions on the side | Stay on Netlify | Its edge network serves them |
+
+Sources, checked 2026-10-08: Prisma [pricing](https://www.prisma.io/pricing) and [Compute limitations](https://www.prisma.io/docs/compute/limitations); Vercel [Marketplace storage](https://vercel.com/docs/marketplace-storage); Neon [pricing](https://neon.com/pricing); Supabase [pricing](https://supabase.com/pricing); Render [WebSockets](https://render.com/docs/websocket) and [background workers](https://render.com/docs/background-workers); Railway [specs and limits](https://docs.railway.com/networking/public-networking/specs-and-limits) and [services](https://docs.railway.com/services); Fly.io [WebSockets](https://fly.io/javascript-journal/websockets-with-nextjs/), [process groups](https://docs.fly.io/launch/processes/) and [scaling across regions](https://docs.fly.io/launch/scale-count/).
+
+Also for the first row, checked 2026-10-14: Prisma [Postgres docs](https://www.prisma.io/docs/postgres) and [Compute FAQ](https://www.prisma.io/docs/compute/faq); Vercel [Functions](https://vercel.com/docs/functions).
+
+Compute runs your Node.js, Bun or Next.js server on Bun, as an instance that scales to zero when idle. Only the first byte of a response has a deadline: it must go out within 60 seconds, and a streamed response keeps going after that. `waitUntil` keeps the instance awake to finish work after the response is sent, on a best-effort basis. Compute does not run WebSocket servers, and each service runs in one region. If your code depends on Node.js behavior that Bun does not provide, that is a reason not to move.
+
+**Netlify is the better fit** when your app is mostly pages and assets served from its edge network, or when you want every preview to start with a copy of production data. On Prisma, a preview's database is created by you or by a Composer stage deploy, and it starts *empty*.
 
 ## Why teams leave Netlify
 
@@ -61,8 +77,9 @@ app changes shape, and the reasons repeat:
 
 Which of those applies decides where you should go:
 
-- If the backend outgrew functions, look at Render or Railway for a conventional long-running
-  service, or at Prisma Compute if the backend is several TypeScript services sharing Postgres.
+- If the backend outgrew functions, Prisma Compute runs it on Bun next to its Postgres database,
+  as one TypeScript service or several that call each other. Render and Railway fit a backend that
+  ships as a Docker image.
 - If a request needs to stay open, separate streams from sockets. A streamed response, such as a
   model's output, works on Prisma Compute as long as the first bytes go out within 60 seconds, and a
   started stream is not cut off after that. WebSocket servers need a host that supports them, such as
@@ -74,51 +91,61 @@ Which of those applies decides where you should go:
 - If the bill stopped being predictable, compare meters, not plan names. The
   [pricing section](#what-you-pay-for) below sets Prisma's meters against Netlify's credits.
 - If you want Bun, Prisma Compute runs on it, and Render and Vercel both offer a Bun runtime. If your
-  code has to stay on Node.js, that is a reason not to choose Compute.
+  code depends on Node.js behavior Bun does not provide, that is a reason not to choose Compute.
 
 The profiles below say which of these each option answers.
 
 ## The alternatives, by what you are replacing
 
-Each of these is a reasonable answer to a different question, and none of them is a better Netlify.
+The profiles below say when each option is the better choice.
 
 **Prisma Compute and Prisma Postgres.** The app and the database in one project, with the connection
 string injected instead of copied when you deploy with Composer, a database per branch that you or a
-Composer stage deploy create, and pooling included. Best when the backend is several TypeScript
-services sharing Postgres. Your code has to run on Bun instead of Node.js, and you give up Edge
-Functions and an edge network. Like Netlify Functions, each service runs in one region and does not
-serve WebSockets. The rest of this post is the detailed version.
+Composer stage deploy create, and pooling included. Best when you want a TypeScript app and its
+Postgres database in one project from one vendor; Starter is a $10 base with Compute usage metered
+on top. Compute runs TypeScript services on Bun: Node.js, Bun or Next.js apps, declared with
+Composer's `node` or `nextjs` build adapter. You give up Edge Functions and an edge network. The
+rest of this post is the detailed version.
 
 **Vercel.** Vercel maintains Next.js, which makes it the closest like-for-like swap for a Next.js
 site. It has a global CDN, Image Optimization, and Blob storage, and its Functions run Node.js, Bun,
-Python, and other runtimes. It has no Postgres of its own: you add one from the Vercel
-Marketplace, such as Neon, Supabase, or Prisma Postgres, which injects the connection string as
-environment variables and can bill through your Vercel account. The database is still a second
-company's product, but it is not a separate bill or a copied connection string. Vercel Services, in
-beta, also let one backend in a project call another over an internal binding.
+Python, and other runtimes. It has no Postgres of its own: you add one from the
+[Vercel Marketplace](https://vercel.com/docs/marketplace-storage), which injects the connection
+string as environment variables and can bill through your Vercel account. Prisma Postgres has an
+[official integration](https://www.prisma.io/docs/guides/postgres/vercel) there that sets
+`DATABASE_URL` in your Vercel project, and Neon and Supabase are listed too. The database is still
+a second company's product, but it is not a separate bill or a copied connection string. Vercel
+Services, in beta, also let one backend in a project call another over an internal binding.
 
 **Render.** Long-running web services plus managed Postgres, declared in a `render.yaml` Blueprint
-committed to the repo. It fits when the backend outgrew functions and you want a conventional
-service: Render web services allow HTTP responses to take up to 100 minutes, accept WebSocket
+committed to the repo. It fits when the backend needs what a conventional service gives it:
+Render web services allow HTTP responses to take up to 100 minutes, accept WebSocket
 connections, and run Node.js, Bun, other native runtimes, or a Docker image. Render Postgres includes
 PgBouncer pooling on paid databases once you enable it.
 
 **Railway.** The same territory as Render, with long-running services and a Postgres deployed from a
-template into the same project. Railway's own docs call its database templates unmanaged, so backups,
-tuning, security, and maintenance are yours to handle. Weigh that before treating it as the
-low-maintenance option for an ordinary CRUD API.
+template into the same project. Railway maintains its Postgres template; backups, point-in-time
+recovery, high availability and PgBouncer pooling are opt-in in its
+[docs](https://docs.railway.com/databases#what-railway-manages) (checked 2026-10-08).
+
+**Fly.io.** Runs [almost any app that has a Dockerfile](https://docs.fly.io/languages-and-frameworks/),
+and one app can [run in several regions at once](https://docs.fly.io/launch/scale-count/). It fits
+when the same app has to be close to users on more than one continent. Fly.io also runs a
+[managed Postgres service](https://docs.fly.io/postgres).
 
 **Supabase.** Postgres with auth, storage, realtime, and Edge Functions from one vendor. It fits when
 what you miss is those surrounding services, and it fits poorly if all you need is a database and a
-host for a Node.js or Bun server, because its Edge Functions run on a Deno-compatible runtime.
+host for a Node.js or Bun server, because its Edge Functions run on a Deno-compatible runtime and
+[Supabase Compute](https://supabase.com/compute), which runs Node, is a private alpha (us-west-2
+only, not for production).
 
 **Neon.** Postgres with copy-on-write branching, and the database Netlify Database is built on. Neon
-also has backend services around the database, generally available since September 2026: Neon
-Functions run JavaScript and TypeScript APIs on Node.js next to your data, including WebSocket
-servers, alongside object storage and managed auth. Functions do not host websites, so the frontend
-still needs a host. Each Neon branch gets its own copy of the data and its own deployment of the
-functions, which can give each pull request a copy of production data, as Deploy Previews do on
-Netlify.
+Functions (generally available since 2026-09-17, also on Free) run Node.js 24 HTTP handlers next to
+the database, including WebSockets and SSE, alongside Neon's object storage and managed auth.
+Neon's [full-stack guide](https://neon.com/use-cases/full-stack-apps) keeps the UI on Vercel,
+Netlify or another frontend host (neon.com, checked 2026-10-08). Each Neon branch gets its own copy
+of the data and its own deployment of the functions, which can give each pull request a copy of
+production data, as Deploy Previews do on Netlify.
 
 **PlanetScale.** A database, not a host, so it replaces Netlify Database and leaves Netlify in place.
 It runs Postgres alongside its MySQL-compatible Vitess databases, with single-node Postgres from $5 a
@@ -137,36 +164,37 @@ What you get from one vendor, which is usually the real question behind leaving.
 | | Netlify | Prisma | Vercel | Supabase | Render |
 | --- | --- | --- | --- | --- | --- |
 | App hosting | Yes | Yes | Yes | Edge Functions only | Yes |
-| Runtime | Node.js functions; Deno Edge Functions | Bun | Node.js, Bun, Python, and others | Deno-compatible Edge Functions | Node.js, Bun, and other native runtimes, or Docker |
-| Longest request | 60 seconds; Background Functions up to 15 minutes | 60 seconds to first byte, then a started stream keeps going | 300 seconds by default, up to 800 on Pro and Enterprise | 150 seconds on Free, 400 on paid plans | 100 minutes |
+| Runtime | Node.js functions; Deno Edge Functions | Node.js, Bun or Next.js apps, run on Bun; they scale to zero when idle | Node.js, Bun, Python, and others | Deno-compatible Edge Functions | Node.js, Bun, and other native runtimes, or Docker |
+| Longest request | 60 seconds; Background Functions up to 15 minutes | 60 seconds to first byte, then a started stream keeps going | 300 seconds by default, up to 800 on Pro and Enterprise; 30 minutes in beta on Pro and Enterprise for Node.js, Bun and Python functions | 150 seconds to respond; wall-clock limit 150 seconds on Free, 400 on paid plans | 100 minutes |
 | Realtime or WebSocket servers | No | No | WebSockets in Functions (beta); no managed realtime service | Realtime service | WebSockets on web services; no managed realtime service |
 | Managed Postgres | Netlify Database, built on Neon | Prisma Postgres | No; add one from the Marketplace | Yes | Yes |
 | Connection pooling included | Not documented; the `@netlify/database` driver picks the connection method | Dedicated PgBouncer per database | Depends on the database | Shared pooler, plus a dedicated pooler on paid plans | Built-in PgBouncer on paid databases, opt-in |
 | Auth | Netlify Identity | No | No | Yes | No |
 | Object storage | Blobs | Object Store buckets (pricing not yet published) | Blob | Yes | No |
 | Edge network and image CDN | Yes | No | Yes | Storage CDN; image transformations on Pro and above | Global CDN for static sites and paid web services; no image CDN |
-| Preview per branch | Deploy Preview; database branch with a copy of production data | Branch environment; database created by you or a Composer stage deploy, starts empty | Preview deployment | Branching on Pro and above, empty by default | Preview environment on Pro workspace and above |
+| Preview per branch | Deploy Preview per pull request, with a database branch that copies production data; branch deploys once set up | Branch environment; database created by you or a Composer stage deploy, starts empty | Preview deployment | Branching on Pro and above, empty by default | Preview environment on Pro workspace and above |
 
 Sources for the table, by column:
 
 - Netlify: [functions configuration](https://docs.netlify.com/build/functions/configuration/), [Edge Functions](https://docs.netlify.com/build/edge-functions/overview/), [Netlify Database](https://docs.netlify.com/build/data-and-storage/netlify-database/), [Identity](https://docs.netlify.com/manage/security/secure-access-to-sites/identity/overview/), and [Image CDN](https://docs.netlify.com/build/image-cdn/overview/).
-- Prisma: [Compute limitations](https://www.prisma.io/docs/compute/limitations), [connection pooling](https://www.prisma.io/docs/postgres/database/connection-pooling), and [Object Store](https://www.prisma.io/docs/storage).
-- Vercel: [runtimes](https://vercel.com/docs/functions/runtimes), [Functions limits](https://vercel.com/docs/functions/limitations), [WebSockets](https://vercel.com/docs/functions/websockets), [Marketplace storage](https://vercel.com/docs/marketplace-storage), and [Blob](https://vercel.com/docs/vercel-blob).
-- Supabase: [Edge Functions limits](https://supabase.com/docs/guides/functions/limits), [connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres), [Storage CDN](https://supabase.com/docs/guides/storage/cdn/fundamentals), [branching](https://supabase.com/docs/guides/deployment/branching), and [pricing](https://supabase.com/pricing).
+- Prisma: [Compute FAQ](https://www.prisma.io/docs/compute/faq), [Compute limitations](https://www.prisma.io/docs/compute/limitations), [connection pooling](https://www.prisma.io/docs/postgres/database/connection-pooling), and [Object Store](https://www.prisma.io/docs/storage).
+- Vercel: [runtimes](https://vercel.com/docs/functions/runtimes), [Functions limits](https://vercel.com/docs/functions/limitations) (checked 2026-10-14), [WebSockets](https://vercel.com/docs/functions/websockets), [Marketplace storage](https://vercel.com/docs/marketplace-storage), and [Blob](https://vercel.com/docs/vercel-blob).
+- Supabase: [Edge Functions limits](https://supabase.com/docs/guides/functions/limits) (checked 2026-10-14), [connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres), [Storage CDN](https://supabase.com/docs/guides/storage/cdn/fundamentals), [branching](https://supabase.com/docs/guides/deployment/branching), and [pricing](https://supabase.com/pricing).
 - Render: [native runtimes](https://render.com/docs/native-runtimes), [Render vs Vercel](https://render.com/docs/render-vs-vercel-comparison), [WebSockets](https://render.com/docs/websocket), [connection pooling](https://render.com/docs/postgresql-connection-pooling), [static sites](https://render.com/docs/static-sites), and [preview environments](https://render.com/docs/preview-environments).
 
 Start from the rows your app cannot do without, and rule out every column that cannot meet one of
-them. The sections below cover the trade-offs among what is left. Railway and Neon are covered by
-their profiles above, not by columns in the table.
+them. The sections below cover the trade-offs among what is left. Railway, Fly.io, and Neon are
+covered by their profiles above, not by columns in the table.
 
 ## The decision in brief
 
 Choose Prisma if:
 
+- Your app is a TypeScript frontend, an API, and a Postgres database, and you want all three deployed from one repo, with no Docker image to maintain.
+- Your server is Node.js, Bun or Next.js code that runs on Bun, one region is enough, and the server does not hold WebSocket connections open.
+- You want every pushed feature branch to get its own preview, with its own services and a database built from your migrations, once deploy on push is set up. That database starts empty, without production data.
 - Several TypeScript services call each other, and you want a mismatched API contract or a missing handler to fail the *type check* instead of a deploy or a production request.
-- You want every Git branch to be a full environment with its own services and variables. You are willing to create, migrate, and connect its database yourself, or let a Composer stage deploy do it.
-- Your services run on Bun, or can, and one region is enough.
-- You accept pre-release tooling. Prisma ORM 8 is a release candidate, Composer is in early access, and the prisma/cloud-deploy-action GitHub Action that deploys on push is marked experimental. ORM 8 still lacks some ORM 7 features, including filtering inside JSON columns, atomic `increment`, and most nested writes, and it replaces `$extends` with middleware, so check [what is not available yet](https://www.prisma.io/docs/orm/coming-from-prisma-orm-7#not-available-yet) before you move an existing app to it.
+- You want to keep the Postgres client you have. Prisma ORM is optional on Compute, so moving does not mean upgrading to Prisma ORM 8, which still lacks some ORM 7 features ([what is not available yet](https://www.prisma.io/docs/orm/coming-from-prisma-orm-7#not-available-yet)).
 
 Choose Netlify if:
 
@@ -184,13 +212,13 @@ Choose Netlify if:
 | Previews | One environment per pushed branch; with GitHub connected, torn down when the Git branch is deleted | A Deploy Preview per pull request, plus branch deploys |
 | Preview databases | One per branch, created by you or by a Composer stage deploy, no production data | A database branch per Deploy Preview with a copy of production |
 | Long-running work | 60 seconds to first byte, then streaming or `waitUntil`; no WebSockets | Background Functions up to 15 minutes, with two retries on error; Async Workloads |
-| Billing | One plan fee for Compute and Prisma Postgres, plus requests, memory, CPU, bandwidth, database operations, and storage | Credits for compute, requests, bandwidth, and production deploys |
+| Billing | Plan base fee (Starter $10) with included requests and operations; Compute memory, CPU and bandwidth metered on top | Credits for compute, requests, bandwidth, and production deploys |
 
 Sources for the table: Prisma's [Compute limitations](https://www.prisma.io/docs/compute/limitations), [Compute pricing](https://www.prisma.io/docs/compute/pricing), [branching](https://www.prisma.io/docs/compute/branching), [object storage](https://www.prisma.io/docs/compute/object-storage) (which states Compute apps run on Bun), [Composer](https://www.prisma.io/docs/composer), and [Prisma Postgres](https://www.prisma.io/docs/postgres) pages; Netlify's [Netlify Database](https://docs.netlify.com/build/data-and-storage/netlify-database/), [database tooling](https://docs.netlify.com/build/data-and-storage/netlify-database/tooling/), [Background Functions](https://docs.netlify.com/build/functions/background-functions/), [Async Workloads](https://docs.netlify.com/build/async-workloads/overview/), and [pricing](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/) pages; and Netlify's [Netlify Database announcement](https://www.netlify.com/blog/netlify-database/) for the Neon partnership.
 
 ## What each platform sets up for you
 
-Both platforms can deploy on every Git push, but the setup differs. Netlify builds your production branch and every pull request once you connect the repository. On Prisma you connect the repository and also commit a GitHub Actions workflow, using the experimental prisma/cloud-deploy-action, that runs `prisma deploy` on your Composer module. The platforms also differ in how much of your app's structure they know about.
+Both platforms can deploy on every Git push, but the setup differs. Netlify builds your production branch and every pull request once you connect the repository. On Prisma you connect the repository and also commit a GitHub Actions workflow that uses prisma/cloud-deploy-action to run `prisma deploy` on your Composer module. The platforms also differ in how much of your app's structure they know about.
 
 **On Netlify**, you connect a repository and a build command. Each push builds the frontend and its serverless functions together and publishes them as one site. A page and the function it calls always come from the same commit, and they can share TypeScript types through normal imports.
 
@@ -198,7 +226,7 @@ Netlify has no concept of one deployed service calling another. If your backend 
 
 **On Prisma**, Composer works at the level of services:
 
-1. **Declare each service** in TypeScript, together with what it depends on: other services, a Prisma Postgres database, a cron schedule, or object storage.
+1. **Declare each service** in TypeScript, together with what it depends on: other services, a Prisma Postgres database, or object storage.
 2. **Give each service a contract**, meaning typed request and response schemas written with arktype, zod, or any Standard Schema validator.
 3. **Declare the contracts a service calls** as its dependencies. At runtime the service receives a typed client for each one.
 4. **Wire everything in a root module.** TypeScript checks the wiring, so binding a dependency to a service with a different contract, or leaving out a handler the contract requires, is a compile error.
@@ -234,11 +262,11 @@ export default module("store", ({ provision }) => {
 
 Suppose the catalog team changes the `product` type in its contract so that a price is an amount and a currency instead of a single `priceCents` number. Every caller that still expects a number fails to compile. A shared-types package in a monorepo gives you that much.
 
-The root module adds a second check. If it binds `storefront` to a service that serves a different contract, that is a compile error too, not a 404 after the deploy. The [store example](https://github.com/prisma/composer/tree/main/examples/store) in the Composer repository is a fuller version of this app. It adds an orders service and a cron job alongside the storefront and catalog, and keeps each one under `modules/` instead of `src/`.
+The root module adds a second check. If it binds `storefront` to a service that serves a different contract, that is a compile error too, not a 404 after the deploy. The [store example](https://github.com/prisma/composer/tree/main/examples/store) in the Composer repository is a fuller version of this app. It adds an orders service alongside the storefront and catalog, and keeps each one under `modules/` instead of `src/`.
 
 Databases are declared the same way. A service lists a `postgres()` dependency typed by your **data contract**, the `contract.prisma` schema file that replaced `schema.prisma` in ORM 8, and receives the connection and a typed client from `service.load()`, with no `DATABASE_URL` to set. The module that owns the database provisions it. The [deploy applies the database's migrations](https://www.prisma.io/docs/composer/databases) before the service starts, and it refuses to connect a service to a database whose schema does not match the contract the service was compiled against.
 
-You do not need contracts or several services to start. Deploys on a Git push run through the prisma/cloud-deploy-action GitHub Action, which runs `prisma deploy` on a Composer module (`module.ts` by default). So even a single service needs a one-service module to deploy on push, and the [porting guide](https://www.prisma.io/docs/composer/porting-an-app) shows the small server changes that involves. Without Composer, a single service deploys from the Console instead. When a second service or a scheduled job appears, add it to the module.
+You do not need contracts or several services to start. Deploys on a Git push run through the prisma/cloud-deploy-action GitHub Action, which runs `prisma deploy` on a Composer module (`module.ts` by default). So even a single service needs a one-service module to deploy on push, and the [porting guide](https://www.prisma.io/docs/composer/porting-an-app) shows the three server changes that involves. Without Composer, a single service deploys from the Console instead. When a second service appears, add it to the module.
 
 ## Previews and their databases
 
@@ -286,9 +314,7 @@ Prisma Compute runs TypeScript HTTP services on **Bun**. You run the build yours
 An instance scales to zero when idle, so a quiet preview costs nothing. The next request after a
 quiet period resumes the instance from a memory snapshot, which the Compute docs put at milliseconds,
 and a first call into a sleeping service can fail with `ECONNRESET`, which Composer's generated RPC
-client retries. The exception to scale-to-zero is an app with a Composer cron schedule: the scheduler
-never sleeps, so every deployed app or stage keeps one instance awake. Other work that must keep an
-instance awake uses [`waitUntil` or `KeepAwakeGuard`](https://www.prisma.io/docs/compute/keeping-instances-awake).
+client retries. Work that must keep an instance awake uses [`waitUntil` or `KeepAwakeGuard`](https://www.prisma.io/docs/compute/keeping-instances-awake).
 
 Compute runs your app next to Prisma Postgres, and every Prisma Postgres database runs a dedicated
 PgBouncer instance beside it, so pooling needs no setup even from a serverless caller. Each database
@@ -303,11 +329,11 @@ connections get closed, so keep the pool small and reconnect-friendly.
 
 Compute does not require Prisma ORM, so moving to it does not mean upgrading to ORM 8. The Bun runtime and the limits above still apply. ORM 6 receives security patches only until 19 November 2026, and the migration behavior above assumes ORM 8.
 
-Netlify Functions run on **Node.js**, and static assets are cached on the edge network without any application code. Function responses are cached only when they set cache headers, and the Image CDN transforms images requested through `/.netlify/images` URLs or a supported framework's image component. For asynchronous work, [Background Functions](https://docs.netlify.com/build/functions/background-functions/) run for up to 15 minutes and retry twice on error, and [Async Workloads](https://docs.netlify.com/build/async-workloads/overview/) add configurable retries and multi-step jobs. If your app already has a queue-and-worker shape, Netlify supports it directly. On Compute, that work moves into short requests, best-effort background work under `waitUntil`, or persisted steps triggered by a Composer cron schedule or an external scheduler.
+Netlify Functions run on **Node.js**, and static assets are cached on the edge network without any application code. Function responses are cached only when they set cache headers, and the Image CDN transforms images requested through `/.netlify/images` URLs or a supported framework's image component. For asynchronous work, [Background Functions](https://docs.netlify.com/build/functions/background-functions/) run for up to 15 minutes and retry twice on error, and [Async Workloads](https://docs.netlify.com/build/async-workloads/overview/) add configurable retries and multi-step jobs. If your app already has a queue-and-worker shape, Netlify supports it directly. On Compute, that work moves into short requests, best-effort background work under `waitUntil`, or persisted steps that an external scheduler triggers with a request.
 
 ## What you pay for
 
-Prisma Compute charges a plan fee plus four usage meters. Memory is billed while an instance is running or kept awake, and nothing is billed once it has scaled to zero, so an idle preview costs nothing unless the app has a Composer cron schedule. Its scheduler keeps one instance awake in every deployed app or stage, and that instance's memory is billed at $0.006 per GB-hour around the clock. Creating a deployment or a preview branch is not billed, and there are no seat charges.
+Prisma Compute charges a plan fee plus four usage meters. Memory is billed while an instance is running or kept awake, and nothing is billed once it has scaled to zero, so an idle preview costs nothing. Creating a deployment or a preview branch is not billed, and there are no seat charges.
 
 Netlify bills metered usage in [credits](https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/) from a monthly allowance. Production deploys consume credits. Creating a Deploy Preview or branch deploy does not, but requests, bandwidth, and compute on those previews draw from the same credit allowance as production traffic. The dollar column below converts credits at the Pro rate of $20 for 3,000 credits, which is the same per-credit price as Netlify's Pro add-on.
 
@@ -317,11 +343,11 @@ Netlify bills metered usage in [credits](https://docs.netlify.com/manage/account
 | Requests | $1 per million after the included amount | 2 credits per 10,000, about $1.33 per million |
 | Compute | $0.006 per GB-hour of memory plus $0.064 per vCPU-hour of CPU | 10 credits per GB-hour, about $0.067, with no separate CPU meter |
 | Bandwidth | $0.025 per GB | 20 credits per GB, about $0.13 |
-| Database | Included in the same plan: 10, 50, or 100 GB of storage on Starter, Pro, or Business, then $8, $2, or $1 per million operations and $2, $1.50, or $1 per GB of storage | Database compute at 10 credits per GB-hour, about $0.067 |
+| Database | In the same project as Compute; 10, 50, or 100 GB of storage included on Starter, Pro, or Business, then $8, $2, or $1 per million operations and $2, $1.50, or $1 per GB of storage | Database compute at 10 credits per GB-hour, about $0.067 |
 | Production deploys | Not billed | 15 credits each, about $0.10 |
 | Preview and branch deploys | Not billed; the preview's usage is billed like production | 0 credits; the preview's requests, bandwidth, and compute use credits like production |
 
-Prisma Postgres is billed per operation and per GB of storage under the same plan as Compute, not as a separate subscription, and every paid plan includes a spend limit. The [pricing page](https://www.prisma.io/pricing) lists what each plan includes. Netlify Database's compute and bandwidth come out of the same credit allowance as the site.
+Prisma Postgres runs in the same project as Compute and is billed per operation and per GB of storage, not as a separate subscription, and every paid plan includes a spend limit. The [pricing page](https://www.prisma.io/pricing) lists what each plan includes. Netlify Database's compute and bandwidth come out of the same credit allowance as the site.
 
 ## Using Prisma ORM and Prisma Postgres on Netlify
 
@@ -336,6 +362,9 @@ Prisma Postgres is also available to Netlify sites through the official Netlify 
 ## Frequently asked questions
 
 <Accordions type="single">
+  <Accordion title="Is Prisma Compute serverless functions or a server?">
+Prisma Compute runs a server, not separate functions. It runs your whole HTTP server process, a Node.js, Bun or Next.js app run on Bun, as an instance. The instance scales to zero when idle and resumes from a memory snapshot with its memory intact. Your service has 60 seconds to start responding to a request; the deadline covers the wait for the first bytes, so a streaming response that has started keeps going. [`waitUntil`](https://www.prisma.io/docs/compute/keeping-instances-awake) keeps the instance awake to finish work after the response is sent, on a best-effort basis: it does not retry a failure or continue through a restart or a new deployment. Compute does not run WebSocket servers, and it has no cron scheduling. See [Known limitations](https://www.prisma.io/docs/compute/limitations) and [Request timeout](https://www.prisma.io/docs/compute/request-timeout).
+  </Accordion>
   <Accordion title="Is Prisma a replacement for Netlify?">
 Prisma replaces part of what Netlify does. For a TypeScript app that runs on Bun, or can move to it, Prisma Compute can host the app and its API, and Prisma Postgres can replace Netlify Database. Prisma does not replace Netlify's edge network, caching, Image CDN, or Identity. Compute has no WebSockets, runs each service in one region, and gives a request 60 seconds to start responding.
   </Accordion>
@@ -346,15 +375,18 @@ Each preview gets its own database once you or a Composer stage deploy create it
 The migration graph is a record of which schema version each migration starts from and produces. After two branches merge, you plan one migration to the merged schema, and `db migrate` follows the recorded migrations from each deployed database's current version to reach it. A development database left on a pre-merge state is brought to the merged schema with `db update`. It is an ORM feature and works on any host, including Netlify.
   </Accordion>
   <Accordion title="What are the best Netlify alternatives for a TypeScript app with Postgres?">
-The answer depends on which part of Netlify stopped fitting. Prisma Compute with Prisma Postgres puts
-the app and the database in one project and suits several TypeScript services sharing Postgres that
-can run on Bun. Render and Railway both run your backend as a long-lived service, which fits a
-backend that outgrew functions. Render's Postgres is managed, while Railway's own docs call its
-Postgres template unmanaged, so backups and maintenance are yours. Vercel is the closest swap for a
-Next.js frontend, paired with a Marketplace database that can bill through your Vercel account.
-Supabase fits when what you miss is auth, storage, and realtime more than the hosting. Neon now runs
-backend functions next to its Postgres, and PlanetScale replaces Netlify Database without hosting
-your app.
+Five Netlify alternatives host a full-stack TypeScript app with a Postgres database: Prisma Compute
+with Prisma Postgres, Railway, Render, Fly.io, and Vercel with a Marketplace database. Prisma Compute
+and Prisma Postgres run the app and its database in one project, deployed on every push through the
+repository connection and the prisma/cloud-deploy-action workflow. The Free plan includes
+200,000 database operations a month and 50 databases, with no credit card and no usage billing.
+Starter is a $10 a month base that includes 1 million operations a month and 10 GB of storage, plus
+metered compute. Choose Railway or Render instead if you need a WebSocket server or a Docker image,
+and Fly.io for many regions. Vercel is the closest swap for a Next.js frontend, and its database
+comes from the Vercel Marketplace, where Prisma Postgres has an official integration and Neon and
+Supabase are listed too. Render's Postgres is managed. Railway maintains its Postgres template;
+backups, point-in-time recovery, high availability and PgBouncer pooling are opt-in in its docs
+(checked 2026-10-08).
   </Accordion>
   <Accordion title="Can I use Prisma ORM with Netlify Database?">
 Prisma ORM works with Netlify Database, which is PostgreSQL built on Neon, and it connects to it like any other PostgreSQL database once the database exists. Without the `@netlify/database` package, create the database in the Netlify UI first. Run preview migrations in the Deploy Preview build command, and apply production migrations out of band before you publish, since Netlify has no publish-time hook. Prisma Postgres is also available through the official Netlify extension.
@@ -363,6 +395,21 @@ Prisma ORM works with Netlify Database, which is PostgreSQL built on Neon, and i
 
 ## Which one to pick
 
-**Pick Prisma** if your backend is several TypeScript services that share Postgres and you can live with Bun, one region, and pre-release tooling. The compiler then checks the wiring between those services, and the deploy creates it. Start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), which runs two services locally without an account.
+**Prisma Compute and Prisma Postgres** deploy a full-stack TypeScript app's frontend, API, and Postgres database from one repo, and once deploy on push is set up, every pushed feature branch gets a preview with its own services and a new database for each Prisma Postgres database the Composer module declares. To move an app you already have, add a Composer declaration next to your server code, a `service.ts` for each server and one `module.ts`, and make the three server changes the [porting guide](https://www.prisma.io/docs/composer/porting-an-app) lists, such as reading the port from `service.port()` instead of `process.env`. To try it before you move anything, the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started) runs two services locally without an account.
 
-**Stay on Netlify** if your app is a site with functions, needs Node.js, long background jobs, or a global edge, or if you want previews that arrive with production data. The [Netlify guide](https://www.prisma.io/docs/guides/postgres/netlify) connects Prisma Postgres to a Netlify site through the official extension. It is written for Prisma ORM 7 today.
+**Pick another host** when the app needs something Compute does not do. Railway and Render run WebSocket servers ([Railway](https://docs.railway.com/networking/public-networking/specs-and-limits), [Render](https://render.com/docs/websocket)) and deploy from a Docker image ([Railway](https://docs.railway.com/builds/dockerfiles), [Render](https://render.com/docs/docker)). Fly.io runs one app in several regions at once. Vercel fits a Next.js-first frontend on its global CDN, with Prisma Postgres added from the Vercel Marketplace as its database.
+
+**Stay on Netlify** if your app is a site with functions, depends on the Node.js runtime itself rather than Bun, needs long background jobs or a global edge, or if you want previews that arrive with production data. The [Netlify guide](https://www.prisma.io/docs/guides/postgres/netlify) connects Prisma Postgres to a Netlify site through the official extension. It is written for Prisma ORM 7 today.
+
+## Update history
+
+- 2026-10-19: the Supabase profile now says Supabase Compute, which runs Node, is a private alpha (us-west-2 only, not for production), checked against supabase.com/compute on 2026-10-19.
+- 2026-10-19: the third paragraph now says Netlify Database can provision and migrate the site's Postgres database, the feature-parity table says Netlify builds a Deploy Preview per pull request and branch deploys only once they are set up, and Vercel's 30-minute beta maximum is listed for Node.js, Bun and Python functions, checked against Netlify's and Vercel's docs on 2026-10-19.
+- 2026-10-14: moved the two paragraphs on the Compute runtime and when Netlify is the better fit below the "Pick by app type" table, added a first row to that table for a full-stack TypeScript app leaving Netlify that names all five alternatives and two Compute limits, and updated two cells in the longest-request row of the feature-parity table from each vendor's limits page: Vercel lists a 30-minute maximum in beta on Pro and Enterprise, and a Supabase Edge Function has 150 seconds to respond on every plan; updated Prisma Postgres Free storage from 1.01 GB to 2 GB.
+- 2026-10-12: reworded the FAQ answer on Netlify alternatives and the first paragraph of the closing section to describe the options side by side.
+- 2026-10-08: rewrote the description and the opening to name five alternatives side by side, added a "Pick by app type" table and an FAQ on whether Compute runs functions or a server, updated the Railway and Neon profiles from their docs, stated the Starter base fee and metered Compute usage in the Prisma profile and the billing row, made the closing section say that Netlify fits code that depends on the Node.js runtime itself rather than Bun, and moved this history to the end.
+- 2026-10-07: changed the opening and the feature-parity table to describe the Compute runtime in the wording of the [Compute FAQ](https://www.prisma.io/docs/compute/faq), and the closing verdict to match the opening. The Vercel profile now links the Prisma Postgres integration on the Vercel Marketplace, a Fly.io profile was added, and the sentences about Composer cron schedules were removed. The Vercel, Railway, Render, and Fly.io facts added that day were checked against each vendor's own pages.
+- 2026-10-06: changed the opening, the introduction to the alternatives, and the FAQ answer on Netlify alternatives to lead with Prisma Compute and Prisma Postgres, and the Prisma profile to the runtime wording from the Compute docs. The Railway, Render, Fly.io, and Vercel facts in that answer were checked against each vendor's own documentation that day.
+- 2026-10-05: changed the title to name the subject.
+- September 2026: added the reasons teams move off Netlify, short profiles of the other alternatives, a feature-parity table, and connection pooling and scale-to-zero in the runtime section. Prisma, Netlify, and other vendor figures were checked against each vendor's own documentation between 2026-09-24 and 2026-09-26.
+- 2026-09-16: first published.

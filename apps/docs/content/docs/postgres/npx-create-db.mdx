@@ -1,25 +1,25 @@
 ---
 title: create-db
-description: Learn how to provision temporary Prisma Postgres databases with create-db
+description: Create a temporary Prisma Postgres database with one command and no sign-up, for prototypes, tests and coding agents. Claim it with a Prisma account to keep it.
 url: /postgres/npx-create-db
-metaTitle: Getting started with npx create-db
-metaDescription: Learn how to provision temporary Prisma Postgres databases with npx create-db.
+metaTitle: "npx create-db: temporary Prisma Postgres for apps and agents"
+metaDescription: Create a temporary Prisma Postgres database with one command and no sign-up, for prototypes, tests and coding agents. Claim it with a Prisma account to keep it.
 ---
 
 [`create-db`](https://create-db.prisma.io/) is an open-source CLI tool that provisions temporary [Prisma Postgres](/postgres) databases with a single command.
 
-- **Fast setup:** No sign-up required to create a temporary production-ready Prisma Postgres database.
-- **Lifetime:** Each database is available for _24 hours_ by default.
-- **Keep for free:** You can _claim_ a database (via the URL provided in the CLI output) to make it permanent.
+- **Fast setup:** No sign-up required to create a temporary Prisma Postgres database.
+- **Lifetime:** 24 hours by default; `--ttl` sets 30m or 1h to 24h.
+- **Keep for free:** Claim the database with a Prisma account, using the claim URL in the CLI output.
 
 ## Prerequisites
 
 To use `npx create-db`, you need:
 
-- **Node.js** version `16` or higher (we recommend the latest LTS version).
+- **Node.js** 20.5 or newer (we recommend the latest LTS version).
 - **npm** (comes with Node.js) to run `npx` commands.
 
-**A Prisma Data Platform account is not required** to create a temporary database. However, if you want to keep a database permanently, you can claim it ([details below](#claiming-your-database)).
+You don't need a Prisma account to create a temporary database. To keep one, claim it with a Prisma account ([details below](#claiming-your-database)).
 
 ### Option 1: Using the web interface (recommended)
 
@@ -57,7 +57,7 @@ npx create-db@latest
 <br />
 
 - The `@latest` tag automatically downloads and runs the latest version of the tool, so no global installation is required.
-- After a few seconds, you'll receive **connection strings** for both Prisma ORM projects and standard PostgreSQL.
+- After a few seconds, you'll receive a **connection string** and a **claim URL**.
 - By default, `create-db` detects your approximate location and provisions the database in the closest available region, falling back to `us-east-1` if detection fails. To choose a region yourself, use the `--region` flag. See [the section below](#available-cli-options) to view all the CLI options.
 
 #### Option 2: Choose a region interactively
@@ -90,89 +90,205 @@ Here is an example output:
 ```
 ┌  🚀 Creating a Prisma Postgres database
 │
-│  Provisioning a temporary database in us-east-1...
-│  It will be automatically deleted in 24 hours, but you can claim it.
 ◇  Database created successfully!
 │
-●  Database Connection
-│    Connection String:
-│    postgresql://<username>:<password>@db.prisma.io:5432/postgres
 │
-◆  Claim your database →
+●  Database Connection
+│
+│
+│    Connection String:
+│
+│    postgres://<username>:<password>@db.prisma.io:5432/postgres?sslmode=require
+│
+│
+◆  Claim Your Database
+│
 │    Keep your database for free:
-│    https://create-db.prisma.io?projectID=proj_...
-└
+│
+│    https://create-db.prisma.io/claim?projectID=proj_...&utm_source=create-db&utm_medium=cli
+│
+│    Database will be deleted on <date and time 24 hours from now> if not claimed.
+│
+└  Done!
 ```
 
-Once you have the output, take the connection string and add it to your `.env` file as `DATABASE_URL`:
+Once you have the output, take the connection string and add it to your `.env` file as `DATABASE_URL`. If the file already has a `DATABASE_URL`, replace that value instead of adding a second one:
 
 ```text
-DATABASE_URL="postgresql://<username>:<password>@db.prisma.io:5432/postgres"
+DATABASE_URL="postgres://<username>:<password>@db.prisma.io:5432/postgres?sslmode=require"
 ```
+
+If you don't have a `.env` file yet, you can skip the copy step by creating the database with `npx create-db@latest --env .env` instead. This creates the file with `DATABASE_URL` and `CLAIM_URL` and prints only a confirmation, so the claim URL is in `CLAIM_URL` rather than in the terminal. On a file that already exists, `--env` appends both lines without removing an existing `DATABASE_URL`, so delete the old line yourself.
 
 You can now follow the [Prisma Postgres quickstart guide](/v7/prisma-orm/quickstart/prisma-postgres) to connect your Prisma project to this database.
 
 If you're using other tools or libraries, use the standard PostgreSQL connection string with any PostgreSQL-compatible client, such as `psql`, `pgAdmin`, `node-postgres`, or an ORM of your choice. Detailed instructions are available in [Connecting to your database](/postgres/database/connecting-to-your-database).
 
+## Use create-db with coding agents
+
+Coding agents such as Claude Code, Cursor, and Codex can create a database for a task without a human signing up first. Run the command with `--json` so the agent gets machine-readable output:
+
+```npm
+npx create-db@latest --json
+```
+
+```json
+{
+  "success": true,
+  "connectionString": "postgres://<username>:<password>@db.prisma.io:5432/postgres?sslmode=require",
+  "claimUrl": "https://create-db.prisma.io/claim?projectID=proj_...&utm_source=create-db&utm_medium=cli",
+  "deletionDate": "2026-10-13T08:44:59.650Z",
+  "region": "eu-west-3",
+  "name": "2026-10-12T08:44:55.985Z",
+  "projectId": "proj_..."
+}
+```
+
+The agent reads `connectionString` and sets it as `DATABASE_URL` for the task. Keep it out of the `.env` file your team shares, so the agent never points at a database someone else is using.
+
+If the service returns an error, the JSON has `"success": false` and a `message`, and the command exits with code 1. If a flag value is invalid or the service can't be reached, the command prints an error to stderr instead of JSON and exits with code 1.
+
+To write `DATABASE_URL` and `CLAIM_URL` to a separate env file instead of printing JSON, or to let the database expire sooner than 24 hours:
+
+```npm
+npx create-db@latest --env .env.local
+```
+
+```npm
+npx create-db@latest --json --ttl 1h
+```
+
+When an agent creates databases:
+
+- Create one database per task, not one per test run. Database creation is rate-limited per IP address.
+- When the work should be kept, show the human the `claimUrl`. Claiming needs a Prisma account, so a person has to do it.
+- Treat the database as disposable until it is claimed: it is deleted when its time to live runs out.
+
+To make this the agent's default, add a short block to your project's `AGENTS.md`:
+
+```markdown
+## Database rules
+
+- For a task that needs a scratch database, run `npx create-db@latest --json` and use `connectionString` as `DATABASE_URL` for that task only, never in the shared `.env`.
+- Create one database per task. It is deleted after 24 hours unless claimed.
+- If the work should be kept, show me the `claimUrl`. Claiming needs my Prisma account.
+```
+
+Claude Code doesn't always read `AGENTS.md`, for example when your project also has a `CLAUDE.md`. Add the line `@AGENTS.md` to a `CLAUDE.md` next to your `AGENTS.md` so Claude Code imports these rules.
+
+For the reasoning behind these rules and more examples, see [Give your agent a database](https://www.prisma.io/blog/give-your-agent-a-database) and [What to put in your AGENTS.md so your agent handles the database right](https://www.prisma.io/blog/agents-md-for-databases).
+
 ## Claiming your database
 
-By default, databases created with `npx create-db` are **temporary** and will be automatically deleted after **24 hours**.
+Databases created with `npx create-db` are **temporary**. A database is deleted **24 hours** after creation unless you claim it. With `--ttl`, it is deleted after the time you set instead (30 minutes to 24 hours), and the CLI output shows that deletion time.
 
 You can prevent this by **claiming the database** using the claim URL shown in the CLI output:
 
 ```
-◆  Claim your database →
+◆  Claim Your Database
 │
-│    Want to keep your database? Claim for free:
+│    Keep your database for free:
 │
-│    https://create-db.prisma.io?projectID=proj_...
+│    https://create-db.prisma.io/claim?projectID=proj_...&utm_source=create-db&utm_medium=cli
 │
-│    Your database will be deleted on 7/24/2025, 2:25:41 AM if not claimed.
+│    Database will be deleted on <date and time 24 hours from now> if not claimed.
 ```
 
 To claim your database and make it permanent:
 
 1. Copy the **claim URL** from the CLI output.
 2. Open it in your browser and click **Claim database**.
-3. Sign in to your [Prisma Data Platform account](https://console.prisma.io/) (or create one if you don't have it yet).
+3. Log in to Prisma with GitHub or Google, or [sign up](https://console.prisma.io/sign-up) if you don't have an account yet.
 4. Choose a **Workspace** that has capacity for creating new projects.
 5. Click **Authorize Prisma Create DB** to confirm.
 6. You'll be redirected to a success page. Then, click **Go use your database** to view and manage the claimed database in your workspace.
 
 When you claim a database:
 
-- It's moved into your Prisma Data Platform account workspace.
-- It's no longer auto-deleted after 24 hours.
+- It's moved into a workspace in your Prisma account ([Console](https://console.prisma.io/)).
+- It's no longer auto-deleted.
 - You can continue using it as a permanent database instance.
 
 ## Available CLI options
 
 Here are the CLI flags for the `npx create-db` command:
 
-| Flag            | Shorthand | Description                                                                                                                               |
-| --------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `--region`      | `-r`      | Specify a region. <br /> **Available regions:** `ap-southeast-1`, `ap-northeast-1`, `eu-central-1`, `eu-west-3`, `us-east-1`, `us-west-1` |
-| `--interactive` | `-i`      | Run in interactive mode (select region from a list).                                                                                      |
-| `--json`        | `-j`      | Output machine-readable JSON and exit.                                                                                                    |
-| `--help`        | `-h`      | Show this help message.                                                                                                                   |
+| Flag                | Shorthand | Description                                                                                                                                                                                                                           |
+| ------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--region <region>` | `-r`      | AWS region for the database. <br /> **Available regions:** `ap-southeast-1`, `ap-northeast-1`, `eu-central-1`, `eu-west-3`, `us-east-1`, `us-west-1`. Without it, `create-db` picks the region closest to you (fallback `us-east-1`). |
+| `--interactive`     | `-i`      | Run in interactive mode to select a region.                                                                                                                                                                                           |
+| `--json`            | `-j`      | Output machine-readable JSON.                                                                                                                                                                                                         |
+| `--env <file>`      | `-e`      | Write `DATABASE_URL` and `CLAIM_URL` to the specified `.env` file. If the file exists, the two lines are appended.                                                                                                                    |
+| `--ttl <duration>`  | `-t`      | Auto-delete after `30m`, or `1h` to `24h`. The default and maximum is `24h`.                                                                                                                                                          |
+| `--copy`            | `-c`      | Copy the connection string to your clipboard.                                                                                                                                                                                         |
+| `--quiet`           | `-q`      | Only output the connection string.                                                                                                                                                                                                    |
+| `--open`            | `-o`      | Open the claim URL in your browser.                                                                                                                                                                                                   |
+| `--help`            | `-h`      | Display help for the command.                                                                                                                                                                                                         |
 
-To view all CLI options use the `--help` or `-h` flag:
+To list the regions you can create a database in, run the `regions` subcommand. Add `--json` for machine-readable output.
+
+```npm
+npx create-db@latest regions
+```
+
+```
+●  Available Prisma Postgres regions:
+│
+│
+│    ap-southeast-1 - Asia Pacific (Singapore)
+│
+│    ap-northeast-1 - Asia Pacific (Tokyo)
+│
+│    eu-central-1 - Europe (Frankfurt)
+│
+│    eu-west-3 - Europe (Paris)
+│
+│    us-east-1 - US East (N. Virginia)
+│
+│    us-west-1 - US West (N. California)
+```
+
+To view all CLI options, use the `--help` or `-h` flag. The output lists the commands, then the options of the default `create` command:
 
 ```npm
 npx create-db@latest --help
 ```
 
 ```
-npx create-db@latest [options]
+Usage: create-db [options] [command]
+
+Instantly create a temporary Prisma Postgres database
+Available subcommands: create (default), regions
 
 Options:
-  --region <region>, -r <region>  Specify a region
-                                  Available regions:
-                                  ap-southeast-1, ap-northeast-1,
-                                  eu-central-1, eu-west-3,
-                                  us-east-1, us-west-1
+  -V, --version      output the version number
+  -h, --help         display help for command
 
-  --interactive, -i               Run in interactive mode
+Commands:
+  create [options]   Create a new Prisma Postgres database
+  regions [options]  List available Prisma Postgres regions
 
-  --help, -h                      Show this help message
+Usage: create-db create [options]
+
+Create a new Prisma Postgres database
+
+Options:
+  -r, --region [string]        AWS region for the database; Alias: r (choices:
+                               "ap-southeast-1", "ap-northeast-1",
+                               "eu-central-1", "eu-west-3", "us-east-1",
+                               "us-west-1")
+  -i, --interactive [boolean]  Run in interactive mode to select a region;
+                               Alias: i (default: false)
+  -j, --json [boolean]         Output machine-readable JSON; Alias: j (default:
+                               false)
+  -e, --env [string]           Write DATABASE_URL and CLAIM_URL to the specified
+                               .env file; Alias: e
+  -t, --ttl [string]           Auto-delete after (30m, 1h-24h); Alias: t
+  -c, --copy [boolean]         Copy the connection string to your clipboard;
+                               Alias: c (default: false)
+  -q, --quiet [boolean]        Only output the connection string; Alias: q
+                               (default: false)
+  -o, --open [boolean]         Open the claim URL in your browser; Alias: o
+                               (default: false)
+  -h, --help                   display help for command
 ```

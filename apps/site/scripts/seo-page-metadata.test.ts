@@ -50,17 +50,32 @@ const PAGES: PageCopy[] = [
     llmsBlock: true,
   },
   {
+    // Changed on purpose in the 2026-10-08 /postgres SEO pass (VP-approved):
+    // the title now leads with "Free Postgres database for TypeScript and AI"
+    // so the page can answer the real search question, and the description
+    // sells npx create-db instead of the generic feature-dump the audit copy
+    // was.
     path: "/postgres",
-    title: "Prisma Postgres | Serverless PostgreSQL for TypeScript Apps",
+    title: "Prisma Postgres | Free Postgres database for TypeScript and AI",
     description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+      "Managed Postgres, part of Prisma's infrastructure for TypeScript and AI apps. Create a free database in seconds with npx create-db. No credit card.",
     llmsBlock: true,
   },
   {
     path: "/compute",
-    title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+    // Changed on purpose on 2026-10-08: the title names the app types the
+    // Compute docs list (Node.js, Bun or Next.js) instead of "on Bun", which
+    // is only the runtime deployed apps run on.
+    title: "Prisma Compute | Host TypeScript apps (Node.js, Bun or Next.js) next to Postgres",
+    // Changed on purpose in the 2026-09-30 claims pass: the audit copy said
+    // "long-lived" and "long-running", which the Compute docs do not back. The
+    // description is the positioning wording shared with the homepage,
+    // /postgres and the docs Compute index, except that since 2026-10-07 its
+    // first sentence calls Compute a platform-as-a-service (PaaS) and carries
+    // no plan or project wording (the shared wording said "on one plan" then
+    // and says "in one project" since 2026-10-08).
     description:
-      "Prisma Compute deploys TypeScript apps, APIs, and AI agents from your repo as long-lived Bun processes next to Prisma Postgres, with long-running requests and streaming. One platform for your app and its database.",
+      "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
   },
   {
     path: "/pricing",

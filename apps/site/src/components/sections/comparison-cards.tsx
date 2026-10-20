@@ -168,7 +168,7 @@ export function LiveCard() {
         </p>
         <span className="mt-4 flex items-center gap-2 rounded-md border border-border/80 bg-muted/60 px-3 py-2 font-mono text-[0.625rem] text-muted-foreground">
           <span className="text-prism-cyan-600">$</span>
-          bunx @prisma/cli app deploy
+          npx prisma deploy module.ts
           <Copy className="ml-auto size-3 shrink-0 text-muted-foreground/50" aria-hidden />
         </span>
         <motion.span

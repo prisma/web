@@ -515,6 +515,54 @@ const plan = db.sql.public.user
 const rows = await runtime.query(plan);
 ```
 
+### Row locking: `forUpdate()`, `forNoKeyUpdate()`, `forShare()`, `forKeyShare()` [#row-locking]
+
+Lock the rows a `SELECT` reads, so another transaction cannot change them, or lock them in the same way, until your transaction ends. Each method renders the SQL clause it is named after: `FOR UPDATE`, `FOR NO KEY UPDATE`, `FOR SHARE`, and `FOR KEY SHARE`.
+
+#### Remarks
+
+- PostgreSQL only. SQLite has no row locks, so the methods do not exist on a SQLite builder.
+- A lock lasts until the transaction ends, so run the query inside `db.transaction(...)`. Outside a transaction the lock ends as soon as the statement does.
+- The methods exist only when the contract records the capabilities that enable them. A contract emitted before `8.0.0-rc.15` has none of them: run `prisma contract emit` again to get them. See [supported database features](/orm/contract-authoring/capabilities).
+
+#### Options
+
+Each method takes an optional object:
+
+| Field | Type | Description |
+|---|---|---|
+| `of` | a list of tables or aliases | Lock only the rows of these tables. Without it, the rows of every table in the query are locked. |
+| `nowait` | `boolean` | Fail at once when a row is already locked, instead of waiting. |
+| `skipLocked` | `boolean` | Leave out the rows that are already locked, instead of waiting. |
+
+`nowait` and `skipLocked` exclude each other.
+
+#### Return type
+
+| Return type | Example | Description |
+|---|---|---|
+| `SelectQuery` | `tx.sql.public.job.select('id').forUpdate()` | The same query with the locking clause. |
+
+#### Examples
+
+##### Claim the next queued job
+
+For a `job` table with a `state` column, `skipLocked` lets several workers run this at once: each one locks a different job.
+
+```ts title="src/claim-job.ts"
+await db.transaction(async (tx) => {
+  const [job] = await tx.query(
+    tx.sql.public.job
+      .select('id')
+      .where((f, fns) => fns.eq(f.state, 'queued'))
+      .limit(1)
+      .forUpdate({ skipLocked: true })
+      .build(),
+  );
+  // update the job while the lock holds
+});
+```
+
 ### Subquery via `.as()`
 
 Call `.as(alias)` on a `SELECT` chain before `build()` to use it as a subquery. Pass the result to any join method as the `other` argument. `SELECT` queries and [grouped queries](#grouped-queries) have `.as()`, but queries started with `insert()`, `update()`, or `delete()` do not, so you cannot join against the rows they return.

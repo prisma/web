@@ -1,0 +1,121 @@
+---
+title: "How do I host a TypeScript test app with a separate database?"
+description: "Use Prisma Compute previews with Prisma Postgres, or pair Vercel or Netlify with a separate database, to keep AI-assisted testing away from customer data."
+summary: "Use [Prisma Compute](/docs/compute) to host your TypeScript app and a separate [Prisma Postgres](/docs/postgres) database in one project. You can also host the app on Vercel or Netlify and connect its preview to a test database. In either setup, give your AI assistant only test credentials."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-16"
+updatedAt: "2026-10-16"
+readingTime: "7 min read"
+faq:
+  - question: "Do I have to use Prisma ORM?"
+    answer: "No. Prisma Postgres works with any PostgreSQL client, including Drizzle, Kysely and node-postgres. Prisma ORM is optional. Prisma Compute's deploy workflow uses a Prisma Composer declaration around your app; it does not require you to replace your existing data access code."
+  - question: "Should every pull request have its own database?"
+    answer: "Use a database per pull request when assistants or teammates test schema changes or reset data independently. One shared staging database can work for coordinated testing, but one person's migration or reset can break another person's test. Prisma Compute provisions a separate database per preview when the database is declared in the app's module."
+  - question: "Will the test database contain my production data?"
+    answer: "A new Prisma Compute preview database starts without production data. Apply the schema and seed synthetic test records. Copying customer records into a preview makes those records accessible there, even though the database is separate. Use anonymized data only after reviewing what it contains and who can access it."
+  - question: "Does deleting a preview remove a database I connected manually?"
+    answer: "Treat an externally managed database as a separate resource with its own cleanup. Deleting a Git branch connected to Prisma Compute tears down that branch's managed preview resources. A database connected only through DATABASE_URL needs its own lifecycle, including deletion when you no longer need it."
+related:
+  - title: "Prisma Compute app hosting"
+    href: "/compute"
+  - title: "Prisma Postgres"
+    href: "/postgres"
+  - title: "Preview and staging setup guide"
+    href: "/docs/compute/deploy-on-push"
+  - title: "Preview, staging and production release patterns"
+    href: "/blog/host-a-test-version-without-replacing-production"
+cta:
+  title: "Give your next change its own environment"
+  description: "Deploy your TypeScript app on Prisma Compute with a separate Prisma Postgres database, then test the change before it reaches your users."
+  label: "Set up a preview environment"
+  href: "/docs/compute/deploy-on-push"
+---
+
+Choose [Prisma Compute](/docs/compute) if you want app hosting and database provisioning together. With deploy on push configured, a feature branch gets its own services, URL and [Prisma Postgres](/docs/postgres) databases declared in your app's module. Choose Vercel or Netlify if your app already runs there, then configure a separate database for its previews. Prisma Postgres works with any PostgreSQL client; Prisma ORM is optional.
+
+## What needs to be separate from production?
+
+Your test version needs its own app deployment, database and credentials. A different URL or Git branch does not protect customer data when the app still connects to the production database.
+
+<EnvironmentDiagram />
+
+- **App and API:** the preview frontend must call the preview API. A test frontend that calls your production API can still change customer records.
+- **Database:** create a separate Postgres database, apply your migrations there and seed synthetic records. A new database gives tests somewhere to write and reset data.
+- **Credentials:** give the assistant test database credentials and access limited to the test environment. Keep production database URLs, service tokens and cloud admin sessions out of its shell, local files and tools, including MCP servers.
+- **Connected services:** use test payment keys, an email sandbox and separate storage. Database isolation does not prevent the app from sending a real email or charging a card.
+
+Protect the production Git branch with required reviews and restricted pushes. An instruction in `AGENTS.md` helps an assistant follow your workflow; permissions and branch rules enforce the boundary.
+
+## Which hosting setup should you use?
+
+The app host and database can come from different providers. The options below are ordered alphabetically by app host. We make Prisma Compute and Prisma Postgres. Provider documentation linked here was checked on October 16, 2026.
+
+| App host | Choose it when | Database isolation | You manage |
+| --- | --- | --- | --- |
+| [Netlify](https://docs.netlify.com/deploy/deploy-types/deploy-previews/) + Prisma Postgres | You already use Netlify Deploy Previews. | Set a test `DATABASE_URL` for Deploy Previews and a different value for Production. | Test database provisioning, migrations, seeds and cleanup. Make credentials available to functions and builds. |
+| [Prisma Compute](/compute) + Prisma Postgres | You want the app and database deployed together. | With deploy on push, each feature branch gets its own declared services and databases. | App declaration, migrations, seeds and scoped secrets. Manually connected databases need separate configuration. |
+| [Vercel](https://vercel.com/docs/deployments/environments) + Prisma Postgres | You already use Vercel previews. | Set a test `DATABASE_URL` for Preview and a different value for Production. | Test database provisioning, migrations, seeds and cleanup. Configure per-branch URLs for independent databases. |
+
+Vercel and Netlify both provide shareable preview deployments, so you can keep an established deployment workflow. Connecting either host to Prisma Postgres does not by itself create a fresh database for each pull request. Follow [Vercel's environment configuration](https://vercel.com/docs/environment-variables) or [Netlify's contextual variables](https://docs.netlify.com/build/environment-variables/overview/) to set the correct connection string before deploying.
+
+## How do I set this up on Prisma Compute?
+
+### 1. Declare the app and its test database
+
+Follow the [Prisma Compute getting started guide](/docs/compute/getting-started) to deploy your app through a [Prisma Composer](/docs/composer) module. Declare the Postgres database in that module so a preview deploy provisions a new database for that environment. Keep your existing PostgreSQL client if you prefer.
+
+If your app instead reads `DATABASE_URL`, create a separate Prisma Postgres database and save its connection string with the preview scope. Set production's connection string only in the production scope. A preview-specific variable that contains the production URL still connects to production.
+
+The [environment variables guide](/docs/compute/environment-variables) covers preview defaults and per-branch overrides. Values take effect on the next deployment.
+
+### 2. Connect GitHub and enable deploy on push
+
+Complete the [deploy on push setup](/docs/compute/deploy-on-push), including the repository connection and deploy workflow. Connecting a repository alone does not deploy it. Once the workflow is configured, a push to a feature branch deploys a preview, while a push to the default branch deploys production.
+
+Keep production behind a reviewed pull request. For an assistant that manages platform resources, [enroll a coding agent](/docs/prisma-compute/agent-enrollment) to give it a separate Prisma credential and an access policy. The default policy allows preview writes and asks for approval before production writes through the Prisma API. Review that policy for your project; GitHub branch protection must also prevent unreviewed pushes that trigger production deployment.
+
+### 3. Apply migrations and add test records
+
+Build the test schema from version-controlled migrations, then run a seed routine that inserts fictional customers, orders or other records your tests need. Never run a reset against a connection string you have not verified.
+
+Check the database declaration in your Composer module. A `postgres()` database uses a Prisma ORM contract to describe the schema, and deploy applies its migrations. A `rawPostgres()` database has no ORM contract, so you arrange its migration step yourself. The same manual step is needed for a database connected through `DATABASE_URL`. See the [database declaration examples](/docs/composer/databases) and [preview database behavior](/docs/compute/faq#does-prisma-clone-my-production-database-for-previews).
+
+### 4. Verify the boundary before the assistant writes
+
+Open the preview and confirm that it calls the preview API. In Prisma Console, select the project's preview branch and check its database and service resources. For a database connected through `DATABASE_URL`, compare its target with the test database connection details in your secret manager without writing the secret to logs. The [Postgres CLI reference](/docs/cli/postgres) also documents listing databases by branch and showing database metadata without secret values.
+
+Create a fictional test record through the preview and confirm it appears only in the test database. Have an authorized human verify that production has no matching record.
+
+Check the assistant's local environment too. An isolated hosted preview does not restrict a terminal or MCP tool that already has production access. The [database instructions for AGENTS.md](/blog/agents-md-for-databases) are a useful starting point for documenting the allowed database and migration workflow.
+
+### 5. Review the preview, then release the code
+
+Let the assistant test against the preview's records, then review the result and merge through your normal release process. For a `postgres()` declaration, the merge-triggered production deploy applies the migrations. For `rawPostgres()` or a manually connected database, [run the migration through your production release process](/postgres/production-database-migrations) before deploying code that requires the new schema. Test records stay in the test database.
+
+Deleting a connected feature branch removes its managed Prisma Compute preview resources. For a long-lived test version, keep a branch such as `staging` and give it its own database. Back up any test data you need before deleting its environment.
+
+## How do I use Vercel or Netlify instead?
+
+You can use Prisma Postgres with either host. Create a dedicated test database, then configure the host to use it for previews:
+
+1. **Create the test database.** Apply your schema and seed synthetic records before testing the app.
+2. **Set separate environment values.** On Vercel, use Preview for the test `DATABASE_URL` and Production for the customer database. On Netlify, use distinct Deploy Previews and Production values. Configure any branch deploys you use as well.
+3. **Keep secrets on the server.** Database credentials belong in server-side code and functions. Never expose them through a public frontend variable or a browser bundle. Ensure preview builds that query data also use test credentials.
+4. **Redeploy and verify.** Check that the preview app and API use the test database. If several previews share one test database, coordinate migrations and resets. Provision one database per preview when tests need to run independently.
+
+A preview deployment is an app-hosting feature. Database provisioning and credential scoping are the steps that keep its writes separate from customer data.
+
+## When is Prisma Compute the wrong choice?
+
+Keep Vercel or Netlify if its preview workflow already fits your app and the missing piece is a separate database. You can add Prisma Postgres without moving the app.
+
+Prisma Compute's CLI deployment flow requires an app declaration through Prisma Composer. If you want to keep your current build and deployment configuration without adding that declaration, another app host may require fewer changes. Check the [current limitations](/docs/compute/limitations) against your runtime and deployment requirements.
+
+If you need production records copied automatically into every preview, this setup does not provide that. New declared Prisma Postgres databases start without production data. A workflow based on sanitized snapshots needs its own copy, access review and cleanup process.
+
+For the next step, see [how to share a deployed app with a client](/compute/share-app-with-client) or [configure TypeScript app hosting from Cursor](/compute/cursor-typescript-app-hosting). Both workflows should keep review data separate from customer records.
+
+If a contractor and owner intentionally need the same test records, use the [shared development database workflow](/postgres/shared-development-database). Keep isolated databases for work that involves independent resets or schema experiments.
+
+For credentials beyond the database, the [deployed TypeScript secrets guide](/compute/typescript-app-secrets) explains server inputs, production and preview scopes, build-time public values and rotation.

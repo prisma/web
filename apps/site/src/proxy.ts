@@ -1,5 +1,6 @@
 import { handleAgentFront } from "@/agent-front";
 import {
+  AGENT_MARKDOWN_VARY,
   getAgentMarkdownRewritePathname,
   getAgentMarkdownSignal,
   isMcpProtocolRequest,
@@ -15,9 +16,9 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
  *    Agent traffic page can tell agents from people. It answers a request
  *    itself only for `/__ora/status`, or once Autopilot is switched on in the
  *    ora Portal; otherwise it returns null and the request carries on.
- * 2. The Markdown rendition of a marketing page for agents that ask for it,
- *    mirroring apps/docs/src/proxy.ts, with `Vary: Accept` on the HTML variant
- *    for everyone else.
+ * 2. The Markdown rendition of a marketing page or product guide for agents
+ *    that ask for it, mirroring apps/docs/src/proxy.ts and apps/blog's posts,
+ *    with a `Vary` append on both variants (see `agentMarkdown`).
  *
  * The site app is the root zone, and a proxy runs before `rewrites()`, so this
  * one file sees `/docs/*` and `/blog/*` on their way to the docs and blog
@@ -53,10 +54,13 @@ function agentMarkdown(request: NextRequest) {
   if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
   if (isMcpProtocolRequest(request.headers)) return withVaryAccept(NextResponse.next());
 
-  // The no-signal branch has work to do: `Vary: Accept` has to reach the HTML
-  // response, and Next overwrites the `Vary` it gets from `headers()` in
-  // next.config.mjs with its own RSC value, so a proxy append is the only
-  // place it survives. The `Link` header still comes from next.config.mjs.
+  // The no-signal branch has work to do: it appends `Vary: Accept` for the
+  // HTML variant. Next overwrites the `Vary` it gets from `headers()` in
+  // next.config.mjs with its own RSC value, so this append is the only place
+  // the value is set. It does not reach a 200 on Vercel (that carries only
+  // Next's RSC `Vary`), but it is what a CDN 304 for the page carries (see
+  // the note on the rewrite below). The `Link` header still comes from
+  // next.config.mjs.
   const signal = getAgentMarkdownSignal(request.headers);
   if (!signal) return withVaryAccept(NextResponse.next());
 
@@ -78,7 +82,19 @@ function agentMarkdown(request: NextRequest) {
     },
   });
   response.headers.set("x-prisma-agent-markdown", signal);
-  response.headers.append("Vary", "Accept");
+  // The Markdown variant is chosen by `Accept` or by the agent's User-Agent, so
+  // it varies on both: a shared cache must not hand it to a browser that sends
+  // the same `Accept`. The HTML variant appends `Vary: Accept` only; an agent
+  // served cached HTML still gets a correct page, and keying every page's HTML
+  // on User-Agent would split shared caches per browser build.
+  //
+  // On Vercel the two response paths differ (measured on www.prisma.io,
+  // 2026-10-19). On a 200 the Markdown route's own `Vary` wins and this one is
+  // dropped, so the route sends the same value (`AGENT_MARKDOWN_VARY`). On a
+  // CDN 304 (a conditional GET whose `If-None-Match` matches) it is the other
+  // way round: the client gets this proxy's `Vary` and not the route's. So
+  // both have to say `Accept, User-Agent`. Under `next start` the two merge.
+  response.headers.append("Vary", AGENT_MARKDOWN_VARY);
 
   return response;
 }

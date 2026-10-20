@@ -197,7 +197,7 @@ On the MongoDB side, the client is `mongo(...)` from `@prisma/orm-mongo/runtime`
 
 ## The hooks
 
-Which hooks Prisma ORM calls depends on what your call gives back. A call that returns rows runs one set of hooks, a call that returns only a count runs a shorter set, and `beforeCompile` is the only hook that runs for both. Implement whichever hooks you need:
+Which hooks Prisma ORM calls depends on what your call gives back. A call that returns rows runs one set of hooks, a call that returns only a count runs a shorter set, and `beforeCompile` and `afterTransaction` are the only hooks that run for both. Implement whichever hooks you need:
 
 | Hook | Runs for | Runs | Use it to |
 | --- | --- | --- | --- |
@@ -209,6 +209,7 @@ Which hooks Prisma ORM calls depends on what your call gives back. A call that r
 | `beforeExecute(plan, ctx, params?)` | returns a count | After the SQL text has been built, before the database driver runs it | Validate, throw to block, or change parameter values |
 | `interceptExecute(plan, ctx)` | returns a count | Just before the database driver runs it | Return `{ stats }` to answer the statement yourself |
 | `afterExecute(plan, result, ctx)` | returns a count | After the statement finishes | Log `result.stats.affectedRows`, `result.latencyMs`, `result.completed`, `result.source` |
+| `afterTransaction(plan, result, ctx)` | both | Once the query's effects are final: after its transaction commits or rolls back, or when a query outside a transaction ends | Act on `result.outcome`, which is `'committed'`, `'rolled-back'`, or `'unknown'`, for example publish an event only for a committed write |
 
 Every hook also receives `ctx`, written last above, which the logger leaves out of its parameter list because it does not use it. Throwing from `onRow` fails the call with your error, and the rows still to come are not passed on to your code.
 
@@ -322,7 +323,7 @@ For a field whose type is not in the table, read the `codecId` off your own clie
 
 `interceptQuery` lets your middleware answer a query itself: return `{ rows }` from it and the database driver never runs. Caches, test fixtures, and circuit breakers all work this way.
 
-The rows you return are raw row objects, keyed by the column aliases in the SQL, holding the values as they come off the wire: numbers for integers, strings for text and timestamps. To see a real one, add `onRow` to the object `queryLogger()` returns in `src/prisma/query-logger.ts`, run your script once, and take it out again, because `onRow` gets rows in exactly the shape `interceptQuery` has to return:
+The rows you return are raw row objects, keyed by the column aliases in the SQL, holding the values as they come off the wire. On PostgreSQL every value that is not SQL `NULL` is the text PostgreSQL prints for it, and a `NULL` is `null`, so an integer arrives as a string such as `'1'`, and so do timestamps. To see a real one, add `onRow` to the object `queryLogger()` returns in `src/prisma/query-logger.ts`, run your script once, and take it out again, because `onRow` gets rows in exactly the shape `interceptQuery` has to return:
 
 ```ts title="src/prisma/query-logger.ts (excerpt)"
 async onRow(row) {
@@ -330,7 +331,7 @@ async onRow(row) {
 },
 ```
 
-For the `SELECT` in step 3, whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, a row object has an `id` key holding a number and an `email` key holding a string. The middleware below is a test fixture: it returns one made-up row of that shape in place of the database's answer, so a test can run that query without data in the table. Add it to the same `middleware` array as the logger, either on its own as `middleware: [userFixture()]` or next to the logger as `middleware: [queryLogger(), userFixture()]`:
+For the `SELECT` in step 3, whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, a row object has an `id` key and an `email` key, each holding a string. The middleware below is a test fixture: it returns one made-up row of that shape in place of the database's answer, so a test can run that query without data in the table. Add it to the same `middleware` array as the logger, either on its own as `middleware: [userFixture()]` or next to the logger as `middleware: [queryLogger(), userFixture()]`:
 
 ```ts title="src/prisma/user-fixture.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -345,7 +346,7 @@ export function userFixture(): SqlMiddleware {
       if (plan.ast.kind !== 'select') return undefined;
       if (plan.ast.from?.kind !== 'table-source') return undefined;
       if (plan.ast.from.name !== 'User') return undefined;
-      return { rows: [{ id: 1, email: 'mia@prisma.io' }] };
+      return { rows: [{ id: '1', email: 'mia@prisma.io' }] };
     },
   };
 }
@@ -428,6 +429,7 @@ Timing itself does not need any of this, because `result.latencyMs` already tell
 - If you throw from `afterQuery` after a query has succeeded, the call fails even though the database has already done the work, so keep that for cases where failing loudly is the point, the way the [budgets](/orm/middleware/built-in-budgets) latency check does.
 - `afterQuery` and `afterExecute` also run when the database driver fails, and they get `result.completed` set to `false`. A failed write has no `result.stats`, so read it only when `result.completed` is true.
 - If your hook throws while it is handling a failure like that, Prisma ORM discards your error and your caller still sees the failure the driver reported.
+- Inside a transaction, `afterTransaction` runs while the transaction still holds its connection. Do not await a query through the same client from it: when the pool has no free connection, that query waits forever. [How middleware works](/orm/middleware/how-middleware-works#aftertransaction-act-once-the-effects-are-final) has the details.
 
 :::
 

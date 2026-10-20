@@ -1,3 +1,4 @@
+import { AGENT_MARKDOWN_VARY } from "@/lib/agent-markdown";
 import { getLLMText } from "@/lib/get-llm-text";
 import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
@@ -15,6 +16,17 @@ export const revalidate = false;
  * every assistant we link to and by every browser, so nothing loses out.
  */
 const MARKDOWN_CONTENT_TYPE = "text/plain; charset=utf-8";
+
+/**
+ * src/proxy.ts serves these bodies on the page's own URL too, picked by
+ * `Accept` or the agent's User-Agent, so every response here, the Markdown 404
+ * included, declares both. The route is static, so the `.md` URL gets the same
+ * value.
+ */
+const MARKDOWN_HEADERS = {
+  "Content-Type": MARKDOWN_CONTENT_TYPE,
+  Vary: AGENT_MARKDOWN_VARY,
+};
 
 const MAX_NEAREST_MATCH_SEGMENTS = 12;
 const MAX_NEAREST_MATCH_PATH_LENGTH = 240;
@@ -95,9 +107,7 @@ ${nearestLinks || "_No nearby documentation pages found._"}
 
   return new Response(content, {
     status: 404,
-    headers: {
-      "Content-Type": MARKDOWN_CONTENT_TYPE,
-    },
+    headers: MARKDOWN_HEADERS,
   });
 }
 
@@ -109,9 +119,7 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
   const content = await getLLMText(page);
 
   return new Response(content, {
-    headers: {
-      "Content-Type": MARKDOWN_CONTENT_TYPE,
-    },
+    headers: MARKDOWN_HEADERS,
   });
 }
 

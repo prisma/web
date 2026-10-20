@@ -302,6 +302,19 @@ To insert many records and skip the ones that would break a unique constraint, p
 
 The bulk methods work the same on MongoDB, on the collection: `db.orm.posts`. Pass `createdAt` in every object you give `createAll`, as with `create`.
 
+### Update or delete a limited number of rows [#update-or-delete-a-limited-number-of-rows]
+
+`updateAll`, `updateAndCount`, `deleteAll`, and `deleteAndCount` change every record the filter matches. They cannot apply `.limit(...)`, `.offset(...)`, `.cursor(...)`, `.distinct(...)`, or `.distinctOn(...)`, so on PostgreSQL a chain with one of these throws an error whose `code` is `ORM.ARGUMENT_INVALID`. An `.orderBy(...)` is accepted there, and it changes nothing. On MongoDB, a write rejects `.orderBy(...)`, `.limit(...)`, and `.offset(...)` with `ORM.OPERATION_UNSUPPORTED`. To change only some of the matches, read their IDs first, then filter on those IDs:
+
+```typescript title="Delete ten of the matching posts"
+const ids = (
+  await db.orm.public.Post.where({ published: false }).select("id").limit(10).all()
+).map((p) => p.id);
+await db.orm.public.Post.where((p) => p.id.in(ids)).deleteAll();
+```
+
+On PostgreSQL, `.update(...)` and `.delete()` change the record `.first()` would return, so an `.orderBy(...)` before them chooses which one. After `.limit(0)` they change nothing and return `null`.
+
 ## Return rows or counts
 
 Each write comes in three forms, and you pick by what you need back:
@@ -379,7 +392,7 @@ You called `.update(...)` or `.delete()` straight on the model:
 await db.orm.public.User.delete();
 ```
 
-Both need a `.where(...)` first, and the call does not type-check without one. If you truly mean every record, pass an empty filter, which adds no condition and so matches everything. `.delete()` needs a `.where(...)` for the same reason, and `.where({})` satisfies it there too:
+Both need a `.where(...)` first, and the call does not type-check without one. A filter applied on only some code paths does not count either: after `const posts = search ? db.orm.public.Post.where({ title: search }) : db.orm.public.Post`, `posts.deleteAll()` does not type-check, because `posts` may have no filter. Make the write inside the branch that filters. If you truly mean every record, pass an empty filter, which adds no condition and so matches everything. `.delete()` needs a `.where(...)` for the same reason, and `.where({})` satisfies it there too:
 
 ```typescript
 await db.orm.public.User.where({}).deleteAll();

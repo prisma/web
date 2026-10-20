@@ -81,7 +81,7 @@ export function IterateMock({ className }: { className?: string }) {
       )}
     >
       <p className="flex items-center gap-1.5">
-        <span className="text-prism-cyan-600">$</span> prisma app logs
+        <span className="text-prism-cyan-600">$</span> npx prisma service logs web
       </p>
       <p className="flex items-center gap-1.5 pl-3">
         <Bar className="w-24 bg-prism-red-200" />
@@ -91,7 +91,7 @@ export function IterateMock({ className }: { className?: string }) {
         <Bar className="w-20" />
       </p>
       <p className="flex items-center gap-1.5">
-        <span className="text-prism-cyan-600">$</span> prisma app deploy
+        <span className="text-prism-cyan-600">$</span> npx prisma deploy module.ts
       </p>
       <p className="flex items-center gap-1.5 pl-3">
         <Check className="size-3 shrink-0 text-prism-cyan-500" strokeWidth={3} />

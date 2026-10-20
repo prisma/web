@@ -2,6 +2,7 @@
 title: "Prisma vs Vercel: where should you build your next TypeScript app?"
 slug: "prisma-vs-vercel"
 date: "2026-09-16"
+updatedAt: "2026-10-13"
 authors:
   - "Shane Neubauer"
 metaTitle: "Prisma vs Vercel for TypeScript apps: which platform?"
@@ -26,10 +27,10 @@ Prisma's hosting runs on Bun in one region, gives each request 60 seconds to sta
 
 "Prisma" here means more than the ORM:
 
-- [Prisma ORM 8](https://www.prisma.io/docs/orm) is the typed data layer. It is a release candidate, with general availability expected in October 2026, and it runs on any host, including Vercel.
+- [Prisma ORM 8](https://www.prisma.io/docs/orm) is the typed data layer, and it runs on any host, including Vercel.
 - [Prisma Postgres](https://www.prisma.io/docs/postgres) is the managed database.
 - [Prisma Compute](https://www.prisma.io/docs/compute) hosts TypeScript services.
-- [Prisma Composer](https://www.prisma.io/docs/composer), in early access, declares how services and databases connect and deploys them to Compute and Prisma Postgres.
+- [Prisma Composer](https://www.prisma.io/docs/composer) declares how services and databases connect and deploys them to Compute and Prisma Postgres.
 
 This post compares the three hosting products with Vercel. The last section covers running Prisma ORM and Prisma Postgres on Vercel.
 
@@ -41,7 +42,7 @@ Choose Prisma if:
 - You want every Git branch to be a full environment with its own services and variables. You are willing to create its database with one command or a Composer deploy.
 - Your services run on Bun, or can, and one region is enough.
 - You do not want to pay per seat. Vercel charges $20 a month per additional team member; Prisma charges a plan fee plus usage.
-- You accept pre-release tooling. Prisma ORM 8 is a release candidate and Composer is in early access.
+- Your app can do without the Prisma ORM 7 features that ORM 8 does not have yet, such as filtering inside JSON columns, atomic `increment`, and most nested writes. Composer types its databases with ORM 8, so check [what is not available yet](https://www.prisma.io/docs/orm/coming-from-prisma-orm-7#not-available-yet) before you move an existing app.
 
 Choose Vercel if:
 
@@ -74,7 +75,7 @@ A [service binding](https://vercel.com/docs/services/bindings), in beta at the t
 
 **On Prisma**, Composer works at the level of services:
 
-1. **Declare each service** in TypeScript, together with what it depends on: other services, a Prisma Postgres database, a cron schedule, or object storage.
+1. **Declare each service** in TypeScript, together with what it depends on: other services, a Prisma Postgres database, or object storage.
 2. **Give each service a contract**, meaning typed request and response schemas written with arktype, zod, or any Standard Schema validator.
 3. **Declare the contracts a service calls** as its dependencies. At runtime the service receives a typed client for each one.
 4. **Wire everything in a root module.** TypeScript checks the wiring, so binding a dependency to a service with a different contract, or leaving out a handler the contract requires, is a compile error.
@@ -114,7 +115,7 @@ The root module adds a second check. If it binds `storefront` to a service that 
 
 Databases are declared the same way. A service lists a `postgres()` dependency typed by your **data contract**, the `contract.prisma` schema file that replaced `schema.prisma` in ORM 8. The module that owns the database provisions it. The [deploy applies the database's migrations](https://www.prisma.io/docs/composer/databases) before the service starts, and it refuses to connect a service to a database whose schema does not match the contract the service was compiled against.
 
-You do not need any of this to start. A single service deploys to Prisma Compute from a Git push without Composer, and you can add Composer when a second service or a scheduled job appears.
+You do not need any of this to start. A single service deploys to Prisma Compute from a Git push without Composer, and you can add Composer when a second service appears.
 
 ## Previews and their databases
 
@@ -165,7 +166,7 @@ Compute does not require Prisma ORM, so an app on ORM 6 runs unchanged. The migr
 
 Vercel Functions run on **Node.js** as well as Bun, and the [Next.js integration](https://vercel.com/docs/frameworks/full-stack/nextjs) supplies caching and on-demand image optimization without application code.
 
-Vercel Functions run for 300 seconds by default and up to 800 seconds on Pro, with a 30-minute extended duration in beta, and they serve WebSocket connections in public beta. If your app holds long connections or runs multi-minute requests, Vercel supports that directly. On Compute, that work has to move into short requests or a Composer cron schedule.
+Vercel Functions run for 300 seconds by default and up to 800 seconds on Pro, with a 30-minute extended duration in beta, and they serve WebSocket connections in public beta. If your app holds long connections or runs multi-minute requests, Vercel supports that directly. On Compute, a response has to start within 60 seconds and can then keep streaming; work that runs past the response goes into `waitUntil`.
 
 ## What you pay for
 
@@ -183,7 +184,7 @@ Prisma Compute charges a plan fee plus four usage meters and nothing for deploym
 | Builds and previews | Not billed | $0.007 per build minute on paid teams |
 | Seats | Not billed | $20 a month per extra seat |
 
-Prisma Postgres has [its own pricing](https://www.prisma.io/pricing), as does any Marketplace database on Vercel. One exception to scale-to-zero on Prisma: Composer's cron scheduler keeps one instance awake per deployed app or stage so that it can fire on time. The [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing) post prices a full month meter by meter.
+Prisma Postgres has [its own pricing](https://www.prisma.io/pricing), as does any Marketplace database on Vercel. The [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing) post prices a full month meter by meter.
 
 ## Using Prisma ORM and Prisma Postgres on Vercel
 
@@ -210,6 +211,6 @@ Yes. The Prisma Postgres Marketplace integration provisions a database and sets 
 
 ## Which one to pick
 
-**Pick Prisma** if your backend is several TypeScript services that share Postgres and you can live with Bun, one region, and pre-release tooling. The compiler then checks the wiring between those services, and the deploy creates it. Start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), which runs two services locally without an account.
+**Pick Prisma** if your backend is several TypeScript services that share Postgres and you can live with Bun and one region. The compiler then checks the wiring between those services, and the deploy creates it. Start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), which runs two services locally without an account.
 
 **Stay on Vercel** if your app leans on Vercel's Next.js features, needs Node.js, WebSockets, or long requests, or if you want previews that arrive with production data. The [Vercel guide](https://www.prisma.io/docs/guides/postgres/vercel) brings Prisma ORM 8 and Prisma Postgres there.

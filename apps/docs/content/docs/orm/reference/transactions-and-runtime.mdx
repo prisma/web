@@ -29,7 +29,7 @@ Create a PostgreSQL client.
 - Tell the client which database to use in one of three ways: `url`, `pg`, or `binding`. A `binding` wraps any of the three choices in one object, with a `kind` field saying which it is: `{ kind: 'url', url }`, `{ kind: 'pgPool', pool }`, or `{ kind: 'pgClient', client }`. Use it when your code picks the source at run time. Pass exactly one of `url`, `pg`, and `binding`, or leave all three out and pass one to [`connect()`](#connect).
 - When you pass a `pg` pool or client, you own it: call `db.close()` first, then close it yourself with `pool.end()`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself.
 - Some types come from a PostgreSQL extension, such as a `pgvector.Vector(1536)` type in your `contract.prisma`. Run `npm install @prisma/orm-extension-pgvector` first. Then `import pgvector from '@prisma/orm-extension-pgvector/runtime'` and pass `extensions: [pgvector]`.
-- A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeQuery: (query) => { if (query.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the query. The hooks are `beforeCompile`, `beforeQuery`, `beforeExecute`, `interceptQuery`, `interceptExecute`, `onRow`, `afterQuery`, and `afterExecute`. See [How middleware works](/orm/middleware/how-middleware-works).
+- A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeQuery: (query) => { if (query.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the query. The hooks are `beforeCompile`, `beforeQuery`, `beforeExecute`, `interceptQuery`, `interceptExecute`, `onRow`, `afterQuery`, `afterExecute`, and `afterTransaction`. See [How middleware works](/orm/middleware/how-middleware-works).
 - Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record and logs a warning on a mismatch, then runs anyway. If you see the warning, run `npx prisma db update`. `verifyMarker: false` skips the check.
 - `postgres(options)` does not open a connection. The client opens one on first use, so [`connect()`](#connect) is optional: call it to open the connection up front and fail early.
 - Without `cursor`, a read loads its whole result before it gives you the first row. With `cursor: { batchSize: 100 }`, reads go through a server-side cursor and fetch the rows in batches of that size, so a `for await` loop gets the first rows before the rest arrive. `cursor: {}` uses batches of 100. A `batchSize` that is not a positive integer makes `postgres(...)` throw an error whose `code` is `RUNTIME.ARGUMENT_INVALID`.
@@ -141,6 +141,7 @@ Close the client and release its pool.
 
 - Returns a `Promise<void>`. `close()` is safe to call at any time.
 - After `close()`, `connect()` rejects and `runtime()` throws an error whose `code` is `DRIVER.NOT_CONNECTED` (`Postgres client is closed`).
+- A query that starts after `close()` fails once with `DRIVER.NOT_CONNECTED` (`Runtime is closed`). Queries already running when you call `close()` finish first.
 
 #### Return type
 

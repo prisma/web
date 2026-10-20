@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
 import { CheckBold } from "@/components/icons/forma";
 import { GlassGlide } from "@/components/brand/glass-glide";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
@@ -43,7 +45,15 @@ export function ProductHero({
   name,
   accent,
   hero,
-}: Pick<ProductPageContent, "name" | "accent" | "hero">) {
+  visual,
+  visualAspect = true,
+}: Pick<ProductPageContent, "name" | "accent" | "hero"> & {
+  // Optional custom hero visual. When provided, it replaces the illustration /
+  // product tour / placeholder in the visual slot. `visualAspect={false}` lets
+  // the visual set its own height instead of the default 4:3 mobile aspect.
+  visual?: ReactNode;
+  visualAspect?: boolean;
+}) {
   const Illustration = hero.illustration ? PRODUCT_ILLUSTRATIONS[hero.illustration] : null;
 
   return (
@@ -105,6 +115,16 @@ export function ProductHero({
               {hero.microline ? (
                 <p className="mt-3.5 text-sm text-muted-foreground">{hero.microline}</p>
               ) : null}
+              {hero.related ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  <Link
+                    href={hero.related.href}
+                    className="font-medium text-foreground underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
+                  >
+                    {hero.related.label}
+                  </Link>
+                </p>
+              ) : null}
               {/* Benefits support the CTA rather than delaying it. They sit
                   below it now, so they can carry their original weight without
                   competing — it's the position that was pushing the CTA down,
@@ -139,7 +159,11 @@ export function ProductHero({
                     intermediate state while editing content, and it is truthy —
                     it would render a tour whose `% stops.length` is NaN, giving
                     an empty card with no tabs instead of falling through here */}
-                {hero.tour?.length ? (
+                {visual ? (
+                  <div className={cn("md:h-full", visualAspect && "max-md:aspect-[4/3]")}>
+                    {visual}
+                  </div>
+                ) : hero.tour?.length ? (
                   <ProductTour stops={hero.tour} />
                 ) : Illustration ? (
                   <div className="max-md:aspect-[4/3] md:h-full">

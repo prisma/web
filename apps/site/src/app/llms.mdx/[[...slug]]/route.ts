@@ -1,10 +1,12 @@
 import {
   AGENT_MARKDOWN_PATHS,
+  AGENT_MARKDOWN_VARY,
   getMarkdownUrlPath,
   type AgentMarkdownPath,
 } from "@/lib/agent-markdown";
 import { getMarkdownPage, markdownPageList, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { getBaseUrl } from "@/lib/url";
+import { getAnswerEntries, renderAnswerMarkdown } from "@/lib/answer-page-content";
 
 /**
  * Markdown renditions of the marketing pages.
@@ -22,6 +24,18 @@ import { getBaseUrl } from "@/lib/url";
  * renditions are built once.
  */
 export const revalidate = false;
+
+/**
+ * Markdown is served as text/plain, not text/markdown.
+ *
+ * ChatGPT's URL fetcher answers "400 Unsupported content-type: text/markdown"
+ * and falls back to search. The docs route has sent text/plain since #8337
+ * (2026-09-28); this route kept text/markdown, so ChatGPT-User most likely
+ * could not read /pricing, /postgres or /compute. text/plain is read by every
+ * assistant we link to and by every browser, so nothing loses out. Same
+ * constant as apps/docs/src/app/llms.mdx/[[...slug]]/route.ts.
+ */
+const MARKDOWN_CONTENT_TYPE = "text/plain; charset=utf-8";
 
 /** Guards the Levenshtein pass below against a pathological request path. */
 const MAX_NEAREST_MATCH_SEGMENTS = 12;
@@ -87,15 +101,17 @@ function getNearestPaths(slug: string[] | undefined) {
 
 function markdownHeaders(extra: Record<string, string>) {
   // Cache-Control is deliberately not set, which is what the site's other
-  // text/markdown responders (changelog.md, skill.md, .well-known/agent-skills)
-  // do: `revalidate = false` makes these static, and Next and the CDN then
-  // apply the same caching the rest of the site gets. Pinning a value here
-  // would opt the renditions out of it.
+  // hand-written Markdown responders (changelog.md, skill.md,
+  // .well-known/agent-skills) do: `revalidate = false` makes these static, and
+  // Next and the CDN then apply the same caching the rest of the site gets.
+  // Pinning a value here would opt the renditions out of it.
   return {
-    "Content-Type": "text/markdown; charset=utf-8",
-    // The same URL answers HTML to a browser and Markdown to an agent, so a
-    // shared cache has to key the two variants apart.
-    Vary: "Accept",
+    "Content-Type": MARKDOWN_CONTENT_TYPE,
+    // The same URL answers HTML to a browser and Markdown to an agent, chosen
+    // by `Accept` or by the agent's User-Agent, so a shared cache has to key
+    // the two variants apart on both. This route is static, so it cannot tell
+    // a proxied page URL from a `.md` URL and sends the same value to both.
+    Vary: AGENT_MARKDOWN_VARY,
     ...extra,
   };
 }
@@ -134,8 +150,18 @@ ${available}
   });
 }
 
+/** Serve a guide or marketing-page Markdown rendition with canonical discovery headers. */
 export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[...slug]]">) {
   const { slug } = await params;
+  const answer = getAnswerEntries().find((entry) => entry.url === `/${(slug ?? []).join("/")}`);
+  if (answer) {
+    const baseUrl = getBaseUrl();
+    return new Response(renderAnswerMarkdown(answer), {
+      headers: markdownHeaders({
+        Link: `<${new URL(answer.url, baseUrl)}>; rel="canonical", <${new URL("/llms.txt", baseUrl)}>; rel="llms-txt"`,
+      }),
+    });
+  }
   const path = resolvePath(slug);
   if (!path) return notFoundResponse(slug);
 
@@ -165,5 +191,6 @@ export function generateStaticParams() {
     ...AGENT_MARKDOWN_PATHS.filter((path) => path !== "/").map((path) => ({
       slug: path.slice(1).split("/"),
     })),
+    ...getAnswerEntries().map((entry) => ({ slug: entry.url.slice(1).split("/") })),
   ];
 }

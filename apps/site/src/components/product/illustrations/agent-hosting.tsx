@@ -1,19 +1,22 @@
 import { Bot, Database, Repeat } from "@/components/icons/forma";
 import { Bar, CardChrome, SurfaceCard } from "./parts";
 
-// "Built for hosting AI agents" — the three things the copy says agents need,
-// running in one place: a long-lived process, a streaming response, and durable
-// memory. The streaming line ends in a caret so it reads as still arriving.
+// "Built for hosting AI agents": the three things the copy says about hosting
+// an agent here. The response streams, memory is held (and billed) while the
+// agent waits on a model API, and the service scales to zero between tasks.
+// The streaming line ends in a caret so it reads as still arriving. Nothing
+// here says "durable": the keep-awake primitives are best-effort
+// (compute/keeping-instances-awake.mdx).
 
 const NEEDS = [
-  { icon: Repeat, label: "long-lived" },
   { icon: Bot, label: "streaming" },
   { icon: Database, label: "memory" },
+  { icon: Repeat, label: "scale to zero" },
 ];
 
 export function AgentHosting() {
   return (
-    <SurfaceCard label="Illustration of an agent hosted on Prisma Compute: a long-lived process streaming a response, with durable memory alongside it">
+    <SurfaceCard label="Illustration of an agent hosted on Prisma Compute: a process streaming a response, holding its memory while it waits on a model API, and scaling to zero between tasks">
       <CardChrome file="agent" />
       <div className="flex flex-1 flex-col justify-center gap-3 px-4 py-3 font-mono text-[0.625rem] leading-none text-foreground">
         <div className="flex flex-wrap items-center gap-1.5">

@@ -109,7 +109,12 @@ export default async function ChangelogEntryPage({ params }: Props) {
           {entry.frontmatter.headline ?? entry.frontmatter.title}
         </h1>
 
-        <div className="prose mt-10 max-w-none prose-headings:font-heading prose-a:text-prism-cyan-700 prose-img:rounded-xl prose-img:border prose-img:border-black/[0.06]">
+        {/* Restrained reading hierarchy for a long entry: a slightly larger lede
+            paragraph, a hairline above each h2 so sections read as sections,
+            quieter h3s for the per-product groups under Fixes, and inline code
+            toned down from the preset's chip (see globals.css) so bullets full
+            of identifiers do not shout. */}
+        <div className="changelog-prose prose mt-10 max-w-none prose-headings:font-heading prose-h2:mt-16 prose-h2:border-t prose-h2:border-black/[0.08] prose-h2:pt-10 prose-h2:text-2xl prose-h2:leading-snug prose-h3:mt-10 prose-h3:text-lg prose-h3:leading-snug prose-p:text-pretty prose-a:text-prism-cyan-700 prose-a:decoration-prism-cyan-700/40 prose-a:underline-offset-[3px] hover:prose-a:decoration-prism-cyan-700 prose-strong:font-semibold prose-strong:text-foreground prose-li:text-pretty prose-img:rounded-xl prose-img:border prose-img:border-black/[0.06] prose-hr:border-black/[0.08] [&>p:first-of-type]:text-lg [&>p:first-of-type]:leading-[1.65] [&>p:first-of-type]:text-foreground [&>p:first-of-type>strong]:font-medium">
           <MDXRemote
             source={rewriteChangelogAssets(entry.content)}
             components={components}

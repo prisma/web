@@ -40,8 +40,8 @@ These are the core commands for a new TypeScript project (copied from the Prisma
    npm init -y
    npm install typescript tsx @types/node --save-dev
    npx tsc --init
-   npm install prisma @types/pg --save-dev
-   npm install @prisma/client @prisma/adapter-pg pg dotenv
+   npm install prisma@7 @types/pg --save-dev
+   npm install @prisma/client@7 @prisma/adapter-pg pg dotenv
    \`\`\`
 
 2. **Configure ESM support.** Update \`tsconfig.json\`:
@@ -172,8 +172,7 @@ Prisma publishes deeper, task-specific skills in the Agent Skills format (https:
 
 \`\`\`bash
 npx skills add prisma/skills          # Prisma CLI, Prisma Client, Prisma Postgres, Prisma Compute, upgrade guides
-npx skills add prisma/prisma/skills   # Prisma ORM 8 (also installed automatically by \`npx prisma@latest orm init\`)
-npx skills add prisma/composer        # Prisma Composer
+npx prisma@latest skills sync         # Prisma ORM 8 and Prisma Composer: copies the skills that ship inside the installed @prisma/orm-* and @prisma/composer packages
 \`\`\`
 
 The catalog of skills and what each one teaches: https://www.prisma.io/docs/ai/tools/skills.md

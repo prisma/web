@@ -6,7 +6,7 @@ Non-negotiable: **content comes from Shane's notes in `notes/`, never from Claud
 
 Shell and components live in `src/`; they follow `apps/docs` and `apps/eclipse` patterns (stock Fumadocs `DocsLayout`, Eclipse tokens, `@prisma-docs/ui` helpers). Port 3004, `basePath: "/handbook"`, `assetPrefix: "/handbook-static"`.
 
-Commits in this repo need a type, a scope of `handbook`, and a Linear reference in the body. See the root `CONTRIBUTING.md`.
+Follow the commit format in the root [`CONTRIBUTING.md`](../../CONTRIBUTING.md).
 
 <!-- BEGIN:nextjs-agent-rules -->
 

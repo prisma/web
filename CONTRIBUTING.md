@@ -35,22 +35,6 @@ We use Conventional-Commit-inspired scopes to clarify *where* changes land.
 - If your change intentionally spans **multiple apps/packages**, you **must** use an **empty scope** (no parentheses).
   - Example: `chore: align eslint rules across apps`
 
-
-### 3) Commit body MUST reference an issue
-
-Every commit **must** include a Linear issue reference in the **commit body**.
-
-Example:
-```
-fix(admin): prevent crash on empty results
-
-Linear: DR-482
-```
-
-**Notes**
-- The Linear reference must be in the **body**, not just the title.
-- If a commit truly has no issue, create one first.
-
 ---
 
 ## Commit Message Format
@@ -59,37 +43,28 @@ Linear: DR-482
 
 ```
 <type>(<scope>): <subject>
-
-<body>
-
 ```
 
 - **`type`**: required (see list above)
 - **`scope`**: required for single-app changes; **must be empty** for cross-boundary changes
 - **`subject`**: short, imperative, no trailing period
-- **`body`**: must include Linear reference (required)
+- **`body`**: optional; explain why the change is needed
 
 ### Examples
 
 Single app change (scoped):
 ```
 feat(docs): update getting started
-
-Linear: DC-53423
 ```
 
 Single app bug fix (scoped):
 ```
 fix(docs): ensure UTMs are persisted
-
-Linear: DC-233
 ```
 
 Cross-boundary change (empty scope):
 ```
 chore: update shared lint rules and apply fixes
-
-Linear: DC-1288
 ```
 
 ---

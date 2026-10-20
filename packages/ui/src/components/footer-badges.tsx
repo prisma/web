@@ -1,3 +1,9 @@
+// The HIPAA badge is a route badge, not just a trust-center icon: it should
+// deep-link to /postgres/hipaa (the Business-plan HIPAA landing page) wherever
+// the badge row renders. Consumers (see apps/blog/src/components/chrome/Footer.tsx)
+// read this constant instead of hard-coding the destination.
+export const HIPAA_BADGE_HREF = "https://www.prisma.io/postgres/hipaa";
+
 export const gdpr = (basePath = "") => (
   <>
     <img

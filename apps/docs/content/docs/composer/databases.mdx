@@ -32,10 +32,10 @@ export default compute({
 import { SQL } from 'bun';
 
 const { db } = service.load();
-const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10 });
+const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10, prepare: false });
 ```
 
-Those pool settings matter. Prisma Compute scales to zero and closes idle connections, so keep the pool small and reconnect-friendly. See [Deploying](/composer/deploying#production-behavior).
+Those pool settings matter. Prisma Compute scales to zero and closes idle connections, so keep the pool small and reconnect-friendly. `prepare: false` turns off Bun's named prepared statements: the local Postgres that `npx prisma dev` runs shares one session across client connections, so after the pool reconnects, the first query fails with `prepared statement "..." already exists` unless prepared statements are off. See [Deploying](/composer/deploying#production-behavior).
 
 The module that owns the database provisions it:
 

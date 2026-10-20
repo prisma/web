@@ -7,11 +7,12 @@ import {
   getUtmParams,
   mergeUtmAttribution,
   readStoredUtmAttribution,
+  syncFallbackRef,
   syncUtmAttribution,
   writeStoredUtmAttribution,
 } from "../lib/utm";
 import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
-import { hasAnalyticsConsent } from "../lib/consent";
+import { hasAdvertisingConsent } from "../lib/consent";
 
 interface UtmPersistenceProps {
   /**
@@ -28,16 +29,32 @@ interface UtmPersistenceProps {
   proxiedPaths?: string[];
   /** Local storage key for persisting first- and last-touch UTM params. */
   storageKey: string;
+  /**
+   * Builds the `ref` stamped on Console links when the visitor has no stored
+   * or current campaign attribution, i.e. organic and direct traffic. Receives
+   * the current pathname. Omit it and untagged visitors reach the console with
+   * no attribution at all. See `syncFallbackRef` for why this is `ref` and not
+   * a `utm_source` default.
+   */
+  fallbackConsoleRef?: (pathname: string) => string;
 }
 
+/**
+ * Reads the visitor's first- and last-touch attribution: stored touches merged
+ * with whatever campaign params are on the current URL. Persists and announces
+ * a touch only when it actually changed, and drops ad click IDs when
+ * advertising consent is absent. Returns `undefined` for a visitor with no
+ * attribution.
+ */
 export function getActiveAttribution(storageKey: string) {
+  // Click IDs are advertising identifiers, so they follow the CookieYes
+  // advertisement category, the same gate as the ad pixels that consume them.
+  const includeClickIds = hasAdvertisingConsent();
   const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search), {
-    // Click IDs are advertising identifiers. Without analytics consent nothing
-    // downstream records them, so there is no reason to hold one.
-    includeClickIds: hasAnalyticsConsent(),
+    includeClickIds,
   });
   let stored = readStoredUtmAttribution(storageKey);
-  if (stored && !hasAnalyticsConsent()) {
+  if (stored && !includeClickIds) {
     const previous = stored;
     stored = mergeUtmAttribution(
       undefined,
@@ -87,7 +104,19 @@ export function getActiveAttribution(storageKey: string) {
   return attribution;
 }
 
-export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmPersistenceProps) {
+/**
+ * Captures campaign parameters in storage and forwards them only at the Console
+ * handoff. Ordinary links retain their authored URLs so copied docs links do not
+ * replay another visitor's campaign.
+ * With `fallbackConsoleRef`, Console links clicked by a visitor with no
+ * attribution at all get a `ref` naming the page that sent them.
+ */
+export function UtmPersistence({
+  basePath,
+  proxiedPaths = [],
+  storageKey,
+  fallbackConsoleRef,
+}: UtmPersistenceProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -103,6 +132,7 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
   }, [pathname, storageKey]);
 
   useEffect(() => {
+    /** Rewrites the clicked anchor's href with attribution before navigation. */
     function handleClick(event: MouseEvent) {
       if (event.defaultPrevented || event.button !== 0) {
         return;
@@ -127,10 +157,6 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
       }
 
       const attribution = getActiveAttribution(storageKey);
-      if (!attribution) {
-        return;
-      }
-
       const targetUrl = new URL(anchor.href, window.location.href);
       const isInternalLink = targetUrl.origin === window.location.origin;
       const isConsoleLink = targetUrl.hostname === CONSOLE_HOST;
@@ -141,11 +167,23 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
         return;
       }
 
-      if (
-        !syncUtmAttribution(targetUrl, attribution, {
-          includeFirstTouch: isConsoleLink || isConsoleRedirect,
-        })
-      ) {
+      const isConsoleBound = isConsoleLink || isConsoleRedirect;
+      if (!isConsoleBound) return;
+
+      let updated: boolean;
+      if (attribution) {
+        updated = syncUtmAttribution(targetUrl, attribution, {
+          includeFirstTouch: isConsoleBound,
+        });
+      } else if (fallbackConsoleRef && isConsoleBound) {
+        // No campaign ever touched this visitor, so the only thing the console
+        // would learn is nothing. Tell it which page sent them instead.
+        updated = syncFallbackRef(targetUrl, fallbackConsoleRef(window.location.pathname));
+      } else {
+        return;
+      }
+
+      if (!updated) {
         return;
       }
 
@@ -179,7 +217,7 @@ export function UtmPersistence({ basePath, proxiedPaths = [], storageKey }: UtmP
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [router, basePath, proxiedPaths, storageKey]);
+  }, [router, basePath, proxiedPaths, storageKey, fallbackConsoleRef]);
 
   return null;
 }

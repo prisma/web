@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CheckBold, X } from "@/components/icons/forma";
 import { PrismButton } from "@/components/brand/prism-button";
@@ -34,19 +35,23 @@ const BULLETS = [
     rest: ", so your bill never surprises you",
   },
   {
-    lead: "Unlimited data transfer included",
-    rest: ", no bandwidth bill-shock",
+    lead: "Unlimited database data transfer included",
+    rest: ", no database egress bill-shock",
   },
   {
     lead: "Prisma ORM is free, always",
     rest: "",
   },
   {
-    lead: "Per-branch databases included",
+    lead: "A preview database per feature branch",
     rest: ", no surcharge",
   },
   {
+    // HIPAA on the Business tier deep-links to /postgres/hipaa (the landing
+    // page carries the BAA and scope); the row below splices a next/link in
+    // for the HIPAA token so the rest of the lead stays as plain text.
     lead: "SOC2, HIPAA, ISO 27001, and GDPR",
+    leadLink: { token: "HIPAA", href: "/postgres/hipaa" },
     rest: " at the Business tier",
   },
 ];
@@ -73,7 +78,7 @@ const SCENARIOS: Scenario[] = [
     ],
     prisma: [
       "No credit card required",
-      "Data transfer included",
+      "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ],
   },
@@ -87,7 +92,11 @@ const SCENARIOS: Scenario[] = [
       "Data transfer billed per GB",
       "Spend limits not standard",
     ],
-    prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
+    prisma: [
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ],
   },
   {
     tab: "At scale",
@@ -99,7 +108,11 @@ const SCENARIOS: Scenario[] = [
       "Data transfer billed per GB",
       "Spend limits not standard",
     ],
-    prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
+    prisma: [
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
+    ],
   },
 ];
 
@@ -257,6 +270,24 @@ function ScenarioCarousel() {
   );
 }
 
+// Splice a single next/link into the plain-text `lead`, matching the first
+// occurrence of the token. The pricing bullets are static strings today, so a
+// one-token splice is enough and keeps the rest of the list rendering as the
+// plain <strong> text it always was.
+function renderLeadWithLink(lead: string, link: { token: string; href: string }) {
+  const index = lead.indexOf(link.token);
+  if (index === -1) return lead;
+  return (
+    <>
+      {lead.slice(0, index)}
+      <Link href={link.href} className="underline-offset-4 hover:underline">
+        {link.token}
+      </Link>
+      {lead.slice(index + link.token.length)}
+    </>
+  );
+}
+
 export function PricingScale() {
   return (
     <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
@@ -273,8 +304,8 @@ export function PricingScale() {
               <p className="mt-5 max-w-[54ch] text-pretty leading-relaxed text-muted-foreground">
                 Start free with the ORM, which will always be free. Prisma Postgres has a free tier
                 with a hard cap, so you can build without a credit card. When you outgrow it,
-                you&apos;re on operation-based pricing with spend limits, and data transfer is
-                always included.
+                you&apos;re on operation-based pricing with spend limits, and database data transfer
+                is always included.
               </p>
             </Reveal>
 
@@ -285,18 +316,24 @@ export function PricingScale() {
 
           <Reveal delay={0.12}>
             <ul className="flex flex-col gap-3">
-              {BULLETS.map(({ lead, rest }) => (
-                <li
-                  key={lead}
-                  className="flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground"
-                >
-                  <CheckBold className="mt-1 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
-                  <span>
-                    <strong className="font-semibold text-foreground">{lead}</strong>
-                    {rest}
-                  </span>
-                </li>
-              ))}
+              {BULLETS.map((bullet) => {
+                const { lead, rest } = bullet;
+                const leadLink = "leadLink" in bullet ? bullet.leadLink : undefined;
+                return (
+                  <li
+                    key={lead}
+                    className="flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground"
+                  >
+                    <CheckBold className="mt-1 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
+                    <span>
+                      <strong className="font-semibold text-foreground">
+                        {leadLink ? renderLeadWithLink(lead, leadLink) : lead}
+                      </strong>
+                      {rest}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </Reveal>
         </div>

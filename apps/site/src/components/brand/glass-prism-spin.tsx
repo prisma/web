@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { SHAPES } from "@/components/brand/glass-prism";
+import { observeAnimationActivity } from "@/lib/animation-activity";
 import { cn } from "@/lib/utils";
 
 type V3 = [number, number, number];
@@ -122,35 +123,43 @@ export function GlassPrismSpin({
   const faces = useMemo(() => makeSolid(shape), [shape]);
   const first = useMemo(() => pose(faces, initialAngle), [faces, initialAngle]);
   const groupRef = useRef<SVGGElement>(null);
+  const elapsedRef = useRef(0);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const group = groupRef.current;
-    if (!group) return;
+    const svg = group?.ownerSVGElement;
+    if (!group || !svg) return;
     const polys: SVGPolygonElement[] = [];
     group.querySelectorAll("polygon").forEach((p) => {
       polys[Number(p.dataset.i)] = p;
     });
 
     let raf = 0;
-    let start: number | null = null;
+    let previous: number | null = null;
     const tick = (now: number) => {
-      if (start === null) start = now;
-      const theta = initialAngle + ((now - start) / 1000 / period) * Math.PI * 2;
+      if (previous !== null) elapsedRef.current += now - previous;
+      previous = now;
+      const theta = initialAngle + (elapsedRef.current / 1000 / period) * Math.PI * 2;
       const posed = pose(faces, theta);
       posed.forEach(({ points, facing }, i) => {
         polys[i].setAttribute("points", points);
         polys[i].setAttribute("fill", `rgba(${rgb},${(base + range * facing).toFixed(3)})`);
       });
       // painter's order: farthest faces first
-      posed
-        .map(({ depth }, i) => [depth, i] as const)
-        .sort((a, b) => b[0] - a[0])
-        .forEach(([, i]) => group.appendChild(polys[i]));
+      const order = posed.map(({ depth }, i) => [depth, i] as const).sort((a, b) => b[0] - a[0]);
+      // Reordering unchanged faces invalidates SVG layout on every frame.
+      order.forEach(([, i], index) => {
+        if (group.children[index] !== polys[i]) {
+          group.insertBefore(polys[i], group.children[index] ?? null);
+        }
+      });
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return observeAnimationActivity(svg, (active) => {
+      cancelAnimationFrame(raf);
+      previous = null;
+      if (active) raf = requestAnimationFrame(tick);
+    });
   }, [faces, period, initialAngle, rgb, base, range]);
 
   return (

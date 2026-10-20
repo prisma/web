@@ -56,6 +56,9 @@ type PrismButtonProps = {
   fullWidth?: boolean;
   /** Where the CTA lives, for cta_click analytics (e.g. "hero", "navbar"). */
   ctaLocation?: string;
+  /** Only used when `href` is set. Compare pages open create-db in a new tab. */
+  target?: React.HTMLAttributeAnchorTarget;
+  rel?: string;
   /**
    * `lg` is for page heroes. The navbar's Get Started is the same black pill at
    * 109x36, so a default-size hero CTA reads as a repeat of it rather than as
@@ -88,6 +91,8 @@ export function PrismButton({
   fullWidth = false,
   ctaLocation,
   size = "default",
+  target,
+  rel,
 }: PrismButtonProps) {
   const reduce = useReducedMotion();
   const [hover, setHover] = useState(false);
@@ -127,6 +132,8 @@ export function PrismButton({
       {/* button */}
       <MotionComp
         href={href}
+        target={href ? target : undefined}
+        rel={href ? rel : undefined}
         type={href ? undefined : type}
         onClick={(event: React.MouseEvent<HTMLElement>) => {
           trackConsoleCta(href, children, ctaLocation);
@@ -161,11 +168,15 @@ export function PrismButtonOutline({
   type = "button",
   ctaLocation,
   size = "default",
+  target,
+  rel,
 }: PrismButtonProps) {
   const Comp = href ? "a" : "button";
   return (
     <Comp
       href={href}
+      target={href ? target : undefined}
+      rel={href ? rel : undefined}
       type={href ? undefined : type}
       onClick={(event: React.MouseEvent<HTMLElement>) => {
         trackConsoleCta(href, children, ctaLocation);

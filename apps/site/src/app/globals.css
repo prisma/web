@@ -10,6 +10,32 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Article tables keep their own horizontal scroll at narrow viewports. */
+.answer-prose table {
+  min-width: 720px;
+  table-layout: fixed;
+}
+
+.answer-prose :is(th, td) {
+  padding: 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.answer-prose :is(th, td):first-child {
+  width: 22%;
+}
+
+.answer-prose h2,
+.answer-prose h3 {
+  text-wrap: balance;
+}
+
+.answer-prose :is(h2, h3) a {
+  color: inherit;
+  text-decoration: none;
+}
+
 @theme inline {
   /* ---- Layout ----------------------------------------------------------
      The site's one content width. Before this existed every section picked
@@ -305,7 +331,7 @@
   --animate-glass-glide: glass-glide 9s 1.8s both infinite;
   @keyframes glass-glide {
     0% {
-      left: -20%;
+      transform: translateX(0);
       opacity: 0;
       animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
     }
@@ -317,7 +343,8 @@
     }
     30%,
     100% {
-      left: 80%;
+      /* The light is 42% of its parent; 100 / .42 moves it one parent width. */
+      transform: translateX(238.095238%);
       opacity: 0;
     }
   }
@@ -498,7 +525,7 @@
   --destructive: #d02344; /* prism-red-600 */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.45 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -551,13 +578,30 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
     /* Inter renders optically darker than SF Pro at 400; the variable font
        lets us pull regular text back to 380 to match SF's lighter color. */
     font-weight: 380;
+  }
+  /* Tailwind's reset gives buttons the default arrow. Apply the hand to
+     actionable controls, including the FAQ and pricing tabs. Utilities can
+     still override this base rule for controls with a more specific cursor. */
+  :where(
+      a[href],
+      button,
+      summary,
+      [role="button"],
+      [role="tab"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"],
+      input[type="checkbox"],
+      input[type="radio"]
+    ):not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
   }
 }
 
@@ -571,6 +615,89 @@ html {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* Skip link: first Tab stop, visually hidden until focused. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 100;
+  border-radius: 0.375rem;
+  background: var(--foreground);
+  color: var(--background);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+
+/* Themed thin scrollbar on comparison table regions. */
+.compare-table-frame {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(0 0 0 / 0.28) transparent;
+}
+.compare-table-frame::-webkit-scrollbar {
+  height: 8px;
+}
+.compare-table-frame::-webkit-scrollbar-thumb {
+  background: rgb(0 0 0 / 0.28);
+  border-radius: 99px;
+}
+
+/*
+ * Stacked comparison rows below 640px. Unlayered so it beats
+ * `.answer-prose table { min-width: 720px }` and any inline minWidth.
+ */
+.answer-prose .compare-stack table {
+  min-width: var(--compare-table-min-width, 40rem);
+}
+@media (max-width: 639px) {
+  .answer-prose .compare-stack table {
+    display: block;
+    min-width: 0 !important;
+    width: 100%;
+  }
+  .answer-prose .compare-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .answer-prose .compare-stack tbody,
+  .answer-prose .compare-stack tr,
+  .answer-prose .compare-stack th,
+  .answer-prose .compare-stack td {
+    display: block;
+    width: 100%;
+  }
+  .answer-prose .compare-stack tr {
+    padding: 1rem 1rem 0.75rem;
+  }
+  .answer-prose .compare-stack :is(th, td):first-child {
+    width: auto;
+  }
+  .answer-prose .compare-stack td {
+    padding-top: 0.5rem;
+    padding-bottom: 0.75rem;
+  }
+  .answer-prose .compare-stack td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+    color: var(--primary);
   }
 }
 
@@ -962,4 +1089,28 @@ h6 {
 .prose :where(code):not(:where(pre *))::before,
 .prose :where(code):not(:where(pre *))::after {
   content: none;
+}
+
+/* Changelog entries: the preset's inline-code chip (border, shadow, bold) is
+   loud in a bullet that names five identifiers. Keep a chip so code still
+   reads as code, but a quiet one: a tint, no border, normal weight, and a
+   touch smaller than the surrounding text. */
+.changelog-prose :where(code):not(:where(pre *)) {
+  font-size: 0.875em;
+  font-weight: 500;
+  color: var(--foreground);
+  background-color: rgb(0 0 0 / 0.045);
+  border: 0;
+  box-shadow: none;
+  border-radius: 0.3rem;
+  padding: 0.1em 0.35em;
+}
+.changelog-prose a :where(code):not(:where(pre *)) {
+  color: inherit;
+}
+.changelog-prose pre.shiki {
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
 }

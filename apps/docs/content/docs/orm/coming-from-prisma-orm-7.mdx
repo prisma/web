@@ -106,6 +106,8 @@ import "temporal-polyfill/full/global";
 
 Homebrew's build of Node.js 26 leaves `Temporal` out, so check with `node -p "typeof Temporal"`; if it prints `undefined`, add the polyfill.
 
+This applies to a contract you write yourself. When Prisma ORM 8 reads your `schema.prisma` through `prisma7Schema(...)`, as `orm init --from-prisma7-schema` sets it up, a `DateTime` field reads and writes as the text PostgreSQL returns, such as `2026-09-14 10:00:00.123`, and needs no `Temporal`.
+
 :::
 
 A many-to-many relation keeps the two list fields and adds a model for the join table. Its primary key must be the two foreign keys and nothing else, as `@@id([postId, tagId])` below:
@@ -256,6 +258,7 @@ A query is a chain of calls that you `await` as a whole. The last call (`.all()`
 | `groupBy({ by, _count })` | `.groupBy("userId").aggregate((agg) => ({ count: agg.count() }))` |
 | `$transaction(async (tx) => ...)` | `db.transaction(async (tx) => ...)`; inside, query through `tx.orm` instead of `db.orm` |
 | `$queryRaw` | see the raw SQL example below |
+| `$queryRaw` with `SELECT ... FOR UPDATE` to lock rows | `.forUpdate()` on a [SQL query builder](/orm/reference/sql-query-builder#row-locking) `SELECT`, inside `db.transaction(...)`. `forNoKeyUpdate()`, `forShare()`, and `forKeyShare()` take the other locks |
 | `$executeRaw` | see the raw SQL example below |
 | `$connect()` | `db.connect()`. You rarely need it: the client connects on the first query |
 | `$disconnect()` | `db.close()` |
@@ -373,7 +376,7 @@ Prisma ORM 7 features that have no direct form in Prisma ORM 8, with what to do 
 | implicit many-to-many relations | available in a different form | write the join table as a model; see the example under [Schema](#schema) |
 | `@@map` on an `enum` | not available | `contract emit` rejects it with `Unknown attribute "@@map" in "enum" block`. A plain `enum` is stored as text, so there is nothing to name. If you need a PostgreSQL enum type with a specific name, declare it with `native_enum`, which does accept `@@map` |
 | `$use` middleware | available in a different form | pass `middleware: [...]` when you create the client in `db.ts` (example in the `db.ts` section above). [How middleware works](/orm/middleware/how-middleware-works) lists the hooks |
-| `$extends` | replaced by middleware | `$extends` will not be added. Middleware replaces it and can do more; see [How middleware works](/orm/middleware/how-middleware-works) |
+| `$extends` | replaced by middleware, custom collections, and scopes | `$extends` will not be added. Middleware replaces query extensions; see [How middleware works](/orm/middleware/how-middleware-works). For model methods, subclass `Collection` ([Custom `Collection` subclass](/orm/reference/orm-client#custom-collection-subclass)). To share a filter or a selection between queries and models, write a [scope](/orm/reference/orm-client#scopes) |
 
 :::note[Skipping duplicate rows]
 
@@ -406,7 +409,7 @@ Also not available today:
 - `omit`, `relationLoadStrategy`, `Prisma.skip`, and the automatic batching of `findUnique` calls.
 - The `P2002` / `P2025` style error codes. Errors carry a `code` such as `RUNTIME.NO_ROWS` instead, and a database error such as a unique-constraint violation carries the standard SQL state code in `error.sqlState` (`23505` for a unique violation, on every database), so catch it with `if (error instanceof Error && "sqlState" in error && error.sqlState === "23505")`. See the [error reference](/orm/reference/error-reference).
 - `Prisma.sql`, `Prisma.join`, `Prisma.raw`, `Prisma.empty`, and TypedSQL. Use `db.raw.sql` (example above); [Raw queries](/orm/reference/raw-queries) covers building a query from pieces.
-- Soft delete, validation rules in the schema, lifecycle hooks on models, and read replicas. For soft delete, add a nullable `deletedAt` field and filter on it. Validate in your application code. Use middleware for hooks. For read replicas, create one client per database.
+- Soft delete, validation rules in the schema, lifecycle hooks on models, and read replicas. For soft delete, add a nullable `deletedAt` field and filter on it, with one [scope](/orm/reference/orm-client#scopes) that every model with the field can use. Validate in your application code. Use middleware for hooks. For read replicas, create one client per database.
 
 ## Where to go next
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const privacyLastUpdated = "7th of August, 2026";
+export const privacyEffectiveDate = "7th of August, 2026";
 
 type PrivacySection = {
   title: string;

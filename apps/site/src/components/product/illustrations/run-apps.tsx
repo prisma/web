@@ -7,13 +7,16 @@ import {
   Repeat,
   Rocket,
   Server,
-  Swap,
 } from "@/components/icons/forma";
 import { CardChrome, HeroPanel, SectionLabel } from "./parts";
 
 // Stop four of the /compute hero tour — "Apps". Answers the two questions the
 // abstraction otherwise leaves open: what you start from, and what actually
-// runs here. Real: the framework and workload names. No logos — we hold no
+// runs here. Real: the framework and workload names. HTTP services, streaming
+// and background work between requests through the keep-awake primitives are
+// lines in compute/limitations.mdx ("Runtime"); the Bun runtime is in
+// compute/faq.mdx ("Where it has trade-offs"). Cron and WebSocket servers are
+// not part of this release, so they are not listed. No logos, since we hold no
 // marks for these projects, so every framework is a text label and a shared
 // icon. Nothing here claims a performance characteristic.
 
@@ -25,16 +28,16 @@ const STARTERS = [
 ];
 
 const WORKLOADS = [
-  { icon: Server, label: "long-lived HTTP" },
+  { icon: Server, label: "HTTP services" },
   { icon: ArrowRight, label: "streaming responses" },
-  { icon: Repeat, label: "cron + background jobs" },
+  { icon: Repeat, label: "background work" },
   { icon: Bot, label: "AI agents" },
-  { icon: Swap, label: "WebSockets" },
+  { icon: Layers, label: "Bun runtime" },
 ];
 
 export function RunApps() {
   return (
-    <HeroPanel label="Illustration of Prisma Compute starter apps: a recommended Next.js starter ready to deploy alongside Hono, Express, tRPC API and AI agent starters, over a strip naming the workloads Compute runs — long-lived HTTP, streaming responses, cron and background jobs, AI agents and WebSockets">
+    <HeroPanel label="Illustration of Prisma Compute starter apps: a recommended Next.js starter ready to deploy alongside Hono, Express, tRPC API and AI agent starters, over a strip naming the workloads Compute runs: HTTP services, streaming responses, background work between requests and AI agents, on the Bun runtime">
       <CardChrome
         file="apps"
         right={<span className="font-mono text-[0.625rem] text-muted-foreground">5 starters</span>}
