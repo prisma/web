@@ -406,11 +406,29 @@ test("an agent on an HTML URL without an export gets the page it would have got"
       });
       assert.equal(response.status, 200);
       assert.equal(response.headers.get("content-type"), "text/html; charset=utf-8");
+      assert.equal(response.headers.get("vary"), AGENT_MARKDOWN_VARY);
       assert.equal(await response.text(), "<!DOCTYPE html><p>page</p>");
       assert.deepEqual(calls, [
         `${DATAGUIDE_ORIGIN}/dataguide/intro/no-export.md`,
         `${DATAGUIDE_ORIGIN}/dataguide/intro/no-export`,
       ]);
+    },
+  );
+});
+
+test("the page an agent falls back to keeps the Data Guide's own Vary", async () => {
+  await withFetch(
+    (url) =>
+      url.endsWith(".md")
+        ? new Response("missing", { status: 404, headers: { "content-type": "text/html" } })
+        : new Response("<!DOCTYPE html>", {
+            headers: { "content-type": "text/html", vary: "Accept-Encoding" },
+          }),
+    async () => {
+      const response = await callRoute(["intro", "no-export"], {
+        "x-prisma-agent-markdown": "accept",
+      });
+      assert.equal(response.headers.get("vary"), `Accept-Encoding, ${AGENT_MARKDOWN_VARY}`);
     },
   );
 });
@@ -439,6 +457,7 @@ test("an upstream failure is a 502 for a .md URL", async () => {
       const response = await callRoute(["intro"]);
       assert.equal(response.status, 502);
       assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
+      assert.equal(response.headers.get("vary"), "Accept");
     },
   );
 });
@@ -475,6 +494,7 @@ test("an agent on an HTML URL that redirects upstream gets the redirect", async 
       });
       assert.equal(response.status, 301);
       assert.equal(response.headers.get("location"), "/dataguide/intro/moved");
+      assert.equal(response.headers.get("vary"), AGENT_MARKDOWN_VARY);
     },
   );
 });
@@ -487,6 +507,7 @@ test("an agent gets a 502 when both upstream requests fail", async () => {
     async (calls) => {
       const response = await callRoute(["intro"], { "x-prisma-agent-markdown": "user-agent" });
       assert.equal(response.status, 502);
+      assert.equal(response.headers.get("vary"), AGENT_MARKDOWN_VARY);
       assert.equal(calls.length, 2);
     },
   );

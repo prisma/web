@@ -53,6 +53,10 @@ There is no Markdown rendition of that page in Prisma's Data Guide.
 /**
  * An agent asked for a Data Guide HTML URL that has no Markdown export: give
  * it the page it would have got without this route.
+ *
+ * Only reached when src/proxy.ts chose this route by `Accept` or User-Agent,
+ * so every answer here carries `AGENT_MARKDOWN_VARY`, like the negotiated
+ * Markdown does: a route's own headers can replace the proxy's `Vary`.
  */
 async function pageFromDataguide(pagePath: string) {
   let page: Response;
@@ -66,13 +70,15 @@ async function pageFromDataguide(pagePath: string) {
   } catch {
     return new Response("Bad Gateway", {
       status: 502,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      headers: { "Content-Type": "text/plain; charset=utf-8", Vary: AGENT_MARKDOWN_VARY },
     });
   }
   const headers = new Headers(page.headers);
   // fetch has already decoded the body.
   headers.delete("content-encoding");
   headers.delete("content-length");
+  // Append, never set: keep whatever the Data Guide's own `Vary` says.
+  headers.append("Vary", AGENT_MARKDOWN_VARY);
   return new Response(page.body, { status: page.status, headers });
 }
 
