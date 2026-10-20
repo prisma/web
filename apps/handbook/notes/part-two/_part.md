@@ -52,3 +52,66 @@ Shane asked to preserve the voice and most of the wording, while fixing passages
 Before-and-after examples were reviewed in chat. Shane approved introducing a feature as a possibility, explaining its connection to the task, and establishing a change of circumstances before describing its consequences. Apply this through small edits to the affected passages, rather than rewriting whole chapters.
 
 The pass applies that approach across Parts I and II. It clarifies the portal example, hypothetical reminders and screens, the move from sample content to saved user work, and references to client access and feedback. The three sample revisions approved in chat are included. Chapter order, scope, and the pending Product Builder walkthrough are unchanged.
+
+## Approved tool choice (2026-10-20)
+
+Product Builder will not be available for a while. Shane wants readers to choose
+ChatGPT or Claude and confirmed that both have a directory plugin or connector.
+Treat both choices equally.
+
+Shane proposed a tab that switches the page's instructions and persists through
+the book. He approved implementing a single selector near the title on relevant
+chapters, retaining shared explanations and remembering the selection across
+navigation and browser refreshes.
+
+- Setup, real data, and publishing now contain instructions for each tool.
+- The Claude route names Claude Code where working on project files matters.
+- ChatGPT instructions initially named Work and Sites. Shane subsequently
+  corrected the hosting direction to Prisma; see the correction below.
+- Both routes still need a full fresh-account trial before the handbook claims
+  a verified end-to-end walkthrough. No starter repository or live sample app
+  was created as part of adding the selector.
+- The Product Builder TODOs above describe the earlier draft and are superseded
+  by these two tool choices.
+
+## Account setup and browser workflow (2026-10-20)
+
+Shane: "I think we're missing a section on helping the person get set up with
+these tools and accounts though. they'll need either ChatGPT or Claude, and
+they'll need a Prisma account too."
+
+Shane: "ideally these can be easy and free or cheap, without installing things
+like node or bun, or dropping to the CLI."
+
+- Added account setup before the build brief, using the existing tool selector.
+- Use browser sessions: ChatGPT Work, or Claude Code in the cloud.
+  The AI runs development tools remotely; the reader uses browser forms and chat.
+- The first account draft incorrectly required GitHub for Prisma sign-in.
+  GitHub is needed for Claude Code to store files; see Shane's correction below.
+- Link current plan information and show monthly prices checked on 2026-10-20.
+  Use existing access first, avoid an annual commitment for a trial, and require
+  approval in the build prompt before adding a paid service.
+- Claude's official MCP docs confirm that claude.ai connectors are delivered to
+  cloud sessions. Replaced the old terminal connection instructions accordingly.
+- Still to verify before publication: the minimum ChatGPT plan with all required
+  features, and both complete build-to-preview paths with new accounts and no
+  local installations. Documentation research is not a completed account trial.
+
+## Correction: Prisma sign-in and deployment
+
+Shane: "prisma also allows login with email/pass and google."
+
+Shane: "we should be guiding the user to create and deploy the app with Prisma,
+not with ChatGPT sites."
+
+- Prisma sign-in offers email/password, Google, and GitHub. The common account
+  setup must not require GitHub.
+- Keep GitHub signup and repository instructions in the Claude Code variant.
+- ChatGPT and Claude are the tools doing the work. Both create the application
+  with Prisma's starter workflow and deploy it to Prisma Compute, with
+  Prisma Postgres for the database. Sites is no longer a route in this handbook.
+- Make Prisma explicit in the starter prompt, data chapter, and friend-trial
+  deployment instructions. Keep the reader's actions in the browser and have
+  the AI run development commands in its cloud environment.
+- Verify deployment authorization separately from the Prisma plugin connection
+  during the pending walkthroughs. No successful end-to-end trial is implied.

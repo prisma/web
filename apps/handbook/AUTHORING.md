@@ -52,6 +52,7 @@ title: "3. Name of the chapter"        # number in the title; the sidebar shows 
 description: One or two sentences. The chapter's promise, plainly.
 status: stub | dictated | structured | reviewed   # omit once published
 readingTime: 12                          # minutes, hand-set
+toolSpecific: true                       # show the shared ChatGPT / Claude selector
 ---
 ```
 
@@ -152,6 +153,33 @@ Margin note (side commentary; floats to the gutter on wide screens, inset card e
 ```
 
 Footnotes: GitHub-style `[^1]` with the definition at the bottom of the file.
+
+Tool-specific instructions: set `toolSpecific: true` in frontmatter. The page
+shows one ChatGPT / Claude selector near the title. The reader's choice persists
+across chapters and reloads in this browser. Neither tool is selected for a new
+reader. If browser storage is blocked, the choice still lasts across chapter
+navigation during the visit.
+
+Keep shared prose and headings outside the variants so the table of contents
+works for either choice. Wrap each pair of instructions like this:
+
+```mdx
+## Connect Prisma
+
+<ToolInstructions>
+  <ToolContent tool="chatgpt">
+    Instructions for ChatGPT.
+  </ToolContent>
+  <ToolContent tool="claude">
+    Instructions for Claude.
+  </ToolContent>
+</ToolInstructions>
+```
+
+Every group follows the page selector. Include both variants in every group;
+do not add separate selectors inside the prose. Without a saved choice, a
+group links the reader to the selector. Name the exact experience, such as
+ChatGPT Work or Claude Code, inside the instructions where it matters.
 
 Tables: GitHub-style pipes. Keep them narrow; the reading column is 44rem.
 
