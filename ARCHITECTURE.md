@@ -1,8 +1,8 @@
 # Multi-Zone Architecture Overview
 
 This page describes the existing Vercel deployment path. The additional Composer
-setup runs all five websites behind a gateway, with four static services for
-blog media; see [COMPOSER.md](COMPOSER.md) and
+setup runs all five websites as Compute services behind a shared HTTP gateway
+(six services in total); see [COMPOSER.md](COMPOSER.md) and
 [COMPOSER_FINDINGS.md](COMPOSER_FINDINGS.md).
 
 This repository is a pnpm monorepo with three closely related Next.js apps:
