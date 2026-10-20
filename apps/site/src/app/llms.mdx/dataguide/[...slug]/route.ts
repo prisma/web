@@ -110,8 +110,16 @@ export async function GET(
     return missingMarkdown(upstream.status >= 500 ? 502 : 404);
   }
 
+  // The timeout also covers reading the body, which can fail after the headers.
+  let body: string;
+  try {
+    body = await upstream.text();
+  } catch {
+    return negotiated ? pageFromDataguide(pagePath) : missingMarkdown(502);
+  }
+
   const baseUrl = getBaseUrl();
-  return new Response(await upstream.text(), {
+  return new Response(body, {
     headers: markdownHeaders({
       // A route's own `Vary` replaces the one src/proxy.ts appends to its
       // rewrite, so when the proxy chose Markdown by `Accept` or User-Agent,
