@@ -45,7 +45,7 @@ Every rule has a severity, which is `warn` or `error` and nothing else. A rule s
 
 :::note
 
-You cannot yet give the `postgres(...)` client a logger of your own, so a rule set to `warn` produces nothing you can see: nothing is printed, and there is no callback of yours for it to reach. That makes `LINT.DELETE_WITHOUT_WHERE` and `LINT.UPDATE_WITHOUT_WHERE` the two rules you can act on today, because a blocked query is something you notice, and it leaves the other two as rules to plan for until the client accepts a logger.
+A rule set to `warn` sends its warning to the [`log` option](/orm/reference/transactions-and-runtime#postgresoptions) of `postgres(...)`. Pass `log: console` to print the warnings. If you create the client without a `log` option, a rule set to `warn` has no effect you can see. The client's `mode` option makes no difference to `lints`: a `warn` rule logs in either mode.
 
 :::
 
@@ -62,10 +62,10 @@ The rules are named after the SQL they are about, and you write your queries in 
 
 So `await db.orm.public.User.limit(50).all()` sets off `LINT.SELECT_STAR`, while `await db.orm.public.User.select('id', 'email').limit(50).all()` does not. In `db.orm.public.User`, `public` is the PostgreSQL schema and `User` is your model name. The SQL query builder reaches the same table by its name in the database, as `db.sql.public.User`. These examples assume a `User` model with no `@@map`, so the table has the same name as the model.
 
-Today a `warn` rule has no visible effect. `lints` builds a record like the one below, with the code of the rule, a message, and the table the query touched, and passes it to the client's logger, but the `postgres(...)` client has no logger you can set yet, as the note above says, so the record is thrown away.
+When a `warn` rule fires, `lints` calls `log.warn` with a record that holds the code of the rule, a message, and the table the query touched. With `log: console`, Node.js prints it like this:
 
 ```text title="Lint warning"
-warn {
+{
   code: 'LINT.NO_LIMIT',
   message: 'Unbounded SELECT may return large result sets',
   details: { table: 'User' }

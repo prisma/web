@@ -33,19 +33,17 @@ npx prisma db schema --db "$DATABASE_URL" --json > schema.json
 
 ## Column types
 
-The tree and the JSON output name each column's type as the database reports it. In the JSON output it is the column's `typeText`:
+On PostgreSQL and SQLite, the tree and the JSON output show each column's type as the database names it. In the JSON output, this text is the column's `typeText`:
 
 ```bash
 npx prisma db schema --db "$DATABASE_URL" --json | jq '.schema.tables[].columns[].typeText'
 ```
 
-On PostgreSQL, `typeText` is the text `format_type` prints, such as `integer` or `character varying(20)`, not a short name such as `int4`. It differs from what the database prints in three cases:
+On PostgreSQL, `typeText` is the full type name, such as `integer` or `character varying(20)`, not a short name such as `int4`. An enum is named as your contract names it, such as `My Mood`, or `app.status` for an enum outside the `public` schema. A type from a schema that is not on the search path keeps the schema name, such as `extensions.vector(3)` for a pgvector column.
 
-- On SQLite, the declared type is lower-cased: a column declared `VARCHAR(255)` reads `varchar(255)`.
-- On PostgreSQL, an enum is named as a contract names it: `My Mood` where `format_type` prints `"My Mood"`, and `app.status` for an enum outside `public`.
-- On PostgreSQL, a type in a schema that is not on the search path keeps its schema: `extensions.vector(3)` for a pgvector column when `extensions` is not on the search path.
+On SQLite, which Prisma ORM 8 supports as an [experimental package](/orm/supported-databases), `typeText` is the type the column was declared with, in lower case: a column declared `VARCHAR(255)` reads `varchar(255)`.
 
-Before `8.0.0-rc.19`, the JSON output had `nativeType` and `resolvedNativeType` instead of `typeText`.
+If a script reads `nativeType` or `resolvedNativeType` from the JSON output, change it to read `typeText`, which replaced both fields in `8.0.0-rc.19`.
 
 ## Related commands
 

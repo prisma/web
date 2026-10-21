@@ -61,10 +61,10 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 | `@default(dbgenerated("gen_random_uuid()"))` | ``@default(sql`gen_random_uuid()`)`` | `dbgenerated` is rejected. Write any SQL expression as `` sql`...` `` instead, but keep writing `now()` and `autoincrement()` as plain functions. [Default values](/orm/contract-authoring/psl-syntax#default-values) covers every kind of default |
 | `Json` | `Jsonb` | Prisma ORM 7's `Json` stored a PostgreSQL `jsonb` column, so write `Jsonb`. In Prisma ORM 8, `Json` means PostgreSQL's older `json` type, which you almost certainly do not want |
 | `Json @default("{}")` | ``Jsonb @default(json`{}`)`` | write a JSON default as `` json`...` ``. A quoted string is text, and a JSON column does not accept it |
-| `DateTime @default("2024-01-01T00:00:00Z")`, `Bytes @default("aGVsbG8=")` | ``DateTime @default(timestamptz`2024-01-01T00:00:00Z`)``, ``Bytes @default(bytea`\x68656c6c6f`)`` | a fixed date, time, or bytes default is a tagged literal named after the column's type. A `bytea` default holds hexadecimal after `\x`, not base64 |
+| `DateTime @default("2024-01-01T00:00:00Z")`, `Bytes @default("aGVsbG8=")` | ``DateTime @default(timestamptz`2024-01-01T00:00:00Z`)``, ``Bytes @default(bytea`\x68656c6c6f`)`` | write a fixed date, time, or bytes default as the column's type name followed by the value in backticks. A `bytea` default holds hexadecimal after `\x`, not base64 |
 | `enum Role { ADMIN USER }`, in a new database | `enum Role { ADMIN USER }` | same syntax. You can give members explicit values (`ADMIN = "admin"`). The column is stored as text, not as a PostgreSQL enum type |
 | `enum Role { ADMIN USER }` with a field `role Role`, in an existing Prisma ORM 7 database | `native_enum Role { ADMIN = "ADMIN" USER = "USER" }` with the field `role pg.enum(Role)` | your database already has a PostgreSQL enum type for it, and `native_enum` keeps it. See the note below the table |
-| `String[]` | `String[]`, or `String?[]` | Prisma ORM 8 adds a check that rejects `NULL` elements in a `String[]` column. Write `String?[]` to allow them, for example when a column Prisma ORM 7 created already holds them. The list filters (`has`, `hasEvery`, `hasSome`, `isEmpty`) are not available; filter on a list with raw SQL for now (see below) |
+| `String[]` | `String[]`, or `String?[]` | for a `String[]` column, Prisma ORM 8 creates a database check constraint that rejects `NULL` elements. Write `String?[]` to allow them, for example when a column Prisma ORM 7 created already holds them. The list filters (`has`, `hasEvery`, `hasSome`, `isEmpty`) are not available; filter on a list with raw SQL for now (see below) |
 | `@@schema("billing")` | `namespace billing { model ... }` | a `namespace` block is a PostgreSQL schema; wrap the models in it. They become `db.orm.billing.Invoice` and so on |
 | implicit many-to-many (`Post[]` on `Tag` and `Tag[]` on `Post`, with no model for the join table) | the same two list fields, plus a model for the join table | you write the join table as a model yourself. Example below |
 | `@id`, `@unique`, `@default`, `@relation`, `@map`, `@@map`, `@@index`, `@@id`, `@@unique` | unchanged | a model without `@@map` names its table after the model, exactly as written, as in Prisma ORM 7 |
@@ -201,7 +201,7 @@ The rest are in the [CLI reference](/cli).
 
 ## `src/prisma/db.ts` replaces `PrismaClient`
 
-There is no generated `PrismaClient`: you create the client once, in `src/prisma/db.ts`, from the two files `prisma contract emit` wrote:
+Prisma ORM 8 does not generate a `PrismaClient`, so you create the client yourself, once, in `src/prisma/db.ts`, from `contract.json` and `contract.d.ts`, which `prisma contract emit` wrote:
 
 ```ts title="src/prisma/db.ts"
 import "dotenv/config";
@@ -225,7 +225,7 @@ export const db = postgres({
 - `db.orm`: your models, by model name (`db.orm.public.User`).
 - `db.sql`: the [SQL query builder](/orm/reference/sql-query-builder). It holds your tables by table name, as in `db.sql.public.User`, and a table's name is its model's name unless you set `@@map`. On this page, the raw SQL examples use it only to give each column's type.
 - `db.raw.sql`: lets you write a SQL query as text.
-- `db.query(plan)` and `db.execute(plan)`: run a built query, such as a raw query. `db.toSql(plan)` shows the SQL it would send.
+- `db.query(query)` and `db.execute(query)`: run a query that you built and finished with `.build()`, such as the raw queries below. `db.toSql(query)` shows the SQL it would send.
 - `db.transaction`: runs several queries in one transaction.
 
 To add middleware, add a `middleware: [...]` key to the `postgres({ ... })` call above. A middleware is a plain object with a name and one or more hook functions, for example `{ name: "log", async beforeQuery(plan) { console.log(plan.sql); } }`. [How middleware works](/orm/middleware/how-middleware-works) lists the hooks.
@@ -329,7 +329,7 @@ await db.execute(update);
 
 The table is `User`, because a model without `@@map` names its table after the model. As in Prisma ORM 7, a value you put in the SQL with `${...}`, such as `${id}`, is sent to the database as a query parameter.
 
-Every raw query that returns rows needs `.returnsRow(...)` with a type per column, and you take the type from the table, as above. A computed column has no table column to take it from, so write the type name as a string instead: for `SELECT count(*) AS total FROM "User"`, write `.returnsRow({ total: "pg/int8@1" })`. [Raw queries](/orm/reference/raw-queries) lists the type names. Finish the query with `.build()` and pass it to `db.query()` for rows, or to `db.execute()` for the number of rows a write changed. On PostgreSQL, `db.runtime()` returns the connection directly, so it needs no `await`.
+Every raw query that returns rows needs `.returnsRow(...)` with a type per column, and you take the type from the table, as above. A computed column has no table column to take it from, so write the type name as a string instead: for `SELECT count(*) AS total FROM "User"`, write `.returnsRow({ total: "pg/int8@1" })`. Here `int8` is the PostgreSQL column type, and every type name ends in `@1` today. [Raw queries](/orm/reference/raw-queries) lists the type names. Finish the query with `.build()` and pass it to `db.query()` for rows, or to `db.execute()` for the number of rows a write changed.
 
 ### Transaction
 

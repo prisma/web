@@ -113,7 +113,7 @@ To get the rows closest to a query vector on `db.orm`, use the method pgvector a
 const nearest = await db.orm.public.Post.using.embedding_nearest(queryVector).limit(10).all();
 ```
 
-See [Package methods with `using`](/orm/reference/orm-client#package-methods-with-using). To get the distance itself in each row, write the search with the SQL query builder. In that block:
+[Package methods with `using`](/orm/reference/orm-client#package-methods-with-using) covers these methods. To get the distance itself in each row, write the search with the SQL query builder, as in the block below, where:
 
 - `db.orm` is the ORM API, and under it you address a model by the name in your contract, so the model `Post` is `db.orm.public.Post`.
 - `db.sql` is the [SQL query builder](/orm/fundamentals/advanced-queries), and under it you address a table by the name it has in the database, so the same data is `db.sql.public.Post`. The two names are the same because the model sets no `@@map`.
@@ -214,7 +214,15 @@ export const db = await supabase({
 
 `supabase(...)` takes the same `extensions` array as `postgres(...)`, so pgvector or another extension goes there in the same way.
 
-`await db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. `db` itself has no `orm` or `sql`: those live on the three role-bound clients. Each role-bound client has `orm`, `sql`, `raw`, `prepare`, `query`, `execute`, `toSql`, and `transaction()`, the same members a `postgres(...)` client uses to run queries. Pass your own collection classes to `supabase(...)` in the `collections` option, as you would to `postgres(...)`, and the role-bound clients use them on their `orm`. See [Custom `Collection` subclass](/orm/reference/orm-client#custom-collection-subclass).
+You run queries through a client bound to a role, not through `db` itself, which has no `orm` or `sql`. `db` gives you three of them:
+
+- `await db.asUser(jwt)` takes the user's Supabase JWT and runs as that user.
+- `db.asAnon()` runs as the anonymous role.
+- `db.asServiceRole()` bypasses row-level security.
+
+Each role-bound client has the members a `postgres(...)` client uses to run queries: `orm`, `sql`, `raw`, `prepare`, `query`, `execute`, `toSql`, and `transaction()`. For example, `prepare` prepares a statement you run many times with different values, as [`db.prepare`](/orm/reference/transactions-and-runtime#dbpreparedeclaration-callback) describes.
+
+If you add your own methods to a model by subclassing `Collection`, as [Custom `Collection` subclass](/orm/reference/orm-client#custom-collection-subclass) shows, pass the subclass to `supabase(...)` in the `collections` option, as you would to `postgres(...)`. The role-bound clients then use it on their `orm`.
 
 `@prisma/orm-extension-supabase` has a contract of its own, which describes Supabase's `auth` and `storage` tables, check constraints included. Prisma read those tables from one Supabase version, supabase/postgres 17.6.1.106, and a Supabase project on another version can have a different set of check constraints. [`npx prisma db verify`](/cli/db-verify) compares your database with the extension's contract as well as with yours, and when a check constraint the extension describes is missing from your database, `db verify` lists it and fails. You cannot fix that with a migration, because Prisma ORM never changes Supabase's own tables. Instead, [open an issue on prisma/orm](https://github.com/prisma/orm/issues) with the output of `db verify` and your Supabase version, so the extension can be updated to match.
 

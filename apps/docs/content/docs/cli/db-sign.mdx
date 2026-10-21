@@ -106,6 +106,12 @@ Use `db sign` only after you believe the live database already matches the emitt
 - a database restore that you need to mark as matching the current contract
 - a Prisma ORM upgrade that changes your contract's storage hash but not the database
 
-Upgrading to `8.0.0-rc.19` changes the storage hash of a SQLite contract with a datetime or JSON column, of a PostgreSQL contract whose defaults `contract emit` rewrites, and of a contract that used `@noCheck`. The database still holds the old hash, so `db migrate` fails with `MIGRATION.MARKER_MISMATCH` and `db verify` with `CONTRACT.MARKER_MISMATCH` until you sign. After you emit the new contract, run `db sign` against every database: development, staging, and production.
+When you upgrade to `8.0.0-rc.19` and emit the contract again, the contract's storage hash can change even though the database does not. The storage hash is the `storageHash` value in `contract.json`, and `db sign` records it in the database. It changes for these contracts:
+
+- a SQLite contract with a datetime or JSON column
+- a PostgreSQL contract whose defaults `contract emit` now writes in another form
+- a contract that used `@noCheck`, which this release removes
+
+Until you sign, the database still holds the old hash, so `db migrate` fails with `MIGRATION.MARKER_MISMATCH` and `db verify` fails with `CONTRACT.MARKER_MISMATCH`. So after you emit the new contract, run `db sign` against every database that Prisma ORM 8 has already signed or migrated, which usually means development, staging, and production.
 
 Do not use `db sign` to hide drift. If verification fails, `db sign` writes no signature and offers two ways out. One changes the database: run `prisma db update` to make the database match the contract, then sign again. The other leaves the database as it is: change the contract source to describe the database, run `contract emit` again, then sign again.

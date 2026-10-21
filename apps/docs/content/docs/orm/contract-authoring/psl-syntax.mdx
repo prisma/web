@@ -181,13 +181,13 @@ model Post {
 }
 ```
 
-Each function makes a value for the field's type: `uuid()` works on `String`, `VarChar(n)`, `Char(n)`, and `Uuid`, and `now()` works on every PostgreSQL date and time type, `Date`, `Time`, and `Timetz` included. The database does not fill these columns, so a row written by raw SQL or another application gets no value. A field may have both a database `@default` and a generator: `createdAt DateTime @default(now()) @onCreate(now())` takes its time from your application when Prisma ORM creates the row, and from the database for other inserts. On an optional field, the generator fills the field when you leave it out, and an explicit `null` is stored as `null`.
+Each function makes a value for the field's type: `uuid()` works on `String`, `VarChar(n)`, `Char(n)`, and `Uuid`, and `now()` works on every PostgreSQL date and time type, `Date`, `Time`, and `Timetz` included. The database does not fill these columns, so a row written by raw SQL or another application gets no value. A field may have both a database `@default` and an `@onCreate(...)`: `createdAt DateTime @default(now()) @onCreate(now())` takes its time from your application when Prisma ORM creates the row, and from the database for other inserts. On an optional field, `@onCreate(...)` fills the field when you leave it out, and an explicit `null` is stored as `null`.
 
-`@default(uuid())` and the other generator functions in `@default` are refused with `PSL_GENERATOR_IN_DEFAULT`, which names the `@onCreate(...)` to write. `@default(now())` and `@default(autoincrement())` stay: they are database defaults.
+`@default(uuid())` and the other functions that generate a value are refused in `@default` with `PSL_GENERATOR_IN_DEFAULT`, which names the `@onCreate(...)` to write. `@default(now())` and `@default(autoincrement())` stay: they are database defaults.
 
-An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. A generator must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `VarChar(5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a bare `VarChar` has no limit.
+An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The value a function writes must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `VarChar(5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a bare `VarChar` has no limit.
 
-`@updatedAt` is gone. Write `@onCreate(now()) @onUpdate(now())`, as `updatedAt` above does, or `temporal.updatedAt()` where the field's type would go:
+Prisma ORM 8 has no `@updatedAt`, so write `@onCreate(now()) @onUpdate(now())`, as `updatedAt` above does, or `temporal.updatedAt()` where the field's type would go:
 
 ```prisma
 model Post {
@@ -195,11 +195,15 @@ model Post {
 }
 ```
 
-Prisma ORM sets the field to the current time on every create and update. `temporal` is a built-in group of timestamp field types, such as `temporal.createdAt()` and `temporal.updatedAt()`, so you do not import it or declare it. On PostgreSQL the column is `timestamptz`, and you can still set the field yourself on a write. `temporal.createdAt()` sets the field once, when the row is created. Both take the time from your application's clock, not from the database, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `DateTime @default(now())` instead. `temporal.createdAtJsDate()` and `temporal.updatedAtJsDate()` do the same with a JavaScript `Date` in place of a `Temporal` value. `temporal.createdAt()` and `temporal.updatedAt()` need a global `Temporal` for writes as well as reads, so when your runtime has none, install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` to your app's entry file.
+Prisma ORM sets the field to the current time on every create and update, and you can still set it yourself on a write. `temporal.createdAt()` sets its field once, when the row is created. You do not import or declare `temporal`: it is a group of timestamp field types built into the contract syntax. On PostgreSQL the column is `timestamptz`.
+
+Both take the time from your application's clock, not from the database, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `DateTime @default(now())` instead.
+
+`temporal.createdAt()` and `temporal.updatedAt()` need a global `Temporal` for writes as well as reads. When your Node.js version has none, install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` at the top of `src/prisma/db.ts`. `temporal.createdAtJsDate()` and `temporal.updatedAtJsDate()` work the same way, but with a JavaScript `Date` in place of a `Temporal` value.
 
 ### Columns of any database type
 
-For a column of a database type no field type covers, write ``Raw(sql`...`)`` with the type exactly as the database prints it:
+For a column of a database type no field type covers, write ``Raw(sql`...`)`` with the type written the way the database reports it. To see that text for a column that already exists, run [`prisma db schema`](/cli/db-schema):
 
 ```prisma
 model Category {
@@ -209,7 +213,7 @@ model Category {
 }
 ```
 
-Migrations create the column with that text, and [`db verify`](/cli/db-verify) compares it with the type the database reports, so write `integer`, not `int4`, and quote a name that needs it, as in ``Raw(sql`"MyType"`)``. Your code reads and writes the value as `unknown`, and a default is a `sql` tagged literal. `Raw("ltree")`, without the `sql` tag, is refused. `Raw` works on PostgreSQL and SQLite.
+Migrations create the column with that text, and [`db verify`](/cli/db-verify) compares it with the type the database reports, so write `integer`, not `int4`, and quote a name that needs it, as in ``Raw(sql`"MyType"`)``. Your code reads and writes the value as `unknown`, and a default is a `sql` tagged literal. `Raw("ltree")`, without the `sql` tag, is refused. `Raw` works on PostgreSQL and on SQLite, which Prisma ORM 8 supports as an [experimental package](/orm/supported-databases).
 
 ### Default values
 
@@ -233,13 +237,12 @@ model Account {
 ```
 
 - A JSON default is a `json` tagged literal: `json` followed by the JSON document in backticks. Write a JSON array the same way, as `tags` shows.
-- A decimal default is a bare number. `contract emit` stores it with the scale of its column, so `@default(1.5)` on a `Numeric(10, 2)` field is stored as `"1.50"`.
+- A decimal default is a bare number.
 - `NaN`, `Infinity`, and `-Infinity` are written without quotes, and so are `true` and `false`.
 - A text default is a quoted string.
 - A fixed date, time, or interval is a tagged literal named after the column's PostgreSQL type: `timestamptz` for `DateTime` and `Timestamptz`, and `timestamp`, `date`, `time`, `timetz`, and `interval` for the types of those names, as in ``@default(interval`P1D`)``. A `timestamptz` default is a point in time with a UTC offset, such as ``timestamptz`2024-01-01T00:00:00Z` ``, and a `timestamp` default has no offset, such as ``timestamp`2024-01-01 00:00:00` ``. A quoted string on one of these fields is refused, and the message shows the tagged literal to write.
 - A `Bytes` default is a `bytea` tagged literal holding the bytes as hexadecimal after `\x`, as `payload` shows. Base64 text is not accepted.
 - On SQLite, a `DateTime` default uses the `datetime` tag, as in ``@default(datetime`2024-01-01T00:00:00Z`)``, and a `Bytes` default the `blob` tag, which holds hexadecimal digits, as in ``@default(blob`68656c6c6f`)``.
-- `contract emit` stores a fixed date or time default in one canonical text for each value, however you write it. ``@default(timestamptz`2024-01-01T01:00:00+01:00`)`` on a `DateTime` field is stored as `"2024-01-01T00:00:00Z"`, the same instant in UTC, and ``@default(timestamp`2024-01-01 12:34:56.500`)`` on a `Timestamp` field is stored as `"2024-01-01T12:34:56.5"`. `contract infer` and `contract print` write date and time defaults in the same form.
 - Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `VarChar(n)` or `Char(n)` takes, a number a `Numeric(p, s)` would round, more digits of a second than a `Timestamptz(3)` keeps, an integer outside the range of `Int` or `SmallInt`, or text that is not a UUID on a `Uuid` field.
 - A date or time default that the field's type does not hold makes `contract emit` fail with `PSL_INVALID_DEFAULT_LITERAL`, and the message shows a text the field takes. That includes an offset on a `Timestamp`, `Date`, or `Time` default, a missing offset on a `DateTime`, `Timestamptz`, or `Timetz` default, more than six digits after the decimal point (three on SQLite), and a date or time that does not exist, such as `2024-02-30`. The CLI checks these defaults on Node.js 24 too, which has no built-in `Temporal`.
 - On a field typed with an `enum` block, the default is the member's name without quotes, as in `@default(Low)`. On a `pg.enum(...)` field, it is the value the member stores, in quotes, as in `@default("admin")`. [Enums](#enums) covers both.
@@ -358,7 +361,9 @@ enum Priority {
 
 In `pg/text@1`, `pg` is PostgreSQL, `text` is the column type, and `@1` is the version of how the value is stored and read. Write `@@type("pg/int4@1")` to store the values as integers instead. When a member has no explicit value, the member name itself is stored.
 
-Each member's value is a value of the enum's type, written as a `@default` of that type is: a quoted string for text, a bare number for a number type, and a tagged literal for a date or time. A quoted member on a number type, such as `Half = "0.5"` under `@@type("pg/numeric@1")`, is refused, and the message shows what to write, here `Half = 0.5`. Members are compared as values of the type, so on `pg/numeric@1` the members `0.5` and `0.50` are the same value and are refused together. An enum cannot use `pg/jsonb@1`, `pg/timetz@1`, `pg/enum@1`, `pg/vector@1`, or `pg/geometry@1`: use a text enum, or a `native_enum` block in place of `pg/enum@1`.
+Each member's value is a value of the enum's type, written as a `@default` of that type is: a quoted string for text, a bare number for a number type, and a tagged literal for a date or time. A quoted member on a number type, such as `Half = "0.5"` under `@@type("pg/numeric@1")`, is refused, and the message shows what to write, here `Half = 0.5`. Two members may not store the same value. Prisma ORM compares the values, not the text you wrote, so on `pg/numeric@1` the members `0.5` and `0.50` store the same value and are refused.
+
+Some types cannot hold enum members, so JSON (`pg/jsonb@1`), time with a time zone (`pg/timetz@1`), vectors (`pg/vector@1`), and geometries (`pg/geometry@1`) are refused in `@@type`: use a text enum instead. For a PostgreSQL `enum` type, use a `native_enum` block, not `@@type("pg/enum@1")`.
 
 `@@type` is optional, and when you leave it out Prisma ORM picks the type from the member values: bare member names and string values give the database's text type, and integer values give its integer type. Give every member the same kind of value, because a mix of string and integer values throws an error whose `code` is `PSL_ENUM_CANNOT_INFER_TYPE`. A `@default` names the member, as in `priority Priority @default(Low)`, even where the member stores a different value.
 
@@ -375,7 +380,7 @@ model User {
 }
 ```
 
-Each member needs a value. `pg` comes with `@prisma/orm-postgres`, so there is nothing to import. You do not create the PostgreSQL type yourself: `npx prisma migration plan` includes the `CREATE TYPE`. A field can name a `native_enum` declared in another [namespace](#namespaces) by putting the namespace first, as in `pg.enum(auth.OrderStatus)`.
+Unlike an `enum` block, a `native_enum` block needs a value for every member. `pg` comes with `@prisma/orm-postgres`, so there is nothing to import. You do not create the PostgreSQL type yourself: `npx prisma migration plan` includes the `CREATE TYPE`. A field can name a `native_enum` declared in another [namespace](#namespaces) by putting the namespace first, as in `pg.enum(auth.OrderStatus)`.
 
 ## Value objects
 
@@ -572,7 +577,7 @@ model Bug {
 }
 ```
 
-Field and model names are written bare, as `type` and `Task` are, while table names and discriminator values are quoted, as `"task"` and `"bug"` are. Rows whose `type` column holds `"bug"` are `Bug` records. A variant reuses its base model's fields, so a `Bug` has `id`, `title`, and `type` as well as `severity` and `stepsToRepro`. The base model can be declared before or after its variants. A variant does not declare an `@id` of its own: it takes the base model's primary key. On PostgreSQL and SQLite the discriminator field must hold text: `String`, or on PostgreSQL `Char(n)` or `VarChar(n)`, and on SQLite `sql.String(n)`.
+Field and model names are written bare, as `type` and `Task` are, while table names and discriminator values are quoted, as `"task"` and `"bug"` are. Rows whose `type` column holds `"bug"` are `Bug` records. A variant reuses its base model's fields, so a `Bug` has `id`, `title`, and `type` as well as `severity` and `stepsToRepro`. The base model can be declared before or after its variants. A variant does not declare an `@id` of its own: it takes the base model's primary key. On PostgreSQL and SQLite the discriminator field must hold text: `String`, or on PostgreSQL `Char(n)` or `VarChar(n)`, and on SQLite `sql.String(n)`, SQLite's text type with a length, the counterpart of `VarChar(n)` on PostgreSQL.
 
 You query a variant through the base model: `db.orm.public.Task.variant('bug')` returns the `Bug` rows only, and `public` here is the PostgreSQL schema. `variant()` takes the discriminator value from `@@base`, not the model name. Writing a row of a variant starts with the same `variant('bug')` call. See [`variant()`](/orm/reference/orm-client#variant).
 

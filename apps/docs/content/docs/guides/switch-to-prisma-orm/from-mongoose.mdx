@@ -461,7 +461,7 @@ curl http://localhost:3000/users
 [{"profile":{"bio":"Writes about databases"},"id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice"},{"profile":null,"id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob"}]
 ```
 
-The same documents Mongoose returned, because both read the same collection. The id is under `id`, the field name in the contract, and `__v` is left out, because the contract does not declare it. Bob's document has no `profile`, and because `profile` is optional in the contract, Prisma ORM returns it as `null`.
+These are the documents Mongoose returned, because both read the same collection, but the JSON differs in two ways. The id is under `id`, the field name in the contract, instead of `_id`, so update any client of your API that reads `_id`. And `__v` is left out, because the contract does not declare it. Bob's document has no `profile`, and because `profile` is optional in the contract, Prisma ORM returns it as `null`.
 
 ```bash
 curl http://localhost:3000/posts
@@ -470,6 +470,8 @@ curl http://localhost:3000/posts
 ```json no-copy
 [{"_id":"6aa2cd2ed97f8d7357dc9bd5","title":"Hello MongoDB","content":"First post","published":true,"author":{"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","profile":{"bio":"Writes about databases"},"__v":0},"categories":[{"_id":"6aa2cd2ed97f8d7357dc9bd3","name":"Databases","__v":0}],"__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd7","title":"Bob's post","content":"Hi","published":true,"author":{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0},"categories":[],"__v":0}]
 ```
+
+This route still returns `_id` and `__v`, unlike `GET /users`. It reads through the pipeline builder, which returns documents as MongoDB stores them. The `__v` keys go away when you remove them from the documents in step 4.2.
 
 ```bash
 curl -X POST http://localhost:3000/users \
@@ -587,7 +589,7 @@ The ORM query API uses the field names in the contract, not the names in `@map`.
 
 :::warning[ObjectId filters in the pipeline builder]
 
-In the pipeline builder, `.match((f) => f._id.eq(id))` sends the id as a plain string and matches nothing. Filter ObjectId fields through the ORM, `db.orm.posts.where({ id })` or `db.orm.posts.where(MongoFieldFilter.eq("id", id))`, which converts the id for you. In a pipeline, pass an `ObjectId` instead, as the [`match()` reference](/orm/reference/pipeline-builder#match) shows.
+In the pipeline builder, `.match((f) => f._id.eq(id))` sends the id as a plain string and matches nothing. Filter ObjectId fields through the ORM, `db.orm.posts.where({ id })` or `db.orm.posts.where(MongoFieldFilter.eq("id", id))`, which converts the id for you. Import `MongoFieldFilter` from `@prisma/orm-mongo/query-ast/execution`. In a pipeline, pass an `ObjectId` from the `mongodb` package instead, as the [`match()` reference](/orm/reference/pipeline-builder#match) shows.
 
 :::
 

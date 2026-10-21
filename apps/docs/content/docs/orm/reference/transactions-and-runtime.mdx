@@ -6,11 +6,11 @@ metaTitle: Prisma ORM transactions and runtime reference
 metaDescription: 'Reference for the Prisma ORM client lifecycle, transactions, prepared statements, and execution options.'
 ---
 
-Prisma ORM 8 renames `schema.prisma` to `contract.prisma`. Run `npx prisma contract emit`, which writes two files next to it: `contract.json`, which your app imports, and `contract.d.ts`, which gives you the TypeScript types. A new project keeps all three files in `src/prisma/`. Every client you create needs the contract from `contract.json`, turned into a value with `contractFromJson`. The query you came for, `prisma.user.findMany({ where })`, is now `db.orm.public.User.where(...).all()`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists the packages to install, the commands to run, and the rest of the renamed calls.
+Create, connect, and close the client, run transactions, prepare statements, and set per-query execution options, on PostgreSQL and MongoDB. For a task-oriented walkthrough, see the Fundamentals guide to [Transactions](/orm/fundamentals/transactions). For the ways to query inside a transaction, see the [ORM client reference](/orm/reference/orm-client), the [SQL query builder reference](/orm/reference/sql-query-builder), and the [raw queries reference](/orm/reference/raw-queries).
+
+If you are coming from Prisma ORM 7, your `schema.prisma` is now called `contract.prisma`. Running `npx prisma contract emit` writes two files next to it: `contract.json`, which your app imports, and `contract.d.ts`, which gives you the TypeScript types. A new project keeps all three files in `src/prisma/`. Every client you create needs the contract from `contract.json`, turned into a value with `contractFromJson`. A query such as `prisma.user.findMany({ where })` is now `db.orm.public.User.where(...).all()`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists the packages to install, the commands to run, and the rest of the renamed calls.
 
 `db` is the client that `postgres(...)` or `mongo(...)` returns. `db.runtime()` gives you the object that actually runs queries, and that object is called the runtime.
-
-Create, connect, and close the client, run transactions, prepare statements, and set per-query execution options, on PostgreSQL and MongoDB. For a task-oriented walkthrough, see the Fundamentals guide to [Transactions](/orm/fundamentals/transactions). For the ways to query inside a transaction, see the [ORM client reference](/orm/reference/orm-client), the [SQL query builder reference](/orm/reference/sql-query-builder), and the [raw queries reference](/orm/reference/raw-queries).
 
 Transactions are not available on MongoDB. To run one there, pass your own `MongoClient` with the `mongoClient` option and use the driver's `session.withTransaction(...)`, which [Transactions on MongoDB](/orm/fundamentals/transactions#transactions-on-mongodb) shows in code.
 
@@ -24,7 +24,7 @@ Create a PostgreSQL client.
 
 #### Remarks
 
-- Pass the contract as a value with the `contract` option. Turn `contract.json` into that value once with `contractFromJson<Contract>(contractJson)` from `@prisma/orm-postgres/static`, as every example below does. `Contract` is the type that `contract.d.ts` exports; you name it here because TypeScript cannot read a type out of a JSON file. The client takes its types for `db.orm` and `db.sql` from the value, so `postgres(...)` takes no type argument. A contract written in TypeScript with `defineContract` is already a value: pass it as `contract` directly.
+- Pass the contract as a value with the `contract` option. Turn `contract.json` into that value once with `contractFromJson<Contract>(contractJson)` from `@prisma/orm-postgres/static`, as every example below does. `Contract` is the type that `contract.d.ts` exports; you name it here because TypeScript cannot read a type out of a JSON file. The client takes its types for `db.orm` and `db.sql` from the value, so `postgres(...)` takes no type argument. If you write your contract in TypeScript with [`defineContract`](/orm/contract-authoring/typescript-schema-builder) instead of in `contract.prisma`, what `defineContract` returns is already a contract value, so pass it as `contract` directly.
 - `contractFromJson` checks the contract once. Build every client from the same value, and export it from the module that creates the client so that tests and other modules can import it.
 - Tell the client which database to use in one of three ways: `url`, `pg`, or `binding`. A `binding` wraps any of the three choices in one object, with a `kind` field saying which it is: `{ kind: 'url', url }`, `{ kind: 'pgPool', pool }`, or `{ kind: 'pgClient', client }`. Use it when your code picks the source at run time. Pass exactly one of `url`, `pg`, and `binding`, or leave all three out and pass one to [`connect()`](#connect).
 - When you pass a `pg` pool or client, you own it: call `db.close()` first, then close it yourself with `pool.end()`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself.
@@ -49,6 +49,7 @@ Pass exactly one of `url`, `pg`, and `binding`.
 | `extensions` | Array of extension runtimes, the default export of each package's `/runtime` subpath | No | The PostgreSQL extensions your contract's types need. Install each package, then import its `/runtime` subpath and put the default export in this array. |
 | `middleware` | Array of middleware | No | Code that runs around every query. See [How middleware works](/orm/middleware/how-middleware-works). |
 | `verifyMarker` | `'onFirstUse'` or `false` | No | Whether the first query checks that the database was set up for this contract. Defaults to `'onFirstUse'`. |
+| `log` | An object with `info`, `warn`, and `error` methods, such as `console` | No | Where the client sends its warnings, such as a `'warn'` result from the lints or budgets middleware, or the `verifyMarker` warning. Without `log`, warnings are not printed. |
 | `cursor` | `PostgresCursorOptions`, which is `{ batchSize?: number }` | No | Read through a server-side cursor in batches of `batchSize` rows, 100 when you leave `batchSize` out. Without `cursor`, reads are not batched. |
 | `mode` | `'strict'` or `'permissive'` | No | How middleware treats a rule violation. Defaults to `'strict'`. See [`mode`](#mode). |
 | `collections` | Object mapping model name to a collection class | No | Your own collection classes, used on `db.orm` and on every transaction's `tx.orm`. See [Custom collections](/orm/reference/orm-client#custom-collection-subclass). |
@@ -196,8 +197,9 @@ The `mode` option says how middleware treats a rule violation.
 
 #### Remarks
 
-- `'strict'`, the default, makes the [budgets middleware](/orm/middleware/built-in-budgets) throw on every violation.
-- With `'permissive'`, a budgets violation whose severity is `'warn'` is logged with the client's `log.warn`, and the query runs. Set the severity with the budgets `severities` option. A violation whose severity is `'error'` still throws.
+- Of the built-in middleware, only [budgets](/orm/middleware/built-in-budgets) reads `mode`. The [lints middleware](/orm/middleware/built-in-lints) sends a rule set to `'warn'` to `log.warn` in either mode.
+- `'strict'`, the default, makes the budgets middleware throw on every violation.
+- With `'permissive'`, a budgets violation whose severity is `'warn'` is passed to `log.warn`, where `log` is the `log` option you pass to the client, such as `log: console`, and the query runs. Without a `log` option, the warning goes nowhere. Set the severity with the budgets `severities` option. A violation whose severity is `'error'` still throws.
 - `postgres(...)`, `postgresServerless(...)`, `sqlite(...)`, and `supabase(...)` take `mode`. Its type is `RuntimeMode`.
 
 #### Examples
@@ -212,6 +214,7 @@ const db = postgres({
   url: process.env.DATABASE_URL!,
   middleware: [budgets({ maxRows: 1000, severities: { rowCount: 'warn' } })],
   mode: 'permissive',
+  log: console,
 });
 ```
 
@@ -341,7 +344,9 @@ Pass exactly one of `url`, `uri`, `mongoClient`, and `binding`. `dbName` is sepa
 
 | Return type | Example | Description |
 |---|---|---|
-| `MongoClient` | `mongo({ contract, url, dbName })` | A client that has not connected yet. This is Prisma ORM's own type. The `mongodb` driver has a class of the same name, so when you import both, name this one `db`. |
+| `MongoClient` | `mongo({ contract, url, dbName })` | A client that has not connected yet. |
+
+`MongoClient` here is Prisma ORM's own type, exported from `@prisma/orm-mongo/runtime`. The `mongodb` driver has a class with the same name, so in a file that imports both, rename one of them in its import: `import type { MongoClient as PrismaMongoClient } from '@prisma/orm-mongo/runtime'`.
 
 - `.orm` holds your models by collection name, with no `.public` in the path: `db.orm.users`. The collection name is the model's `@@map` value, or the model name exactly as written when the model sets no `@@map`. The [example schema](/orm/reference/orm-client#example-schema) sets `@@map("users")` on `User`, which is why the key here is `users`. See the [ORM client reference](/orm/reference/orm-client).
 - `.query` is the pipeline builder, which builds MongoDB aggregation pipelines. See the [pipeline builder reference](/orm/reference/pipeline-builder). `.raw` sends raw MongoDB commands. See the [raw queries reference](/orm/reference/raw-queries).

@@ -900,7 +900,7 @@ On PostgreSQL and SQLite you can subclass `Collection` to add your own methods t
 #### Remarks
 
 - PostgreSQL and SQLite. You cannot subclass a collection on MongoDB.
-- `collections` maps a model name to your class. `postgres(...)`, `postgresServerless(...)`, `sqlite(...)`, and `supabase(...)` take it. The classes are used on `db.orm`, on every transaction's `tx.orm`, on each connection a serverless client opens, and on Supabase's role-bound clients. Models you leave out keep the built-in class.
+- `collections` maps a model name to your class. You pass it to the function that creates your client: `postgres(...)`, `postgresServerless(...)` for serverless functions, `sqlite(...)` for SQLite, or `supabase(...)` for Supabase. Your class is then used wherever that client gives you the model: on `db.orm`, on every transaction's `tx.orm`, on each connection the serverless client opens, and on the Supabase clients that run queries as a database role, such as the one `asUser(jwt)` returns. Models you leave out keep the built-in class.
 - If the module that defines your classes needs the contract type, import only the type, `import type { Contract } from './contract.d'`, so that it does not import the module that creates the client.
 - `Collection<Contract, 'Task'>` takes two type arguments: your contract type, and the name of the model this collection is for.
 - A method that returns `this.variant('bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
@@ -940,6 +940,8 @@ const features = await db.orm.public.Task.features().all();
 const recentBugs = await db.orm.public.Task.orderBy((t) => t.id.desc()).limit(10).bugs().all();
 const lockedBugs = await db.transaction((tx) => tx.orm.public.Task.bugs().forUpdate().all());
 ```
+
+The last line runs inside a transaction, so your method works on `tx.orm` too. `forUpdate()` locks the rows it reads with `FOR UPDATE` until the transaction ends.
 
 On SQLite, `db.orm` holds the models directly, so the same method is `db.orm.Task.bugs()`.
 
@@ -2035,7 +2037,7 @@ A plain object of equality matches, ANDed together.
 - Available for PostgreSQL and MongoDB.
 - Multiple keys are combined with implicit AND. A key set to `undefined` is skipped.
 - On PostgreSQL, a key set to `null` becomes an IS NULL check. On MongoDB it matches documents where the field is null and documents where the field is missing.
-- On MongoDB, a list field takes a whole list, which matches a stored list that is equal to it, an empty list `[]`, or `null`. `null` matches a document whose list is null or missing, not a list that holds a `null` item.
+- On MongoDB, what a list field matches depends on the value you give it. A whole list, such as `{ tags: ['a', 'b'] }`, matches a stored list equal to it. `{ tags: [] }` matches an empty list. `{ tags: null }` matches a document whose list is null or missing, not a list that holds a `null` item.
 - On PostgreSQL, the shorthand object cannot filter a field whose type cannot be compared for equality, such as `Json`. Using that field as a key compiles, but fails at run time with an error whose `code` is `ORM.FILTER_UNSUPPORTED`. Use the callback form, which has whatever methods that type does support. On a `Json` field those are `isNull()` and `isNotNull()`.
 
 #### Examples

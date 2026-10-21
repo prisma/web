@@ -133,7 +133,13 @@ export const db = postgres({
 });
 ```
 
-The connection string comes from the `DATABASE_URL` environment variable: `prisma orm init` writes `.env.example`, and you put your `DATABASE_URL` in `.env`. Keep the `.d` in the import path: it names `contract.d.ts`, so the import still finds the generated type when you author the contract in TypeScript and a `contract.ts` sits beside it. The `tsconfig.json` settings the JSON import needs are on the [transactions and runtime page](/orm/reference/transactions-and-runtime). Before its first query, `db` reads the record in the database of which contract it matches and compares it with the contract's hashes. If they do not match, it logs a warning whose `code` is `CONTRACT.MARKER_MISMATCH` and runs the query anyway. If there is no record at all, because nothing has signed the database yet, it logs a warning whose `code` is `CONTRACT.MARKER_MISSING` and again runs the query. On MongoDB the client is `mongo({ contract, url })` from `@prisma/orm-mongo/runtime`, with `contractFromJson` from `@prisma/orm-mongo/static`, described under [`mongo(options)`](/orm/reference/transactions-and-runtime#mongooptions).
+`db` reads the connection string from the `DATABASE_URL` environment variable. `prisma orm init` always writes `.env.example`, and it also writes `.env` when you pass `--write-env` or answer yes when it asks. Put your `DATABASE_URL` in `.env`. The `tsconfig.json` settings the JSON import needs are on the [transactions and runtime page](/orm/reference/transactions-and-runtime).
+
+Keep the `.d` in the import path. It names `contract.d.ts`, so the import cannot pick up a `contract.ts` in the same folder. That matters when you write the contract in TypeScript and the config sets no `output`, because `contract emit` then writes its files next to `contract.ts`.
+
+Before its first query, `db` reads a record in the database that says which contract the database matches. Error codes call this record the marker. `db` compares it with the contract's hashes, and if they do not match, it logs a warning whose `code` is `CONTRACT.MARKER_MISMATCH` and runs the query anyway. If there is no record at all, because nothing has signed the database yet, it logs a warning whose `code` is `CONTRACT.MARKER_MISSING` and again runs the query. {/* plain-language:defined */}
+
+On MongoDB the client is `mongo({ contract, url })` from `@prisma/orm-mongo/runtime`, with `contractFromJson` from `@prisma/orm-mongo/static`, described under [`mongo(options)`](/orm/reference/transactions-and-runtime#mongooptions).
 
 When `CONTRACT.MARKER_MISMATCH` shows up in production, apply the pending migration, or run `npx prisma db sign` when the database already matches the contract. The client warns by default, and you can set [`verifyMarker`](/orm/reference/transactions-and-runtime#postgresoptions) to `false` to skip the check. It cannot be made to fail, so run `prisma db verify` when you need a check that fails.
 

@@ -51,7 +51,7 @@ The `name` is the label Prisma ORM uses when it talks about your middleware, so 
 
 If a call gives you back a count instead of rows, `afterQuery` is not called for it and `afterExecute` is called instead. On the ORM API the calls that return a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`. Every other call returns rows and reaches `afterQuery`, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`.
 
-The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db` runs it. `db.query(plan)` returns rows and calls `afterQuery`, while `db.execute(plan)` reports how many rows the statement changed and calls `afterExecute`.
+The same split applies to the [SQL query builder](/orm/reference/sql-query-builder), `db.sql.public.User...`. There you call `.build()` to get the built query, which is the `plan` your hooks receive. When you run it with `db.query(plan)`, which returns rows, your `afterQuery` is called. When you run it with `db.execute(plan)`, which returns only how many rows changed, your `afterExecute` is called.
 
 To have the logger cover the counting calls as well, add a second hook to the object `queryLogger()` returns in `src/prisma/query-logger.ts`, next to `afterQuery`:
 
@@ -84,7 +84,11 @@ export const db = postgres({
 });
 ```
 
-The only line added here is the `middleware` option. The `src/prisma/db.ts` that `npm create prisma@latest` generates has more in it than this, including a `connectDatabase` export that the generated `seed.ts` imports, so keep that file and add the `middleware` option to the `postgres({ ... })` calls in it rather than replacing it with the file above. Those calls only run when the app is started with `DATABASE_URL` exported, as `npm run dev` does. With `npm run dev:composer`, the generated file takes its client from Composer through `service.load()` instead, and the `middleware` option in `db.ts` is never used, so run the app with `DATABASE_URL` exported while you follow this guide. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
+The only line added here is the `middleware` option. Do not replace the `src/prisma/db.ts` that `npm create prisma@latest` generated with the file above, because the generated file has more in it, such as a `connectDatabase` export that the generated `seed.ts` imports. Instead, add the `middleware` option to each `postgres({ ... })` call in it.
+
+The generated project can start the app in two ways, and your middleware runs in only one of them. `npm run dev` starts the app with `DATABASE_URL` exported, so the `postgres({ ... })` calls in `db.ts` create the client and your middleware runs. `npm run dev:composer` runs the app with [Prisma Composer](/composer), which describes your services and databases in TypeScript, and the app then gets its client from Composer instead, so the `middleware` option in `db.ts` is never read. Use `npm run dev` while you follow this guide.
+
+If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
 
 That one line is all the setup there is, and every query on this client now passes through the logger, whether you wrote it with the ORM API (`db.orm.public.User...`) or with the SQL query builder.
 
@@ -373,10 +377,10 @@ Every hook receives a context object called `ctx`, holding the following:
 | `ctx.planExecutionId` | The same unique ID in every hook that runs for one query |
 | `ctx.now()` | The current time in milliseconds, the same value `Date.now()` gives |
 | `ctx.scope` | Where the query is running: `'runtime'`, `'connection'`, or `'transaction'` |
-| `ctx.mode` | Whether a failed check blocks the query. Always `'strict'` on PostgreSQL, because `postgres(...)` has no way to set it |
+| `ctx.mode` | The [`mode` option](/orm/reference/transactions-and-runtime#mode) of `postgres(...)`: `'strict'`, the default, or `'permissive'`. The budgets middleware reads it to decide whether a query over budget throws or is only logged |
 | `ctx.contentHash(plan)` | A promise of a string that is the same for the same statement and parameters, so `await` it |
 | `ctx.contract` | Your contract, for when a hook needs to know what your database looks like |
-| `ctx.log` | Has nowhere to go on PostgreSQL today, so use your own logger |
+| `ctx.log` | The [`log` option](/orm/reference/transactions-and-runtime#postgresoptions) of `postgres(...)`, such as `console`, with `info`, `warn`, and `error` methods. Without that option, what you pass to it is not printed |
 
 `ctx.scope` is `'runtime'` for a query you sent on `db` directly, `'transaction'` inside `db.transaction(...)`, and `'connection'` for a query you sent on a connection you took out of the pool yourself with `db.runtime().connection()`. The cache reads it to leave queries inside a transaction alone.
 

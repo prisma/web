@@ -1,20 +1,22 @@
 ---
 title: 'Built-in: budgets'
-description: The budgets middleware caps row counts and reports queries that took too long.
+description: The budgets middleware stops queries that read too many rows or take too long.
 url: /orm/middleware/built-in-budgets
 metaTitle: 'Prisma ORM built-in middleware: budgets'
-metaDescription: 'Wire and configure the budgets middleware in Prisma ORM to cap row counts, report query latency, and understand the errors it raises.'
+metaDescription: 'Wire and configure the budgets middleware in Prisma ORM to cap row counts and query time, and understand the errors it raises.'
 ---
 
 The `budgets` middleware stops one careless query from reading far more of your data, or taking far more time, than you meant to give it. You give it a row limit and a time limit, and it checks the queries you send against both. When a query goes over either limit, your call fails with an error and you get no rows back.
 
 Before you register it, know that `budgets` rejects any `SELECT` from the ORM API or the SQL query builder that has no `LIMIT` on it, however few rows the table holds. A statement you wrote yourself with `db.raw.sql` is not checked this way. On the [ORM API](/orm/fundamentals/reading-data), the call that runs a query and gives you every matching row is `.all()`, so that means every `.all()` call with no `.limit(...)` earlier in the chain. A `.where(...).first()` call is fine, because `.first()` asks the database for one row.
 
-Those `.all()` calls start throwing the moment you add `budgets` to your client, and there is no warn-only setting to ease the change in. The `severities` options in the table below look like one, but they do nothing on a client you build with `postgres(...)`. So find your `.all()` calls and give them limits before you turn `budgets` on, and searching your source for the call is a good starting point:
+Those `.all()` calls start throwing the moment you add `budgets` to your client, so find them and give them limits before you turn `budgets` on. Searching your source for the call is a good starting point:
 
 ```bash
 grep -rn "\.all()" src scripts
 ```
+
+If you want to turn `budgets` on before every call has a limit, set the row check's severity to `'warn'` and create the client with `mode: 'permissive'`, as [Report instead of throwing](#report-instead-of-throwing) shows. A query with no limit then runs, and its warning goes to the client's `log` option, so you can add the limits as the warnings come in.
 
 The fix is a `.limit(...)` in the chain. A query that counts rows is never a problem, because a count that is not split into groups comes back as a single row. In the calls below, `db.orm` is the ORM API and `public` is the PostgreSQL schema your tables are in:
 
@@ -72,10 +74,22 @@ Every option is optional, and the default in the table applies when you leave on
 | `defaultTableRows` | `number` | `10_000` | How many rows to assume a table has when it is not listed in `tableRows` |
 | `tableRows` | `Record<string, number>` | `{}` | How many rows to assume each table has, keyed by table name |
 | `maxLatencyMs` | `number` | `1_000` | The longest one query may take, in milliseconds |
-| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Nothing on a client you build with `postgres(...)`, where going over the row budget always throws |
-| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Nothing on a client you build with `postgres(...)`, where going over the time budget always throws |
+| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether going over the row budget throws or only reports, on a client created with `mode: 'permissive'` |
+| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Whether going over the time budget throws or only reports, on a client created with `mode: 'permissive'` |
 
-`severities` has no effect on a client you build with `postgres(...)`, where both budgets always throw. You can leave it out.
+### Report instead of throwing [#report-instead-of-throwing]
+
+On a client created with the default `mode`, `'strict'`, both budgets always throw, whatever `severities` says. When you create the client with `mode: 'permissive'`, a check whose severity is `'warn'` passes the problem to `log.warn`, where `log` is the [`log` option](/orm/reference/transactions-and-runtime#postgresoptions) you pass to `postgres(...)`, such as `console`, and the query runs. [`mode`](/orm/reference/transactions-and-runtime#mode) in the client reference has the details. A check whose severity is `'error'` still throws. Without a `log` option, the report goes nowhere.
+
+```ts
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
+  url: process.env['DATABASE_URL']!,
+  middleware: [budgets({ severities: { rowCount: 'warn' } })],
+  mode: 'permissive',
+  log: console,
+});
+```
 
 ## How it enforces the budget
 
