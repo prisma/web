@@ -53,7 +53,7 @@ const tree: DecisionTreeData = {
       accent: true,
       why: "A different bundle: database, ORM, and TypeScript app hosting designed together, with one schema and one config, and the app deployed next to the database.",
       caveat:
-        "Prisma Compute is in public beta. Auth, storage, and realtime are not part of this bundle; that is Supabase's territory.",
+        "Auth, storage, and realtime are not part of this bundle; that is Supabase's territory.",
     },
     {
       id: "shape",
