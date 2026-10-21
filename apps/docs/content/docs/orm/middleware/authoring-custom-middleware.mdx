@@ -51,7 +51,7 @@ The `name` is the label Prisma ORM uses when it talks about your middleware, so 
 
 If a call gives you back a count instead of rows, `afterQuery` is not called for it and `afterExecute` is called instead. On the ORM API the calls that return a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`. Every other call returns rows and reaches `afterQuery`, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`.
 
-The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db.runtime()` runs it. `db.runtime().query(plan)` returns rows and calls `afterQuery`, while `db.runtime().execute(plan)` reports how many rows the statement changed and calls `afterExecute`.
+The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db` runs it. `db.query(plan)` returns rows and calls `afterQuery`, while `db.execute(plan)` reports how many rows the statement changed and calls `afterExecute`.
 
 To have the logger cover the counting calls as well, add a second hook to the object `queryLogger()` returns in `src/prisma/query-logger.ts`, next to `afterQuery`:
 
@@ -73,17 +73,18 @@ You register a middleware by adding it to the `middleware` array where you creat
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
 import { queryLogger } from './query-logger';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [queryLogger()],
 });
 ```
 
-The only line added here is the `middleware` option. The `src/prisma/db.ts` that `npm create prisma@latest` generates has more in it than this, including a `connectDatabase` export that the generated `seed.ts` imports, so keep that file and add the `middleware` option to the `postgres<Contract>({ ... })` calls in it rather than replacing it with the file above. Those calls only run when the app is started with `DATABASE_URL` exported, as `npm run dev` does. With `npm run dev:composer`, the generated file takes its client from Composer through `service.load()` instead, and the `middleware` option in `db.ts` is never used, so run the app with `DATABASE_URL` exported while you follow this guide. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
+The only line added here is the `middleware` option. The `src/prisma/db.ts` that `npm create prisma@latest` generates has more in it than this, including a `connectDatabase` export that the generated `seed.ts` imports, so keep that file and add the `middleware` option to the `postgres({ ... })` calls in it rather than replacing it with the file above. Those calls only run when the app is started with `DATABASE_URL` exported, as `npm run dev` does. With `npm run dev:composer`, the generated file takes its client from Composer through `service.load()` instead, and the `middleware` option in `db.ts` is never used, so run the app with `DATABASE_URL` exported while you follow this guide. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
 
 That one line is all the setup there is, and every query on this client now passes through the logger, whether you wrote it with the ORM API (`db.orm.public.User...`) or with the SQL query builder.
 
@@ -260,13 +261,14 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres from '@prisma/orm-postgres/runtime';
 import { BinaryExpr, ColumnRef, ParamRef } from '@prisma/orm-postgres/relational-core/ast';
 import { scopeUserSelects } from './scope-user-selects';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const currentName = new AsyncLocalStorage<string>();
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [
     scopeUserSelects(() => {

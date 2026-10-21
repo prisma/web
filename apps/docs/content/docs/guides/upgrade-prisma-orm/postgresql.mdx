@@ -14,7 +14,7 @@ The guide covers **PostgreSQL only**. Guidance for other databases will follow. 
 
 :::info
 
-Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` as of `8.0.0-rc.21` and `@prisma/orm-postgres` as of `8.0.0-rc.16`: the CLI is released separately, so the two numbers differ. Prisma ORM 7 stays at `7.10.1`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.1`.
+Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` as of `8.0.0-rc.21` and `@prisma/orm-postgres` as of `8.0.0-rc.19`: the CLI is released separately, so the two numbers differ. Prisma ORM 7 stays at `7.10.1`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.1`.
 
 :::
 
@@ -387,6 +387,7 @@ Pick one small route and move only that code. The rest of the application stays 
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import postgres from "@prisma/orm-postgres/runtime"; // [!code ++]
+import { contractFromJson } from "@prisma/orm-postgres/static"; // [!code ++]
 import type { Contract } from "../generated/prisma8/contract.d"; // [!code ++]
 import contractJson from "../generated/prisma8/contract.json" with { type: "json" }; // [!code ++]
 import { PrismaClient } from "../generated/prisma/client";
@@ -397,10 +398,12 @@ const adapter = new PrismaPg({ connectionString });
 
 export const prisma = new PrismaClient({ adapter });
 
-export const db = postgres<Contract>({ url: connectionString, contractJson }); // [!code ++]
+export const contract = contractFromJson<Contract>(contractJson); // [!code ++]
+
+export const db = postgres({ url: connectionString, contract }); // [!code ++]
 ```
 
-`prisma` is the Prisma ORM 7 client and `db` is the Prisma ORM 8 client, both connected to the same database.
+`prisma` is the Prisma ORM 7 client and `db` is the Prisma ORM 8 client, both connected to the same database. `contractFromJson` turns the emitted `contract.json` into a typed contract value, which the Prisma ORM 8 client takes as `contract`.
 
 ### 3.2. Rewrite the route
 

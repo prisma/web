@@ -99,24 +99,24 @@ import { defineContract, field, model, rel } from "@prisma/orm-mongo/contract-bu
 const User = model("User", {
   collection: "users",
   fields: {
-    _id: field.objectId(),
+    id: field.objectId().mongo({ field: "_id" }),
     email: field.string(),
   },
   relations: {
-    posts: rel.hasMany("Post", { from: "_id", to: "authorId" }),
+    posts: rel.hasMany("Post", { from: "id", to: "authorId" }),
   },
 });
 
 const Post = model("Post", {
   collection: "posts",
   fields: {
-    _id: field.objectId(),
+    id: field.objectId().mongo({ field: "_id" }),
     authorId: field.objectId(),
     title: field.string(),
     publishedAt: field.date().optional(),
   },
   relations: {
-    author: rel.belongsTo(User, { from: "authorId", to: User.ref("_id") }),
+    author: rel.belongsTo(User, { from: "authorId", to: User.ref("id") }),
   },
 });
 
@@ -136,15 +136,16 @@ The options object takes four more keys, all optional:
 | `defaultControlPolicy: "managed"` | The [control policy](#control-policy) for every model that does not set its own. |
 | `namespaces: ["audit"]` | The PostgreSQL schemas other than `public` that models may use; see [Namespaces](#namespaces). |
 
-Take `field`, `model`, `rel`, and `type` from the function's one argument, and import `defineContract`, `enumType`, and `member` from the package. The package also exports `model` and `rel` for use outside the function, plus a `field` that has only `column`, `generated`, and `namedType`.
+Take `field`, `model`, `rel`, `type`, and `gen` from the function's one argument, and import `defineContract`, `enumType`, and `member` from the package. The package also exports `model`, `rel`, `field`, and `gen` for use outside the function, without the helpers of extension packs.
 
-On MongoDB, `defineContract` also accepts a single object holding `models`, as above, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder differs from the PostgreSQL one in five ways:
+On MongoDB, `defineContract` also accepts a single object holding `models`, as above, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder differs from the PostgreSQL one in six ways:
 
-- Every model declares an `_id` field built with `field.objectId()`. That field is always the primary key, so you never mark it with `.id()` and there is no `.attributes(...)` on MongoDB.
+- The field stored as `_id` is always the primary key, so you never mark it with `.id()` and there is no `.attributes(...)` on MongoDB. Declare it as `id: field.objectId().mongo({ field: "_id" })` to name it `id` in your code, as `id ObjectId @id @map("_id")` does in PSL, or as `_id: field.objectId()` to keep the name `_id`. `.mongo({ field })` sets the name a field is stored under in its documents, for any field of a model. A model without an `_id` field gets one from MongoDB, an ObjectId, on every insert.
 - The scalar helpers are `field.objectId()`, `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`.
 - The collection name is an inline option on the model rather than a chained call, and relations are inline as well.
-- Relations name the field on each side. `rel.hasMany` takes `{ from, to }` on MongoDB and `{ by }` on PostgreSQL. `to` accepts either the field name as a string or a typed reference such as `User.ref("_id")`, and both forms mean the same thing. PostgreSQL writes that reference as `User.refs.id`.
+- Relations name the field on each side. `rel.hasMany` takes `{ from, to }` on MongoDB and `{ by }` on PostgreSQL. `to` accepts either the field name as a string or a typed reference such as `User.ref("id")`, and both forms mean the same thing. PostgreSQL writes that reference as `User.refs.id`.
 - Indexes are an `indexes` option on the model, built with the `index` helper the same package exports, as in `indexes: [index({ email: 1 }, { unique: true })]`. The `1` is ascending, MongoDB's own index syntax.
+- Each collection gets a `$jsonSchema` validator built from its model, as with a PSL contract, so MongoDB refuses a document with a field the model does not declare, a missing required field, or a value of the wrong type. `defineContract` refuses what a validator cannot describe, such as an `_id` field that is optional or a list. To keep a collection without a validator, give its model `controlPolicy: "observed"`.
 
 Enums and extension packs work on MongoDB too: `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`. Pass the enums in the same object as the models, as `defineContract({ models, enums })`, and extension packs go in the same `extensions` option.
 
@@ -166,7 +167,7 @@ const Address = valueObject("Address", {
 const User = model("User", {
   collection: "users",
   fields: {
-    _id: field.objectId(),
+    id: field.objectId().mongo({ field: "_id" }),
     email: field.string(),
     address: field.valueObject(Address).optional(),
     embedding: field.vector().optional(),
@@ -199,7 +200,23 @@ The examples below use the PostgreSQL builder.
 
 There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
 
+For a column of a database type no helper covers, use ``type.Raw(sql`...`)`` from the function's argument, with the type exactly as the database prints it, as in ``path: field.column(type.Raw(sql`ltree`))``, with `sql` imported from the package. It works as [``Raw(sql`...`)`` in PSL](/orm/contract-authoring/psl-syntax#columns-of-any-database-type) does: your code reads and writes the value as `unknown`, and a default is a `sql` expression.
+
 For a primary key your app generates, use a `field.id.*` helper. Each one marks the field as the primary key and generates the ID in your app when you create a row. `field.id.uuidv4String()` is the common choice, and the others are `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, and `field.id.ksuid()`. To store a UUID in a `uuid` column instead of a `character(36)` column, use `field.id.uuidv4Native()` or `field.id.uuidv7Native()`.
+
+To generate a value in your app on any field, chain `.onCreate(...)` with a call from `gen`, and `.onUpdate(...)` to generate one on every update. `gen` has `gen.uuid()`, `gen.uuid(7)`, `gen.cuid(2)`, `gen.ulid()`, `gen.nanoid()`, `gen.nanoid(16)`, `gen.ksuid()`, and `gen.now()`, the same functions as [`@onCreate` and `@onUpdate` in PSL](/orm/contract-authoring/psl-syntax#generated-values), and each makes a value for the field's column type:
+
+```typescript title="src/prisma/contract.ts (excerpt)"
+const Post = model("Post", {
+  fields: {
+    id: field.uuidNative().id().onCreate(gen.uuid(7)),
+    slug: field.text().onCreate(gen.nanoid(12)),
+    updatedAt: field.dateTime().onCreate(gen.now()).onUpdate(gen.now()),
+  },
+});
+```
+
+A field may have both: `field.dateTime().default(now()).onCreate(gen.now())` takes its time from your app when Prisma ORM creates the row, and from the database for other inserts. `field.generated(...)` still works, but `.onCreate(...)` replaces it.
 
 For a key the database generates, chain `.default(...)` and `.id()` on a field. An integer that counts up is `field.int().default(autoincrement()).id()`, and a UUID is ``field.uuidNative().default(sql`gen_random_uuid()`).id()``. Import `autoincrement` and `sql` from `@prisma/orm-postgres/contract-builder`.
 
@@ -217,7 +234,7 @@ Every field builder supports chained modifiers:
 - `.unique()` adds a unique constraint. `.id()` marks the primary key, for a key that is not generated, such as an integer you set yourself.
 - `.column("column_name")` sets the column name in the database when it differs from the field name.
 - `.many()` makes the field a list, stored as a PostgreSQL array column such as `text[]`. A list column gets a check constraint that rejects `NULL` elements. To allow `NULL` elements, write `.many({ elementsNullable: true })`: the field's TypeScript type becomes `ReadonlyArray<T | null>`. Add `.optional()` to allow a `NULL` list as well.
-- `.noCheck()` leaves out the check constraints Prisma ORM generates for the column: the one that keeps an enum column to the enum's values, and the one that keeps `NULL` out of a list. `.noCheck("membership")` and `.noCheck("elementNotNull")` leave out one or the other. The field's TypeScript type does not change.
+- `.onCreate(gen.uuid())` and `.onUpdate(gen.now())` generate a value in your app, as described above.
 
 ## Enums
 

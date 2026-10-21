@@ -61,11 +61,21 @@ npx prisma db verify --db "$DATABASE_URL" --json
 
 Fix the database or contract, emit again if needed, then verify again.
 
+## How column types are compared
+
+`db verify` compares a column's type as a data type with its parameters, not as text. It reads each database column's type, finds the data type of your target or extensions that declares it, and compares that with your contract. So `Numeric(10)` in your contract matches a `numeric(10,0)` column, and `VarChar(20)` matches `character varying(20)`. The migration planner compares types the same way.
+
+A database column whose type no data type of your target or extensions declares gets a message that says so, such as `The database column is "point", which no data type in the configured stack declares.` Add the extension that provides the type to your config, or declare the column with ``Raw(sql`point`)``.
+
 ## How PostgreSQL defaults are compared
 
 When a column default is a literal value, `db verify` reads it as a value before it compares it with your contract, so the casts PostgreSQL adds when it prints the default do not cause a difference. This covers numbers such as `'-1'::integer` and `(5)::smallint`, text and enum values, including an enum value cast to a type in another PostgreSQL schema, `timestamp` values, `true`, `false`, `NULL`, JSON, and lists written as `'{...}'` or `ARRAY[...]`. `db verify` also recognizes `now()`, `clock_timestamp()`, `gen_random_uuid()`, and a sequence default, which it treats as `autoincrement()`.
 
-Any other default is a SQL expression, which you write in your contract as a `sql` default, such as ``@default(sql`(now() + '00:03:00'::interval)`)``. [Default values](/orm/contract-authoring/psl-syntax#default-values) shows how to write one. `db verify` cannot work out whether two SQL expressions give the same value, so it compares their text, ignoring letter case and spaces. PostgreSQL often rewrites an expression when it stores it, for example by adding casts, so write a `sql` default in your contract the way PostgreSQL stores it. To see that form, run `npx prisma contract infer --output ./inferred.prisma` and copy the column's `@default` from that file.
+Any other default is a SQL expression, which you write in your contract as a `sql` default, such as ``@default(sql`(now() + '00:03:00'::interval)`)``. [Default values](/orm/contract-authoring/psl-syntax#default-values) shows how to write one. `db verify` cannot work out whether two SQL expressions give the same value, so it compares their text, ignoring letter case and spaces. PostgreSQL often rewrites an expression when it stores it, for example by adding casts, so write a `sql` default in your contract the way PostgreSQL stores it. To see that form, run `npx prisma contract infer --output ./inferred.prisma` and copy the column's `@default` from that file. When a `sql` default fails the check because PostgreSQL stores it in another form, the message shows both texts and the `sql` literal to write:
+
+```text
+The database reads this default back as sql`(now() - '1 day'::interval)`; the contract declares sql`now() - interval '1 day'`. The database may store a default expression in its own form, so the two can mean the same. If they do, write the default as sql`(now() - '1 day'::interval)`.
+```
 
 Check constraints and the `WHERE` clause of a partial index are compared more strictly than `sql` defaults: their text must match exactly, including letter case and spaces.
 

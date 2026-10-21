@@ -42,8 +42,14 @@ npx prisma migration plan --name add_users_table
 | `--name <slug>` | Sets the migration directory name suffix. |
 | `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
+| `--rename <old>:<new>` | Plans a model or field rename that keeps its rows, such as `--rename User.name:User.fullName`, instead of a drop and a create. Repeatable. |
+| `--delete <subject>` | Lets a dropped model or field lose its data, such as `--delete User.legacy`. Repeatable. |
+| `--convert <Model.field>` | For a type change that can lose values: writes a slot in `migration.ts` for the conversion you write yourself. |
+| `--backfill <Model.field>` | For a new required field: writes a slot in `migration.ts` to fill existing rows yourself. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
+
+On MongoDB, `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. For a field `id ObjectId @id @map("_id")`, write `--rename User.id:User.userId`, not `User._id`. The first migration you plan after upgrading to `8.0.0-rc.19` starts from a contract snapshot that the upgrade script rewrote, which names each field by its stored name, so in that one migration name the old field by its stored name.
 
 ### Contract references [#contract-references]
 

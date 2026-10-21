@@ -65,11 +65,14 @@ DATABASE_URL="postgres://username:password@host:5432/database?sslmode=require"
 ```typescript title="src/prisma/db.ts"
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = postgres({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```
@@ -290,7 +293,7 @@ npx tsx script.ts
 
 ## 8. Query a table with `db.sql`
 
-`db.sql` builds SQL queries: where `db.orm` names models and fields, `db.sql` names tables and columns as they are in the database. This example reads the table `user`, which the `User` model maps with `@@map("user")`. `.build()` returns the query without running it, and `db.runtime().query()` runs it.
+`db.sql` builds SQL queries: where `db.orm` names models and fields, `db.sql` names tables and columns as they are in the database. This example reads the table `user`, which the `User` model maps with `@@map("user")`. `.build()` returns the query without running it, and `db.query()` runs it.
 
 Replace `script.ts` with this version:
 
@@ -303,7 +306,7 @@ async function main() {
     .limit(2)
     .build();
 
-  const rows = await db.runtime().query(query);
+  const rows = await db.query(query);
   console.log(rows);
 
   await db.close();

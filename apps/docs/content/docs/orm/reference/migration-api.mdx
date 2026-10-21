@@ -124,47 +124,27 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | --- | --- | --- | --- |
 | `addColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ADD COLUMN "bio" text` | additive |
 | `dropColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" DROP COLUMN "bio"` | destructive |
-| `alterColumnType` | `schema`, `table`, `column`, `options` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint USING "views"::bigint` | destructive |
-| `setNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" SET NOT NULL` | destructive |
+| `alterColumnType` | `schema`, `table`, `column`, `type`, `using?`, `raw?`, `operationClass?` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint` | destructive, or data with `using` |
+| `setNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" SET NOT NULL` | widening |
 | `dropNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" DROP NOT NULL` | widening |
-| `setDefault` | `schema`, `table`, `column`, `operationClass?` | `ALTER TABLE "public"."user" ALTER COLUMN "name" SET DEFAULT 'anonymous'` | additive |
-| `dropDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" DROP DEFAULT` | destructive |
+| `setDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" SET DEFAULT 'anonymous'` | additive, or widening when the column already has a default |
+| `dropDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" DROP DEFAULT` | widening |
 
 `addColumn` and `setDefault` take a `col(...)` call as `column`. The other methods take the column's name as a string.
 
-`alterColumnType` takes the new type in `options`, which has four fields:
-
-| Field | What to put in it |
-| --- | --- |
-| `qualifiedTargetType` | The new type, as it appears in the `ALTER COLUMN ... TYPE` statement: `'bigint'`, `'varchar(255)'`. |
-| `formatTypeExpected` | The same type, spelled the way PostgreSQL itself names it. The postcheck compares the column's type after the change with this string, and the run stops if they differ. See the table below. |
-| `rawTargetTypeForLabel` | The type as the CLI prints it in the operation's label. It affects nothing else, so use the same value as `qualifiedTargetType`. |
-| `using` | Optional. The expression in the `USING` clause, for a conversion PostgreSQL cannot do on its own. Without it, the column is cast to the new type with `::`. |
+`alterColumnType` takes the new type in `type`, written as a migration writes it, such as `'int8'`, `'varchar(255)'`, or `'"Mood"'` for an enum. Prisma ORM works out how PostgreSQL prints that type through the data types of your configured target and extensions, and the postcheck compares the column's type with it. A type it cannot read fails with `MIGRATION.COLUMN_TYPE_UNREADABLE`. For a column of a type no data type declares, pass the type as PostgreSQL prints it and set `raw: true`, and it is checked as written.
 
 ```ts
-this.alterColumnType({
-  schema: 'public',
-  table: 'post',
-  column: 'views',
-  options: { qualifiedTargetType: 'bigint', formatTypeExpected: 'bigint', rawTargetTypeForLabel: 'bigint' },
-}),
+this.alterColumnType({ schema: 'public', table: 'post', column: 'views', type: 'int8' }),
 ```
 
-PostgreSQL spells most types the way you wrote them. These are the common ones it spells differently, as `\d post` in psql prints them:
+`using` is the expression in the `USING` clause, for a conversion PostgreSQL cannot do on its own. Without it, the column is cast to the new type. The operation is `data` when it has a `using`, and `destructive` otherwise; pass `operationClass` (`'widening'`, `'destructive'`, or `'data'`) to choose another class.
 
-| You write | `formatTypeExpected` |
-| --- | --- |
-| `varchar(255)`, `varchar` | `character varying(255)`, `character varying` |
-| `char(3)` | `character(3)` |
-| `int4`, `int8`, `int2` | `integer`, `bigint`, `smallint` |
-| `float8`, `float4` | `double precision`, `real` |
-| `bool` | `boolean` |
-| `timestamptz`, `timestamp` | `timestamp with time zone`, `timestamp without time zone` |
-| `int[]` | `integer[]` |
+When the column is an `autoincrement()` column, `alterColumnType` also changes the sequence the column owns to the new width, with `ALTER SEQUENCE ... AS bigint` for an `int8` column. It first refuses, before any statement runs, when the sequence has already handed out a value too large for the new width. A migration applied before `8.0.0-rc.19` left the sequence at its old width. Change it yourself, for example `ALTER SEQUENCE "public"."post_id_seq" AS bigint`; `pg_get_serial_sequence('"public"."post"', 'id')` names the sequence.
 
-`text`, `integer`, `bigint`, `numeric(10,2)`, `jsonb`, `uuid`, `date`, `bytea`, and `citext` are spelled the same in both places.
+`migration.ts` refuses an `alterColumnType` with `using` to the type the migration's start contract already gives the column, with `MIGRATION.ALTER_COLUMN_TYPE_USING_WITHOUT_TYPE_CHANGE`. Its postcheck would already pass, so the conversion would never run. To change the values of a column whose type stays the same, write a [`dataTransform`](#data), which checks the rows themselves.
 
-`setDefault` takes the column with its new default, and Prisma ORM writes the `DEFAULT` clause: `column: col('name', 'text', { default: lit('anonymous'), codecRef: { codecId: 'pg/text@1' } })`, or `column: col('createdAt', 'timestamptz', { default: fn('now()') })`. With a `codecRef`, the column's codec checks a literal default first, and a value it refuses fails with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID). A `migration.ts` that still passes `defaultSql`, written before `8.0.0-rc.15`, stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED); rewrite the call this way. Its `ops.json` still applies. When the column already has a default and you are replacing it, set `operationClass: 'widening'`, which only changes how the CLI reports the operation.
+`setDefault` takes the column with its new default, and Prisma ORM writes the `DEFAULT` clause: `column: col('name', 'text', { default: lit('anonymous'), codecRef: { codecId: 'pg/text@1' } })`, or `column: col('createdAt', 'timestamptz', { default: fn('now()') })`. With a `codecRef`, the column's codec checks a literal default first, and a value it refuses fails with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID). A `migration.ts` that still passes `defaultSql`, written before `8.0.0-rc.15`, stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED); rewrite the call this way. Its `ops.json` still applies. The operation is widening when the migration's start contract gives the column a default, and additive otherwise. `setDefault` takes no `operationClass`; a call that still passes one runs and ignores it. `setDefault` has no postcheck, so it always runs, and replacing an existing default works. After the last operation, `db migrate` checks that the default matches your contract.
 
 `setNotNull` has an extra precheck that fails while the column still holds a `NULL`, so backfill the column with a `dataTransform` first. [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows the three steps.
 

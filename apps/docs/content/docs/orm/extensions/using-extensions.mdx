@@ -51,11 +51,12 @@ Add the extension to the `extensions` array on the client as well, which is what
 ```ts title="src/prisma/db.ts"
 import pgvector from '@prisma/orm-extension-pgvector/runtime';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   extensions: [pgvector],
 });
@@ -79,7 +80,7 @@ types {
 }
 
 model Post {
-  id        String         @id @default(uuid())
+  id        String         @id @onCreate(uuid())
   title     String
   embedding Embedding1536?
 }
@@ -106,11 +107,17 @@ await db.orm.public.Post.create({ title: 'about cats', embedding });
 
 In Prisma ORM 8 `create` takes the fields directly, with no `data` wrapper. [Create a record](/orm/coming-from-prisma-orm-7#create-a-record) shows the two side by side. `public` is the PostgreSQL schema your tables are in.
 
-Searching for the rows closest to a query vector uses the operations the extension adds, and you write that search with the SQL query builder rather than with `db.orm`. In that block:
+To get the rows closest to a query vector on `db.orm`, use the method pgvector adds for each vector field under `using`. It orders the rows by cosine distance, nearest first, and an optional second argument keeps only the rows within that distance:
+
+```ts
+const nearest = await db.orm.public.Post.using.embedding_nearest(queryVector).limit(10).all();
+```
+
+See [Package methods with `using`](/orm/reference/orm-client#package-methods-with-using). To get the distance itself in each row, write the search with the SQL query builder. In that block:
 
 - `db.orm` is the ORM API, and under it you address a model by the name in your contract, so the model `Post` is `db.orm.public.Post`.
 - `db.sql` is the [SQL query builder](/orm/fundamentals/advanced-queries), and under it you address a table by the name it has in the database, so the same data is `db.sql.public.Post`. The two names are the same because the model sets no `@@map`.
-- `db.runtime()` is what runs a built query.
+- `db.query(...)` runs a built query.
 - `f`, in the callback of each builder method, holds the row's columns.
 - `fns` holds the functions you can call on those columns, including the ones pgvector adds.
 - `queryVector` is a `number[]` of the same length as the stored embeddings.
@@ -126,11 +133,11 @@ export async function similaritySearch(queryVector: number[]) {
     .limit(10)
     .build();
 
-  return db.runtime().query(plan);
+  return db.query(plan);
 }
 ```
 
-`.select('distance', ...)` names the computed column `distance`, and `.build()` returns a plain object that `db.runtime().query(...)` runs. Each row that comes back has `id`, `title`, and `distance`, a `number` that is `null` when the row has no embedding.
+`.select('distance', ...)` names the computed column `distance`, and `.build()` returns a plain object that `db.query(...)` runs. Each row that comes back has `id`, `title`, and `distance`, a `number` that is `null` when the row has no embedding.
 
 Alongside `fns.cosineDistance`, pgvector gives you `fns.cosineSimilarity`. Both take two vectors and return a PostgreSQL `float8`, which you get as a `number`. The difference is which way you sort: order ascending when you sort by distance, because the closest row has the smallest distance, and descending when you sort by similarity.
 
@@ -192,11 +199,12 @@ The client is where the real difference is, because you build it with `supabase(
 
 ```ts title="src/prisma/db.ts"
 import { supabase } from '@prisma/orm-extension-supabase/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = await supabase<Contract>({
-  contractJson,
+export const db = await supabase({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   jwksUrl: process.env['SUPABASE_JWKS_URL']!,
 });
@@ -206,7 +214,7 @@ export const db = await supabase<Contract>({
 
 `supabase(...)` takes the same `extensions` array as `postgres(...)`, so pgvector or another extension goes there in the same way.
 
-`await db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. `db` itself has no `orm` or `sql`: those live on the three role-bound clients.
+`await db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. `db` itself has no `orm` or `sql`: those live on the three role-bound clients. Each role-bound client has `orm`, `sql`, `raw`, `prepare`, `query`, `execute`, `toSql`, and `transaction()`, the same members a `postgres(...)` client uses to run queries. Pass your own collection classes to `supabase(...)` in the `collections` option, as you would to `postgres(...)`, and the role-bound clients use them on their `orm`. See [Custom `Collection` subclass](/orm/reference/orm-client#custom-collection-subclass).
 
 `@prisma/orm-extension-supabase` has a contract of its own, which describes Supabase's `auth` and `storage` tables, check constraints included. Prisma read those tables from one Supabase version, supabase/postgres 17.6.1.106, and a Supabase project on another version can have a different set of check constraints. [`npx prisma db verify`](/cli/db-verify) compares your database with the extension's contract as well as with yours, and when a check constraint the extension describes is missing from your database, `db verify` lists it and fails. You cannot fix that with a migration, because Prisma ORM never changes Supabase's own tables. Instead, [open an issue on prisma/orm](https://github.com/prisma/orm/issues) with the output of `db verify` and your Supabase version, so the extension can be updated to match.
 

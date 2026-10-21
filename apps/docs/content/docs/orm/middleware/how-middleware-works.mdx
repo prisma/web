@@ -26,11 +26,12 @@ The `src/prisma/db.ts` below imports two files from your own project, `contract.
 import { createCacheMiddleware } from '@prisma/orm-extension-middleware-cache';
 import postgres from '@prisma/orm-postgres/runtime';
 import { budgets, lints } from '@prisma/orm-postgres/family-runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [
     createCacheMiddleware(),
@@ -67,7 +68,7 @@ Add `queryLogger()` to the `middleware` array in `src/prisma/db.ts`, alongside t
 
 Every query goes through that list, whichever of the two APIs you wrote it with. With the ORM API you write `db.orm.public.User...`, where `public` is the PostgreSQL schema and `User` is the model in your contract.
 
-With the [SQL query builder](/orm/reference/sql-query-builder) you build a query and run it in two steps. `.build()` returns a plan, which is the query as a plain object, not yet run. `db.runtime().query(plan)` runs it and returns rows, and `db.runtime().execute(plan)` runs it and returns how many rows it changed.
+With the [SQL query builder](/orm/reference/sql-query-builder) you build a query and run it in two steps. `.build()` returns a plan, which is the query as a plain object, not yet run. `db.query(plan)` runs it and returns rows, and `db.execute(plan)` runs it and returns how many rows it changed.
 
 Both APIs send their queries on the same `db` object, so both see the same middleware. If your database is MongoDB, pass the same `middleware` option to `mongo(...)` from `@prisma/orm-mongo/runtime` and type your own middleware as `MongoMiddleware` from `@prisma/orm-mongo/family-runtime`.
 
@@ -77,11 +78,11 @@ Both APIs send their queries on the same `db` object, so both see the same middl
 
 You write only the hooks you care about, and Prisma ORM skips the ones you leave out. Which hooks it calls depends on what your query gives back: if the query returns rows, one set of hooks runs, and if it only reports how many rows it changed, a shorter set runs instead.
 
-**A row query** is anything that returns rows. On the ORM API that is every call except `createAndCount`, `updateAndCount`, and `deleteAndCount`, so `create`, `update`, and `delete` are row queries too. It is also what you get from `db.runtime().query(plan)`. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces. A row query calls your hooks in this order:
+**A row query** is anything that returns rows. On the ORM API that is every call except `createAndCount`, `updateAndCount`, and `deleteAndCount`, so `create`, `update`, and `delete` are row queries too. It is also what you get from `db.query(plan)`. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces. A row query calls your hooks in this order:
 
 `beforeCompile` → `beforeQuery` → `interceptQuery` → `onRow` (once per row) → `afterQuery` → `afterTransaction`
 
-**A non-returning write** is a statement that reports how many rows it affected rather than returning them. On the ORM API those are `createAndCount`, `updateAndCount`, and `deleteAndCount`, and with the SQL query builder it is whatever you hand to `db.runtime().execute(plan)`. These run a shorter sequence:
+**A non-returning write** is a statement that reports how many rows it affected rather than returning them. On the ORM API those are `createAndCount`, `updateAndCount`, and `deleteAndCount`, and with the SQL query builder it is whatever you hand to `db.execute(plan)`. These run a shorter sequence:
 
 `beforeCompile` → `beforeExecute` → `interceptExecute` → `afterExecute` → `afterTransaction`
 

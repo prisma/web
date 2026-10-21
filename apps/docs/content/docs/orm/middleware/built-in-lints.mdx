@@ -13,11 +13,12 @@ You turn it on by adding it to the `middleware` list when you create your `db` c
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
 import { lints } from '@prisma/orm-postgres/family-runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [lints()],
 });
@@ -75,14 +76,14 @@ warn {
 
 A rule set to `error` throws before the database sees anything, so the call you were awaiting rejects. It throws an ordinary `Error` with four extra properties beside its `message`: `code`, `category`, `severity`, and `details`. Use the `isRuntimeError` type guard, exported from `@prisma/orm-postgres/components/runtime`, so that TypeScript knows those properties are there and you can read `code` off the error.
 
-The blocked `DELETE` below comes from the SQL query builder, where you build the query yourself, call `.build()`, and run the result with `db.runtime().query(...)` for rows or `db.runtime().execute(...)` for a count:
+The blocked `DELETE` below comes from the SQL query builder, where you build the query yourself, call `.build()`, and run the result with `db.query(...)` for rows or `db.execute(...)` for a count:
 
 ```ts
 import { isRuntimeError } from '@prisma/orm-postgres/components/runtime';
 
 try {
   const plan = db.sql.public.User.delete().build();
-  await db.runtime().execute(plan);
+  await db.execute(plan);
 } catch (error) {
   if (isRuntimeError(error) && error.code === 'LINT.DELETE_WITHOUT_WHERE') {
     // add a where() clause, or use a client with the rule set to warn
@@ -149,7 +150,7 @@ So a `select *` you wrote by hand is blocked:
 const plan = db.raw.sql`select * from "User"`
   .returnsRow({ id: 'pg/int4@1' })
   .build();
-await db.runtime().query(plan);
+await db.query(plan);
 ```
 
 It throws an error whose `code` is `LINT.SELECT_STAR` and whose `message` is `Raw SQL plan selects all columns via *`. `returnsRow` tells Prisma ORM the type of each column the statement gives back, written as `pg/` plus the PostgreSQL type name plus `@1`, and [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns) lists the ids you can use. The `severities` key for the last rule is `readOnlyMutation`, and there is no documented way to mark a query read-only, so you are unlikely to see that one.
@@ -191,7 +192,7 @@ const plan = db.sql.public.User
   .delete()
   .where((f, fns) => fns.ne(f.id, null))
   .build();
-await db.runtime().execute(plan);
+await db.execute(plan);
 ```
 
 Both deletes pass the rule and run, because each query has a `WHERE` clause and that is all `LINT.DELETE_WITHOUT_WHERE` looks for, so you can leave `lints` on its defaults in the script that runs them. An `UPDATE` takes the same shape, as in `db.orm.public.User.where((u) => u.id.isNotNull()).updateAndCount({ name: 'x' })` or `db.sql.public.User.update({ name: 'x' }).where((f, fns) => fns.ne(f.id, null)).build()`.
@@ -201,11 +202,12 @@ The second way is to build that script its own `db` client with the rule set to 
 ```ts title="scripts/backfill/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
 import { lints } from '@prisma/orm-postgres/family-runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from '../../src/prisma/contract.d';
 import contractJson from '../../src/prisma/contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [lints({ severities: { deleteWithoutWhere: 'warn' } })],
 });
