@@ -1,0 +1,200 @@
+---
+title: "Next.js preview showing real customer records? How to give it a separate database"
+description: "A preview shows customer records when it reads the production DATABASE_URL or a copy of that database. Scope a seeded test database to previews."
+summary: "Your Next.js preview shows real customer records because it is connected to your production database, or to a copy of it. The usual cause is a `DATABASE_URL` that applies to every environment: on Vercel and Netlify, a variable or database integration covers previews unless you scope it, and a committed `.env.production` file fills in when the host sets nothing. Create a separate test database, apply your migrations, seed it with fictional records, set its connection string for previews only, and redeploy. A preview database created as a copy of production still holds the same customers, so it needs the same fix."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "8 min read"
+faq:
+  - question: "I changed DATABASE_URL. Why does the preview still show customer records?"
+    answer: "A deployment keeps the variables it was built with. Vercel applies a changed variable only to new deployments, and Prisma Compute resolves variables at deploy time, so redeploy the preview after the change. Also check for a `NEXT_PUBLIC_` API URL that still points at production: Next.js inlines those values into the browser bundle during `next build`, so only a new build changes them."
+  - question: "Can I copy production data into the preview if I anonymize it first?"
+    answer: "Yes, if your privacy obligations allow it and the anonymization runs before the data reaches the test database. Masking in place after a copy leaves the real records in the preview database until the job finishes. A seed script with fictional records is simpler to review, because nothing in it came from a customer. If you do use a masked snapshot, keep a record of what it contains and who can read it, and delete it on a schedule."
+  - question: "Should every preview get its own database, or can previews share one test database?"
+    answer: "One shared test database is enough when previews only read data or when one person tests at a time. Give each preview its own database when previews run migrations or reset data, because one preview's schema change or reset can break another preview's test. Either way, the test database never holds production records."
+  - question: "Do I need Prisma ORM to use a separate Prisma Postgres database?"
+    answer: "No. Prisma Postgres is a PostgreSQL database behind a connection string, so `pg`, Drizzle, Kysely and Prisma ORM all connect to it the same way. Prisma ORM is optional. The fix on this page is the same for any client: a different connection string for previews."
+related:
+  - title: "Hosting a TypeScript test app with a separate database"
+    href: "/postgres/typescript-test-environment"
+  - title: "Preview, staging and production release patterns"
+    href: "/blog/host-a-test-version-without-replacing-production"
+  - title: "Running database migrations safely in production"
+    href: "/postgres/production-database-migrations"
+  - title: "Prisma Postgres on Vercel, one database per environment"
+    href: "/docs/guides/postgres/vercel"
+cta:
+  title: "Give previews their own database"
+  description: "Create a Prisma Postgres test database and connect it to your Vercel previews only, or deploy on Prisma Compute and get a new database for each preview branch."
+  label: "Connect a database per environment"
+  href: "/docs/guides/postgres/vercel"
+---
+
+A Next.js preview shows real customer records because it is reading from your production database, or from a copy of it. A different URL and a different Git branch don't change which database the app connects to; the connection string does. Restrict who can open the preview, find where it gets its `DATABASE_URL`, point it at a seeded test database, redeploy, and add a check that fails the build if it ever points back at production.
+
+We make [Prisma Postgres](/docs/postgres) and [Prisma Compute](/docs/compute). The fix on this page works with any host and any PostgreSQL client. Every host behavior links to that host's documentation, checked on October 19, 2026.
+
+## Why does the preview show production data?
+
+A preview deployment is a separate copy of your app, built from another branch. The database is separate only if the preview gets a different connection string. These are the usual reasons it doesn't:
+
+| Cause | How it happens | Where to look |
+| --- | --- | --- |
+| One variable for every environment | On Vercel, `vercel env add DATABASE_URL` without an environment [adds the variable to all environments](https://vercel.com/docs/cli/env). On Netlify, a variable [has the same value in every deploy context](https://docs.netlify.com/build/environment-variables/overview/) unless you set one per context. | The variable's environments or deploy contexts in your host's settings |
+| A database integration connected everywhere | Connecting a Vercel Marketplace database from the CLI [covers production, preview and development](https://vercel.com/docs/cli/integration) unless you pass `-e`. Prisma's own [Vercel guide](/docs/guides/postgres/vercel) warns that one database on all three means they share the same data. | The integration's connected environments |
+| A committed `.env` file | `next build` runs with `NODE_ENV=production`, and when the host sets no `DATABASE_URL`, Next.js [reads `.env.production` and then `.env`](https://nextjs.org/docs/app/guides/environment-variables#environment-variable-load-order) from your repository. | `git ls-files` for `.env*` files |
+| The preview calls the production API | A `NEXT_PUBLIC_API_URL` set to production is [inlined into the browser bundle at build time](https://nextjs.org/docs/app/guides/environment-variables#bundling-environment-variables-for-the-browser), so the preview's pages fetch from the production backend. | `NEXT_PUBLIC_` variables in the preview build |
+| The preview database is a copy of production | Neon branches [start with all of the parent branch's data by default](https://neon.com/docs/introduction/branching), and its Vercel integrations [can create a branch for each preview deployment](https://neon.com/docs/guides/vercel-overview). Netlify Database gives each deploy preview [a copy of the production data](https://docs.netlify.com/build/data-and-storage/netlify-database/). | Your database provider's preview settings |
+
+The last cause is easy to miss, because the preview does have its own database: writes stay out of production, but the customer records are the same.
+
+## How do I fix it?
+
+### 1. Restrict who can open the preview
+
+Do this before anything else, because the preview is serving customer records right now. On Vercel, [Standard Protection](https://vercel.com/docs/deployment-protection) is available on every plan and protects every URL except production domains, combined with a method such as Vercel Authentication. On other hosts, check their access settings, or delete the preview deployment until the fix is in. If people outside your team had the link, follow your own process for handling a possible data exposure.
+
+### 2. Find where the preview gets its connection string
+
+Check every variable that holds a connection string, such as `DATABASE_URL`, `POSTGRES_URL` or a name an integration added, and note which environments it applies to. On Vercel, `vercel env ls preview` lists the variables set for Preview. Variables that an integration injects at deploy time can be missing from that list: Neon's preview branch connection, for example, [is not shown in the project's settings](https://neon.com/docs/guides/vercel-managed-integration). Then check the repository for committed environment files:
+
+```bash
+git ls-files | grep -E '(^|/)\.env'
+```
+
+A `.env.production` or `.env` file with a real connection string in Git is a leaked credential as well as a wrong default. Remove it from the repository, add it to `.gitignore`, and rotate the database password, because the old value stays in Git history.
+
+### 3. Create a test database and seed it
+
+Create a new Postgres database for previews with any provider. Apply your schema with your migration tool's production command, as described in [running migrations safely](/postgres/production-database-migrations), then seed fictional records:
+
+```sql
+INSERT INTO customers (name, email) VALUES
+  ('Test Customer One', 'one@example.com'),
+  ('Test Customer Two', 'two@example.com');
+```
+
+Use `example.com` addresses, a domain [reserved for examples](https://www.rfc-editor.org/rfc/rfc2606.html), so mail sent from a preview can't reach a real person. If your previews use a copy-based setup, such as Neon branches or Netlify Database, switch to a database that starts from your seed, and delete the preview copies that already hold customer data. Neon's Vercel-managed integration [deletes a preview branch automatically](https://neon.com/docs/guides/vercel-managed-integration) only when Vercel removes the preview deployment. By [default](https://vercel.com/docs/deployment-retention), Vercel keeps preview deployments for 30 days on Hobby and on [new Pro teams](https://vercel.com/changelog/new-pro-teams-now-default-to-30-day-deployment-retention), and 180 days on other Pro and Enterprise teams. Delete those branches yourself in the Neon Console or CLI.
+
+### 4. Scope the connection string to previews and redeploy
+
+Give production and previews different values for the same variable name, so the code doesn't change:
+
+- **Vercel, variable you added yourself.** Remove the preview value and add the test database's connection string for Preview only. Update the CLI first (`npm i -g vercel@latest`): versions before 59.20 remove the variable from every environment, production included. Check that the confirmation prompt names only Preview before you accept it, or change the variable's environments in the dashboard instead:
+
+  ```bash
+  vercel env rm DATABASE_URL preview
+  vercel env add DATABASE_URL preview
+  ```
+
+  `vercel env add` prompts for the value, so it stays out of your shell history. Do the same for `development`, so local runs don't use production either.
+- **Vercel, variable set by an integration.** Reconnect the production database to Production only, and connect a separate test database to Preview and Development:
+
+  ```bash
+  vercel integration resource disconnect <production-database>
+  vercel integration resource connect <production-database> -e production
+  vercel integration resource connect <test-database> -e preview -e development
+  ```
+
+  Do this between production deploys. Removing a variable doesn't change running deployments, but a production deploy started in between would build without it.
+- **Netlify.** Give `DATABASE_URL` a separate [Deploy Previews value](https://docs.netlify.com/build/environment-variables/overview/#value-per-deploy-context) and a Branch deploys value, and check any per-branch Branch values, which replace both for their branch. With Netlify Database, a `DATABASE_URL` value alone changes nothing: `@netlify/database` [connects to the deploy's database branch by itself](https://docs.netlify.com/build/data-and-storage/netlify-database/api/), so pass the test database's connection string to `getDatabase({ connectionString })` from a variable you set for Deploy Previews.
+
+Set any `NEXT_PUBLIC_` API URL per environment the same way.
+
+On Vercel, a Preview value set for one Git branch [overrides the general Preview value](https://vercel.com/docs/environment-variables#preview-environment-variables) on that branch. Run `vercel env ls preview <branch>` for each branch you preview, and if it lists a `DATABASE_URL` marked with that branch, set it to the test database with `vercel env update DATABASE_URL preview <branch>`.
+
+Then redeploy the preview: Vercel applies changed variables [only to new deployments](https://vercel.com/docs/environment-variables/managing-environment-variables), so a preview that is already running keeps the production value.
+
+### 5. Make the build fail if a preview points at production
+
+Mark the production database once, in a schema of its own, so that migration tools that manage only the `public` schema leave it alone:
+
+```sql
+CREATE SCHEMA ops;
+CREATE TABLE ops.deployment_marker (environment text NOT NULL);
+INSERT INTO ops.deployment_marker (environment) VALUES ('production');
+```
+
+Then run a check before `next build`. It loads environment files the way Next.js does, using [`@next/env`](https://nextjs.org/docs/app/guides/environment-variables#test-environment-variables), and refuses to build a non-production deployment whose database carries the production marker. A full copy of production carries the marker too, so the check also catches copy-based previews whose connection string comes from `DATABASE_URL`. If your app reads another variable, such as `POSTGRES_URL` or a pooled URL, point the script at that one. It doesn't see a connection that `@netlify/database` picks by itself. Install `pg` and `@next/env`, then save the script as `scripts/check-database.mjs`:
+
+```js
+// Fails the build when a non-production deployment points at the production database.
+import nextEnv from "@next/env";
+import pg from "pg";
+
+// Read the deployment from the host before .env files can fill it in.
+const deployment = process.env.VERCEL_ENV ?? process.env.CONTEXT ?? process.env.APP_ENV ?? "unknown";
+if (deployment === "production") process.exit(0);
+
+// Load .env files the same way `next build` does, so the check sees the same DATABASE_URL.
+nextEnv.loadEnvConfig(process.cwd());
+
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL is not set for this deployment.");
+  process.exit(1);
+}
+
+const client = new pg.Client({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10_000, // fail the build instead of waiting on an unreachable database
+  query_timeout: 10_000,
+});
+await client.connect();
+const { rows } = await client.query(
+  "SELECT to_regclass('ops.deployment_marker') IS NOT NULL AS marked",
+);
+let marker;
+if (rows[0].marked) {
+  const result = await client.query("SELECT environment FROM ops.deployment_marker LIMIT 1");
+  marker = result.rows[0]?.environment;
+}
+await client.end();
+
+if (marker === "production") {
+  console.error(`Refusing to build: this ${deployment} deployment is connected to the production database or a copy of it.`);
+  process.exit(1);
+}
+console.log(`Database check passed for ${deployment}.`);
+```
+
+Run it from the build script in `package.json`:
+
+```json
+"build": "node scripts/check-database.mjs && next build"
+```
+
+Vercel sets [`VERCEL_ENV`](https://vercel.com/docs/environment-variables/system-environment-variables) to `production`, `preview` or `development` during the build, as long as **Enable access to System Environment Variables** is selected in the project's environment variable settings. Netlify sets [`CONTEXT`](https://docs.netlify.com/build/configure-builds/environment-variables/#build-metadata) to `production`, `deploy-preview` or `branch-deploy`. On other hosts, set `APP_ENV=production` in the production environment's settings only, not in a `.env` file: `next build` loads `.env.production` for previews too, which is why the script reads the deployment before loading those files. A production build without `APP_ENV` fails the same way, which is the safe direction to fail in. The check is for hosts that expose the deployment's variables during the build, such as Vercel and Netlify. If the database is unreachable or doesn't answer within 10 seconds, or the role can't read the marker table, it also fails the build, with the database error instead of the refusal message.
+
+Pointed at the marked database from a preview, the check stops the build:
+
+```text
+Refusing to build: this preview deployment is connected to the production database or a copy of it.
+```
+
+On Prisma Compute, keep the check out of `build-command`: the [deploy action](/docs/compute/deploy-on-push) runs your build in GitHub Actions, and variables are resolved later, at deploy time, so the check would see none of them. There, a database declared in your Composer module is new for each preview. For an app that reads `DATABASE_URL`, `npx prisma project env list --branch <name>` shows which variables that branch's preview receives, so you can confirm it gets a preview value.
+
+## How to prevent it, and when this fix doesn't apply
+
+Set the preview value whenever you add a variable that differs between environments, and keep `.env*` files with real credentials out of Git. Keep the build check in place: it adds one short database connection to each build and catches an integration that is later connected to every environment. It doesn't catch a preview that calls the production API, so check `NEXT_PUBLIC_` values whenever you add one.
+
+Database separation doesn't cover the services around it. A preview with production payment keys, email credentials or storage buckets can still charge a card or email a customer, so give previews test keys and a separate bucket, as the [test environment guide](/postgres/typescript-test-environment) describes.
+
+The fix doesn't apply when the preview is meant to show production content, for example a marketing site that renders published articles from the database. There the problem is access, not separation: connect the preview with a read-only database role that can see only the published content, and keep customer tables out of its reach.
+
+## Where do Prisma Postgres and Prisma Compute fit?
+
+Both work with the fix above. Which one helps depends on where your Next.js app runs.
+
+**Next.js on Vercel with Prisma Postgres.** Prisma Postgres is a managed PostgreSQL database, and any PostgreSQL client works with it; Prisma ORM is optional. The [Vercel integration](/docs/guides/postgres/vercel) sets `DATABASE_URL`, `POSTGRES_URL` and `PRISMA_DATABASE_URL` on every environment you connect, and from the CLI that is production, preview and development unless you pass `-e`. Create one database for production and one for previews, and connect each to its own environment. The [Free plan](/pricing) includes 50 databases and 2 GB of storage.
+
+**Next.js on Prisma Compute.** With [deploy on push](/docs/compute/deploy-on-push), every pushed branch other than the default one gets a preview with its own services and, for each database declared in its [Prisma Composer](/docs/composer) module, a new database. Production data is not copied into it, so seed what your tests need. A `postgres()` database gets your migrations applied on deploy; a `rawPostgres()` database is yours to migrate. [Environment variables](/docs/compute/environment-variables) come in three layers: production values used only by production, preview values used by every preview, and branch overrides. If your app reads `DATABASE_URL` instead of a declared database, the preview is only as separate as that value, so set a preview-scoped one.
+
+Know the limits before you rely on it:
+
+- **Compute deploys through a Composer declaration.** A Next.js app gets a `service.ts` that uses Composer's `nextjs` build adapter and a `module.ts`, as [porting an app](/docs/composer/porting-an-app) shows. If you'd rather keep your Vercel setup, use Prisma Postgres there and leave the app where it is.
+- **Preview URLs are generated URLs.** Custom domains attach to production only. The Compute docs don't describe a password or login gate for previews, so keep only test data behind them.
+- **Variable values are write-only.** `npx prisma project env list --branch <name>` shows which variables a branch's deploy receives, but no command reads a value back, so keep the connection strings in your own secret manager.
+
+For a step-by-step setup of either option, see [hosting a TypeScript test app with a separate database](/postgres/typescript-test-environment). For how previews, staging and feature flags compare, see [how to host a test version without replacing production](/blog/host-a-test-version-without-replacing-production).

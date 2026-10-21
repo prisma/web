@@ -173,12 +173,12 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Can I manage my databases from Claude Code, Cursor or Codex?",
       answer:
-        "Yes, through Prisma's [hosted MCP server](/docs/ai/tools/mcp-server) at https://mcp.prisma.io/mcp, which you connect with your Prisma sign-in. In Claude Code, run `claude mcp add --transport http prisma https://mcp.prisma.io/mcp`. Cursor adds it from its MCP settings or a one-click link, and Codex through the Prisma plugin. An agent can then create databases, inspect the schema, run SQL, apply schema changes and, on paid plans, restore a backup into a new database. For scripts, there is also a REST API that uses a workspace service token.",
+        "Yes, through Prisma's [hosted MCP server](/docs/ai/tools/mcp-server) at https://mcp.prisma.io/mcp, which you connect with your Prisma sign-in. In Claude Code, run `claude mcp add --transport http prisma https://mcp.prisma.io/mcp`. Cursor adds it from its MCP settings or a one-click link, and Codex through the Prisma plugin. An agent can then create databases, inspect the schema, run SQL, apply schema changes and, on paid plans, restore a backup into a new database. For scripts, there is also a REST API that uses a workspace service token. To keep test writes away from customer data, see [hosting a TypeScript test app with a separate database](/postgres/typescript-test-environment).",
     },
     {
       question: "Where do I find my connection string?",
       answer:
-        "In the Prisma Console: open your project, select Connect to your database, then Generate new connection string. You get [two connection strings](/docs/postgres/database/connecting-to-your-database). Use the pooled one as `DATABASE_URL` for your app and serverless functions, and the direct one for migrations, Prisma Studio and `pg_dump`. SSL is required, so keep `sslmode=require` in the URL. `npx create-db` also prints a connection string.",
+        "In the Prisma Console: open your project, select Connect to your database, then Generate new connection string. You get [two connection strings](/docs/postgres/database/connecting-to-your-database). Use the pooled one as `DATABASE_URL` for your app and serverless functions, and the direct one for migrations, Prisma Studio and `pg_dump`. SSL is required, so keep `sslmode=require` in the URL. `npx create-db` also prints a connection string. Once connected, the [query-monitoring guide](/postgres/managed-postgres-query-monitoring) explains how to inspect slow SQL and existing indexes.",
     },
     {
       question: "Does Prisma Postgres support pgvector?",
@@ -193,7 +193,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Which regions can I choose?",
       answer:
-        "Six: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1). You pick the region for each database when you create it in the Console, through MCP or with `npx create-db --region`. Without the flag, `npx create-db` picks the region closest to you.",
+        "Six: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1). You pick the region for each database when you create it in the Console, through MCP or with `npx create-db --region`. Without the flag, `npx create-db` picks the region closest to you. For deployed apps, see [choosing app and database regions](/postgres/nodejs-database-regions).",
     },
     {
       question: "Is Prisma Postgres HIPAA compliant?",

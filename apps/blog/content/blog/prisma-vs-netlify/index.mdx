@@ -2,7 +2,7 @@
 title: "Netlify alternatives for a full-stack TypeScript app with Postgres (2026)"
 slug: "prisma-vs-netlify"
 date: "2026-09-16"
-updatedAt: "2026-10-14"
+updatedAt: "2026-10-19"
 authors:
   - "Shane Neubauer"
 metaTitle: "Netlify alternatives for a full-stack TypeScript app with Postgres (2026)"
@@ -21,7 +21,7 @@ Five Netlify alternatives host a full-stack TypeScript app's server and its Post
 
 You declare each service, its database, and the calls between them in TypeScript, and a root module wires them together. The compiler rejects a service that points at the wrong API or the wrong database schema, and one deploy command creates everything the root module describes.
 
-Netlify builds and publishes your site and its functions together. The connections between separate services, and the database each one uses, are yours to set up and keep correct.
+Netlify builds and publishes your site and its functions together, and Netlify Database can provision and migrate their Postgres database for you. The connections between separate services are yours to set up and keep correct.
 
 "Prisma" here means more than the ORM:
 
@@ -135,7 +135,9 @@ when the same app has to be close to users on more than one continent. Fly.io al
 
 **Supabase.** Postgres with auth, storage, realtime, and Edge Functions from one vendor. It fits when
 what you miss is those surrounding services, and it fits poorly if all you need is a database and a
-host for a Node.js or Bun server, because its Edge Functions run on a Deno-compatible runtime.
+host for a Node.js or Bun server, because its Edge Functions run on a Deno-compatible runtime and
+[Supabase Compute](https://supabase.com/compute), which runs Node, is a private alpha (us-west-2
+only, not for production).
 
 **Neon.** Postgres with copy-on-write branching, and the database Netlify Database is built on. Neon
 Functions (generally available since 2026-09-17, also on Free) run Node.js 24 HTTP handlers next to
@@ -163,14 +165,14 @@ What you get from one vendor, which is usually the real question behind leaving.
 | --- | --- | --- | --- | --- | --- |
 | App hosting | Yes | Yes | Yes | Edge Functions only | Yes |
 | Runtime | Node.js functions; Deno Edge Functions | Node.js, Bun or Next.js apps, run on Bun; they scale to zero when idle | Node.js, Bun, Python, and others | Deno-compatible Edge Functions | Node.js, Bun, and other native runtimes, or Docker |
-| Longest request | 60 seconds; Background Functions up to 15 minutes | 60 seconds to first byte, then a started stream keeps going | 300 seconds by default, up to 800 on Pro and Enterprise; 30 minutes in beta on Pro and Enterprise for Node.js and Python functions | 150 seconds to respond; wall-clock limit 150 seconds on Free, 400 on paid plans | 100 minutes |
+| Longest request | 60 seconds; Background Functions up to 15 minutes | 60 seconds to first byte, then a started stream keeps going | 300 seconds by default, up to 800 on Pro and Enterprise; 30 minutes in beta on Pro and Enterprise for Node.js, Bun and Python functions | 150 seconds to respond; wall-clock limit 150 seconds on Free, 400 on paid plans | 100 minutes |
 | Realtime or WebSocket servers | No | No | WebSockets in Functions (beta); no managed realtime service | Realtime service | WebSockets on web services; no managed realtime service |
 | Managed Postgres | Netlify Database, built on Neon | Prisma Postgres | No; add one from the Marketplace | Yes | Yes |
 | Connection pooling included | Not documented; the `@netlify/database` driver picks the connection method | Dedicated PgBouncer per database | Depends on the database | Shared pooler, plus a dedicated pooler on paid plans | Built-in PgBouncer on paid databases, opt-in |
 | Auth | Netlify Identity | No | No | Yes | No |
 | Object storage | Blobs | Object Store buckets (pricing not yet published) | Blob | Yes | No |
 | Edge network and image CDN | Yes | No | Yes | Storage CDN; image transformations on Pro and above | Global CDN for static sites and paid web services; no image CDN |
-| Preview per branch | Deploy Preview; database branch with a copy of production data | Branch environment; database created by you or a Composer stage deploy, starts empty | Preview deployment | Branching on Pro and above, empty by default | Preview environment on Pro workspace and above |
+| Preview per branch | Deploy Preview per pull request, with a database branch that copies production data; branch deploys once set up | Branch environment; database created by you or a Composer stage deploy, starts empty | Preview deployment | Branching on Pro and above, empty by default | Preview environment on Pro workspace and above |
 
 Sources for the table, by column:
 
@@ -401,6 +403,8 @@ Prisma ORM works with Netlify Database, which is PostgreSQL built on Neon, and i
 
 ## Update history
 
+- 2026-10-19: the Supabase profile now says Supabase Compute, which runs Node, is a private alpha (us-west-2 only, not for production), checked against supabase.com/compute on 2026-10-19.
+- 2026-10-19: the third paragraph now says Netlify Database can provision and migrate the site's Postgres database, the feature-parity table says Netlify builds a Deploy Preview per pull request and branch deploys only once they are set up, and Vercel's 30-minute beta maximum is listed for Node.js, Bun and Python functions, checked against Netlify's and Vercel's docs on 2026-10-19.
 - 2026-10-14: moved the two paragraphs on the Compute runtime and when Netlify is the better fit below the "Pick by app type" table, added a first row to that table for a full-stack TypeScript app leaving Netlify that names all five alternatives and two Compute limits, and updated two cells in the longest-request row of the feature-parity table from each vendor's limits page: Vercel lists a 30-minute maximum in beta on Pro and Enterprise, and a Supabase Edge Function has 150 seconds to respond on every plan; updated Prisma Postgres Free storage from 1.01 GB to 2 GB.
 - 2026-10-12: reworded the FAQ answer on Netlify alternatives and the first paragraph of the closing section to describe the options side by side.
 - 2026-10-08: rewrote the description and the opening to name five alternatives side by side, added a "Pick by app type" table and an FAQ on whether Compute runs functions or a server, updated the Railway and Neon profiles from their docs, stated the Starter base fee and metered Compute usage in the Prisma profile and the billing row, made the closing section say that Netlify fits code that depends on the Node.js runtime itself rather than Bun, and moved this history to the end.

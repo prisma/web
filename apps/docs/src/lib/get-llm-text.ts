@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { source } from "@/lib/source";
 import {
   normalizeProcessedMarkdown,
@@ -222,18 +223,19 @@ function absolutizeInBodyLinks(markdown: string, page: DocsPage, baseUrl: string
 }
 
 export async function getLLMText(page: DocsPage) {
+  const content = await pageContent(page.data);
   const baseUrl = getBaseUrl();
   // The processed markdown emits headings as plain "Text [#anchor]" lines; the
   // toc's anchor→depth map lets normalizeProcessedMarkdown restore the `##`
   // markers so agents (and parity checkers) see real headings.
   const headingDepths = new Map<string, number>();
-  for (const item of page.data.toc ?? []) {
+  for (const item of content.toc ?? []) {
     if (typeof item.url === "string" && item.url.startsWith("#")) {
       headingDepths.set(item.url.slice(1), item.depth);
     }
   }
   const processed = absolutizeInBodyLinks(
-    normalizeProcessedMarkdown(await page.data.getText("processed"), { headingDepths }),
+    normalizeProcessedMarkdown(await content.getText("processed"), { headingDepths }),
     page,
     baseUrl,
   );

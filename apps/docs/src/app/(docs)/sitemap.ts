@@ -27,17 +27,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
   const url = (path: string): string => new URL(withDocsBasePath(path), baseUrl).toString();
 
-  return source
-    .getPages()
-    .filter((page) => !(page.data as { noindex?: boolean }).noindex)
-    .map((page) => {
-      const lastModified = (page.data as { lastModified?: Date }).lastModified;
+  return Promise.all(
+    source
+      .getPages()
+      .filter((page) => !(page.data as { noindex?: boolean }).noindex)
+      .map(async (page) => {
+        const lastModified = (await pageContent(page.data)).lastModified;
 
-      return {
-        url: url(page.url),
-        lastModified: lastModified ? new Date(lastModified) : undefined,
-        changeFrequency: "weekly",
-        priority: getPriority(page.url, page.slugs.length),
-      } as MetadataRoute.Sitemap[number];
-    });
+        return {
+          url: url(page.url),
+          lastModified: lastModified ? new Date(lastModified) : undefined,
+          changeFrequency: "weekly",
+          priority: getPriority(page.url, page.slugs.length),
+        } as MetadataRoute.Sitemap[number];
+      }),
+  );
 }
+import { pageContent } from "@prisma-docs/ui/lib/page-content";

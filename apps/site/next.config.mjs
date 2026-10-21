@@ -1,3 +1,4 @@
+import { composerBuild, composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -30,6 +31,7 @@ const imageRemoteHostnames = [
 
 if (
   process.env.NODE_ENV === "production" &&
+  !composerBuild &&
   (!process.env.NEXT_DOCS_ORIGIN || !process.env.NEXT_BLOG_ORIGIN)
 ) {
   throw new Error(
@@ -269,6 +271,14 @@ const agentMarkdownPaths = [
   "/stack",
   "/enterprise",
   "/mcp",
+  "/compare",
+  "/compare/convex",
+  "/compare/kysely",
+  "/compare/mongoose",
+  "/compare/neon",
+  "/compare/planetscale",
+  "/compare/supabase",
+  "/compare/vercel-neon-drizzle",
 ];
 
 /**
@@ -281,7 +291,7 @@ const agentMarkdownPaths = [
  *
  * `Vary: Accept` says the same URL has an HTML and a Markdown variant, so a
  * shared cache must key them apart. Under `next start` it does not reach the
- * client on these nine pages: Next writes its own RSC `Vary` onto an
+ * client on these pages: Next writes its own RSC `Vary` onto an
  * app-router response after both `headers()` and middleware headers have been
  * merged, and neither survives it (measured; a middleware `append` was tried
  * and dropped the same way, and apps/docs does not set it at all). It is
@@ -306,6 +316,33 @@ function agentMarkdownHeaders(path) {
   };
 }
 
+/**
+ * The product guides in content/answers, at `/postgres/<slug>` and
+ * `/compute/<slug>`, get the same two headers, with each guide's own `.md`
+ * URL in the `Link`. A guide URL is one lowercase, hyphenated slug segment
+ * that is not one of the static routes beside the guides. Keep the reserved
+ * segments in step with `ANSWER_PAGE_RESERVED_SEGMENTS` and `getAnswerPagePath`
+ * in src/lib/agent-markdown.ts; src/lib/answer-page-markdown.test.ts checks
+ * that the two agree.
+ */
+export const ANSWER_PAGE_HEADER_SOURCES = {
+  postgres: "/postgres/:slug((?!(?:guides|hipaa)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
+  compute: "/compute/:slug((?!(?:guides)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
+};
+
+function answerPageMarkdownHeaders([product, source]) {
+  return {
+    source,
+    headers: [
+      { key: "Vary", value: "Accept" },
+      {
+        key: "Link",
+        value: `</${product}/:slug.md>; rel="alternate"; type="text/markdown", </llms.txt>; rel="llms-txt"`,
+      },
+    ],
+  };
+}
+
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
   .map((origin) => origin.trim())
@@ -313,6 +350,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   reactCompiler: true,
   assetPrefix: "/site-static",
   allowedDevOrigins,
@@ -396,6 +434,7 @@ const config = {
       { source: "/privacy", destination: "/legal/privacy", permanent: true },
       { source: "/terms", destination: "/legal/terms", permanent: true },
       { source: "/sla", destination: "/legal/sla", permanent: true },
+      { source: "/security", destination: "/legal/security-and-compliance", permanent: true },
       { source: "/startups", destination: "/programs/startups", permanent: true },
       { source: "/partners", destination: "/programs/partners", permanent: true },
       { source: "/oss-friends", destination: "/programs/oss-friends", permanent: true },
@@ -587,13 +626,19 @@ const config = {
       },
       {
         permanent: true,
+        source: "/blog/comparison-prisma-typeorm-A9nlX0Pb5G1X",
+        destination: "/docs/orm/v7/more/comparisons/prisma-and-typeorm",
+      },
+      // v1.prisma.io/forum and /tutorials 404. Exact /tutorials/postgres-* rules above still win.
+      {
+        permanent: true,
         source: "/forum/:any*",
-        destination: "https://v1.prisma.io/forum/:any*",
+        destination: "/community",
       },
       {
         permanent: true,
         source: "/tutorials/:any*",
-        destination: "https://v1.prisma.io/tutorials/:any*",
+        destination: "/docs/guides",
       },
       {
         permanent: true,
@@ -618,7 +663,7 @@ const config = {
       {
         permanent: true,
         source: "/with-rest",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/rest",
+        destination: "/docs/orm/v7/core-concepts/api-patterns",
       },
       {
         permanent: true,
@@ -882,6 +927,7 @@ const config = {
   },
 
   async rewrites() {
+    const crossZone = (rule) => !composerBuild || !/^\/(docs|blog)(?:[/:.-]|$)/.test(rule.source);
     return {
       beforeFiles: [
         {
@@ -985,7 +1031,7 @@ const config = {
           destination: `${BLOG_ORIGIN}/blog-static/:path*`,
           missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
         },
-      ],
+      ].filter(crossZone),
       afterFiles: [
         // Markdown renditions of the marketing pages: /orm.md, /pricing.md,
         // /index.md for the homepage, and so on, all handled by
@@ -1037,6 +1083,7 @@ const config = {
       // Extends, rather than replaces, the rule above: Next.js applies every
       // matching headers() entry.
       ...agentMarkdownPaths.map(agentMarkdownHeaders),
+      ...Object.entries(ANSWER_PAGE_HEADER_SOURCES).map(answerPageMarkdownHeaders),
       {
         source: "/console-analytics.html",
         headers: [

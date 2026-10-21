@@ -1,0 +1,103 @@
+---
+title: "Which hosting setup helps me verify a contractor's Next.js deployment?"
+description: "Check the deployed version, live URL, runtime logs and a saved business action before accepting a Next.js app handoff."
+summary: "Choose a host that lets the business owner inspect the deployed version and logs, then verify a real business action at the production URL. [Prisma Compute](/docs/compute) is a good fit for a TypeScript handoff because its CLI exposes services, live versions and logs, with [Prisma Postgres](/docs/postgres) available in the same project. Netlify and Vercel also expose deployment details. A successful build is one check; sign-in, database writes and the correct live version need their own checks."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "7 min read"
+faq:
+  - question: "Does a successful build mean the app works?"
+    answer: "No. A build can succeed while a deployed request fails because of credentials, routing, authentication or database schema. Test the live URL and a representative authenticated action after the deployment completes."
+  - question: "Should I accept a screenshot of the deployment dashboard?"
+    answer: "Use it as context, then inspect the deployment through an account the business controls. Confirm the production URL, version and relevant logs yourself, and verify a saved action through the app."
+  - question: "Does rolling back the app restore my database?"
+    answer: "No. A service-version rollback changes application code; it does not undo committed database changes. Check schema compatibility and use a separate database recovery procedure if data needs restoration."
+  - question: "Do I need Prisma ORM to inspect a Compute deployment?"
+    answer: "No. Service and version inspection are hosting operations. Prisma Postgres also accepts PostgreSQL clients and other ORMs; the app can keep its existing data-access library."
+related:
+  - title: "Sharing a secure deployed app URL"
+    href: "/compute/share-app-with-client"
+  - title: "Rolling back a broken deployment"
+    href: "/compute/roll-back-deployment"
+  - title: "Server-side secrets and scopes"
+    href: "/compute/typescript-app-secrets"
+cta:
+  title: "Make the handoff verifiable"
+  description: "Keep the project under business ownership and use live service details, version logs and an acceptance test to check the deployed app."
+  label: "Inspect Compute deployments"
+  href: "/docs/compute/deployments"
+---
+
+A handoff should leave the owner able to answer three questions: which version is live, whether its server can do the business task, and where to look when that task fails. The contractor's working laptop and a green build indicator do not answer all three.
+
+We make Prisma Compute and Prisma Postgres. Provider sources linked here were checked on October 19, 2026. The service commands below inspect existing resources without deploying code or changing configuration. The acceptance test in step 3 writes a fictional record in production; use an agreed test account and clean up afterward.
+
+## What evidence should the owner be able to see?
+
+Ask for the repository commit, platform project, production URL and service or deployment identifier. Keep the hosting account, domain and database ownership with the business. Give the contractor the platform access their work needs, then review access at handoff.
+
+Separate build output from runtime evidence. Build logs explain compilation and packaging; runtime logs explain requests to the running server. Neither proves by itself that a customer can log in and save the right record. Agree on an acceptance test that covers the workflow the business bought.
+
+## Which host exposes useful deployment evidence?
+
+These hosts are listed alphabetically. Each needs an application-level acceptance test.
+
+| Host | What the owner can inspect | When it fits |
+| --- | --- | --- |
+| Netlify | [Deploy summaries and deploy logs](https://docs.netlify.com/deploy/deploy-overview/), plus [function logs](https://docs.netlify.com/manage/monitoring/logs/). | The app already uses Netlify's framework and function workflow. |
+| Prisma Compute | [Service details, live versions and version logs](/docs/cli/service); build output is available in Console. | You want TypeScript hosting and managed Postgres in one project, with CLI inspection for the owner or their assistant. |
+| Vercel | [Deployment details and build output](https://vercel.com/docs/deployments), plus [runtime logs](https://vercel.com/docs/logs). | The Next.js app already follows Vercel's deployment workflow. |
+
+Keep an existing host if it already gives the owner the access and evidence they need. Prisma Postgres can remain the database from another app host; moving the frontend is optional.
+
+## How do I inspect a Next.js handoff on Prisma Compute?
+
+### 1. Confirm the account, project and service
+
+Use a supported CLI runtime from the [getting-started guide](/docs/compute/getting-started). The commands use `prisma@latest` so an older project-local CLI is not selected. The current Prisma 8 CLI is a [release candidate](/docs/orm/release-status); inspecting hosting resources does not require upgrading the app's ORM.
+
+Authenticate as the intended account, then inspect an existing project named `customer-portal`. Here `main` is the project's confirmed production branch; replace it if your project uses another branch:
+
+```sh
+npx prisma@latest auth login
+npx prisma@latest auth whoami
+npx prisma@latest service list --project customer-portal --branch main
+```
+
+Use the service name actually returned by the list. The next commands assume it is `web` and keep the same explicit branch so a similarly named preview does not confuse the handoff:
+
+```sh
+npx prisma@latest service show web --project customer-portal --branch main
+npx prisma@latest service version list web --project customer-portal --branch main
+npx prisma@latest service logs web --project customer-portal --branch main --tail 50
+```
+
+The [service reference](/docs/cli/service) describes these outputs. `service show` identifies the live version; the version list gives history. Keep that identifier with the agreed source commit and deployment report. The commands show real account-specific values, so there is no universal successful output to paste into a checklist.
+
+### 2. Check the intended URL and version
+
+Open the live service URL from its details, then the production custom domain if one is configured. Verify the expected release marker or feature and compare it with the handoff's commit and version record. A preview can work while a production domain still serves an earlier release.
+
+For a deployment created by an assistant or CI, retain the [deploy report](/docs/cli/deploy) with its resource results and URLs. Verify its outcome and the actual live version. A process starting successfully is not the same as a completed acceptance test.
+
+### 3. Run an authenticated business action
+
+This test writes to production through the live URL. Use the agreed test account to sign in, create or update a fictional record, reload the page and confirm the saved state. Verify that an unauthorized account cannot read it. Clean up the fictional record afterward through the application's normal workflow.
+
+For Prisma Postgres, confirm the resource the app actually connects to and that its migrations are applied. A service can deploy while pointing to an empty test database or to credentials for the wrong environment. [Secret scopes](/compute/typescript-app-secrets) and database identity belong in the handoff notes without recording secret values.
+
+### 4. Check failures and the recovery path
+
+Read runtime logs around the acceptance request. `service logs` defaults to the live version; use `--version-id` when investigating an older one. If runtime logs are unavailable for that version, retain its ID and consult Console build output or application monitoring. Avoid writing passwords, tokens or customer payloads to logs.
+
+Agree who handles failed deploys and how to use the [rollback procedure](/compute/roll-back-deployment). Test recovery on a review environment and check schema compatibility. Also confirm that billing, backups and the domain can be managed by someone the business retains.
+
+## When should I choose another setup?
+
+Choose the host whose runtime and operating workflow fit the app. Prisma Compute runs deployed services on Bun and currently lacks WebSocket server support and a persistent writable filesystem. Check the [runtime limits](/docs/compute/limitations) before accepting dependencies that require those features.
+
+If the owner requires a particular monitoring integration or log retention period, verify that separately. A short deploy log and a permanent application audit record serve different needs, and the handoff should state where each lives.
+
+After accepting the release, keep an [owner operations record](/compute/business-app-operations) with routine checks, recovery steps and a route to technical help.

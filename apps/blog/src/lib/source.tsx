@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { blogPosts } from "../../.source/server";
 import { type InferPageType, loader, multiple } from "fumadocs-core/source";
 import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
@@ -18,7 +19,7 @@ export function getPageImage() {
 }
 
 export async function getLLMText(page: InferPageType<typeof blog>) {
-  const processed = await page.data.getText("processed");
+  const processed = await (await pageContent(page.data)).getText("processed");
 
   return `# ${page.data.title}
 

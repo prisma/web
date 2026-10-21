@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { blog as source } from "@/lib/source";
 import { buildLlmsFullContent } from "@/lib/llms";
 import { toLlmsPost } from "@/lib/llms-source";
@@ -9,7 +10,7 @@ export async function GET() {
   const entries = await Promise.all(
     source.getPages().map(async (page) => ({
       post: toLlmsPost(page),
-      body: await page.data.getText("processed"),
+      body: await (await pageContent(page.data)).getText("processed"),
     })),
   );
 

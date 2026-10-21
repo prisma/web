@@ -79,6 +79,14 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/sections/cta-burst.tsx",
   ],
   "/enterprise": ["src/app/enterprise/page.tsx"],
+  "/compare": ["src/app/compare/page.tsx"],
+  "/compare/convex": ["src/app/compare/convex/_sections.tsx"],
+  "/compare/kysely": ["src/app/compare/kysely/_sections.tsx"],
+  "/compare/mongoose": ["src/app/compare/mongoose/_sections.tsx"],
+  "/compare/neon": ["src/app/compare/neon/_sections.tsx"],
+  "/compare/planetscale": ["src/app/compare/planetscale/_sections.tsx"],
+  "/compare/supabase": ["src/app/compare/supabase/_sections.tsx"],
+  "/compare/vercel-neon-drizzle": ["src/app/compare/vercel-neon-drizzle/_sections.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
     "src/app/mcp/_components/mcp-hero-section.tsx",
@@ -109,12 +117,22 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/stack": 1,
   "/enterprise": 3,
   "/mcp": 4,
+  "/compare": 1,
+  "/compare/convex": 10,
+  "/compare/kysely": 10,
+  "/compare/mongoose": 10,
+  "/compare/neon": 10,
+  "/compare/planetscale": 10,
+  "/compare/supabase": 10,
+  "/compare/vercel-neon-drizzle": 10,
 };
 
-const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
+const HEADING_PATTERN =
+  /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>|<AnchorHeading level=\{[12]\}[^>]*>([\s\S]*?)<\/AnchorHeading>/g;
 
 /**
- * The literal text of every `<h1>`/`<h2>` in a source file.
+ * The literal text of every `<h1>`/`<h2>` in a source file, including level 2
+ * `<AnchorHeading>`s.
  *
  * Presentational wrappers inside a heading (`<GlassGlide>`, `<span>`) are
  * flattened, because they carry no meaning in Markdown. A heading whose text
@@ -126,7 +144,8 @@ const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
 function literalHeadings(source: string): string[] {
   const headings: string[] = [];
 
-  for (const [, , inner] of source.matchAll(HEADING_PATTERN)) {
+  for (const [, , tagInner, anchorInner] of source.matchAll(HEADING_PATTERN)) {
+    const inner = tagInner ?? anchorInner;
     // JSX's explicit whitespace literal, used to keep a space before a tag.
     let flattened = inner.replace(/\{" "\}/g, " ");
 
@@ -169,16 +188,27 @@ test("every supported path has a markdown page, and vice versa", () => {
   assert.equal(markdownPageList.length, AGENT_MARKDOWN_PATHS.length);
 });
 
+/** Heading markers inside a fenced sample are code, not document headings. */
+function headingLines(document: string, prefix: "# " | "## ") {
+  let fenced = false;
+  return document.split("\n").filter((line) => {
+    if (line.startsWith("```")) {
+      fenced = !fenced;
+      return false;
+    }
+    return !fenced && line.startsWith(prefix);
+  });
+}
+
 for (const page of markdownPageList) {
   test(`${page.path} renders a markdown document with one H1 and real sections`, () => {
     const document = renderMarkdownDocument(page, baseUrl);
-    const lines = document.split("\n");
 
-    const h1Lines = lines.filter((line) => line.startsWith("# "));
+    const h1Lines = headingLines(document, "# ");
     assert.equal(h1Lines.length, 1, `${page.path} should have exactly one H1`);
     assert.equal(h1Lines[0], `# ${page.h1} (${page.path})`);
 
-    const h2Lines = lines.filter((line) => line.startsWith("## "));
+    const h2Lines = headingLines(document, "## ");
     assert.ok(
       h2Lines.length >= 2,
       `${page.path} should have at least two H2 sections, got ${h2Lines.length}`,
@@ -186,7 +216,7 @@ for (const page of markdownPageList) {
 
     // Not a title-and-description stub: the audit's whole complaint.
     assert.ok(
-      document.length > 1500,
+      document.length > (page.path === "/compare" ? 800 : 1500),
       `${page.path} markdown is only ${document.length} characters — too short to be at parity with the page`,
     );
 

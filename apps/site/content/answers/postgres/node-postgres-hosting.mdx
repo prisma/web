@@ -1,0 +1,114 @@
+---
+title: "Where can I host Postgres without replacing my TypeScript app's pg code?"
+description: "Keep node-postgres and ordinary SQL when choosing hosted Postgres, then verify connection strings, pooling, TLS and existing data."
+summary: "Choose a managed service with a standard PostgreSQL connection and keep your existing node-postgres (`pg`) queries. [Prisma Postgres](/docs/postgres) works with `pg` and does not require Prisma ORM; Neon and Supabase are also options for a PostgreSQL application. Start by changing the server's connection configuration, then test SQL, extensions and transactions before moving production data. [Prisma Compute](/docs/compute) is optional if you also want to host the app in the same project."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-18"
+updatedAt: "2026-10-18"
+readingTime: "6 min read"
+faq:
+  - question: "Does choosing Prisma Postgres require installing Prisma ORM?"
+    answer: "No. Prisma Postgres is a PostgreSQL database and accepts ordinary PostgreSQL clients. Your app can keep the pg package and its SQL queries. Prisma ORM is an optional choice rather than a hosting prerequisite."
+  - question: "Does pg read DATABASE_URL automatically?"
+    answer: "Pass DATABASE_URL through the connectionString option when that is how your application stores its URL. The pg package also supports PostgreSQL environment variables such as PGHOST, PGUSER and PGDATABASE. Verify which configuration your code actually reads."
+  - question: "Should I create a new Pool for each request?"
+    answer: "Reuse a pool within a running process rather than creating one per request. Size the pool with the number of deployed app instances and the database's limits in mind. The verification script on this page closes its pool because it is a one-off process."
+  - question: "Does changing the connection string move my existing data?"
+    answer: "No. It changes which database the app connects to. Create the target schema and import any data you need, then verify the result before switching the application. Keep the original database until the migration and recovery plan are confirmed."
+related:
+  - title: "Postgres transactions for customer and order writes"
+    href: "/postgres/customer-order-transactions"
+  - title: "Sharing a development database"
+    href: "/postgres/shared-development-database"
+  - title: "Moving existing data to Prisma Postgres"
+    href: "/docs/postgres/import-from-existing-database"
+cta:
+  title: "Keep pg and give it managed Postgres"
+  description: "Create Prisma Postgres, configure a server-side pooled connection and verify the queries your application already uses."
+  label: "Connect to Prisma Postgres"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+Your database host and query library are separate choices. An API that already uses `pg` can connect to managed Postgres without adopting a new ORM. The changes are usually concentrated in connection configuration, deployment secrets and the data migration.
+
+We make Prisma Postgres and Prisma Compute. Official provider and node-postgres documentation linked below was checked on October 18, 2026. Compatibility with ordinary SQL is a starting point; test any extensions, roles or session behavior your application depends on.
+
+## What should I check before changing hosts?
+
+Confirm that the app's runtime can open PostgreSQL connections and that outbound network access is available. A conventional Node API is different from an edge runtime that needs an HTTP-based database driver. Prisma Postgres also has a [serverless driver](/docs/postgres/database/serverless-driver) for those cases, but switching drivers is a separate decision from keeping `pg`.
+
+Inspect how your code configures its client. The [node-postgres connection guide](https://node-postgres.com/features/connecting) supports connection URIs and individual PostgreSQL environment variables. Setting `DATABASE_URL` does nothing if the application only reads `PGHOST` and related fields without passing the URL to its client.
+
+List required extensions, transactions, migrations and session-dependent features. For example, `LISTEN/NOTIFY` and session-level settings need a connection mode that preserves the required session state. Use Prisma Postgres's [connection-mode guidance](/docs/postgres/database/connecting-to-your-database) rather than assuming pooled and direct endpoints are interchangeable. Queries that set a `name` create named prepared statements, which can fail behind a transaction-mode pooler that does not track them; see [fixing "prepared statement already exists" behind a pooler](/postgres/prepared-statement-already-exists).
+
+## Which hosted Postgres service fits an existing pg app?
+
+These services are ordered alphabetically. Choose the surrounding workflow after checking connection compatibility.
+
+| Service | A reason to choose it | What to verify |
+| --- | --- | --- |
+| Neon | You want its [database branching workflow](https://neon.com/docs/get-started/workflow-primer) for testing. | The branch, role, endpoint and connection mode your application uses. |
+| Prisma Postgres | You want managed Postgres while keeping `pg`, with optional TypeScript app hosting on Prisma Compute. | The [pooled and direct URLs](/docs/postgres/database/connecting-to-your-database), supported extensions and app region. |
+| Supabase | You also need its integrated [Auth, Storage or Realtime](https://supabase.com/docs/guides/getting-started/architecture). | The appropriate database connection route and credentials for the server runtime. |
+
+You can use Prisma Postgres from an existing app host. Hosting on Prisma Compute adds a TypeScript deployment declaration and a Bun runtime, so assess that app-host migration separately from changing the database URL.
+
+## How do I verify pg against Prisma Postgres?
+
+### 1. Create a development database and get its URLs
+
+Create a database in [Prisma Console](https://console.prisma.io), or use the [CLI workflow](/postgres/codex-database-provisioning). Choose a region near your API server. Get the connection strings from the provider; do not invent a username or password from the database's display name.
+
+For normal app traffic on Prisma Postgres, use the pooled URL with host `pooled.db.prisma.io`. Keep the direct URL, with host `db.prisma.io`, for migrations and administrative workflows that need it. Preserve the TLS parameters in the supplied URL.
+
+### 2. Run a small read-only probe
+
+Use the project's existing `pg` dependency. If you are making a new verification project, install it first with `npm install pg`. The following `.mjs` script runs with Node.js 22.18 or newer and does not need a TypeScript build step.
+
+Save the real pooled connection URL in a local `.env` file that is excluded from Git, using the key `DATABASE_URL`. Then save this as `verify-pg.mjs`:
+
+```js
+import pg from "pg";
+
+const { Pool } = pg;
+if (!process.env.DATABASE_URL) {
+  throw new Error("Set DATABASE_URL to the development database connection");
+}
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+try {
+  const result = await pool.query("SELECT 1::integer AS value");
+  console.log(result.rows);
+} finally {
+  await pool.end();
+}
+```
+
+Run it from that directory:
+
+```sh
+node --env-file=.env verify-pg.mjs
+```
+
+The result is `[ { value: 1 } ]`. The two-connection maximum is for this probe, not a sizing recommendation for your deployed application. The probe checks connectivity; it does not verify your schema or production workload.
+
+### 3. Keep the application pool reusable
+
+Point the existing app's connection configuration at the development database and run its integration tests. Follow the [node-postgres pooling guidance](https://node-postgres.com/features/pooling): reuse pools within processes, release acquired clients and consider the total connections across app instances. If the database starts refusing connections under load, see [how to fix "too many connections"](/postgres/too-many-connections).
+
+For transactions, acquire one client for the entire operation rather than issuing each statement through unrelated `pool.query` calls. The [transaction walkthrough](/postgres/customer-order-transactions) explains the consistency boundary and rollback behavior.
+
+Use the provider's documented [TLS configuration](https://node-postgres.com/features/ssl). In `pg`, SSL options in a connection string can replace an explicit `ssl` configuration object; check that interaction if your current code supplies both. Fix certificate configuration rather than disabling verification to hide an error.
+
+### 4. Move schema and data deliberately
+
+A successful `SELECT 1` does not create tables or import records. [Apply the app's migrations](/postgres/production-database-migrations) to the target database. If moving an existing database, follow the [Postgres import guide](/docs/postgres/import-from-existing-database), verify the imported records and rehearse the application switch.
+
+Update the deployed server's secrets, redeploy and verify a representative read and write. Keep development, preview and production values separate. If the app moves to Prisma Compute, a [Composer dependency](/docs/composer/databases) named `db` can supply `service.load().db.url`; a separately managed database uses a server-side URL input instead.
+
+## When should I choose another setup?
+
+Choose a provider that supports any extension, privileged operation, region or recovery feature your application requires. A PostgreSQL connection does not imply unrestricted server administration. Prisma Postgres's [extension list](/docs/postgres/database/postgres-extensions) and [backup documentation](/docs/postgres/database/backups) describe its current support.
+
+If the runtime cannot use PostgreSQL TCP connections, keep the app on a compatible Node host or evaluate a serverless driver and test the resulting client change. Avoid treating a database migration as proof that every runtime-specific dependency in the app will work on a new host.

@@ -1,3 +1,4 @@
+import { getComparisonMarkdownPages } from "./markdown/comparisons";
 import { computeContent } from "@/components/product/content/compute";
 import { ormContent, ormFeedback, ormMigrations } from "@/components/product/content/orm";
 import { postgresContent } from "@/components/product/content/postgres";
@@ -45,9 +46,14 @@ export type MarkdownPage = {
   subheadline: string;
   /** Everything after the subheadline. */
   renderBody: () => string;
+  /** Human-readable check month, printed at the top of the Markdown. */
+  checked?: string;
+  /** ISO date the page was last checked, independent of git. */
+  dateModified?: string;
 };
 
 export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
+  ...getComparisonMarkdownPages(),
   "/": {
     path: "/",
     title: SITE_HOME_TITLE,
@@ -167,12 +173,19 @@ export function getMarkdownPage(path: string): MarkdownPage | undefined {
 export function renderMarkdownDocument(page: MarkdownPage, baseUrl = getBaseUrl()): string {
   const llmsTxtUrl = new URL("/llms.txt", baseUrl).toString();
   const markdownPath = getMarkdownUrlPath(page.path);
+  const titleLead = /[.!?]$/.test(page.title) ? page.title : `${page.title}.`;
+  const freshness = [
+    page.checked ? `Checked ${page.checked}.` : "",
+    page.dateModified ? `dateModified: ${page.dateModified}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return `# ${page.h1} (${page.path})
 
-> ${page.title}. For the complete Prisma website index, see [llms.txt](${llmsTxtUrl}). A Markdown version of any listed page is available at its \`.md\` URL — this one is \`${markdownPath}\`.
+> ${titleLead} For the complete Prisma website index, see [llms.txt](${llmsTxtUrl}). A Markdown version of any listed page is available at its \`.md\` URL — this one is \`${markdownPath}\`.
 
-${page.description}
+${freshness ? `${freshness}\n\n` : ""}${page.description}
 
 ${page.subheadline}
 

@@ -1,0 +1,118 @@
+---
+title: "Which managed Postgres should I use for pgvector document search?"
+description: "Choose managed Postgres for document search with pgvector, relational filters and a practical path from exact search to vector indexes."
+summary: "Use managed Postgres with pgvector when document search needs embeddings alongside customer permissions, document metadata and ordinary SQL. [Prisma Postgres](/docs/postgres) is a good fit for a TypeScript application that wants managed PostgreSQL and optional app hosting on [Prisma Compute](/docs/compute). Neon and Supabase also support pgvector; compare their surrounding workflows and test retrieval on your own documents before choosing."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-17"
+updatedAt: "2026-10-17"
+readingTime: "7 min read"
+faq:
+  - question: "Does pgvector generate embeddings for my documents?"
+    answer: "No. Your application or indexing worker creates embeddings using a model, then stores the resulting vectors in Postgres. Generate query embeddings with the same model and compatible dimensions. When you change models, plan how to regenerate stored embeddings and compare retrieval quality."
+  - question: "Do I need Prisma ORM to use pgvector on Prisma Postgres?"
+    answer: "No. Prisma Postgres accepts ordinary PostgreSQL clients. You can use SQL directly or use [Prisma ORM's pgvector extension](/docs/orm/extensions/using-extensions) for typed vector support. Check the extension instructions for your installed Prisma ORM version."
+  - question: "Should I create a vector index immediately?"
+    answer: "Start with exact search on a representative dataset and measure latency. An approximate index such as HNSW can improve search speed but it can miss relevant matches and needs extra memory, storage and write work. Test filtered queries too: an approximate search may return fewer matches after filtering."
+  - question: "Can vector search replace keyword search?"
+    answer: "Not for every query. Semantic similarity helps with paraphrases, while exact names, identifiers and quoted phrases may need keyword or full-text search. Evaluate both on real questions, and combine their results when the application needs both kinds of match."
+related:
+  - title: "Customer records with flexible JSON data"
+    href: "/postgres/customer-records-json"
+  - title: "Inspecting slow queries and indexes"
+    href: "/postgres/managed-postgres-query-monitoring"
+  - title: "Postgres already has pgvector"
+    href: "/blog/you-dont-need-a-vector-database-postgres-already-has-pgvector"
+cta:
+  title: "Keep document search with your application data"
+  description: "Create a Prisma Postgres database, enable pgvector and test search with the documents and permissions your app actually uses."
+  label: "Set up Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+Suppose you are building a search box over a company's support documents. The query is "How do I change the billing contact?" and the relevant paragraph says "Update the invoice recipient." Embeddings can help retrieve that paraphrase. Postgres lets you keep the paragraph, its vector, its document ID and the account that owns it together.
+
+We make Prisma Postgres and Prisma Compute. The provider and extension documentation linked below was checked on October 17, 2026. This guide uses SQL; Prisma ORM is optional.
+
+## What does document search need beyond a vector column?
+
+The application needs an ingestion process: extract text, split it into useful chunks, generate embeddings and save the chunks with their source and permissions. Keep enough metadata to cite the original document and remove its chunks when the document is deleted.
+
+At query time, authenticate the user, embed their question and search only documents they are allowed to read. A nearest-neighbor result is a relevance judgment, not an authorization decision. Apply access restrictions in the server's database query before returning text to the browser or sending it to a model.
+
+Evaluate retrieval with a small set of real questions and expected source passages. A fast query that finds the wrong paragraph is still a failed search. Record ingestion time, query latency, relevant matches and the cost of generating embeddings separately from database costs.
+
+## Which managed Postgres service fits?
+
+These providers are listed alphabetically. All three support pgvector; extension support alone does not decide the host.
+
+| Service | Why consider it | What to check for this workload |
+| --- | --- | --- |
+| Neon | You want pgvector with an existing [Neon database branching workflow](https://neon.com/docs/get-started/workflow-primer). | Its [pgvector guide](https://neon.com/docs/extensions/pgvector), compute sizing and the cost of indexing and storing your corpus. |
+| Prisma Postgres | You want managed Postgres for a TypeScript app, with the option to deploy the app and database together on Prisma Compute. | The [supported extension list](/docs/postgres/database/postgres-extensions), database region and query performance under your filters. |
+| Supabase | You also want its integrated Auth, Storage or Realtime services. | Its [platform architecture](https://supabase.com/docs/guides/getting-started/architecture), [pgvector setup](https://supabase.com/docs/guides/database/extensions/pgvector) and how document access maps to your authorization model. |
+
+Prisma Postgres works with any PostgreSQL client. Keeping ordinary rows, JSON metadata and vectors in one database lets a small team join search results to application records without maintaining a separate synchronization pipeline to a search service.
+
+## How do I try document search on Prisma Postgres?
+
+### 1. Create a database and enable pgvector
+
+Create a database in [Prisma Console](https://console.prisma.io), choosing a region near the server that will query it. Use the [direct connection](/docs/postgres/database/connecting-to-your-database) for this administrative setup. Run the following SQL in a disposable development database.
+
+This example uses invented three-dimensional vectors to make the SQL reproducible. They are not embeddings from a model, and the results demonstrate ordering rather than search quality. A real embedding model determines the vector dimension you should declare.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE document_chunk_demo (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  account_id bigint NOT NULL,
+  source_url text NOT NULL,
+  content text NOT NULL,
+  embedding vector(3) NOT NULL
+);
+
+INSERT INTO document_chunk_demo
+  (account_id, source_url, content, embedding)
+VALUES
+  (42, '/help/billing', 'Update the invoice recipient.', '[1,0,0]'),
+  (42, '/help/login', 'Reset your password.', '[0,1,0]'),
+  (99, '/private/billing', 'Another account document.', '[1,0,0]');
+```
+
+### 2. Search within an authorized account
+
+For this demonstration, the account is `42` and the query vector is `[1,0,0]`. The [pgvector cosine-distance operator](https://github.com/pgvector/pgvector#querying) is `<=>`; smaller distances mean closer vectors.
+
+```sql
+SELECT source_url, content,
+       embedding <=> '[1,0,0]'::vector AS distance
+FROM document_chunk_demo
+WHERE account_id = 42
+ORDER BY embedding <=> '[1,0,0]'::vector
+LIMIT 2;
+```
+
+The billing paragraph appears first with distance `0`, then the password paragraph with distance `1`. The account `99` row is excluded. In application code, use bound parameters for the vector and account ID, and derive the authorized account from a verified session. A client-supplied account ID is not sufficient. If your application uses database row-level security, configure its policies and execution roles as well.
+
+### 3. Add real ingestion and measure before indexing
+
+For real ingestion, create a table with the vector dimension required by your embedding model; the demo's `vector(3)` cannot accept a longer embedding. Add columns for the model identifier and source revision so you can rebuild or invalidate records, then save embeddings generated from document chunks. Use a background ingestion job for a corpus that takes longer than an interactive request.
+
+Exact search is a useful baseline. When it becomes too slow for the dataset, evaluate an HNSW index with the matching operator class:
+
+```sql
+CREATE INDEX document_chunk_demo_embedding_hnsw
+ON document_chunk_demo USING hnsw (embedding vector_cosine_ops);
+```
+
+The [pgvector indexing documentation](https://github.com/pgvector/pgvector#indexing) explains approximate search and tuning. With approximate indexes, filters can reduce the number of returned matches; measure recall, the proportion of relevant matches retrieved, with your actual account and metadata filters. A tiny demo table may still use a sequential scan, so its query plan (the database's execution strategy) is not evidence of performance at scale.
+
+## When should I choose a different setup?
+
+If your search requirements depend on a specialized retrieval engine's features, evaluate that engine against Postgres using the same relevance tests. Large corpora, frequent re-indexing or strict latency targets need workload measurements before you commit to a database size or an index design.
+
+Check the vector dimensions, extension version and index limits your schema requires against the hosted service. Prisma Postgres's supported extensions do not imply support for every PostgreSQL extension or every upstream version. If document ingestion needs a runtime feature outside [Prisma Compute's limits](/docs/compute/limitations), run that worker on another host while keeping Prisma Postgres as the database.
+
+For an assistant that also needs ordinary saved messages, see [hosting a TypeScript AI assistant with conversation history](/compute/ai-assistant-conversation-history). Saving and reloading messages does not require a vector index.

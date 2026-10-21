@@ -1,3 +1,6 @@
+import { COMPARISON_PATHS } from "@/app/compare/comparisons";
+import { getDataguideRewritePathname } from "@/lib/dataguide-markdown";
+
 /**
  * Agent-facing Markdown content negotiation for the marketing site.
  *
@@ -43,11 +46,13 @@ const AGENT_USER_AGENT_PATTERNS = [
  * The site pages that have a Markdown rendition. This is a closed list on
  * purpose: the site app owns `/` and the marketing routes, but it also
  * rewrites `/docs/*` and `/blog/*` into the docs and blog zones, which serve
- * their own Markdown. Anything not named here is left alone.
+ * their own Markdown. Anything not named here, other than the product guides
+ * matched by `getAnswerPagePath` below, is left alone.
  *
  * Keep in sync with `markdownPages` in `@/lib/markdown-pages` (asserted by
  * `src/lib/agent-markdown.test.ts`). `src/proxy.ts` runs on every page for
- * Agent Front, so this list, not its matcher, is what bounds the rewrite.
+ * Agent Front, so this list and `getAnswerPagePath`, not its matcher, are what
+ * bound the rewrite.
  */
 export const AGENT_MARKDOWN_PATHS = [
   "/",
@@ -59,6 +64,7 @@ export const AGENT_MARKDOWN_PATHS = [
   "/stack",
   "/enterprise",
   "/mcp",
+  ...COMPARISON_PATHS,
 ] as const;
 
 export type AgentMarkdownPath = (typeof AGENT_MARKDOWN_PATHS)[number];
@@ -66,6 +72,40 @@ export type AgentMarkdownPath = (typeof AGENT_MARKDOWN_PATHS)[number];
 const AGENT_MARKDOWN_PATH_SET: ReadonlySet<string> = new Set(AGENT_MARKDOWN_PATHS);
 
 export type AgentMarkdownSignal = "accept" | "user-agent";
+
+/**
+ * The `Vary` value for a Markdown rendition. A page URL answers Markdown on
+ * either signal above, so a shared cache has to key on both request headers.
+ *
+ * Both the proxy and the Markdown route send it, because on Vercel each one
+ * covers a different response (measured on www.prisma.io, 2026-10-19). A 200
+ * carries the route's own `Vary` and drops the proxy's: the proxy sent
+ * `Accept, User-Agent` and the client got the route's `Accept`. A CDN 304 on
+ * a page URL carries the proxy's `Vary` and not the route's. A 304 on a `.md`
+ * or `/llms.mdx/*` URL, which the proxy never sees, carries no `Vary` at all.
+ */
+export const AGENT_MARKDOWN_VARY = "Accept, User-Agent";
+
+/**
+ * The product guides in `content/answers` (`/postgres/<slug>`,
+ * `/compute/<slug>`), served by `src/app/{postgres,compute}/[slug]`. They get
+ * the same Markdown negotiation as the pages above.
+ *
+ * The proxy cannot load the content collection, so this is a shape check, as
+ * in apps/blog: one slug segment under a product that has guides, minus the
+ * static routes that sit beside the guides. An unknown slug still 404s, from
+ * the Markdown route instead of the page. `answer-page-markdown.test.ts` checks
+ * that every guide matches and that every static route under the two products
+ * is listed here; `ANSWER_PAGE_HEADER_SOURCES` in next.config.mjs has to agree.
+ * `proxy-matcher.test.ts` checks the proxy end to end on every guide.
+ */
+export const ANSWER_PAGE_RESERVED_SEGMENTS: Readonly<Record<string, readonly string[]>> = {
+  postgres: ["guides", "hipaa"],
+  compute: ["guides"],
+};
+
+/** A guide's filename-derived slug: lowercase words joined by single hyphens. */
+const ANSWER_PAGE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /**
  * `/mcp` is both a marketing page and the conventional MCP Streamable HTTP
@@ -108,7 +148,7 @@ export function getAgentMarkdownSignal(headers: Headers): AgentMarkdownSignal | 
 /**
  * Normalises a request pathname to one of `AGENT_MARKDOWN_PATHS`, or undefined
  * if the path has no Markdown rendition. Only a trailing slash is forgiven;
- * anything else (a nested path, a zone path, a path with a file extension) is
+ * anything else (an unregistered path, a zone path, or a file extension) is
  * not a supported page.
  */
 export function getAgentMarkdownPath(pathname: string): AgentMarkdownPath | undefined {
@@ -116,6 +156,24 @@ export function getAgentMarkdownPath(pathname: string): AgentMarkdownPath | unde
     pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 
   return AGENT_MARKDOWN_PATH_SET.has(normalized) ? (normalized as AgentMarkdownPath) : undefined;
+}
+
+/**
+ * Normalises a request pathname to a product guide URL (`/postgres/<slug>` or
+ * `/compute/<slug>`), or undefined if it does not have a guide's shape. Only a
+ * trailing slash is forgiven.
+ */
+export function getAnswerPagePath(pathname: string): string | undefined {
+  const normalized =
+    pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+
+  const [empty, product, slug, ...rest] = normalized.split("/");
+  if (empty !== "" || !product || !slug || rest.length > 0) return undefined;
+  if (!Object.hasOwn(ANSWER_PAGE_RESERVED_SEGMENTS, product)) return undefined;
+  if (ANSWER_PAGE_RESERVED_SEGMENTS[product].includes(slug)) return undefined;
+  if (!ANSWER_PAGE_SLUG.test(slug)) return undefined;
+
+  return normalized;
 }
 
 /**
@@ -130,6 +188,15 @@ export function getAgentMarkdownPath(pathname: string): AgentMarkdownPath | unde
  * homepage — the same slug `/index.md` produces.
  */
 export function getAgentMarkdownRewritePathname(pathname: string): string | undefined {
+  // Data Guide pages, which the site forwards to the Data Guide deployment;
+  // their Markdown is read from that deployment's export. See
+  // `@/lib/dataguide-markdown`.
+  const dataguidePathname = getDataguideRewritePathname(pathname);
+  if (dataguidePathname) return dataguidePathname;
+
+  const answerPath = getAnswerPagePath(pathname);
+  if (answerPath) return `/llms.mdx${answerPath}`;
+
   const path = getAgentMarkdownPath(pathname);
   if (!path) return undefined;
   return path === "/" ? "/llms.mdx/index" : `/llms.mdx${path}`;

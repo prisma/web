@@ -1,0 +1,153 @@
+---
+title: "How do I roll back a deployment that broke my login page?"
+description: "Roll a broken release back to the last working deployment, check migrations and auth settings, then fix forward. Steps for common hosts and Prisma Compute."
+summary: "Use your host's rollback to put the last working deployment back on production, confirm that customers can sign in, then fix the bug in Git before anything deploys again. A host rollback usually reuses the old build, so it is faster than rebuilding an old commit. On [Prisma Compute](/docs/compute), `npx prisma@latest service version rollback <service>` returns a service to the version before the live one. A rollback restores your code, not your database: if the broken release ran a migration, check that the old code still works with the new schema."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "8 min read"
+faq:
+  - question: "Should I roll back or fix forward?"
+    answer: "Roll back first when customers can't sign in and the last working deployment is still available. Restoring a known-good build takes minutes, while a fix under pressure can break something else. Fix forward instead when the release ran a migration the old code can't use, or when the broken part is a setting outside the build, such as a changed OAuth redirect URL that you can correct directly."
+  - question: "Should I use git revert or git reset to undo the release?"
+    answer: "Use `git revert <bad-commit>` on a shared branch. It adds a new commit that undoes the change, keeps history intact and triggers a normal deploy. `git reset` followed by a force push rewrites history that teammates and your CI may already have. With either one, your host rebuilds the code, which takes longer than its rollback, so use the host rollback to recover and the revert to keep the fix in Git."
+  - question: "How far back can I roll back a deployment?"
+    answer: "It depends on how long your host keeps old builds. On Vercel's Hobby plan you can roll back only to the previous production deployment. [Heroku](https://devcenter.heroku.com/articles/releases) can't roll back to releases older than 30 days and older than the 20 most recent. Render and Railway retain builds according to your plan, and a Kubernetes Deployment keeps 10 old revisions by default. Prisma Compute's docs don't state a retention limit: `--to <version-id>` targets any earlier version that `service version list` still shows, and deleting a version removes its build for good."
+  - question: "Does blue-green or canary deployment make rollback faster?"
+    answer: "Yes. Both keep the old version running while the new one takes traffic, so going back means sending traffic to the old version instead of starting it again. They need a database schema that suits both versions at the same time. For a small app, previews, a feature flag around risky changes and a host rollback cover most of the same ground."
+related:
+  - title: "Hosting a test version without replacing production"
+    href: "/blog/host-a-test-version-without-replacing-production"
+  - title: "Sharing a deployed app with a client"
+    href: "/compute/share-app-with-client"
+  - title: "Protecting production with a separate test database"
+    href: "/postgres/typescript-test-environment"
+cta:
+  title: "Keep the previous version one command away"
+  description: "Deploy a TypeScript app on Prisma Compute, test changes on a preview per branch, and roll production back to an earlier version without a rebuild."
+  label: "Read the deployments guide"
+  href: "/docs/compute/deployments"
+---
+
+When a release breaks sign-in, the goal is to get customers back in before you work out why. Most hosting platforms keep the builds of earlier deployments, so you can usually point production back at the last one that worked within a few minutes and debug the broken one afterwards.
+
+We make Prisma Compute and Prisma Postgres. Host behaviors on this page link to that host's documentation, checked on October 19, 2026. The steps work for any web app or API, whichever framework or database client you use.
+
+## Why the login page breaks after an update
+
+A login page that worked yesterday usually breaks because something in the release changed what it depends on, and a rollback undoes only some of those changes:
+
+- **Application code.** A change to the login form, the session handling or an auth library update. A rollback fixes this.
+- **Configuration.** A changed or missing environment variable, such as an OAuth client secret, a callback URL or a cookie domain. Heroku, Railway and Render restore the environment variables the old deployment ran with (see the table in step 3), so a rollback often fixes this too, but check whether the change was made in the host's settings or in your identity provider.
+- **Database schema.** A migration that renamed or dropped a column the login query uses. A code rollback does not undo it. See step 4.
+- **Cached assets.** A CDN or browser still serving JavaScript from the broken release. Purge the cache after rolling back.
+
+Check the error logs from the moment login started failing. They usually point to one of these and tell you whether a rollback will help.
+
+## Fix: roll back, verify, then fix forward
+
+The order matters: recover first, check what the rollback can't undo, then put the real fix through your normal release path. Each step below works on any host; the next section shows the same steps on Prisma Compute.
+
+### 1. Stop new deploys from replacing the rollback
+
+If a push to your main branch deploys production, the next merge can put the broken code back live. Pause merges until step 6. Hosts handle this differently: after a rollback, [Vercel](https://vercel.com/docs/instant-rollback#undo-a-rollback) stops assigning production domains to new deployments until you promote one, and a rollback from the [Render](https://render.com/docs/rollbacks) dashboard turns off autodeploy. [Netlify](https://docs.netlify.com/deploy/manage-deploys/manage-deploys-overview/) keeps auto publishing on unless you lock the deploy, and on Prisma Compute with [deploy on push](/docs/compute/deploy-on-push), the next push to the default branch deploys production again.
+
+### 2. Find the last working deployment
+
+Open your host's deployment history and compare deploy times with the time the first login errors appeared. The last deployment before that point is your target. If several releases went out since, pick the newest one where you know login worked, not only the one before the current release.
+
+### 3. Roll back with your host's rollback
+
+A host rollback usually reuses the stored build, so nothing is compiled and dependencies don't change. One exception: if you deploy a prebuilt image from a container registry by a tag such as `latest`, the host may pull the tag again and get a newer image, as [Render's docs](https://render.com/docs/rollbacks#whats-rolled-back) warn. Deploy images by digest to avoid that. The table lists the rollback for common hosts, in alphabetical order:
+
+| Host | How to roll back | What to know |
+| --- | --- | --- |
+| Heroku | `heroku rollback` (one release back) or `heroku rollback v40` | Creates a new release with the old slug and config vars. Database contents and add-on provisioning are not rolled back. Heroku treats rollback as a temporary fix and recommends `git revert` for code bugs, as in step 6. [Docs](https://devcenter.heroku.com/articles/releases#rollback) |
+| Kubernetes | `kubectl rollout undo deployment/<name>`, or `--to-revision=<n>` | Restores the Pod template only. 10 old revisions are kept by default. [Docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) |
+| Netlify | Open a previous deploy and select **Publish Deploy** | No rebuild. A new Git-triggered production deploy replaces it unless you lock the deploy. [Docs](https://docs.netlify.com/deploy/manage-deploys/manage-deploys-overview/) |
+| Prisma Compute | `npx prisma@latest service version rollback <service>`, or `--to <version-id>` | No rebuild. Defaults to the version before the live one. Works per service. [Docs](/docs/compute/deployments#promote-and-roll-back) |
+| Railway | Roll back from the menu on a previous deployment | Restores the image and custom variables. Deployments past your plan's retention can't be restored. [Docs](https://docs.railway.com/deployments/deployment-actions) |
+| Render | **Rollback** on a recent successful deploy | Reuses the build artifact and the deploy's environment variables. Disks are not rolled back. [Docs](https://render.com/docs/rollbacks#whats-rolled-back) |
+| Vercel | **Instant Rollback**, or `vercel rollback [deployment-id or url]` | Hobby can roll back only to the previous production deployment. [Docs](https://vercel.com/docs/instant-rollback) |
+
+If your host has no rollback, or you deploy by pushing to a server, revert the commit and deploy again:
+
+```sh
+git log --oneline -n 20
+git revert <bad-commit>
+git push origin main
+```
+
+This rebuilds the old code, so it takes longer and can pick up newer dependency versions if your lockfile isn't committed.
+
+### 4. Check the database before you rely on the old code
+
+A deployment rollback leaves the database as the broken release left it. If that release ran a migration, compare it with what the old code expects:
+
+- **The migration only added tables or nullable columns.** Code that doesn't know about them keeps working, so the rollback is usually safe.
+- **The migration renamed or dropped something the old code reads.** The old code fails against the new schema. Either fix forward, or write a migration that restores the old shape. Data written since the release may only exist in the new shape, so check it before reversing anything.
+
+With Prisma ORM 8, `npx prisma migration plan --from <migration-dir> --to <migration-dir>^ --name rollback` plans a migration from the state after `<migration-dir>`, where the database now is, back to the state before it ([migration plan](/docs/cli/migration-plan#planning-a-rollback)). Without `--from`, the command starts from the `db` ref and refuses if that ref isn't set. Prisma ORM 7 doesn't have that command: revert `schema.prisma` to its state before the release and create a new migration from it, as [Generating down migrations](/docs/orm/v7/prisma-migrate/workflows/generating-down-migrations) describes. Either way, walking back a change can drop columns and their data, so review the migration before you apply it.
+
+Restoring a backup is the last resort, because it also removes everything customers wrote after the backup was taken. [Prisma Postgres backups](/docs/postgres/database/backups) are daily snapshots kept 7 days on Starter and Pro and 30 days on Business. The Free plan has no backups, and there is no point-in-time recovery yet.
+
+### 5. Verify login on the restored version
+
+Open the app in a private window and sign in with a test account. Then check the paths that a broken release often affects: sign-out, password reset, OAuth callbacks and a session that survives a page reload. If the broken release changed the session secret or the cookie format, sessions created on it may not work on the restored version, so expect some users to have to sign in again. Purge your CDN cache if the login page loads JavaScript from it, and watch your logs and error tracking until failed sign-ins drop back to normal.
+
+### 6. Fix forward in Git
+
+Your main branch still contains the broken commit, so the next deploy ships it again. Revert or fix it on a branch, test it on a preview deployment with its own test database, and merge only when login works there. Then turn automatic deploys back on if your host turned them off in step 1.
+
+## Rolling back on Prisma Compute
+
+On [Prisma Compute](/docs/compute), every deploy creates a version of a service, and one version serves production at a time. Rollback switches production back to an existing version without a rebuild.
+
+These commands use the Prisma CLI as `npx prisma@latest`, the way the [Compute docs](/docs/compute) do, so they work even in a project that pins an older Prisma version. Sign in first with `npx prisma@latest auth login`, and add `--project <id-or-name>` when you run them outside the project directory.
+
+List the versions of the service, here named `web`, to find the last working one:
+
+```sh
+npx prisma@latest service version list web
+```
+
+Roll back to the version before the live one, or name the target:
+
+```sh
+npx prisma@latest service version rollback web
+npx prisma@latest service version rollback web --to cpv_123
+```
+
+The CLI asks you to confirm the target version. In CI, or when a coding agent runs the command, pass the version id as the confirmation token: `--to cpv_123 --confirm cpv_123`. Agents connected to the [Prisma MCP server](/docs/ai/mcp-tools) can use its `rollback_prisma_compute_app` tool instead.
+
+Read the broken version's logs after the rollback without putting it back live:
+
+```sh
+npx prisma@latest service logs web --version-id <broken-version-id> --tail 200
+```
+
+What carries over and what doesn't:
+
+- **Environment variables.** [Values are resolved at deploy time and baked into the deployment](/docs/compute/environment-variables), so the version you return to runs with the values it was deployed with. A value you change now applies from the next deploy.
+- **The database.** Rollback switches the service to another version and leaves Prisma Postgres, or any other database, as it is. Step 4 applies.
+- **The next deploy.** With [deploy on push](/docs/compute/deploy-on-push), a push to the default branch deploys a new production version. Fix or revert the commit first, and test it on the preview that a push to any other branch creates, with its own database for databases your [Prisma Composer](/docs/composer) module declares.
+- **Other services.** Rollback works per service. If the release deployed several services, such as a frontend and an API from one [Prisma Composer](/docs/composer) module, list and roll back each service the release changed, so they match. If the login page or the auth API runs on another host, roll that back too.
+
+Prisma Compute doesn't require Prisma ORM or Prisma Postgres. Each service runs in one region, and WebSocket servers are not supported; see [limitations](/docs/compute/limitations) before moving an app that needs WebSockets or more than one region.
+
+## How to prevent the next broken login
+
+Test sign-in before production. A login check that runs in CI against every preview deployment catches a broken auth flow in the pull request, before customers see it. Put a risky change to the login flow behind a feature flag, so you can switch it off without a deploy.
+
+Change the schema in two steps. Add new columns or tables in one release and remove the old ones in a later release, once nothing reads them. The previous version then always works with the current schema, and a rollback stays safe.
+
+Finally, check how many old builds your host keeps on your plan, and write the exact rollback command and service name in your runbook or `AGENTS.md`. Whoever is on call, a person or a coding agent, then doesn't have to look it up while customers wait.
+
+## When a rollback doesn't fix it
+
+If every version fails the same way, the cause is probably outside the deployment: a changed setting in your identity provider, an expired client secret or a third-party outage. Check the provider's dashboard and status page.
+
+If a migration removed data, rolling back code can't bring it back. Restore what you need from a backup into a separate database and copy it over, rather than overwriting production and losing what customers wrote since.
+
+A server rollback also doesn't change an app already installed on customers' devices from an app store. Fix login on the server side where you can, and ship a new build for the rest. And if your host has already deleted the build you need, revert the commit in Git and deploy, as in step 3.
