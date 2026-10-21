@@ -33,6 +33,7 @@ const AI_MARKDOWN: Partial<Record<ComparisonSlug, string>> = {
   neon: "/compare/neon.md",
   planetscale: "/compare/planetscale.md",
   supabase: "/compare/supabase.md",
+  vercel: "/compare/vercel.md",
   "vercel-neon-drizzle": "/compare/vercel-neon-drizzle.md",
 };
 
@@ -106,6 +107,18 @@ const TOC: Record<ComparisonSlug, readonly TocItem[]> = {
     { id: "feature-table", label: "Features" },
     { id: "where-each", label: "Where each fits" },
     { id: "apart", label: "Why Prisma Postgres" },
+    { id: "pricing", label: "Pricing" },
+    { id: "wrong-choice", label: "When it is the wrong choice" },
+    { id: "migrate", label: "Switching", also: ["migrate-back"] },
+    { id: "proof", label: "What teams say" },
+    { id: "faq", label: "FAQ", also: ["next"] },
+    { id: "sources", label: "Sources" },
+  ],
+  vercel: [
+    { id: "choose", label: "When to choose" },
+    { id: "feature-table", label: "Features" },
+    { id: "where-each", label: "Where each fits" },
+    { id: "apart", label: "Why Prisma" },
     { id: "pricing", label: "Pricing" },
     { id: "wrong-choice", label: "When it is the wrong choice" },
     { id: "migrate", label: "Switching", also: ["migrate-back"] },
