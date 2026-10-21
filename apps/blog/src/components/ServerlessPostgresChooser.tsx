@@ -53,7 +53,7 @@ const tree: DecisionTreeData = {
       accent: true,
       why: "A different bundle: database, ORM, and TypeScript app hosting designed together, with one schema and one config, and the app deployed next to the database.",
       caveat:
-        "Auth, storage, and realtime are not part of this bundle; that is Supabase's territory.",
+        "S3-compatible object storage buckets live in the same project. End-user auth and realtime are not part of this bundle; that is Supabase's territory.",
     },
     {
       id: "shape",
