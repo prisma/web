@@ -373,7 +373,7 @@ const config = {
       // `oppref`. A visit with no `utm_source` at all is left alone: it is not
       // evidence of a paid click, so the Console link falls back to
       // `ref=prisma.io/lp/<slug>` like any other direct visit.
-      ...["compute", "postgres", "free"].map((slug) => ({
+      ...["compute", "postgres", "free", "1000-databases", "providers"].map((slug) => ({
         source: `/lp/${slug}`,
         has: [{ type: "query", key: "utm_source" }],
         missing: [{ type: "query", key: "utm_term" }],

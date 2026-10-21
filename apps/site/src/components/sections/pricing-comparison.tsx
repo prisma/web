@@ -42,7 +42,7 @@ const SPECTRUM =
 // distinction.
 const PENDING = "TBC";
 
-const ALTERNATIVES = [
+export const ALTERNATIVES = [
   {
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
@@ -93,7 +93,7 @@ const ALTERNATIVES = [
 // ⚠️ The cost moved: V2 had $70–90, the client's 2026-07-30 doc says $72–90.
 // Taking theirs — the old figure was never verified in the first place (it was
 // open item 2), and this is the first time they have put a number in writing.
-const PRISMA = {
+export const PRISMA = {
   name: "Prisma Pro",
   cost: "$72–90",
   rows: [
@@ -134,8 +134,8 @@ function costFraction(cost: string): number | null {
 // claim about Supabase and is wrong by more than 3x. The multiple only ever
 // describes the widest column, so it says which one that is.
 const PRISMA_MID = costMidpoint(PRISMA.cost);
-const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
-const WIDEST = ALTERNATIVES.reduce((a, b) =>
+export const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
+export const WIDEST = ALTERNATIVES.reduce((a, b) =>
   (costMidpoint(b.cost) ?? 0) > (costMidpoint(a.cost) ?? 0) ? b : a,
 );
 

@@ -1,9 +1,10 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PrismButton } from "@/components/brand/prism-button";
 import { cn } from "@/lib/utils";
-import { CONSOLE_SIGNUP_URL, CTA_LABEL } from "./content";
+import { CONSOLE_SIGNUP_URL, landingCtaLabel } from "./content";
 
 /** The hero marks its CTA with this id so the bar knows when it has scrolled away. */
 export const HERO_CTA_ID = "lp-hero-cta";
@@ -16,8 +17,9 @@ export const CLOSER_CTA_ID = "lp-closer-cta";
 // the closer's CTA is on screen, so there is never a second button on top of
 // one. Hidden from md up, where the floating header already carries the CTA.
 // It sits below the consent banner's z-index on purpose.
-export function LandingStickyCta({ label = CTA_LABEL }: { label?: string }) {
+export function LandingStickyCta({ label }: { label?: string }) {
   const [visible, setVisible] = useState(false);
+  const pageLabel = landingCtaLabel(usePathname());
 
   useEffect(() => {
     const hero = document.getElementById(HERO_CTA_ID);
@@ -47,7 +49,7 @@ export function LandingStickyCta({ label = CTA_LABEL }: { label?: string }) {
       )}
     >
       <PrismButton href={CONSOLE_SIGNUP_URL} ctaLocation="lp_sticky" fullWidth>
-        {label}
+        {label ?? pageLabel}
       </PrismButton>
     </div>
   );
