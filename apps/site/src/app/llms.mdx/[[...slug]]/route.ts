@@ -1,5 +1,6 @@
 import {
   AGENT_MARKDOWN_PATHS,
+  AGENT_MARKDOWN_VARY,
   getMarkdownUrlPath,
   type AgentMarkdownPath,
 } from "@/lib/agent-markdown";
@@ -106,9 +107,11 @@ function markdownHeaders(extra: Record<string, string>) {
   // Pinning a value here would opt the renditions out of it.
   return {
     "Content-Type": MARKDOWN_CONTENT_TYPE,
-    // The same URL answers HTML to a browser and Markdown to an agent, so a
-    // shared cache has to key the two variants apart.
-    Vary: "Accept",
+    // The same URL answers HTML to a browser and Markdown to an agent, chosen
+    // by `Accept` or by the agent's User-Agent, so a shared cache has to key
+    // the two variants apart on both. This route is static, so it cannot tell
+    // a proxied page URL from a `.md` URL and sends the same value to both.
+    Vary: AGENT_MARKDOWN_VARY,
     ...extra,
   };
 }

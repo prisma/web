@@ -1,0 +1,104 @@
+---
+title: "What does my TypeScript app need before I put it into public use?"
+description: "Move beyond npm run dev with a production build, managed hosting, persistent data, server-side secrets and a tested release and recovery workflow."
+summary: "Prepare a production build and supported server entry point, move durable data into a hosted database, configure server-side secrets and test the deployed customer workflow. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a TypeScript app you want hosted with its database in one project. Vercel and Netlify are good choices when the app already follows their framework deployment workflow. Treat the move from `npm run dev` as an application-readiness check as well as a hosting decision."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-20"
+updatedAt: "2026-10-20"
+readingTime: "6 min read"
+faq:
+  - question: "Can I leave npm run dev running on my laptop?"
+    answer: "That is a development workflow. A shared tunnel still depends on the laptop and development process remaining available. Deploy a production build to a host for ongoing public use, with durable data and appropriate authentication."
+  - question: "Will my local .env file be uploaded automatically?"
+    answer: "Do not rely on it. Configure the deployment's server-side inputs or secrets explicitly, and keep credentials out of Git. Client-exposed variables are public; for Next.js, NEXT_PUBLIC values can be embedded into the browser build."
+  - question: "Does a successful build prove my deployed app can save records?"
+    answer: "No. The deployed app may have different credentials, a missing database schema or a misconfigured callback URL. Test a fictional record through the deployed app, reload it and confirm it remains after a restart or redeploy."
+  - question: "Do I need to adopt Prisma ORM to use Prisma hosting?"
+    answer: "No. Prisma ORM is optional. Prisma Postgres accepts PostgreSQL clients and other ORMs, and the app can keep its existing database library."
+related:
+  - title: "Share an app that only opens on localhost"
+    href: "/compute/share-localhost-app"
+  - title: "Set up server-side secrets"
+    href: "/compute/typescript-app-secrets"
+  - title: "Make prototype records permanent"
+    href: "/postgres/prototype-customer-data"
+cta:
+  title: "Test a production deployment before inviting users"
+  description: "Prepare the app's build and inputs, then deploy a separate review environment with Prisma Compute and Prisma Postgres."
+  label: "Prepare the first deployment"
+  href: "/docs/compute/getting-started"
+---
+
+`npm run dev` runs whatever your project's `dev` script defines. In many frameworks it starts a development server with fast rebuilds and development diagnostics. Opening that process to the internet does not establish a production deployment or prove that the application's data and access rules are ready.
+
+We make Prisma Compute and Prisma Postgres. Provider and framework documentation linked here was checked on October 20, 2026. The steps apply to an existing app; use the framework's production instructions for its actual build and startup commands.
+
+## What changes between development and production?
+
+The hosting provider needs an artifact it can reproduce and a supported way to run the server. Your users need the application to retain data, enforce access rules and fail in a way someone can diagnose. These are separate checks: a correct build can still point at the wrong database.
+
+| Development assumption | Production question |
+| --- | --- |
+| The app reads a local `.env` file. | Which server-side inputs does the deployed version receive? |
+| Test records live in memory or a local JSON file. | Which managed database stores records across instances and deploys? |
+| A developer opens the home page. | Can a real role sign in, complete the business action and see the saved result? |
+| An error appears in the terminal. | Where can the owner find a request error and the deployed version? |
+| The developer restarts the process. | How does the team recover code and data after a failed change? |
+
+## Which host should I choose?
+
+Choose around the framework and runtime you actually have. The options below are listed alphabetically.
+
+| Host | Good fit | Preparation |
+| --- | --- | --- |
+| Netlify | Your framework's production integration fits Netlify's [deploy workflow](https://docs.netlify.com/deploy/deploy-overview/). | Configure its build, server functions and database environment. |
+| Prisma Compute | Your TypeScript server fits the deployed Bun runtime and you want managed Postgres in the same project. | Add a [Composer declaration](/docs/composer), configure inputs and build before deploying. |
+| Vercel | Your app already follows its [framework and deployment workflow](https://vercel.com/docs/deployments). | Confirm dynamic routes, functions and the Preview/Production configuration. |
+
+A static export can suit an app with no server-side work. An application with private database queries or secret API calls needs those operations on a supported server runtime. Uploading a frontend folder alone does not deploy an arbitrary backend process.
+
+## How do I prepare the app for Prisma Compute?
+
+### 1. Identify and run the production build
+
+Read the scripts in `package.json` and the framework's deployment guide. For Next.js, review the [production checklist](https://nextjs.org/docs/app/guides/production-checklist). For a project that uses npm, commits `package-lock.json` and defines its production build as `build`, verify a clean installation and build:
+
+```sh
+npm ci
+npm run build
+```
+
+A successful command exits with code `0`; its messages depend on the application. Fix missing configuration and type/build errors before deploying. Use your repository's actual package manager and lockfile rather than introducing npm into a pnpm or Bun project.
+
+Follow the [framework deployment guide](/docs/prisma-compute/deploy) to declare the service's build and entry point in Composer. Compute's `deploy` command does not run the build for you. Next.js needs its configured standalone artifact; a custom HTTP server must use the assigned service port and listen on `0.0.0.0`.
+
+### 2. Configure durable data and secrets
+
+Create an account-owned Prisma Postgres database in [Console](https://console.prisma.io), then configure the existing client with the [pooled application URL](/docs/postgres/database/connecting-to-your-database). Use a separate direct connection where your migration or administration workflow requires one. Prisma ORM is optional.
+
+Move real records out of process memory and local files. Apply the schema with the migration workflow for your client, and verify which database the app connects to. A deployment does not prove that a manually managed schema has been applied.
+
+Set [server-side inputs](/compute/typescript-app-secrets) for database credentials, private API keys and the app's public origin or authentication callbacks. Give previews their own credentials and test database. Store customer uploads in [object storage](/compute/file-uploads-disappear-after-redeploy).
+
+### 3. Deploy a review version and exercise it
+
+Use [getting started](/docs/compute/getting-started) to authenticate, then deploy the built Composer app to a [named test stage](/docs/composer/deploying#production-and-stages): `npx prisma@latest deploy module.ts --stage review`. Replace `module.ts` with your actual root module and verify the intended project and review stage in the deploy report. Open its actual URL from a second browser or device. Test both an allowed action and an action the current user must not be allowed to perform.
+
+Create a fictional record, reload, then redeploy the same code and read the record again. Check login callbacks at the deployed origin, not just localhost. Confirm that invalid input produces a useful response and that logs exclude credentials and customer payloads.
+
+### 4. Define the release and recovery procedure
+
+Record which source commit and live service version passed review. Keep the test steps with the repository and decide how schema changes reach production. With [deploy on push](/docs/compute/deploy-on-push), the GitHub connection and the repository workflow are both required.
+
+After review passes, check the intended production database and migration plan, then build and deploy the approved commit with production inputs. Verify the production URL and sign-in, and test a fictional save/read using an agreed test account with cleanup afterward.
+
+Before customers depend on saved data, choose an appropriate [backup plan](/docs/postgres/database/backups) and test restoration into a separate database. Keep code rollback and data recovery as separate procedures. Review [usage limits and spending controls](/compute/typescript-hosting-spending-controls) before sharing the production URL.
+
+Invite customers using the verified production URL.
+
+## When should I choose another setup?
+
+Prisma Compute runs deployed services on Bun and currently has no WebSocket server support, multi-region service deployment or persistent writable filesystem. Check the [runtime limitations](/docs/compute/limitations) before committing to dependencies that require them. Prisma Postgres can still be the database from another app host.
+
+If the remaining work is an unresolved authorization rule, missing recovery plan or unreliable business action, changing the host alone will not complete it. Resolve those application requirements in the review environment before inviting customers.
