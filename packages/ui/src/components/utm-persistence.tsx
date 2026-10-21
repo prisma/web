@@ -80,7 +80,12 @@ function withSessionClickIds(attribution: UtmAttribution | undefined) {
  */
 export function getActiveAttribution(storageKey: string) {
   const searchParams = new URLSearchParams(window.location.search);
-  sessionClickIds = { ...sessionClickIds, ...getClickIdParams(searchParams) };
+  // A tagged URL is a new touch and brings its own click IDs, or none, so an
+  // earlier click never rides along on a later campaign. An untagged URL (a
+  // soft navigation that dropped the query) keeps the touch that is in flight.
+  if (hasUtmParams(getUtmParams(searchParams))) {
+    sessionClickIds = getClickIdParams(searchParams);
+  }
   return withSessionClickIds(getStoredAttribution(storageKey, searchParams));
 }
 

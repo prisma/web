@@ -74,6 +74,22 @@ test("forwards the click id on the hand-off before consent without storing it", 
   assert.doesNotMatch(storage.get("test")!, /chatgpt-click/);
 });
 
+test("drops the earlier click id when a new tagged touch replaces the last touch", (t) => {
+  const { location } = installBrowser(t, "?oppref=chatgpt-click&utm_source=chatgpt");
+  assert.equal(getActiveAttribution("test")?.last.oppref, "chatgpt-click");
+  location.search = "?utm_source=newsletter";
+  const next = getActiveAttribution("test");
+  assert.equal(next?.last.utm_source, "newsletter");
+  assert.equal(next?.last.oppref, undefined);
+  location.search = "";
+  assert.equal(getActiveAttribution("test")?.last.oppref, undefined);
+  location.search = "?gclid=google-click&utm_source=google";
+  assert.deepEqual(getActiveAttribution("test")?.last, {
+    utm_source: "google",
+    gclid: "google-click",
+  });
+});
+
 test("forwards a click id that arrived without campaign tags", (t) => {
   const { storage } = installBrowser(t, "?oppref=chatgpt-click");
   assert.deepEqual(getActiveAttribution("test"), { first: {}, last: { oppref: "chatgpt-click" } });
