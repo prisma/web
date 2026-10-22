@@ -1,0 +1,206 @@
+---
+title: Advanced PostgreSQL
+description: 'Row-level security, expression and partial indexes, check constraints, tables Prisma ORM should not manage, and extensions a migration needs, each in your contract.'
+url: /orm/contract-authoring/advanced-postgresql
+metaTitle: Advanced PostgreSQL features in a Prisma ORM 8 contract
+metaDescription: 'How to declare row-level security policies, expression and partial indexes, check constraints, control policies for tables Prisma ORM does not own, and PostgreSQL extensions in a Prisma ORM 8 contract, with the limitations that remain.'
+---
+
+A production PostgreSQL database usually has more than tables and foreign keys: policies that decide which rows a user may see, indexes over expressions, constraints that reject bad values, tables that another system owns, and extensions such as `citext`. Prisma ORM 8 supports all of these in `contract.prisma`, the file that replaced `schema.prisma`. This page shows each one in the situation it solves. After every change to the contract, you run the same three commands: `npx prisma contract emit`, which turns `contract.prisma` into the `contract.json` and `contract.d.ts` files your app and the CLI read, then `npx prisma migration plan --name <name>`, which writes a migration, then `npx prisma db migrate --advance-ref db`, which applies it to your development database. [Generating a migration](/orm/migrations/generating-a-migration) walks through them. The syntax and every option are on [Author in PSL](/orm/contract-authoring/psl-syntax), with the TypeScript form on [Author in TypeScript](/orm/contract-authoring/typescript-schema-builder). [Limitations](#limitations) lists what the contract cannot say yet, and what to do instead.
+
+Every SQL expression on this page is a ``sql`...` `` literal, not a quoted string, and it uses column names, not field names. The two differ only when a field has `@map`. Nothing checks the SQL until the migration runs it.
+
+## Rows that belong to a user
+
+Your `document` table holds every user's documents, and each user may read and change only their own. PostgreSQL enforces that with row-level security: policies on the table, applied to the database role your app connects as. Turn it on for the model with `@@rls`, name the role, and write a policy block for each operation you want to allow. The model below is in `public`, the default schema, and `@onCreate(uuid())` generates the id in your app, which is where Prisma ORM 8 puts every generated value (`@default` is only for a value the database fills in):
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model Document {
+  id      Uuid   @id @onCreate(uuid())
+  ownerId Uuid
+  title   String
+
+  @@map("document")
+  @@rls
+}
+
+namespace unbound {
+  role app_user {}
+}
+
+policy_select document_owner_read {
+  target = Document
+  roles  = [app_user]
+  using  = sql`"ownerId" = current_setting('app.user_id')::uuid`
+}
+
+policy_update document_owner_write {
+  target    = Document
+  roles     = [app_user]
+  using     = sql`"ownerId" = current_setting('app.user_id')::uuid`
+  withCheck = sql`"ownerId" = current_setting('app.user_id')::uuid`
+}
+```
+
+`using` decides which existing rows the operation sees, and `withCheck` decides which new or changed rows it accepts. The `role` block has nothing inside its braces, and it goes in `namespace unbound` because a role belongs to the whole database server, not to one schema. From this, `migration plan` writes the statements that turn row-level security on and create the two policies, and [`db verify`](/cli/db-verify) checks that they exist in the database.
+
+The role itself is yours to create. Prisma ORM never creates or drops a role; the `role` block only names one, and `db verify` fails if it is missing. Create it once, with a login, and grant it exactly the operations your policies allow, here `SELECT` and `UPDATE`:
+
+```sql
+CREATE ROLE app_user LOGIN PASSWORD '...';
+GRANT SELECT, UPDATE ON "document" TO app_user;
+```
+
+Run that by hand, or put it in a migration that holds only SQL: `npx prisma migration new --name app-user` creates an empty migration file, and [Limitations](#limitations) shows the `rawSql` step that goes in it.
+
+Policies apply to the role a connection logs in as, and the table's owner bypasses them. So your app needs a connection string that logs in as `app_user`, while the CLI keeps the owner's. The CLI reads `db.connection` in `prisma.config.ts`, and your app reads the `url` in `src/prisma/db.ts`, so give the two different values.
+
+Then set `app.user_id` before each query. The setting lasts for the transaction, so run the query inside one. `db` is the client `src/prisma/db.ts` creates, and `"pg/text@1"` says the one column `set_config` returns is text:
+
+```ts
+import { db } from "./prisma/db";
+
+await db.transaction(async (tx) => {
+  await tx.query(
+    db.raw.sql`SELECT set_config('app.user_id', ${userId}, true)`.returnsRow({ set_config: "pg/text@1" }).build(),
+  );
+  return tx.orm.public.Document.all();
+});
+```
+
+[Row-level security](/orm/contract-authoring/psl-syntax#row-level-security) has `policy_insert`, `policy_delete`, `policy_all`, and `permissive`. On Supabase, the [Supabase extension](https://www.prisma.io/extensions/supabase) runs each query as the right role for you.
+
+## An index on an expression, or on some rows
+
+Users log in by email, and the lookup must ignore case. An ordinary index on `email` does not help a query on `lower(email)`, so index the expression:
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model User {
+  id    Uuid   @id @onCreate(uuid())
+  email String
+
+  @@index(expression: sql`lower(email)`, unique: true, name: "user_email_lower")
+  @@map("user")
+}
+```
+
+Most rows in a `task` table are done, and the queue only ever reads the open ones. A partial index covers just those rows and stays small:
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model Task {
+  id    Uuid     @id @onCreate(uuid())
+  done  Boolean  @default(false)
+  dueAt DateTime
+
+  @@index([dueAt], where: sql`(done = false)`, name: "task_open_due")
+  @@map("task")
+}
+```
+
+`expression:` replaces the field list, and `where:` is the condition without the `WHERE` keyword. `unique:` makes a unique index, and `type:` picks the index method, such as `"gin"` for a list column. The index in the database is named after `name:` with a short suffix, such as `user_email_lower_000a85d8`. Changing `name:` later renames the index; it does not rebuild it. `map:` is for an index that already exists in the database, and sets its exact name; for a new index, use `name:`. [Indexes](/orm/contract-authoring/psl-syntax#indexes) has every option, and [Full-text indexes](/orm/contract-authoring/psl-syntax#full-text-indexes) covers search.
+
+## A value the database must reject
+
+An order total can never be negative, and you want the database to refuse one even when a write bypasses your application. Add a check constraint:
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model Order {
+  id    Int     @id @default(autoincrement())
+  total Decimal
+
+  @@check(expression: sql`total >= 0`, name: "order_total_not_negative")
+  @@map("orders")
+}
+```
+
+A model can carry any number of `@@check` attributes, and `name:` and `map:` work as on an index. [Check constraints](/orm/contract-authoring/psl-syntax#check-constraints) has the details.
+
+## A table Prisma ORM should not touch
+
+An `audit_log` table is written by a database trigger and owned by the operations team, and a `legacy_customer` table is shared with another application. You want to read both from your app without `migration plan` ever altering them. `@@control` says how far Prisma ORM manages a table:
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model AuditLog {
+  id      Int    @id @default(autoincrement())
+  message String
+
+  @@map("audit_log")
+  @@control(observed)
+}
+
+model LegacyCustomer {
+  id   Int    @id
+  name String
+
+  @@map("legacy_customer")
+  @@control(external)
+}
+```
+
+| Value | `db verify` | Migrations |
+| --- | --- | --- |
+| `managed` (the default) | The table must exist and match the model exactly. | Create, alter, and drop it. |
+| `tolerated` | Declared columns must match; extra columns are accepted. | Create it if missing; never alter or drop it. |
+| `external` | Declared columns must match; extra columns and constraints are ignored. | Never touch it. |
+| `observed` | Anything goes; a mismatch is a warning, not a failure. | Never touch it. |
+
+`tolerated` fails `db verify` on a changed or missing declared column but accepts columns it does not know; `external` also ignores constraints it does not know, and never creates the table. Pick `external` when the table always exists before Prisma ORM arrives and its declared columns are stable, and `observed` when even those columns may change under you. [Control policy](/orm/contract-authoring/psl-syntax#control-policy) is the reference entry; it is unrelated to the row-level security policies above.
+
+## An extension a migration needs
+
+You want a case-insensitive `email` column. PostgreSQL has the `citext` type for that, but it comes from an extension that must be installed before the column exists. Declare the column in the contract with `Raw`, which takes the database type as written:
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model User {
+  id    Uuid            @id @onCreate(uuid())
+  email Raw(sql`citext`)
+
+  @@map("user")
+}
+```
+
+`npx prisma migration plan --name email` writes a migration file under `migrations/app/`, the folder for your app's migrations, that adds the column. A migration is a TypeScript class whose `operations` list runs in order, and [Editing a migration](/orm/migrations/editing-a-migration) shows how to change one. Open it, put `createExtension` before the step that needs the type, and recompile the file as that page shows. A later `migration plan` writes a new file and leaves this one as you edited it. In your app the column's value has the type `unknown`, because no field type knows `citext`.
+
+```ts title="migrations/app/20261022T1200_email/migration.ts (excerpt)"
+import { Migration, MigrationCLI, col, createExtension } from '@prisma/orm-postgres/migration';
+
+// ...
+
+override get operations() {
+  return [
+    createExtension('citext'),
+    this.addColumn({ schema: 'public', table: 'user', column: col('email', 'citext') }),
+  ];
+}
+```
+
+It runs `CREATE EXTENSION IF NOT EXISTS "citext"`, so running the migration twice is harmless. `citext` is one of PostgreSQL's trusted extensions, so the role `db migrate` connects as needs the `CREATE` privilege on the database, not superuser. This is for a PostgreSQL extension you need directly. A Prisma [extension package](/orm/extensions) such as pgvector is an npm package that installs its PostgreSQL extension through its own first migration, so for those you add nothing to yours. [Extensions](/orm/reference/migration-api#extensions) in the migration API reference has both calls.
+
+## Adopting these from an existing database
+
+`npx prisma contract infer --db "$DATABASE_URL"` reads a live database and writes a starter contract. It writes each index, check constraint, and policy it finds with `map:` (`@@map` on a policy) set to the name the database has, and with the SQL as PostgreSQL stores it, so `db verify` matches them and `migration plan` leaves them alone. From then on the rule is: `map:` for something that already exists in the database under that exact name, `name:` for something you are adding. Each `contract emit` on such a contract prints a `PN_EXACT_NAME_BODY_COMPARISON` warning for every policy, check, and index that has SQL in it and uses `map:` or `@@map`. The warnings are expected, and nothing needs to change.
+
+## Limitations
+
+These are the gaps at `8.0.0-rc.19`, each with what to do instead. Anything the contract cannot say yet goes in a raw SQL step in a migration, which runs the statements you give it. `npx prisma migration new --name <name>` creates a migration with no operations, and the step goes in its `operations` list, with `rawSql` imported from `@prisma/orm-postgres/migration`. Recompile the file afterwards, as [Editing a migration](/orm/migrations/editing-a-migration) shows. `operationClass` is `additive`, `widening`, `destructive`, or `data`, and the `GRANT` below loosens a rule, so it is `widening`. [Raw SQL](/orm/reference/migration-api#raw-sql) in the migration API reference has the full shape:
+
+```ts title="migration.ts (excerpt)"
+rawSql({
+  id: 'grant.document.app_user',
+  label: 'Grant app_user access to "document"',
+  operationClass: 'widening',
+  target: { id: 'postgres' },
+  execute: [{ description: 'grant', sql: 'GRANT SELECT, UPDATE ON "document" TO app_user' }],
+  precheck: [],
+  postcheck: [],
+}),
+```
+
+- **Roles and `GRANT` are not part of the contract.** Prisma ORM creates policies but never creates a role or grants privileges to one. Create the role and run the `GRANT` statements in a raw SQL step, or by hand.
+- **`FORCE ROW LEVEL SECURITY` is not part of the contract.** Row-level security as Prisma ORM declares it does not apply to the table's owner. To make it apply to the owner too, run `ALTER TABLE ... FORCE ROW LEVEL SECURITY` in a raw SQL step.
+- **Triggers and functions are not part of the contract.** Create them in a raw SQL step.
+- **A sort order inside `@@index` is refused.** `@@index([createdAt(sort: Desc)])` fails with "Expected a field name" ([prisma/orm#30270](https://github.com/prisma/orm/issues/30270)). Create such an index in a raw SQL step.
+- **A variant that shares its base model's table loses its own constraints.** A variant is a model that extends another with `@@base`, the way `Bug` extends `Task` on the PSL page; one with no `@@map` of its own stores its rows in the base model's table. A foreign key, `@@unique`, or `@@index` declared on it is dropped from the contract without a warning ([prisma/orm#30445](https://github.com/prisma/orm/issues/30445)), and `@@check` on it is refused. Declare them on the base model, or give the variant its own `@@map` so it gets its own table. [Base models and variants](/orm/contract-authoring/psl-syntax#base-models-and-variants) covers the two layouts.
+- **SQL you wrote yourself with `map:` can report drift.** `db verify` compares the SQL in the contract with the text PostgreSQL stores, and PostgreSQL rewrites what it is given. Inferred SQL matches, because `contract infer` writes back PostgreSQL's text; SQL you typed with `map:` may not ([prisma/orm#30294](https://github.com/prisma/orm/issues/30294)). Use `name:` for anything you add.
+- **`contract infer` reads only the `public` schema** ([prisma/orm#30573](https://github.com/prisma/orm/issues/30573)). Policies, indexes, and tables in other schemas are not read back; write them by hand. It also skips a policy whose role name is not a valid PSL name, and any index, check, or policy whose SQL it cannot read back unchanged, and leaves a comment in the file where it did.
+- **A generated check cannot be waived.** Prisma ORM always adds a check on an enum column so it accepts only the enum's values, and on a list column so it rejects `NULL` elements. Declare a list `String?[]` when its elements may be `NULL`. The `@noCheck` attribute that used to waive these was removed in `8.0.0-rc.19`.

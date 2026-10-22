@@ -253,7 +253,7 @@ Do not write `.default(null)`, because when you leave out an `.optional()` field
 
 `enumType` declares an enum, the type its values are stored as, and its members, as `Priority` does in the full example above.
 
-The second argument says how each member is stored, as the `codecId` the full example above explains. Write `as const` after the object, so TypeScript keeps the exact string. To store the members as integers, pass `{ codecId: "pg/int4@1" } as const`. Write each member's stored value as the column stores it: the codec checks it, and `defineContract` refuses a value the codec does not take with [`CONTRACT.ENUM_INVALID`](/orm/reference/error-reference#CONTRACT.ENUM_INVALID). More type ids are listed with the [raw query `param` helper](/orm/reference/raw-queries#binding-a-bare-value-with-param), which names types the same way.
+The second argument says how each member is stored, as the `codecId` note in the full example above explains. Write `as const` after the object, so TypeScript keeps the exact string. To store the members as integers, pass `{ codecId: "pg/int4@1" } as const`. Write each member's stored value as the column stores it: the column's type checks it, and `defineContract` refuses a value that type does not take with [`CONTRACT.ENUM_INVALID`](/orm/reference/error-reference#CONTRACT.ENUM_INVALID). More type ids are listed with the [raw query `param` helper](/orm/reference/raw-queries#binding-a-bare-value-with-param), which names types the same way.
 
 Each `member(name, storedValue)` pairs the TypeScript-visible name with the value stored in the column. Fields reference the enum with `field.namedType(Priority)`, and defaults reference a member as `Priority.members.Low`. Include the enum in the returned `enums` map so it reaches the two files.
 
@@ -318,12 +318,12 @@ Post.relations({ ... }).sql(({ cols, constraints }) => ({
 }));
 ```
 
-`constraints.index` takes a list of columns, even when the list has one entry, or an object with `expression`, the whole index expression as SQL. The options are `unique`, `where` (a partial-index condition as SQL, without the `WHERE` keyword), `type` with `options` (the index method and its parameters; `options: {}` when there are none), and `name` or `map`. `name: "user_handle_active"` creates an index called `user_handle_active_2a0c4277`, with a hash on the end; `map` sets the exact name, which is what you want when the index already exists. An `expression` index needs one of the two:
+`constraints.index` takes a list of columns, even when the list has one entry, or an object with `expression`, the whole index expression as a ``sql`...` `` value, where `sql` is an export of the builder package and a plain string does not compile. The options are `unique`, `where` (a partial-index condition as SQL, without the `WHERE` keyword), `type` with `options` (the index method and its parameters; `options: {}` when there are none), and `name` or `map`. `name: "user_handle_active"` creates an index called `user_handle_active_2a0c4277`, with a hash on the end; `map` sets the exact name, which is what you want when the index already exists. An `expression` index needs one of the two:
 
 ```typescript
 indexes: [
-  constraints.index([cols.handle], { where: "(handle IS NOT NULL)", name: "user_handle_active" }),
-  constraints.index({ expression: "lower(handle)", unique: true, name: "user_handle_lower" }),
+  constraints.index([cols.handle], { where: sql`(handle IS NOT NULL)`, name: "user_handle_active" }),
+  constraints.index({ expression: sql`lower(handle)`, unique: true, name: "user_handle_lower" }),
   constraints.index([cols.tags], { type: "gin", options: {}, name: "user_tags_gin" }),
 ],
 ```
@@ -348,11 +348,11 @@ Post.sql(({ cols }) => ({
 Two more keys go in the same object, in either the object form or the callback form: `checks`, a list of check constraints you write yourself, built with `check` from the package, and `control`, the model's [control policy](#control-policy):
 
 ```typescript
-import { check } from "@prisma/orm-postgres/contract-builder";
+import { check, sql } from "@prisma/orm-postgres/contract-builder";
 
 Order.sql({
   table: "order",
-  checks: [check({ expression: "total >= 0", name: "order_total_positive" })],
+  checks: [check({ expression: sql`total >= 0`, name: "order_total_positive" })],
 });
 ```
 
@@ -408,7 +408,7 @@ AuditLog.sql({ table: "audit_log", control: "observed" })
 The package exports the pieces of PostgreSQL row-level security, and [`migration plan`](/cli/migration-plan) turns them into `ENABLE ROW LEVEL SECURITY` and `CREATE POLICY` statements. `rlsEnabled(Model)` turns row-level security on for the model's table. `policySelect`, `policyInsert`, `policyUpdate`, `policyDelete`, and `policyAll` each declare one policy for one operation, and `role("name")` declares a database role a policy names. Return them all in the `entities` list:
 
 ```typescript
-import { defineContract, policySelect, policyUpdate, rlsEnabled, role } from "@prisma/orm-postgres/contract-builder";
+import { defineContract, policySelect, policyUpdate, rlsEnabled, role, sql } from "@prisma/orm-postgres/contract-builder";
 
 export const contract = defineContract({}, ({ field, model }) => {
   const User = model("User", { fields: { id: field.id.uuidv4String() } });
@@ -419,8 +419,8 @@ export const contract = defineContract({}, ({ field, model }) => {
     entities: [
       authenticated,
       rlsEnabled(User),
-      policySelect(User, { name: "user_self_read", roles: [authenticated], using: "id = current_setting('app.user_id')::uuid" }),
-      policyUpdate(User, { name: "user_self_write", roles: [authenticated], using: "id = current_setting('app.user_id')::uuid", withCheck: "id = current_setting('app.user_id')::uuid" }),
+      policySelect(User, { name: "user_self_read", roles: [authenticated], using: sql`id = current_setting('app.user_id')::uuid` }),
+      policyUpdate(User, { name: "user_self_write", roles: [authenticated], using: sql`id = current_setting('app.user_id')::uuid`, withCheck: sql`id = current_setting('app.user_id')::uuid` }),
     ],
   };
 });
@@ -445,7 +445,7 @@ export const contract = defineContract({ extensions: { pgvector } }, ({ field, m
 });
 ```
 
-List every pack whose column types the contract uses, also when you use its codec through `field.column(...)`. `defineContract` takes each column's database type from its codec, and a codec from a pack you did not list fails with [`CONTRACT.CODEC_DESCRIPTOR_MISSING`](/orm/reference/error-reference#CONTRACT.CODEC_DESCRIPTOR_MISSING). An argument out of range, such as a vector length or an SRID below 1, fails `defineContract` with [`CONTRACT.TYPE_PARAMS_INVALID`](/orm/reference/error-reference#CONTRACT.TYPE_PARAMS_INVALID).
+List every pack whose column types the contract uses, also when you use one of its types through `field.column(...)`. `defineContract` takes each column's database type from the type you declared, and a type from a pack you did not list fails with [`CONTRACT.CODEC_DESCRIPTOR_MISSING`](/orm/reference/error-reference#CONTRACT.CODEC_DESCRIPTOR_MISSING). An argument out of range, such as a vector length or an SRID below 1, fails `defineContract` with [`CONTRACT.TYPE_PARAMS_INVALID`](/orm/reference/error-reference#CONTRACT.TYPE_PARAMS_INVALID).
 
 The key on `type.pgvector` is the pack's own name, not the name you gave the import. The name is in the pack's documentation, and pgvector's is `pgvector`. `Embedding1536` is a name you choose, and it appears under that name in `contract.d.ts`. Return the `types` map so the name reaches the two files.
 
@@ -469,7 +469,7 @@ export default definePrismaConfig({
 The contract file describes structure, and these rules keep it usable:
 
 - Do not read `process.env`, the current time, or random values into the contract. A contract built from those values makes `npx prisma contract emit` produce a different `contract.json` on each run.
-- Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions and class instances do not serialize. A value passed to `.default(...)` is the exception: the field's codec encodes it, so a `Date` or `Temporal.Instant` default works on a field whose codec takes one, as [Fields](#fields) describes.
+- Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions and class instances do not serialize. A value passed to `.default(...)` is the exception: it is stored in the field's own type, so a `Date` or `Temporal.Instant` default works on a field of that type, as [Fields](#fields) describes.
 - Keep the file free of side effects. `npx prisma contract emit` loads the file with Node.js, so anything it does while loading, such as writing a file or calling a service, happens every time you run the command. The file is ordinary TypeScript, so `import` model definitions from other files as usual.
 - `npx prisma contract emit` runs the file but does not type-check it. Type errors show in your editor and when you run `tsc`.
 

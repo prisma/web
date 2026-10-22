@@ -142,7 +142,7 @@ On PostgreSQL, the date and time types reach your code as `Temporal` values: `Da
 - `@default(...)` sets a database default: the database fills in the column when an insert leaves it out. The default is a literal, `now()`, `autoincrement()`, or any other SQL expression. Write the SQL as a `sql` tagged literal, which is `sql` followed by the SQL in backticks, such as ``@default(sql`gen_random_uuid()`)``. See [Default values](#default-values) for how to write each kind of literal.
 - `@onCreate(...)` sets a value Prisma ORM generates when it creates the row, and `@onUpdate(...)` one it generates on every update. See [Generated values](#generated-values).
 - `@map("column_name")` sets a field's column name in the database. `@@map("table_name")` sets the table or collection name when it differs from the model name. Without `@@map`, the table or collection has the model's name exactly as written, so `model UserProfile` is the table `"UserProfile"`.
-- `@@check(expression: "total >= 0", name: "order_total_positive")` adds a check constraint of your own to the table. See [Check constraints](#check-constraints).
+- ``@@check(expression: sql`total >= 0`, name: "order_total_positive")`` adds a check constraint of your own to the table. See [Check constraints](#check-constraints).
 - `@@control(observed)` says how far Prisma ORM manages the table. See [Control policy](#control-policy).
 
 A field can be a list on PostgreSQL: `tags String[]` is a `text[]` column, and the same works for `Int[]` and the other scalar types. Prisma ORM adds a check constraint to a list column so it cannot hold a `NULL` element. To allow `NULL` elements, put the `?` on the element type: `String?[]` allows `null` elements, `String[]?` allows a `null` list, and `String?[]?` allows both. In your code, `String?[]` is a `ReadonlyArray<string | null>`, `String[]?` is a `ReadonlyArray<string> | null`, and `String?[]?` is a `ReadonlyArray<string | null> | null`. A `String?[]` column has no check constraint, so use it for a list column that already exists without one. A list of an enum or of a named type works the same way, and so does a list of a value object, as [Value objects](#value-objects) shows.
@@ -256,8 +256,8 @@ Prisma ORM 7's `dbgenerated("...")` is not accepted, and `contract emit` reports
 
 ```prisma
 model User {
-  @@index([name], where: "(name IS NOT NULL)", name: "user_name_active")
-  @@index(expression: "lower(handle)", unique: true, name: "user_handle_lower")
+  @@index([name], where: sql`(name IS NOT NULL)`, name: "user_name_active")
+  @@index(expression: sql`lower(handle)`, unique: true, name: "user_handle_lower")
   @@index([slug], type: "hash", name: "user_slug_hash")
 }
 ```
@@ -268,7 +268,7 @@ model User {
 - `type:` picks the index method, such as `"hash"` or `"gin"`.
 - `name:` names the index. The name in the database is not exactly what you typed: it gets an eight-character hash on the end, `user_name_active_000a85d8`, and if you change `name:` later, the next `migration plan` renames the index instead of dropping and recreating it. `map:` instead sets the exact name, for an index that already exists in the database, which is what [`contract infer`](/cli/contract-infer) writes for indexes it finds. Give one or the other, not both.
 
-The `expression:` and `where:` strings go into the SQL as written, so they use column names, not field names (they differ when a field has `@map`), and you quote the names yourself. Prisma ORM does not check the SQL until the migration runs. On MongoDB, `@@index` takes different arguments; see [MongoDB indexes](#mongodb-indexes).
+[Advanced PostgreSQL](/orm/contract-authoring/advanced-postgresql) shows when each kind of index is the right one. `expression:` and `where:` take a ``sql`...` `` literal, and a quoted string is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The SQL goes into the index as written, so it uses column names, not field names (they differ when a field has `@map`), and you quote the names yourself. Prisma ORM does not check the SQL until the migration runs. On MongoDB, `@@index` takes different arguments; see [MongoDB indexes](#mongodb-indexes).
 
 ### Full-text indexes
 
@@ -294,11 +294,11 @@ model Order {
   id    Int     @id @default(autoincrement())
   total Decimal
 
-  @@check(expression: "total >= 0", name: "order_total_positive")
+  @@check(expression: sql`total >= 0`, name: "order_total_positive")
 }
 ```
 
-`expression:` is the condition as SQL, using column names, as on `@@index`. `name:` and `map:` work as they do on `@@index`: `name:` for a constraint you are adding, and `map:` for one that already exists in the database under that exact name. A model can carry any number of `@@check` attributes. PostgreSQL only.
+`expression:` is the condition as a ``sql`...` `` literal, using column names, as on `@@index`. `name:` and `map:` work as they do on `@@index`: `name:` for a constraint you are adding, and `map:` for one that already exists in the database under that exact name. A model can carry any number of `@@check` attributes. PostgreSQL only.
 
 Prisma ORM also adds two check constraints of its own: one on every enum column, so it accepts only the enum's values, and one on every list column, so it rejects `NULL` elements. A list whose elements may be `NULL` is written `T?[]`, and it gets no check, as [Models and fields](#models-and-fields) describes.
 
@@ -348,7 +348,7 @@ In Prisma ORM 8 the native type is the field's type, so `String @db.VarChar(35)`
 
 ## Enums
 
-An enum lists its members. It can also say, with `@@type`, how their values are stored, and what each member stores:
+An enum lists its members, and with `@@type` it can also say how their values are stored and what each member stores:
 
 ```prisma
 enum Priority {
@@ -516,19 +516,19 @@ namespace unbound {
 policy_select user_self_read {
   target = User
   roles  = [authenticated]
-  using  = "id = current_setting('app.user_id')::uuid"
+  using  = sql`id = current_setting('app.user_id')::uuid`
 }
 
 policy_update user_self_write {
   target     = User
   roles      = [authenticated]
-  using      = "id = current_setting('app.user_id')::uuid"
-  withCheck  = "id = current_setting('app.user_id')::uuid"
+  using      = sql`id = current_setting('app.user_id')::uuid`
+  withCheck  = sql`id = current_setting('app.user_id')::uuid`
   permissive = false
 }
 ```
 
-Policy and role blocks assign their settings with `=`, unlike model attributes. `target` names the model, which must carry `@@rls`; put the policy blocks inside the same `namespace` block as the model when it has one. `roles` lists bare role names. A role Prisma ORM should create needs a `role` block, whose braces stay empty; a role that already exists in the database, such as `public`, is written bare with no block: `roles = [public]`. `using` and `withCheck` are the two conditions as SQL, using column names: `policy_select` and `policy_delete` take `using`, `policy_insert` takes `withCheck`, and `policy_update` and `policy_all` take either or both. `permissive = false` makes the policy `AS RESTRICTIVE` in PostgreSQL's terms, so a row must pass it as well as the permissive policies. The block's name becomes the policy name with a hash on the end, as index names do. A `role` block must be inside `namespace unbound { }`; `unbound` is a reserved word meaning "not in any schema", which is where a role belongs.
+Policy and role blocks assign their settings with `=`, unlike model attributes. `target` names the model, which must carry `@@rls`; put the policy blocks inside the same `namespace` block as the model when it has one. `roles` lists bare role names. A `role` block, whose braces stay empty, names a role the policies refer to. Prisma ORM never creates or drops a role: create it yourself, and `db verify` fails when a declared role is missing. A role PostgreSQL always has, such as `public`, is written bare with no block: `roles = [public]`. `using` and `withCheck` are the two conditions as ``sql`...` `` literals, using column names: `policy_select` and `policy_delete` take `using`, `policy_insert` takes `withCheck`, and `policy_update` and `policy_all` take either or both. `permissive = false` makes the policy `AS RESTRICTIVE` in PostgreSQL's terms, so a row must pass it as well as the permissive policies. The block's name becomes the policy name with a hash on the end, as index names do. A `role` block must be inside `namespace unbound { }`; `unbound` is a reserved word meaning "not in any schema", which is where a role belongs.
 
 ## MongoDB indexes
 
