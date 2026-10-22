@@ -12,7 +12,7 @@ This page assumes your tables already exist. [Coming from Prisma ORM 7](/orm/com
 
 ## Example schema
 
-All examples on this page run against the schema below, except the grouped-aggregate ones, which use a separate `Customer` / `Order` schema shown under [Grouped aggregates](#grouped-aggregates). `contract.prisma` replaces `schema.prisma`, and this page calls it the contract. Running `npx prisma contract emit` compiles it into two generated files: `contract.json`, read at run time, and `contract.d.ts`, read by TypeScript. You import both, as the examples below do. Run `npx prisma contract emit` again after every change to `contract.prisma`. A new project keeps all three files in `src/prisma/`.
+All examples on this page run against the schema below, except the grouped-aggregate ones, which use a separate `Customer` / `Order` schema shown under [Grouped aggregates](#grouped-aggregates), and the row-locking example, which uses a `Job` model shown beside it. `contract.prisma` replaces `schema.prisma`, and this page calls it the contract. Running `npx prisma contract emit` compiles it into two generated files: `contract.json`, read at run time, and `contract.d.ts`, read by TypeScript. You import both, as the examples below do. Run `npx prisma contract emit` again after every change to `contract.prisma`. A new project keeps all three files in `src/prisma/`.
 
 <details>
 
@@ -45,7 +45,7 @@ enum Priority {
 
 model User {
   id          Uuid      @id @onCreate(uuid())
-  email       String
+  email       String    @unique
   displayName String
   createdAt   DateTime  @default(now())
   kind        user_type
@@ -819,6 +819,18 @@ Lock the rows a read selects until the transaction ends.
 #### Examples
 
 ##### Take the next queued job (PostgreSQL)
+
+This example uses a `Job` model:
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model Job {
+  id        Uuid     @id @onCreate(uuid())
+  state     String
+  createdAt DateTime @default(now())
+
+  @@map("job")
+}
+```
 
 ```typescript
 await db.transaction(async (tx) => {
