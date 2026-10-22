@@ -51,7 +51,7 @@ CREATE ROLE app_user LOGIN PASSWORD '...';
 GRANT SELECT, UPDATE ON "document" TO app_user;
 ```
 
-Run that by hand, or put it in a migration that holds only SQL: `npx prisma migration new --name app-user` creates an empty migration file, and [Limitations](#limitations) shows the `rawSql` step that goes in it.
+Order matters: the `CREATE POLICY` statements in the migration name `app_user`, so create the role before you run `db migrate`, and run the `GRANT` after it, once the table exists. Run the two statements by hand, or put the `GRANT` in a migration that holds only SQL: `npx prisma migration new --name app-user` creates an empty migration file, and [Limitations](#limitations) shows the `rawSql` step that goes in it.
 
 Policies apply to the role a connection logs in as, and the table's owner bypasses them. So your app needs a connection string that logs in as `app_user`, while the CLI keeps the owner's. The CLI reads `db.connection` in `prisma.config.ts`, and your app reads the `url` in `src/prisma/db.ts`, so give the two different values.
 
@@ -197,7 +197,7 @@ rawSql({
 ```
 
 - **Roles and `GRANT` are not part of the contract.** Prisma ORM creates policies but never creates a role or grants privileges to one. Create the role and run the `GRANT` statements in a raw SQL step, or by hand.
-- **`FORCE ROW LEVEL SECURITY` is not part of the contract.** Row-level security as Prisma ORM declares it does not apply to the table's owner. To make it apply to the owner too, run `ALTER TABLE ... FORCE ROW LEVEL SECURITY` in a raw SQL step.
+- **`FORCE ROW LEVEL SECURITY` is not part of the contract.** Row-level security as Prisma ORM declares it does not apply to the table's owner. To make it apply to the owner too, run `ALTER TABLE ... FORCE ROW LEVEL SECURITY` in a raw SQL step. Even then a superuser, or a role with `BYPASSRLS`, is never filtered, so the role your app logs in as must be neither.
 - **Triggers and functions are not part of the contract.** Create them in a raw SQL step.
 - **A sort order inside `@@index` is refused.** `@@index([createdAt(sort: Desc)])` fails with "Expected a field name" ([prisma/orm#30270](https://github.com/prisma/orm/issues/30270)). Create such an index in a raw SQL step.
 - **A variant that shares its base model's table loses its own constraints.** A variant is a model that extends another with `@@base`, the way `Bug` extends `Task` on the PSL page; one with no `@@map` of its own stores its rows in the base model's table. A foreign key, `@@unique`, or `@@index` declared on it is dropped from the contract without a warning ([prisma/orm#30445](https://github.com/prisma/orm/issues/30445)), and `@@check` on it is refused. Declare them on the base model, or give the variant its own `@@map` so it gets its own table. [Base models and variants](/orm/contract-authoring/psl-syntax#base-models-and-variants) covers the two layouts.
