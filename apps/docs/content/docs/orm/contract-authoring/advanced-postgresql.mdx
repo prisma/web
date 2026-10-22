@@ -48,7 +48,7 @@ The role itself is yours to create. Prisma ORM never creates or drops a role; th
 
 ```sql
 CREATE ROLE app_user LOGIN PASSWORD '...';
-GRANT SELECT, UPDATE ON "document" TO app_user;
+GRANT SELECT, UPDATE ON "public"."document" TO app_user;
 ```
 
 Order matters: the `CREATE POLICY` statements in the migration name `app_user`, so create the role before you run `db migrate`, and run the `GRANT` after it, once the table exists. Run the two statements by hand, or put the `GRANT` in a migration that holds only SQL: `npx prisma migration new --name app-user` creates an empty migration file, and [Limitations](#limitations) shows the `rawSql` step that goes in it.
@@ -68,7 +68,7 @@ await db.transaction(async (tx) => {
 });
 ```
 
-[Row-level security](/orm/contract-authoring/psl-syntax#row-level-security) has `policy_insert`, `policy_delete`, `policy_all`, and `permissive`. On Supabase, the [Supabase extension](https://www.prisma.io/extensions/supabase) runs each query as the right role for you.
+[Row-level security](/orm/contract-authoring/psl-syntax#row-level-security) has `policy_insert`, `policy_delete`, `policy_all`, and `permissive`. On Supabase, you bind a role first, with `await db.asUser(jwt)`, and the [Supabase extension](https://www.prisma.io/extensions/supabase) then runs each query as that role.
 
 ## An index on an expression, or on some rows
 
@@ -190,7 +190,7 @@ rawSql({
   label: 'Grant app_user access to "document"',
   operationClass: 'widening',
   target: { id: 'postgres' },
-  execute: [{ description: 'grant', sql: 'GRANT SELECT, UPDATE ON "document" TO app_user' }],
+  execute: [{ description: 'grant', sql: 'GRANT SELECT, UPDATE ON "public"."document" TO app_user' }],
   precheck: [],
   postcheck: [],
 }),
