@@ -42,6 +42,30 @@ export const COMPARE_PRISMA_LINKS: CompareLink[] = [
     description: "What to run the app and the database on once real users arrive.",
   },
   {
+    label: "Prisma Postgres vs Neon",
+    href: "/compare/neon",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Neon Functions, Auth, Object Storage, and AI Gateway.",
+  },
+  {
+    label: "Prisma Postgres vs PlanetScale",
+    href: "/compare/planetscale",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or database-first SKUs, Metal, and Neki.",
+  },
+  {
+    label: "Prisma Postgres vs Supabase",
+    href: "/compare/supabase",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Auth, Storage, Realtime, and Edge Functions.",
+  },
+  {
+    label: "Prisma vs Vercel + Neon + Drizzle",
+    href: "/compare/vercel-neon-drizzle",
+    description:
+      "One TypeScript platform compared with a host, a database, and an ORM from three providers.",
+  },
+  {
     label: "Neon vs Prisma Postgres for hosting and the database in one place",
     href: "/blog/neon-vs-prisma-postgres-app-hosting-in-one-place",
     description: "Neon alternatives when the app and its database should live in one project.",
@@ -52,9 +76,15 @@ export const COMPARE_PRISMA_LINKS: CompareLink[] = [
     description: "Where to move a TypeScript app with Postgres when Netlify stops fitting.",
   },
   {
-    label: "Import an existing database into Prisma Postgres",
+    label: "Move a local Postgres database online (2026)",
+    href: "/blog/from-local-to-production-with-prisma-postgres",
+    description:
+      "Prisma Postgres, Neon, Render, Railway and Supabase compared for taking a laptop Postgres database online with pg_dump and pg_restore.",
+  },
+  {
+    label: "Migrate a local Postgres database to Prisma Postgres",
     href: "/docs/postgres/import-from-existing-database",
     description:
-      "The docs guide for moving an existing PostgreSQL database over with pg_dump and pg_restore, or a MySQL database with pgloader.",
+      "The docs guide for copying a local PostgreSQL database into Prisma Postgres with pg_dump and pg_restore over the direct connection.",
   },
 ];

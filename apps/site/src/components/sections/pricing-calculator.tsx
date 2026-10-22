@@ -61,7 +61,8 @@ export function PricingCalculator() {
         {/* quick-start presets, compact — name and usage only, as on the live
             calculator. The V2 blurbs stay on PRESETS in calc.ts. */}
         <Reveal delay={0.15}>
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
+          <p className="mt-7 text-xs text-muted-foreground">Example usage, not plan limits</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
             {PRESETS.map((p) => (
               <button
                 key={p.id}
@@ -129,8 +130,8 @@ export function PricingCalculator() {
               <div className="mt-auto flex items-center gap-2.5 border-t border-black/[0.06] pt-5">
                 <CheckBold className="size-4 shrink-0 text-prism-cyan-500" aria-hidden />
                 <p className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Data transfer</span> — unlimited,
-                  included free
+                  <span className="font-semibold text-foreground">Database data transfer</span> —
+                  unlimited, included free
                 </p>
               </div>
             </div>

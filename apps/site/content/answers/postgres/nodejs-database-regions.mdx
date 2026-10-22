@@ -1,0 +1,93 @@
+---
+title: "How do I choose regions for my Node app and Postgres database?"
+description: "Keep your Node app's database calls fast by placing the app and Postgres together, measuring deployed latency and reducing sequential queries."
+summary: "Put the Node server that queries Postgres in the same region as the database, then measure the deployed request path. [Prisma Compute](/docs/compute) and [Prisma Postgres](/docs/postgres) share six regions, so you can place both together. If you keep another app host, choose a nearby server region and verify the connection from that deployed server."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-16"
+updatedAt: "2026-10-16"
+readingTime: "6 min read"
+faq:
+  - question: "Should I put the app near users or near the database?"
+    answer: "For a Node API that makes several database calls per request, start by placing the API near its Postgres database. Serve cacheable static assets through a CDN near users. Then measure user-to-app and app-to-database latency separately before deciding whether another region would help."
+  - question: "Does connection pooling fix a distant database?"
+    answer: "Connection pooling reduces connection setup work and helps control connection counts. It does not remove the network distance between the app and Postgres. Put the pooler, database and app close together, and reduce unnecessary sequential calls."
+  - question: "Are two providers' regions with the same city name equivalent?"
+    answer: "A shared city is a useful starting point, but it does not prove that two services share a data center or a short network route. Compare locations in both providers' region lists and measure database calls from the deployed app. Region codes are provider-specific."
+  - question: "Should every user region have its own database?"
+    answer: "A database per region adds decisions about writes, replication and consistency. Start with one primary write region unless measurements or residency requirements justify a distributed design. Prisma Compute runs each service in one region; it does not deploy one service across multiple regions."
+related:
+  - title: "Prisma Compute app hosting"
+    href: "/compute"
+  - title: "Prisma Postgres regions"
+    href: "/docs/postgres/faq#what-regions-is-prisma-postgres-available-in"
+  - title: "Inspecting slow queries and indexes"
+    href: "/postgres/managed-postgres-query-monitoring"
+  - title: "Hosting and Postgres after your first 100 users"
+    href: "/blog/choosing-hosting-and-postgres-after-your-first-100-users"
+cta:
+  title: "Place your app next to its database"
+  description: "Run your TypeScript app on Prisma Compute with Prisma Postgres in a supported region, then measure the workload your users actually run."
+  label: "Set up Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+Choose the app and database locations as a pair. For a database-backed Node app, the important server is the process running your SQL, including a serverless function or background worker. A frontend served near a user can still call an API that crosses an ocean for each database request.
+
+Prisma Compute is a practical fit when you want the app and managed Postgres in one project with matching region choices. Prisma Postgres also works with other hosts and any PostgreSQL client; Prisma ORM is optional. The provider details linked below were checked on October 16, 2026.
+
+## Which part of a request is slow?
+
+Separate three measurements: the user's trip to the app, the app's trip to Postgres, and the work the database performs. Moving a database helps the second measurement; it does not fix an expensive query plan or slow application code.
+
+Network delay accumulates when calls depend on one another. As an illustration, six sequential database round trips with 20 milliseconds of network delay each add about 120 milliseconds before query execution and application work. These are arithmetic inputs, not a benchmark of any provider. Batching those calls or moving the app closer can reduce that part of the request.
+
+Record latency for representative endpoints, including slower requests rather than only an average. Measure from the deployed runtime, because your laptop's connection follows a different route. Compare a warmed connection with a new connection so connection setup does not obscure the result.
+
+## What region setup fits your app?
+
+These setups are listed by app-host name. We make Prisma Compute and Prisma Postgres.
+
+| App host | Region choice | What to verify |
+| --- | --- | --- |
+| Existing Node host + Prisma Postgres | Keep the app host if it offers a location close to your chosen database region. | Check the actual server or worker location and measure the app-to-database path across providers. |
+| Prisma Compute + Prisma Postgres | Select the same supported region for both resources. | Confirm the service and database region, including resources created outside your app declaration. |
+| Vercel + Prisma Postgres | Configure the database-calling function near the database. | A CDN location does not determine the function's location. Check the [Function region settings](https://vercel.com/docs/functions/configuring-functions/region). |
+
+For a Vercel frontend, you can keep static content on its CDN while putting the database-calling functions near Prisma Postgres. If a separate API on Prisma Compute owns database access, place that API with the database and check that frontend requests reach the intended API.
+
+## How do I choose a region on Prisma?
+
+### 1. Start with the write region
+
+Choose a location supported by both your app host and database provider. Consider the people making requests, integrations the server calls, and any contractual data-location requirements. If the production database already exists, moving the app near it may be a smaller change than migrating customer data.
+
+Prisma Compute and Prisma Postgres currently share North Virginia (`us-east-1`), San Francisco (`us-west-1`), Paris (`eu-west-3`), Frankfurt (`eu-central-1`), Tokyo (`ap-northeast-1`) and Singapore (`ap-southeast-1`). See the [Compute region rules](/docs/compute/limitations#runtime) and [Postgres region list](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in).
+
+### 2. Set the region explicitly
+
+Set the deploy region before the first deployment rather than relying on a default. The [Prisma Compute getting started guide](/docs/compute/getting-started) explains the initial region configuration. Verify that the database your app actually connects to is in that region too.
+
+An existing `DATABASE_URL` can point to a database elsewhere. Putting a service in Frankfurt does not move a database behind a Singapore connection string. Inspect both resources in Prisma Console before comparing results.
+
+### 3. Keep connections reusable
+
+Use the [pooled Prisma Postgres connection](/docs/postgres/database/connection-pooling) for app traffic and reuse the client or pool within a running process. Connection pooling and region placement solve different problems: pooling controls connection pressure, while placement reduces the distance each query travels.
+
+Keep migration and administrative connections configured as their own workflow. The [connection guide](/docs/postgres/database/connecting-to-your-database) explains the pooled and direct connection strings.
+
+### 4. Compare the same workload before and after
+
+Use a [test environment with its own database](/postgres/typescript-test-environment) to rehearse a location change. Keep the query, data size, pool settings and runtime configuration comparable. Record endpoint latency alongside database timing so you can see which part improved.
+
+If database execution remains slow after placement is fixed, inspect the SQL and indexes. [Query Insights](/docs/query-insights) can help identify expensive query shapes, repeated calls and high-read statements in Prisma Postgres. It complements the network measurement rather than replacing it.
+
+## When should I choose a different setup?
+
+If your required location is outside Prisma's supported regions, choose an app and database provider that both serve that location. A residency requirement can rule out a region even if a nearby one is faster.
+
+If the application must serve database writes from several continents, choose the data architecture before distributing app instances. Prisma Compute runs each service in one region and does not provide multi-region deployment for a single service. A globally distributed frontend can still use it as a regional API, but that is different from local database writes everywhere.
+
+If the database spends most of its time executing an inefficient query, a region move may make little difference. Investigate indexes, result sizes, lock waits and application work before paying for a more complicated topology.
+
+If you are choosing the database for a new app, the [prototype customer-data guide](/postgres/prototype-customer-data) covers persistent storage, server-side connections and recovery decisions. Choose its database region alongside the app server.

@@ -12,9 +12,10 @@ const baseUrl = "https://www.prisma.io";
  * The component files that render each page's headings.
  *
  * The renditions of /orm, /postgres and /compute are generated from the same
- * `ProductPageContent` objects the pages render from, so their copy cannot
- * drift; what can drift is the framing text that is literal JSX in the shared
- * product sections, which is why those files are listed here too.
+ * `ProductPageContent` objects the pages render from, and /stack from its
+ * `app/stack/content.ts`, so their copy cannot drift; what can drift is the
+ * framing text that is literal JSX in the shared sections, which is why those
+ * files are listed here too.
  *
  * For the pages whose copy is literal JSX, this list is the drift alarm: the
  * test below pulls every literal `<h1>`/`<h2>` out of these files and fails if
@@ -68,8 +69,24 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/components/sections/compare-links.tsx",
   ],
   "/studio": ["src/app/studio/page.tsx"],
-  "/stack": ["src/app/stack/page.tsx", "src/components/sections/stack-bento.tsx"],
+  "/stack": [
+    "src/app/stack/page.tsx",
+    "src/components/product/product-hero.tsx",
+    "src/components/sections/stack-bento.tsx",
+    "src/components/use-case/segment/comparison-table.tsx",
+    "src/components/use-case/segment/sections.tsx",
+    "src/app/stack/best-for.tsx",
+    "src/components/sections/cta-burst.tsx",
+  ],
   "/enterprise": ["src/app/enterprise/page.tsx"],
+  "/compare": ["src/app/compare/page.tsx"],
+  "/compare/convex": ["src/app/compare/convex/_sections.tsx"],
+  "/compare/kysely": ["src/app/compare/kysely/_sections.tsx"],
+  "/compare/mongoose": ["src/app/compare/mongoose/_sections.tsx"],
+  "/compare/neon": ["src/app/compare/neon/_sections.tsx"],
+  "/compare/planetscale": ["src/app/compare/planetscale/_sections.tsx"],
+  "/compare/supabase": ["src/app/compare/supabase/_sections.tsx"],
+  "/compare/vercel-neon-drizzle": ["src/app/compare/vercel-neon-drizzle/_sections.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
     "src/app/mcp/_components/mcp-hero-section.tsx",
@@ -88,6 +105,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
  * The three product pages sit at 1 on purpose: every heading on them except
  * the platform section's comes from the page's `ProductPageContent`, so it is
  * an expression in the JSX and the content-object test below is what covers it.
+ * /stack is the same: StackBento's own h2 is its only literal heading.
  */
 const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/": 6,
@@ -96,15 +114,25 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/compute": 1,
   "/pricing": 5,
   "/studio": 3,
-  "/stack": 2,
+  "/stack": 1,
   "/enterprise": 3,
   "/mcp": 4,
+  "/compare": 1,
+  "/compare/convex": 10,
+  "/compare/kysely": 10,
+  "/compare/mongoose": 10,
+  "/compare/neon": 10,
+  "/compare/planetscale": 10,
+  "/compare/supabase": 10,
+  "/compare/vercel-neon-drizzle": 10,
 };
 
-const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
+const HEADING_PATTERN =
+  /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>|<AnchorHeading level=\{[12]\}[^>]*>([\s\S]*?)<\/AnchorHeading>/g;
 
 /**
- * The literal text of every `<h1>`/`<h2>` in a source file.
+ * The literal text of every `<h1>`/`<h2>` in a source file, including level 2
+ * `<AnchorHeading>`s.
  *
  * Presentational wrappers inside a heading (`<GlassGlide>`, `<span>`) are
  * flattened, because they carry no meaning in Markdown. A heading whose text
@@ -116,7 +144,8 @@ const HEADING_PATTERN = /<(h[12])\b[^>]*>([\s\S]*?)<\/\1>/g;
 function literalHeadings(source: string): string[] {
   const headings: string[] = [];
 
-  for (const [, , inner] of source.matchAll(HEADING_PATTERN)) {
+  for (const [, , tagInner, anchorInner] of source.matchAll(HEADING_PATTERN)) {
+    const inner = tagInner ?? anchorInner;
     // JSX's explicit whitespace literal, used to keep a space before a tag.
     let flattened = inner.replace(/\{" "\}/g, " ");
 
@@ -159,16 +188,27 @@ test("every supported path has a markdown page, and vice versa", () => {
   assert.equal(markdownPageList.length, AGENT_MARKDOWN_PATHS.length);
 });
 
+/** Heading markers inside a fenced sample are code, not document headings. */
+function headingLines(document: string, prefix: "# " | "## ") {
+  let fenced = false;
+  return document.split("\n").filter((line) => {
+    if (line.startsWith("```")) {
+      fenced = !fenced;
+      return false;
+    }
+    return !fenced && line.startsWith(prefix);
+  });
+}
+
 for (const page of markdownPageList) {
   test(`${page.path} renders a markdown document with one H1 and real sections`, () => {
     const document = renderMarkdownDocument(page, baseUrl);
-    const lines = document.split("\n");
 
-    const h1Lines = lines.filter((line) => line.startsWith("# "));
+    const h1Lines = headingLines(document, "# ");
     assert.equal(h1Lines.length, 1, `${page.path} should have exactly one H1`);
     assert.equal(h1Lines[0], `# ${page.h1} (${page.path})`);
 
-    const h2Lines = lines.filter((line) => line.startsWith("## "));
+    const h2Lines = headingLines(document, "## ");
     assert.ok(
       h2Lines.length >= 2,
       `${page.path} should have at least two H2 sections, got ${h2Lines.length}`,
@@ -176,7 +216,7 @@ for (const page of markdownPageList) {
 
     // Not a title-and-description stub: the audit's whole complaint.
     assert.ok(
-      document.length > 1500,
+      document.length > (page.path === "/compare" ? 800 : 1500),
       `${page.path} markdown is only ${document.length} characters — too short to be at parity with the page`,
     );
 
@@ -257,6 +297,52 @@ test("the product pages inherit their copy from the page's own content object", 
       );
     }
   }
+});
+
+test("/stack inherits its copy from the page's own content module", async () => {
+  // Same idea as the product pages: every string page.tsx hands its sections
+  // comes from app/stack/content.ts, so assert each one reaches the markdown.
+  const { bestFor, comparison, cta, hero, stack, when } = await import("@/app/stack/content");
+  const document = renderMarkdownDocument(markdownPages["/stack"], baseUrl);
+  const expect = (text: string, what: string) =>
+    assert.ok(document.includes(text), `/stack: ${what} missing: ${text}`);
+
+  expect(hero.headline, "hero headline");
+  expect(hero.subheadline, "hero subheadline");
+  for (const benefit of hero.benefits) expect(benefit, "hero benefit");
+  for (const link of [hero.primaryCta, hero.secondaryCta]) {
+    expect(`[${link.label}](${link.href})`, "hero CTA");
+  }
+
+  for (const product of [stack.orm, stack.postgres, stack.compute]) {
+    expect(product.body, "stack product lede");
+    for (const bullet of product.bullets) expect(bullet, "stack product bullet");
+  }
+  expect(stack.studio.body, "Studio description");
+  expect(stack.cli.body, "CLI description");
+
+  expect(comparison.headline, "comparison headline");
+  for (const row of comparison.rows) {
+    expect(`| ${row.point} | ${row.assembled} | ${row.prisma} |`, "comparison row");
+  }
+
+  expect(when.headline, "when-to-use headline");
+  expect(when.intro, "when-to-use intro");
+  for (const item of when.items) {
+    expect(item.title, "when-to-use card");
+    expect(item.body, "when-to-use card copy");
+  }
+
+  expect(bestFor.headline, "best-for headline");
+  expect(bestFor.intro, "best-for intro");
+  for (const item of bestFor.items) {
+    expect(item.title, "audience");
+    expect(item.body, "audience copy");
+  }
+
+  expect(cta.headline, "closing CTA headline");
+  expect(cta.body, "closing CTA body");
+  for (const check of cta.checks) expect(check.label, "closing CTA check");
 });
 
 test("llms.txt lists every rendition and links its .md URL", async () => {

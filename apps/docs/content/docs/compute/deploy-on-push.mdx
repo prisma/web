@@ -1,12 +1,12 @@
 ---
 title: Preview and staging environments per Git branch (deploy on push)
-description: Test a new version of your app on its own URL without replacing production. With deploy on push, every branch you push other than the default one gets its own preview environment, and the default branch deploys to production.
+description: Test a new version of your app, such as a feature a coding assistant is building, on its own URL without replacing production. With deploy on push, every branch you push other than the default one gets its own preview environment, and the default branch deploys to production.
 url: /compute/deploy-on-push
 metaTitle: Preview and staging environments per Git branch | Prisma Compute
-metaDescription: Test a new version without replacing production. Every non-default branch you push gets a preview with its own URL, services and, optionally, its own database; a branch you keep works as staging, and the default branch deploys to production.
+metaDescription: Test a new version, such as a feature a coding assistant is building, without replacing production. Every non-default branch you push gets a preview with its own URL, services and, optionally, its own database; a branch you keep works as staging.
 ---
 
-To test a new version of your app without replacing the one your users have, push it to a Git branch other than the default one. Once deploy on push is set up, Prisma Compute deploys that branch as a preview environment with its own URL, its own services and its own databases, and the workflow deploys production only when you push to the default branch. A branch you keep, such as `staging`, works as a long-lived staging environment, and deleting a branch removes its preview.
+To test a new version of your app without replacing the one your users have, push it to a Git branch other than the default one. Once deploy on push is set up, Prisma Compute deploys that branch as a preview environment with its own URL, its own services and its own databases, and the workflow deploys production only when you push to the default branch. A branch you keep, such as `staging`, works as a long-lived staging environment, and deleting a branch removes its preview. The same works when a coding assistant does the pushing; see [If a coding assistant is building the feature](#if-a-coding-assistant-is-building-the-feature).
 
 This guide sets that up for a [Prisma Composer](/composer) app that you deploy today by running `deploy module.ts` in a terminal. Composer is in [Early Access](/console/more/feature-maturity#early-access), so its commands can change between releases. You connect the app's GitHub repository and add a deploy workflow, and from then on a push replaces that manual step.
 
@@ -30,6 +30,18 @@ npx prisma project env add API_BASE_URL=https://staging-api.example.com --branch
 ```
 
 When a release is ready, merge `staging` into the default branch, and that push updates production. On Compute, the staging services cost money only while they do work, such as serving traffic, because creating a preview branch is free and an idle app scales to zero; see [Compute pricing](/compute/pricing#what-is-not-billed-separately). Without GitHub, `npx prisma deploy module.ts --stage staging` deploys the same kind of persistent staging environment from your terminal or another CI system, as [Deploying](/composer/deploying#production-and-stages) shows.
+
+### Coming from Vercel or Netlify previews
+
+Vercel deploys a preview for every push to a branch other than the production branch, and Netlify builds a Deploy Preview by default for each pull request in a connected repository whose base branch is a production branch or has branch deploys enabled, unless Deploy Previews are turned off; here, each pushed branch other than the default one gets a preview with every service your module declares. Vercel's Preview environment variables and their branch-specific values map to preview-scoped values and branch overrides. The database differs from Netlify Database, whose deploy previews start with a copy of the production data: here each Prisma Postgres database your module declares is created new for the branch and production data is not copied, so seed the data you test with. For apps that read `DATABASE_URL`, see **Its own databases** above. [How to host a test version of your app without replacing production](https://www.prisma.io/blog/host-a-test-version-without-replacing-production) compares the same workflow on Fly.io, Netlify, Prisma Compute, Railway, Render and Vercel.
+
+## If a coding assistant is building the feature
+
+Have the assistant (Claude Code, Codex, Cursor or another coding agent) work on a feature branch and push that branch, not the default one. With the workflow from this guide in the repository, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied. If the app reads `DATABASE_URL`, the preview is only as separate as that value, so give previews a preview-scoped `DATABASE_URL`.
+
+- **Keep the assistant off the default branch.** A push to the default branch deploys production through the workflow without asking anyone. [Protect the default branch](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) in GitHub and tell the assistant to open a pull request instead, for example in `AGENTS.md`: `Never push to main. Open a pull request for every change.`
+- **Give it its own Prisma credential.** An [enrolled agent](/prisma-compute/agent-enrollment) works on preview branches by default and asks you before it changes production through the Prisma API. The policy covers those API requests, not the deploy workflow, which is why branch protection matters.
+- **Check the preview, then merge.** The workflow run prints the preview's URL in its deploy report. When the feature works there, merge the pull request: the push to the default branch updates production, and deleting the feature branch removes the preview's services, databases and buckets.
 
 ## How it works
 
@@ -57,7 +69,7 @@ gh repo create my-app --private --source . --push
 
 ## 2. Link the directory to the project
 
-The `git` commands operate on the project this directory is linked to. If you have deployed from this directory before, it is already linked and you can skip this step. Otherwise, link it to the project your deploys created:
+The `git` commands operate on the project this directory is linked to. `deploy` creates and updates the project but does not link the directory, so link it to the project your deploys created, unless you already ran `project link` or `project create` here:
 
 ```npm
 npx prisma project link my-app
@@ -161,5 +173,5 @@ The platform tears down the matching preview: its services, databases, and bucke
 ## Next steps
 
 - [GitHub integration](/compute/github): what the repository connection is and does.
-- [Branching](/compute/branching): how preview branches relate to Git branches.
+- [Environments: production, staging and preview branches](/compute/branching): how preview branches relate to Git branches.
 - [Deploying](/composer/deploying): stages, deploy state, and per-stage secrets, which apply to CI deploys too.

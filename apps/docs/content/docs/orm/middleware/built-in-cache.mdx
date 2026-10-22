@@ -21,13 +21,14 @@ Your contract is the Prisma ORM 8 name for your schema: `contract.prisma` in a g
 ```ts title="src/prisma/db.ts"
 import { createCacheMiddleware } from '@prisma/orm-extension-middleware-cache';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const cache = createCacheMiddleware();
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [cache],
 });
@@ -45,7 +46,7 @@ You tell Prisma ORM that a read may be cached by attaching a cache annotation to
 
 Prisma ORM gives you two ways to write the same read, the SQL query builder and the ORM API, and both of them can be cached. Use whichever one the rest of your code already uses, because the annotation attaches differently in each.
 
-With the SQL query builder you build the query yourself, call `.build()`, and run the result with `db.runtime().query(...)` for rows or `db.runtime().execute(...)` for a count. Only rows can be cached, so nothing you run with `db.runtime().execute(...)` ever is. To cache a read, chain `.annotate(cacheAnnotation({}))` onto the query before you call `.build()`. `db.sql.public.User` names the `User` table in the PostgreSQL schema `public`.
+With the SQL query builder you build the query yourself, call `.build()`, and run the result with `db.query(...)` for rows or `db.execute(...)` for a count. Only rows can be cached, so nothing you run with `db.execute(...)` ever is. To cache a read, chain `.annotate(cacheAnnotation({}))` onto the query before you call `.build()`. `db.sql.public.User` names the `User` table in the PostgreSQL schema `public`.
 
 ```ts title="src/prisma/get-users-cached.ts"
 import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
@@ -58,7 +59,7 @@ export async function getUsersCached() {
     .limit(10)
     .build();
 
-  return db.runtime().query(plan);
+  return db.query(plan);
 }
 ```
 
@@ -96,7 +97,7 @@ const plan = db.sql.public.User
   .limit(10)
   .build();
 
-return db.runtime().query(plan);
+return db.query(plan);
 ```
 
 A `key` is used exactly as you wrote it, and the cache adds nothing to it, so any two reads that pick the same `key` share one entry even when their parameter values or their models differ: the rows stored for `id: 1` come back for `id: 2` as well. Either use `key` only on a query whose parameter values never change, or put the parameter values into the string yourself, behind a prefix no other read in your app uses:
@@ -127,7 +128,7 @@ export const cache = createCacheMiddleware({
 
 Two different queries must never get the same key, or one query's rows are served for the other. If `deriveKey` throws, the read fails.
 
-Your own calling code cannot see the difference, because `db.runtime().query(plan)` and `db.orm.public.User.first(...)` give you the same rows whether the cache answered or the database did.
+Your own calling code cannot see the difference, because `db.query(plan)` and `db.orm.public.User.first(...)` give you the same rows whether the cache answered or the database did.
 
 A read inside `db.transaction(...)`, or on a connection you took out of the pool yourself with [`db.runtime().connection()`](/orm/reference/transactions-and-runtime#manual-connection-and-transaction-control), always goes to the database, and its rows are not stored. Code that holds a transaction or a connection expects to read back what it has just written, so the cache stays out of the way and you always see your own writes.
 

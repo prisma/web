@@ -2,6 +2,7 @@ import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { LearnMore } from "@/components/brand/learn-more";
 import { Texture } from "@/components/brand/texture";
 import { Reveal } from "@/components/motion/reveal";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 import { PRODUCT_ILLUSTRATIONS } from "./illustrations";
 import type { ProductPageContent } from "./types";
@@ -134,7 +135,12 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                     <div className="flex grow flex-col p-7">
                       <h3 className="text-xl">{name}</h3>
                       <p className="mt-3 grow text-pretty leading-relaxed text-muted-foreground">
-                        {description}
+                        {/* The inline markup parser is a no-op for strings
+                            without `[` or `` ` ``, so plain descriptions still
+                            render verbatim; the /postgres compliance card is
+                            the one card that uses a `[HIPAA](/postgres/hipaa)`
+                            link today. */}
+                        {renderFaqAnswer(description)}
                       </p>
                       {href ? (
                         <LearnMore href={href} product={name} className="mt-auto pt-4" />

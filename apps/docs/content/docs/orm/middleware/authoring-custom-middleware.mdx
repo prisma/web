@@ -62,7 +62,7 @@ The `name` is the label Prisma ORM uses when it talks about your middleware, so 
 
 `activityEnded` also runs for a transaction, which is why the hook returns early unless `result.kind` is `'statement'`. A statement either returns rows or reports how many rows it changed, and `result.returns` says which: `'rows'` with `result.rowCount`, or `'stats'` with `result.stats.affectedRows`. On the ORM API the calls that report a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`; every other call returns rows, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`. A write that failed has no `result.stats`, so the logger prints `0 affected` for it; check `result.outcome`, which is `'succeeded'`, `'failed'`, or `'stopped'`, when you need to tell the two apart.
 
-The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db.runtime()` runs it. `db.runtime().query(plan)` returns rows and `db.runtime().execute(plan)` reports how many rows the statement changed, and the same two hooks see both.
+The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db` runs it. `db.query(plan)` returns rows and `db.execute(plan)` reports how many rows the statement changed, and the same two hooks see both.
 
 ## 2. Register it
 
@@ -71,17 +71,22 @@ You register a middleware by adding it to the `middleware` array where you creat
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
 import { queryLogger } from './query-logger';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [queryLogger()],
 });
 ```
 
-The only line added here is the `middleware` option. The `src/prisma/db.ts` that `npm create prisma@latest` generates has more in it than this, including a `connectDatabase` export that the generated `seed.ts` imports, so keep that file and add the `middleware` option to the `postgres<Contract>({ ... })` calls in it rather than replacing it with the file above. Those calls only run when the app is started with `DATABASE_URL` exported, as `npm run dev` does. With `npm run dev:composer`, the generated file takes its client from Composer through `service.load()` instead, and the `middleware` option in `db.ts` is never used, so run the app with `DATABASE_URL` exported while you follow this guide. If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
+The only line added here is the `middleware` option. Do not replace the `src/prisma/db.ts` that `npm create prisma@latest` generated with the file above, because the generated file has more in it, such as a `connectDatabase` export that the generated `seed.ts` imports. Instead, add the `middleware` option to each `postgres({ ... })` call in it.
+
+The generated project can start the app in two ways, and your middleware runs in only one of them. `npm run dev` starts the app with `DATABASE_URL` exported, so the `postgres({ ... })` calls in `db.ts` create the client and your middleware runs. `npm run dev:composer` runs the app with [Prisma Composer](/composer), which describes your services and databases in TypeScript, and the app then gets its client from Composer instead, so the `middleware` option in `db.ts` is never read. Use `npm run dev` while you follow this guide.
+
+If you set your project up by hand, [The data contract](/orm/contract-authoring/the-data-contract) covers where `contract.json` and `contract.d.ts` come from.
 
 That one line is all the setup there is, and every query on this client now passes through the logger, whether you wrote it with the ORM API (`db.orm.public.User...`) or with the SQL query builder.
 
@@ -171,7 +176,7 @@ Run the script again and the logger goes quiet, because both queries finish in u
 Prisma ORM calls your hooks in the order you listed the middleware in the array, and that order decides what each middleware sees and whether it runs at all:
 
 - Prisma ORM waits for each hook to finish before the statement moves on, so a slow `activityEnded` delays the `await` in your own code.
-- If a middleware throws from `beforeEncode`, the ones listed after it do not run that hook, and the statement fails before it reaches the database. It still ends, so every middleware's `activityEnded` sees it with `result.outcome` `'failed'` and a `latencyMs` of `0`. A statement that `budgets` rejects, such as a `SELECT` with no `LIMIT`, reaches the logger that way wherever you list it, but `beforeEncode` did not run on it, so the logger has no SQL text for it. A throw from a later middleware's `activityEnded`, as the `budgets` time check does, does not stop the logger's own `activityEnded` from running.
+- If a middleware throws from `beforeEncode`, the ones listed after it do not run that hook, and the statement fails before it reaches the database. It still ends, so every middleware's `activityEnded` sees it with `result.outcome` `'failed'` and a `latencyMs` of `0`. A statement that `budgets` rejects, such as a `SELECT` with no `LIMIT`, reaches the logger that way wherever you list it. The logger has its SQL text only when it is listed before `budgets`, because only then has its own `beforeEncode` already run. A throw from a later middleware's `activityEnded`, as the `budgets` time check does, does not stop the logger's own `activityEnded` from running.
 - When a middleware changes the query, the middleware listed after it sees the changed version.
 
 A built-in middleware goes into the same array, imported from the same package as `SqlMiddleware`. To run the logger ahead of [budgets](/orm/middleware/built-in-budgets), add the import to the top of `src/prisma/db.ts` and replace its `middleware:` line:
@@ -265,13 +270,14 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres from '@prisma/orm-postgres/runtime';
 import { BinaryExpr, ColumnRef, ParamRef } from '@prisma/orm-postgres/relational-core/ast';
 import { scopeUserSelects } from './scope-user-selects';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const currentName = new AsyncLocalStorage<string>();
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [
     scopeUserSelects(() => {
@@ -380,11 +386,11 @@ Every hook receives a context object called `ctx`. All the hooks of one activity
 | `ctx.inTransaction()` | `true` when the activity runs inside a transaction |
 | `ctx.now()` | The current time in milliseconds, the same value `Date.now()` gives |
 | `ctx.scope` | Where the statement is running: `'runtime'`, `'connection'`, or `'transaction'` |
-| `ctx.mode` | Whether a failed check blocks the statement. Always `'strict'` on PostgreSQL, because `postgres(...)` has no way to set it |
+| `ctx.mode` | The [`mode` option](/orm/reference/transactions-and-runtime#mode) of `postgres(...)`: `'strict'`, the default, or `'permissive'`. The budgets middleware reads it to decide whether a statement over budget throws or is only logged |
 | `ctx.contentHash(plan)` | A promise of a string that is the same for the same statement and parameters, so `await` it |
 | `ctx.contract` | Your contract, for when a hook needs to know what your database looks like |
 | `ctx.signal` | The `AbortSignal` the caller passed, if any |
-| `ctx.log` | The logger you passed as the client's `log` option, such as `log: console`. Without one, what you log there is discarded |
+| `ctx.log` | The [`log` option](/orm/reference/transactions-and-runtime#postgresoptions) of `postgres(...)`, such as `console`, with `info`, `warn`, and `error` methods. Without that option, what you pass to it is not printed |
 
 `ctx.scope` is `'runtime'` for a statement you sent on `db` directly, `'transaction'` inside `db.transaction(...)`, and `'connection'` for a statement you sent on a connection you took out of the pool yourself with `db.runtime().connection()`. The cache reads it to leave statements inside a transaction alone.
 

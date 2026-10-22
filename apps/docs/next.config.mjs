@@ -1,3 +1,4 @@
+import { composerNextConfig } from "../../composer/next-config.mjs";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import { createMDX } from "fumadocs-mdx/next";
 
@@ -16,6 +17,7 @@ const ContentSecurityPolicy = `
     https://tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzrcdn.openai.com
     https://widget.kapa.ai
     https://www.google.com
     https://www.gstatic.com
@@ -62,6 +64,7 @@ const ContentSecurityPolicy = `
 
   img-src 'self' data:
     https://www.googletagmanager.com
+    https://bzr.openai.com
     https://cdn.sanity.io
     https://prismalens.vercel.app
     https://api.producthunt.com
@@ -100,6 +103,8 @@ const ContentSecurityPolicy = `
     https://*.tally.so
     https://va.vercel-scripts.com
     https://www.googletagmanager.com
+    https://bzr.openai.com
+    https://bzrcdn.openai.com
     https://www.google.com
     https://www.gstatic.com
     https://kapa-widget-proxy-la7dkmplpq-uc.a.run.app
@@ -158,7 +163,6 @@ const ContentSecurityPolicy = `
     https://pagead2.googlesyndication.com
     https://googleads.g.doubleclick.net
     https://td.doubleclick.net
-    https://calculator.prisma.io/
     https://ppg-pricing-calculator.vercel.app
     https://hcaptcha.com
     https://*.hcaptcha.com;
@@ -241,6 +245,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   async redirects() {
     return [
       {
@@ -762,6 +767,7 @@ const config = {
 
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
+    ...composerNextConfig.experimental,
     globalNotFound: true,
   },
   // No Cache-Control here, deliberately. The SEO audit's TTFB finding invited a

@@ -12,7 +12,7 @@ This page assumes your tables already exist. [Coming from Prisma ORM 7](/orm/com
 
 ## Example schema
 
-All examples on this page run against the schema below, except the grouped-aggregate ones, which use a separate `Customer` / `Order` schema shown under [Grouped aggregates](#grouped-aggregates). `contract.prisma` replaces `schema.prisma`, and this page calls it the contract. Running `npx prisma contract emit` compiles it into two generated files: `contract.json`, read at run time, and `contract.d.ts`, read by TypeScript. You import both, as the examples below do. Run `npx prisma contract emit` again after every change to `contract.prisma`. A new project keeps all three files in `src/prisma/`.
+All examples on this page run against the schema below, except the grouped-aggregate ones, which use a separate `Customer` / `Order` schema shown under [Grouped aggregates](#grouped-aggregates), and the row-locking example, which uses a `Job` model shown beside it. `contract.prisma` replaces `schema.prisma`, and this page calls it the contract. Running `npx prisma contract emit` compiles it into two generated files: `contract.json`, read at run time, and `contract.d.ts`, read by TypeScript. You import both, as the examples below do. Run `npx prisma contract emit` again after every change to `contract.prisma`. A new project keeps all three files in `src/prisma/`.
 
 <details>
 
@@ -44,8 +44,8 @@ enum Priority {
 }
 
 model User {
-  id          Uuid      @id @default(uuid())
-  email       String
+  id          Uuid      @id @onCreate(uuid())
+  email       String    @unique
   displayName String
   createdAt   DateTime  @default(now())
   kind        user_type
@@ -57,7 +57,7 @@ model User {
 }
 
 model Post {
-  id        Uuid           @id @default(uuid())
+  id        Uuid           @id @onCreate(uuid())
   title     String
   userId    Uuid
   priority  Priority       @default(Low)
@@ -71,7 +71,7 @@ model Post {
 }
 
 model Tag {
-  id    Uuid   @id @default(uuid())
+  id    Uuid   @id @onCreate(uuid())
   label String @unique
 
   posts Post[]
@@ -91,7 +91,7 @@ model PostTag {
 }
 
 model Task {
-  id          Uuid     @id @default(uuid())
+  id          Uuid     @id @onCreate(uuid())
   title       String
   description String?
   status      String   @default("open")
@@ -179,8 +179,8 @@ Some parts of the schema the examples rely on:
 
 - The `types` block at the top gives a name to a type from an extension package, so your models can use that name. `Embedding1536` comes from the pgvector extension, and `pgvector.` is that package's prefix. See [PostgreSQL](#postgresql) for the extra line it needs when you create the client.
 - `@@map("user")` sets the table or collection name. Without it, the table name is the model name exactly as written, `User`.
-- On MongoDB, `id ObjectId @id @map("_id")` renames the field to `_id` everywhere: you filter on `_id`, and the returned document has an `_id` key. That is why the MongoDB examples never say `id`.
-- `Uuid` is a built-in type for a PostgreSQL `uuid` column. You do not import it. `@default(uuid())` fills the id in when you insert a row.
+- On MongoDB, `id ObjectId @id @map("_id")` stores the field as `_id` in the database. The ORM names it `id`, its name in the schema: you filter on `id`, write `id`, and the returned document has an `id` key. The same holds for every field with `@map`. The [pipeline builder](/orm/reference/pipeline-builder) and [raw commands](/orm/reference/raw-queries) work on stored documents, so they name the field `_id`.
+- `Uuid` is a built-in type for a PostgreSQL `uuid` column. You do not import it. `@onCreate(uuid())` makes Prisma ORM fill the id in when you insert a row.
 - `@@type("pg/text@1")` on an `enum` block stores the enum as a text column. The `@1` is the version of that storage format, and only version 1 exists today, so write it exactly like that. The MongoDB form of the same attribute is `@@type("mongo/string@1")`. This page calls an enum written this way a text-backed enum.
 - A `native_enum` block stores the members as a PostgreSQL enum type, created with `CREATE TYPE`. Prisma ORM 7 stored every `enum` this way, so a database that Prisma ORM 7 created already has these types, and you keep them by declaring each one with `native_enum`, as [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) shows. A plain `enum` block in Prisma ORM 8 is stored as text. Give every `native_enum` member a value, because a member with no value is rejected. A field that uses it is typed `pg.enum(Priority)`. This page calls an enum written this way a native enum. The two sort differently; see [`orderBy()`](#orderby).
 
@@ -192,7 +192,7 @@ Some parts of the schema the examples rely on:
   }
 
   model Post {
-    id       Uuid              @id @default(uuid())
+    id       Uuid              @id @onCreate(uuid())
     priority pg.enum(Priority)
   }
   ```
@@ -212,10 +212,12 @@ Create a PostgreSQL client with `postgres(...)`. `db.orm` holds your models by m
 
 ```typescript
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
+export const contract = contractFromJson<Contract>(contractJson);
+export const db = postgres({ contract, url: process.env.DATABASE_URL! });
 
 const users = await db.orm.public.User.all();
 ```
@@ -225,14 +227,14 @@ If your contract uses a type from an extension package, pass that package to `ex
 ```typescript
 import pgvector from '@prisma/orm-extension-pgvector/runtime';
 
-const db = postgres<Contract>({
-  contractJson,
-  url: process.env.DATABASE_URL,
+const db = postgres({
+  contract,
+  url: process.env.DATABASE_URL!,
   extensions: [pgvector],
 });
 ```
 
-To give a model your own methods on top of the built-in ones, import `Collection` from `@prisma/orm-postgres/orm-client`, subclass it, and register the subclass with `orm(...)` from that same package. You still create the client with `postgres(...)`. `orm(...)` takes two things from it: the `runtime` argument, which is what `await client.connect()` gives you, and the `context` argument, which is `client.context`. The code is under [Custom `Collection` subclass](#custom-collection-subclass).
+To give a model your own methods on top of the built-in ones, import `Collection` from `@prisma/orm-postgres/orm-client`, subclass it, and pass the subclass to `postgres(...)` in the `collections` option. The code is under [Custom `Collection` subclass](#custom-collection-subclass).
 
 ### MongoDB
 
@@ -240,10 +242,12 @@ Create a MongoDB client with `mongo(...)`. `db.orm` holds your models by collect
 
 ```typescript
 import mongo from '@prisma/orm-mongo/runtime';
+import { contractFromJson } from '@prisma/orm-mongo/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-const db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL, dbName: 'app' });
+export const contract = contractFromJson<Contract>(contractJson);
+export const db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
 
 const users = await db.orm.users.all();
 ```
@@ -273,6 +277,7 @@ Restrict a query to rows matching a filter.
 - On PostgreSQL, `where()` takes either a callback that calls an operator on a column (`u.email.eq(...)`) or an object of field-and-value pairs that must match exactly.
 - On MongoDB, `where()` takes either an object of field-and-value pairs that must match exactly or a `MongoFieldFilter`. The object form can only test for equality. For anything else, such as greater-than, use `MongoFieldFilter` (see [MongoFieldFilter](#mongofieldfilter)).
 - Calling `where()` more than once on the same query requires a row to match all of the filters.
+- A filter value has the type you write to the field. A field whose type has parameters, such as `VarChar(50)`, reads as `Varchar<50>` but takes a plain `string` in `where()`, `first()`, `create()`, `update()`, and `upsert()`, so you need no cast. The same holds for `Char<36>` and `Numeric<10, 2>`.
 - `.eq()` is one operator of many. [Filter conditions and operators](#filter-conditions-and-operators), further down this page, lists them all for both databases.
 
 #### Options
@@ -390,7 +395,7 @@ Eagerly load a relation onto the returned rows.
 
 - Available for PostgreSQL and MongoDB, with differences noted below.
 - On PostgreSQL, `include(relationName, refineFn?)` loads both to-one and to-many relations. The optional callback receives the related rows as a collection, so you can filter, order, limit, and aggregate them. See [Refinements, aggregates, and combine](#refinements-aggregates-and-combine).
-- On MongoDB, wrap the `_id` of a related document loaded by `include()` in `String(...)` before you compare it. It comes back as an `ObjectId` object, while a document's own `_id` comes back as a hex string.
+- On MongoDB, wrap the `id` of a related document loaded by `include()` in `String(...)` before you compare it. It comes back as an `ObjectId` object, while a document's own `id` comes back as a hex string.
 - On MongoDB, `include()` loads a relation that is stored as a reference. It takes the relation name and nothing else, and TypeScript rejects a second argument.
 
 #### Options
@@ -426,7 +431,7 @@ const users = await db.orm.public.User.include('posts').where({ id: aliceId }).a
 
 ```typescript
 const posts = await db.orm.posts.include('author').where({ title: 'Hello world' }).all();
-// posts[0].author._id is an ObjectId; compare it as String(posts[0].author._id)
+// posts[0].author.id is an ObjectId; compare it as String(posts[0].author.id)
 ```
 
 For a task-oriented guide to loading related records, see [Relations and joins](/orm/fundamentals/relations-and-joins).
@@ -815,12 +820,26 @@ Lock the rows a read selects until the transaction ends.
 
 ##### Take the next queued job (PostgreSQL)
 
+This example uses a `Job` model:
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model Job {
+  id        Uuid     @id @onCreate(uuid())
+  state     String
+  createdAt DateTime @default(now())
+
+  @@map("job")
+}
+```
+
 ```typescript
 await db.transaction(async (tx) => {
   const job = await tx.orm.public.Job.where({ state: 'queued' })
     .orderBy((j) => j.createdAt.asc())
     .forUpdate({ skipLocked: true })
     .first();
+  if (job === null) return;
+  await tx.orm.public.Job.where({ id: job.id }).update({ state: 'running' });
 });
 ```
 
@@ -962,27 +981,28 @@ const doc = await db.orm.users.where({ email }).firstOrThrow();
 
 ### Custom `Collection` subclass
 
-On PostgreSQL you can subclass `Collection` to add your own methods to a model, and register the subclass when you create the client.
+On PostgreSQL and SQLite you can subclass `Collection` to add your own methods to a model, and pass the subclass to the client in the `collections` option.
 
 #### Remarks
 
-- PostgreSQL only. You cannot subclass a collection on MongoDB.
-- `db.orm` cannot use your subclass. Call the `orm(...)` function with a `collections` object to get a second accessor with the same methods as `db.orm.public`. Use that accessor for the models you subclassed, and keep `db.orm.public` for every other model. Your existing `db.orm.public.X` calls keep working.
-- `client` in the example below is what `postgres(...)` returns, the same object [Setting up the client](#setting-up-the-client) calls `db`. The example creates one so that it runs on its own.
+- PostgreSQL and SQLite. You cannot subclass a collection on MongoDB.
+- `collections` maps a model name to your class. You pass it to the function that creates your client: `postgres(...)`, `postgresServerless(...)` for serverless functions, `sqlite(...)` for SQLite, or `supabase(...)` for Supabase. Your class is then used wherever that client gives you the model: on `db.orm`, on every transaction's `tx.orm`, on each connection the serverless client opens, and on the Supabase clients that run queries as a database role, such as the one `asUser(jwt)` returns. Models you leave out keep the built-in class.
+- If the module that defines your classes needs the contract type, import only the type, `import type { Contract } from './contract.d'`, so that it does not import the module that creates the client.
 - `Collection<Contract, 'Task'>` takes two type arguments: your contract type, and the name of the model this collection is for.
 - A method that returns `this.variant('bug')` gives back a collection narrowed to the `Bug` model. It is chainable, so you finish it with `all()`, `first()`, or any other method.
-- Your methods stay available after `where()`, `orderBy()`, `limit()`, `offset()`, `include()`, `distinct()`, `distinctOn()`, and `cursor()`, because each of them returns the collection's own class. `tasks.Task.where({ title }).bugs()` compiles.
+- Your methods stay available after `where()`, `orderBy()`, `limit()`, `offset()`, `include()`, `distinct()`, `distinctOn()`, and `cursor()`, because each of them returns the collection's own class. `db.orm.public.Task.where({ title }).bugs()` compiles.
 - To override one of those chaining methods, or a method that returns rows, give the override a type parameter for the receiver and a `this` parameter of that type, and call the base method with `call`: `override limit<Self>(this: Self, n: number): Self { return super.limit.call<Self, [number], Self>(this, Math.min(n, 100)); }`.
-- `with` and `fragment` are methods of every collection, so a member of your own with either name and another signature does not compile. See [Query fragments](#query-fragments).
+- `with`, `fragment`, and `using` are members of every collection. A member of your own named `with` or `fragment` with another signature does not compile, and neither does a member of your own named `using`. See [Query fragments](#query-fragments) and [Package methods with `using`](#package-methods-with-using).
+- The type `PostgresClient<Contract>` describes a client without classes, and a client with classes fits it too. To name a client with classes, pass them as the second type argument: `PostgresClient<Contract, { Task: typeof TaskCollection }>`.
 
 #### Examples
 
 ##### Register a subclass with a domain method (PostgreSQL)
 
 ```typescript
-// postgres() comes from /runtime; Collection and orm() come from /orm-client.
 import postgres from '@prisma/orm-postgres/runtime';
-import { Collection, orm } from '@prisma/orm-postgres/orm-client';
+import { Collection } from '@prisma/orm-postgres/orm-client';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
@@ -995,18 +1015,57 @@ class TaskCollection extends Collection<Contract, 'Task'> {
   }
 }
 
-const client = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
-const runtime = await client.connect();
-
-const tasks = orm({
-  runtime,
-  context: client.context,
+const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
+  url: process.env.DATABASE_URL!,
   collections: { Task: TaskCollection },
-}).public; // .public is the PostgreSQL schema
+});
 
-const bugs = await tasks.Task.bugs().all();
-const features = await tasks.Task.features().all();
-const recentBugs = await tasks.Task.orderBy((t) => t.id.desc()).limit(10).bugs().all();
+const bugs = await db.orm.public.Task.bugs().all();
+const features = await db.orm.public.Task.features().all();
+const recentBugs = await db.orm.public.Task.orderBy((t) => t.id.desc()).limit(10).bugs().all();
+const lockedBugs = await db.transaction((tx) => tx.orm.public.Task.bugs().forUpdate().all());
+```
+
+The last line runs inside a transaction, so your method works on `tx.orm` too. `forUpdate()` locks the rows it reads with `FOR UPDATE` until the transaction ends.
+
+On SQLite, `db.orm` holds the models directly, so the same method is `db.orm.Task.bugs()`.
+
+### Package methods with `using` [#package-methods-with-using]
+
+Packages add methods to a model's collection under its `using` member. Which methods a model has depends on its fields and indexes.
+
+#### Remarks
+
+- PostgreSQL. Each method returns a collection, so you chain it with `where()`, `orderBy()`, `limit()`, and the other methods, and finish with `all()` or `first()`.
+- `@prisma/orm-postgres` adds one method for each [full-text index](/orm/contract-authoring/psl-syntax#full-text-indexes), named after the index. It takes a search query, the same kind that [`fullTextMatches()`](#full-text-search) takes, keeps the rows that match it, and orders them by relevance, best match first.
+- `@prisma/orm-extension-pgvector` adds one method for each vector field, named `<field>_nearest`. It takes a vector and orders the rows by cosine distance to it, nearest first. Pass a maximum distance as the second argument to keep only the rows within it. Without one, rows whose field is null come back last. The method exists only when the client has pgvector in `extensions`.
+- `using` is a member of every collection, so your own [collection subclass](#custom-collection-subclass) cannot have a member named `using`.
+
+#### Examples
+
+##### Search through a full-text index
+
+```prisma title="src/prisma/contract.prisma (excerpt)"
+model Post {
+  id    Uuid   @id @onCreate(uuid())
+  title String
+
+  @@fullTextIndex([title], name: "post_search")
+  @@map("post")
+}
+```
+
+```typescript
+import { websearchToTsquery } from '@prisma/orm-postgres/target/full-text';
+
+const posts = await db.orm.public.Post.using.post_search(websearchToTsquery('prisma orm')).limit(10).all();
+```
+
+##### Find the nearest vectors
+
+```typescript
+const similar = await db.orm.public.Post.using.embedding_nearest(queryEmbedding, 0.3).limit(5).all();
 ```
 
 ### Query fragments [#query-fragments]
@@ -1015,10 +1074,10 @@ A query fragment is a function from a collection to a collection, a piece of a q
 
 #### Remarks
 
-- PostgreSQL only.
+- PostgreSQL and SQLite. On SQLite, `db.orm` holds the models directly, so a fragment for one model is `db.orm.Post.fragment(body)`.
 - `db.orm.fragment(fields, body)` makes a fragment for every model that has the given fields. Declare each field with the `field` builders from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `with` does not compile.
 - `db.orm.public.Post.fragment(body)` makes a fragment for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`. Call it on the model's collection itself: on a collection with chained calls, such as `db.orm.public.Post.where(...).fragment(body)`, it throws an error whose `code` is `ORM.ARGUMENT_INVALID`, and a `where()`, `orderBy()` or `include()` before it is a compile error. Put those calls in the body instead.
-- A fragment that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. A fragment that orders returns `Ordered<C>`, so `cursor()` compiles after it.
+- A fragment made by `db.orm.fragment(fields, body)` that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. One that orders returns `Ordered<C>`, so `cursor()` compiles after it. A fragment made by `collection.fragment(body)` returns the type its body returns. A filter or order on the collection before `with()` is not recorded in that type, so `update()`, `delete()` or `cursor()` after `with()` compiles only when the body itself filters or orders.
 - `CollectionRowOf<C>` is the row type a collection returns, including the relations `include()` adds. `CollectionTypeStateOf<C>` is what the collection's type records, such as `hasWhere` and `hasOrderBy`. The types of fragments are `QueryFragment`, for a fragment run with `collection.with(...)`, `DeclaredFieldsFragment`, for what `db.orm.fragment(fields, body)` returns, and `FragmentFacts`. Import these types, `Filtered`, and `Ordered` from `@prisma/orm-postgres/orm-client`.
 - `orderByField(collection, name, direction, allowed)` returns an `orderBy()` selector for a field named in a request. `direction` is `'asc'` or `'desc'`, and `undefined` means `'asc'`. `allowed` lists the fields a request may sort by. It is required, because sorting by any field lets a request learn the value of a secret one from the order of the results. Any other `name` or `direction`, including one that is not a string, throws an error whose `code` is `ORM.ARGUMENT_INVALID` before the query runs.
 - A fragment that needs a value is a function that returns a fragment, as `ownedBy` below shows. A scope for every model with a `deletedAt` field is how you share a soft-delete filter.
@@ -1082,8 +1141,8 @@ Insert a single row and return it.
 
 - Available for PostgreSQL and MongoDB.
 - On PostgreSQL, you may leave out any field your contract gives a default, including the id. Passing an explicit id is accepted. Nullable fields can be left out too. Every other field is required.
-- On MongoDB, `_id` is the only field you can leave out. Give every other field a value, and write `null` for a field you want empty.
-- On MongoDB, `create()` returns the document as it is stored, with the `_id` the server assigned, and converts its values the same way a read does. It does not query the database again to do this. On PostgreSQL the returned row is read from the database already.
+- On MongoDB, `id`, the field stored as `_id`, is the only field you can leave out. Give every other field a value, and write `null` for a field you want empty.
+- On MongoDB, `create()` returns the document as it is stored, with the `id` the server assigned, and converts its values the same way a read does. It does not query the database again to do this. On PostgreSQL the returned row is read from the database already.
 - On MongoDB, `create()` fails with an error whose `code` is `RUNTIME.ENCODE_FAILED`, before anything is written, when a value does not fit its field: a value of the wrong type, a fraction or an out-of-range number for an `Int32` field, a value that is not one of the field's enum values, or `null` for a field that is not optional. The error names the field.
 - On PostgreSQL, `create()` can create or link related rows in the same transaction. Nest `create()` on the side that does not hold the foreign key, and `connect()` on the side that does.
 - Nested `create()` and `connect()` are not available on MongoDB.
@@ -1118,7 +1177,7 @@ const user = await db.orm.users.create({
   role: 'reader',
   address: null,
 });
-// user._id is the server-assigned id
+// user.id is the server-assigned id
 ```
 
 ##### Nested `create()` on the side without the foreign key (PostgreSQL) [#nested-create-on-a-child-owned-relation-postgresql]
@@ -1294,14 +1353,14 @@ const updated = await db.orm.public.User.where({ id: bobId }).update({ displayNa
 ```
 
 ```typescript tab="MongoDB"
-const updated = await db.orm.users.where({ _id: bobId }).update({ bio: 'Now with a bio' });
+const updated = await db.orm.users.where({ id: bobId }).update({ bio: 'Now with a bio' });
 ```
 
 ##### Field-operations callback (MongoDB)
 
 ```typescript
 const updated = await db.orm.posts
-  .where({ _id: postId })
+  .where({ id: postId })
   .update((p) => [p.title.set('Updated title'), p.content.set('Rewritten')]);
 ```
 
@@ -1432,7 +1491,7 @@ const deleted = await db.orm.public.Tag.where({ id: created.id }).delete();
 ```
 
 ```typescript tab="MongoDB"
-const deleted = await db.orm.users.where({ _id: userId }).delete();
+const deleted = await db.orm.users.where({ id: userId }).delete();
 ```
 
 For Prisma ORM 7 users, `delete()` moves the filter into `where()`:
@@ -1521,7 +1580,7 @@ Insert a row if none matches, otherwise update the existing row.
 - On MongoDB, the `update` side takes an object of field values or a field-operations callback.
 - On PostgreSQL, `upsert()` does not work on a variant stored in its own table, the same restriction as [`createAndCount()`](#createandcount). It throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`, with the message `upsert() is not supported for MTI variant "Bug" on model "Task". Use createAll() instead.`
 - There is no upsert for such a variant. Read the row with `first()`, then call `create()` or `update()`.
-- On MongoDB, the `_id` on the returned row is a hex string, not the driver's `ObjectId`.
+- On MongoDB, the `id` on the returned row is a hex string, not the driver's `ObjectId`.
 
 #### Options
 
@@ -1579,7 +1638,7 @@ const user = await db.orm.users.where({ email: 'newperson@example.com' }).upsert
 ```typescript
 const post = await db.orm.posts
   .variant('tutorial')
-  .where({ _id: tutorialId })
+  .where({ id: tutorialId })
   .upsert({
     create: {
       title: 'Should not be used',
@@ -1620,7 +1679,7 @@ The examples below use a separate `Customer` / `Order` schema, where `Order.amou
 
 ```prisma
 model Customer {
-  id      Uuid   @id @default(uuid())
+  id      Uuid   @id @onCreate(uuid())
   name    String
   segment String
 
@@ -1630,7 +1689,7 @@ model Customer {
 }
 
 model Order {
-  id         Uuid     @id @default(uuid())
+  id         Uuid     @id @onCreate(uuid())
   customerId Uuid
   channel    String
   amount     Int
@@ -1917,7 +1976,7 @@ PostgreSQL full-text search on a text field, or over a full-text index that span
 
   ```prisma title="src/prisma/contract.prisma (excerpt)"
   model Post {
-    id    Uuid   @id @default(uuid())
+    id    Uuid   @id @onCreate(uuid())
     title String
 
     @@fullTextIndex([title], name: "post_title_search", language: "german")
@@ -2081,6 +2140,7 @@ A plain object of equality matches, ANDed together.
 - Available for PostgreSQL and MongoDB.
 - Multiple keys are combined with implicit AND. A key set to `undefined` is skipped.
 - On PostgreSQL, a key set to `null` becomes an IS NULL check. On MongoDB it matches documents where the field is null and documents where the field is missing.
+- On MongoDB, what a list field matches depends on the value you give it. A whole list, such as `{ tags: ['a', 'b'] }`, matches a stored list equal to it. `{ tags: [] }` matches an empty list. `{ tags: null }` matches a document whose list is null or missing, not a list that holds a `null` item.
 - On PostgreSQL, the shorthand object cannot filter a field whose type cannot be compared for equality, such as `Json`. Using that field as a key compiles, but fails at run time with an error whose `code` is `ORM.FILTER_UNSUPPORTED`. Use the callback form, which has whatever methods that type does support. On a `Json` field those are `isNull()` and `isNotNull()`.
 
 #### Examples
@@ -2190,7 +2250,7 @@ On MongoDB, `update()`, `updateAll()`, `updateAndCount()`, and `upsert()` take a
 - For a top-level field, read it off the update builder as a property: `u.bio.set('Hello')`.
 - For a field inside an embedded object, call the update builder as a function with the dot path: `u('address.city').set('San Francisco')`. The `upsert()` callback cannot use a dot path. Given one, `upsert()` throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`. Set the whole embedded object on its top-level field instead, as in `u.address.set({ street: '1 Market St', city: 'San Francisco', zip: '94105', country: 'US' })`. Give every field of the embedded object, including the optional ones.
 
-All four methods require `.where()`, and without one they throw an error whose `code` is `ORM.WHERE_MISSING`. `.where({})` does not satisfy that rule, because an empty object adds no condition. To change every document, pass a filter that matches them all, such as `MongoFieldFilter.isNotNull('_id')`. A `_id` filter takes the hex string that a read gives you back, as the examples below show. On `upsert()`, `.where()` picks the document to update, exactly as on `update()`, and the full example is under [`upsert()`](#upsert). `update()` returns the updated document, or `null` when nothing matched, and `updateAll()` returns an [`AsyncIterableResult`](#asynciterableresult) of the changed documents. [`updateAndCount()`](#updateandcount) exists on both databases, and it returns the number of changed documents.
+All four methods require `.where()`, and without one they throw an error whose `code` is `ORM.WHERE_MISSING`. `.where({})` does not satisfy that rule, because an empty object adds no condition. To change every document, pass a filter that matches them all, such as `MongoFieldFilter.isNotNull('id')`. An `id` filter takes the hex string that a read gives you back, as the examples below show. On `upsert()`, `.where()` picks the document to update, exactly as on `update()`, and the full example is under [`upsert()`](#upsert). `update()` returns the updated document, or `null` when nothing matched, and `updateAll()` returns an [`AsyncIterableResult`](#asynciterableresult) of the changed documents. [`updateAndCount()`](#updateandcount) exists on both databases, and it returns the number of changed documents.
 
 ### Available operations (MongoDB)
 
@@ -2213,10 +2273,10 @@ Return as many operations as you want, and they are applied together, in one wri
 
 ```typescript
 const updated = await db.orm.users
-  .where({ _id: '6650f1c2a1b2c3d4e5f60002' })
+  .where({ id: '6650f1c2a1b2c3d4e5f60002' })
   .update((u) => [u.bio.set('Set via field op'), u.name.set('Bob R.')]);
 // A field inside the embedded `address` object, by dot path:
-const moved = await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60002' }).update((u) => [u('address.city').set('San Francisco')]);
+const moved = await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60002' }).update((u) => [u('address.city').set('San Francisco')]);
 ```
 
 ##### `inc()` and `mul()` (MongoDB)
@@ -2226,13 +2286,13 @@ const moved = await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60002' }).upda
 ```typescript
 const incremented = await db.orm.posts
   .variant('tutorial')
-  .where({ _id: '6650f1c2a1b2c3d4e5f60003' })
+  .where({ id: '6650f1c2a1b2c3d4e5f60003' })
   // @ts-expect-error duration is a Tutorial field, not a Post field
   .update((u) => [u.duration.inc(10)]);
 
 const multiplied = await db.orm.posts
   .variant('tutorial')
-  .where({ _id: '6650f1c2a1b2c3d4e5f60003' })
+  .where({ id: '6650f1c2a1b2c3d4e5f60003' })
   // @ts-expect-error duration is a Tutorial field, not a Post field
   .update((u) => [u.duration.mul(3)]);
 ```
@@ -2240,8 +2300,8 @@ const multiplied = await db.orm.posts
 ##### `unset()` (MongoDB)
 
 ```typescript
-const updated = await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.bio.unset()]);
-const changed = await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60002' }).updateAndCount((u) => [u.bio.unset()]);
+const updated = await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.bio.unset()]);
+const changed = await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60002' }).updateAndCount((u) => [u.bio.unset()]);
 ```
 
 ### Operations that do not exist (MongoDB)
@@ -2260,10 +2320,10 @@ The update builder implements eight operations, and only these eight: `set`, `un
 - The four lines below are separate calls because one update cannot apply two operations to the same field. One update can still change two different fields, such as pushing to `tags` and setting `bio`. The example schema has no array field, so these four lines assume `tags String[]` on `User` and will not run against the schema on this page.
 
 ```typescript
-await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.push('admin')]);
-await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.addToSet('admin')]);
-await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.pull('draft')]);
-await db.orm.users.where({ _id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.pop(1)]);
+await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.push('admin')]);
+await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.addToSet('admin')]);
+await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.pull('draft')]);
+await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.tags.pop(1)]);
 ```
 
 ## Result types

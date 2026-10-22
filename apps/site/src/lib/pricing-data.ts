@@ -114,7 +114,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
     subtitle: "Perfect for that weekend idea",
     points: [
       "<b>200,000</b> operations<span>*</span> included",
-      "<b>1.01 GB</b> storage",
+      "<b>2 GB</b> storage",
       "<b>50</b> databases",
       "No credit card required",
     ],
@@ -302,9 +302,15 @@ export const comparisonSections: Array<{
       ["Connection limit (direct)", "10", "10", "50", "100"],
       ["Connection limit (pooled)", "10", "100", "500", "1000"],
       ["Connection idle timeout", "60 minutes", "60 minutes", "60 minutes", "60 minutes"],
-      ["Auto-scaling", "✓", "✓", "✓", "✓"],
+      ["Pool mode", "transaction", "transaction", "transaction", "transaction"],
       ["Operation response size", "unlimited", "unlimited", "unlimited", "unlimited"],
-      ["Operation duration for db queries", "unlimited", "unlimited", "unlimited", "unlimited"],
+      [
+        "Operation duration for db queries",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+      ],
       ["Operation duration for interactive", "unlimited", "unlimited", "unlimited", "unlimited"],
     ],
   },
@@ -342,7 +348,7 @@ export const comparisonSections: Array<{
     title: "Platform",
     rows: [
       ["Support", "Community", "Community", "Standard", "Premium"],
-      ["Compliance", "GDPR", "GDPR", "GDPR / HIPAA", "GDPR / HIPAA / SOC2 / ISO:27001"],
+      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR / HIPAA / SOC2 / ISO:27001"],
     ],
   },
 ];
