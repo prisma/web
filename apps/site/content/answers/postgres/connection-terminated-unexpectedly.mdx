@@ -76,7 +76,7 @@ import { Pool } from "pg";
 import { attachDatabasePool } from "@vercel/functions";
 
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // your provider's pooled connection string
+  connectionString: process.env.DATABASE_URL, // must hold a pooled connection string (step 4)
   max: 5, // per instance: instances x max has to fit under the connection limit
   idleTimeoutMillis: 5_000, // close idle clients after 5 seconds
   connectionTimeoutMillis: 5_000, // fail instead of waiting forever for a connection
@@ -90,6 +90,8 @@ pool.on("error", (err) => {
 // Fluid compute: keep the instance running until the pool has closed its idle clients.
 attachDatabasePool(pool);
 ```
+
+Use whichever variable holds your provider's pooled string. Neon's Vercel integration puts it in `DATABASE_URL`. Prisma Postgres's integration puts the direct string there, so add the pooled one as `DATABASE_URL_POOLED` and read that instead, as step 4 describes.
 
 The listener only logs: the pool has already removed the broken client, and the next query opens a new connection. `pool.query()` checks a client out and returns it for you. If you check one out with `pool.connect()`, for a transaction for example, release it in a `finally` block. The node-postgres pool keeps idle clients for 10 seconds by default, and Vercel's guide suggests a short idle timeout of about 5 seconds. For the `max` value, the [too many connections guide](/postgres/too-many-connections#3-size-the-pool-for-the-number-of-instances) shows how to size the pool against your plan's limit.
 
@@ -141,7 +143,7 @@ export async function queryWithRetry(text: string, params?: unknown[]) {
 }
 ```
 
-Use it for reads and for writes that are safe to run twice, such as an upsert on a unique key. The error doesn't tell you whether the server ran the statement before the connection closed, so a retried `INSERT` can create a duplicate row. Don't retry a single statement of a transaction: the transaction ended with the connection. Run the whole transaction again from `BEGIN` on a new client, and only if it is safe to run twice, because a `COMMIT` that was on its way may have gone through.
+Use it for reads and for writes that are safe to run twice, such as an upsert on a unique key that sets fixed values. An upsert whose update changes a value relative to itself, such as `count = count + 1`, applies the change twice if the first attempt went through. The error doesn't tell you whether the server ran the statement before the connection closed, so a retried `INSERT` can create a duplicate row. Don't retry a single statement of a transaction: the transaction ended with the connection. Run the whole transaction again from `BEGIN` on a new client, and only if it is safe to run twice, because a `COMMIT` that was on its way may have gone through.
 
 ### 6. If you use Prisma ORM
 

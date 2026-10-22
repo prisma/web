@@ -83,6 +83,11 @@ export const pool = new pg.Pool({
   connectionString: url,
   connectionTimeoutMillis: 5_000,
 });
+
+// A connection that fails while idle emits "error" on the pool. Without a listener, the process can crash.
+pool.on("error", (err) => {
+  console.error("Idle Postgres client error:", err.message);
+});
 ```
 
 With libpq-based tools such as `psql`, add `connect_timeout=5` to the connection string. Compare the logged host with the one in your local `.env`. If they differ, the deployed app has another value, and that is the first thing to fix.
@@ -124,8 +129,10 @@ import net from "node:net";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  // Set DB_CHECK_KEY on the host, then open /api/db-check?key=<the same value>
-  const key = new URL(request.url).searchParams.get("key");
+  // Set DB_CHECK_KEY on the host, then send the same value in a header:
+  // curl -H "x-db-check-key: <value>" https://your-app.example.com/api/db-check
+  // A header stays out of browser history and access logs, where a query string would end up.
+  const key = request.headers.get("x-db-check-key");
   if (!process.env.DB_CHECK_KEY || key !== process.env.DB_CHECK_KEY) {
     return new Response(null, { status: 404 });
   }

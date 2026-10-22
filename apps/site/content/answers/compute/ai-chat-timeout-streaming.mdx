@@ -48,7 +48,7 @@ What the user sees, and when, points to the cause.
 | A Cloudflare `524` page | Cloudflare's proxy got no response from your server within its read timeout | Whether the response starts within 125 seconds |
 | The stream dies during a long tool call | An idle timeout between two chunks | Proxy read timeouts, such as nginx's 60-second default |
 
-To tell a buffering proxy from a route that doesn't stream, call the route with [`curl -N`](https://curl.se/docs/manpage.html#-N), which turns off curl's own output buffering. If curl prints the answer in pieces and the browser shows it all at once, look at the proxy or the client code. If curl also waits, the route itself isn't streaming.
+To tell a buffering proxy from a route that doesn't stream, call the route with [`curl -N`](https://curl.se/docs/manpage.html#-N), which turns off curl's own output buffering. If curl prints the answer in pieces and the browser shows it all at once, look at the proxy or the client code. A buffering proxy holds the response for curl too, so if curl waits, send the same request once through the proxy and once straight to the app, for example to its port on the server. If curl also waits on the direct request, the route itself isn't streaming.
 
 ## Why it happens
 
@@ -115,6 +115,8 @@ const encoder = new TextEncoder();
 export async function POST(req: Request) {
   const { input }: { input: string } = await req.json();
   let closed = false;
+  // Stops the model call when the client cancels the stream or the request is aborted
+  const abort = new AbortController();
 
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -130,7 +132,7 @@ export async function POST(req: Request) {
       try {
         const stream = await client.responses.create(
           { model: "gpt-5.5", input, stream: true },
-          { signal: req.signal },
+          { signal: AbortSignal.any([req.signal, abort.signal]) },
         );
         for await (const event of stream) {
           if (event.type === "response.output_text.delta") {
@@ -148,6 +150,7 @@ export async function POST(req: Request) {
     },
     cancel() {
       closed = true;
+      abort.abort();
     },
   });
 

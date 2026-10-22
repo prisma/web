@@ -67,21 +67,24 @@ So a connection string that works in the app can fail in the migration step for 
 
 ### 1. Test the connection from the step that fails
 
-A test from your laptop tells you little about the runner. Add a temporary step right before the migration, in the same job or container, and print the parts of the URL that aren't secret:
+A test from your laptop tells you little about the runner. Add a temporary step right before the migration, in the same job or container. Test the URL the migration itself reads: `DATABASE_URL`, or another variable such as `DIRECT_URL` if your migration config names one ([step 2](#2-make-sure-the-step-gets-the-right-variable)). The app's URL can work while the migration's points at a different host. Then print the parts of the URL that aren't secret:
 
 ```bash
-DB_HOST=$(node -e 'console.log(new URL(process.env.DATABASE_URL).hostname)')
-DB_PORT=$(node -e 'console.log(new URL(process.env.DATABASE_URL).port || 5432)')
-node -e 'const u = new URL(process.env.DATABASE_URL); console.log(u.hostname, u.port || "5432", u.searchParams.get("sslmode"))'
+export MIGRATION_URL="${DIRECT_URL:-$DATABASE_URL}"  # the URL your migration reads
+DB_HOST=$(node -e 'console.log(new URL(process.env.MIGRATION_URL).hostname)')
+DB_PORT=$(node -e 'console.log(new URL(process.env.MIGRATION_URL).port || 5432)')
+node -e 'const u = new URL(process.env.MIGRATION_URL); console.log(u.hostname, u.port || "5432", u.searchParams.get("sslmode"))'
 ```
 
 Then, in the same step, check name resolution, the TCP port and a real login, in that order:
 
 ```bash
-getent ahosts "$DB_HOST"            # Linux: lists IPv4 and IPv6 addresses, or nothing
-nc -vz -w 5 "$DB_HOST" "$DB_PORT"   # is the port reachable from here?
-psql "$DATABASE_URL" -c 'select 1'  # login and TLS, if psql is installed
+getent --no-addrconfig ahosts "$DB_HOST"  # Linux: lists IPv4 and IPv6 addresses, or nothing
+nc -vz -w 5 "$DB_HOST" "$DB_PORT"         # is the port reachable from here?
+psql "$MIGRATION_URL" -c 'select 1'      # login and TLS, if psql is installed
 ```
+
+Without `--no-addrconfig`, `getent` leaves out IPv6 addresses on a runner that has no IPv6 address of its own, which hides the IPv6-only case in step 5. The option needs [glibc 2.37](https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=NEWS;hb=HEAD) or later, as on Ubuntu 24.04; on an older system, `dig +short AAAA "$DB_HOST"` shows the IPv6 records instead.
 
 `psql` accepts only libpq's own [connection parameters](https://www.postgresql.org/docs/current/libpq-connect.html) in a URL and stops with `invalid URI query parameter` on any other. Prisma's own parameters, such as `schema`, `connection_limit` or `pgbouncer`, trigger it, so remove them from the copy you test and keep `sslmode`.
 
@@ -90,7 +93,7 @@ If `psql` isn't available, the same login check with node-postgres from your pro
 ```bash
 node -e '
 const { Client } = require("pg");
-const c = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 10000 });
+const c = new Client({ connectionString: process.env.MIGRATION_URL, connectionTimeoutMillis: 10000 });
 c.connect()
   .then(() => { console.log("connected"); return c.end(); })
   .catch((e) => { console.error(e.code ?? "", e.message); process.exit(1); });
