@@ -60,6 +60,8 @@ For a new TypeScript business app, Prisma Compute keeps the server, database and
 
 For a new app, complete the [Next.js setup guide](/docs/guides/frameworks/nextjs). For an existing app, follow [Port an existing app](/docs/composer/porting-an-app) to add `module.ts` and `service.ts` before using the deploy commands below. These TypeScript configuration files tell Composer which server and database to create. Composer is the deployment framework included in the Prisma CLI. Keep `output: "standalone"` in `next.config.ts` so Next.js builds the server files Compute runs.
 
+Before the first deployment, follow [Service input](/docs/composer/service-input) to declare the billing configuration in `service.ts`, bind its values in `module.ts` and read them on the server through `service.input()`. Give the input schema a billing-disabled mode that permits missing Stripe secrets. In that mode, the app must avoid initializing Stripe and reject checkout and webhook processing. Disabling a checkout button alone does not change configuration validation. Start a new environment in this mode so it can receive its URL before a webhook signing secret exists.
+
 With that configuration in place, choose a [supported region](/docs/cli/deploy) near the database and users. The following shell example selects `us-east-1`; substitute the region you chose before the first deploy. Then sign in, build and deploy a separate test environment:
 
 ```sh
@@ -71,7 +73,9 @@ npx prisma@latest deploy module.ts --stage review
 
 The deploy prints the created service URL and database identifiers; their values depend on your account. `review` is the name of this [isolated deployment stage](/docs/composer/deploying#production-and-stages). Databases created by that module belong to the stage. Check those identifiers before testing.
 
-Before enabling billing, complete the secret-configuration steps in [Service input](/docs/composer/service-input). Add fields for the two credentials to the service's configuration in `service.ts`. In `module.ts`, use `envSecret(...)` to name the platform variable supplying each field; server code reads the resulting configuration through `service.input()`. The guide shows those file edits and how a first deployment copies missing stage variables from the deploying shell. The API key authorizes calls to Stripe; the endpoint signing secret verifies incoming webhooks. Give test and production their own values, and update existing platform variables through the environment-variable workflow rather than expecting a changed shell value to replace them. A named stage does not change a manually supplied database URL or payment credential on its own.
+Register a Stripe test webhook endpoint at your handler's path on the review URL. Bind the test API key and that endpoint's signing secret with `envSecret(...)`, then switch to billing-enabled configuration that requires both secrets. The API key authorizes calls to Stripe; the signing secret verifies incoming webhooks. The Service input guide explains how a missing stage variable is seeded from the deploying shell. Give test and production their own values, and update existing platform variables through the environment-variable workflow rather than expecting a changed shell value to replace them. A named stage does not change a manually supplied database URL or payment credential. With the test secrets supplied, rerun `npm run build` and `npx prisma@latest deploy module.ts --stage review` from the app directory before billing tests.
+
+
 
 ### 2. Apply the schema and define event processing
 
@@ -89,7 +93,7 @@ Inspect delivery results in Stripe and application logs at the same time. Log th
 
 ### 4. Release production deliberately
 
-After your billing tests pass in the review deployment, apply the production schema and build and deploy the approved commit with production credentials and configuration. Omitting `--stage review` targets production. Register the production webhook URL in Stripe and configure its own signing secret. Verify the URL, signature rejection and the database target before enabling live checkout.
+After your billing tests pass in the review deployment, release the approved commit with production credentials and configuration. For an existing production database, apply its reviewed migrations before the app release. For a new database using `rawPostgres()` or a manually supplied URL, provision it with live checkout disabled, obtain its direct connection and apply migrations before accepting customer traffic. A configured `postgres()` data contract can apply migrations during deployment. Build before deploying; omitting `--stage review` targets production. Register the production webhook URL in Stripe and configure its own signing secret. If production needs its first URL, use the billing-disabled bootstrap mode described in step 1: its schema must permit absent Stripe secrets and its code must avoid initializing billing. After registering the endpoint, save the production secrets, switch to the billing-enabled configuration, rebuild and redeploy before accepting payments. Verify the URL, signature rejection and the database target before enabling live checkout.
 
 Choose a [backup plan](/docs/postgres/database/backups), rehearse restoration and define how to reconcile restored subscription records with Stripe. A database snapshot can predate a payment or cancellation. Review [hosting spending controls](/compute/typescript-hosting-spending-controls) separately from the subscription prices you charge customers.
 

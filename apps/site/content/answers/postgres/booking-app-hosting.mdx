@@ -67,7 +67,7 @@ npm run build
 npx prisma@latest deploy module.ts --stage review
 ```
 
-The deploy prints the service URL and database identifiers; their values depend on your account. `review` names an [isolated deployment stage](/docs/composer/deploying#production-and-stages). Its declared database is separate from production. Verify any manually supplied database URLs too; a stage name does not change their values.
+The deploy prints the service URL and database identifiers; their values depend on your account. `review` names an [isolated deployment stage](/docs/composer/deploying#production-and-stages). Its declared database is separate from production. Verify any manually supplied database URLs too; a stage name does not change their values. Before acceptance tests, ensure the app's booking migrations have been applied to the review database. With `rawPostgres()` or a manually supplied URL, run that migration workflow through the review database's direct connection; deploy does not run it for you. A configured [`postgres()` data contract](/docs/composer/databases) can apply migrations during deployment. The development database's temporary-table demonstration below does not prepare the review database.
 
 Use fictional customers and separate credentials. Normal app queries use the pooled connection; this session-based SQL demonstration needs a [direct connection](/docs/postgres/database/connection-pooling) to a development database. Do not run examples against live reservations.
 
@@ -118,7 +118,7 @@ If a request times out after a commit, the browser cannot tell whether it succee
 
 In the implemented app's test suite, send two simultaneous booking requests for the same slot in a shared test table and verify that only one succeeds. This is an application acceptance test, separate from the single-session temporary-table demonstration above. Test unauthorized cancellation, a repeated request, a failed notification and rescheduling across the business's relevant time zones. Reload from a second device to check that it sees the same saved state.
 
-After review, apply the production schema and build and deploy the approved commit with production credentials and configuration; omit `--stage review` to target production. Verify the production URL and a dedicated test account before opening bookings. Choose a [backup plan](/docs/postgres/database/backups), rehearse restoration into a separate database and decide how to reconstruct bookings made after the latest snapshot.
+After review, build and deploy the approved commit with production credentials and configuration; omit `--stage review` to target production. If the production database already exists, apply its reviewed migrations before releasing the app. For a new database using `rawPostgres()` or a manually supplied URL, provision it with public bookings disabled, obtain its direct connection and apply migrations before accepting customer traffic. A configured `postgres()` data contract can apply migrations during deployment. Verify the production URL and a dedicated test account before opening bookings. Choose a [backup plan](/docs/postgres/database/backups), rehearse restoration into a separate database and decide how to reconstruct bookings made after the latest snapshot.
 
 ## When should I choose another approach?
 
