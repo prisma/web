@@ -96,28 +96,7 @@ The same order holds for a statement that returns rows and one that only reports
 
 A transaction runs only the three lifecycle hooks: `activityStarted` when it opens, `activityEnded` when its `commit()` or `rollback()` settles, and `activityFinalized` after that. A statement sent inside `db.transaction(...)` is beneath the transaction, so `ctx.inTransaction()` is `true` in its hooks. `ctx.parent` is the context of the activity directly above it: the transaction, or the ORM call that sent the statement.
 
-### ORM calls [#orm-calls]
-
-On a SQL database, each ORM method that runs a query, such as `.all()`, `.first()`, `.create()`, `.updateAll()` or `.aggregate(...)`, runs as one activity whose `activity.kind` is `'orm-call'`. Each run of a [prepared statement](/orm/reference/transactions-and-runtime#dbpreparedeclaration-callback) built from an ORM query is one too. The SQL query builder's `db.query(plan)` and `db.execute(plan)` are not ORM calls: they send one statement, which is its own activity.
-
-- **It opens** when the call starts, before it sends anything. For `.all()`, that is when your code starts reading the rows, with `await` or `for await`.
-- **The statements it sends are beneath it.** A nested create, for example, sends several statements, and all of them are children of the one call. A call that needs a transaction of its own opens it beneath the call. A call made inside `db.transaction(...)` is a child of that transaction.
-- **It ends** when the call has its result, or fails. For `.all()` read with `for await`, it ends when your code reads the last row, stops early, or the read fails.
-- **It carries** `activity.id`, `activity.annotations` and `activity.contentHash()`. The annotations are the ones you attached with `meta.annotate(...)`, and the statements the call sends carry none of them, so read them in `activityStarted` from the `orm-call` activity. An ORM call has no `plan` and no `returns`.
-
-Use `activity.contentHash()` when you need a key for an ORM read, for example to cache it: the cache uses it for an annotated ORM read that has no `key`. It returns a promise of a digest of the call. For a read, the digest covers the method and the first statement the call sends, with its parameter values. For a write, it covers only the method and the model, so two writes to the same model get the same digest.
-
-A call runs `activityStarted`, then `intercept.onActivity`, then the hooks of each statement it sends, then `activityEnded` and `activityFinalized`. In `activityEnded`:
-
-- `result.kind` is `'orm-call'`.
-- `result.outcome` is `'succeeded'`, `'failed'` or `'stopped'`.
-- `result.source` is `'client'`, or `'middleware'` when `intercept.onActivity` answered the call.
-- `result.result` is the value the method returns. A call that streams rows, such as `.all()`, keeps them in `result.result` only when it carries an annotation.
-- There is no `latencyMs`. To time a call, keep `ctx.now()` in `ctx.state(key)` in `activityStarted`.
-
-Outside a transaction, the call is finalized right after it ends. The outcome is `'committed'` when the call succeeded and everything beneath it was finalized `'committed'`, otherwise `'unknown'`.
-
-Because one hook covers both kinds of statement, a check you want on reads and writes alike goes in `beforeEncode`, once:
+Because the same hooks run for a statement that returns rows and one that reports a count, a check you want on reads and writes alike goes in `beforeEncode`, once:
 
 ```ts title="src/prisma/no-delete-all.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -139,6 +118,27 @@ export function noDeleteAll(): SqlMiddleware {
 <ConceptAnimation name="middleware-lifecycle" />
 
 At each step Prisma ORM calls that hook on every middleware you registered, and it waits for each one to finish before the statement moves on, so a hook can be `async` and a slow `activityEnded` delays the `await` in your own code.
+
+### ORM calls [#orm-calls]
+
+On a SQL database, each ORM method that runs a query, such as `.all()`, `.first()`, `.create()`, `.updateAll()` or `.aggregate(...)`, runs as one activity whose `activity.kind` is `'orm-call'`. Each run of a [prepared statement](/orm/reference/transactions-and-runtime#dbpreparedeclaration-callback) built from an ORM query is one too. The SQL query builder's `db.query(plan)` and `db.execute(plan)` are not ORM calls: they send one statement, which is its own activity.
+
+- **It opens** when the call starts, before it sends anything. For `.all()`, that is when your code starts reading the rows, with `await` or `for await`.
+- **The statements it sends are beneath it.** A nested create, for example, sends several statements, and all of them are children of the one call. A call that needs a transaction of its own opens it beneath the call. A call made inside `db.transaction(...)` is a child of that transaction.
+- **It ends** when the call has its result, or fails. For `.all()` read with `for await`, it ends when your code reads the last row, stops early, or the read fails.
+- **It carries** `activity.id`, `activity.annotations` and `activity.contentHash()`. The annotations are the ones you attached with `meta.annotate(...)`, and the statements the call sends carry none of them, so read them in `activityStarted` from the `orm-call` activity. An ORM call has no `plan` and no `returns`.
+
+Use `activity.contentHash()` when you need a key for an ORM read, for example to cache it: the cache uses it for an annotated ORM read that has no `key`. It returns a promise of a digest of the call. For a read, the digest covers the method and the first statement the call sends, with its parameter values. For a write, it covers only the method and the model, because a write's statements depend on the results of earlier ones. So two writes to the same model get the same digest.
+
+A call runs `activityStarted`, then `intercept.onActivity`, then the hooks of each statement it sends, then `activityEnded` and `activityFinalized`. In `activityEnded`:
+
+- `result.kind` is `'orm-call'`.
+- `result.outcome` is `'succeeded'`, `'failed'` or `'stopped'`.
+- `result.source` is `'client'`, or `'middleware'` when `intercept.onActivity` answered the call.
+- `result.result` is the value the method returns. A call that streams rows, such as `.all()`, keeps them in `result.result` only when it carries an annotation, so an unannotated read does not hold all its rows in memory.
+- There is no `latencyMs`. To time a call, keep `ctx.now()` in `ctx.state(key)` in `activityStarted`.
+
+Outside a transaction, the call is finalized right after it ends: its [`activityFinalized`](#activityfinalized-act-once-the-effects-are-final) hooks run, once its effects are final. The outcome is `'committed'` when the call succeeded and everything beneath it was finalized `'committed'`, otherwise `'unknown'`.
 
 ### The order your middleware runs in
 

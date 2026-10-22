@@ -190,7 +190,7 @@ Each function makes a value for the field's type: `uuid()` works on `String`, `V
 
 An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The value a function writes must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `VarChar(5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a bare `VarChar` has no limit.
 
-Prisma ORM 8 has no `@updatedAt`. Write `temporal.updatedAt()` where the field's type would go. The [named type](#named-types) `temporal.UpdatedAt` gives the same column, so use whichever form matches the rest of your schema. Write `@onCreate(now()) @onUpdate(now())` yourself, as `updatedAt` above does, only when you want a different type or a precision:
+Prisma ORM 8 has no `@updatedAt`. To replace `@updatedAt`, write `updatedAt temporal.updatedAt()`:
 
 ```prisma
 model Post {
@@ -201,6 +201,8 @@ model Post {
 Prisma ORM sets the field to the current time on every create and update, and you can still set it yourself on a write. `temporal.createdAt()` sets its field once, when the row is created. You do not import or declare `temporal`: it is a group of timestamp field types built into the contract syntax. On PostgreSQL the column is `timestamptz`.
 
 Both take the time from your application's clock, not from the database, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `DateTime @default(now())` instead.
+
+`temporal.UpdatedAt`, without parentheses, is the same column written as a [named type](#named-types). Write `@onCreate(now()) @onUpdate(now())` yourself only for another type or a precision. The example at the top of this section writes them on a `DateTime` field only to show the attributes.
 
 `temporal.createdAt()` and `temporal.updatedAt()` need a global `Temporal` for writes as well as reads. When your Node.js version has none, install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` at the top of `src/prisma/db.ts`. `temporal.createdAtJsDate()` and `temporal.updatedAtJsDate()` work the same way, but with a JavaScript `Date` in place of a `Temporal` value.
 
@@ -386,7 +388,7 @@ types {
 
 Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. You do not have to name a type: a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Numeric(10, 2)`, `Uuid`, or `Timestamptz`.
 
-A named type is a type alias: shorthand in the contract source only, so `contract.json` stores a `varchar(35)` column and no `ShortName`.
+A named type is shorthand: the contract stores the column type, not the name.
 
 A named type can also set `@default`, `@onCreate` and `@onUpdate`, and every field typed by it gets them. In this example, `TimestampString(3)` is a PostgreSQL `timestamp(3)` column that your code reads as a string:
 
@@ -408,7 +410,7 @@ model Post {
 - A field may add any attribute its named type does not set. Here `updatedAt` adds `@default(now())`, a database default, so a row inserted outside Prisma ORM also gets a time. A field that repeats an attribute its named type already sets is refused with `PSL_DUPLICATE_ATTRIBUTE`.
 - A named type is built on a type or an enum, not on another named type.
 
-Prisma ORM provides two named types you do not declare: `temporal.CreatedAt`, set to the current time on create, and `temporal.UpdatedAt`, set on create and on every update. Write them without parentheses, as `createdAt` does above. They store what `temporal.createdAt()` and `temporal.updatedAt()` store: a `timestamptz` column on PostgreSQL. PostgreSQL also has `temporal.CreatedAtString` and `temporal.UpdatedAtString`, which give your code the time as a string, and `temporal.CreatedAtJsDate` and `temporal.UpdatedAtJsDate`, which give it a JavaScript `Date`. They take no arguments; for a precision, write the type and the attributes yourself, as `UpdatedAt` above does.
+Prisma ORM provides two named types you do not declare: `temporal.CreatedAt`, set to the current time on create, and `temporal.UpdatedAt`, set on create and on every update. Write them without parentheses, as `createdAt` does above. They are the named-type form of `temporal.createdAt()` and `temporal.updatedAt()`, and store the same column: a `timestamptz` column on PostgreSQL. PostgreSQL also has `temporal.CreatedAtString` and `temporal.UpdatedAtString`, which give your code the time as a string, and `temporal.CreatedAtJsDate` and `temporal.UpdatedAtJsDate`, which give it a JavaScript `Date`. They take no arguments; for a precision, write the type and the attributes yourself, as `UpdatedAt` above does.
 
 Three types cover big integers, and they differ in what your code receives:
 
@@ -452,9 +454,17 @@ enum Level {
 }
 ```
 
-A quoted member on a type that does not take text, such as `Unknown = "NaN"` under `mongo/double@1`, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`, and the message says what to write. A `mongo/int32@1` or `mongo/int64@1` member written with a fraction, such as `1.0`, is refused too: write `1`. A value of the right kind that the type cannot store exactly, such as a Decimal128 value that would be rounded, is refused with `PSL_VALUE_REFUSED`. Since `8.0.0-rc.20`, MongoDB reads members this way; before, a quoted member was read as JSON, so `"NaN"` was a number. A Decimal128 value in `contract.json` is written without leading zeros, and a contract emitted before `8.0.0-rc.20` with a value such as `"007.5"` is refused when it loads: run `npx prisma contract emit` again. You can declare an enum on an Int64, Date, Decimal128, Binary or ObjectId type, or a Double enum with a `NaN` or infinite member, such as `Ratio` above. But a field cannot use it: Prisma ORM writes a validator for each collection, and the validator cannot list those members.
+These members are refused:
 
-Some types cannot hold enum members, so JSON (`pg/json@1` and `pg/jsonb@1`), byte strings (`pg/bytea@1`), text-search queries (`pg/tsquery@1`), time with a time zone (`pg/timetz@1`), vectors (`pg/vector@1`), and geometries (`pg/geometry@1`) are refused in `@@type`: use a text enum instead. For a PostgreSQL `enum` type, use a `native_enum` block, not `@@type("pg/enum@1")`.
+- A quoted member on a type that does not take text, such as `Unknown = "NaN"` under `mongo/double@1`. The error is `PSL_VALUE_TYPE_INCOMPATIBLE`, and its message says what to write.
+- A `mongo/int32@1` or `mongo/int64@1` member written with a fraction, such as `1.0`. Write `1`.
+- A `mongo/decimal128@1` member that a Decimal128 would round, such as one with more than 34 significant digits. It is read as a Double, so the error is `PSL_VALUE_TYPE_INCOMPATIBLE`.
+
+Do not use an enum on an Int64, Date, Decimal128, Binary or ObjectId type, or a Double enum with a `NaN` or infinite member, such as `Ratio` above. You can declare it, but it is refused when a collection Prisma ORM manages uses it, because the validator Prisma ORM writes for each collection cannot list those members.
+
+Before `8.0.0-rc.20`, MongoDB read a quoted member as JSON, so `"NaN"` was a number. A contract emitted before `8.0.0-rc.20` with a Decimal128 member written with leading zeros, such as `"007.5"`, is refused when it loads: run `npx prisma contract emit` again.
+
+On PostgreSQL, some types cannot hold enum members. JSON (`pg/json@1` and `pg/jsonb@1`), byte strings (`pg/bytea@1`), text-search queries (`pg/tsquery@1`), time with a time zone (`pg/timetz@1`), vectors (`pg/vector@1`), and geometries (`pg/geometry@1`) are refused in `@@type`: use a text enum instead. For a PostgreSQL `enum` type, use a `native_enum` block, not `@@type("pg/enum@1")`.
 
 `@@type` is optional, and when you leave it out Prisma ORM picks the type from the member values: bare member names and string values give the database's text type, and integer values give its integer type. Give every member the same kind of value, because a mix of string and integer values throws an error whose `code` is `PSL_ENUM_CANNOT_INFER_TYPE`. A `@default` names the member, as in `priority Priority @default(Low)`, even where the member stores a different value.
 

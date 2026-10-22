@@ -224,7 +224,7 @@ Prisma ORM runs every statement, every transaction and, on SQL databases, every 
 | `activityEnded(activity, result, ctx)` | every activity | After the activity finishes, whether it succeeded or failed | Log `result.outcome`, `result.latencyMs`, `result.rowCount` or `result.stats`, `result.source` |
 | `activityFinalized(activity, result, ctx)` | every activity | Once its effects are final: after its transaction commits or rolls back, or right after it ends outside a transaction | Act on `result.outcome`, which is `'committed'`, `'rolled-back'`, or `'unknown'`, for example publish an event only for a committed write |
 
-Every hook receives `ctx`, written last above, which a hook can leave out of its parameter list when it does not use it. `activity.kind` is `'statement'`, `'transaction'` or `'orm-call'`, so a lifecycle hook that only cares about statements checks it first. [ORM calls](/orm/middleware/how-middleware-works#orm-calls) explains what an `orm-call` activity carries. For a statement, `activity.returns` is `'rows'` or `'stats'`, and `activity.plan` is the plan the caller sent. Throwing from `onRow` fails the call with your error, and the rows still to come are not passed on to your code.
+Every hook receives `ctx`, written last above, which a hook can leave out of its parameter list when it does not use it. `activity.kind` is `'statement'`, `'transaction'` or `'orm-call'`, so a lifecycle hook that only cares about statements checks it first. [ORM calls](/orm/middleware/how-middleware-works#orm-calls) explains what an `orm-call` activity carries. For a statement, `activity.returns` is `'rows'` or `'stats'`, and `activity.plan` is the plan the caller sent. Throwing from `onRow` fails the call with your error. An awaited `.all()` or `.first()` gets no rows at all, not even the rows read before the throw.
 
 [How middleware works](/orm/middleware/how-middleware-works#the-two-lifecycles) walks through the order with an animation.
 
@@ -380,7 +380,7 @@ Return `undefined` and the query carries on to the database as usual. When sever
 
 `intercept.onActivity` answers a whole [ORM call](/orm/middleware/how-middleware-works#orm-calls), such as one `.first()`, instead of one statement. Return `{ result }` and the method returns `result` without sending any statement. Return `undefined` and the call runs as usual.
 
-An ORM call carries no plan, so a middleware picks the calls it answers by their annotations. The fixture below defines an annotation with `defineAnnotation`, and answers each call that carries it with the value registered under the annotation's name. `defineAnnotation` takes two calls: the first sets the type of the annotation's value (here `string`), and the second takes the options, so TypeScript can work out the kinds in `applicableTo` from what you write.
+An ORM call carries no plan, so a middleware picks the calls it answers by their annotations. The fixture below defines an annotation with `defineAnnotation`. The annotation's value is a name, such as `'current-user'`, and the fixture answers each call that carries it with the result you registered under that name. Note the two calls: `defineAnnotation<string>()({ ... })`.
 
 ```ts title="src/prisma/orm-call-fixtures.ts"
 import { defineAnnotation } from '@prisma/orm-postgres/components/runtime';

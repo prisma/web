@@ -103,7 +103,7 @@ The methods below write both checks for you; you write them yourself only in `ra
 
 ## PostgreSQL operations
 
-Each operation is a method you call on the migration, `this.<name>({ ... })`, with one options object. Every method takes `schema`. For `createSchema`, `renameSchema` and `dropSchema` it is the schema to create, rename or drop. For every other method it is the PostgreSQL schema the table is in, which is `public` unless your contract sets another. Names are quoted for you: pass `user`, not `"user"`. Pass the table name, which is the model name exactly as written, such as `User`, unless the model sets `@@map`: a model with `@@map("user")` has the table `user`. Runs is the SQL for this page's example names.
+Each operation is a method you call on the migration, `this.<name>({ ... })`, with one options object. Every method takes `schema`; a `schema?` in the tables below means you may leave it out. For `createSchema`, `renameSchema` and `dropSchema` it is the schema to create, rename or drop. For every other method it is the PostgreSQL schema the table is in, which is `public` unless your contract sets another. Names are quoted for you: pass `user`, not `"user"`. Pass the table name, which is the model name exactly as written, such as `User`, unless the model sets `@@map`: a model with `@@map("user")` has the table `user`. Runs is the SQL for this page's example names.
 
 ### Schemas and tables
 
@@ -400,7 +400,7 @@ A step's `sql` can use `$1`, `$2`, and so on, with the values in `params`. A che
 
 Write the precheck so that `true` means "go ahead", as in "column `bio` exists" above. Write the postcheck so that `true` means "the change is there", as in "column `biography` exists". Remember the [order](#operation-classes-and-checks): the postcheck runs first, and if it already passes the operation is skipped. An empty `precheck` always lets the statements run. An empty `postcheck` never passes beforehand, so the operation runs on every `db migrate` that reaches it, including a second run after a failure.
 
-A check that asks whether one object exists can say so in `expectation`: `{ expects: 'absent' | 'present', object }`, where `object` names the object as a reader would, such as `'column "biography" on "user"'`. When the check fails, the error then says what the database already has or lacks, such as `the database already has column "biography" on "user"`, in place of `That check failed on this database.` `object` is only display text. Leave `expectation` out of a check about data or about several objects at once, such as a check that a column holds no `NULL` values. Adding `expectation` changes the migration's hash, so add it only to a migration that no database has applied yet, and then run `node migration.ts` to write the migration again.
+A check that asks whether one object exists can say so in `expectation`: `{ expects: 'absent' | 'present', object }`, where `object` names the object as a reader would, such as `'column "biography" on "user"'`. When the check fails, the error then says what the database already has or lacks, such as `the database already has column "biography" on "user"`, in place of `That check failed on this database.` `object` is only display text. Leave `expectation` out of a check about data or about several objects at once, such as a check that a column holds no `NULL` values. Add it only to a migration no database has applied yet. Then run `node migration.ts` again, which rewrites `ops.json` and `migration.json`.
 
 ```ts
 postcheck: [

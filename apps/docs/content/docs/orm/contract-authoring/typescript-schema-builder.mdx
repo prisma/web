@@ -218,7 +218,17 @@ const Post = model("Post", {
 
 A field may have both: `field.dateTime().default(now()).onCreate(gen.now())` takes its time from your app when Prisma ORM creates the row, and from the database for other inserts.
 
-`.onUpdate(...)` alone generates nothing on create. If a field that is not `.optional()` has `.onUpdate(...)` and no `.onCreate(...)` or `.default(...)`, you must pass a value for it in ORM `create` and `upsert`. The same holds for a temporal helper that sets only its update time. A helper such as `field.temporal.timestamptz(...)` takes a precision, then `"now"` to set the time on create, then `"now"` to set it on update, so `field.temporal.timestamptz(undefined, undefined, "now")` sets the time on update only. To have the field generated on create too, add `.onCreate(...)`.
+`.onUpdate(...)` alone generates nothing on create. If a field that is not `.optional()` has `.onUpdate(...)` and no `.onCreate(...)` or `.default(...)`, you must pass a value for it in ORM `create` and `upsert`. The same holds for a temporal helper that sets only its update time, such as:
+
+```typescript
+field.temporal.timestamptz(
+  undefined, // precision
+  undefined, // on create: nothing
+  "now", // on update: the current time
+);
+```
+
+To have the field generated on create too, add `.onCreate(...)`.
 
 For a key the database generates, chain `.default(...)` and `.id()` on a field. An integer that counts up is `field.int().default(autoincrement()).id()`, and a UUID is ``field.uuidNative().default(sql`gen_random_uuid()`).id()``. Import `autoincrement` and `sql` from `@prisma/orm-postgres/contract-builder`.
 
@@ -253,11 +263,16 @@ export const contract = defineContract({}, ({ field, model, type, gen }) => {
 });
 ```
 
-Each column stores the alias's type itself, as it does in PSL, so `contract.json` has no `Slug`. Chaining a generator the constant already sets, as in `UpdatedAt.onUpdate(gen.now())`, throws `CONTRACT.DEFAULT_INVALID` with reason `generator-phase-set-twice`.
+Each column stores the alias's type itself, as it does in PSL, so `contract.json` has no `Slug`. Chaining a generator the constant already sets, as in `UpdatedAt.onUpdate(gen.now())`, throws `CONTRACT.DEFAULT_INVALID` with reason `generator-phase-set-twice` (you called `.onCreate()` or `.onUpdate()` twice).
 
 :::note[Upgrading from before `8.0.0-rc.20`]
 
-A contract that returned a `types` map and used `field.namedType(types.X)` now fails with `CONTRACT.TYPES_KEY_REMOVED`. Replace each entry with a constant `const X = field.column(type.Y(...))`, use the constant as the field, and remove `types` from the returned object. Then, from the project root, run `node <guide>/scripts/expand-type-aliases/expand-type-aliases.ts`, where `<guide>` is a local copy of the [upgrade recipe](https://github.com/prisma/orm/blob/v8.0.0-rc.20/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.19-to-8.0.0-rc.20/) folder. The script rewrites the contracts stored in `migrations/`. Then run `npx prisma contract emit`, and run [`npx prisma db sign`](/cli/db-sign) against every database. The storage hash changes, but the database does not.
+A contract that returned a `types` map and used `field.namedType(types.X)` now fails with `CONTRACT.TYPES_KEY_REMOVED`. Replace each entry with a constant `const X = field.column(type.Y(...))`, use the constant as the field, and remove `types` from the returned object. Then rewrite the contracts stored in `migrations/`:
+
+1. Download or clone the [upgrade recipe](https://github.com/prisma/orm/blob/v8.0.0-rc.20/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.19-to-8.0.0-rc.20/) folder, `skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.19-to-8.0.0-rc.20/` in the prisma/orm repository at tag `v8.0.0-rc.20`. Below, `<guide>` is the path of your copy.
+2. From the project root, run `node <guide>/scripts/expand-type-aliases/expand-type-aliases.ts`. Node.js 24 or later runs the TypeScript file directly.
+3. Run `npx prisma contract emit`.
+4. Run [`npx prisma db sign --db <url>`](/cli/db-sign) once for each database, with that database's connection string. The storage hash changes, but the database does not.
 
 :::
 
