@@ -49,7 +49,7 @@ Writes and publishes a page that answers one developer question with sourced, ne
 3. It checks whether a prisma.io page already answers the question. If one does, it refreshes that page instead.
 4. It picks the page type and URL (`/compare/...`, `/postgres/...`, `/compute/...`, `/orm/...`). `/blog` is used only if the operator explicitly approves it. It writes the page with `content-seo-geo` and runs the adversarial review from `content-write-blog`.
 5. In the same pull request it adds what makes the page discoverable: the sitemap entry, links within the comparison series and from related pages, the section index linked from the footer, and `llms.txt`. IndexNow then runs by itself after the production deploy.
-6. After the page is live, it marks the tracker row Published, adds the URL to the team's page monitoring, and checks crawler logs about three days later.
+6. After the page is live, it marks the tracker row Published, adds the URL to the team's page monitoring, confirms the IndexNow run and asks for indexing in Google Search Console and Bing Webmaster Tools, and checks crawler logs about three days later (Step 8 of the skill).
 
 ## content-create-hero-image
 
