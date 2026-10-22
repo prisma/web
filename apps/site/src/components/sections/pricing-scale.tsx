@@ -65,6 +65,14 @@ type Scenario = {
   prisma: string[];
 };
 
+// The Neon + Vercel cards assume paid Neon plans (Launch or Scale), which
+// include 500 GB of public network transfer per project, then $0.10/GB
+// (neon.com/pricing, checked 2026-10-22). Those terms cover the database
+// only, so the line says "Database data transfer"; Vercel bills its own data
+// transfer separately (vercel.com/docs/pricing). Neon added from the Vercel
+// Marketplace is billed through the Vercel account
+// (vercel.com/docs/marketplace-storage), so the billing line names the two
+// vendors rather than two bills.
 const SCENARIOS: Scenario[] = [
   {
     tab: "Side project",
@@ -72,8 +80,8 @@ const SCENARIOS: Scenario[] = [
     typicalCost: "$19-39",
     prismaCost: "$0",
     typical: [
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
+      "Database and hosting from two vendors",
+      "Database data transfer: 500 GB per project included, then $0.10/GB",
       "Credit card required up front",
     ],
     prisma: [
@@ -88,8 +96,8 @@ const SCENARIOS: Scenario[] = [
     typicalCost: "$385-450",
     prismaCost: "$70-90",
     typical: [
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
+      "Database and hosting from two vendors",
+      "Database data transfer: 500 GB per project included, then $0.10/GB",
       "Spend limits not standard",
     ],
     prisma: [
@@ -105,7 +113,7 @@ const SCENARIOS: Scenario[] = [
     prismaCost: "$640-780",
     typical: [
       "Committed-use contracts across vendors",
-      "Data transfer billed per GB",
+      "Database data transfer: 500 GB per project included, then $0.10/GB",
       "Spend limits not standard",
     ],
     prisma: [
