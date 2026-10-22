@@ -24,16 +24,23 @@ const SPECTRUM =
 //    Pro from prisma.io/pricing on the same basis gives $60-99: $49 plan, ops
 //    over 10M at $2 per million, memory at $0.006 per GB-hour, CPU at $0.064
 //    per vCPU-hour, bandwidth at $0.025 per GB.
-//  - Neon + Vercel $130-270, recomputed from list prices on the same basis.
+//  - Neon + Vercel $110-270, recomputed from list prices on the same basis.
 //    Neon Launch (neon.com/pricing): 730-1,460 CU-hours at $0.106 plus 40 GB
 //    at $0.35 per GB-month = $91-169; database egress stays inside the 500 GB
 //    per project included. Vercel Pro (vercel.com/pricing, docs/pricing,
 //    docs/pricing/flat-rate-cdn): $20 seat with a $20 usage credit, $0-40 for
-//    extra seats, the $20 Flat Rate CDN tier for 10M requests, and function
-//    usage ($0.60 per million invocations, $0.128 per CPU-hour, $0.0106 per
-//    GB-hour) of $17-39 before the credit = $40-99. Total $131-268.
-//  - Ratio at the midpoints: $200 / $81, about 2.5x, so the marker below
-//    renders "Up to 2x less". The earlier $385-450 could only be reproduced
+//    extra seats, $0-20 for 10M CDN requests, and function usage of $17-39
+//    before the credit = $20-99. Function usage: 10M invocations at $0.60 per
+//    million ($6), 50-150 active CPU-hours at $0.128 ($6-19) and 400-1,300
+//    provisioned-memory GB-hours at $0.0106 ($4-14). CDN is a range because
+//    Vercel's sources differ: docs/pricing/flat-rate-cdn says Pro includes the
+//    lowest Flat Rate tier (1M requests, 1 TB) and 10M requests is the $20
+//    tier (on demand, $2 per 1M above the included 1M, about $18), while
+//    one rendering of vercel.com/pricing has shown 10M CDN requests and 1 TB
+//    transfer as included on Pro, which would make it $0. Total $111-268.
+//  - Ratio at the midpoints: $190 / $81, about 2.3x, so the marker below
+//    renders "Up to 2x less", and $81 is about 43% of $190 ("less than half
+//    as much"). The earlier $385-450 could only be reproduced
 //    by pricing Neon Scale (SLAs, HIPAA) against Prisma Pro, which is not a
 //    like-for-like plan, so it was replaced.
 // Re-check these figures whenever any of the four pricing pages change.
@@ -54,7 +61,7 @@ export const ALTERNATIVES = [
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
     shortName: "Neon + Vercel",
-    cost: "$130–270",
+    cost: "$110–270",
     pending: false,
     // Billing and data transfer checked 2026-10-22: Neon added from the Vercel
     // Marketplace is billed through the Vercel account

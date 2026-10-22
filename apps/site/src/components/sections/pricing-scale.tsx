@@ -106,7 +106,7 @@ const SCENARIOS: Scenario[] = [
   {
     tab: "Growing SaaS",
     mau: "~50K MAU",
-    typicalCost: "$130-270",
+    typicalCost: "$110-270",
     prismaCost: "$72-90",
     typical: [
       "Database and hosting from two vendors",

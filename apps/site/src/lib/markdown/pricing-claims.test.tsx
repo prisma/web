@@ -37,7 +37,7 @@ const RETIRED = [
 test("the /pricing comparison uses the recomputed Neon + Vercel figure", () => {
   const neonVercel = ALTERNATIVES.find((alt) => alt.id === "neon-vercel");
   assert.ok(neonVercel);
-  assert.equal(neonVercel.cost, "$130–270");
+  assert.equal(neonVercel.cost, "$110–270");
   assert.equal(PRISMA.cost, "$72–90");
   assert.equal(WIDEST.id, "neon-vercel");
   assert.equal(SAVINGS_MULTIPLE, 2);
@@ -59,7 +59,7 @@ test("the /pricing Markdown matches the comparison data", () => {
 test("the home scenario cards and their Markdown agree, with Prisma Pro at /pricing's figure", () => {
   const typical = [...pricingScaleSource.matchAll(/typicalCost: "([^"]+)"/g)].map((m) => m[1]);
   const prisma = [...pricingScaleSource.matchAll(/prismaCost: "([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(typical, ["$20-35", "$130-270"]);
+  assert.deepEqual(typical, ["$20-35", "$110-270"]);
   assert.deepEqual(prisma, ["$0-22", "$72-90"]);
   // Same figures as /pricing, written with a hyphen as on the rest of the card.
   assert.equal(prisma[1], PRISMA.cost.replace("–", "-"));

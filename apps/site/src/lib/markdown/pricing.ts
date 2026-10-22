@@ -189,7 +189,7 @@ const COMPARISON_HEADERS = [
 ];
 
 const COMPARISON_ROWS = [
-  ["Monthly cost at ~50K MAU", "$130–270", "$95–145", "$72–90"],
+  ["Monthly cost at ~50K MAU", "$110–270", "$95–145", "$72–90"],
   [
     "Billing",
     "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",

@@ -246,7 +246,7 @@ export function renderHomeMarkdown(): string {
       "Hard free-tier cap, no surprises",
     ]),
     heading(3, "Growing SaaS (~50K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $130-270 per month"),
+    paragraphs("Typical stack (Neon + Vercel): $110-270 per month"),
     bulletList([
       "Database and hosting from two vendors",
       "Database data transfer: 500 GB per project included, then $0.10/GB",
