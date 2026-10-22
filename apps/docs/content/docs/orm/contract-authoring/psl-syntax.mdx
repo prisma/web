@@ -246,7 +246,7 @@ Each top-level item of the list is a weight group, strongest first, and an item 
 
 `language:` sets the text-search language, which tells PostgreSQL how to break the text into searchable words. It defaults to `english`, and you set it as in `@@fullTextIndex([title], name: "post_title_search", language: "german")`. `where:` makes it a partial index, as on `@@index`. A field typed `pg.enum(...)`, a PostgreSQL enum type as [Enums](#enums) describes, cannot have a full-text index. PostgreSQL only.
 
-To search an index, name it in the query: `fns.fullTextMatches(indexes.post_search, q)` in an ORM `where` callback, as [Full-text search](/orm/reference/orm-client#full-text-search) shows. The query then reads the index's fields, weights and language from the contract, so it searches exactly what the index covers and PostgreSQL uses the index. You can also search one text field with its own `fullTextMatches` and `fullTextRank` functions, as in `p.title.fullTextMatches(query, { language: "german" })`; give that search the same language as the index, because PostgreSQL does not use the index for a search in another language.
+To search an index, name it in the query: `fns.fullTextMatches(indexes.post_search, q)` in an ORM `where` callback, as [Full-text search](/orm/reference/orm-client#full-text-search) shows. The query then reads the index's fields, weights and language from the contract, so it searches exactly what the index covers and PostgreSQL can use the index. For a partial index, made with `where:`, PostgreSQL uses it only when the query's own `where` also implies the index's condition, so add that condition to the query and check the plan with `EXPLAIN`. You can also search one text field with its own `fullTextMatches` and `fullTextRank` functions, as in `p.title.fullTextMatches(query, { language: "german" })`; give that search the same language as the index, because PostgreSQL does not use the index for a search in another language.
 
 ### Check constraints
 
@@ -294,7 +294,7 @@ A mixin is a named set of members you write once and include in several blocks. 
 ```prisma
 model mixin Timestamps {
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
 
   @@index([createdAt])
 }
