@@ -98,7 +98,7 @@ export function renderHomeMarkdown(): string {
       "Your agent runs the full loop: build, deploy, debug, fix, redeploy",
       "One platform: hosting, database, and ORM built to work together natively",
       "A preview database per feature branch, wired to its preview deployment",
-      "App and database co-located on the same host, at latency no two-vendor setup can match",
+      "App and database on one platform in the same region, so queries stay low-latency and never leave the region",
       "Spend limits on every paid tier, so your bill stops where you tell it to",
     ]),
 
@@ -112,7 +112,7 @@ export function renderHomeMarkdown(): string {
     heading(3, "2. Deploy"),
     paragraphs(
       "Add Prisma Postgres and Compute when you're ready to ship. Your app and database deploy " +
-        "together on the same host, co-located by default.",
+        "together on one platform, in the same region, in one project.",
     ),
     heading(3, "3. Iterate"),
     paragraphs(
@@ -166,8 +166,8 @@ export function renderHomeMarkdown(): string {
     heading(3, "Prisma Compute"),
     paragraphs("*App hosting*"),
     paragraphs(
-      "TypeScript app hosting that runs on the same host as your database, so your agent can " +
-        "deploy, debug, and redeploy end-to-end.",
+      "TypeScript app hosting on the same platform and in the same region as your database, so " +
+        "your agent can deploy, debug, and redeploy end-to-end.",
     ),
     bulletList([
       "Bun runtime on bare metal",
@@ -209,7 +209,7 @@ export function renderHomeMarkdown(): string {
       },
       {
         name: "Deploy your app, the database is already there",
-        description: "App and Postgres co-located on the same host.",
+        description: "App and Postgres on one platform, in the same region, in one project.",
       },
     ]),
 
