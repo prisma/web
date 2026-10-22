@@ -194,7 +194,7 @@ Behind Cloudflare's proxy, the server has to start responding within 125 seconds
 
 ### 5. Move long agent runs out of the request
 
-An agent loop that can run longer than your host allows doesn't belong in one HTTP request. Save the job, start it in a worker or a [background job](/compute/long-running-background-jobs), and have the browser follow its progress: poll an endpoint, reconnect to a stream that reads saved output, or use the AI SDK's [resumable streams](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-resume-streams). If you use resumable streams, don't pass the request's abort signal to the model call, because a disconnect would then cancel the generation the client wants to reconnect to. Add a separate stop endpoint for user cancellation, as the [AI SDK docs](https://ai-sdk.dev/docs/troubleshooting/abort-breaks-resumable-streams) describe. Save the user's message before you call the model, so a dropped connection doesn't lose the question as well as the answer.
+An agent loop that can run longer than your host allows doesn't belong in one HTTP request. Save the job, start it in a worker or a background job, and have the browser follow its progress: poll an endpoint, reconnect to a stream that reads saved output, or use the AI SDK's [resumable streams](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-resume-streams). If you use resumable streams, don't pass the request's abort signal to the model call, because a disconnect would then cancel the generation the client wants to reconnect to. Add a separate stop endpoint for user cancellation, as the [AI SDK docs](https://ai-sdk.dev/docs/troubleshooting/abort-breaks-resumable-streams) describe. Save the user's message before you call the model, so a dropped connection doesn't lose the question as well as the answer.
 
 ## How to choose hosting for a streaming chat app
 
@@ -217,7 +217,7 @@ Conversations can live in [Prisma Postgres](/docs/postgres) in the same project.
 
 Know the limits before you rely on it:
 
-- WebSocket servers are not supported. Stream over HTTP or server-sent events, or run the socket server on another host, as the guide to [WebSocket connections that keep dropping](/compute/websocket-connections-dropping) describes.
+- WebSocket servers are not supported. Stream over HTTP or server-sent events, or run the socket server on another host.
 - The docs don't state a maximum length for a started stream. They say to keep data flowing rather than let it sit idle, and to have the client reconnect for anything long-lived ([streaming responses](/docs/compute/request-timeout#streaming-responses)), so send a heartbeat during long tool calls and use a background job the client reconnects to for agent runs.
 - The 60 seconds include everything before the first byte. A route that awaits a slow tool call or a long reasoning step before sending anything gets a `504`, so send an early event first.
 - Work after the response, with `waitUntil` or `KeepAwakeGuard`, is best effort. It keeps the instance awake, but it doesn't retry failures or continue through a restart or a new deployment ([Keeping instances awake](/docs/compute/keeping-instances-awake)). Generation that continues after the browser disconnects, as with `consumeStream()`, is background work in this sense. An agent run that must finish needs saved progress and a separate trigger.
