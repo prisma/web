@@ -188,7 +188,7 @@ The Prisma ORM 8 command-line tool groups commands by what they act on: `contrac
 | `prisma format` | `prisma contract format` | |
 | `prisma validate` | none | `prisma contract emit` fails if the contract is invalid, and `prisma db verify` checks it against the database |
 
-Day to day, the loop that replaces `prisma migrate dev` is: edit the contract, run `prisma contract emit`, then `prisma db update` to apply the change to your development database. `db update --dry-run` shows what it would change, and `db update` asks before it drops anything. When you want a migration file to commit, run `prisma migration plan` instead of `db update`; it writes a folder under `migrations/app/` with a `migration.ts` you can read, edit, and commit. Then `prisma db migrate` applies it. See [Generating a migration](/orm/migrations/generating-a-migration).
+Day to day, the loop that replaces `prisma migrate dev` is: edit the contract, run `prisma contract emit`, then `prisma db update` to apply the change to your development database. `db update --dry-run` shows what it would change, and `db update` asks before it applies an operation that loses data. To rename a model or field and keep its data, pass `--rename <old>:<new>`. When you want a migration file to commit, run `prisma migration plan` instead of `db update`; it writes a folder under `migrations/app/` with a `migration.ts` you can read, edit, and commit. Then `prisma db migrate` applies it. See [Generating a migration](/orm/migrations/generating-a-migration).
 
 Four new commands you will meet first:
 
@@ -228,7 +228,7 @@ export const db = postgres({
 - `db.query(query)` and `db.execute(query)`: run a query that you built and finished with `.build()`, such as the raw queries below. `db.toSql(query)` shows the SQL it would send.
 - `db.transaction`: runs several queries in one transaction.
 
-To add middleware, add a `middleware: [...]` key to the `postgres({ ... })` call above. A middleware is a plain object with a name and one or more hook functions, for example `{ name: "log", async beforeQuery(plan) { console.log(plan.sql); } }`. [How middleware works](/orm/middleware/how-middleware-works) lists the hooks.
+To add middleware, add a `middleware: [...]` key to the `postgres({ ... })` call above. A middleware is a plain object with a name and one or more hook functions, for example `{ name: "log", async beforeEncode(plan) { console.log(plan.sql); } }`. [How middleware works](/orm/middleware/how-middleware-works) lists the hooks.
 
 ## Queries
 
@@ -240,7 +240,7 @@ A query is a chain of calls that you `await` as a whole. The last call (`.all()`
 | `prisma.user` | `db.orm.public.User` (`public` is the PostgreSQL schema; unless you set one up, every table is in `public`) |
 | `findMany({ where })` | `.where(...).all()` |
 | `findFirst({ where })` | `.where(...).first()`. Returns `null` when nothing matches. `.first({ id: 1 })` is a shortcut for `.where({ id: 1 }).first()` |
-| `findUnique({ where })` | `.where(...).first()`, and check for `null`. There is no separate unique lookup |
+| `findUnique({ where })` | `.whereUnique({ email }).first()`, and check for `null`. On PostgreSQL, `whereUnique` takes the fields of the primary key or of one unique constraint, and a call that could return many rows after it does not compile. On MongoDB, `.where(...).first()` |
 | `where: { id: 1, active: true }` | `.where({ id: 1, active: true })`; for comparisons, `.where((u) => u.age.gt(18))`. [Filter conditions and operators](/orm/reference/orm-client#filter-conditions-and-operators) lists them all |
 | `select: { id: true, email: true }` | `.select("id", "email")` |
 | `include: { posts: { where: ... } }` | `.include("posts")`, or `.include("posts", (posts) => posts.where({ published: true }))` to filter or sort the related records |
@@ -263,7 +263,7 @@ A query is a chain of calls that you `await` as a whole. The last call (`.all()`
 | `groupBy({ by, _count })` | `.groupBy("userId").aggregate((agg) => ({ count: agg.count() }))` |
 | `$transaction(async (tx) => ...)` | `db.transaction(async (tx) => ...)`; inside, query through `tx.orm` instead of `db.orm` |
 | `$queryRaw` | see the raw SQL example below |
-| `$queryRaw` with `SELECT ... FOR UPDATE` to lock rows | `.forUpdate()` on a [SQL query builder](/orm/reference/sql-query-builder#row-locking) `SELECT`, inside `db.transaction(...)`. `forNoKeyUpdate()`, `forShare()`, and `forKeyShare()` take the other locks |
+| `$queryRaw` with `SELECT ... FOR UPDATE` to lock rows | `.forUpdate()` on an [ORM collection](/orm/reference/orm-client#row-locking) or a [SQL query builder](/orm/reference/sql-query-builder#row-locking) `SELECT`, inside `db.transaction(...)`. `forNoKeyUpdate()`, `forShare()`, and `forKeyShare()` take the other locks |
 | `$executeRaw` | see the raw SQL example below |
 | `$connect()` | `db.connect()`. You rarely need it: the client connects on the first query |
 | `$disconnect()` | `db.close()` |
@@ -362,7 +362,7 @@ const posts = await db.orm.public.Post
   .all();
 ```
 
-Add `@@fullTextIndex([title], name: "post_title_search")` to the `Post` model so PostgreSQL can use an index for the search. [Full-text search](/orm/reference/orm-client#full-text-search) covers the other options.
+Add `@@fullTextIndex([title], name: "post_title_search")` to the `Post` model so PostgreSQL can use an index for the search. Prisma ORM 7's `@@fulltext` over several fields becomes an index of several weight groups, such as `@@fullTextIndex([[title], body], name: "post_search")`, which a query searches by name: `.where((p, { fns, indexes }) => fns.fullTextMatches(indexes.post_search, query))`. [Full-text search](/orm/reference/orm-client#full-text-search) covers the other options.
 
 ## Not available [#not-available-yet]
 
@@ -372,7 +372,7 @@ Prisma ORM 7 features that have no direct form in Prisma ORM 8, with what to do 
 | --- | --- | --- |
 | `skipDuplicates` on `createMany` | available in a different form | `.createAll(rows, { onConflict: "skip" })` or `.createAndCount(rows, { onConflict: "skip" })`. See the note below the table |
 | `{ increment: n }` / `{ decrement: n }` in an update | not available | write the arithmetic as raw SQL (see the example above), or read the value and write it back inside `db.transaction(...)` |
-| `findUniqueOrThrow` / `findFirstOrThrow` | not available on the query | the usual form is `.first()` and a `null` check. If you want the throw, write `await db.orm.public.User.where({ id }).all().firstOrThrow()`. It throws an error with code `RUNTIME.NO_ROWS` when nothing matches. Avoid it on a filter that can match many rows; it reads them all first |
+| `findUniqueOrThrow` / `findFirstOrThrow` | `.firstOrThrow()` | `await db.orm.public.User.whereUnique({ id }).firstOrThrow()` or `.where(...).firstOrThrow()`. It reads one row and throws an error with code `RUNTIME.NO_ROWS` when nothing matches |
 | `mode: "insensitive"` | available in a different form | on PostgreSQL, `.ilike("%alice%")` on a text field. You write the `%` wildcards yourself |
 | `contains` / `startsWith` / `endsWith` | available in a different form | `.like("%alice%")`, `.like("alice%")`, `.like("%alice")`; you write the `%` wildcards yourself |
 | filtering inside JSON (`path`, `string_contains`, `array_contains`) | not available | a `Jsonb` field can only be compared as a whole (`eq`, `neq`, `in`, `notIn`) or checked for null. Write the query as raw SQL (see the example above) |
@@ -381,7 +381,7 @@ Prisma ORM 7 features that have no direct form in Prisma ORM 8, with what to do 
 | implicit many-to-many relations | available in a different form | write the join table as a model; see the example under [Schema](#schema) |
 | `@@map` on an `enum` | not available | `contract emit` rejects it with `Unknown attribute "@@map" in "enum" block`. A plain `enum` is stored as text, so there is nothing to name. If you need a PostgreSQL enum type with a specific name, declare it with `native_enum`, which does accept `@@map` |
 | `$use` middleware | available in a different form | pass `middleware: [...]` when you create the client in `db.ts` (example in the `db.ts` section above). [How middleware works](/orm/middleware/how-middleware-works) lists the hooks |
-| `$extends` | replaced by middleware, custom collections, and scopes | `$extends` will not be added. Middleware replaces query extensions; see [How middleware works](/orm/middleware/how-middleware-works). For model methods, subclass `Collection` ([Custom `Collection` subclass](/orm/reference/orm-client#custom-collection-subclass)). To share a filter or a selection between queries and models, write a [scope](/orm/reference/orm-client#scopes) |
+| `$extends` | replaced by middleware, custom collections, and query fragments | `$extends` will not be added. Middleware replaces query extensions; see [How middleware works](/orm/middleware/how-middleware-works). For model methods, subclass `Collection` ([Custom `Collection` subclass](/orm/reference/orm-client#custom-collection-subclass)). To share a filter or a selection between queries and models, write a [query fragment](/orm/reference/orm-client#query-fragments) |
 
 :::note[Skipping duplicate rows]
 
@@ -414,7 +414,7 @@ Also not available today:
 - `omit`, `relationLoadStrategy`, `Prisma.skip`, and the automatic batching of `findUnique` calls.
 - The `P2002` / `P2025` style error codes. Errors carry a `code` such as `RUNTIME.NO_ROWS` instead, and a database error such as a unique-constraint violation carries the standard SQL state code in `error.sqlState` (`23505` for a unique violation, on every database), so catch it with `if (error instanceof Error && "sqlState" in error && error.sqlState === "23505")`. See the [error reference](/orm/reference/error-reference).
 - `Prisma.sql`, `Prisma.join`, `Prisma.raw`, `Prisma.empty`, and TypedSQL. Use `db.raw.sql` (example above); [Raw queries](/orm/reference/raw-queries) covers building a query from pieces.
-- Soft delete, validation rules in the schema, lifecycle hooks on models, and read replicas. For soft delete, add a nullable `deletedAt` field and filter on it, with one [scope](/orm/reference/orm-client#scopes) that every model with the field can use. Validate in your application code. Use middleware for hooks. For read replicas, create one client per database.
+- Soft delete, validation rules in the schema, lifecycle hooks on models, and read replicas. For soft delete, add a nullable `deletedAt` field and filter on it, with one [query fragment](/orm/reference/orm-client#query-fragments) that every model with the field can use. Validate in your application code. Use middleware for hooks. For read replicas, create one client per database.
 
 ## Where to go next
 

@@ -134,7 +134,7 @@ A read inside `db.transaction(...)`, or on a connection you took out of the pool
 
 ## Check that caching is working
 
-Prisma ORM has no counter or log option that reports cache hits, so to see them, register a small middleware of your own after the cache. A read the cache answers still reaches the middleware after it, so your own logging and metrics keep recording it and a hook like the one below runs either way. That hook is `afterQuery`, and the `result` argument it gets says who answered: `result.source` is `'middleware'` when the cache answered and `'driver'` when the database did.
+Prisma ORM has no counter or log option that reports cache hits, so to see them, register a small middleware of your own after the cache. When the cache answers a read, the read still reaches every middleware registered after the cache, so your own logging and metrics keep recording it, and a hook like the one below runs whether the cache or the database answered. That hook is `activityEnded`, and the `result` argument it gets says who answered: `result.source` is `'middleware'` when the cache answered and `'driver'` when the database did.
 
 ```ts title="src/prisma/cache-watch.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -142,14 +142,15 @@ import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
 export function cacheWatch(): SqlMiddleware {
   return {
     name: 'cache-watch',
-    async afterQuery(plan, result) {
-      console.log(`[cache-watch] ${result.source} · ${plan.sql}`);
+    async activityEnded(activity, result) {
+      if (result.kind !== 'statement' || result.returns !== 'rows') return;
+      console.log(`[cache-watch] ${result.source} · ${result.rowCount} rows`);
     },
   };
 }
 ```
 
-The other built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. On MongoDB the same middleware is typed `MongoMiddleware`, from `@prisma/orm-mongo/family-runtime`, and a MongoDB query has no `sql` field, so log `plan.command` there instead.
+The other built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. On MongoDB the same middleware is typed `MongoMiddleware`, from `@prisma/orm-mongo/family-runtime`, and works unchanged, because it reads only `result`.
 
 Register `cacheWatch()` after the cache, by replacing the `middleware` line in `src/prisma/db.ts` and adding the import above it. Order matters for a middleware that returns rows itself instead of letting the query reach the database, because the first one to do that wins and the ones after it are never asked. `cacheWatch()` only logs, and a middleware of your own that can return rows goes after the cache as well, so that the cache is asked first.
 

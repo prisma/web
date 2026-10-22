@@ -18,7 +18,7 @@ node migrations/app/20260707T1008_add_display_name/migration.ts
 Wrote ops.json + migration.json to /path/to/my-app/migrations/app/20260707T1008_add_display_name
 ```
 
-You can run the file like this because the Prisma ORM CLI already needs Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer, and all of those run `migration.ts` directly, with no build step. Run it from your project root: if you change into the migration directory first and run it from there, the command fails with an error whose `code` is `CONFIG.FILE_NOT_FOUND`.
+You can run the file like this because the Prisma ORM CLI already needs Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer, and all of those run `migration.ts` directly, with no build step. Without `--config`, the file uses the `prisma.config.ts` that owns it, the one whose migrations directory holds the file: the nearest one above the migration's directory, else the one in the working directory. So it runs from the project root, from inside its own directory, or from anywhere else. When no config owns it, it fails with `CLI.MIGRATION_CONFIG_NOT_FOUND`; pass `--config <path>`.
 
 The other file recompiling rewrites, `migration.json`, is what makes a hand-edit detectable. It records the contract state the migration starts `from`, the state it ends at, `to`, and a hash of the migration. `npx prisma migration check` recomputes that hash from `ops.json` and `migration.json` and compares it with the stored one, so any change to either file that did not come from a recompile no longer matches. The check never reads `migration.ts`, which is why an edit you make there counts for nothing until you recompile.
 
@@ -29,7 +29,7 @@ Editing a migration only changes what happens on databases that have not applied
 Say you add a required `displayName` field to `User` in your contract, the `contract.prisma` file that replaced `schema.prisma`. The rows already in your `user` table have no `displayName`, so you have to decide what those rows get. Start by running `npx prisma contract emit`, which replaces `prisma generate` and writes `contract.json` and `contract.d.ts`, and then plan the migration as [Generating a migration](/orm/migrations/generating-a-migration#the-second-migration-planning-a-delta) describes:
 
 ```npm
-npx prisma migration plan --name add_display_name
+npx prisma migration plan --name add_display_name --backfill User.displayName
 ```
 
 ```text
@@ -40,7 +40,7 @@ to:         866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
 app space:  migrations/app/20260707T1008_add_display_name
 ```
 
-In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. The output says `node migration.ts`, but run the file from your project root, as `node migrations/app/<dir>/migration.ts`, for the reason given above. `migration plan` writes the change as three steps rather than one, because rows that already exist need a value for the new required column: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
+In that output, `self-emit` is what the CLI calls recompiling, and `app space` is the directory the new migration was written to. Run the file as `node migrations/app/<dir>/migration.ts` from the project root, or as `node migration.ts` from its directory. Because of `--backfill User.displayName`, `migration plan` writes the change as three steps rather than one, so you decide what the rows that already exist get: `addColumn` adds the column as nullable, `dataTransform` holds the backfill you write, and `setNotNull` makes the column required:
 
 ```ts title="migration.ts (as planned)"
 override get operations() {

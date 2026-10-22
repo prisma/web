@@ -257,6 +257,8 @@ The second argument says how each member is stored, as the `codecId` note in the
 
 Each `member(name, storedValue)` pairs the TypeScript-visible name with the value stored in the column. Fields reference the enum with `field.namedType(Priority)`, and defaults reference a member as `Priority.members.Low`. Include the enum in the returned `enums` map so it reaches the two files.
 
+At runtime, `db.enums` holds each member as a query returns it, such as a `bigint` for `pg/int8@1`.
+
 Members are stored in whatever column type you name here, `text` above. For a real PostgreSQL `enum` type, declare it with `nativeEnum` and type the field with `pg.enum`, both exported by `@prisma/orm-postgres/contract-builder`. The type is created in the database under the name you give it:
 
 ```typescript
@@ -328,11 +330,11 @@ indexes: [
 ],
 ```
 
-The `where` and `expression` strings go into the SQL as written, so they use column names, and you quote them yourself.
+`where` and `expression` take a `sql` value, written with the `sql` tag from `@prisma/orm-postgres/contract-builder`, as `.default()` does; a plain string there is a type error. The SQL goes into the database as written, so it uses column names, and you quote them yourself. Prisma ORM stores it with its shared indentation and the blank lines at its start and end removed. A `sql` value can hold another: `` sql`${owner} AND deleted_at IS NULL` `` joins the two texts, and anything else inside `${}` is a type error.
 
 The primary key, unique constraints, indexes, and foreign keys of one model must all have different names. A `name` used twice is a type error that your editor and `tsc` report, but `npx prisma contract emit` does not type-check the file, and it accepts the repeated `name` because each name gets a different hash on the end in the database. A `map` used twice makes `contract emit` fail with `CONTRACT.SOURCE_LOAD_FAILED`.
 
-For PostgreSQL [full-text search](/orm/reference/orm-client#full-text-search), `fullTextIndex` from `@prisma/orm-postgres/contract-builder` creates the GIN index that a text field's `fullTextMatches` and `fullTextRank` query functions use. It takes one text column and a `name` or `map`, plus optional `language` and `where`:
+For PostgreSQL [full-text search](/orm/reference/orm-client#full-text-search), `fullTextIndex` from `@prisma/orm-postgres/contract-builder` creates the GIN index that the `fullTextMatches` and `fullTextRank` query functions use. It takes one text column, or a list of weight groups as [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes) does, such as `[[cols.title, cols.subtitle], cols.body]`, and a `name` or `map`, plus optional `language` and a `where` written as a `sql` value:
 
 ```typescript title="src/prisma/contract.ts (excerpt)"
 import { fullTextIndex } from "@prisma/orm-postgres/contract-builder";
@@ -356,7 +358,7 @@ Order.sql({
 });
 ```
 
-`expression` is the condition as SQL, using column names, and `name` and `map` work as they do on an index.
+`expression` is the condition as a `sql` value, using column names, and `name` and `map` work as they do on an index.
 
 `Model.refs` provides typed references to another model's fields, for the constraint builders inside `.sql(...)`. Write `constraints.foreignKey(cols.userId, User.refs.id)` and TypeScript checks `id` against the actual `User` definition.
 
@@ -426,7 +428,7 @@ export const contract = defineContract({}, ({ field, model }) => {
 });
 ```
 
-`roles` lists role handles, and a role Prisma ORM should create goes in `entities` as well, as `authenticated` does above, while a role that already exists in the database, such as `public`, is `role("public")` in `roles` and left out of `entities`. `using` and `withCheck` are the two conditions as SQL, using column names: `policySelect` and `policyDelete` take `using`, `policyInsert` takes `withCheck`, and `policyUpdate` and `policyAll` take either or both. The policy `name` gets an eight-character hash on the end in the database.
+`roles` lists role handles, and a role Prisma ORM should create goes in `entities` as well, as `authenticated` does above, while a role that already exists in the database, such as `public`, is `role("public")` in `roles` and left out of `entities`. `using` and `withCheck` are the two conditions as `sql` values, using column names: `policySelect` and `policyDelete` take `using`, `policyInsert` takes `withCheck`, and `policyUpdate` and `policyAll` take either or both. The policy `name` gets an eight-character hash on the end in the database.
 
 ## Extension types
 
