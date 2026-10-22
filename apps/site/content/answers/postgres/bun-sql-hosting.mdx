@@ -1,0 +1,126 @@
+---
+title: "Which hosted Postgres works with Bun's SQL client?"
+description: "Connect Bun's native SQL client to managed Postgres with a standard URL, the right pool settings and server-side credentials."
+summary: "Choose managed Postgres that exposes a PostgreSQL connection URL, then match Bun's connection settings to the provider's pooled or direct endpoint. [Prisma Postgres](/docs/postgres) works with Bun's native SQL client and includes connection pooling; Prisma ORM is optional. Add [Prisma Compute](/docs/compute) when you also want to host the Bun application in the same project. Neon and Supabase also provide PostgreSQL URLs, with their own pooling and network choices."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "6 min read"
+faq:
+  - question: "Do I need to install pg or Prisma ORM to use Bun SQL?"
+    answer: "No. Bun's native SQL client is imported from bun and can speak PostgreSQL directly. Prisma Postgres does not require Prisma ORM. Choose an additional library only when the application needs its features."
+  - question: "Does prepare: false stop parameter binding?"
+    answer: "No. In Bun SQL, prepare: false disables named prepared statements, while tagged-template values remain bound parameters. Keep input in the tagged template rather than concatenating it into a SQL string."
+  - question: "Can I use a prisma+postgres URL with Bun SQL?"
+    answer: "Use the pooled or direct PostgreSQL URL supplied for ordinary PostgreSQL clients, rather than a prisma+postgres URL. Copy the value from the database's PostgreSQL connection details."
+  - question: "Can I put the database URL in my frontend?"
+    answer: "No. A PostgreSQL URL contains credentials and belongs in server-side configuration. The browser calls an authenticated application endpoint; the server checks access and runs the database query."
+related:
+  - title: "Node and Postgres hosting decisions"
+    href: "/postgres/node-postgres-hosting"
+  - title: "Keeping app and database regions close"
+    href: "/postgres/nodejs-database-regions"
+  - title: "Inspecting slow SQL and indexes"
+    href: "/postgres/managed-postgres-query-monitoring"
+cta:
+  title: "Keep Bun's SQL client"
+  description: "Create Prisma Postgres, copy its PostgreSQL connection URL into server-side configuration and test your existing queries."
+  label: "Connect to Prisma Postgres"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+Using Bun's SQL client does not tie the database to a particular ORM or app host. Choose a database that provides a normal PostgreSQL connection URL Bun can use, and preserve the provider's connection security settings.
+
+We make Prisma Postgres and Prisma Compute. The Bun and provider documentation linked here was checked on October 22, 2026.
+
+## What should I check before choosing a provider?
+
+Start with the connection URL, region, recovery requirements and pool behavior. A database that supports an HTTP driver may also expose a PostgreSQL endpoint; choose that endpoint for [Bun SQL](https://bun.sh/docs/runtime/sql).
+
+Keep the database near the server that runs the queries. A customer opening your frontend nearby does not make a remote database query local. If the app runs on Compute, choose a matching available database region; if it runs elsewhere, compare the two providers' actual locations.
+
+Your Bun client keeps a pool of connections ready for reuse. The hosted database may also have a pooler that shares database connections among application connections. More app instances multiply the client connections. Start with a small per-instance pool and measure contention before increasing it.
+
+## Which services fit a Bun application?
+
+These providers, listed alphabetically, expose PostgreSQL connection URLs; choose around the surrounding workflow without changing query libraries.
+
+| Provider | Useful fit | Connection detail to check |
+| --- | --- | --- |
+| Neon | An app that wants Neon's database workflow, including its [pooled and direct endpoints](https://neon.com/docs/connect/connection-pooling). | Copy the connection string for the intended branch and role; the pooled hostname contains `-pooler`. |
+| Prisma Postgres | A Bun app that wants managed Postgres and [built-in pooling](/docs/postgres/database/connection-pooling), optionally alongside Compute. | Use the pooled PostgreSQL URL in the app. Use the direct URL when an administrative tool needs to keep the same database connection. |
+| Supabase | An app that also wants Supabase's surrounding backend services. | Choose its [direct, session-pooler or transaction-pooler connection](https://supabase.com/docs/guides/database/connecting-to-postgres) for the host's network and workload. Transaction mode requires prepared statements to be disabled. |
+
+Prisma Postgres is a straightforward fit when the app already uses SQL and needs a managed database without adopting a new data-access layer. Supabase's session pooler keeps a database connection for the client's session; transaction mode lends it for one transaction at a time. Choose a connection mode that supports the app's actual use of sessions.
+
+## How do I connect Bun to Prisma Postgres?
+
+### 1. Create a development database and copy the right URL
+
+Create a database in your account in [Prisma Console](https://console.prisma.io). Open its [connection details](/docs/postgres/database/connecting-to-your-database) and copy the pooled PostgreSQL URL. Preserve its encryption settings, including TLS options, and keep the value in your existing local secret mechanism as `DATABASE_URL`; do not commit it or paste it into a browser bundle.
+
+Use a direct connection when a migration, dump or other tool needs to keep the same database connection across several statements. Transaction pooling does not preserve that connection between transactions, so a temporary table or session setting is not a durable application store.
+
+### 2. Run a small connection check
+
+Save this standalone script as `connection-check.ts` and run it with Bun from the environment where `DATABASE_URL` is available. It reads no customer table and prints no connection string.
+
+```ts
+import { SQL } from "bun";
+
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error("Set DATABASE_URL for a development database");
+
+const sql = new SQL({ url, max: 1, idleTimeout: 10, prepare: false });
+try {
+  const rows = await sql`
+    SELECT ${"connection-check"}::text AS label, ${7}::integer AS value
+  `;
+  console.log(JSON.stringify(rows));
+} finally {
+  await sql.close();
+}
+```
+
+```sh
+bun connection-check.ts
+```
+
+The query returns:
+
+```json
+[{"label":"connection-check","value":7}]
+```
+
+`prepare: false` stops the client from saving reusable statements by name on a database connection, which can be unsuitable when connections are shared. Keep this setting for the pooled connection shown here. Values written as `${...}` in the tagged template are still sent separately as query parameters. `max: 1` is a starting limit for this check, not a throughput recommendation for every application.
+
+### 3. Reuse the client and test real queries
+
+Create one client for a running application instance rather than opening a fresh pool for every request. Test your actual queries, transactions and data types against a development database. A successful connection check does not prove that a migration has created the app's tables.
+
+Apply schema changes through your migration workflow. Use tagged-template parameters for values and trusted, reviewed identifiers for table or column choices. An AI assistant should not turn user input into arbitrary SQL.
+
+### 4. Deploy with the same connection rules
+
+To host the app on Compute, first complete [Composer getting started](/docs/composer/getting-started) for the service files, build command and deploy configuration. Composer is the framework that describes which server and database to create. Its [database guide](/docs/composer/databases) shows how to add `db: rawPostgres()` under the service's `deps`, and create and connect that database in `module.ts`.
+
+In that app's server file, import its service configuration and use the supplied database URL:
+
+```ts
+import { SQL } from "bun";
+import service from "./service.ts";
+
+const { db } = service.load();
+const sql = new SQL({ url: db.url, max: 1, idleTimeout: 10, prepare: false });
+```
+
+The database created by the module is a new deployment resource; it does not reuse the Console database from step 1. Keep that first database for the standalone development check. This is an integration excerpt for the configured service, not another standalone script. `service.load()` reads the connections supplied to that service, and `db.url` is its PostgreSQL URL. Keep this client for the instance's lifetime. A manually supplied URL instead follows the schema, binding and server-side read steps in [Service input](/docs/composer/service-input).
+
+Build and test in an [isolated review stage](/docs/composer/deploying#production-and-stages) using a separate database. Before deploying to production, verify the production database identity, schema, pool configuration and [backup plan](/docs/postgres/database/backups). Review errors and query behavior after release rather than treating a larger pool as the automatic fix for latency.
+
+## When should I choose another approach?
+
+Bun's native client requires a Bun runtime. If the app runs in a different runtime, choose a client that the host supports or move the server to a compatible host. Check [Compute's runtime limits](/docs/compute/limitations) for the rest of the app's dependencies.
+
+If your workload relies on long-lived session state, compare a direct connection against its connection limits. Prisma Postgres also has no point-in-time recovery; a requirement to restore to a specific moment should decide the database provider before client-library preference does.

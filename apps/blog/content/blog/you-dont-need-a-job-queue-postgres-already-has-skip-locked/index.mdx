@@ -401,6 +401,8 @@ The alternative holds the claim inside an open transaction for the length of the
 
 Either way, this queue delivers at least once, not exactly once; no recovery scheme escapes that. A crash after the work but before the `done` update, a janitor reset of a slow worker, even a connection blip between finishing a job and recording it: each can run a job's side effect twice. Write handlers so that running them twice is safe. For the welcome email that opened this post, that means a dedupe key: an `emails_sent` row written on success and checked before sending, or an idempotency key passed to the email provider, so a repeat run finds the work already done and skips it. The same move covers any side effect: give it a key, check the key first.
 
+In a booking app, commit the reservation and its notification job together, then let the worker retry delivery. The [booking app hosting guide](https://www.prisma.io/postgres/booking-app-hosting) covers the reservation rule and the deployment checks around that workflow.
+
 ## Where to run the worker
 
 The worker is an ordinary process that wants to stay alive, and platforms built around short-lived request handlers make that awkward. Two shapes work: a persistent loop, or a short-lived pass that wakes up, drains what's due, and exits.

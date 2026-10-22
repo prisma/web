@@ -1,0 +1,127 @@
+---
+title: "What hosting and database should I use for a booking app?"
+description: "Host a TypeScript booking app with managed Postgres, atomic reservations, clear time-zone rules and a tested release and recovery process."
+summary: "Use managed TypeScript hosting and a shared Postgres database, with the database enforcing the rule that decides who gets a slot. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a small business that wants its booking server and saved reservations in one project. Vercel or Netlify with Prisma Postgres are also reasonable choices for an existing app. Choose a scheduling product instead when you need standard booking features and do not want to maintain custom software."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "7 min read"
+faq:
+  - question: "Will a faster host prevent double bookings?"
+    answer: "No. Prevent competing reservations with a database constraint or an atomic transaction that enforces your booking rule. A faster server reduces waiting but does not make a separate availability read and later write safe."
+  - question: "Should bookings be stored in the customer's browser?"
+    answer: "The browser can hold an unfinished selection, but confirmed reservations belong in the shared server-side database. Otherwise another device or customer cannot reliably see the same availability."
+  - question: "Does Prisma ORM need to manage the booking tables?"
+    answer: "No. Prisma Postgres works with ordinary PostgreSQL clients and other ORMs. Keep the library that fits the app, and enforce reservation rules in the database and server regardless of the client."
+  - question: "Can I confirm a booking before its email is delivered?"
+    answer: "Yes, if the reservation has committed and the app clearly shows its confirmation. Record notification work durably and retry delivery separately. A mail failure should not erase a saved reservation or create a second one."
+related:
+  - title: "Transactions for shared customer records"
+    href: "/postgres/customer-order-transactions"
+  - title: "Hosting a shared inventory app"
+    href: "/compute/multi-user-inventory-app"
+  - title: "Separating test data from customers"
+    href: "/postgres/typescript-test-environment"
+cta:
+  title: "Keep one authoritative booking record"
+  description: "Use Prisma Postgres for reservations and Prisma Compute for the TypeScript app, then test competing requests before accepting customers."
+  label: "Set up Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+The difficult booking is the one two customers try to make at the same time. Both can see an available appointment in their browsers. Your server and database must decide which request succeeds, and both screens need to reflect that saved decision.
+
+We make Prisma Compute and Prisma Postgres. Provider and PostgreSQL documentation linked here was checked on October 22, 2026. Prisma ORM is optional.
+
+## What does a small booking app need?
+
+Start with the booking unit: a predefined appointment slot, a seat, a room-night or a variable-length reservation. The database rule depends on that choice. Reserving one existing slot is easier to enforce than detecting every overlap between arbitrary start and end times.
+
+Store each appointment's exact time and keep the business's named time zone, such as `Asia/Bangkok`, separately for display and recurring appointments. PostgreSQL's [timestamp with time zone](https://www.postgresql.org/docs/17/datatype-datetime.html) stores an instant, not the original named time zone. Test daylight-saving transitions if the business operates where they occur.
+
+Check customer permissions on the server for booking, cancellation and rescheduling. Keep reminders and calendar integrations separate from the saved reservation so an unavailable email or calendar provider does not lose it.
+
+## Which managed setup should I choose?
+
+The app hosts below are listed alphabetically and can each connect to Prisma Postgres.
+
+| Setup | Choose it when | Decision your app still owns |
+| --- | --- | --- |
+| Netlify + Prisma Postgres | The booking app already uses [Netlify's framework and function workflow](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/). | Reservation transactions, customer access and retryable notifications. |
+| Prisma Compute + Prisma Postgres | You want the TypeScript server and database in one project, with [Composer configuration](/docs/composer) describing their relationship. | Slot or overlap rules, migrations and release acceptance tests. |
+| Vercel + Prisma Postgres | Your app already uses [Vercel's Next.js deployment workflow](https://vercel.com/docs/frameworks/full-stack/nextjs). | Database configuration, cache freshness and the same reservation rules. |
+
+For a custom TypeScript booking app, Prisma Compute keeps the request handler close to the database when their regions match and gives the team one project to operate. Keep a working Vercel or Netlify deployment when its workflow already suits the app.
+
+## How do I set it up with Prisma?
+
+### 1. Prepare an isolated app and database
+
+Create a development database in your account in [Prisma Console](https://console.prisma.io). The SQL below can be tested before deploying an app. For the app itself, complete [Compute getting started](/docs/compute/getting-started): its Composer setup supplies `module.ts` and the service configuration describing the server and database to create. Choose a supported [region](/docs/cli/deploy), then build and deploy a separate test environment from that configured app. This shell example selects `us-east-1`; substitute the region you chose:
+
+```sh
+export PRISMA_REGION=us-east-1
+npx prisma@latest auth login
+npm run build
+npx prisma@latest deploy module.ts --stage review
+```
+
+The deploy prints the service URL and database identifiers; their values depend on your account. `review` names an [isolated deployment stage](/docs/composer/deploying#production-and-stages). Its declared database is separate from production. Verify any manually supplied database URLs too; a stage name does not change their values.
+
+Use fictional customers and separate credentials. Normal app queries use the pooled connection; this session-based SQL demonstration needs a [direct connection](/docs/postgres/database/connection-pooling) to a development database. Do not run examples against live reservations.
+
+### 2. Let one statement claim a predefined slot
+
+For a system that creates non-overlapping slots in advance, one slot row can represent one unit of availability. With the PostgreSQL `psql` client installed, make the development database's direct URL available as `DIRECT_DATABASE_URL` through your local secret mechanism, then open one connection:
+
+```sh
+psql "$DIRECT_DATABASE_URL"
+```
+
+Paste the following SQL into that session and keep it open through cleanup. A temporary table belongs to that connection, so a second session cannot see it:
+
+```sql
+CREATE TEMP TABLE booking_slot_demo (
+  slot_id integer PRIMARY KEY,
+  account_id integer NOT NULL,
+  starts_at timestamptz NOT NULL,
+  customer_id integer
+);
+
+INSERT INTO booking_slot_demo (slot_id, account_id, starts_at)
+VALUES (1, 10, '2030-10-25 09:00:00+07');
+
+UPDATE booking_slot_demo
+SET customer_id = 501
+WHERE slot_id = 1 AND account_id = 10 AND customer_id IS NULL
+RETURNING slot_id, customer_id;
+```
+
+The update returns `slot_id = 1` and `customer_id = 501`. Run the same update again and it returns no rows: that slot is already claimed. With a shared application table, PostgreSQL's [transaction rules](https://www.postgresql.org/docs/17/transaction-iso.html) ensure that two competing conditional updates cannot both claim this slot. One succeeds; the other returns no row or a transaction error to handle. If the update returns no row, tell the customer the slot is unavailable. Transaction settings can also cause a database error when requests compete; define which errors the app retries and which it reports as a failed request.
+
+This demonstrates claiming one predefined slot, not a complete booking schema. The app must create non-overlapping slots, obtain the account and customer from trusted authorization checks, use bound parameters, and reject invalid times. Variable-length reservations need a rule that detects overlaps, not just unique start times. Holds, expiration, cancellation and rescheduling need their own transactions and history.
+
+Remove the demonstration table when finished:
+
+```sql
+DROP TABLE booking_slot_demo;
+```
+
+### 3. Commit before notifying the customer
+
+Persist the reservation and any notification job together in a transaction. A background worker then reads pending jobs, sends confirmations or reminders and retries failed deliveries. For reminders that must run while the app has no visitors, run the worker on an always-on process host and keep the web app on Compute. The [Postgres job-queue guide](/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked#where-to-run-the-worker) explains worker hosting, retries and recovery after a crash. Saving jobs alone does not deliver them. If delivery fails, the customer should still see the saved reservation after signing in.
+
+If a request times out after a commit, the browser cannot tell whether it succeeded. Give a booking attempt a stable identifier and let the server look up its result; avoid creating a new reservation merely because the customer clicked again. Show current availability after a conflict rather than retrying the same slot indefinitely.
+
+### 4. Test contention, time zones and recovery
+
+In the implemented app's test suite, send two simultaneous booking requests for the same slot in a shared test table and verify that only one succeeds. This is an application acceptance test, separate from the single-session temporary-table demonstration above. Test unauthorized cancellation, a repeated request, a failed notification and rescheduling across the business's relevant time zones. Reload from a second device to check that it sees the same saved state.
+
+After review, apply the production schema and build and deploy the approved commit with production credentials and configuration; omit `--stage review` to target production. Verify the production URL and a dedicated test account before opening bookings. Choose a [backup plan](/docs/postgres/database/backups), rehearse restoration into a separate database and decide how to reconstruct bookings made after the latest snapshot.
+
+## When should I choose another approach?
+
+A ready-made scheduling service is often less work when standard appointment rules, reminders and calendar integrations cover the business. Custom hosting is useful when the booking workflow itself needs to be custom.
+
+Prisma Compute has no persistent writable filesystem or WebSocket server support; review its [runtime limits](/docs/compute/limitations) against the app's dependencies. Prisma Postgres has no point-in-time recovery and its automatic snapshots depend on the plan. Choose a database with the recovery options your business needs when a daily snapshot and a procedure for reconstructing later bookings are insufficient.
