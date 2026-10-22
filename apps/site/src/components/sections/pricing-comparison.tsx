@@ -16,20 +16,34 @@ const SPECTRUM =
 // V2 copy verbatim, with "No connection limits" removed — Gregory confirmed
 // pooled limits do exist (10/100/500/1000).
 //
-// Figure provenance, as of 2026-07-30:
-//  - Supabase Pro $95–145 and Prisma Pro $72–90 are CLIENT-SUPPLIED, from their
-//    "Recommended website comparison" (fair 50K MAU model). Both trustworthy.
-//  - Neon + Vercel $385–450 is still NOT verified. It has never been confirmed,
-//    and the blog post once offered as backing compares Prisma Compute vs Vercel
-//    at 20M requests (~$98 vs ~$236, about 2.4x) — a different comparison.
-//
-// ⚠️ This is now an inconsistency the client needs to resolve, not just a gap.
-// SAVINGS_MULTIPLE is derived from the widest column, so it renders "Up to 5x
-// less" off the back of the unverified $385–450 — while the client's own freshly
-// supplied Supabase column sits beside it at only ~1.5x. Two competitor
-// comparisons in one section implying wildly different savings, with the
-// aggressive one being the unsourced one, is the kind of thing a competitor
-// checks. Flagged to André 2026-07-30; do not quietly keep shipping the 5x.
+// Figure provenance, checked 2026-10-22. Basis for every column: ~50K MAU,
+// 10M requests, 10-20M database operations, 40 GB database, database compute
+// of 1-2 CU always on (Supabase Medium-Large), 1-3 developer seats.
+//  - Supabase Pro $95-145 and Prisma Pro $72-90 come from the 2026-07-30
+//    "Recommended website comparison" (fair 50K MAU model). Recomputing Prisma
+//    Pro from prisma.io/pricing on the same basis gives $60-99: $49 plan, ops
+//    over 10M at $2 per million, memory at $0.006 per GB-hour, CPU at $0.064
+//    per vCPU-hour, bandwidth at $0.025 per GB.
+//  - Neon + Vercel $110-270, recomputed from list prices on the same basis.
+//    Neon Launch (neon.com/pricing): 730-1,460 CU-hours at $0.106 plus 40 GB
+//    at $0.35 per GB-month = $91-169; database egress stays inside the 500 GB
+//    per project included. Vercel Pro (vercel.com/pricing, docs/pricing,
+//    docs/pricing/flat-rate-cdn): $20 seat with a $20 usage credit, $0-40 for
+//    extra seats, $0-20 for 10M CDN requests, and function usage of $17-39
+//    before the credit = $20-99. Function usage: 10M invocations at $0.60 per
+//    million ($6), 50-150 active CPU-hours at $0.128 ($6-19) and 400-1,300
+//    provisioned-memory GB-hours at $0.0106 ($4-14). CDN is a range because
+//    Vercel's sources differ: docs/pricing/flat-rate-cdn says Pro includes the
+//    lowest Flat Rate tier (1M requests, 1 TB) and 10M requests is the $20
+//    tier (on demand, $2 per 1M above the included 1M, about $18), while
+//    one rendering of vercel.com/pricing has shown 10M CDN requests and 1 TB
+//    transfer as included on Pro, which would make it $0. Total $111-268.
+//  - Ratio at the midpoints: $190 / $81, about 2.3x, so the marker below
+//    renders "Up to 2x less", and $81 is about 43% of $190 ("less than half
+//    as much"). The earlier $385-450 could only be reproduced
+//    by pricing Neon Scale (SLAs, HIPAA) against Prisma Pro, which is not a
+//    like-for-like plan, so it was replaced.
+// Re-check these figures whenever any of the four pricing pages change.
 
 // Placeholder marker. Anything using PENDING is awaiting figures from the
 // client — never fill these in with estimates.
@@ -47,7 +61,7 @@ export const ALTERNATIVES = [
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
     shortName: "Neon + Vercel",
-    cost: "$385–450",
+    cost: "$110–270",
     pending: false,
     // Billing and data transfer checked 2026-10-22: Neon added from the Vercel
     // Marketplace is billed through the Vercel account
@@ -66,7 +80,11 @@ export const ALTERNATIVES = [
         label: "Database data transfer",
         value: "500 GB egress per project included, then $0.10/GB",
       },
-      { label: "Spend limits", value: "Not standard" },
+      {
+        label: "Spend limits",
+        value:
+          "Neon: spending notifications at 80% and 100%. Vercel: a spend budget with an optional pause",
+      },
     ],
   },
   {
@@ -104,9 +122,8 @@ export const ALTERNATIVES = [
 // and storage + application Compute usage", "Unlimited database data transfer",
 // "Spend limits included on paid plans") — same substance, so V2 wins on voice.
 //
-// ⚠️ The cost moved: V2 had $70–90, the client's 2026-07-30 doc says $72–90.
-// Taking theirs — the old figure was never verified in the first place (it was
-// open item 2), and this is the first time they have put a number in writing.
+// The cost is the 2026-07-30 doc's $72–90 (V2 had $70–90). The home page
+// scenario card (pricing-scale.tsx) uses the same figure.
 export const PRISMA = {
   name: "Prisma Pro",
   cost: "$72–90",
@@ -118,8 +135,8 @@ export const PRISMA = {
 };
 
 // Bar length and the savings multiple are both derived from the cost strings
-// above, so the figures stay a single source of truth: correct "$385–450" and
-// the bar and the multiple follow it. Nothing here introduces a number that
+// above, so the figures stay a single source of truth: correct a cost string
+// and the bar and the multiple follow it. Nothing here introduces a number that
 // isn't already in the copy.
 //
 // Returns null when a column has no figure yet (the Supabase placeholder) —
@@ -139,14 +156,14 @@ function costFraction(cost: string): number | null {
 }
 
 // The headline multiple, rounded from the figures rather than hardcoded, so it
-// can never drift from the bars or from the sentence above them. The V2 copy
-// says "up to 5x less"; if this ever renders something else, the figures moved
-// and the copy needs re-checking with the client.
+// can never drift from the bars. With the figures above it renders "Up to 2x
+// less"; the sentence above the columns says "less than half as much", so if
+// this ever renders something else, re-check that sentence too.
 //
-// It names its basis. Unqualified, "Up to 5x less" sits on the Prisma card right
-// next to a Supabase column that is only ~1.5x more expensive, so it reads as a
-// claim about Supabase and is wrong by more than 3x. The multiple only ever
-// describes the widest column, so it says which one that is.
+// It names its basis. Unqualified, the marker sits on the Prisma card right
+// next to a Supabase column that is only ~1.5x more expensive, so it would read
+// as a claim about Supabase. The multiple only ever describes the widest
+// column, so it says which one that is.
 const PRISMA_MID = costMidpoint(PRISMA.cost);
 export const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
 export const WIDEST = ALTERNATIVES.reduce((a, b) =>
@@ -232,7 +249,7 @@ export function PricingComparison() {
               <p className="mx-auto mt-5 max-w-3xl text-pretty text-center text-base leading-relaxed text-muted-foreground">
                 At around 50K monthly active users,{" "}
                 <strong className="font-semibold text-foreground">
-                  Prisma Pro can cost up to 5x less than a typical Neon + Vercel setup
+                  Prisma Pro can cost less than half as much as a typical Neon + Vercel setup
                 </strong>
                 , with one bill, included database data transfer, and spend limits on by default.
               </p>
