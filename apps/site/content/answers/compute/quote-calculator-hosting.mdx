@@ -1,0 +1,114 @@
+---
+title: "Where should I host a quote calculator and save quotes?"
+description: "Publish a TypeScript quote calculator with server-side pricing, saved quote snapshots in Postgres and a reliable follow-up workflow."
+summary: "Host the calculator as a web app with a server endpoint, and save submitted quotes in managed Postgres before showing a successful submission. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a custom TypeScript calculator because the pricing code and database can live in one project. Vercel or Netlify with Prisma Postgres also suit an existing app. Recalculate the price on the server and save the inputs, currency and price version used for that quote."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "5 min read"
+faq:
+  - question: "Can the browser calculate the final price?"
+    answer: "The browser can show an estimate, but submitted fields can be altered. The server should validate the choices and calculate the saved amount from trusted pricing rules. Do not accept a browser-supplied total as authoritative."
+  - question: "Will changing my prices change old quotes?"
+    answer: "Save a copy of the inputs, unit prices, currency, pricing version and total when the quote is submitted. Render that saved version later. Recalculating old quotes from today's catalogue can change what the customer originally saw."
+  - question: "Does Prisma Postgres require Prisma ORM?"
+    answer: "No. Prisma Postgres works with ordinary PostgreSQL clients and other ORMs. Keep the calculator's preferred data library and apply schema changes through a reviewed migration workflow."
+  - question: "Should a failed confirmation email lose the quote?"
+    answer: "No. Commit the quote before reporting success, and track notification work separately. A confirmation or staff notification should be retryable without creating another quote. Staff should be able to find the saved submission even when email delivery fails."
+related:
+  - title: "Customer order transactions"
+    href: "/postgres/customer-order-transactions"
+  - title: "Protecting server credentials"
+    href: "/compute/typescript-app-secrets"
+  - title: "A customer order portal"
+    href: "/postgres/customer-order-portal"
+cta:
+  title: "Save the quote your customer actually submitted"
+  description: "Run the pricing endpoint on Compute and keep submitted quote versions in Prisma Postgres for review and follow-up."
+  label: "Start a Compute app"
+  href: "/docs/compute/getting-started"
+---
+
+Suppose your calculator estimates a three-day service at a particular daily rate. Next week that rate changes. A useful saved quote still shows the original inputs and price, so your team can understand the request and explain any later revision.
+
+We make Prisma Compute and Prisma Postgres. The linked hosting, database and currency documentation was checked on October 22, 2026.
+
+## What needs to run on the server?
+
+The browser displays the calculator, while a server endpoint validates the selected service, quantity and contact details, looks up trusted prices and saves the resulting quote. Keep the database connection and staff-only views on the server.
+
+Decide whether a submission is an estimate, a request for staff review or an offer with a defined expiry. Show that state clearly. A saved amount alone does not define the business's acceptance process.
+
+Give each submission a stable identifier so a retry after a slow response can find its previous result. Keep a unique submission key in the database and scope it to the relevant user or submission flow. An unpredictable quote ID also does not replace authorization for viewing private contact details.
+
+## Which hosting setup fits?
+
+These app hosts are listed alphabetically. Each can use Prisma Postgres.
+
+| Setup | Choose it when | Check for the calculator |
+| --- | --- | --- |
+| Netlify + Prisma Postgres | You already use [Netlify's framework and function workflow](https://docs.netlify.com/build/functions/overview/). | The submission reaches a server function with its database credentials configured. |
+| Prisma Compute + Prisma Postgres | You want the TypeScript pricing endpoint and managed database in one project. | Configure the [Composer app](/docs/composer), then test saved quote versions across deployments. |
+| Vercel + Prisma Postgres | The app already follows [Vercel's Next.js workflow](https://vercel.com/docs/frameworks/full-stack/nextjs). | Keep database credentials server-side and distinguish preview submissions from live leads. |
+
+Compute is a practical starting point for a custom TypeScript calculator that needs server logic and saved business records. If an embedded quote-builder product already covers the workflow, that may require less custom software to maintain.
+
+## How do I set it up with Prisma?
+
+### 1. Prepare separate test records
+
+Create a development Prisma Postgres database in [Console](https://console.prisma.io), choosing a region near the server. Use fictional contacts while testing. Copy the direct URL for migrations and the pooled URL for application traffic from the [connection details](/docs/postgres/database/connecting-to-your-database).
+
+Define the quote fields and the staff access rules before asking an assistant to implement the form. Keep the original submission and create a new revision when staff change it, rather than silently overwriting the amount the customer saw.
+
+### 2. Store a price snapshot
+
+With `psql` installed, open a direct connection to the development database. Run this fictional USD example in one session:
+
+~~~sql
+CREATE TEMP TABLE quote_snapshot_demo (
+  quote_id integer PRIMARY KEY,
+  price_version text NOT NULL,
+  currency text NOT NULL CHECK (currency = 'USD'),
+  quantity integer NOT NULL CHECK (quantity > 0),
+  unit_price_cents bigint NOT NULL CHECK (unit_price_cents >= 0),
+  total_cents bigint GENERATED ALWAYS AS
+    (quantity::bigint * unit_price_cents) STORED
+);
+
+INSERT INTO quote_snapshot_demo
+  (quote_id, price_version, currency, quantity, unit_price_cents)
+VALUES (1, 'demo-rate-v1', 'USD', 3, 12500);
+
+SELECT quote_id, price_version, currency, total_cents
+FROM quote_snapshot_demo;
+~~~
+
+The row contains `demo-rate-v1`, `USD` and `total_cents = 37500`. The example stores a rate with the quote, so reading it does not depend on a later catalogue price.
+
+This table is a demonstration, not a complete quote schema or a database-enforced immutable record. In the real app, select the rate from trusted server data, use bound parameters and restrict who may change submitted quotes. Store contact ownership, submission keys, status and revision history as the workflow requires. The temporary table disappears when the session closes.
+
+The amount example uses whole USD cents. Decide rounding, discounts and taxes explicitly, and use the right [minor units for the currency](https://docs.stripe.com/currencies); currencies do not all use two decimal places.
+
+### 3. Save first, then notify
+
+Write the quote and its submission identifier in a transaction before returning a successful receipt. If the customer retries the same submission, return the saved result. Keep staff-only contact details out of publicly accessible quote URLs.
+
+For reliable notifications, save a notification job with the quote in the same transaction and process it through a retryable worker. A failed email must not delete the quote or make the browser create another one. Staff need an authenticated list of saved submissions for follow-up.
+
+Use the [Postgres job-queue guide](/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked#where-to-run-the-worker) for the worker and retry loop. If it polls for jobs while the app has no visitors, deploy it on an always-on worker host. Keep Compute as the form endpoint; best-effort work after a response does not replace that durable notification workflow.
+
+### 4. Deploy the configured app and test the form
+
+Use [Compute getting started](/docs/compute/getting-started) for a new app or [Port an existing app](/docs/composer/porting-an-app) for an existing server. Build the app before deploying and keep credentials in its server configuration.
+
+Apply the real schema to each development, review and production database. A Composer-declared database is separate from the Console database used for this SQL demonstration. Follow the [production migration guide](/postgres/production-database-migrations) before accepting live submissions.
+
+Test an altered total, a negative quantity, a repeated submission, an email failure and a price change after submission. Confirm that the original quote survives a redeploy and that another customer cannot read its contact details.
+
+## When should I choose another setup?
+
+Use a hosted quoting or CRM product when its forms, approval flow and follow-up tools fit the business. Custom hosting is useful when the pricing or customer workflow needs your own code.
+
+Check [Compute's runtime limits](/docs/compute/limitations) for dependencies that need a persistent filesystem or other unsupported features. Choose a [backup plan](/docs/postgres/database/backups) around the value of the submitted leads; Prisma Postgres has no point-in-time recovery, and Free has no automatic snapshots.
