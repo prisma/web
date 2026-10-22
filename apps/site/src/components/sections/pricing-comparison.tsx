@@ -49,9 +49,23 @@ export const ALTERNATIVES = [
     shortName: "Neon + Vercel",
     cost: "$385–450",
     pending: false,
+    // Billing and data transfer checked 2026-10-22: Neon added from the Vercel
+    // Marketplace is billed through the Vercel account
+    // (vercel.com/docs/marketplace-storage, "Unified billing";
+    // vercel.com/marketplace/neon, "Billing is managed through Vercel."), while
+    // the Neon-Managed Integration is "Paid through Neon"
+    // (neon.com/docs/guides/vercel-overview). Neon Launch and Scale
+    // include 500 GB of public network transfer per project, then $0.10/GB
+    // (neon.com/pricing).
     rows: [
-      { label: "Billing", value: "Separate database + hosting bills" },
-      { label: "Database data transfer", value: "Pay per GB" },
+      {
+        label: "Billing",
+        value: "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",
+      },
+      {
+        label: "Database data transfer",
+        value: "500 GB egress per project included, then $0.10/GB",
+      },
       { label: "Spend limits", value: "Not standard" },
     ],
   },
