@@ -144,14 +144,19 @@ On Compute, the fix has two parts, because the code reads the key differently. T
 
 First, declare the key as a `secretString()` field of the service's input, bind it in `module.ts` with `envSecret("PAYMENTS_API_KEY")`, and read it with `service.input()` ([Service input](/docs/composer/service-input)). Your code receives a box that redacts the value in logs and JSON, and `.expose()` returns it where you pass it to the API client.
 
-Then store the value that binding names, as a [project environment variable](/docs/compute/environment-variables). Variables come in three layers: production, preview for every preview deploy, and overrides for a single preview branch. With only the name, the CLI reads the value from a variable of the same name in your shell, so export it first (for example from your secret manager's CLI) and the key doesn't appear in the command:
+Then store the value that binding names, as a [project environment variable](/docs/compute/environment-variables). Variables come in three layers: production, preview for every preview deploy, and overrides for a single preview branch. With only the name, the CLI reads the value from a variable of the same name in your shell, so export it first (for example from your secret manager's CLI) and the key doesn't appear in the command. With the production key exported as `PAYMENTS_API_KEY`, run:
 
 ```sh
 npx prisma@latest auth login
 npx prisma@latest project link <project-id-or-name>
 npx prisma@latest project env add PAYMENTS_API_KEY --role production
-npx prisma@latest project env add PAYMENTS_API_KEY --role preview
 npx prisma@latest project env list --role production
+```
+
+Every preview deploy receives the preview value, so give previews a separate test or restricted key, not the production one. Export that key as `PAYMENTS_API_KEY` in the same shell, then run:
+
+```sh
+npx prisma@latest project env add PAYMENTS_API_KEY --role preview
 ```
 
 `project env` commands target the project the directory is linked to; in CI, pass `--project <id-or-name>` on each command instead ([Known limitations](/docs/compute/limitations#cli)). `add` fails if the key already exists in that scope; use `update` to replace a value. `--branch <name>` sets an override for one preview branch, and `--file .env.production` imports a dotenv file instead of a single key. `list` shows names and metadata, never values ([project command reference](/docs/cli/project)). Running the CLI with `npx` needs Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer.

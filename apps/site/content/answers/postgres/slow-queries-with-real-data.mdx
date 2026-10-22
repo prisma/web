@@ -59,7 +59,7 @@ Work from the request inward: first find out how much of the slow request is SQL
 
 Pick one slow request and measure four numbers for it: the total request time, the time spent waiting for a database connection, the time spent running SQL, and the number of queries it sends. An APM tool or OpenTelemetry tracing gives you all four. For node-postgres, the [OpenTelemetry `pg` instrumentation](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-pg) records a span per query and a `pg-pool.connect` span for the time spent waiting for a pool connection.
 
-Without tracing, time the queries in your data layer and count them per request. With node-postgres, wrap `pool.query()` and log [`pool.waitingCount`](https://node-postgres.com/apis/pool#properties), the number of requests queued for a client because every client is checked out:
+Without tracing, time the queries in your data layer and count them per request. With node-postgres, check out the client yourself, so the wait for a free client and the query time are measured separately:
 
 ```ts
 import { Pool } from "pg";
@@ -68,14 +68,22 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export async function query(text: string, params?: unknown[]) {
   const start = performance.now();
-  const result = await pool.query(text, params);
-  const ms = (performance.now() - start).toFixed(1);
-  console.log(`${ms}ms waiting=${pool.waitingCount} ${text}`);
-  return result;
+  const client = await pool.connect();
+  const acquired = performance.now();
+  try {
+    const result = await client.query(text, params);
+    const done = performance.now();
+    const wait = (acquired - start).toFixed(1);
+    const run = (done - acquired).toFixed(1);
+    console.log(`wait=${wait}ms query=${run}ms ${text}`);
+    return result;
+  } finally {
+    client.release();
+  }
 }
 ```
 
-The logged time includes any wait for a free client. Prisma ORM [emits query events](/docs/orm/v7/prisma-client/observability-and-logging/logging#event-based-logging) with each query's duration when you set `log: [{ emit: "event", level: "query" }]` and listen with `prisma.$on("query", ...)`. Drizzle prints each query and its parameters with [`drizzle(url, { logger: true })`](https://orm.drizzle.team/docs/goodies#logging). In other languages, your APM's or OpenTelemetry's database instrumentation gives you the same numbers.
+With parameterized queries, the function logs the statement text with its `$1` placeholders, not the values. [`pool.waitingCount`](https://node-postgres.com/apis/pool#properties) only counts the requests queued at the moment you read it, so a request that waited and then ran can log `0`; the `wait` time above is the number to trust. Prisma ORM [emits query events](/docs/orm/v7/prisma-client/observability-and-logging/logging#event-based-logging) with each query's duration when you set `log: [{ emit: "event", level: "query" }]` and listen with `prisma.$on("query", ...)`. Drizzle prints each query and its parameters with [`drizzle(url, { logger: true })`](https://orm.drizzle.team/docs/goodies#logging). Parameters on real requests are often customer data, such as email addresses or names, so for production traffic give Drizzle a custom logger whose `logQuery(query, params)` writes the query and leaves the parameters out, and keep full parameter logging to test data. In other languages, your APM's or OpenTelemetry's database instrumentation gives you the same numbers.
 
 Then read the numbers:
 
@@ -83,7 +91,7 @@ Then read the numbers:
 | --- | --- | --- |
 | One or a few queries take most of the request | Query execution | Steps 2 to 4 |
 | Dozens or hundreds of fast queries per request | Round trips (N+1) | Step 5 |
-| Long `pg-pool.connect` spans or a growing `pool.waitingCount` | Waiting for a pool connection | Step 5 |
+| Long `pg-pool.connect` spans or a high `wait` time | Waiting for a pool connection | Step 5 |
 | Queries are fast and few, the request is still slow | App code, serialization or an external API | Not the database |
 
 ### 2. Find the statements that use the most time
@@ -111,7 +119,7 @@ calls | total_ms | mean_ms | rows | query
   200 |      7.0 |    0.03 |  200 | select name from customers where id = $1
 ```
 
-Read the columns together. A high `mean_ms` is a slow query, which steps 3 and 4 fix. A high `calls` count with a tiny `mean_ms` is a query that runs in a loop: the database spends 7 ms on it in total, but the app pays one network round trip per call, which step 5 covers. Run `SELECT pg_stat_statements_reset();` before you reproduce a slow page, so the numbers describe that page; by default only superusers can run it, unless someone grants access. Unless your role has the privileges of `pg_read_all_stats`, you see other roles' statistics but not their query text.
+Read the columns together. A high `mean_ms` is a slow query, which steps 3 and 4 fix. A high `calls` count with a tiny `mean_ms` is a query that runs in a loop: the database spends 7 ms on it in total, but the app pays one network round trip per call, which step 5 covers. To see what one slow page adds, note `calls` and `total_ms` for its statements, reproduce the page, and run the query again; the difference belongs to the page. Don't reset the statistics on a shared or production server: `SELECT pg_stat_statements_reset();` with no arguments [discards the statistics for every statement](https://www.postgresql.org/docs/current/pgstatstatements.html), including the history someone else may need. Reset only on a database of your own where losing that history is fine; by default only superusers can run it, unless someone grants access. Unless your role has the privileges of `pg_read_all_stats`, you see other roles' statistics but not their query text.
 
 If your host lets you change server settings and read the server log, two more tools help. [`log_min_duration_statement`](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-MIN-DURATION-STATEMENT) logs every statement slower than a threshold, such as `500ms`. [`auto_explain`](https://www.postgresql.org/docs/current/auto-explain.html) logs the plans of statements slower than its own `auto_explain.log_min_duration` setting, which is off by default; set `auto_explain.log_analyze` as well to get actual row counts and timings. Changing `log_min_duration_statement` needs superuser rights or a granted `SET` privilege, and `auto_explain` has to be preloaded in the server configuration or loaded by a superuser, so on a managed host you change them through the provider's settings, if it offers them.
 
@@ -248,7 +256,7 @@ LIMIT 200;
 
 In Prisma ORM, load the relation in the same call with `include` or `select`, or fetch all related rows with one `in` query; the [query optimization guide](/docs/orm/v7/prisma-client/queries/advanced/query-optimization-performance#solving-the-n1-problem) shows each. In Drizzle, use a join, or a relational query with `with`, which Drizzle [sends as a single SQL statement](https://orm.drizzle.team/docs/rqb).
 
-**Waiting for a connection.** If `pool.waitingCount` or the `pg-pool.connect` span grows under load, requests are spending their time queued for a connection. Shorten transactions, release clients, and size the pool for the number of app instances; the [too many connections guide](/postgres/too-many-connections) walks through it.
+**Waiting for a connection.** If the `wait` time or the `pg-pool.connect` span grows under load, requests are spending their time queued for a connection. Shorten transactions, release clients, and size the pool for the number of app instances; the [too many connections guide](/postgres/too-many-connections) walks through it.
 
 **Distance between the app and the database.** Every query pays the round trip, so a page with 20 sequential queries pays it 20 times. Put the app in the same region as the database and [measure from the deployed app](/postgres/nodejs-database-regions), not from your laptop.
 
