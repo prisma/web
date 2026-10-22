@@ -201,7 +201,7 @@ Use it when the provider's certificates can't be verified, as Heroku's help arti
 
 ## Where does Prisma Postgres fit?
 
-[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and any Postgres client connects to it, including `pg`, postgres.js, Drizzle, Kysely and Prisma ORM, which is optional. Its [connection strings](/docs/postgres/database/connecting-to-your-database) come with `sslmode=require`, and the docs say SSL is mandatory. The pooled host, `pooled.db.prisma.io`, and the direct host, `db.prisma.io`, both listen on port 5432.
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and any Postgres client connects to it, including `pg`, postgres.js, Drizzle, Kysely and Prisma ORM, which is optional. Prisma Postgres fits when you are picking a host for a new Node app and want certificate checks to pass without a CA file: Node's default CA list verifies its certificates, so `pg` connects with the Console's `sslmode=require` string or with `sslmode=verify-full`, and there is no CA file to download or deploy. Its [connection strings](/docs/postgres/database/connecting-to-your-database) come with `sslmode=require`, and the docs say SSL is mandatory. The pooled host, `pooled.db.prisma.io`, and the direct host, `db.prisma.io`, both listen on port 5432.
 
 Both hosts present Let's Encrypt certificates issued for their own names. On October 22, 2026, the `openssl` command from step 1 returned `Verify return code: 0 (ok)` for both, and a Node 22 TLS handshake with the default CA list reported the connection as authorized. So node-postgres verifies them with no CA file: the connection string from the Console works as it is, and `sslmode=verify-full` works too and avoids the `pg` warning. If it fails with a timeout or a refused connection, the docs say to check `sslmode=require` and port 5432, and a corporate firewall or VPN that blocks outbound traffic to `*.db.prisma.io` on that port; the [serverless driver](/docs/postgres/database/serverless-driver), which connects over HTTPS, is the docs' other option there.
 
@@ -209,6 +209,6 @@ Know the limits before you move a database to get rid of a certificate problem:
 
 - If your database already runs on RDS, Supabase or Heroku and the certificate is all that's wrong, fix the CA where it is. That takes one CA file, while moving a database is a migration.
 - [Direct connections](/docs/postgres/database/connection-pooling) are capped at 10 on Free and Starter, 50 on Pro and 100 on Business, and 5 of them are reserved for platform operations. Pooled connections are capped at 10, 100, 500 and 1,000, and pooled queries end after 10 minutes.
-- [Daily backups](/docs/postgres/database/backups) are on Starter, Pro and Business only, kept for 7 days on Starter and Pro and 30 days on Business, and taken on days the database has activity. There is no point-in-time recovery yet.
+- [Daily backups](/docs/postgres/database/backups) are on Starter, Pro and Business only, kept for 7 days on Starter and Pro and 30 days on Business, and taken on days the database has activity. There is no point-in-time recovery yet (it is coming in November 2026).
 
 The Free plan includes 2 GB of storage and needs no credit card. See [pricing](/pricing) for the paid plans.

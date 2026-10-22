@@ -15,7 +15,7 @@ faq:
   - question: "What do I do if the key was committed or shipped in a browser bundle?"
     answer: "Treat it as exposed. Create a new key with the provider, put it in the host's settings, redeploy, then revoke the old key. GitHub's guide to removing sensitive data says to revoke or rotate the secret as the first step, because rewriting Git history doesn't remove copies in clones, forks or caches. A key inlined into JavaScript through `NEXT_PUBLIC_` or `VITE_` is readable by anyone who loads the page, so move the call that needs it to server code."
   - question: "Does the same fix apply when DATABASE_URL is missing?"
-    answer: "Yes, with one more step if you have no database yet: create one first, then set its connection string as `DATABASE_URL` on the host and redeploy. The [DATABASE_URL guide](/postgres/database-url-missing) walks through that case, including pooled and direct connection strings."
+    answer: "Yes, with one more step if you have no database yet: create one first, then set its connection string as `DATABASE_URL` on the host and redeploy. The [DATABASE_URL guide](/postgres/database-url-missing) walks through that case, including pooled and direct connection strings. On Prisma Compute, a database declared in the Composer module is created by the deploy and reaches the app as `db.url` from `service.load()`, so there is no `DATABASE_URL` to set ([Databases](/docs/composer/databases))."
 related:
   - title: "Where database passwords and API keys go when you deploy"
     href: "/compute/typescript-app-secrets"
@@ -139,7 +139,7 @@ The error names the variable and never prints its value. In Next.js, a module im
 
 ## Setting production secrets on Prisma Compute
 
-[Prisma Compute](/docs/compute) hosts TypeScript apps built for Node.js, Bun or Next.js; deployed apps run on Bun. It doesn't require Prisma ORM or Prisma Postgres, so this applies to any app you deploy there.
+[Prisma Compute](/docs/compute) hosts TypeScript apps built for Node.js, Bun or Next.js; deployed apps run on Bun. Prisma Compute fits when you want a missing key to stop the deploy instead of reaching production as `undefined`: in a [Prisma Composer](/docs/composer) app, the deploy fails and names any variable bound with `envSecret` that is set neither on the platform nor in the deploying shell ([Deploying](/docs/composer/deploying#ci)). Compute doesn't require Prisma ORM or Prisma Postgres, so the rest of this section applies to any app you deploy there.
 
 On Compute, the fix has two parts, because the code reads the key differently. The CLI's `deploy` command, [deploy on push](/docs/compute/deploy-on-push) and the Deploy Button all deploy a [Prisma Composer](/docs/composer) app; only the REST API, whose endpoint is marked experimental, deploys without one ([Deployments](/docs/compute/deployments)). In a Composer app, application code doesn't read `process.env`, so when you move an existing app over, its `process.env` reads become service input ([Compute FAQ](/docs/compute/faq)).
 
@@ -162,7 +162,7 @@ npx prisma@latest project env add PAYMENTS_API_KEY --role preview
 
 `project env` commands target the project the directory is linked to; in CI, pass `--project <id-or-name>` on each command instead ([Known limitations](/docs/compute/limitations#cli)). `add` fails if the key already exists in that scope; use `update` to replace a value. `--branch <name>` sets an override for one preview branch, and `--file .env.production` imports a dotenv file instead of a single key. `list` shows names and metadata, never values ([project command reference](/docs/cli/project)). Running the CLI with `npx` needs Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer.
 
-A deploy can also seed the value. When a stage lacks the variable, the deploy copies it from the deploying shell, and when a required variable is set neither on the platform nor in that shell, the deploy fails and names it ([Deploying](/docs/composer/deploying)). So a missing key stops the deploy instead of reaching production as `undefined`, and a deploy from your laptop can succeed while a fresh CI stage needs the value exported in the CI job.
+A deploy can also seed the value: when a stage lacks the variable, the deploy copies it from the deploying shell ([Deploying](/docs/composer/deploying)). So a deploy from your laptop can succeed while a fresh CI stage needs the value exported in the CI job.
 
 Values resolve at deploy time, so deploy again after any change: run `deploy`, push to the default branch if deploy on push is set up, or promote a version, which rebuilds it with the production variables ([Compute FAQ](/docs/compute/faq#how-do-i-rotate-a-secret)).
 
