@@ -552,7 +552,13 @@ db.runCommand({ collMod: "users", validator: {"$jsonSchema":{"additionalProperti
 ℹ This is a dry run. No changes were applied.
 ```
 
-A validator applies only to later writes, so adding one loses no data, and `db update` applies it without asking. Apply the validators:
+A validator applies only to later writes, so adding one loses no data, and `db update` applies it without asking. MongoDB does not check the documents already in a collection when it adds a validator. A document the validator would refuse stays as it is, and the next write to it fails. The documents in this guide match the validators once `__v` is gone. In your own database, find the documents a validator would refuse before you apply it. In `mongosh`, pass the `$jsonSchema` object from the preview above:
+
+```javascript
+db.users.find({ $nor: [{ $jsonSchema: { /* the users validator from the preview */ } }] })
+```
+
+Fix or remove each document it returns, and repeat for `posts` and `categories`. Then apply the validators:
 
 ```npm
 npx prisma db update
