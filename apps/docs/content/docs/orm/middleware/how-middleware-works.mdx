@@ -251,7 +251,7 @@ So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "emai
 
 `intercept.onActivity(activity, ctx)` answers a whole [ORM call](#orm-calls) instead of one statement. It runs after the call's `activityStarted` hooks and before the call sends anything. Return `{ result }`, where `result` is the value the method returns, and the call sends no statement at all. This is how the cache serves an annotated ORM read. [Answer ORM calls with intercept.onActivity](/orm/middleware/authoring-custom-middleware#answer-orm-calls-with-interceptonactivity) shows an example.
 
-`beforeEncode` still runs on a statement that an intercept handler answers, because every middleware's `beforeEncode` runs before any intercept handler, whatever order you list the middleware in. So in the setup at the top of this page, where the cache comes first in the array, `lints` still checks every query before the cache answers it.
+`beforeEncode` still runs on a statement that `intercept.onQuery` or `intercept.onExecute` answers, because every middleware's `beforeEncode` runs before any of those handlers, whatever order you list the middleware in. So in the setup at the top of this page, where the cache comes first in the array, `lints` still checks a SQL builder query before the cache answers it. An ORM call that `intercept.onActivity` answers is different: it builds no statement, so no `beforeCompile`, `beforeEncode` or `onRow` hook runs for it, and `lints` does not see an ORM read the cache serves. A check that must also cover those reads belongs in `activityStarted`, which runs before `intercept.onActivity`.
 
 ### onRow: watch rows arrive
 
