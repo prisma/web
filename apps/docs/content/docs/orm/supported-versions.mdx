@@ -18,7 +18,7 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). This page lists the 
 
 Node.js is the main runtime and gets the most testing. Bun and Deno work, and Deno support is experimental. Any package manager works: the npm that comes with these Node.js releases, pnpm, Bun, or Yarn 4.10 or newer.
 
-On PostgreSQL, Prisma ORM 8 reads and writes a `DateTime` field as a `Temporal.Instant`, not a `Date`. On MongoDB, a `DateTime` field is still a `Date`. `Temporal` is built into Node.js 26.8.2 and later. Node.js 22 and 24, Node.js 26 before 26.8.2, Bun, and Deno do not have it today, so on those runtimes install the polyfill with your package manager:
+On PostgreSQL, Prisma ORM 8 reads and writes a `DateTime` field as a `Temporal.Instant`, not a `Date`. On MongoDB, a `DateTime` field is still a `Date`. `Temporal` is built into Node.js 26.8.2 and later, but Homebrew's build of Node.js 26 leaves it out, so check with `node -p "typeof Temporal"`. Node.js 22 and 24, Bun, and Deno do not have it today. Wherever that command prints `undefined`, install the polyfill with your package manager:
 
 ```bash
 npm install temporal-polyfill
@@ -30,7 +30,7 @@ Then add this line at the top of the file that creates your client, which is `sr
 import "temporal-polyfill/full/global";
 ```
 
-Without it, the first read or write of a `DateTime` field throws an error whose `code` is `RUNTIME.TEMPORAL_UNAVAILABLE`. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) explains the change from `Date`.
+Without it, the first read or write of a `DateTime` field throws an error whose `code` is `RUNTIME.TEMPORAL_UNAVAILABLE`. A TypeScript contract that writes a `Temporal` value as a default, such as `.default(Temporal.Instant.from(...))`, runs that code when `npx prisma contract emit` loads the file, so put the same import at the top of `src/prisma/contract.ts` as well. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) explains the change from `Date`.
 
 ## Databases
 
