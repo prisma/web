@@ -1,0 +1,198 @@
+---
+title: A database on your machine
+description: Get a PostgreSQL or MongoDB database for a Prisma ORM project without signing up for anything, and look at the rows your app writes.
+url: /prisma-orm/local-database
+metaTitle: A database on your machine | Prisma ORM
+metaDescription: Three ways to get a PostgreSQL connection string for a Prisma ORM 8 project, a temporary Prisma Postgres, PostgreSQL in Docker, or the local database Composer runs, plus MongoDB in Docker and how to look at your rows.
+---
+
+Every Prisma ORM setup page asks you for a connection string and puts it in `DATABASE_URL`. If you have no database yet, this page gives you one. For PostgreSQL, pick one of three options: a temporary hosted database with nothing to install, PostgreSQL in Docker on your machine, or, for an app made with `npm create prisma`, the database that app can start on its own. MongoDB has its own section. The last section shows how to look at the rows once your app has written some.
+
+## A temporary database, with nothing to install
+
+`create-db` creates a [Prisma Postgres](/postgres) database, Prisma's hosted PostgreSQL, with no account and no install. It is the fastest option, and the only one on this page that runs on Prisma's servers instead of your machine.
+
+```npm
+npx create-db@latest
+```
+
+The output has a **Connection String** line, which is the value for `DATABASE_URL`, and a **Claim Your Database** link. Put the connection string in `DATABASE_URL`. The setup pages that start from `npm create prisma` export it in the shell, and the other setup pages put it in `.env`:
+
+```bash
+export DATABASE_URL="<the connection string create-db printed>"
+```
+
+The database is deleted after 24 hours unless you claim it: open the claim link and sign in to a Prisma account, and you keep the database for free. To have it deleted sooner, set the lifetime when you create it, for example `npx create-db@latest --ttl 1h`. [create-db](/postgres/npx-create-db) lists the other options.
+
+## PostgreSQL in Docker
+
+When you want the database on your own machine, run PostgreSQL in a container. You need Docker installed, for example [Docker Desktop](https://docs.docker.com/get-started/get-docker/); `docker compose version` tells you whether you have it. Prisma ORM 8 needs PostgreSQL 15 or newer, and the file below runs 17.
+
+Create this file in your project root:
+
+```yml title="docker-compose.postgres.yml"
+services:
+  postgres:
+    image: postgres:17
+    restart: always
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=prisma
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+Start it:
+
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+```
+
+The command returns as soon as the container is running, and the database takes a few more seconds to accept connections. `docker compose -f docker-compose.postgres.yml ps` shows `healthy` in the status column once it does.
+
+The container answers on port 5432 with the user `postgres`, the password `prisma`, and a database named `postgres`, so the connection string is:
+
+```bash title=".env"
+DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"
+```
+
+Unlike the hosted examples on the setup pages, this string has no `sslmode=require` at the end. Leave it off: the connection never leaves your machine.
+
+If port 5432 is already taken, for example by a PostgreSQL you installed earlier, change the left-hand `5432` under `ports` to another number such as `5433`, and use that number in the connection string.
+
+The data is kept in the `postgres_data` volume, so stopping and starting the container keeps your rows:
+
+```bash
+docker compose -f docker-compose.postgres.yml stop
+docker compose -f docker-compose.postgres.yml up -d
+```
+
+To start over with an empty database, remove the container and the volume together:
+
+```bash
+docker compose -f docker-compose.postgres.yml down -v
+```
+
+A PostgreSQL you installed in another way, such as with Homebrew or Postgres.app, works the same. Its connection string uses the user, password, port, and database name of that install.
+
+## The database that comes with a new app
+
+If `npm create prisma` made your app, its `package.json` has a `dev:composer` script, and the script gives you a database with nothing more to install. An app made another way does not have the script, so use Docker instead.
+
+```npm
+npm run dev:composer
+```
+
+The script starts a PostgreSQL database on your machine, creates your tables in it by applying the migration the scaffold wrote, and starts your app. Your app needs no `DATABASE_URL` for this, the database keeps its rows from one run to the next, and `Ctrl-C` stops both. The script uses [Prisma Composer](/composer), which `npm create prisma` installed; you need not edit anything for this to work.
+
+Commands such as `npx prisma db migrate`, which applies a migration to the database, still need `DATABASE_URL` even while the script runs. Get the connection string from a second terminal in the project directory:
+
+```bash
+npx prisma dev url database
+```
+
+`database` is the name `module.ts` in your project root gives the database, so keep it unless you renamed it there. The command prints the connection string, and this sets `DATABASE_URL` to it in the same shell:
+
+```bash
+export DATABASE_URL="$(npx prisma dev url database)"
+```
+
+`dev url` needs `prisma` 8.0.0-rc.24 or newer, and `npx prisma --version` shows which version your project has.
+
+To empty the database, stop the script, run `npm run build`, and then run `npx prisma dev module.ts --fresh`. That deletes the database and its rows and starts the app as the script does. Stop it with `Ctrl-C` when you are done, and use `npm run dev:composer` next time. [Local development](/composer/local-development) covers running the app in the background.
+
+## MongoDB
+
+Prisma ORM 8 needs MongoDB 8.0 or newer. To run it in Docker, create this file in your project root:
+
+```yml title="docker-compose.mongodb.yml"
+services:
+  mongodb:
+    image: mongo:8
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
+```
+
+Start it:
+
+```bash
+docker compose -f docker-compose.mongodb.yml up -d
+```
+
+The server answers on port 27017 with no user or password. The database name at the end of the connection string, `mydb` here, can be any name you like, and you need not create it first.
+
+```bash title=".env"
+DATABASE_URL="mongodb://localhost:27017/mydb?directConnection=true"
+```
+
+This is a standalone server, not a replica set. A replica set is needed only for transactions and change streams, and the setup pages use neither; if your own app uses transactions, use the Atlas option below instead. The string the MongoDB setup pages show has `replicaSet=rs0` in it, which only connects to a replica set. For this server use the string above, without it.
+
+A free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster is the hosted alternative. It is a replica set already, so use the connection string Atlas shows you as it is.
+
+The same stop, start, and `down -v` commands as for PostgreSQL apply, with `docker-compose.mongodb.yml` as the file.
+
+## Look at your rows
+
+### PostgreSQL
+
+Every command here takes the connection string of whichever database you set up above, so export it in the shell first. For the Docker setup that is the string from `.env`, for the `create-db` database the string it printed, and for the database the `dev:composer` script started, the one `dev url` prints:
+
+```bash
+export DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"
+```
+
+`psql` is the PostgreSQL command line. With it installed on your machine:
+
+```bash
+psql "$DATABASE_URL"
+```
+
+With the Docker setup you need not install it, because the container has it:
+
+```bash
+docker compose -f docker-compose.postgres.yml exec postgres psql -U postgres -d postgres
+```
+
+Inside `psql`, `\dt` lists your tables. A table is named after its model, or after the model's `@@map` if it has one, so the starter contract's `User` model is the `"User"` table: `\d "User"` shows its columns, and `SELECT * FROM "User";` prints its rows. The quotes matter, because PostgreSQL lowercases a name written without them.
+
+[Prisma Studio](/studio) shows your tables in the browser, and the migrations Prisma ORM has applied. Run it from the directory above your project and pass the connection string:
+
+```bash
+cd .. && npx prisma@prev studio --url "$DATABASE_URL"
+```
+
+Studio works with Prisma ORM 8 databases, but it still ships with the Prisma ORM 7 command-line tool, which `prisma@prev` installs. That tool stops with an error inside a Prisma ORM 8 project, so run it from the directory above and `cd` back afterwards. Studio prints the address it serves on, usually `http://localhost:5555`. [Studio with Prisma ORM](/studio/prisma-next) explains the Migrations view, which shows what each applied migration changed.
+
+A database editor such as pgAdmin, TablePlus, DBeaver, or DataGrip asks for the parts of the connection string. For the Docker setup they are the host `localhost`, the port `5432`, the user `postgres`, the password `prisma`, the database `postgres`, and SSL off. [Viewing data](/guides/postgres/viewing-data) shows the connection dialogs of several editors.
+
+### MongoDB
+
+Prisma Studio does not support MongoDB. `mongosh` is the MongoDB shell, and the container has it:
+
+```bash
+docker compose -f docker-compose.mongodb.yml exec mongodb mongosh mydb
+```
+
+Inside `mongosh`, `show collections` lists your collections and `db.users.find()` prints the documents in the `users` collection. A collection is named after its model, so a `Comment` model is the `Comment` collection, unless the model has `@@map`: the starter contract maps `User` to `users` and `Post` to `posts`. [MongoDB Compass](https://www.mongodb.com/products/tools/compass) is the graphical alternative; connect it to `mongodb://localhost:27017`.
+
+## Next steps
+
+- Go back to the setup page you came from: [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql), [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb), or [Add Prisma ORM and PostgreSQL to an existing app](/prisma-orm/quickstart/existing-app/postgresql).
+- [Deploy with Docker](/guides/deployment/docker) runs your app and PostgreSQL together in containers, starting from the same Compose file.
