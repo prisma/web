@@ -9,13 +9,13 @@ updatedAt: "2026-10-22"
 readingTime: "9 min read"
 faq:
   - question: "Is a sequential scan always a problem?"
-    answer: "No. On a small table, or when a query returns a large share of a table's rows, reading the whole table is often the cheapest plan, and PostgreSQL picks it even when an index exists. It becomes a problem when the plan shows a large table read in full to return a few rows, which is what `Rows Removed by Filter` in the millions next to a handful of returned rows tells you."
+    answer: "No. On a small table, or when a query returns a large share of a table's rows, reading the whole table is often the cheapest plan, and PostgreSQL picks it even when an index exists. It becomes a problem when the plan shows a large table read in full to return a few rows, which is what a `Rows Removed by Filter` count close to the table's row count, next to a handful of returned rows, tells you."
   - question: "Should I move to a bigger database plan first?"
-    answer: "Not before you have read the plan. More memory helps when the data no longer fits in cache and the plan shows many blocks `read` rather than `hit`. It doesn't change the plan: a query that scans 2 million rows to return 20 still scans 2 million rows on a bigger machine. An index, a narrower query or a paging change usually does more."
+    answer: "Not before you have read the plan. More memory helps when the data no longer fits in cache and the plan shows many blocks `read` rather than `hit`. It rarely fixes a bad plan: a query that scans 2 million rows to return 20 still scans 2 million rows on a bigger machine. An index, a narrower query or a paging change usually does more."
   - question: "Can I run EXPLAIN ANALYZE against production?"
     answer: "With care. `EXPLAIN ANALYZE` runs the statement, so a slow `SELECT` adds the same load it adds when the app runs it, and an `INSERT`, `UPDATE` or `DELETE` changes data unless you wrap it in `BEGIN` and `ROLLBACK`, as the [PostgreSQL docs](https://www.postgresql.org/docs/current/sql-explain.html) show. For heavy queries, use a copy restored from a backup with the same data volume. Plain `EXPLAIN` shows the plan without running it."
   - question: "Why is the app slow for one customer and fast for everyone else?"
-    answer: "Usually because that customer has far more rows than the rest, so the same query reads much more data or gets a different plan. Run `EXPLAIN (ANALYZE, BUFFERS)` with that customer's ID, not a typical one. Prepared statements add another cause: PostgreSQL [plans the first five executions](https://www.postgresql.org/docs/current/sql-prepare.html) for their parameter values, then may switch to a generic plan that it reuses for every value, which can fit a large customer badly."
+    answer: "Usually because that customer has far more rows than the rest, so the same query reads much more data or gets a different plan. Run `EXPLAIN (ANALYZE, BUFFERS)` with that customer's ID, not a typical one. Prepared statements add another cause: PostgreSQL [plans a prepared statement's first five executions](https://www.postgresql.org/docs/current/sql-prepare.html) for their parameter values, then may switch to a generic plan that it reuses for every value, which can fit a large customer badly."
 related:
   - title: "Query Insights for Prisma Postgres"
     href: "/docs/query-insights"
@@ -34,7 +34,7 @@ cta:
   href: "/docs/query-insights"
 ---
 
-An app that was fast with a few hundred test rows and slows down with real customer data has usually hit a query that reads far more rows than it returns, or a code path that sends far more queries than it needs. Find out which one before changing anything: time one slow request, split it into database time and the rest, then use `pg_stat_statements` and `EXPLAIN (ANALYZE, BUFFERS)` on the statements that take the time. Every step below works on any Postgres host that gives you a SQL connection.
+An app that was fast with a few hundred test rows and slows down with real customer data has usually hit a query that reads far more rows than it returns, or a code path that sends far more queries than it needs. Find out which one before changing anything: time one slow request, split it into database time and the rest, then use `pg_stat_statements` and `EXPLAIN (ANALYZE, BUFFERS)` on the statements that take the time. The SQL below works on any Postgres host that gives you a SQL connection; step 2 also needs the host to offer `pg_stat_statements`.
 
 We make Prisma Postgres and Prisma Compute. PostgreSQL, node-postgres, Drizzle and OpenTelemetry behavior on this page links to each project's documentation, checked on October 22, 2026. The query plans and timings come from a test on October 22, 2026: a Prisma Postgres database (PostgreSQL 17.2) in `eu-central-1`, queried from a laptop about 34 ms away. Your numbers will differ.
 
@@ -47,7 +47,7 @@ The usual causes:
 - **A filter, join or sort on a column with no index.** PostgreSQL indexes primary keys and unique constraints, but it [doesn't create an index on the referencing columns of a foreign key](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK). A query such as "orders for this customer" scans the whole `orders` table.
 - **N+1 queries.** A list page that runs one query for the list and one more per row sends 201 queries for 200 rows. Each query is fast; the round trips add up.
 - **Unbounded results and deep pages.** A query with no `LIMIT` returns every matching row, and the rows skipped by `OFFSET` [still have to be computed](https://www.postgresql.org/docs/current/queries-limit.html), so page 5,000 costs more than page 1.
-- **Sorts and hashes that outgrow memory.** A sort can use up to [`work_mem`](https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-WORK-MEM) (4 MB by default), and a hash a multiple of it, before it writes to temporary files on disk.
+- **Sorts and hashes that outgrow memory.** A sort can use up to [`work_mem`](https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-WORK-MEM) (4 MB in a default PostgreSQL install; check yours with `SHOW work_mem`), and a hash a multiple of it, before it writes to temporary files on disk.
 - **Stale statistics.** The planner picks plans from table statistics. After a large import, they can describe the old, small table until `ANALYZE` runs.
 - **Waiting for connections or locks.** Requests that wait for a free pool connection or for a lock held by another transaction are slow even when every query is fast.
 
@@ -59,20 +59,23 @@ Work from the request inward: first find out how much of the slow request is SQL
 
 Pick one slow request and measure four numbers for it: the total request time, the time spent waiting for a database connection, the time spent running SQL, and the number of queries it sends. An APM tool or OpenTelemetry tracing gives you all four. For node-postgres, the [OpenTelemetry `pg` instrumentation](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-pg) records a span per query and a `pg-pool.connect` span for the time spent waiting for a pool connection.
 
-Without tracing, your data layer's logs give you the SQL and its count. Prisma ORM [emits query events](/docs/orm/v7/prisma-client/observability-and-logging/logging#event-based-logging) that include each query's duration:
+Without tracing, time the queries in your data layer and count them per request. With node-postgres, wrap `pool.query()` and log [`pool.waitingCount`](https://node-postgres.com/apis/pool#properties), the number of requests queued for a client because every client is checked out:
 
 ```ts
-const prisma = new PrismaClient({
-  adapter, // your driver adapter, for example PrismaPg
-  log: [{ emit: "event", level: "query" }],
-});
+import { Pool } from "pg";
 
-prisma.$on("query", (e) => {
-  console.log(`${e.duration}ms ${e.query}`);
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+export async function query(text: string, params?: unknown[]) {
+  const start = performance.now();
+  const result = await pool.query(text, params);
+  const ms = (performance.now() - start).toFixed(1);
+  console.log(`${ms}ms waiting=${pool.waitingCount} ${text}`);
+  return result;
+}
 ```
 
-Drizzle prints each query and its parameters with [`drizzle(url, { logger: true })`](https://orm.drizzle.team/docs/goodies#logging). With node-postgres, time the `pool.query()` calls yourself, and log [`pool.waitingCount`](https://node-postgres.com/apis/pool#properties), the number of requests queued for a client because every client is checked out.
+The logged time includes any wait for a free client. Prisma ORM [emits query events](/docs/orm/v7/prisma-client/observability-and-logging/logging#event-based-logging) with each query's duration when you set `log: [{ emit: "event", level: "query" }]` and listen with `prisma.$on("query", ...)`. Drizzle prints each query and its parameters with [`drizzle(url, { logger: true })`](https://orm.drizzle.team/docs/goodies#logging). In other languages, your APM's or OpenTelemetry's database instrumentation gives you the same numbers.
 
 Then read the numbers:
 
@@ -110,13 +113,13 @@ calls | total_ms | mean_ms | rows | query
 
 Read the columns together. A high `mean_ms` is a slow query, which steps 3 and 4 fix. A high `calls` count with a tiny `mean_ms` is a query that runs in a loop: the database spends 7 ms on it in total, but the app pays one network round trip per call, which step 5 covers. Run `SELECT pg_stat_statements_reset();` before you reproduce a slow page, so the numbers describe that page; by default only superusers can run it, unless someone grants access. Unless your role has the privileges of `pg_read_all_stats`, you see other roles' statistics but not their query text.
 
-If your host lets you change server settings and read the server log, two more tools help. [`log_min_duration_statement`](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-MIN-DURATION-STATEMENT) logs every statement slower than a threshold, such as `500ms`, and [`auto_explain`](https://www.postgresql.org/docs/current/auto-explain.html) logs the plan of each one. Changing either needs superuser rights or the server configuration, so on a managed host you change them through the provider's settings, if it offers them.
+If your host lets you change server settings and read the server log, two more tools help. [`log_min_duration_statement`](https://www.postgresql.org/docs/current/runtime-config-logging.html#GUC-LOG-MIN-DURATION-STATEMENT) logs every statement slower than a threshold, such as `500ms`. [`auto_explain`](https://www.postgresql.org/docs/current/auto-explain.html) logs the plans of statements slower than its own `auto_explain.log_min_duration` setting, which is off by default; set `auto_explain.log_analyze` as well to get actual row counts and timings. Changing `log_min_duration_statement` needs superuser rights or a granted `SET` privilege, and `auto_explain` has to be preloaded in the server configuration or loaded by a superuser, so on a managed host you change them through the provider's settings, if it offers them.
 
 ### 3. Read the plan with EXPLAIN (ANALYZE, BUFFERS)
 
 Take the slowest statement, put in real parameter values, and run it with [`EXPLAIN (ANALYZE, BUFFERS)`](https://www.postgresql.org/docs/current/sql-explain.html). Run it against a database with the same data volume as production, because a plan from test data can't be trusted for real data. `ANALYZE` executes the statement, so wrap an `INSERT`, `UPDATE` or `DELETE` in `BEGIN` and `ROLLBACK`. PostgreSQL 18 includes the buffer counts with `ANALYZE` by default; on 17 and earlier, ask for `BUFFERS`.
 
-The "recent orders" query from step 2, with 500 test orders (the plans on this page are trimmed: cost estimates and planning lines removed):
+The "recent orders" query from step 2, with 500 test orders (the plans on this page are trimmed: cost estimates, planning lines and some detail lines removed):
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)
@@ -199,7 +202,7 @@ WHERE c.contype = 'f'
 
 Not every foreign key needs an index. Add one where the app filters or joins on that column, or deletes rows from the table it references.
 
-**Refresh statistics after big imports.** The autovacuum daemon [runs `ANALYZE`](https://www.postgresql.org/docs/current/routine-vacuuming.html#VACUUM-FOR-STATISTICS) once a table has changed enough, but not always before the first slow query after a bulk load. Check when each table was last analyzed, and run `ANALYZE orders;` after an import:
+**Refresh statistics after big imports.** The autovacuum daemon [runs `ANALYZE`](https://www.postgresql.org/docs/current/routine-vacuuming.html#VACUUM-FOR-STATISTICS) once a table has changed enough, but not always before your next slow query after a bulk load, and it never analyzes a partitioned table itself, only its partitions. Check when each table was last analyzed, and run `ANALYZE orders;` after an import:
 
 ```sql
 SELECT relname, n_live_tup, n_dead_tup, seq_scan, idx_scan, last_analyze, last_autoanalyze
@@ -210,7 +213,14 @@ LIMIT 10;
 
 A large table with a high `seq_scan` count is a good place to look for a missing index.
 
-**Page with a cursor instead of a growing OFFSET.** Even with an index on `(created_at DESC, id DESC)`, `OFFSET 100000 LIMIT 20` read 100,020 index entries and took 18 ms in the test. Asking for the rows after the last one shown (keyset or cursor pagination) read 20 and took 0.42 ms:
+**Page with a cursor instead of a growing OFFSET.** Keyset (or cursor) pagination asks for the rows after the last one shown, and it needs an index whose columns match the `ORDER BY`:
+
+```sql
+CREATE INDEX CONCURRENTLY orders_created_at_id_idx
+  ON orders (created_at DESC, id DESC);
+```
+
+With that index, `OFFSET 100000 LIMIT 20` still read 100,020 index entries and took 18 ms in the test. The keyset query read 20 and took 0.42 ms:
 
 ```sql
 SELECT id, total_cents, created_at
@@ -220,7 +230,7 @@ ORDER BY created_at DESC, id DESC
 LIMIT 20;
 ```
 
-Prisma ORM does the same with [cursor-based pagination](/docs/orm/v7/prisma-client/queries/pagination#cursor-based-pagination).
+Prisma ORM's [cursor-based pagination](/docs/orm/v7/prisma-client/queries/pagination#cursor-based-pagination) works the same way: pass the last row's unique `id` as `cursor`, with `skip: 1` and the same `orderBy`.
 
 **Return less.** Add a `LIMIT` to list queries, select the columns the page shows instead of `SELECT *`, and filter in SQL instead of in app code.
 
@@ -254,27 +264,27 @@ WHERE state <> 'idle' AND pid <> pg_backend_pid()
 ORDER BY running_for DESC;
 ```
 
-A `wait_event_type` of `Lock` with a non-empty [`blocked_by`](https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-SESSION) list means another session holds the lock, often a long transaction or a migration. Rows in `idle in transaction` hold their locks until they commit or roll back.
+A `wait_event_type` of `Lock` with a non-empty [`blocked_by`](https://www.postgresql.org/docs/current/functions-info.html#FUNCTIONS-INFO-SESSION) list means another session holds a conflicting lock, or is queued ahead of this one for a conflicting lock. That is often a long transaction, or a migration whose `ALTER TABLE` is waiting for its own lock and makes every later query on the table wait behind it. Rows in `idle in transaction` hold their locks until they commit or roll back.
 
 **The database itself is short of resources.** If the plans are good and the SQL is still slow under load, check your provider's CPU, memory and disk metrics during the slow period. That is the point where a larger instance or plan helps.
 
 ## When does this check mislead?
 
 - **You tested with a typical customer.** One large customer can get a different plan. Run `EXPLAIN (ANALYZE, BUFFERS)` with that customer's ID.
-- **Only the first request after a quiet period is slow.** That is usually cache warm-up, connection setup or an app instance starting, not the query. Compare the first and the second request.
+- **Only a request after a quiet period is slow.** That is usually cache warm-up, connection setup or an app instance starting, not the query. Compare it with the request right after it.
 - **Your host doesn't offer `pg_stat_statements`.** Use its query performance view instead; the [managed Postgres query monitoring guide](/postgres/managed-postgres-query-monitoring) compares a few.
 
 ## Where does Prisma Postgres fit?
 
 [Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and the SQL in steps 2 to 5 works on it as written: all the plans and `pg_stat_statements` output on this page come from a Prisma Postgres database. `pg_stat_statements` is in its list of [supported extensions](/docs/postgres/database/postgres-extensions), and `CREATE EXTENSION` enables it. Your app keeps its Postgres client, whether that is `pg`, Drizzle, Kysely or Prisma ORM; Prisma ORM is optional.
 
-[Query Insights](/docs/query-insights) is included on every plan, Free included, at no extra cost. It lists each query shape with its latency, executions and reads, shows the full SQL, and adds an AI-generated analysis of whether and how to optimize it, with a suggested change you can copy into your editor. It is read-only: it doesn't rewrite queries or change your schema. With Prisma ORM, the `@prisma/sqlcommenter-query-insights` package maps each SQL statement back to the Prisma call that sent it.
+[Query Insights](/docs/query-insights) is included on every plan, Free included, at no extra cost. It lists each query shape with its latency, executions and reads, shows the full SQL, and adds an AI-generated analysis of whether and how to optimize it, with copyable instructions for the suggested fix that you can paste into your editor or coding assistant. The docs say to treat the analysis as a starting point and review any change before shipping it. Query Insights is read-only: it doesn't rewrite queries or change your schema. With Prisma ORM, the `@prisma/sqlcommenter-query-insights` package maps each SQL statement back to the Prisma call that sent it.
 
 Prisma Postgres bills per operation, and [query duration doesn't change the price](/docs/postgres/faq#does-query-execution-time-affect-pricing-in-prisma-postgres): a 100 ms scan costs the same as a 0.4 ms index lookup. Query count does, so the N+1 pattern in step 5 costs 201 operations where the join costs one. If you also host the app, [Prisma Compute](/docs/compute) runs TypeScript apps in the same Prisma project and the same six regions as the database.
 
 Know the limits before you rely on it:
 
-- The docs describe Query Insights as designed mainly for development and debugging, and the ORM attribution package adds a small overhead to every query. For long retention, alerts or tracing across several services, use an APM or observability tool alongside it.
+- The docs describe Query Insights as designed mainly for development and debugging, and say running it in production is possible but not recommended, because the SQL comment annotations add a small overhead to every query. For production monitoring, long retention, alerts or tracing across services, use an APM or observability tool.
 - The docs don't describe access to the server log, so use `pg_stat_statements` and Query Insights instead of `log_min_duration_statement` or `auto_explain`.
 - Queries through the pooled connection are stopped after 10 minutes. Run long reports or index builds over the direct connection.
 - If your database runs on another host, you don't need to move it to follow this guide; use that host's query view and the same SQL.
