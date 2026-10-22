@@ -14,7 +14,7 @@ A skill is a folder with a `SKILL.md` (the instructions) and sometimes `referenc
 | Skill | Use it to | Trigger example |
 |-------|-----------|-----------------|
 | [`content-write-blog`](content-write-blog/SKILL.md) | Scaffold a new Prisma blog post (frontmatter + section stubs) | "Draft a blog post about connection pooling" |
-| [`content-write-answer-page`](content-write-answer-page/SKILL.md) | Write one page that answers one tracked AI prompt (comparison, alternatives, roundup, use case, troubleshooting) in the wording engines search with, then make it discoverable: sitemap, series links, footer index, tracker and PromptWatch | "Write the answer page for PW123", "Write a Neon alternatives page" |
+| [`content-write-answer-page`](content-write-answer-page/SKILL.md) | Write one page that answers one developer question (comparison, alternatives, roundup, use case, troubleshooting) with sourced, neutral comparisons and stated limits, in the words people search with, then make it discoverable: sitemap, series links, footer index, `llms.txt`, tracker and monitoring | "Write a Neon alternatives page", "Write a troubleshooting page for 'too many connections'" |
 | [`content-create-hero-image`](content-create-hero-image/SKILL.md) | Generate a post's hero (SVG) and social/OG image (PNG) in the Eclipse house style | "Create a cover image for my Compute post" |
 | [`docs-writer`](docs-writer/README.md) | Write or rewrite developer docs (how-to, concept, reference) | "Write a how-to for deploying to Prisma Compute" |
 | [`docs-reader-review`](docs-reader-review/SKILL.md) | Check a written page reads for an ordinary user: banned-jargon, staccato, and AI-signs checks, then a fresh reviewer reads it cold and marks what it cannot follow | "Reader review this page" |
@@ -40,16 +40,16 @@ Produces a blog-post **skeleton** (frontmatter, section headings, short stubs), 
 
 ## content-write-answer-page
 
-Writes and publishes a page that answers one question people ask AI assistants, such as "What are good Neon alternatives?" or "Which Postgres works best for a small team?". Unlike `content-write-blog`, it produces the finished page and takes it through publishing.
+Writes and publishes a page that answers one developer question with sourced, neutral comparisons and stated limits, such as "What are good Neon alternatives?" or "Which Postgres works best for a small team?". Unlike `content-write-blog`, it produces the finished page and takes it through publishing.
 
 **How to use:**
 
-1. Give it the tracked prompt or its Prompt tracker reference (`PW123`). It claims the row so nobody else writes the same page, and stops if someone else owns it.
-2. It reads how AI engines phrase the prompt (their search queries, the pages they cite, the criteria they decide on), so the page is titled in the engines' words.
-3. It checks whether a prisma.io page already answers the prompt. If one does, it refreshes that page instead.
+1. Give it the question or its content tracker reference. It claims the row so nobody else writes the same page, and stops if someone else owns it.
+2. It reads how people phrase the question (their search queries, the pages that come up, the criteria those pages decide on), so the page is titled in the reader's words.
+3. It checks whether a prisma.io page already answers the question. If one does, it refreshes that page instead.
 4. It picks the page type and URL (`/compare/...`, `/postgres/...`, `/compute/...`, `/orm/...`). `/blog` is used only if the operator explicitly approves it. It writes the page with `content-seo-geo` and runs the adversarial review from `content-write-blog`.
 5. In the same pull request it adds what makes the page discoverable: the sitemap entry, links within the comparison series and from related pages, the section index linked from the footer, and `llms.txt`. IndexNow then runs by itself after the production deploy.
-6. After the page is live, it marks the tracker row Published, adds a PromptWatch page tracker, and checks AI crawler logs about three days later.
+6. After the page is live, it marks the tracker row Published, adds the URL to the team's page monitoring, and checks crawler logs about three days later.
 
 ## content-create-hero-image
 
