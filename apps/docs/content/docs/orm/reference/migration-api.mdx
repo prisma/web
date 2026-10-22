@@ -63,7 +63,7 @@ The four imports at the top point at snapshots, which are copies of your contrac
 
 A first migration starts from an empty database, so it has no start snapshot. `migration plan` writes it as `extends Migration<never, End>`, without the two `Start` imports and without `startContractJson`.
 
-Running the file turns `operations` into `ops.json`, and also writes `migration.json`, which records the start and end contracts. Node.js 22.18 or later runs the `.ts` file directly, with no build step. It reads the `prisma.config.ts` that owns the migration, to learn which database and extensions the project uses: the nearest one above the migration's directory whose migrations directory holds the file, else the one in the working directory, or the one you pass with `--config`. It never connects to a database.
+Running the file turns `operations` into `ops.json`, and also writes `migration.json`, which records the start and end contracts. Every Node.js version Prisma ORM supports (22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer) runs the `.ts` file directly, with no build step. It reads the `prisma.config.ts` that owns the migration, to learn which database and extensions the project uses: the nearest one above the migration's directory whose migrations directory holds the file, else the one in the working directory, or the one you pass with `--config`. It never connects to a database.
 
 ```bash
 node migrations/app/20260921T1408_add_user_bio/migration.ts
@@ -124,35 +124,33 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | --- | --- | --- | --- |
 | `addColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ADD COLUMN "bio" text` | additive |
 | `dropColumn` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" DROP COLUMN "bio"` | destructive |
-| `alterColumnType` | `schema`, `table`, `column`, `type`, `using?`, `operationClass?` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint USING "views"::bigint` | destructive, or data with `using` |
-| `setNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" SET NOT NULL` | destructive |
+| `alterColumnType` | `schema`, `table`, `column`, `type`, `using?`, `raw?`, `operationClass?` | `ALTER TABLE "public"."post" ALTER COLUMN "views" TYPE bigint` | destructive, or data with `using` |
+| `setNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" SET NOT NULL` | widening |
 | `dropNotNull` | `schema`, `table`, `column` | `ALTER TABLE "public"."post" ALTER COLUMN "views" DROP NOT NULL` | widening |
-| `setDefault` | `schema`, `table`, `column`, `operationClass?` | `ALTER TABLE "public"."user" ALTER COLUMN "name" SET DEFAULT 'anonymous'` | additive |
-| `dropDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" DROP DEFAULT` | destructive |
+| `setDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" SET DEFAULT 'anonymous'` | additive, or widening when the column already has a default |
+| `dropDefault` | `schema`, `table`, `column` | `ALTER TABLE "public"."user" ALTER COLUMN "name" DROP DEFAULT` | widening |
 
 `addColumn` and `setDefault` take a `col(...)` call as `column`. The other methods take the column's name as a string.
 
-`alterColumnType` takes the new type and, when PostgreSQL cannot convert the values on its own, the conversion:
-
-| Field | What to put in it |
-| --- | --- |
-| `type` | The new type, written as a migration writes it: `'int8'`, `'varchar(255)'`, or `'"Mood"'` for an enum. Prisma ORM works out from it the type PostgreSQL prints, which the postcheck compares with the column after the change. A type it cannot read fails with `MIGRATION.COLUMN_TYPE_UNREADABLE`; add the extension that provides it to your config. |
-| `using` | Optional. The expression in the `USING` clause, as SQL over the column: `'"views"::bigint'`. Without it, the column is cast to the new type with `::`. A semicolon, a SQL comment or dollar quoting outside a quoted literal, or a comma or a keyword such as `FROM` outside parentheses, fails with `MIGRATION.SQL_EXPRESSION_INVALID`. |
-| `operationClass` | Optional. Without it, the operation is `data` when it has a `using`, and `destructive` otherwise. |
+`alterColumnType` takes the new type in `type`, written the way a migration writes it, such as `'int8'`, `'varchar(255)'`, or `'"Mood"'` for an enum. Prisma ORM recognizes the PostgreSQL types it supports and the types of the extension packages in your configuration, and after the change `db migrate` checks that the column has the type you wrote. A type it does not recognize fails with `MIGRATION.COLUMN_TYPE_UNREADABLE`. If that type comes from an extension package, add the package to your configuration. For any other type, set `raw: true` and pass the type exactly as PostgreSQL prints it, because `db migrate` then compares the column's type with that text.
 
 ```ts
-this.alterColumnType({
-  schema: 'public',
-  table: 'user',
-  column: 'age',
-  type: 'int4',
-  using: '"age"::integer',
-}),
+this.alterColumnType({ schema: 'public', table: 'post', column: 'views', type: 'int8' }),
 ```
+
+`using` is the expression in the `USING` clause, for a conversion PostgreSQL cannot do on its own. Without it, the column is cast to the new type. Write it as SQL over the column, such as `'"views"::bigint'`. A semicolon, a SQL comment or dollar quoting outside a quoted literal, or a comma or a keyword such as `FROM` outside parentheses, fails with `MIGRATION.SQL_EXPRESSION_INVALID`. The operation is `data` when it has a `using`, and `destructive` otherwise; pass `operationClass` (`'widening'`, `'destructive'`, or `'data'`) to choose another class.
+
+When the column is an `autoincrement()` column, `alterColumnType` also changes the sequence the column owns to the new width, with `ALTER SEQUENCE ... AS bigint` for an `int8` column. It first refuses, before any statement runs, when the sequence has already handed out a value too large for the new width. A migration applied before `8.0.0-rc.19` left the sequence at its old width. Change it yourself, for example `ALTER SEQUENCE "public"."post_id_seq" AS bigint`; `pg_get_serial_sequence('"public"."post"', 'id')` names the sequence.
+
+A `using` needs a type change. If the new `type` is the type the column already has in the contract the migration starts from, `migration.ts` refuses the `alterColumnType` with `MIGRATION.ALTER_COLUMN_TYPE_USING_WITHOUT_TYPE_CHANGE`, because `db migrate` would find that the column already has that type and skip the operation, so the conversion would never run. To change the values in a column and keep its type, write a [`dataTransform`](#data) instead, which checks the rows themselves.
 
 A `migration.ts` written before `8.0.0-rc.18` passed an `options` object with `qualifiedTargetType`, `formatTypeExpected` and `rawTargetTypeForLabel`. It now stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED): move `qualifiedTargetType` to `type` and `options.using` to `using`, and delete the other two. If no database has applied the migration yet, run it again to write `ops.json`; if one has, leave `ops.json` and `migration.json` as they are, because writing them again changes the migration's hash.
 
-`setDefault` takes the column with its new default, and Prisma ORM writes the `DEFAULT` clause: `column: col('name', 'text', { default: lit('anonymous'), codecRef: { codecId: 'pg/text@1' } })`, or `column: col('createdAt', 'timestamptz', { default: fn('now()') })`. With a `codecRef`, the column's codec checks a literal default first, and a value it refuses fails with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID). A `migration.ts` that still passes `defaultSql`, written before `8.0.0-rc.15`, stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED); rewrite the call this way. Its `ops.json` still applies. When the column already has a default and you are replacing it, set `operationClass: 'widening'`, which only changes how the CLI reports the operation.
+`setDefault` takes the column with its new default, and Prisma ORM writes the `DEFAULT` clause: `column: col('name', 'text', { default: lit('anonymous'), codecRef: { codecId: 'pg/text@1' } })`, or `column: col('createdAt', 'timestamptz', { default: fn('now()') })`. When you pass a `codecRef`, Prisma ORM first checks that a literal default is a valid value of that type, and a value that is not fails with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID).
+
+`setDefault` has no postcheck, so it always runs, which means it can also replace a default the column already has. After the last operation, `db migrate` checks that the default matches your contract. The operation is widening when the column already has a default in the contract the migration starts from, and additive otherwise.
+
+`setDefault` takes no `operationClass`; a call that still passes one runs and ignores it. A `migration.ts` written before `8.0.0-rc.15` that still passes `defaultSql` stops with [`MIGRATION.OPERATION_OPTION_REMOVED`](/orm/reference/error-reference#MIGRATION.OPERATION_OPTION_REMOVED), so rewrite the call as shown above. Its existing `ops.json` still applies.
 
 `setNotNull` has an extra precheck that fails while the column still holds a `NULL`, so backfill the column with a `dataTransform` first. [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows the three steps.
 

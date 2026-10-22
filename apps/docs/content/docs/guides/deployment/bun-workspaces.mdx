@@ -15,14 +15,14 @@ Every command, file, and output below was run end to end against a live PostgreS
 
 :::note[Using Prisma ORM 7?]
 
-Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/bun-workspaces](/guides/v7/deployment/bun-workspaces).
+Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/bun-workspaces](/guides/v7/deployment/bun-workspaces).
 
 :::
 
 ## Prerequisites
 
 - [Bun](https://bun.sh/docs/installation) 1.1 or later (`bun --version`)
-- [Node.js](https://nodejs.org) 24 or later: Bun runs the scripts, and Next.js runs on Node.js
+- [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended): Bun runs the scripts, and Next.js runs on Node.js
 - A PostgreSQL connection string, or nothing at all: `bunx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
 ## Use with your agent
@@ -114,11 +114,14 @@ The generated client reads `DATABASE_URL` from the environment and loads `.env` 
 ```ts title="packages/database/src/prisma/db.ts"
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = postgres({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```

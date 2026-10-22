@@ -33,7 +33,10 @@ type CtaBurstProps = {
   body?: string;
   checks?: readonly { label: string; color: string }[];
   primaryCta?: Cta;
-  secondaryCta?: Cta;
+  /** Pass `null` for a single-CTA closer (the campaign landing pages). */
+  secondaryCta?: Cta | null;
+  /** Where the CTA lives, for cta_click analytics. */
+  ctaLocation?: string;
 };
 
 export function CtaBurst({
@@ -44,6 +47,7 @@ export function CtaBurst({
   checks = CHECKS,
   primaryCta = { label: "Get started free", href: "https://console.prisma.io/sign-up" },
   secondaryCta = { label: "See pricing", href: "/pricing" },
+  ctaLocation,
 }: CtaBurstProps = {}) {
   return (
     <section className="bg-white px-3 py-24 sm:px-4 sm:py-32">
@@ -151,10 +155,14 @@ export function CtaBurst({
                 delay={0.24}
                 className="mt-9 flex flex-wrap items-center justify-start gap-3 sm:justify-center"
               >
-                <PrismButton href={primaryCta.href}>{primaryCta.label}</PrismButton>
-                <PrismButtonOutline href={secondaryCta.href}>
-                  {secondaryCta.label}
-                </PrismButtonOutline>
+                <PrismButton href={primaryCta.href} ctaLocation={ctaLocation}>
+                  {primaryCta.label}
+                </PrismButton>
+                {secondaryCta ? (
+                  <PrismButtonOutline href={secondaryCta.href} ctaLocation={ctaLocation}>
+                    {secondaryCta.label}
+                  </PrismButtonOutline>
+                ) : null}
               </Reveal>
             </div>
           </div>

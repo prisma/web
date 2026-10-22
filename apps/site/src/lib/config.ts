@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: "Prisma",
   description:
-    "Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute: a type-safe ORM for TypeScript, managed Postgres, and hosting for TypeScript apps next to their database on one plan.",
+    "Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute: a type-safe ORM for TypeScript, managed Postgres, and hosting for TypeScript apps next to their database in one project.",
   url: "https://www.prisma.io",
   ogImage: "/og.png",
   // The hero proof line, shared by the homepage and /contact so the numbers
@@ -54,25 +54,30 @@ export const siteConfig = {
     ],
     resources: [
       { label: "Docs", href: "/docs" },
+      { label: "Postgres guides", href: "/postgres/guides" },
+      { label: "Compute guides", href: "/compute/guides" },
       { label: "Apps", href: "/apps" },
+      { label: "Compare", href: "/compare" },
       { label: "Extensions", href: "/extensions" },
       { label: "Data Guide", href: "https://www.prisma.io/dataguide" },
       { label: "Support", href: "/support" },
       { label: "Community", href: "/community" },
-      { label: "Status", href: "https://www.prisma-status.com" },
-      { label: "Trust Center", href: "https://trust.prisma.io/" },
     ],
-    legal: [
-      { label: "Privacy", href: "/legal/privacy" },
-      { label: "Terms", href: "/legal/terms" },
-      { label: "SLA", href: "/legal/sla" },
+    legalTrust: [
+      { label: "All Legal Documents", href: "/legal" },
+      { label: "DPA", href: "/legal/dpa" },
       { label: "Security & Compliance", href: "/legal/security-and-compliance" },
-      { label: "Report Abuse", href: "mailto:abuse@prisma.io" },
+      { label: "SLA", href: "/legal/sla" },
+      { label: "Status", href: "https://www.prisma-status.com" },
+      { label: "Terms of Service", href: "/legal/terms" },
+      { label: "Trust Center", href: "https://trust.prisma.io/" },
     ],
   },
   social: {
     twitter: "https://twitter.com/prisma",
     linkedin: "https://linkedin.com/company/prisma-io",
     github: "https://github.com/prisma",
+    youtube: "https://www.youtube.com/prismadata",
+    bluesky: "https://bsky.app/profile/prisma.io",
   },
 };

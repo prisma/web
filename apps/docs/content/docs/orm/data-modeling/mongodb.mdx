@@ -21,16 +21,20 @@ model User {
 }
 ```
 
-In the contract you call the field `id`, but in TypeScript it is always `_id`, never `id`, because `@map("_id")` sets the name in the database and in your code alike. So you write `user._id` and `where({ _id })`. `@@map("users")` names the collection and is optional: without it the collection takes the model name exactly as written, so `User`. `@unique` on `email` becomes a unique index when you migrate.
+`@map("_id")` stores the field as the document's `_id`, and your code calls it `id`, its name in the contract. So you write `user.id` and `where({ id })`, and the same goes for `select`, `orderBy`, and the values you write. Any other field with `@map` works the same way: `firstName String @map("first_name")` is `firstName` in your code and `first_name` in the document. Only the [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) reads documents as they are stored, so it uses `_id`.
 
-Write `ObjectId` for the key type. That is the contract type only: in TypeScript a document's own `_id` is a plain string, so there is no `ObjectId` to construct. The old `String @db.ObjectId` and `@default(auto())` are no longer allowed.
+`@@map("users")` names the collection and is optional: without it the collection takes the model name exactly as written, so `User`.
+
+`@unique` on `email` becomes a unique index when you migrate. The migration also makes MongoDB check every document you write against its model, so MongoDB refuses a document that has a field the model does not declare, lacks a required field, or holds a value of the wrong type. Documents that are already stored are not checked.
+
+Write `ObjectId` for the key type. That is the contract type only: in TypeScript the id is a plain string, so there is no `ObjectId` to construct. The old `String @db.ObjectId` and `@default(auto())` are no longer allowed.
 
 Leave the id out of the values you pass to `create`, and MongoDB assigns it. In the examples below, `db` is the client created in `src/prisma/db.ts`, and `db.orm` is the ORM client, one of the query APIs on `db` that [the ORM reference](/orm/reference) covers.
 
 ```ts
 import { db } from "./prisma/db";
 const user = await db.orm.users.create({ name: "Ada", email: "ada@example.com" });
-const found = await db.orm.users.where({ _id: user._id }).first();
+const found = await db.orm.users.where({ id: user.id }).first();
 ```
 
 The name after `db.orm.` is the collection name, so with `@@map("users")` you write `db.orm.users`, not `db.orm.user`. The values go straight into `create`, without the `data:` wrapper Prisma ORM 7 used. You `await` the whole chain, and the last call says what you want back: `.first()` for one document or `null`, `.all()` for every matching document.
@@ -92,7 +96,7 @@ A blog post's comments make it concrete. If you always render them with the post
 
 ## Embedded documents
 
-Describe the shape of embedded data with a `type` block, then use it as a field. An embedded value has no `_id` and no collection of its own, so it is created, loaded, updated, and deleted with the document that holds it.
+Describe the shape of embedded data with a `type` block, then use it as a field. An embedded value has no `_id` and no collection of its own, so it is created, loaded, updated, and deleted with the document that holds it. Its fields cannot take `@map`, because they are always stored under their own names.
 
 ```prisma
 type Address {
@@ -119,8 +123,8 @@ await db.orm.users.create({ name: "Ada", tags: [], address });
 In an `update`, the callback argument `u` builds the changes you want, and because the callback returns an array, several changes go in one call. Use `u.fieldName` to change a top-level field, or `u("path.to.field")` for a field inside an embedded document, written as a string because a dotted path is not a property name. On a list of scalars, `.push(...)` adds values and `.pull(...)` removes them:
 
 ```ts
-await db.orm.users.where({ _id: user._id }).update((u) => [u("address.city").set("Hamburg")]);
-await db.orm.users.where({ _id: user._id }).update((u) => [u.tags.push("admin"), u.tags.pull("new")]);
+await db.orm.users.where({ id: user.id }).update((u) => [u("address.city").set("Hamburg")]);
+await db.orm.users.where({ id: user.id }).update((u) => [u.tags.push("admin"), u.tags.pull("new")]);
 ```
 
 Replace a whole embedded value with `u.address.set({ ... })`, remove it with `u.address.unset()`, and replace a list of embedded values as a whole with `u.addresses.set([ ... ])`. Filtering is more limited: the object form of `.where()` filters on top-level model fields only, so to match on a field inside an embedded document you use the pipeline builder, a chained builder for MongoDB aggregation pipelines:
@@ -135,7 +139,7 @@ Embedded arrays are only a good idea while they stay bounded. An array that grow
 
 ## References across collections
 
-When related records need their own collection, store one document's `_id` on the other and declare the relation with the same `@relation(fields:, references:)` used everywhere in Prisma ORM:
+When related records need their own collection, store one document's `id` on the other and declare the relation with the same `@relation(fields:, references:)` used everywhere in Prisma ORM:
 
 ```prisma
 model User {
@@ -153,10 +157,10 @@ model Post {
 }
 ```
 
-This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. Note that in `references: [id]` you write the field's contract-side name, `id`, not `_id`. There are no nested writes on MongoDB, so create the user first and then the post with its `authorId`. To load a post together with its author, chain `.include("author")`, which adds the related record to every row you get back:
+This is a one-to-many by reference: many posts point at one user, and each post is queryable on its own. In `references: [id]` you write the field's name in the contract, `id`, not `_id`. There are no nested writes on MongoDB, so create the user first and then the post with its `authorId`. To load a post together with its author, chain `.include("author")`, which adds the related record to every row you get back:
 
 ```ts
-await db.orm.posts.create({ title: "Hello", authorId: user._id });
+await db.orm.posts.create({ title: "Hello", authorId: user.id });
 const posts = await db.orm.posts.include("author").all();
 ```
 

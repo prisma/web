@@ -30,13 +30,52 @@ declare global {
 }
 
 /**
- * Records a CTA click as a `cta_click` event in the GTM dataLayer.
+ * DOM event dispatched on `document` for every CTA click, consent or not.
  *
- * Safe no-op during SSR or before GTM has initialised (e.g. consent not granted),
- * because `window.dataLayer` will be absent.
+ * The GTM push above is inert without analytics consent, so a product
+ * analytics client that counts consent-less visitors (PostHog in cookieless
+ * mode) would otherwise never see the click. Kept as a DOM event so this
+ * package does not depend on `posthog-js`; each app wires it to its own
+ * client, the same way `lib/attribution.ts` announces attribution changes.
+ */
+export const CTA_CLICK_EVENT = "prisma_cta_click";
+
+/**
+ * Records a CTA click: a `cta_click` event in the GTM dataLayer when GTM is
+ * loaded, and a `CTA_CLICK_EVENT` DOM event always.
+ *
+ * Safe no-op during SSR. The dataLayer push is skipped before GTM has
+ * initialised (e.g. consent not granted), because `window.dataLayer` will be
+ * absent.
  */
 export function trackCTA(payload: CtaClickPayload): void {
-  if (typeof window === "undefined" || !Array.isArray(window.dataLayer)) return;
+  if (typeof window === "undefined") return;
 
-  window.dataLayer.push({ event: "cta_click", ...payload });
+  if (Array.isArray(window.dataLayer)) {
+    window.dataLayer.push({ event: "cta_click", ...payload });
+  }
+
+  if (typeof document !== "undefined" && typeof CustomEvent === "function") {
+    document.dispatchEvent(new CustomEvent<CtaClickPayload>(CTA_CLICK_EVENT, { detail: payload }));
+  }
+}
+
+/**
+ * Subscribes to CTA clicks announced by `trackCTA`. Returns an unsubscribe
+ * function. Safe no-op during SSR.
+ */
+export function onCtaClick(onClick: (payload: CtaClickPayload) => void): () => void {
+  if (typeof document === "undefined") {
+    return () => {};
+  }
+
+  const handler = (event: Event) => {
+    const detail = (event as CustomEvent<CtaClickPayload>).detail;
+    if (detail?.cta_location) {
+      onClick(detail);
+    }
+  };
+
+  document.addEventListener(CTA_CLICK_EVENT, handler);
+  return () => document.removeEventListener(CTA_CLICK_EVENT, handler);
 }

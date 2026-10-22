@@ -4,6 +4,15 @@ import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx
 import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
+import { answerPageSchema } from "./src/lib/answer-page-schema";
+
+export const answerPages = defineCollections({
+  type: "doc",
+  dir: "content/answers",
+  files: ["**/*.mdx"],
+  schema: frontmatterSchema.extend(answerPageSchema.shape),
+  postprocess: { includeProcessedMarkdown: true },
+});
 
 export const releaseNotes = defineCollections({
   type: "doc",

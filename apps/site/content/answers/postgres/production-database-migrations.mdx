@@ -1,0 +1,157 @@
+---
+title: "New tables missing after a deploy? How to run database migrations safely in production"
+description: "Missing tables after a deploy usually mean the migration never ran. Apply committed migrations once per deploy, before new code serves traffic."
+summary: "When new tables are missing after a deploy, the new code is live but the migration that creates the tables never ran against the production database. Deploying code does not change the schema. Commit the migration files your tool generates, apply them once per deploy with its production command (`prisma migrate deploy`, `drizzle-kit migrate`, `knex migrate:latest` or `typeorm migration:run`), and let the new code serve traffic only after that step succeeds. Ship risky changes in backward-compatible steps, with a recent backup."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "8 min read"
+faq:
+  - question: "What is the difference between prisma migrate dev and prisma migrate deploy?"
+    answer: "In Prisma ORM 7, `prisma migrate dev` is for development only: it uses a shadow database to detect drift, generates a new migration from schema changes and applies it. `prisma migrate deploy` applies pending migrations from the migrations folder and does not look for drift, reset the database or generate anything, so it is the command for staging and production. In Prisma ORM 8, `prisma migration plan` writes the migration and `prisma db migrate` applies it."
+  - question: "Can I use drizzle-kit push in production?"
+    answer: "Drizzle recommends `drizzle-kit push` for rapid prototyping and notes that some teams use it as their main migration flow in production. Push applies schema changes directly without writing SQL migration files. `--explain` previews the SQL, but no reviewed file is committed, and Git holds no record of the SQL that ran. For a production database with real data, `drizzle-kit generate` plus `drizzle-kit migrate` gives you a reviewed file per change and a history table in the database."
+  - question: "Should my app run migrations when it starts?"
+    answer: "Prefer a separate deploy step that runs once. When every instance runs migrations at startup, several instances can try at the same time, a slow migration delays every start, and a failure can leave instances restarting in a loop. Some tools serialize concurrent runs: Knex keeps a lock table, and Prisma ORM 8 makes a second run on PostgreSQL wait until the earlier one finishes. A single step in the pipeline is still easier to watch and stop."
+  - question: "How do I roll back a migration that broke production?"
+    answer: "Roll the app back first if the old version still works with the new schema, then fix forward with a new migration that reverses or corrects the change. Knex and TypeORM ship down migrations (`knex migrate:rollback`, `typeorm migration:revert`), and Prisma ORM 8 treats a rollback as another migration to an earlier contract state. A change that deleted data needs a restore from backup, which is why destructive steps come last and only after a backup."
+related:
+  - title: "Expand-and-contract migrations with Prisma ORM"
+    href: "/docs/guides/database/data-migration"
+  - title: "A separate test database for schema changes"
+    href: "/postgres/typescript-test-environment"
+  - title: "Composer databases and deploy-time migrations"
+    href: "/docs/composer/databases"
+  - title: "Prisma Postgres backups"
+    href: "/docs/postgres/database/backups"
+  - title: "DATABASE_URL missing after a deploy"
+    href: "/postgres/database-url-missing"
+cta:
+  title: "Put the schema change in the deploy"
+  description: "Deploy your TypeScript app on Prisma Compute with a Prisma Postgres database declared in the same project, and have each deploy apply its migrations before the service starts."
+  label: "Declare a database with migrations"
+  href: "/docs/composer/databases"
+---
+
+New tables are usually missing because a deploy shipped the code without running its migrations. Check which database production connects to, see which migrations it has recorded, apply the pending ones with your tool's production command, and add that command to your pipeline so it runs once, before the new code takes traffic. Every step below works on any host and with any Postgres client. Tool commands were checked against each project's documentation on October 19, 2026.
+
+## Why are the tables missing?
+
+Your migration tool keeps two records: the migration files in your repository and a history table in each database that lists the migrations already applied there. A build compiles your TypeScript and a deploy starts the new code, but neither applies the files unless a step in your pipeline runs the migration command against that database.
+
+The usual causes:
+
+- **No migration step.** The migration was applied to your local database by a development command, such as `prisma migrate dev`, and nothing in the pipeline applies it to production.
+- **Wrong database.** The production `DATABASE_URL` points at a different database, schema or branch than the one you checked.
+- **Missing files.** The migration was never generated or committed, or the build output does not include the migrations folder.
+- **A failed step.** The migration ran and failed, for example because the migration CLI was in `devDependencies` and the host pruned it, or because the database user lacks permission to create tables. Read the deploy log before rerunning anything.
+- **Schema sync in development only.** `prisma db push` (`prisma db update` in Prisma ORM 8), `drizzle-kit push` or TypeORM's `synchronize: true` changed your local database directly, so no migration file exists to apply.
+
+## How do I fix it?
+
+### 1. Confirm which database production uses
+
+Compare the host and database name in the production connection string with the database you inspected. Check it in your secret manager or host settings without printing the secret to logs. If staging and production share a host, check the database name too.
+
+### 2. Check which migrations production has applied
+
+Run your tool's status command with the production connection string, or read its history table:
+
+| Tool | Generate a migration | Apply in production | Check status | History table |
+| --- | --- | --- | --- | --- |
+| [Drizzle Kit](https://orm.drizzle.team/docs/drizzle-kit-migrate) | `drizzle-kit generate` | `drizzle-kit migrate` | Query the history table | `drizzle.__drizzle_migrations` |
+| [Knex](https://knexjs.org/guide/migrations.html) | `knex migrate:make <name>` | `knex migrate:latest` | `knex migrate:list` | `knex_migrations` |
+| [Prisma ORM 7](/docs/orm/v7/prisma-client/deployment/deploy-database-changes-with-prisma-migrate) | `prisma migrate dev` | `prisma migrate deploy` | `prisma migrate status` | `_prisma_migrations` |
+| [Prisma ORM 8](/docs/cli/db-migrate) | `prisma contract emit`, then `prisma migration plan` | `prisma db migrate` | `prisma migration status` | A marker row that records the contract state |
+| [TypeORM](https://typeorm.io/docs/migrations/executing) | `typeorm migration:generate` | `typeorm migration:run` | `typeorm migration:show` | Set by `migrationsTableName` |
+
+Tools are listed alphabetically. Prisma ORM 8 is a [release candidate](/docs/orm/release-status), and Prisma ORM 7 remains supported. The last column shows each tool's default history table, or the option that sets it; your configuration can change the name.
+
+If the status shows the new migration as pending, continue to step 3. If it shows the migration as failed, fix its cause before applying anything else. Prisma ORM 7, for example, stores the error in the `logs` column of `_prisma_migrations`, and [`prisma migrate resolve`](/docs/orm/v7/prisma-migrate/workflows/patching-and-hotfixing) marks the migration rolled back or applied once you have dealt with it. If the migration file is missing, generate and commit it from your development setup first.
+
+### 3. Apply the pending migrations
+
+Take a backup or snapshot, then run the one line for your tool, once, from a machine or CI job that has the production connection string:
+
+```bash
+npx drizzle-kit migrate                             # Drizzle Kit, connection from drizzle.config.ts
+NODE_ENV=production npx knex migrate:latest         # Knex
+npx prisma migrate deploy                           # Prisma ORM 7
+npx prisma db migrate --db "$DATABASE_URL"          # Prisma ORM 8
+npx typeorm migration:run -d dist/data-source.js    # TypeORM, compiled .js migrations
+```
+
+These commands apply only migrations that already exist as files. They never generate new ones, so what runs is what you committed and reviewed. Run the status command again afterwards and check that the tables exist. Restart the app if it read the schema at startup.
+
+Run migrations over a direct connection, not through a pooler in transaction mode such as PgBouncer, which drops session state between transactions. Prisma Postgres, for example, documents the direct host `db.prisma.io` for migrations and the pooled host `pooled.db.prisma.io` for [application traffic](/docs/postgres/database/connection-pooling), and lists lock, session and prepared-statement errors as the symptom of migrating through the pooler. If you see `prepared statement "s0" already exists`, see [how to fix prepared-statement errors behind a pooler](/postgres/prepared-statement-already-exists).
+
+### 4. Add the migration to every deploy
+
+Make the migration its own step, run once per deploy, ahead of the release. In GitHub Actions, that can be a job the deploy depends on:
+
+```yaml
+name: Deploy production
+on:
+  push:
+    branches: [main]
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx prisma migrate deploy # or your tool's apply command
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_DIRECT }}
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Run your host's deploy command here"
+```
+
+`needs: migrate` stops the deploy when the migration fails, and the `concurrency` group keeps two pushes from migrating at once. That only holds if this workflow is the one path to production. Many hosts also deploy on their own from every push to `main`, and that deploy runs alongside this job, so new code can take traffic before the migration finishes or after it fails. Turn off the host's automatic Git deploys and call its deploy hook or CLI from the `deploy` job, or run the migration in the host's release or pre-deploy phase instead. Keep the migration CLI in `dependencies` if your host prunes development dependencies before that phase runs.
+
+## How do I change a production schema safely?
+
+Adding a table or a nullable column is usually backward compatible in one step, as long as you apply it before the code that uses it. For renames, type changes, `NOT NULL` constraints and drops, keep the running version working while the schema changes:
+
+1. **Expand.** Add the new table or column next to the old one. Deploy code that writes to both and still reads the old one.
+2. **Backfill.** Copy existing rows in batches, so a single long transaction doesn't hold locks. A backfill inside the migration itself is fine for small tables.
+3. **Switch.** Deploy code that reads and writes only the new structure.
+4. **Contract.** In a later release, after nothing reads the old column, drop it in its own migration.
+
+Each phase ships in its own deploy, so you can stop or roll the app back between them. Prisma's expand-and-contract guide, for [Prisma ORM 7](/docs/guides/v7/database/data-migration) and [Prisma ORM 8](/docs/guides/database/data-migration), walks through the pattern with a backfill that runs in the same transaction as the schema change, which suits small tables. The steps apply to any tool.
+
+Watch the locks as well. In PostgreSQL, [`ALTER TABLE`](https://www.postgresql.org/docs/current/sql-altertable.html) takes an `ACCESS EXCLUSIVE` lock unless the docs note otherwise for a subcommand, and that lock [conflicts with every other lock mode](https://www.postgresql.org/docs/current/explicit-locking.html), including plain reads. Set [`lock_timeout`](https://www.postgresql.org/docs/current/runtime-config-client.html) for the migration session, so a statement that can't get its lock quickly fails instead of waiting, and retry it at a quieter time. Build large indexes with [`CREATE INDEX CONCURRENTLY`](https://www.postgresql.org/docs/current/sql-createindex.html), which does not block writes but cannot run inside a transaction block, so check how your tool wraps migrations in transactions.
+
+Before a destructive step, confirm you have a backup you can restore, and test the migration against a database with realistic data, such as a [separate test database](/postgres/typescript-test-environment). Review the generated SQL for drops and rewrites you didn't intend.
+
+### When this fix does not apply
+
+- **The tables exist but the app can't see them.** Check the schema name in the connection string and the database user's permissions.
+- **Production was created without migrations.** Applying the full history to a database that already has the tables usually fails at its opening `CREATE TABLE`. Baseline it first, so the tool records the existing schema as applied: Prisma ORM 7 uses [`prisma migrate resolve --applied <baseline>`](/docs/orm/v7/prisma-migrate/workflows/baselining), Prisma ORM 8 uses `prisma db sign`, TypeORM has `migration:run --fake`, and other tools document their own baselining step.
+
+## Where do Prisma Compute and Prisma Postgres fit?
+
+[Prisma Compute](/docs/compute) hosts TypeScript apps and [Prisma Postgres](/docs/postgres) is managed PostgreSQL. You can run both in one project. How migrations run depends on how the app gets its database:
+
+- **A `postgres()` database in Prisma Composer.** The database is typed by a Prisma ORM contract. You generate migrations with `migration plan` and commit them, and each deploy [applies the `migrations/` folder before the service starts](/docs/composer/databases). The deploy fails before touching the database when the emitted contract is missing or does not match.
+- **A `rawPostgres()` database, or one you connect through `DATABASE_URL`.** Your code gets a connection string and can use any PostgreSQL client, such as Drizzle, Kysely or `node-postgres`. Prisma ORM is optional. Prisma Compute doesn't run migrations for these, so add the step from this page to your pipeline. The [Compute FAQ](/docs/compute/faq) states the same split.
+- **Previews.** With [deploy on push](/docs/compute/deploy-on-push), each pushed branch other than the default one gets its own services and its own new database for each database declared in the Composer module. A `postgres()` database gets your migrations applied before the service starts; a `rawPostgres()` one needs your own migration step. Production data is not copied, so seed test records. A preview that reads `DATABASE_URL` is only as separate as that value.
+
+Know the limits before you rely on them:
+
+- Prisma Postgres takes daily snapshots only on Starter, Pro and Business, kept for 7 days on Starter and Pro and 30 days on Business, and only on days with database activity. The Free plan has no backups. There is no point-in-time recovery yet, so changes made after the latest snapshot may not be restored. Take a `pg_dump` over the direct connection before a destructive migration.
+- `prisma service version rollback` puts an [earlier app version](/docs/compute/deployments) back by reusing its build. Plan schema changes so that the previous version can still run against them.
+- Prisma Compute deploys through a Prisma Composer declaration around your app. If you keep your current host, you can still use Prisma Postgres as the database and run migrations from your existing pipeline.
+
+The Free plan includes 2 GB of Prisma Postgres storage and needs no credit card. See [pricing](/pricing) for the paid plans.

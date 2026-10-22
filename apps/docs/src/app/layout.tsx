@@ -11,6 +11,8 @@ import Link from "next/link";
 import Script from "next/script";
 import { FontAwesomeScript as EclipseFA } from "@prisma/eclipse";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
+import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
+import { PromptwatchScript } from "@prisma-docs/ui/components/promptwatch-script";
 import { Banner } from "fumadocs-ui/components/banner";
 import { ArrowRightIcon } from "lucide-react";
 
@@ -100,6 +102,10 @@ export default function Layout({ children }: { children: ReactNode }) {
         />
         {/* Google Tag Manager — consent-gated; activates only after CookieYes analytics consent */}
         <GoogleTagManager section="docs" />
+        {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
+        <OpenAiPixel />
+        {/* Promptwatch visitor analytics — cookieless, loaded without a consent gate */}
+        <PromptwatchScript />
         {/* FontAwesome — icons are non-critical; explicit strategy avoids
             Next.js silently defaulting to afterInteractive without a source hint */}
         <Script
@@ -107,15 +113,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           crossOrigin="anonymous"
           data-auto-add-css="false"
           strategy="afterInteractive"
-        />
-        {/* PromptWatch — type="text/plain" keeps the script inert in the browser
-            until CookieYes activates it once analytics consent is granted */}
-        <script
-          type="text/plain"
-          src="https://ingest.promptwatch.com/js/client.min.js"
-          data-project-id="25f18e15-6306-4faa-b5c2-8078804778ac"
-          data-cookieyes="cookieyes-analytics"
-          data-cookieyes-category="analytics"
         />
       </head>
       <body className="flex flex-col min-h-screen">

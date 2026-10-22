@@ -22,7 +22,7 @@ const tree: DecisionTreeData = {
       id: "free-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "200k operations, 1.01 GB and 50 databases per month free, with no card. Always ready, with no cold starts (our own architecture claim).",
+      why: "200k operations, 2 GB and 50 databases per month free, with no card.",
       caveat: "Grows into $10/month for 1M operations. Prisma publishes this guide.",
     },
     {
@@ -53,7 +53,7 @@ const tree: DecisionTreeData = {
       accent: true,
       why: "A different bundle: database, ORM, and TypeScript app hosting designed together, with one schema and one config, and the app deployed next to the database.",
       caveat:
-        "Prisma Compute is in public beta. Auth, storage, and realtime are not part of this bundle; that is Supabase's territory.",
+        "S3-compatible object storage buckets live in the same project. End-user auth and realtime are not part of this bundle; that is Supabase's territory.",
     },
     {
       id: "shape",
@@ -85,9 +85,9 @@ const tree: DecisionTreeData = {
     {
       id: "r-planetscale",
       title: "PlanetScale",
-      why: "Always-on dedicated clusters from $5/month (single node) or $50/month on Metal, prorated to the millisecond. At sustained load, paying for every hour beats metering.",
+      why: "Dedicated clusters from $5/month (single node) or $50/month on Metal, billed for the time they run, prorated to the millisecond. At sustained load, paying by the hour beats metering.",
       caveat:
-        "There is no free tier and nothing scales to zero; a quiet month still bills the instance.",
+        "There is no free tier, and its docs don't describe scale-to-zero; a cluster bills for the time it runs.",
     },
     {
       id: "latency",
@@ -122,13 +122,13 @@ const tree: DecisionTreeData = {
       id: "r-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "Operation-based billing fits this shape: the database is always ready (no cold starts, by our own architecture claim), idle time costs nothing extra, and up to about 10M queries a month stays inside the plan allowances ($10 covers 1M, $49 covers 10M).",
+      why: "Operation-based billing fits this shape: idle time costs nothing extra, and up to about 10M queries a month stays inside the plan allowances ($10 covers 1M, $49 covers 10M).",
       caveat:
         "Prisma publishes this guide, so hold this recommendation to the same skepticism as the rest. Past roughly 24M queries a month the guide's own worked example shows an always-on Neon compute becomes cheaper.",
     },
     {
       id: "x-alwayson",
-      title: "An always-on instance",
+      title: "A dedicated instance",
       why: "Neon with auto-suspend disabled runs about $77/month per CU ($0.106 × 730 hours); PlanetScale starts at $5/month single node or $50/month Metal; paid Supabase is $25/month with a Micro covered.",
       caveat:
         "No per-query component. The worked example in the pricing-models section shows the ~24M crossover against the $49 operations plan.",
@@ -137,15 +137,15 @@ const tree: DecisionTreeData = {
       id: "x-ppg",
       title: "Prisma Postgres, higher tier",
       accent: true,
-      why: "$1 per million operations at the top tier ($129/month with 50M included), always ready with no cold starts (our own claim).",
+      why: "$1 per million operations at the top tier ($129/month with 50M included).",
       caveat:
-        "Compare against the always-on options at your exact query count. Prisma publishes this guide.",
+        "Compare against the dedicated-instance options at your exact query count. Prisma publishes this guide.",
     },
     {
       id: "fleet-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "Operations are metered account-wide across up to 1,000 databases on one plan, so a fleet of small databases shares one allowance.",
+      why: "Operations are metered account-wide across up to 1,000 databases in a workspace, so a fleet of small databases shares one allowance.",
       caveat:
         "Prisma publishes this guide; the account-wide metering claim is from our pricing page.",
     },

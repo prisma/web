@@ -25,7 +25,22 @@ All commands in the unified Prisma CLI accept these flags.
 
 ## Output formats
 
-Without `--format`, a terminal gets `human` output and a pipe gets `json`. `markdown` is never chosen for you; pass `--format markdown` to get it.
+Without `--format` or `--json`, every run uses `human` output, whether standard output is a terminal, a pipe, or a file. JSON and Markdown are never chosen for you; pass `--json` or `--format markdown` to get them.
+
+In `human` output, the formatted result, progress, and errors go to standard error. Standard output gets only the command's data lines: plain values with no labels or color, which `cut`, `xargs`, and `$(...)` can take directly.
+
+- A list prints one line per item, with its fields separated by tabs, in the order the table shows them.
+- A command that returns one value, such as a URL or the id of a created resource, prints that value alone.
+- A command whose only result is that it succeeded, such as a delete or a stop, writes nothing to standard output. Its exit code is the result, and its message goes to standard error.
+
+```bash
+npx prisma project list | cut -f2
+curl "$(npx prisma dev url gateway)"
+```
+
+In a terminal you see only the formatted result, because it already shows the same values. The data lines appear when standard output is piped, redirected to a file, or captured by `$(...)`. A script that needs more than the data lines uses `--json`. Some commands do not write data lines yet, so a script reads their result with `--json`: `deploy`, and Prisma ORM commands such as `migration list`, `migration status`, and `contract format`. Two Prisma ORM commands do write usable standard output: `contract print` writes the printed PSL contract, and `contract emit` writes the path of each file it emitted.
+
+Before `8.0.0-rc.24`, a pipe got `json` output, so add `--json` to any older script that parses JSON.
 
 `markdown` is for AI agents that read command output as text rather than parsing JSON. It prints the same content as `human`, as plain Markdown: a summary line, `label: value` lines, pipe tables, bullet lists, and fenced code, followed by a `### Next` section with the suggested next commands and a `### Diagnostics` section with any findings. There is no padding, alignment, or color, and no JSON envelope. Everything the command produces, including errors, help, `--version`, and progress, goes to stdout, so an agent reads one stream.
 
