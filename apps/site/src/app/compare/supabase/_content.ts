@@ -209,7 +209,7 @@ export const PRICING: readonly {
 export const WRONG_CHOICE = [
   "You want Auth, Storage, Realtime, auto-generated APIs, or Edge Functions as first-party services next to Postgres. Prisma Postgres does not include those. See [Supabase pricing](https://supabase.com/pricing).",
   "You want the frontend on a host such as Vercel, with Supabase isolating Auth, Storage, Edge Functions, and the database on a preview branch. A Prisma preview branch can own Compute services and databases; it does not include those Supabase backend products. See [Supabase branching](https://supabase.com/docs/guides/deployment/branching).",
-  "You need point-in-time recovery today. Prisma Postgres has no point-in-time recovery. Paid plans include daily backups. Supabase sells PITR as a $100 per month add-on per 7 days of retention on [Supabase pricing](https://supabase.com/pricing).",
+  "You need point-in-time recovery today. Prisma Postgres has no point-in-time recovery yet (it is coming in November 2026). Paid plans include daily backups. Supabase sells PITR as a $100 per month add-on per 7 days of retention on [Supabase pricing](https://supabase.com/pricing).",
   "You want database compute billed by the hour with a $25 Pro base, and you are fine that the Spend Cap excludes compute. Prisma Postgres bills operations and storage instead.",
 ];
 
