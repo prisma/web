@@ -22,9 +22,6 @@ const GRAIN: React.CSSProperties = {
   mixBlendMode: "multiply",
 };
 
-// TODO: the ~5K and ~500K MAU scenario numbers are placeholders pending
-// client content — only the ~50K MAU column came from the client.
-
 const BULLETS = [
   {
     lead: "Free Postgres tier",
@@ -65,27 +62,43 @@ type Scenario = {
   prisma: string[];
 };
 
-// The Neon + Vercel cards assume paid Neon plans (Launch or Scale), which
-// include 500 GB of public network transfer per project, then $0.10/GB
-// (neon.com/pricing, checked 2026-10-22). Those terms cover the database
-// only, so the line says "Database data transfer"; Vercel bills its own data
+// Scenario figures, checked 2026-10-22 against neon.com/pricing,
+// vercel.com/pricing (and docs/pricing, docs/plans/pro-plan,
+// docs/pricing/flat-rate-cdn) and prisma.io/pricing.
+//  - ~50K MAU is the /pricing comparison (pricing-comparison.tsx), same
+//    figures and same basis; see the methodology there.
+//  - ~5K MAU (up to 1M requests, about 1 GB of data): Vercel Hobby is for
+//    "personal, non-commercial use", so a commercial app needs Vercel Pro,
+//    $20 a month with a $20 usage credit that covers this traffic. Neon Free
+//    is $0 and needs no card; Neon Launch for 140 CU-hours plus 1 GB is about
+//    $15. Total $20-35. Prisma is $0 inside the Free plan limits (200K ops, 1M
+//    requests, 2 GB, 10 GB bandwidth), otherwise Starter at $10 plus metered
+//    memory and CPU, about $22 at the top of this range.
+//  - The ~500K MAU card was removed: no written basis existed for its
+//    $2,800-3,400, and a recompute on list prices put Neon + Vercel well
+//    below it.
+// Neon Free includes 5 GB of public network transfer per project; Launch and
+// Scale include 500 GB, then $0.10/GB. Those terms cover the database only,
+// so the line says "Database data transfer"; Vercel bills its own data
 // transfer separately (vercel.com/docs/pricing). Neon added from the Vercel
 // Marketplace is billed through the Vercel account
 // (vercel.com/docs/marketplace-storage), so the billing line names the two
-// vendors rather than two bills.
+// vendors rather than two bills. Spend controls: Neon sends spending
+// notifications at 80% and 100%; Vercel has an on-demand budget with an
+// optional automatic pause (vercel.com/pricing FAQ).
 const SCENARIOS: Scenario[] = [
   {
     tab: "Side project",
     mau: "~5K MAU",
-    typicalCost: "$19-39",
-    prismaCost: "$0",
+    typicalCost: "$20-35",
+    prismaCost: "$0-22",
     typical: [
       "Database and hosting from two vendors",
-      "Database data transfer: 500 GB per project included, then $0.10/GB",
-      "Credit card required up front",
+      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10/GB",
+      "Paid Vercel plan for commercial use",
     ],
     prisma: [
-      "No credit card required",
+      "Free plan needs no credit card",
       "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ],
@@ -93,28 +106,12 @@ const SCENARIOS: Scenario[] = [
   {
     tab: "Growing SaaS",
     mau: "~50K MAU",
-    typicalCost: "$385-450",
-    prismaCost: "$70-90",
+    typicalCost: "$130-270",
+    prismaCost: "$72-90",
     typical: [
       "Database and hosting from two vendors",
       "Database data transfer: 500 GB per project included, then $0.10/GB",
-      "Spend limits not standard",
-    ],
-    prisma: [
-      "One bill, one platform",
-      "Database data transfer included",
-      "Spend limits on by default",
-    ],
-  },
-  {
-    tab: "At scale",
-    mau: "~500K MAU",
-    typicalCost: "$2,800-3,400",
-    prismaCost: "$640-780",
-    typical: [
-      "Committed-use contracts across vendors",
-      "Database data transfer: 500 GB per project included, then $0.10/GB",
-      "Spend limits not standard",
+      "Spend controls: Neon notifications, Vercel budget with optional pause",
     ],
     prisma: [
       "One bill, one platform",
@@ -201,7 +198,7 @@ function ScenarioCarousel() {
       <div
         role="tablist"
         aria-label="Pricing scenarios"
-        className="relative z-10 -mb-px inline-grid grid-cols-3 overflow-hidden rounded-t-2xl border border-b-0 border-black/[0.06]"
+        className="relative z-10 -mb-px inline-grid grid-cols-2 overflow-hidden rounded-t-2xl border border-b-0 border-black/[0.06]"
       >
         {/* one grain plane behind the whole row, sharing the panel's x-origin
             — whichever tab is active exposes the same continuous texture

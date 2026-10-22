@@ -229,42 +229,30 @@ export function renderHomeMarkdown(): string {
       "**A preview database per feature branch**, no surcharge",
       "**SOC2, [HIPAA](/postgres/hipaa), ISO 27001, and GDPR** at the Business tier",
     ]),
-    // All three carousel scenarios are included: only one slide is visible at
-    // a time in the HTML, and Markdown has no interaction.
+    // Both carousel scenarios are included: only one slide is visible at a
+    // time in the HTML, and Markdown has no interaction. Figures and basis are
+    // in the SCENARIOS comment in pricing-scale.tsx.
     heading(3, "Side project (~5K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $19-39 per month"),
+    paragraphs("Typical stack (Neon + Vercel): $20-35 per month"),
     bulletList([
       "Database and hosting from two vendors",
-      "Database data transfer: 500 GB per project included, then $0.10/GB",
-      "Credit card required up front",
+      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10/GB",
+      "Paid Vercel plan for commercial use",
     ]),
-    paragraphs("Prisma: $0 per month"),
+    paragraphs("Prisma: $0-22 per month"),
     bulletList([
-      "No credit card required",
+      "Free plan needs no credit card",
       "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ]),
     heading(3, "Growing SaaS (~50K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $385-450 per month"),
+    paragraphs("Typical stack (Neon + Vercel): $130-270 per month"),
     bulletList([
       "Database and hosting from two vendors",
       "Database data transfer: 500 GB per project included, then $0.10/GB",
-      "Spend limits not standard",
+      "Spend controls: Neon notifications, Vercel budget with optional pause",
     ]),
-    paragraphs("Prisma: $70-90 per month"),
-    bulletList([
-      "One bill, one platform",
-      "Database data transfer included",
-      "Spend limits on by default",
-    ]),
-    heading(3, "At scale (~500K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $2,800-3,400 per month"),
-    bulletList([
-      "Committed-use contracts across vendors",
-      "Database data transfer: 500 GB per project included, then $0.10/GB",
-      "Spend limits not standard",
-    ]),
-    paragraphs("Prisma: $640-780 per month"),
+    paragraphs("Prisma: $72-90 per month"),
     bulletList([
       "One bill, one platform",
       "Database data transfer included",

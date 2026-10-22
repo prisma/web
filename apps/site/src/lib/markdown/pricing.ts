@@ -189,7 +189,7 @@ const COMPARISON_HEADERS = [
 ];
 
 const COMPARISON_ROWS = [
-  ["Monthly cost at ~50K MAU", "$385–450", "$95–145", "$72–90"],
+  ["Monthly cost at ~50K MAU", "$130–270", "$95–145", "$72–90"],
   [
     "Billing",
     "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",
@@ -204,7 +204,7 @@ const COMPARISON_ROWS = [
   ],
   [
     "Spend limits",
-    "Not standard",
+    "Neon: spending notifications at 80% and 100%. Vercel: a spend budget with an optional pause",
     "Spend cap on by default for covered usage; database compute excluded",
     "On by default",
   ],
@@ -240,7 +240,7 @@ const SPEC_GROUPS: {
       ["Storage overage", "—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
       ["Databases", "50", "1,000", "1,000", "1,000"],
       ["Data transfer", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-      ["Spend limits", "—", INCLUDED, INCLUDED, INCLUDED],
+      ["Spend limits", "Fixed at $0, no card required", INCLUDED, INCLUDED, INCLUDED],
     ],
   },
   {
@@ -275,9 +275,15 @@ const SPEC_GROUPS: {
       ["Connection limit (pooled)", "10", "100", "500", "1,000"],
       ["Connection limit (direct)", "10", "10", "50", "100"],
       ["Connection idle timeout", "60 minutes", "60 minutes", "60 minutes", "60 minutes"],
-      ["Auto-scaling", INCLUDED, INCLUDED, INCLUDED, INCLUDED],
+      ["Pool mode", "Transaction", "Transaction", "Transaction", "Transaction"],
       ["Operation response size", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-      ["Operation duration (db queries)", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
+      [
+        "Operation duration (db queries)",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+      ],
       ["Operation duration (interactive)", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
     ],
   },
@@ -428,12 +434,12 @@ export function renderPricingMarkdown(): string {
       "Prisma charges per operation: each query your app runs against your database counts as " +
         "one. No seats. No database egress fees. And every paid plan includes a hard spend limit so there " +
         "are no surprises.",
-      "At around 50K monthly active users, Prisma Pro can cost up to 5x less than a typical " +
+      "At around 50K monthly active users, Prisma Pro can cost less than half as much as a typical " +
         "Neon + Vercel setup, with one bill, included database data transfer, and spend limits on by " +
         "default.",
       // The badge on the Prisma Pro column; its multiple is derived from the
       // costs in the table below.
-      "Up to 5x less vs Neon + Vercel",
+      "Up to 2x less vs Neon + Vercel",
     ]),
     table(COMPARISON_HEADERS, COMPARISON_ROWS),
 
