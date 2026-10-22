@@ -43,7 +43,11 @@ npm install @prisma/orm-postgres dotenv
 npm install --save-dev prisma tsx typescript
 ```
 
-`@prisma/orm-postgres` is the library your code imports, and `prisma` is the command-line tool. `dotenv` loads `.env`, `tsx` runs `index.ts` without a build step, and `typescript` 5.9 or newer is a peer dependency of `@prisma/orm-postgres`. So is `temporal-polyfill`, which npm installs for you; with Yarn, add it yourself. The two Prisma packages have different version numbers (for example, `prisma` 8.0.0-rc.23 and `@prisma/orm-postgres` 8.0.0-rc.18); that is normal, and any two `latest` versions work together.
+`@prisma/orm-postgres` is the library your code imports, and `prisma` is the command-line tool. `dotenv` loads `.env`, `tsx` runs `index.ts` without a build step, and `typescript` 5.9 or newer is a peer dependency of `@prisma/orm-postgres`.
+
+`temporal-polyfill` is a peer dependency of `@prisma/orm-postgres` too. It adds `Temporal`, the newer JavaScript date and time API, to runtimes such as Node.js 24 that do not have it built in. npm installs it for you, but with Yarn you add it yourself.
+
+The two Prisma packages have different version numbers, for example `prisma` 8.0.0-rc.25 and `@prisma/orm-postgres` 8.0.0-rc.19. That is normal, and any two `latest` versions work together.
 
 ## 2. Create the config file and `.env`
 
@@ -134,16 +138,19 @@ The `marker` line in the output is the record that signing stores in the databas
 
 ## 5. Write and read data
 
-Create `index.ts`, which builds the client from the two emitted files and then deletes, creates, updates, and reads rows on the `User` model:
+Create `index.ts`, which passes the two files from step 4 to `contractFromJson`. That function checks `contract.json` and gives it the types from `contract.d.ts`, and the file then builds the client from the result and deletes, creates, updates, and reads rows on the `User` model:
 
 ```typescript title="index.ts"
 import "dotenv/config";
 import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
 import type { Contract } from "./prisma/contract.d";
 import contractJson from "./prisma/contract.json" with { type: "json" };
 
-const db = postgres<Contract>({
-  contractJson,
+const contract = contractFromJson<Contract>(contractJson);
+
+const db = postgres({
+  contract,
   url: process.env["DATABASE_URL"]!,
 });
 

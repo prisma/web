@@ -192,11 +192,16 @@ const COMPARISON_ROWS = [
   ["Monthly cost at ~50K MAU", "$385–450", "$95–145", "$72–90"],
   [
     "Billing",
-    "Separate database + hosting bills",
+    "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",
     "Platform subscription + Postgres compute + function usage",
     "One bill, one platform",
   ],
-  ["Database data transfer", "Pay per GB", "250 GB egress included, then $0.09/GB", "Included"],
+  [
+    "Database data transfer",
+    "500 GB egress per project included, then $0.10/GB",
+    "250 GB egress included, then $0.09/GB",
+    "Included",
+  ],
   [
     "Spend limits",
     "Not standard",

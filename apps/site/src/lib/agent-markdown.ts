@@ -1,4 +1,5 @@
 import { COMPARISON_PATHS } from "@/app/compare/comparisons";
+import { getDataguideRewritePathname } from "@/lib/dataguide-markdown";
 
 /**
  * Agent-facing Markdown content negotiation for the marketing site.
@@ -187,6 +188,12 @@ export function getAnswerPagePath(pathname: string): string | undefined {
  * homepage — the same slug `/index.md` produces.
  */
 export function getAgentMarkdownRewritePathname(pathname: string): string | undefined {
+  // Data Guide pages, which the site forwards to the Data Guide deployment;
+  // their Markdown is read from that deployment's export. See
+  // `@/lib/dataguide-markdown`.
+  const dataguidePathname = getDataguideRewritePathname(pathname);
+  if (dataguidePathname) return dataguidePathname;
+
   const answerPath = getAnswerPagePath(pathname);
   if (answerPath) return `/llms.mdx${answerPath}`;
 

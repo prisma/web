@@ -73,7 +73,7 @@ const STEPS = [
   },
 ] as const;
 
-export function LandingFlow({ flow }: { flow: LandingContent["flow"] }) {
+export function LandingFlow({ flow }: { flow: NonNullable<LandingContent["flow"]> }) {
   return (
     <section className="bg-white px-3 py-4 sm:px-4 sm:py-6">
       <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-card-wash">

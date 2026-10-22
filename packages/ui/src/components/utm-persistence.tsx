@@ -4,12 +4,16 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CONSOLE_HOST,
+  getClickIdParams,
   getUtmParams,
+  hasUtmParams,
   mergeUtmAttribution,
   readStoredUtmAttribution,
   syncFallbackRef,
   syncUtmAttribution,
   writeStoredUtmAttribution,
+  type UtmAttribution,
+  type UtmParams,
 } from "../lib/utm";
 import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
 import { hasAdvertisingConsent } from "../lib/consent";
@@ -40,19 +44,56 @@ interface UtmPersistenceProps {
 }
 
 /**
+ * Ad click IDs seen on this page session's URLs, held in memory only.
+ *
+ * Storage follows advertising consent (see `getActiveAttribution`), but the
+ * click ID is a query parameter the visitor already carries, not a cookie, so
+ * it is still forwarded on the Console hand-off. The Console keeps it in its
+ * own signed cookie and reports it to the ad platform only when the visitor has
+ * granted advertising consent at sign-up. Without this, a visitor who signs up
+ * before answering the cookie banner reaches the Console with campaign tags but
+ * no click ID, and the ad platform can never match the sign-up to the click.
+ */
+let sessionClickIds: UtmParams = {};
+
+/** Forgets the click IDs seen in this page session. For tests. */
+export function resetSessionClickIds() {
+  sessionClickIds = {};
+}
+
+function withSessionClickIds(attribution: UtmAttribution | undefined) {
+  if (!hasUtmParams(sessionClickIds)) {
+    return attribution;
+  }
+
+  const last = { ...attribution?.last, ...sessionClickIds };
+  return attribution ? { ...attribution, last } : { first: {}, last };
+}
+
+/**
  * Reads the visitor's first- and last-touch attribution: stored touches merged
  * with whatever campaign params are on the current URL. Persists and announces
- * a touch only when it actually changed, and drops ad click IDs when
- * advertising consent is absent. Returns `undefined` for a visitor with no
- * attribution.
+ * a touch only when it actually changed, and keeps ad click IDs out of storage
+ * when advertising consent is absent. The returned attribution still carries
+ * the click IDs seen in this page session (`sessionClickIds`) so the Console
+ * hand-off has them. Returns `undefined` for a visitor with no attribution.
  */
 export function getActiveAttribution(storageKey: string) {
-  // Click IDs are advertising identifiers, so they follow the CookieYes
-  // advertisement category, the same gate as the ad pixels that consume them.
+  const searchParams = new URLSearchParams(window.location.search);
+  // A tagged URL is a new touch and brings its own click IDs, or none, so an
+  // earlier click never rides along on a later campaign. An untagged URL (a
+  // soft navigation that dropped the query) keeps the touch that is in flight.
+  if (hasUtmParams(getUtmParams(searchParams))) {
+    sessionClickIds = getClickIdParams(searchParams);
+  }
+  return withSessionClickIds(getStoredAttribution(storageKey, searchParams));
+}
+
+function getStoredAttribution(storageKey: string, searchParams: URLSearchParams) {
+  // Click IDs are advertising identifiers, so what is persisted follows the
+  // CookieYes advertisement category, the same gate as the ad pixels.
   const includeClickIds = hasAdvertisingConsent();
-  const currentUtmParams = getUtmParams(new URLSearchParams(window.location.search), {
-    includeClickIds,
-  });
+  const currentUtmParams = getUtmParams(searchParams, { includeClickIds });
   let stored = readStoredUtmAttribution(storageKey);
   if (stored && !includeClickIds) {
     const previous = stored;

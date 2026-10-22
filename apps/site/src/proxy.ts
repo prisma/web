@@ -16,9 +16,10 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
  *    Agent traffic page can tell agents from people. It answers a request
  *    itself only for `/__ora/status`, or once Autopilot is switched on in the
  *    ora Portal; otherwise it returns null and the request carries on.
- * 2. The Markdown rendition of a marketing page or product guide for agents
- *    that ask for it, mirroring apps/docs/src/proxy.ts and apps/blog's posts,
- *    with a `Vary` append on both variants (see `agentMarkdown`).
+ * 2. The Markdown rendition of a marketing page, product guide or Data Guide
+ *    page for agents that ask for it, mirroring apps/docs/src/proxy.ts and
+ *    apps/blog's posts, with a `Vary` append on both variants (see
+ *    `agentMarkdown`).
  *
  * The site app is the root zone, and a proxy runs before `rewrites()`, so this
  * one file sees `/docs/*` and `/blog/*` on their way to the docs and blog
@@ -40,19 +41,37 @@ function withVaryAccept(response: NextResponse) {
   return response;
 }
 
+/**
+ * The request headers the rewrite below sets for the Markdown routes. A client
+ * can send them too, so a request the proxy does not rewrite loses them: the
+ * Data Guide route reads `x-prisma-agent-markdown` to tell a rewritten HTML URL
+ * from a `.md` URL.
+ */
+const AGENT_MARKDOWN_REQUEST_HEADERS = ["x-prisma-agent-markdown", "x-prisma-agent-markdown-path"];
+
+function passThrough(request: NextRequest) {
+  if (!AGENT_MARKDOWN_REQUEST_HEADERS.some((name) => request.headers.has(name))) {
+    return NextResponse.next();
+  }
+  const headers = new Headers(request.headers);
+  for (const name of AGENT_MARKDOWN_REQUEST_HEADERS) headers.delete(name);
+  return NextResponse.next({ request: { headers } });
+}
+
 function agentMarkdown(request: NextRequest) {
   // The containment boundary. The matcher used to be it, naming the nine pages
   // that have a rendition and nothing else; now that the proxy runs on every
   // page for Agent Front, this line is what keeps the rest of the function off
   // `/docs/*`, `/blog/*`, `/api/*`, `/llms.mdx/*` and any path with a file
-  // extension. Those get a bare `next()`, exactly as if the proxy had not run.
+  // extension. Those get a bare `next()`, exactly as if the proxy had not run,
+  // less any client-sent copy of the rewrite's request headers.
   const rewritePathname = getAgentMarkdownRewritePathname(request.nextUrl.pathname);
-  if (!rewritePathname) return NextResponse.next();
+  if (!rewritePathname) return passThrough(request);
 
   // Markdown negotiation is a read. Anything else on these paths — notably an
   // MCP initialize POST to /mcp — belongs to whatever normally handles it.
-  if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
-  if (isMcpProtocolRequest(request.headers)) return withVaryAccept(NextResponse.next());
+  if (request.method !== "GET" && request.method !== "HEAD") return passThrough(request);
+  if (isMcpProtocolRequest(request.headers)) return withVaryAccept(passThrough(request));
 
   // The no-signal branch has work to do: it appends `Vary: Accept` for the
   // HTML variant. Next overwrites the `Vary` it gets from `headers()` in
@@ -62,7 +81,7 @@ function agentMarkdown(request: NextRequest) {
   // the note on the rewrite below). The `Link` header still comes from
   // next.config.mjs.
   const signal = getAgentMarkdownSignal(request.headers);
-  if (!signal) return withVaryAccept(NextResponse.next());
+  if (!signal) return withVaryAccept(passThrough(request));
 
   const url = request.nextUrl.clone();
   url.pathname = rewritePathname;

@@ -26,11 +26,12 @@ The `src/prisma/db.ts` below imports two files from your own project, `contract.
 import { createCacheMiddleware } from '@prisma/orm-extension-middleware-cache';
 import postgres from '@prisma/orm-postgres/runtime';
 import { budgets, lints } from '@prisma/orm-postgres/family-runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [
     createCacheMiddleware(),
@@ -67,7 +68,7 @@ Add `queryLogger()` to the `middleware` array in `src/prisma/db.ts`, alongside t
 
 Every query goes through that list, whichever of the two APIs you wrote it with. With the ORM API you write `db.orm.public.User...`, where `public` is the PostgreSQL schema and `User` is the model in your contract.
 
-With the [SQL query builder](/orm/reference/sql-query-builder) you build a query and run it in two steps. `.build()` returns a plan, which is the query as a plain object, not yet run. `db.runtime().query(plan)` runs it and returns rows, and `db.runtime().execute(plan)` runs it and returns how many rows it changed.
+With the [SQL query builder](/orm/reference/sql-query-builder) you build a query and run it in two steps. `.build()` returns a plan, which is the query as a plain object, not yet run. `db.query(plan)` runs it and returns rows, and `db.execute(plan)` runs it and returns how many rows it changed.
 
 Both APIs send their queries on the same `db` object, so both see the same middleware. If your database is MongoDB, pass the same `middleware` option to `mongo(...)` from `@prisma/orm-mongo/runtime` and type your own middleware as `MongoMiddleware` from `@prisma/orm-mongo/family-runtime`.
 
@@ -77,15 +78,15 @@ Both APIs send their queries on the same `db` object, so both see the same middl
 
 You write only the hooks you care about, and Prisma ORM skips the ones you leave out. Which hooks it calls depends on what your query gives back: if the query returns rows, one set of hooks runs, and if it only reports how many rows it changed, a shorter set runs instead.
 
-**A row query** is anything that returns rows. On the ORM API that is every call except `createAndCount`, `updateAndCount`, and `deleteAndCount`, so `create`, `update`, and `delete` are row queries too. It is also what you get from `db.runtime().query(plan)`. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces. A row query calls your hooks in this order:
+**A row query** is anything that returns rows. On the ORM API that is every call except `createAndCount`, `updateAndCount`, and `deleteAndCount`, so `create`, `update`, and `delete` are row queries too. It is also what you get from `db.query(plan)`. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces. A row query calls your hooks in this order:
 
 `beforeCompile` → `beforeQuery` → `interceptQuery` → `onRow` (once per row) → `afterQuery` → `afterTransaction`
 
-**A non-returning write** is a statement that reports how many rows it affected rather than returning them. On the ORM API those are `createAndCount`, `updateAndCount`, and `deleteAndCount`, and with the SQL query builder it is whatever you hand to `db.runtime().execute(plan)`. These run a shorter sequence:
+**A counting write** is a write that gives you back only the number of rows it changed, not the rows themselves. On the ORM API those are `createAndCount`, `updateAndCount`, and `deleteAndCount`. `create` also writes, but it returns the row it wrote, so it is a row query. With the SQL query builder, a counting write is whatever you pass to `db.execute(plan)`. These run a shorter sequence:
 
 `beforeCompile` → `beforeExecute` → `interceptExecute` → `afterExecute` → `afterTransaction`
 
-`beforeQuery` never runs for a non-returning write, and `beforeExecute` never runs for a row query, so a middleware that has to cover reads and writes both needs a hook in each sequence. In practice that means writing the check once and calling it from `beforeQuery` and from `beforeExecute`:
+`beforeQuery` never runs for a counting write, and `beforeExecute` never runs for a row query, so a middleware that has to cover reads and writes both needs a hook in each sequence. In practice that means writing the check once and calling it from `beforeQuery` and from `beforeExecute`:
 
 ```ts title="src/prisma/no-delete-all.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -169,7 +170,7 @@ Then `scopeUserSelects(() => onlyMia)` goes in the `middleware` array of your `p
 
 ### beforeQuery and beforeExecute: validate or block
 
-These two hooks are where you inspect a query and refuse it. `beforeQuery` runs on a row query and `beforeExecute` on a non-returning write, both after the SQL text has been written out and before anything reaches the database. Your hook receives the plan, so you can read the SQL text in `plan.sql` and read the same query as objects in `plan.ast`, which is the tree `beforeCompile` works on. Throwing from the hook blocks the query, and returning normally lets it carry on to the database. The hook itself goes in the object your middleware returns, next to `name` and `familyId`:
+These two hooks are where you inspect a query and refuse it. `beforeQuery` runs on a row query and `beforeExecute` on a counting write, both after the SQL text has been written out and before anything reaches the database. Your hook receives the plan, so you can read the SQL text in `plan.sql` and read the same query as objects in `plan.ast`, which is the tree `beforeCompile` works on. Throwing from the hook blocks the query, and returning normally lets it carry on to the database. The hook itself goes in the object your middleware returns, next to `name` and `familyId`:
 
 ```ts
 async beforeQuery(plan) {
@@ -218,7 +219,7 @@ Before-hooks still run on a query that an intercept hook answers, because every 
 
 ### onRow: watch rows arrive
 
-`onRow(row, plan, ctx)` lets you see each row of a result on its way to your code, and `row` is one of those plain row objects. Prisma ORM calls it once for every row as it reads the result, before your `await` on `.all()` or `.first()` resolves, so you can count rows, sample them, or throw to stop the query part way through. If you throw, your `await` rejects with that error and you get no rows at all, not the rows read so far. That is what `budgets` does when a query returns more rows than its `maxRows` budget allows. `onRow` does not run on a non-returning write, and it does not run for rows that an `interceptQuery` hook answered.
+`onRow(row, plan, ctx)` lets you see each row of a result on its way to your code, and `row` is one of those plain row objects. Prisma ORM calls it once for every row as it reads the result, before your `await` on `.all()` or `.first()` resolves, so you can count rows, sample them, or throw to stop the query part way through. If you throw, your `await` rejects with that error and you get no rows at all, not the rows read so far. That is what `budgets` does when a query returns more rows than its `maxRows` budget allows. `onRow` does not run on a counting write, and it does not run for rows that an `interceptQuery` hook answered.
 
 ### afterQuery and afterExecute: observe the finished operation
 
@@ -226,7 +227,7 @@ These two hooks are for recording what happened once the work is over. Prisma OR
 
 After a row query, `afterQuery` receives `result.rowCount`, how many rows came back, and `result.latencyMs`, how long the query took. `result.completed` is `true` when the query finished and `false` when it failed, and `result.source` is `'driver'` for a query the database answered and `'middleware'` when an `interceptQuery` answered it, so you can tell where the rows came from.
 
-After a non-returning write, `afterExecute` receives the same `result.completed`, `result.latencyMs`, and `result.source`, and on a run that completed it also gets the number of rows the statement changed, in `result.stats.affectedRows`. There is no `result.rowCount` on this one, and there is no `result.stats` on a write that failed, so read the count only when `result.completed` is `true`.
+After a counting write, `afterExecute` receives the same `result.completed`, `result.latencyMs`, and `result.source`, and on a run that completed it also gets the number of rows the statement changed, in `result.stats.affectedRows`. There is no `result.rowCount` on this one, and there is no `result.stats` on a write that failed, so read the count only when `result.completed` is `true`.
 
 Timing, logging, and latency budgets all belong in these two hooks.
 
@@ -280,7 +281,7 @@ A middleware of your own that leaves `familyId` out can still be typed as `SqlMi
 
 When your hook throws from `beforeCompile`, `beforeQuery`, `beforeExecute`, `interceptQuery`, or `interceptExecute`, the whole operation fails before anything reaches the database, and your caller gets the error you threw. A throw from `onRow` also fails the operation, but by then the query has run: your caller gets your error and none of the rows, including the ones already read. Your own middleware can throw whatever error you like, as `noDeleteAll` throws a plain `Error`. `lints` and `budgets` throw an ordinary `Error` with a `code` property on it, so you catch them like any other error and read `code` to tell them apart. `budgets` throws two codes, `BUDGET.ROWS_EXCEEDED` and `BUDGET.TIME_EXCEEDED`, and the [lints](/orm/middleware/built-in-lints) page lists the codes `lints` throws.
 
-When the database driver is the thing that fails, Prisma ORM still calls `afterQuery` on every middleware, or `afterExecute` after a non-returning write, with `result.completed` set to `false`, so your logging sees failed queries as well as successful ones. A throw from `afterQuery` or `afterExecute` while it is handling a failure cannot hide the real error: your caller still gets the failure the driver reported.
+When the database driver is the thing that fails, Prisma ORM still calls `afterQuery` on every middleware, or `afterExecute` after a counting write, with `result.completed` set to `false`, so your logging sees failed queries as well as successful ones. A throw from `afterQuery` or `afterExecute` while it is handling a failure cannot hide the real error: your caller still gets the failure the driver reported.
 
 ## Prompt your coding agent
 

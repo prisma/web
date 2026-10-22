@@ -1,3 +1,4 @@
+import { composerBuild, composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -30,6 +31,7 @@ const imageRemoteHostnames = [
 
 if (
   process.env.NODE_ENV === "production" &&
+  !composerBuild &&
   (!process.env.NEXT_DOCS_ORIGIN || !process.env.NEXT_BLOG_ORIGIN)
 ) {
   throw new Error(
@@ -348,6 +350,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   reactCompiler: true,
   assetPrefix: "/site-static",
   allowedDevOrigins,
@@ -370,7 +373,7 @@ const config = {
       // `oppref`. A visit with no `utm_source` at all is left alone: it is not
       // evidence of a paid click, so the Console link falls back to
       // `ref=prisma.io/lp/<slug>` like any other direct visit.
-      ...["compute", "postgres", "free"].map((slug) => ({
+      ...["compute", "postgres", "free", "1000-databases", "providers"].map((slug) => ({
         source: `/lp/${slug}`,
         has: [{ type: "query", key: "utm_source" }],
         missing: [{ type: "query", key: "utm_term" }],
@@ -431,6 +434,7 @@ const config = {
       { source: "/privacy", destination: "/legal/privacy", permanent: true },
       { source: "/terms", destination: "/legal/terms", permanent: true },
       { source: "/sla", destination: "/legal/sla", permanent: true },
+      { source: "/security", destination: "/legal/security-and-compliance", permanent: true },
       { source: "/startups", destination: "/programs/startups", permanent: true },
       { source: "/partners", destination: "/programs/partners", permanent: true },
       { source: "/oss-friends", destination: "/programs/oss-friends", permanent: true },
@@ -622,13 +626,19 @@ const config = {
       },
       {
         permanent: true,
+        source: "/blog/comparison-prisma-typeorm-A9nlX0Pb5G1X",
+        destination: "/docs/orm/v7/more/comparisons/prisma-and-typeorm",
+      },
+      // v1.prisma.io/forum and /tutorials 404. Exact /tutorials/postgres-* rules above still win.
+      {
+        permanent: true,
         source: "/forum/:any*",
-        destination: "https://v1.prisma.io/forum/:any*",
+        destination: "/community",
       },
       {
         permanent: true,
         source: "/tutorials/:any*",
-        destination: "https://v1.prisma.io/tutorials/:any*",
+        destination: "/docs/guides",
       },
       {
         permanent: true,
@@ -653,7 +663,7 @@ const config = {
       {
         permanent: true,
         source: "/with-rest",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/rest",
+        destination: "/docs/orm/v7/core-concepts/api-patterns",
       },
       {
         permanent: true,
@@ -917,6 +927,7 @@ const config = {
   },
 
   async rewrites() {
+    const crossZone = (rule) => !composerBuild || !/^\/(docs|blog)(?:[/:.-]|$)/.test(rule.source);
     return {
       beforeFiles: [
         {
@@ -1020,7 +1031,7 @@ const config = {
           destination: `${BLOG_ORIGIN}/blog-static/:path*`,
           missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
         },
-      ],
+      ].filter(crossZone),
       afterFiles: [
         // Markdown renditions of the marketing pages: /orm.md, /pricing.md,
         // /index.md for the homepage, and so on, all handled by

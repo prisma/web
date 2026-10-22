@@ -31,6 +31,20 @@ npx prisma db schema --db "$DATABASE_URL"
 npx prisma db schema --db "$DATABASE_URL" --json > schema.json
 ```
 
+## Column types
+
+On PostgreSQL and SQLite, the tree and the JSON output show each column's type as the database names it. In the JSON output, this text is the column's `typeText`:
+
+```bash
+npx prisma db schema --db "$DATABASE_URL" --json | jq '.schema.tables[].columns[].typeText'
+```
+
+On PostgreSQL, `typeText` is the full type name, such as `integer` or `character varying(20)`, not a short name such as `int4`. An enum is named as your contract names it, such as `My Mood`, or `app.status` for an enum outside the `public` schema. A type from a schema that is not on the search path keeps the schema name, such as `extensions.vector(3)` for a pgvector column.
+
+On SQLite, which Prisma ORM 8 supports as an [experimental package](/orm/supported-databases), `typeText` is the type the column was declared with, in lower case: a column declared `VARCHAR(255)` reads `varchar(255)`.
+
+If a script reads `nativeType` or `resolvedNativeType` from the JSON output, change it to read `typeText`, which replaced both fields in `8.0.0-rc.19`.
+
 ## Related commands
 
 Use [`contract infer`](/cli/contract-infer) when you want to turn a live schema into a starter PSL contract. Use [`db verify`](/cli/db-verify) when you want to compare the live schema with the emitted contract.

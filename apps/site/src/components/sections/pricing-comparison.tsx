@@ -42,16 +42,30 @@ const SPECTRUM =
 // distinction.
 const PENDING = "TBC";
 
-const ALTERNATIVES = [
+export const ALTERNATIVES = [
   {
     id: "neon-vercel",
     name: "Typical stack (Neon + Vercel)",
     shortName: "Neon + Vercel",
     cost: "$385–450",
     pending: false,
+    // Billing and data transfer checked 2026-10-22: Neon added from the Vercel
+    // Marketplace is billed through the Vercel account
+    // (vercel.com/docs/marketplace-storage, "Unified billing";
+    // vercel.com/marketplace/neon, "Billing is managed through Vercel."), while
+    // the Neon-Managed Integration is "Paid through Neon"
+    // (neon.com/docs/guides/vercel-overview). Neon Launch and Scale
+    // include 500 GB of public network transfer per project, then $0.10/GB
+    // (neon.com/pricing).
     rows: [
-      { label: "Billing", value: "Separate database + hosting bills" },
-      { label: "Database data transfer", value: "Pay per GB" },
+      {
+        label: "Billing",
+        value: "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",
+      },
+      {
+        label: "Database data transfer",
+        value: "500 GB egress per project included, then $0.10/GB",
+      },
       { label: "Spend limits", value: "Not standard" },
     ],
   },
@@ -93,7 +107,7 @@ const ALTERNATIVES = [
 // ⚠️ The cost moved: V2 had $70–90, the client's 2026-07-30 doc says $72–90.
 // Taking theirs — the old figure was never verified in the first place (it was
 // open item 2), and this is the first time they have put a number in writing.
-const PRISMA = {
+export const PRISMA = {
   name: "Prisma Pro",
   cost: "$72–90",
   rows: [
@@ -134,8 +148,8 @@ function costFraction(cost: string): number | null {
 // claim about Supabase and is wrong by more than 3x. The multiple only ever
 // describes the widest column, so it says which one that is.
 const PRISMA_MID = costMidpoint(PRISMA.cost);
-const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
-const WIDEST = ALTERNATIVES.reduce((a, b) =>
+export const SAVINGS_MULTIPLE = PRISMA_MID && MAX_COST ? Math.round(MAX_COST / PRISMA_MID) : null;
+export const WIDEST = ALTERNATIVES.reduce((a, b) =>
   (costMidpoint(b.cost) ?? 0) > (costMidpoint(a.cost) ?? 0) ? b : a,
 );
 

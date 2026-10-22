@@ -94,7 +94,7 @@ Enter the pipeline builder on a collection.
 - `from()` takes the collection name, the same name you use on `db.orm` (`'posts'`, `'users'`), not the model name `Post`. The collection name is the model's `@@map` value, or the model name exactly as written when there is no `@@map`.
 - Passing an unknown collection name throws right away, with an error whose `code` is `ORM.MODEL_UNKNOWN` and whose message is `Unknown root: "<name>". Valid roots: ...` (the message says root; it means the collection name).
 - `from()` returns a builder you chain stages onto. Call `insertOne()` and `insertMany()` on `from()` directly, before any stage.
-- You can build the same pipelines without a client. `import { mongoQuery } from '@prisma/orm-mongo/query-builder'`, then `mongoQuery({ contractJson }).from('posts')`. Import `contractJson` the same way the example below does. `mongoQuery` only builds queries. It never runs one, so you still need a client's `runtime` to get results. Use it in tests, or to build a query once and run it through any client you like.
+- You can build the same pipelines without a client. `import { mongoQuery } from '@prisma/orm-mongo/query-builder'`, then `mongoQuery({ contract }).from('posts')`, where `contract` is the value the example below builds with `contractFromJson`. `mongoQuery` only builds queries. It never runs one, so you still need a client's `runtime` to get results. Use it in tests, or to build a query once and run it through any client you like.
 
 #### Options
 
@@ -114,10 +114,12 @@ Enter the pipeline builder on a collection.
 
 ```typescript
 import mongo from '@prisma/orm-mongo/runtime';
+import { contractFromJson } from '@prisma/orm-mongo/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-const db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL, dbName: 'app' });
+const contract = contractFromJson<Contract>(contractJson);
+const db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
 const runtime = await db.runtime();
 
 const plan = db.query.from('posts').build();
@@ -133,6 +135,7 @@ const posts = await runtime.query(plan);
 - On MongoDB, `db.runtime()` returns a promise, so you must await it: `const runtime = await db.runtime()`. Hold it in a variable and reuse it.
 - `await` that call for an array of documents, or write `for await (const doc of runtime.query(plan)) { ... }` to take one document at a time.
 - There is no `db.execute` on the MongoDB client.
+- The pipeline builder works on documents as they are stored, so it names fields by their stored names. A field declared `id ObjectId @id @map("_id")` is `f._id` in a stage and `_id` in the rows, while the [ORM client](/orm/reference/orm-client) calls the same field `id`. To pass a pipeline row to code that expects an ORM row, rename the field: `({ _id, ...rest }) => ({ ...rest, id: _id })`.
 - **Read results are decoded.** If every stage in your pipeline is one of `match()`, `sort()`, `limit()`, `skip()`, `sample()`, `project()`, `addFields()`, and `vectorSearch()`, `_id` comes back as a hex string. If any stage is not in that list, including `lookup()` and `group()`, every document comes back raw, with each value as MongoDB stores it. An `_id` that MongoDB generated is then an `ObjectId` object from the `mongodb` package, the MongoDB driver Prisma ORM uses. Compare those ids as strings, as [`lookup()`](#lookup) shows. A `DateTime` field comes back as a JavaScript `Date` either way.
 
 #### Examples
@@ -220,7 +223,7 @@ const [post] = await runtime.query(plan);
 To fetch one document by its id, the [ORM client](/orm/reference/orm-client) is shorter, because it converts the hex string for you:
 
 ```typescript
-const post = await db.orm.posts.where({ _id: postId }).first();
+const post = await db.orm.posts.where({ id: postId }).first();
 ```
 :::
 

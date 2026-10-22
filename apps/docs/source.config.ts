@@ -48,6 +48,8 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
 export const docs = defineDocs({
   dir: "content/docs",
   docs: {
+    // Keep hundreds of compiled MDX modules out of Compute's startup heap.
+    async: process.env.COMPOSER_BUILD === "1",
     schema: frontmatterSchema.extend({
       image: z.string().optional(),
       badge: z.enum(BADGE_TYPES).optional(),

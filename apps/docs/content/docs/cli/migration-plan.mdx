@@ -42,8 +42,20 @@ npx prisma migration plan --name add_users_table
 | `--name <slug>` | Sets the migration directory name suffix. |
 | `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
+| `--rename <old>:<new>` | Plans a model or field rename that keeps its rows, such as `--rename User.name:User.fullName`, instead of a drop and a create. Repeatable. |
+| `--delete <subject>` | Lets a dropped model or field lose its data. Name a model, such as `--delete Legacy`, or a field, such as `--delete User.legacy`. Repeatable. |
+| `--convert <Model.field>` | For a type change that can lose values: adds a `placeholder(...)` call to `migration.ts`, which you replace with your own conversion code. |
+| `--backfill <Model.field>` | For a new required field: adds a `placeholder(...)` call to `migration.ts`, which you replace with code that fills the field in existing rows. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
+
+When the migration would lose data, because it drops a model or field or changes a field's type, `migration plan` asks you what to do before it writes anything. In a terminal you answer the question there. With `--yes`, or when the command cannot ask, it fails with `CLI.CONSENT_REQUIRED` and lists the flags that answer each question.
+
+When you add a required field without `--backfill`, the migration fills the existing rows with a temporary value, such as `''` for text or `0` for a number, and `migration plan` prints that value. If the field cannot take a temporary value, for example because it is unique, the migration works only on an empty table and fails on a table that has rows.
+
+On MongoDB, `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. For a field `id ObjectId @id @map("_id")`, write `--rename User.id:User.userId`, not `User._id`.
+
+The first MongoDB migration you plan after upgrading to `8.0.0-rc.19` is the exception. The [upgrade instructions](https://github.com/prisma/orm/blob/v8.0.0-rc.19/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.18-to-8.0.0-rc.19/) include a script that rewrites the copies of your old contract under `migrations/`, and those copies name each field by its stored name. That first migration starts from such a copy, so in it you name the old field by its stored name and the new field by its schema name. For a field that was `name String @map("display_name")` and is now `title String`, write `--rename User.display_name:User.title`. From the next migration on, use schema names only.
 
 ### Contract references [#contract-references]
 
