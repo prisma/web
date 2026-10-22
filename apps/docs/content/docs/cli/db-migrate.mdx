@@ -75,7 +75,7 @@ Each operation checks the database before and after it runs, as [How migrations 
   why: Before operation table.user runs, it checks: ensure table "user" does not exist. That check failed: the database already has table "user". The failed apply changed nothing.
 ```
 
-The object comes from the check's `expectation` in `ops.json`. A check without one, such as a check about data or a check in a migration written before `8.0.0-rc.20`, says only "That check failed on this database."
+Some checks name no object, such as a check about data or a check in a migration planned before `8.0.0-rc.20`. For those, `why` says only "That check failed on this database."
 
 The `why` ends by saying whether the database changed. On PostgreSQL and SQLite a failed apply is rolled back, so it says "The failed apply changed nothing." MongoDB has no transaction around a migration, so once an operation has written anything it says "The operations that ran before the failure stay applied." Before `8.0.0-rc.20`, `db migrate` said a failed apply on MongoDB changed nothing even when earlier operations stayed applied.
 
@@ -96,7 +96,11 @@ With `--json`, the error's `meta` holds the same facts:
 
 `databaseUnchanged` is `true` when the database is exactly as it was before the apply, and `false` when changes stay. When the schema check after the last operation fails, `meta.schemaIssues` lists the differences, in the shape [`db verify`](/cli/db-verify#schema-differences-in-json-output) describes.
 
-Each way out of the failure is a separate entry in `nextActions`. Its `kind` is `run-command` only when running that command alone fixes the failure, such as `prisma db sign` to adopt a database that already matches the contract; `edit-file` when you edit a file first, such as the contract source or a migration's `migration.ts`; and `user-choice` when the step changes data or chooses between plans. Since `8.0.0-rc.20` the ways out are separate entries; before, they were one entry, and some steps that needed an edit first were `run-command`.
+`nextActions` lists each way to fix the failure as its own entry. A script reads its `kind`:
+
+- `run-command`: running this command alone fixes the failure, such as `prisma db sign` for a database that already matches the contract.
+- `edit-file`: a person edits a file first, such as the contract source or a migration's `migration.ts`.
+- `user-choice`: a person decides, because the step changes data or chooses between plans.
 
 ## Data lines
 

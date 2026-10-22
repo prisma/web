@@ -218,7 +218,7 @@ const Post = model("Post", {
 
 A field may have both: `field.dateTime().default(now()).onCreate(gen.now())` takes its time from your app when Prisma ORM creates the row, and from the database for other inserts.
 
-`.onUpdate(...)` alone generates nothing on create. So a field that is not `.optional()`, has no `.default(...)` and has `.onUpdate(...)` but no `.onCreate(...)` is required in ORM `create` and `upsert`, since `8.0.0-rc.20`. The same goes for a temporal helper given only its update argument, such as `field.temporal.timestamptz(undefined, undefined, "now")`. Pass a value for the field on create, or generate it on create too.
+`.onUpdate(...)` alone generates nothing on create. If a field that is not `.optional()` has `.onUpdate(...)` and no `.onCreate(...)` or `.default(...)`, you must pass a value for it in ORM `create` and `upsert`. The same holds for a temporal helper that sets only its update time. A helper such as `field.temporal.timestamptz(...)` takes a precision, then `"now"` to set the time on create, then `"now"` to set it on update, so `field.temporal.timestamptz(undefined, undefined, "now")` sets the time on update only. To have the field generated on create too, add `.onCreate(...)`.
 
 For a key the database generates, chain `.default(...)` and `.id()` on a field. An integer that counts up is `field.int().default(autoincrement()).id()`, and a UUID is ``field.uuidNative().default(sql`gen_random_uuid()`).id()``. Import `autoincrement` and `sql` from `@prisma/orm-postgres/contract-builder`.
 
@@ -230,7 +230,7 @@ For a key the database generates, chain `.default(...)` and `.id()` on a field. 
 
 ### Type aliases
 
-`type` from the function's argument has a helper for every type PSL can write, such as `type.VarChar(64)`, `type.TimestampString(3)` and `type.String()`, plus `type.temporal.CreatedAt()` and `type.temporal.UpdatedAt()`, which work as [`temporal.CreatedAt` and `temporal.UpdatedAt` in PSL](/orm/contract-authoring/psl-syntax#named-types) do. Pass the result to `field.column(...)`.
+`type` from the function's argument has a helper for every type PSL can write, such as `type.VarChar(64)`, `type.TimestampString(3)` and `type.String()`, plus `type.temporal.CreatedAt()` and `type.temporal.UpdatedAt()`, which work as [`temporal.CreatedAt` and `temporal.UpdatedAt` in PSL](/orm/contract-authoring/psl-syntax#named-types) do. PSL writes these without parentheses, while TypeScript calls them. Pass the result to `field.column(...)`.
 
 A type alias, the `types { ... }` block of PSL, is a constant in TypeScript. Field builders never change once built, so one constant serves every field and model that uses it, and a field can chain more onto it:
 
@@ -257,7 +257,7 @@ Each column stores the alias's type itself, as it does in PSL, so `contract.json
 
 :::note[Upgrading from before `8.0.0-rc.20`]
 
-A contract that returned a `types` map and used `field.namedType(types.X)` now fails with `CONTRACT.TYPES_KEY_REMOVED`. Replace each entry with a constant `const X = field.column(type.Y(...))`, use the constant as the field, and remove `types` from the returned object. Then run the [upgrade recipe](https://github.com/prisma/orm/blob/v8.0.0-rc.20/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.19-to-8.0.0-rc.20/)'s `stored-contracts-expand-type-aliases` script, which rewrites the contracts stored in `migrations/`, run `npx prisma contract emit`, and run [`npx prisma db sign`](/cli/db-sign) against every database. The storage hash changes, but the database does not.
+A contract that returned a `types` map and used `field.namedType(types.X)` now fails with `CONTRACT.TYPES_KEY_REMOVED`. Replace each entry with a constant `const X = field.column(type.Y(...))`, use the constant as the field, and remove `types` from the returned object. Then, from the project root, run `node <guide>/scripts/expand-type-aliases/expand-type-aliases.ts`, where `<guide>` is a local copy of the [upgrade recipe](https://github.com/prisma/orm/blob/v8.0.0-rc.20/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.19-to-8.0.0-rc.20/) folder. The script rewrites the contracts stored in `migrations/`. Then run `npx prisma contract emit`, and run [`npx prisma db sign`](/cli/db-sign) against every database. The storage hash changes, but the database does not.
 
 :::
 
@@ -483,7 +483,7 @@ export const contract = defineContract({ extensions: { pgvector } }, ({ field, m
 });
 ```
 
-List every pack whose column types the contract uses, also when you use its codec through `field.column(...)`. `defineContract` takes each column's database type from its codec, and a codec from a pack you did not list fails with [`CONTRACT.CODEC_DESCRIPTOR_MISSING`](/orm/reference/error-reference#CONTRACT.CODEC_DESCRIPTOR_MISSING). An argument out of range, such as a vector length or an SRID below 1, fails `defineContract` with [`CONTRACT.TYPE_PARAMS_INVALID`](/orm/reference/error-reference#CONTRACT.TYPE_PARAMS_INVALID).
+List every pack whose column types the contract uses, also when you pass one of its types to `field.column(...)`. A pack's column types come with the code that stores and reads their values, and `defineContract` needs that code to know each column's database type. A type from a pack you did not list fails with [`CONTRACT.CODEC_DESCRIPTOR_MISSING`](/orm/reference/error-reference#CONTRACT.CODEC_DESCRIPTOR_MISSING). An argument out of range, such as a vector length or an SRID below 1, fails `defineContract` with [`CONTRACT.TYPE_PARAMS_INVALID`](/orm/reference/error-reference#CONTRACT.TYPE_PARAMS_INVALID).
 
 The key on `type.pgvector` is the pack's own name, not the name you gave the import. The name is in the pack's documentation, and pgvector's is `pgvector`. `Embedding1536` is a [type alias](#type-aliases), a constant you name yourself: each column typed by it stores `vector(1536)`, and the name does not reach `contract.json` or `contract.d.ts`.
 

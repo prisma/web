@@ -38,15 +38,15 @@ npx prisma project list | cut -f2
 curl "$(npx prisma dev url gateway)"
 ```
 
-In a terminal you see only the formatted result, because it already shows the same values. The data lines appear when standard output is piped, redirected to a file, or captured by `$(...)`. A script that needs more than the data lines uses `--json`. `deploy` does not write data lines yet, so a script reads its result with `--json`. The data lines of each Prisma ORM command are listed in [Data lines of Prisma ORM commands](#data-lines-of-prisma-orm-commands).
+In a terminal you see only the formatted result, because it already shows the same values. The data lines appear when standard output is piped, redirected to a file, or captured by `$(...)`. A script that needs more than the data lines uses `--json`. `prisma deploy` does not write data lines yet, so a script reads its result with `--json`. The data lines of each Prisma ORM command are listed in [Data lines of Prisma ORM commands](#data-lines-of-prisma-orm-commands).
 
-Before `8.0.0-rc.24`, a pipe got `json` output from Platform commands. Before `8.0.0-rc.20` of Prisma ORM, a pipe got `json` output from Prisma ORM commands (`contract`, `db`, `migration` and `orm init`). Add `--json` to any older script that parses JSON. The [upgrade recipe](https://github.com/prisma/orm/blob/v8.0.0-rc.20/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.19-to-8.0.0-rc.20/) lists the places to look.
+Older versions printed JSON to a pipe. In the `prisma` CLI before `8.0.0-rc.24`, the commands that manage projects, databases and deploys did this. In Prisma ORM before `8.0.0-rc.20`, the Prisma ORM commands `contract`, `db`, `migration` and `orm init` did this. If an older script reads JSON from a pipe, add `--json` to it. The [upgrade recipe](https://github.com/prisma/orm/blob/v8.0.0-rc.20/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.19-to-8.0.0-rc.20/) lists the places to look.
 
 `markdown` is for AI agents that read command output as text rather than parsing JSON. It prints the same content as `human`, as plain Markdown: a summary line, `label: value` lines, pipe tables, bullet lists, and fenced code, followed by a `### Next` section with the suggested next commands and a `### Diagnostics` section with any findings. There is no padding, alignment, or color, and no JSON envelope. Everything the command produces, including errors, help, `--version`, and progress, goes to stdout, so an agent reads one stream.
 
 ## Data lines of Prisma ORM commands
 
-Data lines are a stable interface, like `--json`:
+Data lines are the plain values a command writes to standard output when it runs without `--json`. They are a stable interface, like `--json`:
 
 - Fields are separated by a tab and come in the order the table below shows.
 - A field whose JSON value is null or absent is an empty field.
@@ -74,6 +74,16 @@ Data lines are a stable interface, like `--json`:
 | `contract infer` | the path of the PSL file written |
 | `contract format` | the paths of the files formatted |
 
+The fields mean:
+
+- `space`: the contract space the migration belongs to. `app` is your app's migrations; an extension that ships migrations has its own space.
+- `from` and `to`: the contract hashes before and after the migration.
+- `operations`: the number of operations in the migration.
+- `invariants`: the ids of the data operations (their `invariantId`) that a migration to the ref must run.
+- `storage hash`: the storage hash of the contract that `db sign` signed the space with.
+
+Some of these commands have no page of their own. `migration list` lists the migrations on disk. `migration log` lists the migrations the database has applied, in order. `migration graph` draws the migration graph. `migration check` checks that the migration files and the graph are consistent. `contract format` formats your PSL files in place.
+
 Two commands print a document instead of data lines: `contract print` prints the PSL and `migration graph --dot` prints the DOT text. Each is printed as it is, without escaping.
 
 ```bash
@@ -83,7 +93,7 @@ npx prisma migration status | awk -F'\t' '$6 == "pending" { print $2 }'
 
 These commands print nothing on standard output. Their exit code is the result, and `--json` carries the document:
 
-- `db init` and `db update` apply a plan, not migrations, so the `db migrate` fields do not fit them.
+- `db init` and `db update`: the exit code says whether the database was changed to match the contract.
 - `db schema` prints a tree whose shape depends on the database family.
 - `db verify`: the exit code says whether the database matches the contract.
 - `migration ref delete`: the exit code says whether the ref was deleted.

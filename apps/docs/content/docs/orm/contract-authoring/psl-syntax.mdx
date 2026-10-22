@@ -184,13 +184,13 @@ model Post {
 
 Each function makes a value for the field's type: `uuid()` works on `String`, `VarChar(n)`, `Char(n)`, and `Uuid`, and `now()` works on every PostgreSQL date and time type, `Date`, `Time`, and `Timetz` included. The database does not fill these columns, so a row written by raw SQL or another application gets no value. A field may have both a database `@default` and an `@onCreate(...)`: `createdAt DateTime @default(now()) @onCreate(now())` takes its time from your application when Prisma ORM creates the row, and from the database for other inserts. On an optional field, `@onCreate(...)` fills the field when you leave it out, and an explicit `null` is stored as `null`.
 
-`@onUpdate(...)` alone generates nothing on create. So a field that is not optional, has no `@default` and has `@onUpdate(...)` but no `@onCreate(...)` is required in ORM `create` and `upsert`, since `8.0.0-rc.20`. Pass a value for it, or add `@onCreate(...)` so it is generated on create too.
+`@onUpdate(...)` alone generates nothing on create. If a required field has `@onUpdate(...)` and no `@onCreate(...)` or `@default`, you must pass a value for it in ORM `create` and `upsert`. To have it generated on create too, add `@onCreate(...)`.
 
 `@default(uuid())` and the other functions that generate a value are refused in `@default` with `PSL_GENERATOR_IN_DEFAULT`, which names the `@onCreate(...)` to write. `@default(now())` and `@default(autoincrement())` stay: they are database defaults.
 
 An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The value a function writes must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `VarChar(5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a bare `VarChar` has no limit.
 
-Prisma ORM 8 has no `@updatedAt`, so write `@onCreate(now()) @onUpdate(now())`, as `updatedAt` above does, or `temporal.updatedAt()` where the field's type would go, or the [named type](#named-types) `temporal.UpdatedAt`:
+Prisma ORM 8 has no `@updatedAt`. Write `temporal.updatedAt()` where the field's type would go. The [named type](#named-types) `temporal.UpdatedAt` gives the same column, so use whichever form matches the rest of your schema. Write `@onCreate(now()) @onUpdate(now())` yourself, as `updatedAt` above does, only when you want a different type or a precision:
 
 ```prisma
 model Post {
@@ -386,9 +386,9 @@ types {
 
 Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. You do not have to name a type: a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Numeric(10, 2)`, `Uuid`, or `Timestamptz`.
 
-A named type is a type alias: shorthand in the contract source only. `contract emit` writes the alias's type into each column typed by it, so `contract.json` stores a `varchar(35)` column and no `ShortName`.
+A named type is a type alias: shorthand in the contract source only, so `contract.json` stores a `varchar(35)` column and no `ShortName`.
 
-A named type can also set `@default`, `@onCreate` and `@onUpdate`, and every field typed by it gets them:
+A named type can also set `@default`, `@onCreate` and `@onUpdate`, and every field typed by it gets them. In this example, `TimestampString(3)` is a PostgreSQL `timestamp(3)` column that your code reads as a string:
 
 ```prisma
 types {
@@ -405,7 +405,7 @@ model Post {
 ```
 
 - `@id` and `@unique` belong to a field, not to a type, so write them on the field, as `slug` does. On a named type they are refused with `PSL_UNSUPPORTED_NAMED_TYPE_ATTRIBUTE`.
-- A field may add any attribute its named type does not set, as `updatedAt` adds `@default(now())`. A field that repeats an attribute its named type already sets is refused with `PSL_DUPLICATE_ATTRIBUTE`.
+- A field may add any attribute its named type does not set. Here `updatedAt` adds `@default(now())`, a database default, so a row inserted outside Prisma ORM also gets a time. A field that repeats an attribute its named type already sets is refused with `PSL_DUPLICATE_ATTRIBUTE`.
 - A named type is built on a type or an enum, not on another named type.
 
 Prisma ORM provides two named types you do not declare: `temporal.CreatedAt`, set to the current time on create, and `temporal.UpdatedAt`, set on create and on every update. Write them without parentheses, as `createdAt` does above. They store what `temporal.createdAt()` and `temporal.updatedAt()` store: a `timestamptz` column on PostgreSQL. PostgreSQL also has `temporal.CreatedAtString` and `temporal.UpdatedAtString`, which give your code the time as a string, and `temporal.CreatedAtJsDate` and `temporal.UpdatedAtJsDate`, which give it a JavaScript `Date`. They take no arguments; for a precision, write the type and the attributes yourself, as `UpdatedAt` above does.
@@ -452,7 +452,7 @@ enum Level {
 }
 ```
 
-A quoted member on a type that does not take text, such as `Unknown = "NaN"` under `mongo/double@1`, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`, and the message says what to write. A `mongo/int32@1` or `mongo/int64@1` member written with a fraction, such as `1.0`, is refused too: write `1`. A value the type reads but refuses, such as a Decimal128 value that would be rounded, is refused with `PSL_VALUE_REFUSED`. Since `8.0.0-rc.20`, MongoDB reads members this way; before, a quoted member was read as JSON, so `"NaN"` was a number. A Decimal128 value in `contract.json` is written without leading zeros, and a contract emitted before `8.0.0-rc.20` with a value such as `"007.5"` is refused when it loads: run `npx prisma contract emit` again. An enum on an Int64, Date, Decimal128, Binary or ObjectId type, or a Double enum with a `NaN` or infinite member, is still refused on a collection Prisma ORM manages, because its validator cannot list those members.
+A quoted member on a type that does not take text, such as `Unknown = "NaN"` under `mongo/double@1`, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`, and the message says what to write. A `mongo/int32@1` or `mongo/int64@1` member written with a fraction, such as `1.0`, is refused too: write `1`. A value of the right kind that the type cannot store exactly, such as a Decimal128 value that would be rounded, is refused with `PSL_VALUE_REFUSED`. Since `8.0.0-rc.20`, MongoDB reads members this way; before, a quoted member was read as JSON, so `"NaN"` was a number. A Decimal128 value in `contract.json` is written without leading zeros, and a contract emitted before `8.0.0-rc.20` with a value such as `"007.5"` is refused when it loads: run `npx prisma contract emit` again. You can declare an enum on an Int64, Date, Decimal128, Binary or ObjectId type, or a Double enum with a `NaN` or infinite member, such as `Ratio` above. But a field cannot use it: Prisma ORM writes a validator for each collection, and the validator cannot list those members.
 
 Some types cannot hold enum members, so JSON (`pg/json@1` and `pg/jsonb@1`), byte strings (`pg/bytea@1`), text-search queries (`pg/tsquery@1`), time with a time zone (`pg/timetz@1`), vectors (`pg/vector@1`), and geometries (`pg/geometry@1`) are refused in `@@type`: use a text enum instead. For a PostgreSQL `enum` type, use a `native_enum` block, not `@@type("pg/enum@1")`.
 
@@ -674,7 +674,13 @@ model Bug {
 
 Field and model names are written bare, as `type` and `Task` are, while table names and discriminator values are quoted, as `"task"` and `"bug"` are. Rows whose `type` column holds `"bug"` are `Bug` records. A variant reuses its base model's fields, so a `Bug` has `id`, `title`, and `type` as well as `severity` and `stepsToRepro`. The base model can be declared before or after its variants. A variant does not declare an `@id` of its own: it takes the base model's primary key.
 
-The discriminator field must be required and hold one value, so it cannot be optional (`?`) or a list (`[]`); since `8.0.0-rc.20` this holds on every database. It must also hold text: `String`, or on PostgreSQL `Char(n)` or `VarChar(n)`, on SQLite `sql.String(n)`, SQLite's text type with a length, the counterpart of `VarChar(n)` on PostgreSQL, and on MongoDB `String`. A field is text by its data type, so a [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be one of the enum's members, or `contract emit` lists the members you can write. A `@@base` value the field's type refuses, such as one longer than a `VarChar(5)` holds, is `PSL_VALUE_REFUSED`.
+The discriminator field must be required and hold one value, so it cannot be optional (`?`) or a list (`[]`); since `8.0.0-rc.20` this holds on every database. It must also have a text type:
+
+- on PostgreSQL, `String`, `Char(n)` or `VarChar(n)`;
+- on SQLite, `String` or `sql.String(n)`, SQLite's text type with a length;
+- on MongoDB, `String`.
+
+A [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be the value a member stores, such as `"bug"` for `Bug = "bug"`, or `contract emit` lists the values you can write. A `@@base` value the field's type refuses, such as one longer than a `VarChar(5)` holds, is `PSL_VALUE_REFUSED`.
 
 A variant can be in a different `namespace` block from its base, on PostgreSQL a different schema. Name the base with its namespace, as in `@@base(a.Task, "chore")`. In `contract.json`, the base model lists its variants by discriminator value, each naming the variant model and its namespace: `"variants": { "bug": { "model": "Bug", "namespace": "public" } }`.
 

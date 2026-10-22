@@ -78,7 +78,7 @@ Both APIs send their queries on the same `db` object, so both see the same middl
 
 ## When your hooks run [#the-two-lifecycles]
 
-You write only the hooks you care about, and Prisma ORM skips the ones you leave out. Prisma ORM runs every statement it sends, every transaction you open with `db.transaction(...)`, and on SQL databases every ORM call, as an **activity**, and a middleware sees each activity through two kinds of hook:
+You write only the hooks you care about, and Prisma ORM skips the ones you leave out. Prisma ORM sends statements, runs the transactions you open with `db.transaction(...)`, and on SQL databases runs ORM calls. Each statement, transaction or ORM call is an **activity**. A middleware sees each activity through lifecycle hooks and interceptors:
 
 - **Lifecycle hooks** observe. `activityStarted`, `activityEnded` and `activityFinalized` run for every activity, a statement, a transaction or an ORM call, in that order.
 - **Interceptors** change or stop a statement while it runs: `beforeCompile`, `beforeEncode`, `intercept.onQuery` or `intercept.onExecute`, and `onRow`. One more interceptor, `intercept.onActivity`, can answer a whole ORM call.
@@ -87,7 +87,12 @@ A statement calls your hooks in this order:
 
 `activityStarted` → `beforeCompile` → `beforeEncode` → `intercept.onQuery` or `intercept.onExecute` → `onRow` (once per row) → `activityEnded` → `activityFinalized`
 
-The same order holds for a statement that returns rows and one that only reports how many rows it changed. `activity.returns` tells them apart: it is `'rows'` for every ORM call except `createAndCount`, `updateAndCount` and `deleteAndCount`, and for `db.query(plan)`, and `'stats'` for those three and for `db.execute(plan)`. `intercept.onQuery` runs only for `'rows'` and `intercept.onExecute` only for `'stats'`, and `onRow` runs only when rows come back. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces.
+The same order holds for a statement that returns rows and one that only reports how many rows it changed. `activity.returns` on the statement tells them apart:
+
+- `'stats'`: a statement that reports only how many rows it changed. `db.execute(plan)` sends one, and so do the ORM methods `createAndCount`, `updateAndCount` and `deleteAndCount`, and a nested write that links or unlinks rows of a many-to-many relation.
+- `'rows'`: every other statement, including those sent by `db.query(plan)`.
+
+`intercept.onQuery` runs only for `'rows'` and `intercept.onExecute` only for `'stats'`, and `onRow` runs only when rows come back. If those names are new, the [queries table](/orm/coming-from-prisma-orm-7#queries) puts each of them next to the Prisma ORM 7 call it replaces.
 
 A transaction runs only the three lifecycle hooks: `activityStarted` when it opens, `activityEnded` when its `commit()` or `rollback()` settles, and `activityFinalized` after that. A statement sent inside `db.transaction(...)` is beneath the transaction, so `ctx.inTransaction()` is `true` in its hooks. `ctx.parent` is the context of the activity directly above it: the transaction, or the ORM call that sent the statement.
 
@@ -98,9 +103,19 @@ On a SQL database, each ORM method that runs a query, such as `.all()`, `.first(
 - **It opens** when the call starts, before it sends anything. For `.all()`, that is when your code starts reading the rows, with `await` or `for await`.
 - **The statements it sends are beneath it.** A nested create, for example, sends several statements, and all of them are children of the one call. A call that needs a transaction of its own opens it beneath the call. A call made inside `db.transaction(...)` is a child of that transaction.
 - **It ends** when the call has its result, or fails. For `.all()` read with `for await`, it ends when your code reads the last row, stops early, or the read fails.
-- **It carries** `activity.id`, `activity.annotations` and `activity.contentHash()`. The annotations are the ones you attached with `meta.annotate(...)`, and the statements the call sends carry none of them, so read them in `activityStarted` from the `orm-call` activity. `activity.contentHash()` returns a promise of a digest of the call. For a read, it covers the method and the first statement the call sends, with its parameter values. For a write, it covers only the method and the model, so two writes to the same model get the same digest. An ORM call has no `plan` and no `returns`.
+- **It carries** `activity.id`, `activity.annotations` and `activity.contentHash()`. The annotations are the ones you attached with `meta.annotate(...)`, and the statements the call sends carry none of them, so read them in `activityStarted` from the `orm-call` activity. An ORM call has no `plan` and no `returns`.
 
-A call runs `activityStarted`, then `intercept.onActivity`, then the hooks of each statement it sends, then `activityEnded` and `activityFinalized`. In `activityEnded`, `result.kind` is `'orm-call'`, `result.outcome` is `'succeeded'`, `'failed'` or `'stopped'`, and `result.source` is `'client'`, or `'middleware'` when `intercept.onActivity` answered the call. `result.result` is the value the method returns. A call that streams rows, such as `.all()`, keeps them in `result.result` only when it carries an annotation. There is no `latencyMs`; to time a call, keep `ctx.now()` in `ctx.state(key)` in `activityStarted`. Outside a transaction, the call is finalized right after it ends: `'committed'` when it succeeded and everything beneath it was finalized `'committed'`, otherwise `'unknown'`.
+Use `activity.contentHash()` when you need a key for an ORM read, for example to cache it: the cache uses it for an annotated ORM read that has no `key`. It returns a promise of a digest of the call. For a read, the digest covers the method and the first statement the call sends, with its parameter values. For a write, it covers only the method and the model, so two writes to the same model get the same digest.
+
+A call runs `activityStarted`, then `intercept.onActivity`, then the hooks of each statement it sends, then `activityEnded` and `activityFinalized`. In `activityEnded`:
+
+- `result.kind` is `'orm-call'`.
+- `result.outcome` is `'succeeded'`, `'failed'` or `'stopped'`.
+- `result.source` is `'client'`, or `'middleware'` when `intercept.onActivity` answered the call.
+- `result.result` is the value the method returns. A call that streams rows, such as `.all()`, keeps them in `result.result` only when it carries an annotation.
+- There is no `latencyMs`. To time a call, keep `ctx.now()` in `ctx.state(key)` in `activityStarted`.
+
+Outside a transaction, the call is finalized right after it ends. The outcome is `'committed'` when the call succeeded and everything beneath it was finalized `'committed'`, otherwise `'unknown'`.
 
 Because one hook covers both kinds of statement, a check you want on reads and writes alike goes in `beforeEncode`, once:
 
@@ -272,7 +287,7 @@ Inside a transaction, the hooks run while the transaction's connection is still 
 | [Cache middleware](https://www.prisma.io/extensions/middleware-cache) | Serve repeated reads from an in-memory or pluggable cache, opted in per query. | `@prisma/orm-extension-middleware-cache` | PostgreSQL, MongoDB | Prisma |
 {/* extensions-catalog:end */}
 
-"Opted in per query" in that row means nothing is cached until you say so on one particular read, which you do by attaching `cacheAnnotation({ ttl: 60_000 })` to it, where `ttl` is how many milliseconds its rows stay usable. On the ORM API the annotation goes in a callback you pass after the arguments. That callback receives a `meta` object whose `annotate` method attaches the annotation to that one call:
+"Opted in per query" in that row means nothing is cached until you say so on one particular read, which you do by attaching `cacheAnnotation({})` to it. How long a cached entry lives is [set on the store](/orm/middleware/built-in-cache#options), not on the annotation. On the ORM API the annotation goes in a callback you pass after the arguments. That callback receives a `meta` object whose `annotate` method attaches the annotation to that one call:
 
 ```ts title="src/prisma/get-user-cached.ts"
 import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
@@ -280,7 +295,7 @@ import { db } from './db';
 
 export async function getUserCached(id: number) {
   return db.orm.public.User.first({ id }, (meta) =>
-    meta.annotate(cacheAnnotation({ ttl: 60_000 })),
+    meta.annotate(cacheAnnotation({})),
   );
 }
 ```
