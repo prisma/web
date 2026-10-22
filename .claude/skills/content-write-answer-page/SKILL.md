@@ -26,7 +26,7 @@ The steps below apply these rules.
 - **Self-promotion backfires.** "Our pick" labels, ties, and lists that rank their author first read as marketing and lose the reader's trust. Neutral rows ordered by a stated key read as a source a reader can trust.
 - **A missing feature is a fact.** When the question hinges on something Prisma doesn't have, wording won't change the answer. Say so plainly. A fair page is still useful, and it still names Prisma for the cases where it fits.
 - **Anything public gets read.** Old copies of a page, stale titles, and even pull request descriptions get read next to the page. Refresh the existing page instead of adding a near-copy, and keep pull request text public-safe.
-- **Search indexes pick up changes at different speeds.** Bing sees a change within a day or two of IndexNow. Google needs an indexing request. Other indexes can lag by two weeks or more.
+- **Search indexes pick up changes at different speeds.** IndexNow tells Bing about a change as soon as it ships, and Bing often recrawls within a day or two. Google needs an indexing request, and its crawl can take a few days to a few weeks. Other indexes can lag by two weeks or more. None of these requests guarantees indexing or a timeline.
 
 ## Step 1: Claim the question
 
@@ -41,13 +41,13 @@ If the operator has no tracker row, ask for the exact question the page should a
 
 ## Step 2: Learn how people phrase the question
 
-With the team's query data available (Google Search Console, Bing Webmaster Tools, or the team's query-research tool), look up the question and collect:
+Look up the question and collect:
 
-1. **The search queries** people use for it. The most frequent wording becomes the page's title and H1.
-2. **The pages that come up** for those queries and the products they name first. These are the pages yours competes with. Read the top two or three.
+1. **The search queries** people use for it, from the team's query data (Google Search Console, Bing Webmaster Tools, or the team's query-research tool). Search Console and Bing Webmaster Tools only report queries that already show prisma.io, so also take wording from search suggestions and from the titles of the results in item 2. The most frequent wording becomes the page's title and H1.
+2. **The pages that come up** when you search those queries in two or three search engines and the products they name first. These are the pages yours competes with. Read the top two or three.
 3. **The criteria those pages use** to decide (price, a feature, a region, "minimal changes"). Each criterion becomes a row or a section on your page.
 
-Without query data, search the question in two or three search engines and note the same three things. Write the findings into the tracker row's Notes. They feed `content-seo-geo` Step 1 as the target queries.
+Always run those searches for items 2 and 3: Search Console and Bing Webmaster Tools don't show other sites' pages or the criteria they use. Write the findings into the tracker row's Notes. They feed `content-seo-geo` Step 1 as the target queries.
 
 ## Step 3: Check what already exists
 
