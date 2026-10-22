@@ -1,0 +1,103 @@
+name: Bump Pinned Prisma Versions
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: docs-bump-prisma-versions
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    name: Update current docs version pins
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --filter docs... --frozen-lockfile
+
+      - name: Update version pins
+        run: pnpm --filter docs lint:versions:fix | tee "$RUNNER_TEMP/prisma-versions.log"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -z "$(git status --porcelain -- apps/docs/content/docs)" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Version pins already up to date"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git status --short -- apps/docs/content/docs
+          fi
+
+      - name: Commit and open or update pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN_DOCS_COMMIT }}
+          GH_TOKEN: ${{ secrets.BOT_TOKEN_DOCS_COMMIT }}
+          GH_REPO: ${{ github.repository }}
+          TARGET_REF: automation/docs-prisma-versions
+        run: |
+          VERSION=$(sed -n 's/^prisma@//p' "$RUNNER_TEMP/prisma-versions.log")
+          test -n "$VERSION"
+          TITLE="docs: pin Prisma ${VERSION} in current docs"
+          BODY="$RUNNER_TEMP/prisma-versions-pr.md"
+          {
+            echo "Update current docs pins to the npm versions read by lint:versions."
+            echo
+            echo "## Changed files"
+            git diff --name-only -- apps/docs/content/docs | sed 's/^/- /'
+            echo
+            echo "## npm versions"
+            echo '```text'
+            grep -E '^(@prisma/[^ ]+|prisma)@' "$RUNNER_TEMP/prisma-versions.log"
+            echo '```'
+            echo
+            echo "Validated with pnpm --filter docs lint:versions:fix."
+          } > "$BODY"
+
+          REMOTE="https://x-access-token:${BOT_TOKEN}@github.com/${GH_REPO}.git"
+          PREVIOUS=$(git ls-remote "$REMOTE" "refs/heads/${TARGET_REF}" | cut -f1)
+          PR=$(gh pr list --head "$TARGET_REF" --base main --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$PREVIOUS" && -n "$PR" ]]; then
+            git fetch --depth 1 "$REMOTE" "refs/heads/${TARGET_REF}"
+            if git diff --quiet FETCH_HEAD -- apps/docs/content/docs; then
+              echo "The existing pull request already contains these version pins"
+              exit 0
+            fi
+          fi
+
+          git config user.email "prismabots@gmail.com"
+          git config user.name "Prismo"
+          git add apps/docs/content/docs
+          git commit -m "$TITLE"
+          git push --force-with-lease="refs/heads/${TARGET_REF}:${PREVIOUS}" "$REMOTE" "HEAD:refs/heads/${TARGET_REF}"
+
+          if [[ -n "$PR" ]]; then
+            gh pr edit "$PR" --title "$TITLE" --body-file "$BODY"
+          else
+            PR=$(gh pr create --head "$TARGET_REF" --base main --title "$TITLE" --body-file "$BODY")
+          fi
+          gh pr comment "$PR" --body '@coderabbitai review'
