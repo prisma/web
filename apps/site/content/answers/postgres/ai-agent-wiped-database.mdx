@@ -11,7 +11,7 @@ faq:
   - question: "Can I undo a DROP TABLE or TRUNCATE in Postgres without a backup?"
     answer: "Only before the transaction commits. PostgreSQL rolls back a `TRUNCATE` or `DROP TABLE` if the surrounding transaction doesn't commit, but a command an agent runs from `psql` or a migration tool usually commits right away. After that, `TRUNCATE` reclaims the disk space immediately and `DROP TABLE` removes the table, so the data has to come from a backup, a point-in-time restore or a copy somewhere else, such as a staging database, an export or an analytics warehouse."
   - question: "Does Prisma ORM stop an AI agent from resetting my database?"
-    answer: "Prisma ORM 6.15.0 and later stop `prisma migrate reset` and `prisma db push --force-reset` when they detect an AI agent such as Claude Code, Cursor or Gemini CLI, and tell the agent to ask you first; Prisma ORM 7.10.1 also covers `db push --accept-data-loss`. After you agree, the agent reruns the command with `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` set. Prisma ORM 8 has no reset command, and `prisma db update` applies a destructive change only after you type the database name or pass `--confirm`. Neither check covers SQL that an agent sends through `psql` or a script."
+    answer: "Prisma ORM 6.15.0 and later stop `prisma migrate reset` and `prisma db push --force-reset` when they detect an AI agent such as Claude Code, Cursor or Gemini CLI, and tell the agent to ask you first; Prisma ORM 7.9.0 and later also cover `db push --accept-data-loss`. After you agree, the agent reruns the command with `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` set. Prisma ORM 8 has no reset command, and `prisma db update` applies a destructive change only after you type the database name or pass `--confirm`. Neither check covers SQL that an agent sends through `psql` or a script."
   - question: "Should my coding agent ever have the production DATABASE_URL?"
     answer: "Not for everyday work. The agent can build and test against a development or preview database. If it needs to look at production data to debug something, give it a role that can only read, or, on a host where every credential has full access, a copy restored into a separate database."
   - question: "Are the permission settings in Claude Code or Cursor enough on their own?"
@@ -29,12 +29,12 @@ related:
     href: "/docs/postgres/database/backups"
 cta:
   title: "Give your agent a database of its own"
-  description: "Run `npx create-db@latest` for a temporary Prisma Postgres database with no account, so the agent's experiments never reach production. Claim it with a Prisma account to keep it."
+  description: "Run `npx create-db@latest` for a temporary Prisma Postgres database with no account, so the agent experiments on a database you can lose. Claim it with a Prisma account to keep it."
   label: "Create a temporary database"
   href: "/docs/postgres/npx-create-db"
 ---
 
-The command that wipes a database is usually an ordinary development command run against the wrong database: a schema reset, a schema push with a flag that accepts data loss, or a seed script that clears tables first, run while the project's `.env` file pointed at production. Recovery depends on the backups you already have. Prevention comes down to one rule: the agent shouldn't hold credentials that can change production data.
+Stop the agent, take a `pg_dump` of what is left, and restore your provider's most recent backup or point-in-time copy into a new database, then point the app at it or copy the missing rows back. Without a backup or another copy, a committed `DROP TABLE` or `TRUNCATE` can't be undone. The usual cause is an ordinary development command, such as a schema reset, a schema push with a flag that accepts data loss, or a seed script that clears tables first, run while the project's `.env` file pointed at production. Prevention comes down to one rule: the agent shouldn't hold credentials that can change production data.
 
 We make Prisma Postgres and Prisma Compute. PostgreSQL, tool and provider behavior on this page links to each project's documentation, checked on October 22, 2026. The steps work with any Postgres host and any database client.
 
@@ -54,20 +54,20 @@ Use the most recent copy you have, and restore it next to the damaged database r
 - **Your own dumps.** A `pg_dump` file that you or your CI pipeline made earlier restores with `pg_restore` or `psql`.
 - **Other copies.** A staging database restored from production, an analytics warehouse, CSV exports or the agent's own earlier dump can fill gaps for the tables that matter most.
 
-Restore into a new database, compare it with the damaged one, then either switch the app's `DATABASE_URL` to the restored database or copy the missing rows back into the original. [Recovering deleted records](/postgres/recover-deleted-records) walks through both, with the commands for each case.
+Restore into a new database, compare it with the damaged one, then either switch the app's `DATABASE_URL` to the restored database or copy the missing rows back into the original.
 
-On [Prisma Postgres](/docs/postgres), the database's **Backups** tab in the [Prisma Console](https://console.prisma.io) lists the daily snapshots you can restore. They are kept 7 days on Starter and Pro and 30 days on Business, and they are taken only on days when the database has activity. The Free plan has no backups, and there is no point-in-time recovery yet, so changes made after the latest snapshot may not be restored ([backups docs](/docs/postgres/database/backups)).
+Some hosts restore in place instead. A [Supabase restore](https://supabase.com/docs/guides/platform/backups) replaces the project's database and makes the project inaccessible until it finishes, and [restoring to a new project](https://supabase.com/docs/guides/platform/clone-project) is a separate flow. A [Neon restore](https://neon.com/docs/introduction/branch-restore) overwrites the branch and keeps its previous state as a backup branch. Take the `pg_dump` from step 4 above first, and use the new-project or new-branch route where your host has one. [Recovering deleted records](/postgres/recover-deleted-records) lists where each host's restore goes and walks through copying rows back, with the commands for each case.
 
 ## Why did the agent wipe the database?
 
-Agents run the same commands developers run, and the dangerous ones are usually development tools that become destructive when the connection string they load points at production. A typical sequence is a schema change that fails, an error message that names a reset or a flag that skips the warning, and an agent that runs it to get past the error. In [one public report](https://github.com/anthropics/claude-code/issues/36183), an agent asked to add a field ran `prisma db push`, got a data-loss warning, and then ran `prisma db push --force-reset` against the production database that `.env` pointed to.
+Agents run the same commands developers run, and the dangerous ones are usually development tools that become destructive when the connection string they load points at production. A typical sequence is a schema change that fails, an error message that names a reset or a flag that skips the warning, and an agent that runs it to get past the error. In [one public report](https://github.com/anthropics/claude-code/issues/36183), an agent asked to add a field ran `prisma db push`, got a data-loss warning, and then ran `prisma db push --force-reset` against the production database that `.env` pointed to. The report doesn't say which Prisma ORM version was installed.
 
 | Tool | Command | What it does | What stops it |
 | --- | --- | --- | --- |
 | Any Postgres client | `DROP TABLE`, `TRUNCATE` or `DELETE` without `WHERE`, through `psql` or a script | Removes the table or its rows | The role's privileges. Only the table's owner, the schema's owner or a superuser [can drop a table](https://www.postgresql.org/docs/current/sql-droptable.html) |
 | Django | [`django-admin flush`](https://docs.djangoproject.com/en/stable/ref/django-admin/#flush) | Removes all data from the database | A confirmation step, which `--no-input` skips |
 | Drizzle Kit | [`drizzle-kit push --force`](https://orm.drizzle.team/docs/drizzle-kit-push) | Applies the schema and auto-accepts all data-loss statements | Nothing once `--force` is passed |
-| Prisma ORM 7 | [`prisma migrate reset`](/docs/cli/v7/migrate/reset), [`prisma db push --force-reset` or `--accept-data-loss`](/docs/cli/v7/db/push) | Drops and recreates the database, or pushes a schema change that drops data | Stops when it detects an AI agent and asks the agent to get your consent (see below) |
+| Prisma ORM 7 | [`prisma migrate reset`](/docs/cli/v7/migrate/reset), [`prisma db push --force-reset` or `--accept-data-loss`](/docs/cli/v7/db/push) | Drops and recreates the database, or pushes a schema change that drops data | `migrate reset` and `--force-reset` stop when it detects an AI agent and ask the agent to get your consent (see below); `--accept-data-loss` too from 7.9.0 |
 | Prisma ORM 8 | [`prisma db update`](/docs/cli/db-update) | Changes the database to match the contract | Applies a destructive change only after you type the database name, or with `--confirm <database>` |
 | Rails | [`bin/rails db:reset`](https://guides.rubyonrails.org/active_record_migrations.html) | Drops the database and sets it up again | Refuses when the database was last migrated as a [protected environment](https://guides.rubyonrails.org/configuring.html#config-active-record-protected-environments) (`production` by default) or as a different environment, unless `DISABLE_DATABASE_ENVIRONMENT_CHECK` is set |
 
@@ -75,17 +75,17 @@ The table lists tools alphabetically, and it leaves out one common cause: a seed
 
 ### What Prisma ORM checks when an agent runs it
 
-[Prisma ORM 6.15.0](https://github.com/prisma/prisma/releases/tag/6.15.0), released in August 2025, added a check to `prisma migrate reset` and `prisma db push --force-reset`. When the CLI detects from environment variables that an AI agent such as Claude Code, Cursor or Gemini CLI is running it, it stops and tells the agent to explain the command to you, warn that the data will be destroyed and confirm whether the database is development or production. Only after you agree does the agent rerun the command with the `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` environment variable set to the text of your reply ([AI safety guardrails](/docs/cli/v7/migrate/reset#ai-safety-guardrails)). In Prisma ORM 7.10.1, the current Prisma ORM 7 release, the same check also covers `prisma db push --accept-data-loss`, and the list of detected agents includes Codex CLI and GitHub Copilot CLI.
+[Prisma ORM 6.15.0](https://github.com/prisma/prisma/releases/tag/6.15.0), released in August 2025, added a check to `prisma migrate reset` and `prisma db push --force-reset`. When the CLI detects from environment variables that an AI agent such as Claude Code, Cursor or Gemini CLI is running it, it stops and tells the agent to explain the command to you, warn that the data will be destroyed and confirm whether the database is development or production. Only after you agree does the agent rerun the command with the `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` environment variable set to the text of your reply ([AI safety guardrails](/docs/cli/v7/migrate/reset#ai-safety-guardrails)). Since Prisma ORM 7.9.0, the check also covers `prisma db push --accept-data-loss` and recognizes more agents, including GitHub Copilot CLI (7.10.1 is the current Prisma ORM 7 release).
 
 [Prisma ORM 8](/docs/orm), the release candidate that `npm install prisma` installs today, has [no `migrate reset` command](/docs/orm/coming-from-prisma-orm-7). Its `db update` command asks you to type the database name before it applies a destructive change, and in a non-interactive run it needs `--confirm <database>`.
 
-These checks only cover Prisma's own CLI. An agent can still pass the consent variable or `--confirm` on its own, and a `DROP TABLE` sent through `psql` or a script never reaches Prisma at all. Treat them as a second line of defense behind the steps below.
+These checks only cover Prisma's own CLI. An agent can still pass the consent variable or `--confirm` on its own, a `DROP TABLE` sent through `psql` or a script never reaches Prisma at all, and the check doesn't apply to MCP tool calls. Treat them as a second line of defense behind the steps below.
 
 ## How do I stop it from happening again?
 
 ### 1. Keep production credentials off the agent's machine
 
-An agent can use any secret it can read: a `.env` file, a shell variable, a credentials file in your home directory or a CLI you are signed in to. Keep the production connection string in your host's environment settings only, and keep the local `.env` pointed at a development database. If you need production access on your laptop, use a separate file or a password manager that the agent's session doesn't load, and never leave the production value in `.env` after a debugging session. [Where database passwords and API keys go](/compute/typescript-app-secrets) shows the split between local and deployed configuration on common hosts.
+An agent can use any secret it can read and any tool it is connected to: a `.env` file, a shell variable, a credentials file in your home directory, a CLI you are signed in to, or a database MCP server in its settings. Keep the production connection string in your host's environment settings only, and keep the local `.env` pointed at a development database. If you need production access on your laptop, use a separate file or a password manager that the agent's session doesn't load, and never leave the production value in `.env` after a debugging session. [Where database passwords and API keys go](/compute/typescript-app-secrets) shows the split between local and deployed configuration on common hosts.
 
 ### 2. Give the agent its own database
 
@@ -93,16 +93,19 @@ The agent should build and test against a database whose loss costs you nothing:
 
 - **A local or development database**, seeded with test data, in the `.env` the agent loads.
 - **A preview database per branch**, so changes run against their own data before they reach production. [Hosting a test app with a separate database](/postgres/typescript-test-environment) compares the setups on common hosts.
-- **A throwaway database** for experiments. `npx create-db@latest` creates a temporary [Prisma Postgres](/docs/postgres/npx-create-db) database with no account. It is deleted after 24 hours unless you claim it with a Prisma account.
+- **A throwaway database** for experiments. `npx create-db@latest` creates a temporary [Prisma Postgres](/docs/postgres/npx-create-db) database with no account. It is deleted after 24 hours unless you claim it with an account.
 
 ### 3. Use a read-only role when the agent must look at production
 
-If the agent needs production data to debug a problem, give it a role that can read and nothing else. On a host that lets you create PostgreSQL roles, such as [AWS RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.PostgreSQL.CommonDBATasks.Roles.rds_superuser.html) or your own server, run this as the role that owns your tables, usually the one your migrations use:
+If the agent needs production data to debug a problem, give it a role that can read and nothing else. On a host that lets you create PostgreSQL roles, such as [AWS RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.PostgreSQL.CommonDBATasks.Roles.rds_superuser.html) or your own server, create the role as an administrator (on RDS, the master user), then grant read access as the role that owns your tables, usually the one your migrations use:
 
 ```sql
+-- as an administrator
 CREATE ROLE agent_readonly LOGIN PASSWORD 'a-long-random-password';
 GRANT CONNECT ON DATABASE appdb TO agent_readonly;
 GRANT USAGE ON SCHEMA public TO agent_readonly;
+
+-- as the role that owns the tables
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO agent_readonly;
 -- tables this role creates later are readable too
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO agent_readonly;
@@ -137,6 +140,8 @@ In [Claude Code](https://code.claude.com/docs/en/permissions), put permission ru
 
 In [Cursor](https://cursor.com/docs/agent/security/run-modes), choose **Auto-review** or **Allowlist** under **Settings > Agents > Approvals & Execution** instead of **Run Everything**, which runs every tool call without asking. Auto-review reads plain-English rules from `.cursor/permissions.json`, such as a `block_instructions` entry that says every command that changes or deletes database data or schema should go through approval first.
 
+If the agent reaches the database through an MCP server, these shell rules don't apply to it. Connect the server to a development project, use a read-only or single-project mode if the server has one (the [Supabase MCP server](https://supabase.com/docs/guides/getting-started/mcp) takes `read_only=true` and `project_ref=<id>`), and keep approval prompts on for tools that write or delete.
+
 Neither tool's docs present these settings as a security boundary. A Claude Code deny rule matches the command as Claude writes it, so the same program run another way, such as through `sh -c`, isn't matched, and Cursor's docs say the Auto-review classifier can make mistakes. A `Read` deny rule also doesn't stop a script or CLI that loads `.env.production` itself. That is why step 1 comes first.
 
 ### 5. Review schema changes before they reach production
@@ -157,11 +162,13 @@ Check that your provider's backups are on and how long they are kept, and take y
 
 [Prisma Postgres](/docs/postgres) is managed PostgreSQL 17. It works with any Postgres client, including `pg`, Drizzle, Kysely and Prisma ORM; Prisma ORM is optional. For this problem, the facts that matter:
 
-- **Backups.** Daily snapshots on Starter and Pro (kept 7 days) and Business (kept 30 days). The Free plan has no backups, and there is no point-in-time recovery yet. For your own copies, run `pg_dump` against the direct connection on `db.prisma.io` ([backups](/docs/postgres/database/backups)).
-- **Credentials.** Every connection string has [full access to its database](/docs/postgres/database/connecting-to-your-database#access-and-permissions). You can't make one read-only or limit it to certain tables or roles, so step 3 doesn't work on Prisma Postgres yet. Generating a new connection string doesn't remove the old ones, so give each app or service its own and delete the one an agent saw.
+- **Backups.** Daily snapshots, taken on days the database has activity, on Starter and Pro (kept 7 days) and Business (kept 30 days), listed in the database's **Backups** tab in the [Console](https://console.prisma.io). The Free plan has no backups, and there is no point-in-time recovery yet, so changes made after the latest snapshot may not be restored. For your own copies, run `pg_dump` against the direct connection on `db.prisma.io` ([backups](/docs/postgres/database/backups)).
+- **Restores.** [Restoring a snapshot through the API](/docs/rest-api/endpoints/databases/post-databases-by-target-database-id-restore) replaces all data in the database you restore into, and anything written after the snapshot is lost, so take a `pg_dump` of the damaged database first. The [Prisma MCP server's](/docs/ai/mcp-tools) `create_prisma_postgres_recovery` tool restores a backup into a new database instead.
+- **Credentials.** Every connection string has [full access to its database](/docs/postgres/database/connecting-to-your-database#access-and-permissions). You can't make one read-only or limit it to certain tables or roles, so step 3 doesn't work here yet. Generating a new connection string doesn't remove the old ones, so give each app or service its own and delete the one an agent saw.
+- **The Prisma MCP server can change data.** In the workspace you pick when you sign in, its [`execute_sql_query`](/docs/ai/mcp-tools) tool can modify or delete rows and `delete_prisma_postgres_database` deletes a database. Its docs list no read-only mode, and the CLI's agent check doesn't cover MCP tool calls, so keep approval prompts on for those tools in your AI client.
 - **Throwaway databases.** `npx create-db@latest` gives an agent a database of its own in seconds, with no account, deleted after 24 hours unless claimed.
 
-[Prisma Compute](/docs/compute) hosts TypeScript apps in the same Prisma project as the database, and it doesn't require Prisma ORM or Prisma Postgres:
+[Prisma Compute](/docs/compute) hosts TypeScript apps in the same project as the database, and it doesn't require Prisma ORM or Prisma Postgres:
 
 - **Production secrets stay on the host.** [Environment variable](/docs/compute/environment-variables) values are write-only: once saved, no CLI command, API or Console page returns them, so there is nothing to pull into a local `.env`.
 - **Previews get their own database.** With [deploy on push](/docs/compute/deploy-on-push), every pushed branch other than the default one gets a preview with its own services and, for databases declared in the [Prisma Composer](/docs/composer) module, its own new database. Production data is not copied. An app that reads `DATABASE_URL` instead is only as separate as that value, so give previews a preview-scoped `DATABASE_URL`.
