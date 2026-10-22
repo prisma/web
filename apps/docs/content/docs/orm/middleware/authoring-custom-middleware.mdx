@@ -26,7 +26,7 @@ npm run db:init
 
 ## 1. Create the middleware
 
-Create a new file next to your database setup. The logger needs two hooks. `activityEnded` is the one Prisma ORM calls once at the end of every activity, which is every statement it sends and every transaction you open. Its second argument, `result`, is where the numbers come from: `result.latencyMs` is how long the statement took in milliseconds, and `result.rowCount` is how many rows came back. The SQL text is not on the activity, so `beforeEncode`, which receives the statement after its SQL is written, keeps `plan.sql` in `ctx.state(...)`, an object that belongs to this one statement. The `familyId: "sql"` field says the middleware works with SQL databases only, and [step 5](#5-know-which-family-to-declare) covers when to set it.
+Create a new file next to your database setup. The logger needs two hooks. `activityEnded` is the one Prisma ORM calls once at the end of every activity, which is every statement it sends, every transaction you open, and every ORM call. Its second argument, `result`, is where the numbers come from: `result.latencyMs` is how long the statement took in milliseconds, and `result.rowCount` is how many rows came back. The SQL text is not on the activity, so `beforeEncode`, which receives the statement after its SQL is written, keeps `plan.sql` in `ctx.state(...)`, an object that belongs to this one statement. The `familyId: "sql"` field says the middleware works with SQL databases only, and [step 5](#5-know-which-family-to-declare) covers when to set it.
 
 ```ts title="src/prisma/query-logger.ts"
 import type { SqlMiddleware } from "@prisma/orm-postgres/family-runtime";
@@ -60,7 +60,7 @@ The built-in middleware and the `SqlMiddleware` type are imported from `@prisma/
 
 The `name` is the label Prisma ORM uses when it talks about your middleware, so it turns up in messages such as `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` ("Middleware 'query-logger' requires family 'sql' ..."). Nothing checks that names are unique, so pick a name that will mean something to you when you read it in a message.
 
-`activityEnded` also runs for a transaction, which is why the hook returns early unless `result.kind` is `'statement'`. A statement either returns rows or reports how many rows it changed, and `result.returns` says which: `'rows'` with `result.rowCount`, or `'stats'` with `result.stats.affectedRows`. On the ORM API the calls that report a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`; every other call returns rows, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`. A write that failed has no `result.stats`, so the logger prints `0 affected` for it; check `result.outcome`, which is `'succeeded'`, `'failed'`, or `'stopped'`, when you need to tell the two apart.
+`activityEnded` also runs for a transaction and for an ORM call, which is why the hook returns early unless `result.kind` is `'statement'`. A statement either returns rows or reports how many rows it changed, and `result.returns` says which: `'rows'` with `result.rowCount`, or `'stats'` with `result.stats.affectedRows`. On the ORM API the calls that report a count are `createAndCount`, `updateAndCount`, and `deleteAndCount`; every other call returns rows, including `create`, `update`, `delete`, `updateAll`, and `deleteAll`. A write that failed has no `result.stats`, so the logger prints `0 affected` for it; check `result.outcome`, which is `'succeeded'`, `'failed'`, or `'stopped'`, when you need to tell the two apart.
 
 The SQL query builder is the other way to write a query on the same client, `db.sql.public.User...` in place of `db.orm.public.User...`. With it you build a query and run it in two steps: `.build()` gives you the query as a plain object, the plan, and a method on `db` runs it. `db.query(plan)` returns rows and `db.execute(plan)` reports how many rows the statement changed, and the same two hooks see both.
 
@@ -210,7 +210,7 @@ On the MongoDB side, the client is `mongo(...)` from `@prisma/orm-mongo/runtime`
 
 ## The hooks
 
-Prisma ORM runs every statement and every transaction as an activity. Three lifecycle hooks run for every activity, and four interceptors run only for statements, while they run. Implement whichever hooks you need:
+Prisma ORM runs every statement, every transaction and, on SQL databases, every ORM call as an activity. Three lifecycle hooks run for every activity, `intercept.onActivity` runs for ORM calls, and the other interceptors run only for statements, while they run. Implement whichever hooks you need:
 
 | Hook | Runs for | Runs | Use it to |
 | --- | --- | --- | --- |
@@ -219,11 +219,12 @@ Prisma ORM runs every statement and every transaction as an activity. Three life
 | `beforeEncode(plan, ctx, params?)` | statements | After the SQL text has been built, before the values are encoded and the driver runs it | Validate, throw to block, or change parameter values |
 | `intercept.onQuery(plan, ctx)` | statements that return rows | Instead of running the statement | Return `{ rows }` to answer the query yourself |
 | `intercept.onExecute(plan, ctx)` | statements that return a count | Instead of running the statement | Return `{ stats }` to answer the statement yourself |
+| `intercept.onActivity(activity, ctx)` | ORM calls | After the call's `activityStarted`, before it sends any statement | Return `{ result }` to answer the whole call yourself |
 | `onRow(row, plan, ctx)` | statements that return rows | Once per row the database returns | Count or sample rows, or throw to stop the query |
 | `activityEnded(activity, result, ctx)` | every activity | After the activity finishes, whether it succeeded or failed | Log `result.outcome`, `result.latencyMs`, `result.rowCount` or `result.stats`, `result.source` |
 | `activityFinalized(activity, result, ctx)` | every activity | Once its effects are final: after its transaction commits or rolls back, or right after it ends outside a transaction | Act on `result.outcome`, which is `'committed'`, `'rolled-back'`, or `'unknown'`, for example publish an event only for a committed write |
 
-Every hook receives `ctx`, written last above, which a hook can leave out of its parameter list when it does not use it. `activity.kind` is `'statement'` or `'transaction'`, so a lifecycle hook that only cares about statements checks it first. For a statement, `activity.returns` is `'rows'` or `'stats'`, and `activity.plan` is the plan the caller sent. Throwing from `onRow` fails the call with your error, and the rows still to come are not passed on to your code.
+Every hook receives `ctx`, written last above, which a hook can leave out of its parameter list when it does not use it. `activity.kind` is `'statement'`, `'transaction'` or `'orm-call'`, so a lifecycle hook that only cares about statements checks it first. [ORM calls](/orm/middleware/how-middleware-works#orm-calls) explains what an `orm-call` activity carries. For a statement, `activity.returns` is `'rows'` or `'stats'`, and `activity.plan` is the plan the caller sent. Throwing from `onRow` fails the call with your error, and the rows still to come are not passed on to your code.
 
 [How middleware works](/orm/middleware/how-middleware-works#the-two-lifecycles) walks through the order with an animation.
 
@@ -375,6 +376,50 @@ The first check, on `ctx.scope`, lets every query inside a transaction, or on a 
 
 Return `undefined` and the query carries on to the database as usual. When several middleware implement `intercept.onQuery`, the first one in the array that returns rows answers the query and the rest are not called at all. `activityEnded` still runs either way, with `result.source` set to `'middleware'`, so your logging can tell which statements were answered without a trip to the database. For a call that returns a count, `intercept.onExecute` does the same job and returns `{ stats }`, which only ever holds `affectedRows`, as in `{ stats: { affectedRows: 0 } }`. The [cache middleware](/orm/middleware/built-in-cache) is the implementation to copy from.
 
+### Answer ORM calls with intercept.onActivity
+
+`intercept.onActivity` answers a whole [ORM call](/orm/middleware/how-middleware-works#orm-calls), such as one `.first()`, instead of one statement. Return `{ result }` and the method returns `result` without sending any statement. Return `undefined` and the call runs as usual.
+
+An ORM call carries no plan, so a middleware picks the calls it answers by their annotations. The fixture below defines an annotation with `defineAnnotation`, and answers each call that carries it with the value registered under the annotation's name:
+
+```ts title="src/prisma/orm-call-fixtures.ts"
+import { defineAnnotation } from '@prisma/orm-postgres/components/runtime';
+import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
+
+export const fixture = defineAnnotation<string>()({
+  namespace: 'fixture',
+  applicableTo: ['read'],
+});
+
+export function ormCallFixtures(results: Readonly<Record<string, unknown>>): SqlMiddleware {
+  return {
+    name: 'orm-call-fixtures',
+    familyId: 'sql',
+
+    intercept: {
+      async onActivity(activity) {
+        if (activity.kind !== 'orm-call') return undefined;
+        const name = fixture.read(activity);
+        if (name === undefined || !Object.hasOwn(results, name)) return undefined;
+        return { result: results[name] };
+      },
+    },
+  };
+}
+```
+
+`applicableTo: ['read']` lets the annotation go on reads only, so TypeScript rejects it on a `create` or an `update`. Attach it to a read the same way as `cacheAnnotation`, and register the fixture in your tests with `middleware: [ormCallFixtures({ 'current-user': { id: 1, email: 'mia@prisma.io' } })]`:
+
+```ts title="src/users.ts (excerpt)"
+const user = await db.orm.public.User.first({ id }, (meta) =>
+  meta.annotate(fixture('current-user')),
+);
+```
+
+The value you return is what the method returns, so give it the shape the method returns, with the types your code expects, such as a `Temporal.Instant` for a `DateTime` field. Prisma ORM does not decode it, as it decodes the rows `intercept.onQuery` returns. It checks only the kind of value: `.all()` needs an array, `.first()` an object or `null`, `.firstOrThrow()` an object, and the `...AndCount` methods a number. A value of the wrong kind rejects the call with an error whose `code` is `ORM.INTERCEPTED_RESULT_INVALID`.
+
+The first middleware in the array whose `onActivity` returns a result answers the call. `activityEnded` still runs for the call, with `result.source` set to `'middleware'`. `intercept.onActivity` also runs for ORM calls inside a transaction, so check `ctx.scope` or `ctx.inTransaction()` if your middleware should leave those alone, as the cache does.
+
 ## The context object
 
 Every hook receives a context object called `ctx`. All the hooks of one activity receive the same object, holding the following:
@@ -382,7 +427,7 @@ Every hook receives a context object called `ctx`. All the hooks of one activity
 | Field | What it gives you |
 | --- | --- |
 | `ctx.state(key)` | An object that belongs to this one activity, created empty the first time you ask for it under `key`. See [Keep state for one statement](#keep-state-for-one-statement) |
-| `ctx.parent` | The context of the transaction a statement runs in, or `undefined` outside one |
+| `ctx.parent` | The context of the activity directly above this one: the ORM call that sent a statement, or the transaction it runs in. `undefined` when there is none |
 | `ctx.inTransaction()` | `true` when the activity runs inside a transaction |
 | `ctx.now()` | The current time in milliseconds, the same value `Date.now()` gives |
 | `ctx.scope` | Where the statement is running: `'runtime'`, `'connection'`, or `'transaction'` |
@@ -447,7 +492,7 @@ A statement that failed before `beforeEncode` ran, for example because another m
 - If you throw from `activityEnded` after a statement has succeeded, the call fails even though the database has already done the work, so keep that for cases where failing loudly is the point, the way the [budgets](/orm/middleware/built-in-budgets) latency check does.
 - `activityEnded` also runs when the database driver fails, when a statement fails before it reaches the database, and when your code stops reading rows part way through, with `result.outcome` set to `'failed'` or `'stopped'`. A middleware that counts statements or measures latency checks `result.outcome`. A failed write has no `result.stats`.
 - If your hook throws while it is handling a failure like that, Prisma ORM passes your error to the client's log and your caller still sees the failure the driver reported.
-- `activityEnded` and `activityFinalized` run for transactions too. Check `activity.kind` or `result.kind` when you only care about statements.
+- `activityEnded` and `activityFinalized` run for transactions and ORM calls too. Check `activity.kind` or `result.kind` when you only care about statements.
 - Inside a transaction, `activityFinalized` runs while the transaction still holds its connection. Do not await a query through the same client from it: when the pool has no free connection, that query waits forever. [How middleware works](/orm/middleware/how-middleware-works#activityfinalized-act-once-the-effects-are-final) has the details.
 
 :::

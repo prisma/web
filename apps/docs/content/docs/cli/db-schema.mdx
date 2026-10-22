@@ -31,12 +31,16 @@ npx prisma db schema --db "$DATABASE_URL"
 npx prisma db schema --db "$DATABASE_URL" --json > schema.json
 ```
 
+## Data lines
+
+`db schema` prints nothing on standard output, because the schema is a tree whose shape depends on the database family. Use `--json` to read the schema in a script. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the data lines of the other commands.
+
 ## Column types
 
 On PostgreSQL and SQLite, the tree and the JSON output show each column's type as the database names it. In the JSON output, this text is the column's `typeText`:
 
 ```bash
-npx prisma db schema --db "$DATABASE_URL" --json | jq '.schema.tables[].columns[].typeText'
+npx prisma db schema --db "$DATABASE_URL" --json | jq 'select(.kind == "result") | .envelope.result.schema.tables[].columns[].typeText'
 ```
 
 On PostgreSQL, `typeText` is the full type name, such as `integer` or `character varying(20)`, not a short name such as `int4`. An enum is named as your contract names it, such as `My Mood`, or `app.status` for an enum outside the `public` schema. A type from a schema that is not on the search path keeps the schema name, such as `extensions.vector(3)` for a pgvector column.

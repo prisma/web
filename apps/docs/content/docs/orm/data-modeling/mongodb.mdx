@@ -77,6 +77,25 @@ model Post {
 
 With a client created by `mongo()`, `create` sets both fields, and every `update` that changes something sets `updatedAt` again. Both fields are optional in the values you pass to `create`.
 
+### Named types
+
+A `types` block gives a type a name you can reuse on many fields, as on [PostgreSQL](/orm/contract-authoring/psl-syntax#named-types). A named type can set `@onCreate` and `@onUpdate`, and every field typed by it gets them. `temporal.CreatedAt` and `temporal.UpdatedAt` are named types you do not declare, on `Date`, and they store what `temporal.createdAt()` and `temporal.updatedAt()` store:
+
+```prisma
+types {
+  Stamp = Date @onCreate(now()) @onUpdate(now())
+}
+
+model Post {
+  id        ObjectId           @id @map("_id")
+  editedAt  Stamp
+  createdAt temporal.CreatedAt
+  updatedAt temporal.UpdatedAt
+}
+```
+
+The contract stores each field's own type, not the name. On MongoDB a named type cannot set `@default`, because MongoDB has no database defaults, and `@id` and `@unique` go on the field, not on the named type; each is refused with `PSL_UNSUPPORTED_NAMED_TYPE_ATTRIBUTE`. A field that repeats an attribute its named type already sets is refused with `PSL_DUPLICATE_ATTRIBUTE`, and an optional or list field cannot use a named type that generates a value.
+
 ## Embed or reference
 
 Two pieces of related data can live together in one document (embedded) or in separate collections linked by an id (referenced). Embedding nests the data inside its parent: an order and its line items in one document. One read returns everything, and a write updates parent and children together, atomically. The trade-off is that you cannot read embedded data without its parent, and it comes back on every read of the parent.
@@ -191,7 +210,7 @@ model Tutorial {
 }
 ```
 
-`@@discriminator(kind)` takes the name of the field that records each document's variant, so write `kind` and not `"kind"`. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A variant declares only its own fields, since `id`, `title`, and `kind` come from `Post`, and it uses its base's collection, so it needs no `@@map` of its own.
+`@@discriminator(kind)` takes the name of the field that records each document's variant, so write `kind` and not `"kind"`. `@@base(Post, "article")` declares `Article` as the `"article"` variant of `Post`. A variant declares only its own fields, since `id`, `title`, and `kind` come from `Post`, and it uses its base's collection, so it needs no `@@map` of its own. The discriminator field must be a required `String`, or a [named type](/orm/contract-authoring/psl-syntax#named-types) for `String`, and not a list. When an enum types it, each `@@base` value must be one of the enum's members. [Base models and variants](/orm/contract-authoring/psl-syntax#base-models-and-variants) lists the rules.
 
 A query for posts returns articles and tutorials together. To reach a single variant, go through the base model: `db.orm.posts.variant("article")` limits the query to one variant, and it takes the discriminator value, `"article"`, not the variant's model name `"Article"`. Creating through a variant fills in `kind` for you:
 

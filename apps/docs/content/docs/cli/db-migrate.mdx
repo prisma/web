@@ -65,3 +65,43 @@ npx prisma db migrate --db "$DATABASE_URL" --to production
 ```
 
 Manage refs with [`migration ref`](/cli/migration-ref).
+
+## When an apply fails [#when-an-apply-fails]
+
+Each operation checks the database before and after it runs, as [How migrations work](/orm/migrations/how-migrations-work#every-operation-checks-itself) explains. When a check fails, `db migrate` stops and its `why` says which check failed and, when the check names one object, what the database already has or lacks:
+
+```text
+✘ [MIGRATION.PRECHECK_FAILED] Operation table.user failed during precheck: ensure table "user" does not exist
+  why: Before operation table.user runs, it checks: ensure table "user" does not exist. That check failed: the database already has table "user". The failed apply changed nothing.
+```
+
+The object comes from the check's `expectation` in `ops.json`. A check without one, such as a check about data or a check in a migration written before `8.0.0-rc.20`, says only "That check failed on this database."
+
+The `why` ends by saying whether the database changed. On PostgreSQL and SQLite a failed apply is rolled back, so it says "The failed apply changed nothing." MongoDB has no transaction around a migration, so once an operation has written anything it says "The operations that ran before the failure stay applied." Before `8.0.0-rc.20`, `db migrate` said a failed apply on MongoDB changed nothing even when earlier operations stayed applied.
+
+With `--json`, the error's `meta` holds the same facts:
+
+```json
+{
+  "failedCheck": {
+    "operationId": "table.user",
+    "phase": "precheck",
+    "description": "ensure table \"user\" does not exist",
+    "expectation": { "expects": "absent", "object": "table \"user\"" }
+  },
+  "failingSpace": "app",
+  "databaseUnchanged": true
+}
+```
+
+`databaseUnchanged` is `true` when the database is exactly as it was before the apply, and `false` when changes stay. When the schema check after the last operation fails, `meta.schemaIssues` lists the differences, in the shape [`db verify`](/cli/db-verify#schema-differences-in-json-output) describes.
+
+Each way out of the failure is a separate entry in `nextActions`. Its `kind` is `run-command` only when running that command alone fixes the failure, such as `prisma db sign` to adopt a database that already matches the contract; `edit-file` when you edit a file first, such as the contract source or a migration's `migration.ts`; and `user-choice` when the step changes data or chooses between plans. Since `8.0.0-rc.20` the ways out are separate entries; before, they were one entry, and some steps that needed an edit first were `run-command`.
+
+## Data lines
+
+Without `--json`, standard output gets one line per applied migration, with these fields separated by tabs: `space`, `name`, `from`, `to`, and the number of operations run. With `--show`, it gets one line per migration that will run, with `space`, `name`, `from`, and `to`; there is no operation count before the run. `from` is empty for a migration that starts from the empty database. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
+
+```bash
+npx prisma db migrate --show | cut -f2
+```
