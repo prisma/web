@@ -134,7 +134,7 @@ Once the page is live on www.prisma.io:
 2. **Monitoring.** With the team's page-monitoring tool connected, add the URL to it. Without it, send the URL to the tool's owner in #developer-relations.
 3. **Indexing.** After the deploy, confirm the IndexNow run succeeded (`gh run list -R prisma/web --workflow indexnow.yml --limit 3`). Ask whoever has access to Google Search Console and Bing Webmaster Tools to request indexing for the URL and check where it appears for the Step 2 queries.
 4. **Crawl check after about three days.** Look the URL up in the team's crawler logs to see whether crawlers fetched it, and note the result in the row's Notes. If nothing has crawled it after a week, recheck Step 7: the sitemap entry and the inbound links are the usual causes.
-5. **Read the results, not a score.** Search the Step 2 queries and read what comes back: whether the page is there, and whether what it says about Prisma Postgres or Prisma Compute reads correctly out of context. A single score mixes in unrelated mentions, so read the results themselves. Compare them per search engine, before and after, and expect Bing to move first and other indexes weeks later.
+5. **Read the results themselves.** Search the Step 2 queries and read what comes back: whether the page is there, and whether what it says about Prisma Postgres or Prisma Compute reads correctly out of context. Compare them per search engine, before and after, and expect Bing to move first and other indexes weeks later.
 
 ## Page outlines
 
