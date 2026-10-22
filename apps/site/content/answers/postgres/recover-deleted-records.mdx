@@ -142,12 +142,14 @@ A row that matches the condition but was deleted on purpose after the restore po
 ```sql
 BEGIN;
 
-INSERT INTO customers
-SELECT r.*
+INSERT INTO customers (id, email, name, created_at)
+SELECT r.id, r.email, r.name, r.created_at
 FROM customers_restored r
 WHERE r.created_at < '2026-10-01'
   AND NOT EXISTS (SELECT 1 FROM customers c WHERE c.id = r.id);
 ```
+
+Name the columns in both lists; the example uses `id`, `email`, `name` and `created_at`, so replace them with your table's columns. Named columns can't land in the wrong place if a migration added, dropped or reordered columns since the restore point. A column added since then gets its default, and a renamed or retyped column needs its own expression in the `SELECT`.
 
 `psql` prints `INSERT 0 <n>`. Compare `n` with the count from step 4, rerunning that count first if you removed rows deleted on purpose. If they match, run:
 
@@ -160,7 +162,7 @@ If they don't, run `ROLLBACK` and check the condition.
 Rows that still exist in production are skipped, so newer edits stay as they are. Four cases need changes:
 
 - **`GENERATED ALWAYS AS IDENTITY` ids.** PostgreSQL [rejects explicit values](https://www.postgresql.org/docs/current/sql-insert.html) for them unless you add `OVERRIDING SYSTEM VALUE` after `INSERT INTO customers`.
-- **Generated columns.** List the columns explicitly in both the `INSERT` and the `SELECT`, leaving the generated ones out.
+- **Generated columns.** Leave them out of both column lists. PostgreSQL computes them on insert.
 - **Other unique columns.** If a deleted customer has since signed up again with the same email, a unique index on `email` makes the insert fail and the transaction roll back. Merge those customers by hand and remove them from `customers_restored` first.
 - **Triggers on the table.** An insert trigger that sends a welcome email or calls a webhook fires for every restored row. Check the triggers with `\d customers` before you run the insert.
 
