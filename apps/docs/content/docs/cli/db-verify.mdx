@@ -50,6 +50,8 @@ Use JSON output in automation:
 npx prisma db verify --db "$DATABASE_URL" --json
 ```
 
+`db verify` prints nothing on standard output, even when piped. Its exit code is the result of the verification, and `--json` carries the findings. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the data lines of the other commands.
+
 ## What failures mean
 
 | Failure | Meaning |
@@ -60,6 +62,19 @@ npx prisma db verify --db "$DATABASE_URL" --json
 | Extension mismatch | The contract requires an extension that is not wired in the config. |
 
 Fix the database or contract, emit again if needed, then verify again.
+
+### Schema differences in JSON output [#schema-differences-in-json-output]
+
+When the live schema does not match the contract, the `--json` output has a diagnostic with the code `CONTRACT.SCHEMA_VERIFICATION_FAILED`. Its `meta.space` names the contract space. Its `meta.schemaIssues` lists each difference as an object with these keys:
+
+- `path`: where the difference is, as a list of names, such as `["public", "users", "email"]`.
+- `expected`: what the contract has. A missing object has only `expected`.
+- `actual`: what the database has. An extra object has only `actual`, and a mismatch has both.
+- `explanation`: an optional object with a `text`.
+
+The diagnostic's `why` lists the same differences as text. `db init`, `db update` and `db migrate` report `MIGRATION.SCHEMA_VERIFY_FAILED` with the same `meta.schemaIssues`.
+
+Before `8.0.0-rc.20`, the key was `meta.issues`, a list of strings such as `"missing: public/users/email"`, so update any script that reads it.
 
 ## How column types are compared
 

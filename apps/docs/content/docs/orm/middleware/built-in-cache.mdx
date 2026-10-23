@@ -76,7 +76,7 @@ export async function getUserCached(id: number) {
 }
 ```
 
-The first call goes to the database as usual, and the cache keeps the rows it got back, exactly as they came. If the same query with the same parameter values runs again while the store still holds the entry, Prisma ORM answers it from those stored rows and never calls the database driver.
+The first call goes to the database as usual. For a SQL query builder read, the cache keeps the rows it got back, exactly as they came. For an ORM read, it keeps the value the method returned, so a nested `include` is cached with the rest of the call. If the same query with the same parameter values runs again while the store still holds the entry, Prisma ORM answers it from the stored entry and never calls the database driver.
 
 You can set the following fields on the annotation:
 
@@ -116,14 +116,23 @@ Unless you give it a `key`, the cache stores a read under a key built from the q
 
 That contract hash changes with any migration, whichever table the migration touched, so after a migration every entry the cache keyed for itself stops matching and none of them are served again. An entry you stored under your own `key` is not affected, because your `key` is used exactly as you wrote it and has nothing about your contract in it.
 
-To change how the cache builds its keys, pass `deriveKey` to `createCacheMiddleware`. It runs for every cached read that has no `key` of its own. Build on the exported default, `deriveKeyFromContentHash`, so the key keeps the query, its parameter values and the contract hash:
+To change how the cache builds its keys, pass `deriveKey` to `createCacheMiddleware`. A common reason is to keep tenants apart, so that one tenant's cached rows are never served to another. `deriveKey` runs for every cached SQL query builder read that has no `key` of its own. Its first argument, `exec`, is the statement the read sends, with its parameter values. Build on the exported default, `deriveKeyFromContentHash`, so the key still covers the query, its parameter values and the contract hash. The example below puts the current tenant's id in front of each key, where `currentTenantId()` stands for however your app knows the tenant:
 
 ```ts title="src/prisma/db.ts (excerpt)"
 import { createCacheMiddleware, deriveKeyFromContentHash } from '@prisma/orm-extension-middleware-cache';
+import { currentTenantId } from './tenant';
 
 export const cache = createCacheMiddleware({
-  deriveKey: async (exec, ctx) => `users:${await deriveKeyFromContentHash(exec, ctx)}`,
+  deriveKey: async (exec, ctx) => `tenant-${currentTenantId()}:${await deriveKeyFromContentHash(exec, ctx)}`,
 });
+```
+
+`deriveKey` does not run for an ORM read. The cache stores an annotated ORM read under its `key`, or under a digest of the method and the query with its parameter values. So if you keep tenants apart, also give each annotated ORM read a `key` that starts with the tenant:
+
+```ts
+return db.orm.public.User.first({ id }, (meta) =>
+  meta.annotate(cacheAnnotation({ key: `tenant-${currentTenantId()}:user:${id}` })),
+);
 ```
 
 Two different queries must never get the same key, or one query's rows are served for the other. If `deriveKey` throws, the read fails.
@@ -134,7 +143,10 @@ A read inside `db.transaction(...)`, or on a connection you took out of the pool
 
 ## Check that caching is working
 
-Prisma ORM has no counter or log option that reports cache hits, so to see them, register a small middleware of your own after the cache. A read the cache answers still reaches the middleware after it, so your own logging and metrics keep recording it and a hook like the one below runs either way. That hook is `afterQuery`, and the `result` argument it gets says who answered: `result.source` is `'middleware'` when the cache answered and `'driver'` when the database did.
+Prisma ORM has no counter or log option that reports cache hits, so to see them, register a small middleware of your own after the cache. When the cache answers a read, every middleware registered after the cache still gets `activityStarted`, `activityEnded` and `activityFinalized` for it, so your own logging and metrics keep recording it. Their intercept handlers are not called, and `onRow` does not run for rows the cache returned. The middleware below uses the `activityEnded` hook, which runs at the end of every query whether the cache or the database answered it. Its `result` argument has a field, `result.source`, that says who answered:
+
+- For a SQL query builder read, the hook sees the statement. `result.source` is `'middleware'` when the cache answered and `'driver'` when the database did.
+- For an ORM read, a hit sends no statement, because the cache answers the whole call. So the hook watches the [ORM call](/orm/middleware/how-middleware-works#orm-calls) instead, whose `result.source` is `'middleware'` when the cache answered and `'client'` when the call ran.
 
 ```ts title="src/prisma/cache-watch.ts"
 import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
@@ -142,16 +154,21 @@ import type { SqlMiddleware } from '@prisma/orm-postgres/family-runtime';
 export function cacheWatch(): SqlMiddleware {
   return {
     name: 'cache-watch',
-    async afterQuery(plan, result) {
-      console.log(`[cache-watch] ${result.source} · ${plan.sql}`);
+    async activityEnded(activity, result) {
+      if (result.kind === 'orm-call') {
+        console.log(`[cache-watch] ORM call · ${result.source}`);
+        return;
+      }
+      if (result.kind !== 'statement' || result.returns !== 'rows') return;
+      console.log(`[cache-watch] ${result.source} · ${result.rowCount} rows`);
     },
   };
 }
 ```
 
-The other built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. On MongoDB the same middleware is typed `MongoMiddleware`, from `@prisma/orm-mongo/family-runtime`, and a MongoDB query has no `sql` field, so log `plan.command` there instead.
+The other built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. On MongoDB the same middleware is typed `MongoMiddleware`, from `@prisma/orm-mongo/family-runtime`, and works unchanged, because it reads only `result`.
 
-Register `cacheWatch()` after the cache, by replacing the `middleware` line in `src/prisma/db.ts` and adding the import above it. Order matters for a middleware that returns rows itself instead of letting the query reach the database, because the first one to do that wins and the ones after it are never asked. `cacheWatch()` only logs, and a middleware of your own that can return rows goes after the cache as well, so that the cache is asked first.
+Register `cacheWatch()` after the cache, by replacing the `middleware` line in `src/prisma/db.ts` and adding the import above it. Order matters for a middleware that returns rows itself instead of letting the query reach the database, because the first one to do that wins and the ones after it are never asked. `cacheWatch()` only logs. A middleware of your own that can return rows goes after the cache as well: the first middleware that returns rows answers the read, and you want the cache to answer the reads it holds.
 
 ```ts title="src/prisma/db.ts (excerpt)"
 import { cacheWatch } from './cache-watch';
@@ -159,7 +176,7 @@ import { cacheWatch } from './cache-watch';
 middleware: [cache, cacheWatch()],
 ```
 
-Now call the same annotated read twice. The first call prints `driver`, because it went to the database, and the second prints `middleware`, because the cache answered it. If you register other middleware of your own that can return rows itself, `result.source` is `'middleware'` for all of them, so it tells you that a middleware answered and not which one.
+Now call the same annotated read twice. With the SQL query builder, the first call prints `driver`, because it went to the database, and the second prints `middleware`, because the cache answered it. With the ORM API, the first call prints its statement with `driver` and the ORM call with `client`, and the second prints only the ORM call, with `middleware`. If you register other middleware of your own that can return rows itself, `result.source` is `'middleware'` for all of them, so it tells you that a middleware answered and not which one.
 
 ## Remove entries after a write [#remove-entries-after-a-write]
 
@@ -170,7 +187,7 @@ await db.orm.public.User.where({ id }).update({ email });
 await cache.invalidate({ keys: [`user:${id}`] });
 ```
 
-`invalidate({ keys })` removes the entries stored under those keys: the `key` an annotation named, or the key `deriveKey` returned. `invalidate({ meta })` removes the entries whose annotation carried a matching `meta`, such as a tag. Only a store that indexes `meta` can do that; the default store throws `RUNTIME.CACHE_STORE_META_UNSUPPORTED`.
+`invalidate({ keys })` removes the entries stored under those keys: the `key` an annotation named, or the key `deriveKey` returned. To remove the entry of an ORM read, give the read a `key` and pass that key to `invalidate`, as above. An ORM read without a `key` is stored under a digest of the call, which your code does not see. `invalidate({ meta })` removes the entries whose annotation carried a matching `meta`, such as a tag. Only a store that indexes `meta` can do that; the default store throws `RUNTIME.CACHE_STORE_META_UNSUPPORTED`.
 
 Call `invalidate` after the transaction that wrote the rows has committed. Called inside the transaction, another request can read the old rows before the commit and put them back. A read that started before `invalidate` and finishes after it does not store its rows, because they may be older than the write.
 
@@ -183,7 +200,7 @@ These are the options you pass to `createCacheMiddleware`:
 | Option | Type | Default | What it controls |
 | --- | --- | --- | --- |
 | `store` | `CacheStore` | `createInMemoryCacheStore()` | Where the cached rows are kept and how long, for example in Redis |
-| `deriveKey` | `(exec, ctx) => string \| Promise<string>` | `deriveKeyFromContentHash` | The key of a cached read whose annotation has no `key` |
+| `deriveKey` | `(exec, ctx) => string \| Promise<string>` | `deriveKeyFromContentHash` | The key of a cached SQL query builder read whose annotation has no `key`. ORM reads do not use it |
 
 To change the size or lifetime of the default store, create it yourself with `createInMemoryCacheStore` and pass it as `store`:
 
@@ -213,40 +230,40 @@ The built-in store holds the rows in the memory of one process, so if you run tw
 
 To have every instance read from the same cache, pass your own `store`. A store is an object with three async methods, so it can talk to Redis or to anything else your instances can all reach. The store keeps a version number for each key, starting at 0, and only `unset` changes it. The version is how the cache stops a read that overlapped an `invalidate` from storing old rows.
 
-- `get({ key, meta })` returns an entry: `{ key, meta, version, data }`, where `version` is the key's current version and `data` is `{ empty: true }` when nothing is stored, or `{ empty: false, value }` with the stored rows.
-- `set(entry, value)` stores the rows under `entry.key` only if the key's version still equals `entry.version`, and returns whether it stored them. Comparing and writing must be one atomic step, such as one Lua script on Redis. The store decides how long the value lives.
+- `get({ key, meta })` returns an entry: `{ key, meta, version, data }`, where `version` is the key's current version and `data` is `{ empty: true }` when nothing is stored, or `{ empty: false, value }` with the stored value.
+- `set(entry, value)` stores the value under `entry.key` only if the key's version still equals `entry.version`, and returns whether it stored it. Comparing and writing must be one atomic step, such as one Lua script on Redis. The store decides how long the value lives.
 - `unset({ keys, meta })` removes the values under `keys` and increments each key's version, whether or not it held a value. A store that does not index `meta` throws when `meta` is set.
 
-`value` is the rows as the database driver returned them, typed `CachedRows`. On PostgreSQL every value that is not SQL `NULL` is the text the database printed, and a `NULL` is `null`, so a `createdAt` column reaches your store as a string and not a `Date`, as a row from `select('id', 'email', 'createdAt')` shows:
+`value` is typed `CachedValue`, whose `kind` says which kind of read stored it:
 
-```ts
-{ id: '3', email: 'mia@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
-```
+- `{ kind: 'statement-rows', rows }` for a SQL query builder read: the rows as the database driver returned them. On PostgreSQL every value that is not SQL `NULL` is the text the database printed, and a `NULL` is `null`, so a `createdAt` column reaches your store as a string, such as `'2026-09-17 08:00:08.775+00'`.
+- `{ kind: 'call-result', result }` for an ORM read: the value the ORM method returned, after Prisma ORM decoded it. It holds the types your code gets, such as a `Temporal.Instant`, a `bigint` or a class an extension returns.
 
-Your store gets those objects as they are and has to hand back the same thing from `get`, so turning them into something Redis can hold, and back again, is yours to write. A store backed by Redis:
+Your store has to hand back from `get` a value equal to the one it was given, `kind` included, so turning values into something Redis can hold, and back again, is yours to write. Plain JSON is not enough: `JSON.stringify` throws on a `bigint`, and a `Temporal.Instant` comes back as a string. The example below is a store backed by Redis. It imports a `serializer` from `./serializer`, which this page does not show: you write it as an object whose `serialize(value: CachedValue): string` and `deserialize(text: string): CachedValue` rebuild those types.
 
 ```ts title="src/prisma/cache-store.ts"
-import type { CachedRows, CacheStore } from '@prisma/orm-extension-middleware-cache';
+import type { CachedValue, CacheStore } from '@prisma/orm-extension-middleware-cache';
 import { redis } from './redis';
+import { serializer } from './serializer';
 
 const SET_IF_VERSION = `
   if tonumber(redis.call('GET', KEYS[2]) or '0') ~= tonumber(ARGV[2]) then return 0 end
   redis.call('SET', KEYS[1], ARGV[1], 'PX', 60000)
   return 1`;
 
-export const store: CacheStore<unknown, CachedRows> = {
+export const store: CacheStore<unknown, CachedValue> = {
   async get({ key, meta }) {
     const [raw, version] = await redis.mget(`value:${key}`, `version:${key}`);
     return {
       key,
       meta,
       version: Number(version ?? 0),
-      data: raw ? { empty: false, value: JSON.parse(raw) as CachedRows } : { empty: true },
+      data: raw ? { empty: false, value: serializer.deserialize(raw) } : { empty: true },
     };
   },
   async set(entry, value) {
     const keys = [`value:${entry.key}`, `version:${entry.key}`];
-    return (await redis.eval(SET_IF_VERSION, 2, ...keys, JSON.stringify(value), entry.version)) === 1;
+    return (await redis.eval(SET_IF_VERSION, 2, ...keys, serializer.serialize(value), entry.version)) === 1;
   },
   async unset({ keys, meta }) {
     if (meta !== undefined) throw new Error('This store does not index meta');

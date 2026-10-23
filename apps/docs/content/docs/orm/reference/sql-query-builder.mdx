@@ -761,16 +761,17 @@ Insert one or more rows in a single statement.
 #### Remarks
 
 - `insert()` always takes an **array**. A single-row insert is a one-element array. There is no separate single-row overload. An empty array throws an error whose `code` is `ORM.MUTATION_DATA_MISSING`.
-- Leave a column out and the database fills it from its `@default(...)` in `contract.prisma`, or Prisma ORM generates it from its `@onCreate(...)`. Prisma ORM generates `@onCreate(uuid())` values when you call `build()`, not when the query runs. The built query then holds fixed values, so running it twice inserts the same id twice, which fails on a unique column. Call `.build()` again for each insert.
+- Each row must include every column the database requires: a column that is not nullable, has no `@default(...)` and is not generated on create. Leaving one out is a type error that names the column, such as `Property 'displayName' is missing`. A required column does not accept `undefined` either, so check a value typed `T | undefined` before the insert. Before `8.0.0-rc.20`, such an insert compiled and then failed in the database.
+- A column is optional when it is nullable, when it has a `@default(...)` (including `now()` and `autoincrement()`), or when Prisma ORM generates it on create: a field with `@onCreate(...)` or a helper such as `temporal.createdAt()`. Leave an optional column out and the database fills it from its default, or Prisma ORM generates it. Each row in one call is checked on its own, so rows may set different optional columns. Prisma ORM generates `@onCreate(uuid())` values when you call `build()`, not when the query runs. The built query then holds fixed values, so running it twice inserts the same id twice, which fails on a unique column. Call `.build()` again for each insert.
 - There is no `ON CONFLICT` and no upsert here. For "insert or update", use the ORM client's [`upsert()`](/orm/reference/orm-client#upsert) or write the statement with [`db.raw.sql`](/orm/reference/raw-queries).
 
 #### Options
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `rows` | Array of row objects | Yes | The rows to insert. Every column is optional in TypeScript. |
+| `rows` | Array of row objects | Yes | The rows to insert. Each row requires the columns that are not nullable, have no default and are not generated on create; every other column is optional. |
 
-PostgreSQL still rejects a missing required column that has no default. Never call `.returns()` or [`param()`](#param) on an insert value.
+Never call `.returns()` or [`param()`](#param) on an insert value.
 
 #### Return type
 
@@ -791,6 +792,20 @@ await db.execute(plan); // execute runs a write that returns no rows. id is fill
 
 ```ts
 const plan = db.sql.public.tag.insert([{ label: 'multi-row-a' }, { label: 'multi-row-b' }]).build();
+await db.execute(plan);
+```
+
+##### Include every required column
+
+In the example schema, `User.email`, `User.displayName` and `User.kind` are required. `id` is generated on create, `createdAt` has a default, and `address` is nullable, so those can be left out:
+
+```ts
+db.sql.public.user.insert([{ email: 'admin@example.com', kind: 'admin' }]);
+// error: Property 'displayName' is missing
+
+const plan = db.sql.public.user
+  .insert([{ email: 'admin@example.com', kind: 'admin', displayName: 'Admin' }])
+  .build();
 await db.execute(plan);
 ```
 
@@ -993,6 +1008,8 @@ const plan = db.sql.public.user
 `ilike` does not work on a `native_enum` column, typed `pg.enum(...)`, because PostgreSQL cannot pattern-match an enum type. Passing one is a type error. See [Enums](/orm/contract-authoring/psl-syntax#enums).
 
 Full-text search on PostgreSQL uses `fns.fullTextMatches(column, query)` to filter, `fns.fullTextRank(column, query)` to score, and `fns.fullTextHeadline(column, query)` to return the matching text with each match marked. Build `query` from the search text with `fns.websearchToTsquery(text)`, `fns.plaintoTsquery(text)`, `fns.phrasetoTsquery(text)`, or `fns.toTsquery(text)`, or with the `tsquery` template tag from `@prisma/orm-postgres/target/full-text`. Never pass user input to `fns.toTsquery()`, because text that breaks PostgreSQL's search syntax makes the query fail when it runs; use `fns.websearchToTsquery()` or the `tsquery` tag for user input. [Full-text search](/orm/reference/orm-client#full-text-search) on the ORM client reference explains what each of these does, and the index that lets PostgreSQL search without reading every row.
+
+To search a [`@@fullTextIndex`](/orm/contract-authoring/psl-syntax#full-text-indexes), pass the index from the table's `indexes` in place of the column: `fns.fullTextMatches(post.indexes.post_search, q)` and `fns.fullTextRank(post.indexes.post_search, q)`, where `post` is `db.sql.public.post`. The query reads the index's fields, weights and language from the contract, so it searches every field of a weighted index and PostgreSQL uses the index. To search several columns that no index covers, build the search document with `fullTextDocument` from `@prisma/orm-postgres/target/full-text`.
 
 Each of the three full-text functions takes an options object as its last argument, and each accepts `language`. Pass the same `language` to the function that builds `query`, as in `fns.fullTextMatches(f.title, fns.websearchToTsquery(q, { language: 'german' }), { language: 'german' })`. `fullTextRank` also takes `normalization` and `coverDensity`, which the ORM client reference describes. `fullTextHeadline` also takes these options:
 

@@ -38,7 +38,7 @@ Migrate this Mongoose app to Prisma ORM against the same MongoDB database, follo
 1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
 2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma contract emit`.
 3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
-4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive --confirm <database name from DATABASE_URL>`, then run `npx prisma db verify`.
+4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive`, then run `npx prisma db verify`.
 ```
 
 </AgentPrompt>
@@ -539,11 +539,9 @@ npx prisma db update --dry-run
 ✔ Planned 3 operation(s) across 1 contract space
 
 App space
-├─ ⚠ Add validator on categories
-├─ ⚠ Add validator on posts
-└─ ⚠ Add validator on users
-
-⚠ This migration contains destructive operations that may cause data loss.
+├─ Add validator on categories
+├─ Add validator on posts
+└─ Add validator on users
 
 ℹ Operation preview
 
@@ -554,13 +552,19 @@ db.runCommand({ collMod: "users", validator: {"$jsonSchema":{"additionalProperti
 ℹ This is a dry run. No changes were applied.
 ```
 
-Adding a validator to a populated collection counts as destructive, so `db update` asks you to type the database name before applying it. The name is the one in `DATABASE_URL`, here `blog`. Apply the validators:
+A validator applies only to later writes, so adding one loses no data, and `db update` applies it without asking. MongoDB does not check the documents already in a collection when it adds a validator. A document the validator would refuse stays as it is, and the next write to it fails. The documents in this guide match the validators once `__v` is gone. In your own database, find the documents a validator would refuse before you apply it. In `mongosh`, pass the `$jsonSchema` object from the preview above:
+
+```javascript
+db.users.find({ $nor: [{ $jsonSchema: { /* the users validator from the preview */ } }] })
+```
+
+Fix or remove each document it returns, and repeat for `posts` and `categories`. Then apply the validators:
 
 ```npm
 npx prisma db update
 ```
 
-Type `blog` when the command asks. In CI, or with `--no-interactive`, where the command cannot ask, pass the name as `--confirm blog` instead. `db update` applies the three validators and records in the database that it matches the contract. Then verify it:
+`db update` applies the three validators and records in the database that it matches the contract. Then verify it:
 
 ```npm
 npx prisma db verify

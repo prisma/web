@@ -44,9 +44,17 @@ A ref name is a name you gave a contract state with [`migration ref set`](/cli/m
 | `2` | The command could not run: unresolvable contract reference, no emitted contract, or unreachable database. Also used when it signed the database but could not write every ref. |
 | `4` | Schema verification failed for a space, or another process changed that space's signature while `db sign` ran. That space's signature was not written. |
 
+## Data lines
+
+Without `--json`, standard output gets one line per contract space, with these fields separated by tabs: `space`, `status`, and the storage hash of the space's contract. `status` is the same value as in the JSON output below. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
+
+```bash
+npx prisma db sign --db "$DATABASE_URL" | cut -f1,2
+```
+
 ## JSON output [#json-output]
 
-With `--json`, `db sign` prints one document:
+With `--json`, `db sign` prints one JSON object per line, as every command does (see [JSON output](/cli/configuration#json-output)). The last line has `"kind": "result"`, and its `envelope.result` is this document:
 
 ```json title="db sign --json output"
 {
@@ -75,6 +83,8 @@ With `--json`, `db sign` prints one document:
 | `conflict` | Another process, such as `db migrate`, changed the signature while `db sign` ran. The entry has `expected` and `found`, the hashes `db sign` read and the ones it found. Run `db sign` again once that process has finished. |
 
 `advancedRefs` lists each ref the command moved. It is empty with `--no-advance-ref`.
+
+When a space fails verification, the `--json` output has a diagnostic with the code `CONTRACT.SCHEMA_VERIFICATION_FAILED`, and its `meta.schemaIssues` lists the differences. [Schema differences in JSON output](/cli/db-verify#schema-differences-in-json-output) describes each field.
 
 Since `8.0.0-rc.15`, the document has this shape. Before, it was `{ ok, summary, contract, target, marker }` for the application's space only.
 
@@ -106,7 +116,7 @@ Use `db sign` only after you believe the live database already matches the emitt
 - a database restore that you need to mark as matching the current contract
 - a Prisma ORM upgrade that changes your contract's storage hash but not the database
 
-When you upgrade to `8.0.0-rc.19` and emit the contract again, the contract's storage hash can change even though the database does not. The storage hash is the `storageHash` value in `contract.json`, and `db sign` records it in the database. It changes for these contracts:
+When you upgrade from a release before `8.0.0-rc.19` and emit the contract again, the contract's storage hash can change even though the database does not. The storage hash is the `storageHash` value in `contract.json`, and `db sign` records it in the database. It changes for these contracts:
 
 - a SQLite contract with a datetime or JSON column
 - a PostgreSQL contract whose defaults `contract emit` now writes in another form
