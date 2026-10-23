@@ -3,7 +3,7 @@ title: Domains
 description: Point a custom domain at an app on any branch and the platform verifies DNS and provisions TLS for you.
 url: /compute/domains
 metaTitle: Custom domains | Prisma Compute
-metaDescription: Add a custom domain to a Prisma Compute app, configure the CNAME record, watch provisioning, and troubleshoot failures.
+metaDescription: Connect a custom domain to a Prisma Compute app, verify workspace ownership with TXT, configure routing, and provision TLS.
 ---
 
 Configure custom domains for apps on [production, preview, or staging branches](/compute/branching). Each domain routes to the live deployment of the app on the selected branch.
@@ -33,20 +33,22 @@ npx prisma service domain add staging.acme.com --service web --branch staging
 npx prisma service domain wait staging.acme.com --service web --branch staging
 ```
 
-In Console, select the branch and open the app's **Domains** page to add or remove a custom domain.
+In Console, select the branch and open the app's **Domains** page. Choose **Add domain**, enter the hostname, and continue to see the CNAME and workspace TXT records.
 
-Registration verifies DNS up front. If the **CNAME** record isn't visible yet, the command fails with a `DOMAIN_DNS_NOT_CONFIGURED` error and prints the record name and value for you to create. Re-running `add` for a hostname that's already attached is safe: it shows the existing domain instead of failing.
+Registration verifies ownership before creating a domain or requesting a certificate. If the TXT record is missing, the CLI returns `SERVICE.DOMAIN_OWNERSHIP_REQUIRED` and prints the exact record name and value. Create it, then rerun the suggested command. Re-running `add` for a hostname that's already attached is safe: it shows the existing domain without requiring a new verification step.
 
-### 2. Create CNAME Record
+### 2. Add the TXT and CNAME records
 
-Add the printed DNS record, which points at `switchboard.{region}.prisma.build`.
+Add the TXT record shown by Console or the CLI. Its value belongs to your workspace. Use the exact value provided; the example below is a placeholder.
 
-Example:
-| Type  | Name            | Value                          | TTL |
-| ----- | --------------- | ------------------------------ | --- |
+Also add the routing CNAME, which points at `switchboard.{region}.prisma.build`. If it is not configured yet, `add` returns a DNS error with the CNAME instructions after ownership verification succeeds.
+
+| Type | Name | Value | TTL |
+| --- | --- | --- | --- |
+| TXT | `_prisma-verification.shop.acme.com` | `prisma-verification=<your-workspace-token>` | 300 |
 | CNAME | `shop.acme.com` | `switchboard.cdg.prisma.build` | 300 |
 
-The CLI prints the record name as the full hostname. If your DNS provider expects a relative name, enter just the label (`shop`).
+If your provider expects names relative to the `acme.com` zone, use `_prisma-verification.shop` for TXT and `shop` for CNAME. Keep the TXT record: it lets this workspace reconnect the hostname after an app or branch is recreated. Another workspace needs a different value.
 
 :::note[What is switchboard?]
 
@@ -56,7 +58,7 @@ Switchboard is the routing layer that sits in front of your Compute app. Switchb
 
 ### 3. Re-run `add`, then wait for provisioning
 
-Once the CNAME record has propagated, re-run `service domain add`. This time registration succeeds and TLS provisioning starts. Track it with:
+Once both DNS records have propagated, choose **Verify and connect** in Console or rerun the same `service domain add` command, including its branch selector. Registration then starts TLS provisioning. Track it with:
 
 ```npm
 npx prisma service domain wait shop.acme.com --service web
@@ -73,10 +75,12 @@ A single check exits non-zero with `DOMAIN_VERIFICATION_TIMEOUT` while the domai
 ## Remove a domain
 
 ```npm
-npx prisma service domain remove shop.acme.com --service web
+npx prisma service domain delete shop.acme.com --service web
 ```
 
-Removing detaches the domain from the app. Pass `--yes` to skip the confirmation prompt. Prisma can't touch your DNS, so the CNAME record stays behind. Delete it at your provider once you no longer need it.
+Removing detaches the domain from the app. For a non-interactive run, pass `--confirm shop.acme.com`. Prisma cannot change your DNS. Keep the TXT record if you plan to reconnect the hostname in this workspace; remove both DNS records once you no longer need them.
+
+Existing connected domains keep serving without adding TXT immediately. A new attachment after removal or branch deletion requires the workspace proof, even when the old CNAME still points at Prisma.
 
 ## States
 
@@ -91,7 +95,7 @@ A domain moves through these states:
 
 ## Limits
 
-- DNS uses CNAME records only. Apex domains need a DNS provider that supports CNAME-like records (ALIAS, ANAME, or CNAME flattening) at the apex.
+- Routing uses a CNAME, and new attachments require a workspace TXT proof. Apex domains need a DNS provider that supports CNAME-like records (ALIAS, ANAME, or CNAME flattening) at the apex.
 - Wildcard hostnames such as `*.acme.com` are rejected.
 - Up to 3 custom domains per app. Adding more returns `DOMAIN_QUOTA_EXCEEDED`.
 - There's no workspace-wide domain list in the CLI.
