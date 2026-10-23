@@ -59,7 +59,11 @@ async function get(url: URL, init?: RequestInit, startup = false): Promise<Respo
 
 try {
   for (const path of ["/", "/docs/composer", "/blog", "/handbook", "/eclipse"]) {
-    const response: Response = await get(new URL(path, origin), undefined, true);
+    const response: Response = await get(
+      new URL(path, origin),
+      { headers: { accept: "text/html" } },
+      true,
+    );
     assert.equal(response.status, 200, `${path}: expected a working page`);
     assert.equal(
       new URL(response.url).origin,
@@ -68,6 +72,14 @@ try {
     );
     const html = await response.text();
     assert.match(html, /<html/);
+    if (["/", "/blog"].includes(path)) {
+      assert.equal(response.headers.get("cdn-cache-control"), "public, max-age=60", path);
+      assert.equal(
+        response.headers.get("cache-control"),
+        "public, max-age=0, must-revalidate",
+        path,
+      );
+    }
     if (["/", "/docs/composer", "/blog"].includes(path)) {
       assert.ok(response.headers.get("content-security-policy"), `${path}: missing CSP`);
       assert.equal(response.headers.get("x-content-type-options"), "nosniff", path);
