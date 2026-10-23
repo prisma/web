@@ -74,11 +74,14 @@ export const BlogCTA = ({
           <a
             href={href}
             data-cta-location={CTA_LOCATION}
-            onClick={() =>
+            // UtmPersistence rewrites this href in a document capture listener
+            // that runs before React's onClick, so read the resolved URL from
+            // the anchor rather than the prop.
+            onClick={(event) =>
               trackCTA({
                 cta_text: text,
                 cta_location: CTA_LOCATION,
-                cta_destination: href,
+                cta_destination: event.currentTarget.href,
                 section: "blog",
               })
             }

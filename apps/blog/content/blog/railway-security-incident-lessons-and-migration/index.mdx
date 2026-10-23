@@ -218,9 +218,9 @@ Before changing your production connection string, test your application against
 
 Check that your tables, records, constraints, and application queries behave as expected.
 
-When you're ready for the actual cutover, pause writes to Railway, take a final backup, and restore it into a fresh Prisma Postgres database.
+When you're ready for the actual cutover, pause writes to Railway, take a final backup, and restore it into a fresh Prisma Postgres database. Create that database the same way as before and save both of its connection strings, since the ones you used for the rehearsal still point at the old copy.
 
-Verify the data again, then update your application to use the pooled Prisma Postgres connection string.
+Restore with the fresh database's direct connection string, verify the data again, then update your application to use the fresh database's pooled connection string.
 
 If you only wanted to migrate the database, that's all you need to do. Your application can continue running wherever it already runs.
 
@@ -272,9 +272,11 @@ At this point, you should have a working copy of your application connected to t
 
 Before switching traffic, run your usual smoke tests. Check authentication, API endpoints, database reads and writes, and any services your application depends on.
 
-Once everything works, you can attach your existing domain using the [Prisma Compute custom domains guide](https://www.prisma.io/docs/compute/domains).
+Keep those tests to reads and disposable writes. Production writes should only start reaching Prisma Postgres after the final restore, so nothing written during testing gets lost in the cutover.
 
-Compute will provide the DNS record to configure and provision TLS for your domain.
+Once everything works, you can attach your domain using the [Prisma Compute custom domains guide](https://www.prisma.io/docs/compute/domains).
+
+Compute will provide the DNS record to configure and provision TLS for your domain. Pointing that record at Compute is what moves your traffic, so try the process on a new subdomain first. When you're ready to switch your production hostname, wait for `prisma service domain wait` to confirm TLS is active before you send real users to it.
 
 Keep your original Railway database available in a read-only state during your rollback window, and document how you'd switch back if something goes wrong.
 
