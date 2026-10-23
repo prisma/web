@@ -103,7 +103,7 @@ The methods below write both checks for you; you write them yourself only in `ra
 
 ## PostgreSQL operations
 
-Each operation is a method you call on the migration, `this.<name>({ ... })`, with one options object. Every method takes `schema`. For `createSchema` it is the schema to create. For every other method it is the PostgreSQL schema the table is in, which is `public` unless your contract sets another. Names are quoted for you: pass `user`, not `"user"`. Pass the table name, which is the model name exactly as written, such as `User`, unless the model sets `@@map`: a model with `@@map("user")` has the table `user`. Runs is the SQL for this page's example names.
+Each operation is a method you call on the migration, `this.<name>({ ... })`, with one options object. Every method takes `schema`; a `schema?` in the tables below means you may leave it out. For `createSchema`, `renameSchema` and `dropSchema` it is the schema to create, rename or drop. For every other method it is the PostgreSQL schema the table is in, which is `public` unless your contract sets another. Names are quoted for you: pass `user`, not `"user"`. Pass the table name, which is the model name exactly as written, such as `User`, unless the model sets `@@map`: a model with `@@map("user")` has the table `user`. Runs is the SQL for this page's example names.
 
 ### Schemas and tables
 
@@ -113,10 +113,15 @@ Each operation is a method you call on the migration, `this.<name>({ ... })`, wi
 | `createTable` | `schema`, `table`, `columns`, `constraints?` | `CREATE TABLE "public"."post" (...)` | additive |
 | `renameTable` | `schema?`, `table`, `to` | `ALTER TABLE "public"."userProfile" RENAME TO "UserProfile"` | widening |
 | `dropTable` | `schema`, `table` | `DROP TABLE "public"."post"` | destructive |
+| `renameSchema` | `schema`, `to` | `ALTER SCHEMA "billing" RENAME TO "finance"` | widening |
+| `setTableSchema` | `schema?`, `table`, `to` | `ALTER TABLE "public"."invoice" SET SCHEMA "billing"` | widening |
+| `dropSchema` | `schema` | `DROP SCHEMA "billing"` | widening |
 
 `columns` is a list of [`col(...)`](#column-and-constraint-helpers) calls and `constraints` a list of `primaryKey(...)`, `unique(...)`, `foreignKey(...)`, and `checkExpression(...)` calls, all rendered inside the `CREATE TABLE` statement. That section shows a full `createTable` call and the SQL it produces.
 
 `renameTable` renames a table and keeps its rows. It also renames each primary key, unique constraint, foreign key, index and check whose name `migration plan` derived from the old table name, so it returns a list of operations: spread it into the list, as in `...this.renameTable({ table: 'userProfile', to: 'UserProfile' })`. It reads the names from the migration's start and end contracts. Change the table name in your contract (the model name, or its `@@map`), and run `prisma contract emit`. `migration plan` plans the change as a dropped table and a new one: replace that pair with the `renameTable` call, or write the call in an empty migration from [`prisma migration new`](/cli/migration-new). Pass `schema` only when more than one schema has a table of that name. When the start contract has no such table, or the end contract has no table named `to`, it fails with [`MIGRATION.TABLE_RENAME_UNMATCHED`](/orm/reference/error-reference#MIGRATION.TABLE_RENAME_UNMATCHED). On SQLite, `renameTable` takes `table` and `to`.
+
+`renameSchema` renames a schema, and everything in it stays in it. `setTableSchema` moves a table to the schema `to`, with its rows, constraints, indexes and policies; foreign keys from other tables keep pointing at it. Leave out `schema` for a table that is in no schema. Later `renameTable` and `renameColumn` calls in the same migration find the table under its new schema or schema name. `dropSchema` drops a schema without `CASCADE`, so drop or move its tables first: its precheck fails while the schema still holds a table, view, sequence, type or function. [`migration plan`](/cli/migration-plan#renames-and-data-loss) writes these calls when you pass `--rename billing:finance`, `--rename public.Invoice:billing.Invoice` or `--delete billing`. They are PostgreSQL only.
 
 ### Columns
 
@@ -355,7 +360,7 @@ this.dataTransform(endContract, 'backfill-user-displayName', {
 | --- | --- | --- |
 | `rawSql(operation)` | an operation object you write in full | the `operationClass` you set |
 
-Use `rawSql` for a statement that has no method on this page, such as a column rename or `COMMENT ON`. `db migrate` checks the database against the end contract after applying a migration, so a raw change has to match a change in your contract: to rename a column, rename the field in `contract.prisma`, run `migration plan`, and replace the `dropColumn` and `addColumn` it writes with one `rawSql`. Pass it an object with these fields:
+`rawSql` is not a method: import it from `@prisma/orm-postgres/migration` and call it without `this.`, as the example below does. Use it for a statement that has no method on this page, such as a column rename or `COMMENT ON`. `db migrate` checks the database against the end contract after applying a migration, so a raw change has to match a change in your contract: to rename a column, rename the field in `contract.prisma`, run `migration plan`, and replace the `dropColumn` and `addColumn` it writes with one `rawSql`. Pass it an object with these fields:
 
 | Field | What it is |
 | --- | --- |
@@ -363,7 +368,7 @@ Use `rawSql` for a statement that has no method on this page, such as a column r
 | `label` | The text the CLI prints while applying it. |
 | `operationClass` | One of the [four classes](#operation-classes-and-checks). |
 | `target` | Always `{ id: 'postgres' }`. |
-| `precheck`, `execute`, `postcheck` | Lists of steps, each `{ description, sql, params? }`. `execute` holds the statements; the other two hold the checks, described below. |
+| `precheck`, `execute`, `postcheck` | Lists of steps, each `{ description, sql, params? }`. A check step can also take `expectation`. `execute` holds the statements; the other two hold the checks, described below. |
 | `summary?` | A longer description, optional. |
 | `invariantId?` | Optional; leave it out. |
 
@@ -394,6 +399,18 @@ rawSql({
 A step's `sql` can use `$1`, `$2`, and so on, with the values in `params`. A check passes when its query returns `true` in the first column of its first row. It fails when the query returns `false` or no rows.
 
 Write the precheck so that `true` means "go ahead", as in "column `bio` exists" above. Write the postcheck so that `true` means "the change is there", as in "column `biography` exists". Remember the [order](#operation-classes-and-checks): the postcheck runs first, and if it already passes the operation is skipped. An empty `precheck` always lets the statements run. An empty `postcheck` never passes beforehand, so the operation runs on every `db migrate` that reaches it, including a second run after a failure.
+
+A check that asks whether one object exists can say so in `expectation`: `{ expects: 'absent' | 'present', object }`, where `object` names the object as a reader would, such as `'column "biography" on "user"'`. When the check fails, the error then says what the database already has or lacks, such as `the database already has column "biography" on "user"`, in place of `That check failed on this database.` `object` is only display text. Leave `expectation` out of a check about data or about several objects at once, such as a check that a column holds no `NULL` values. Add it only to a migration no database has applied yet. Then run `node migration.ts` again, which rewrites `ops.json` and `migration.json`.
+
+```ts
+postcheck: [
+  {
+    description: 'column "biography" exists',
+    sql: `SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'biography')`,
+    expectation: { expects: 'present', object: 'column "biography" on "user"' },
+  },
+],
+```
 
 ## Column and constraint helpers
 
