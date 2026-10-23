@@ -143,6 +143,12 @@ Prisma ORM 8 has no views, so for a `view` block the error suggests removing the
 
 `contract emit` also fails when a default function gets an argument it does not take, such as `uuid(5)` or `cuid(1)`. The error code is `PSL.PRISMA7_UNKNOWN_DEFAULT`, and the message names the values the function takes, for example `uuid: version must be 4 or 7, got 5`.
 
+The contract also keeps the columns and tables of `@ignore` fields and `@@ignore` models, as storage that no model maps, so adding or removing `@ignore` plans no migration. The ORM still leaves those fields and models out of its queries. Because they are in the contract, they have to meet the same rules as the rest of the schema: a `@db.*` type Prisma ORM 8 has no codec for is refused even on an ignored model.
+
+The contract keeps the constraint names Prisma ORM 7 gave the database. Where Prisma ORM 7's name for a primary key or foreign key differs from the name Prisma ORM 8 would derive, the contract states it: a `map` on `@id`, `@@id`, or `@relation`, the primary key of an implicit many-to-many table such as `_PostToTag_AB_pkey`, and a name Prisma ORM 7 cut to 63 bytes. A later migration that touches one of these constraints then targets the name the database has. A `map` longer than PostgreSQL keeps is refused, as Prisma ORM 7 refuses it.
+
+After Prisma ORM 8 takes over the migrations, you can give an existing integer column `@default(autoincrement())`. `migration plan` and `db update` create or reuse a sequence for it and start the sequence past the column's current maximum, so rows already in the table do not collide with new ones.
+
 ## Use a Prisma ORM 6 MongoDB schema
 
 On MongoDB, Prisma ORM 8 can read a Prisma ORM 6 `schema.prisma` directly as its contract source. Wrap the path in `prisma6Schema`:
@@ -257,7 +263,7 @@ Piping a command does not switch it to JSON: without `--json`, standard output g
 
 For an AI agent that reads the output as text rather than parsing JSON, use `--format markdown`; see [Global flags](/cli/global-flags#output-formats).
 
-Use `--no-interactive` for scripts that must never pause for user input. Use `--confirm <token>` to grant a consent prompt non-interactively. For example, [`db update`](/cli/db-update) asks for the database name before a destructive change.
+Use `--no-interactive` for scripts that must never pause for user input. Use `--confirm <token>` to grant a consent prompt non-interactively. Commands that ask about data loss, such as [`db update`](/cli/db-update), take their answers as flags instead: `--delete`, `--rename`, and `--allow`.
 
 ## JSON output
 

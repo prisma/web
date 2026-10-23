@@ -151,10 +151,12 @@ const user = await db.orm.users.where({ id: userId }).first();
 If you want an error instead of `null` when nothing matches, call `.firstOrThrow()`, the replacement for `findUniqueOrThrow` and `findFirstOrThrow`:
 
 ```typescript
-const user = await db.orm.public.User.where({ email }).limit(1).all().firstOrThrow();
+const user = await db.orm.public.User.firstOrThrow({ email });
 ```
 
-`.limit(1)` keeps it to one row, and `.firstOrThrow()` throws an error with code `RUNTIME.NO_ROWS` when nothing matches. There is no `.firstOrThrow()` on `.first()`. The error is an `Error` with a `code` property, so check `"code" in error` before you read it. The same form works on MongoDB, with `db.orm.users`.
+`.firstOrThrow()` reads one row, as `.first()` does, and throws an error with code `RUNTIME.NO_ROWS` when nothing matches. The error is an `Error` with a `code` property, so check `"code" in error` before you read it. On MongoDB it takes no argument, so write `db.orm.users.where({ email }).firstOrThrow()`.
+
+On PostgreSQL, `.whereUnique(...)` says that a lookup names one row by its primary key or a unique constraint, as `findUnique` did: `db.orm.public.User.whereUnique({ email }).first()`. A field that is not part of such a key is a type error, and so is a call that could return many rows after it, such as `.all()` or `.limit(10)`.
 
 ## Filter records
 
