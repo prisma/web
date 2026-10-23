@@ -1,5 +1,5 @@
 ---
-title: "Railway's Security Incident: What to Do Now, and How to Move to Prisma if You Choose To"
+title: "Railway's security incident: What happened and what developers can do next"
 slug: "railway-security-incident-lessons-and-migration"
 date: "2026-10-23"
 authors:
@@ -7,91 +7,293 @@ authors:
 tags:
   - "education"
   - "prisma-postgres"
-metaTitle: "Railway's security incident: recovery steps for any host, and a migration path if you want one"
-metaDescription: "What Railway disclosed on October 21, a recovery checklist that works on any host, and a rehearsed path from Railway Postgres to Prisma Postgres and Prisma Compute for teams that want an alternative."
+metaTitle: "Railway's security incident: What happened and what developers can do next"
+metaDescription: "What Railway disclosed on October 21, how to secure your application wherever you host it, and how to move a PostgreSQL database and TypeScript service to Prisma if you decide to."
 metaImagePath: "/railway-security-incident-lessons-and-migration/imgs/meta.png"
 heroImagePath: "/railway-security-incident-lessons-and-migration/imgs/hero.svg"
 heroImageAlt: "The Railway logo on a light surface with a soft prism-coloured wash."
 cta:
-  title: "Managed Postgres and TypeScript hosting in one project"
-  description: "Rehearse the steps above on a free account before you decide anything."
+  title: "Try the migration with a test project"
+  description: "Prisma Postgres and Prisma Compute have a free plan, so you can rehearse before you decide."
   text: "Try Prisma Postgres + Compute"
-  href: "https://console.prisma.io/sign-up?utm_source=blog&utm_medium=blog&utm_campaign=railway-to-prisma-guide&utm_content=footer-cta"
+  href: "https://console.prisma.io/sign-up?utm_source=prisma_blog&utm_medium=organic&utm_campaign=railway_incident_migration&utm_content=article_footer"
 ---
 
-Rotate every secret you store in Railway, revoke the old values at each provider, and only then decide whether to stay or move. Railway disclosed on October 21 that an attacker may have read customer environment variables, including some decrypted values, and the recovery steps below follow Railway's own guidance and work on any host. The migration section at the end is for teams who want an alternative; it is not a security fix. I work at Prisma, so read that section knowing where I sit.
+The past few days have been difficult for Railway and the developers who rely on it.
 
-## What happened at Railway
+Security incidents are stressful for everyone involved. For the engineers working to contain the problem, and for the developers who suddenly have to worry about their applications, credentials, and customer data.
 
-Railway has handled the incident in public, with status updates through the night and thirteen recovery guides inside a day, and affected developers compared notes in a [thread on r/devops](https://www.reddit.com/r/devops/comments/1xc6bbp/railways_security_incident_is_more_serious_than_a/).
+On October 21, Railway disclosed a security incident involving customer environment variables. Since then, the team has been sharing updates, restoring services, and publishing recovery guides.
 
-According to Railway's [disclosure](https://blog.railway.com/p/security-disclosure-wednesday-october-21st) and [status page](https://status.railway.com), on October 21 the team detected anomalous activity in the systems that store customer environment variables and concluded that an unauthorized third party may have read encrypted variables and, for some of them, their decrypted contents. Railway believes the attack belongs to a series targeting platform companies in order to reach AI inference providers, and it notified those providers so they could revoke keys early. Railway paused all deployments during containment, restored builds plan by plan on October 22, and invalidated every API and project token created before the incident, so any pipeline holding one needs a new token.
+If you're running an application on Railway, you might be wondering what this means for you, what you should do next, and whether it's worth considering another platform.
 
-As of the morning of October 23, Railway had not published a root cause or a count of affected accounts, though it has promised a preliminary incident report and is emailing customers it believes were hit. Developers in the thread described OpenAI, Anthropic and OpenRouter keys used by someone else, and in several cases the provider had already disabled the key, which fits Railway's account of notifying providers first. Those are individual reports and say nothing about how many customers the incident reached.
+This guide covers what happened, how to secure your application, and how to move a PostgreSQL database and TypeScript service to Prisma if you decide to.
 
-## What to do now, on any host
+**The priority is securing your application.** Whether you stay on Railway or move elsewhere is a decision you can make afterwards.
 
-1. **Rotate every secret stored in Railway, starting with the LLM, cloud and payment keys that can spend your money.** Replacing the value in Railway leaves the old key alive at the provider until you revoke it there. Railway's [recovery posts](https://blog.railway.com/) cover GCP, AWS, GitHub, Stripe, OpenAI, Anthropic, Grok and OpenRouter one by one.
-2. **Regenerate database passwords.** Railway's [PostgreSQL guide](https://blog.railway.com/p/security-disclosure-recommendation-rotate-postgresql-database-credentials) has you remove Public Access first if nothing outside the project needs the TCP proxy, then regenerate the password from the database's Config tab and restart the database, which drops every open session, including any an attacker holds. Redeploy dependent services afterwards.
-3. **Check the logs of every service a leaked key could reach.** That means provider dashboards, cloud audit logs, Stripe events, and your own database's role list and row counts.
-4. **Put hard spend limits on every key that can bill you.** One developer in the thread credited a fifty dollar cap with turning an open-ended charge into an annoyance.
-5. **Take a logical backup you own, and rehearse restoring it.** Railway's [backups guide](https://docs.railway.com/guides/postgres-backups-restores) recommends a scheduled `pg_dump` and a restore drill alongside its volume snapshots.
+## What happened at Railway?
 
-All five steps share one constraint. On most platforms, Prisma Compute included, a new secret takes effect only after a redeploy, so a host that pauses deploys to contain a breach also pauses your rotation. Keep an inventory of every secret and where to revoke it, because revocation never needs a deploy.
+On October 21, Railway [disclosed a security incident](https://blog.railway.com/p/security-disclosure-wednesday-october-21st) involving the systems that store customer environment variables.
 
-## If you are considering moving to Prisma
+Environment variables often contain sensitive information, such as database passwords, API keys, and cloud credentials.
 
-You can move the database on its own, which is one dump and one restore, or move a TypeScript service alongside it. [Prisma Postgres](https://www.prisma.io/docs/postgres) is managed PostgreSQL 17, and [Prisma Compute](https://www.prisma.io/docs/compute) hosts TypeScript services next to it in the same project.
+According to Railway, an unauthorized third party may have accessed encrypted environment variables and, in some cases, their decrypted values.
 
-I rehearsed the path below against a local PostgreSQL 17 database with 500 users and 5,000 posts standing in for Railway. I do not use Railway, so its two commands come from Railway's documentation and I did not run them. Everything else ran on Prisma CLI 8.0.0-rc.27 and Composer 0.34.0 through `npx prisma@latest`, which sidesteps any older Prisma package in your project.
+Railway believes the attack was part of a broader effort targeting infrastructure providers to obtain credentials for AI services. The team notified affected providers, temporarily paused deployments, and invalidated API and project tokens created before the incident.
 
-### Check compatibility
+By October 22, Railway had restored deployments across its plans and published several recovery guides to help developers rotate their credentials.
 
-Prisma Postgres supports most common extensions; PostGIS and TimescaleDB are not on its list, and the [import guide](https://www.prisma.io/docs/prisma-postgres/import-from-existing-database-postgresql) shows how to list what your source uses. Your source must be PostgreSQL 17 or older, and you need the version 17 client tools, since `pg_dump` must be at least as new as your source and `pg_restore` at least as new as the dump. Compute runs TypeScript HTTP services on Node, Bun or Next.js, not Dockerfiles or other languages, and its [limitations](https://www.prisma.io/docs/compute/limitations) page rules out WebSocket servers, persistent disks and built-in cron. If that describes your app, the database half of this guide still applies.
+The team has continued sharing updates through its [status page](https://status.railway.com/).
 
-### Back up Railway Postgres and restore it to Prisma Postgres
+Meanwhile, developers in a [Reddit discussion](https://www.reddit.com/r/devops/comments/1xc6bbp/railways_security_incident_is_more_serious_than_a/) reported unexpected usage of OpenAI, Anthropic, and OpenRouter API keys. Some said their providers had already revoked the affected credentials.
 
-Prisma Postgres gives you two hostnames for the same credentials, a pooled one for the application and a direct one, `db.prisma.io`, for `pg_restore`, `psql` and migrations, which need a single session. The create command prints the pooled string once, so save it and swap the hostname for the restore.
+These are individual reports, so they don't tell us how widespread the incident was.
 
-Rehearse against a copy first. Dump through Railway's public TCP proxy URL, which Railway bills as egress, or through the CLI's database tunnel, then restore into an empty Prisma Postgres database and compare row counts. The restore runs in a single transaction, so a failure leaves the target empty rather than half filled.
+As of October 23, Railway hasn't published a complete root cause analysis or a confirmed number of affected accounts. The investigation is ongoing.
+
+It's encouraging to see the team communicating openly and publishing practical guidance while working through the incident.
+
+## What should you do now?
+
+If your application runs on Railway, start by following its recovery guidance.
+
+You don't need to change your infrastructure immediately. There are a few things you can do to reduce your risk regardless of where you host your application.
+
+### 1. Rotate your secrets and API keys
+
+Start with credentials that provide access to your infrastructure, data, or billing accounts.
+
+This includes AI provider keys, cloud credentials, GitHub tokens, payment integrations, and database passwords.
+
+One important detail: **updating an environment variable doesn't automatically invalidate the old credential.**
+
+For example, replacing an OpenAI API key in Railway won't stop the old key from working. You also need to revoke it from OpenAI's dashboard.
+
+If you suspect a credential is being actively misused, revoke it immediately, even if that means temporarily interrupting your application.
+
+Railway has published [provider-specific recovery guides](https://blog.railway.com/) to help with this process.
+
+### 2. Regenerate your database credentials
+
+If you're using Railway PostgreSQL, follow its [credential rotation guide](https://blog.railway.com/p/security-disclosure-recommendation-rotate-postgresql-database-credentials).
+
+The process involves disabling unnecessary public access, generating a new database password, restarting the database to close existing connections, and redeploying the applications that depend on it.
+
+Remember to update any external services that connect to the same database.
+
+### 3. Check for unusual activity
+
+Changing your credentials prevents someone from continuing to use the old ones, but it doesn't tell you whether they've already been used.
+
+Review your API usage, cloud audit logs, payment activity, and database access.
+
+Look for requests you don't recognize, unexpected spending, unfamiliar database roles, or changes you didn't make.
+
+If anything looks suspicious, preserve the relevant logs so you can investigate further.
+
+### 4. Set spending limits where possible
+
+An exposed API key can quickly become an expensive problem.
+
+Where your provider supports them, set hard spending limits and usage alerts.
+
+One developer in the Reddit discussion mentioned that a $50 spending cap helped limit the financial impact of unexpected API usage.
+
+It's a useful safeguard to have regardless of which platform you're using.
+
+### 5. Make sure you have a working backup
+
+Backups are only useful if you can restore them.
+
+For PostgreSQL, `pg_dump` lets you export your database into a file you control. Keep a copy outside your hosting provider and periodically restore it into a separate database to verify that it works.
+
+Railway also has a [PostgreSQL backup and restore guide](https://docs.railway.com/guides/postgres-backups-restores).
+
+One final thing worth keeping in mind: updating environment variables usually requires redeploying your application. If deployments are paused during an incident, applying replacement credentials may take longer. You can still revoke the original keys directly through their providers.
+
+Keeping a record of where your secrets are used and how to revoke them makes incidents like this easier to manage.
+
+## Considering a move? Here's how to migrate
+
+Once your application is secure, you might want to explore other hosting options.
+
+You don't have to move everything at once. In fact, testing a database migration independently is usually a better place to start.
+
+For applications using PostgreSQL and TypeScript, one option is to use [Prisma Postgres](https://www.prisma.io/docs/postgres) for the database and [Prisma Compute](https://www.prisma.io/docs/compute) for hosting the application.
+
+Prisma Postgres is a managed PostgreSQL service. You can use it with an existing application without adopting Prisma ORM or changing your deployment platform.
+
+Prisma Compute runs supported TypeScript HTTP services, so you can also move your application if that makes sense for your setup.
+
+Let's look at what the migration involves.
+
+### Before you start
+
+First, check that your application and database are compatible.
+
+**For PostgreSQL:** Prisma Postgres currently runs PostgreSQL 17. The import process supports source databases running PostgreSQL 17 or earlier, and you'll need the PostgreSQL 17 client tools.
+
+You should also check which extensions your database uses. Some extensions, including PostGIS and TimescaleDB, aren't currently supported. The [import guide](https://www.prisma.io/docs/prisma-postgres/import-from-existing-database-postgresql) explains how to check.
+
+**For your application:** Prisma Compute supports TypeScript HTTP services running on Node.js or Bun, including supported frameworks such as Next.js.
+
+It doesn't currently support every workload. If your application depends on WebSockets, persistent disks, or Docker-specific configuration, review the [Compute limitations](https://www.prisma.io/docs/compute/limitations) before proceeding.
+
+If Compute isn't suitable for your application, you can still move the database and continue hosting your application elsewhere.
+
+### Step 1: Move your PostgreSQL database
+
+The migration uses standard PostgreSQL tools, so the process should look familiar.
+
+You export your existing database with `pg_dump`, create a new Prisma Postgres database, and import the data using `pg_restore`.
+
+I tested the import and restore process with PostgreSQL 17 using a sample database containing 500 users and 5,000 posts. The Railway-specific connection steps below follow Railway's documentation.
+
+**Create a Prisma Postgres database**
+
+You can create one through [Prisma Console](https://console.prisma.io/) or using the CLI:
 
 ```bash
 npx prisma@latest auth login
+
 npx prisma@latest project create my-db-project
-npx prisma@latest postgres create my-db --region us-east-1    # prints the connection string once
 
-umask 077    # the dump is a full copy of your data; keep the file private
-pg_dump --format=custom --no-owner --no-privileges \
-  --dbname="$DATABASE_PUBLIC_URL" --file=railway.dump
-
-pg_restore --single-transaction --exit-on-error --no-owner --no-privileges \
-  --dbname='postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' railway.dump
-
-psql 'postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' -c 'ANALYZE;'
+npx prisma@latest postgres create my-db --region us-east-1
 ```
 
-In my rehearsal the restore took eight seconds, and every count, checksum, constraint and sequence I compared matched the source. `pg_dump` copies row-level security policies but not the roles they reference, so read the import guide's section on Railway-only roles if you use RLS.
+Save the connection string returned by the CLI.
 
-For the real cutover, stop writes on Railway, take a final dump and restore it into a fresh Prisma Postgres database. Verify the counts again, point your application at the pooled string, and keep the Railway database read-only until your rollback window closes. If the database is all you wanted to move, you are done once you replace the `${{Postgres.DATABASE_URL}}` reference on your Railway service with the pooled string and redeploy.
+Prisma Postgres provides a pooled connection for regular application queries and a direct connection for database operations such as imports and migrations.
 
-### Deploy the TypeScript app to Prisma Compute
+For the restore, use the direct connection URL.
 
-You describe the app to Compute with [Prisma Composer](https://www.prisma.io/docs/composer), which is in Early Access. The [porting guide](https://www.prisma.io/docs/composer/porting-an-app) leaves your server and build alone and has you add a `service.ts` and `module.ts` beside them, plus a `composer` section in `prisma.config.ts` that names the region. The guide expects Composer to create the database; for an existing one, pass its connection string in as a secret. The only changes inside my Hono server were reading the port from `service.port()` and the connection string from the declared input instead of `process.env`.
+**Export your Railway database**
 
-Composer refuses to bind that secret under the name `DATABASE_URL` or `DATABASE_URL_POOLED` (the deploy stops with `envSecret name "DATABASE_URL" is reserved`), because Prisma Cloud seeds those names for databases it provisions, so pick another. My first deploy into the project that already held the database stopped with `HostedStateBootstrapError`; the docs offer `--name` to target a different project, and what worked for me was creating an empty project from the app directory first, which also lets you store the secret before anything runs:
+Set `DATABASE_PUBLIC_URL` to your Railway PostgreSQL connection string and `PRISMA_POSTGRES_DIRECT_URL` to your Prisma Postgres direct connection string.
+
+Then export the database:
+
+```bash
+umask 077
+
+pg_dump \
+  --format=custom \
+  --no-owner \
+  --no-privileges \
+  --dbname="$DATABASE_PUBLIC_URL" \
+  --file=railway.dump
+```
+
+This creates a backup containing your database's schema and data.
+
+Keep the file private, since it contains a copy of your application's data. If you're exporting through Railway's public TCP proxy, outbound data transfer may also incur egress charges.
+
+**Restore the data into Prisma Postgres**
+
+With the new database ready, import the backup:
+
+```bash
+pg_restore \
+  --single-transaction \
+  --exit-on-error \
+  --no-owner \
+  --no-privileges \
+  --dbname="$PRISMA_POSTGRES_DIRECT_URL" \
+  railway.dump
+
+psql "$PRISMA_POSTGRES_DIRECT_URL" -c 'ANALYZE;'
+```
+
+Using `--single-transaction` ensures the restore succeeds or fails as a single operation rather than leaving an incomplete import.
+
+In my local test, the restore took around eight seconds. The row counts, checksums, constraints, and sequences I compared matched the source database.
+
+Actual migration times will depend on your database size and complexity.
+
+If you use PostgreSQL row-level security, there's one additional detail to consider. `pg_dump` includes RLS policies but doesn't export the database roles they reference. The [Prisma Postgres import guide](https://www.prisma.io/docs/prisma-postgres/import-from-existing-database-postgresql) covers how to handle those roles.
+
+**Verify the imported data**
+
+Before changing your production connection string, test your application against the new database.
+
+Check that your tables, records, constraints, and application queries behave as expected.
+
+When you're ready for the actual cutover, pause writes to Railway, take a final backup, and restore it into a fresh Prisma Postgres database.
+
+Verify the data again, then update your application to use the pooled Prisma Postgres connection string.
+
+If you only wanted to migrate the database, that's all you need to do. Your application can continue running wherever it already runs.
+
+### Step 2: Deploy your TypeScript application to Prisma Compute (optional)
+
+If your application is a supported TypeScript HTTP service, you can also deploy it to Prisma Compute.
+
+For an existing application, [Prisma Composer](https://www.prisma.io/docs/composer/porting-an-app) provides a way to describe your application's services, dependencies, and configuration.
+
+Composer is currently in Early Access.
+
+The idea is to keep your existing application code and add the configuration Compute needs to build and run it.
+
+For a typical service, you'll add a `service.ts` declaration, a `module.ts` entry point, and Composer configuration in `prisma.config.ts`.
+
+Your application then uses the port provided by Compute and receives its database connection through a configured secret.
+
+The [Composer porting guide](https://www.prisma.io/docs/composer/porting-an-app) walks through those changes.
+
+Once your application is configured, create a project for the service and add the database connection string as a secret.
 
 ```bash
 npx prisma@latest project create my-api
-read -s POSTGRES_URL && export POSTGRES_URL     # paste the pooled string; it stays out of shell history
+
+# Enter the pooled connection string securely
+read -r -s POSTGRES_URL
+export POSTGRES_URL
+
 npx prisma@latest project env add POSTGRES_URL --role production
+
 npm run build
+
 npx prisma@latest deploy module.ts
 ```
 
-The deploy printed a live URL, and reads and writes through it landed in the migrated database. The first request after the deploy returned a 502 because the cold query outlasted the ten second default idle timeout on `Bun.serve`; raise it if `Bun.serve` fronts your app too, which it does for Hono's default export.
+I used `POSTGRES_URL` for the connection string because Composer reserves names such as `DATABASE_URL` and `DATABASE_URL_POOLED` for databases it manages.
 
-### Validate, cut over, and keep a way back
+In my test, deploying the application into a separate project from the migrated database also avoided a Composer bootstrap error.
 
-Run your smoke tests against the new URL while Railway still serves production. When you are satisfied, register your hostname with `prisma service domain add`, create the CNAME it prints, run `add` again once the record resolves, and let `prisma service domain wait` confirm TLS before you move traffic; the [domains guide](https://www.prisma.io/docs/compute/domains) covers apex domains. Rolling back to Railway means moving DNS back and, if you need the writes made after cutover, restoring a full dump of the Prisma database into a fresh Railway Postgres; never restore over the original with destructive flags. Rotating the database credential later works the way it does everywhere else, by updating the production variable and redeploying.
+After deployment, Compute returned a public URL, and I verified that the application could read from and write to the migrated database.
 
-Whether you stay on Railway or move, write down the rotation you just did while it is fresh. Those notes are the drill for next time.
+There was one small issue with my Hono server: the first request returned a 502 because the database query exceeded Bun's default idle timeout during a cold start. Increasing the timeout resolved it.
+
+These are useful things to test before sending production traffic to a new deployment.
+
+### Step 3: Test the application and switch traffic
+
+At this point, you should have a working copy of your application connected to the migrated database.
+
+Before switching traffic, run your usual smoke tests. Check authentication, API endpoints, database reads and writes, and any services your application depends on.
+
+Once everything works, you can attach your existing domain using the [Prisma Compute custom domains guide](https://www.prisma.io/docs/compute/domains).
+
+Compute will provide the DNS record to configure and provision TLS for your domain.
+
+Keep your original Railway database available in a read-only state during your rollback window, and document how you'd switch back if something goes wrong.
+
+One detail worth planning for: if users create or modify data after the cutover, simply switching DNS back won't restore those changes to the original database. You'll need a way to move that data back safely.
+
+A migration is much easier to manage when you've already tested both the cutover and the rollback.
+
+## A few thoughts to close
+
+Incidents like this are a reminder of how much trust goes into the infrastructure we use every day.
+
+No platform is immune to security incidents, and moving to a different provider doesn't eliminate the need to manage credentials, monitor activity, and maintain reliable backups.
+
+Railway has been communicating publicly and providing recovery guidance while working through a difficult situation. That's important for developers who depend on the platform.
+
+If you're affected, focus on securing your application first.
+
+And if the incident has prompted you to reconsider your infrastructure, take the opportunity to evaluate your options without rushing. You can test a database migration, verify that your application works, and decide what makes sense for your team.
+
+If Prisma is one of the options you're considering, you can [try the migration with a test project](https://console.prisma.io/sign-up?utm_source=prisma_blog&utm_medium=organic&utm_campaign=railway_incident_migration&utm_content=article_footer).
+
+Whatever you decide, the goal is the same: an application you can trust, with a recovery plan you're confident in.
