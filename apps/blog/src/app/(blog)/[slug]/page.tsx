@@ -332,8 +332,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             larger gap and neither needed a style change. */}
         <KeepReading posts={relatedPosts} />
 
-        {/* Conversion CTA */}
-        <BlogCTA />
+        {/* Conversion CTA. A post can relabel it and point it at a tracked
+            Console URL through the `cta` frontmatter field instead of adding
+            a second button inside the article. */}
+        <BlogCTA {...(page.data.cta ?? {})} />
 
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />

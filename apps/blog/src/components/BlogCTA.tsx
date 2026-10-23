@@ -3,7 +3,27 @@
 import { Button } from "@prisma/eclipse";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 
-const CTA_HREF = "https://console.prisma.io/sign-up";
+const DEFAULT_HREF = "https://console.prisma.io/sign-up";
+const DEFAULT_TITLE = "Build your next app with Prisma";
+const DEFAULT_DESCRIPTION = "Start free. Scale when you’re ready.";
+const DEFAULT_TEXT = "Try Prisma";
+const CTA_LOCATION = "blog_post_footer";
+
+export type BlogCTAProps = {
+  /** Panel heading; defaults to the brand line. */
+  title?: string;
+  /** One-line supporting copy under the heading. */
+  description?: string;
+  /** Button label, also sent as `cta_text` on the click event. */
+  text?: string;
+  /**
+   * Console destination. Posts that want campaign attribution pass a
+   * `console.prisma.io/sign-up?utm_*` URL here; `/sign-up` and `/login` keep
+   * their query string through the Console's auth redirect, the bare `/`
+   * does not.
+   */
+  href?: string;
+};
 
 /**
  * The end-of-post conversion panel, and the one place in the reading flow
@@ -18,8 +38,18 @@ const CTA_HREF = "https://console.prisma.io/sign-up";
  *
  * The wash is a decorative layer with `aria-hidden`; the ring's slide
  * animation carries the utility's own `prefers-reduced-motion` guard.
+ *
+ * The click goes through `trackCTA`, which pushes `cta_click` to the GTM
+ * dataLayer (consent-gated) and dispatches the DOM event the blog's PostHog
+ * client turns into `site:cta_clicked`, the same event the marketing site
+ * sends for its Console-bound buttons.
  */
-export const BlogCTA = () => {
+export const BlogCTA = ({
+  title = DEFAULT_TITLE,
+  description = DEFAULT_DESCRIPTION,
+  text = DEFAULT_TEXT,
+  href = DEFAULT_HREF,
+}: BlogCTAProps = {}) => {
   return (
     <div className="spectrum-border spectrum-border-on relative mb-12 overflow-hidden rounded-square-high border border-transparent bg-paper shadow-box">
       <div
@@ -36,25 +66,24 @@ export const BlogCTA = () => {
       <div className="relative z-1 flex flex-col items-center gap-6 px-6 py-16 text-center">
         <div className="flex flex-col items-center gap-3">
           <h3 className="type-title-2xl m-0 text-balance text-foreground-neutral-strong">
-            Build your next app with Prisma
+            {title}
           </h3>
-          <p className="m-0 max-w-md text-foreground-neutral-weak">
-            Start free. Scale when you&rsquo;re ready.
-          </p>
+          <p className="m-0 max-w-md text-foreground-neutral-weak">{description}</p>
         </div>
         <Button asChild variant="ink" size="2xl">
           <a
-            href={CTA_HREF}
+            href={href}
+            data-cta-location={CTA_LOCATION}
             onClick={() =>
               trackCTA({
-                cta_text: "Try Prisma",
-                cta_location: "blog_post_footer",
-                cta_destination: CTA_HREF,
+                cta_text: text,
+                cta_location: CTA_LOCATION,
+                cta_destination: href,
                 section: "blog",
               })
             }
           >
-            <span>Try Prisma</span>
+            <span>{text}</span>
             <i className="fa-regular fa-arrow-right" aria-hidden />
           </a>
         </Button>

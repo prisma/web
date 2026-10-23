@@ -1,5 +1,5 @@
 ---
-title: "Railway's Security Incident: Rotate First, Then a Migration I Rehearsed in Case You Want It"
+title: "Railway's Security Incident: What to Do Now, and How to Move to Prisma if You Choose To"
 slug: "railway-security-incident-lessons-and-migration"
 date: "2026-10-23"
 authors:
@@ -7,114 +7,91 @@ authors:
 tags:
   - "education"
   - "prisma-postgres"
-metaTitle: "Railway's security incident: rotate first, then a rehearsed migration"
-metaDescription: "What Railway disclosed on October 21, what the week taught me about secrets wherever I host, and a move from Railway Postgres to Prisma Postgres and Prisma Compute that I rehearsed before writing it up."
+metaTitle: "Railway's security incident: recovery steps for any host, and a migration path if you want one"
+metaDescription: "What Railway disclosed on October 21, a recovery checklist that works on any host, and a rehearsed path from Railway Postgres to Prisma Postgres and Prisma Compute for teams that want an alternative."
 metaImagePath: "/railway-security-incident-lessons-and-migration/imgs/meta.png"
 heroImagePath: "/railway-security-incident-lessons-and-migration/imgs/hero.svg"
-heroImageAlt: "The Railway logo and the Prisma logo joined by a dump-and-restore arrow, with matching row counts underneath."
+heroImageAlt: "The Railway logo on a light surface with a soft prism-coloured wash."
+cta:
+  title: "Managed Postgres and TypeScript hosting in one project"
+  description: "Rehearse the steps above on a free account before you decide anything."
+  text: "Try Prisma Postgres + Compute"
+  href: "https://console.prisma.io/sign-up?utm_source=blog&utm_medium=blog&utm_campaign=railway-to-prisma-guide&utm_content=footer-cta"
 ---
 
-Early on Wednesday, a developer with a small marketplace backend on Railway noticed that builds had stopped. By evening they knew why. Railway had [disclosed](https://blog.railway.com/p/security-disclosure-wednesday-october-21st) that someone outside the company had reached the systems holding customer environment variables and, for some of them, read the decrypted values. The advice was to rotate everything. The developer did the careful things first, signing out old sessions and checking the dashboard, and then discovered that the only way to ship new values to a running app was a deploy, and deploys were paused. Their [post on r/devops](https://www.reddit.com/r/devops/comments/1xc6bbp/railways_security_incident_is_more_serious_than_a/) filled up with people in the same bind. Several found out about the exposure from OpenAI, Anthropic or OpenRouter disabling a key before Railway's email arrived. One wrote that a fifty dollar spend limit was the only thing standing between them and an open-ended bill.
+Rotate every secret you store in Railway, revoke the old values at each provider, and only then decide whether to stay or move. Railway disclosed on October 21 that an attacker may have read customer environment variables, including some decrypted values, and the recovery steps below follow Railway's own guidance and work on any host. The migration section at the end is for teams who want an alternative; it is not a security fix. I work at Prisma, so read that section knowing where I sit.
 
-If that's you, rotate first and read the rest later. Anything that can spend money goes first. Replacing a value in Railway doesn't kill the old key; revoking it at the provider does, so do that part. Your Railway Postgres password is on the list too, because a database URL is an environment variable like any other. Railway's [guide for the database](https://blog.railway.com/p/security-disclosure-recommendation-rotate-postgresql-database-credentials) and its [other recovery posts](https://blog.railway.com/) are clear and worth following to the letter. The team has been posting updates around the clock and builds came back plan by plan on Thursday. A preliminary incident report is promised on the [status page](https://status.railway.com). I wouldn't want their week.
+## What happened at Railway
 
-I work at Prisma, so you should know that going in. Further down I walk through moving a Postgres database and a TypeScript app off Railway, because some people will want that option once the rotation is done, and I rehearsed it before writing it down. The part before that is what I'd want to read if I were still on Railway today.
+Railway has handled the incident in public, with status updates through the night and thirteen recovery guides inside a day, and affected developers compared notes in a [thread on r/devops](https://www.reddit.com/r/devops/comments/1xc6bbp/railways_security_incident_is_more_serious_than_a/).
 
-## Every host has this trap
+According to Railway's [disclosure](https://blog.railway.com/p/security-disclosure-wednesday-october-21st) and [status page](https://status.railway.com), on October 21 the team detected anomalous activity in the systems that store customer environment variables and concluded that an unauthorized third party may have read encrypted variables and, for some of them, their decrypted contents. Railway believes the attack belongs to a series targeting platform companies in order to reach AI inference providers, and it notified those providers so they could revoke keys early. Railway paused all deployments during containment, restored builds plan by plan on October 22, and invalidated every API and project token created before the incident, so any pipeline holding one needs a new token.
 
-What stayed with me from that thread is how little of it was specific to Railway. On almost every platform I've used, a new secret only takes effect after a redeploy. [Prisma Compute](https://www.prisma.io/docs/compute) is no different. Most days nobody notices. The day your host freezes deploys to contain a breach, rotation and recovery are suddenly stuck behind the same broken thing, and you're choosing between a leaked key that still works and taking your own app down.
+As of the morning of October 23, Railway had not published a root cause or a count of affected accounts, though it has promised a preliminary incident report and is emailing customers it believes were hit. Developers in the thread described OpenAI, Anthropic and OpenRouter keys used by someone else, and in several cases the provider had already disabled the key, which fits Railway's account of notifying providers first. Those are individual reports and say nothing about how many customers the incident reached.
 
-The real fix is an app that reads its secrets at runtime from a store you control, so a frozen deploy path never blocks a rotation. I'm not rebuilding mine for that this week, and I suspect you aren't either. So here is what I'm actually doing instead. The first thing was an inventory of every secret I hold, what it can reach and where I'd go to revoke it, because I can revoke a key at the provider whether or not my host is deploying. Every LLM and cloud key now has a hard spend limit, after watching a fifty dollar cap save someone in that thread. Where a provider lets me hold two live keys, I'll add the new one, redeploy, and only then kill the old. The canonical copy of each value lives in a secrets manager now, since most platforms won't show a value back once it's set. And I'm taking a logical backup I own. Railway's own [backups guide](https://docs.railway.com/guides/postgres-backups-restores) recommends a scheduled dump and a restore drill alongside its snapshots, and that same dump turns out to be the first step of a migration.
+## What to do now, on any host
 
-## Moving the database and the app
+1. **Rotate every secret stored in Railway, starting with the LLM, cloud and payment keys that can spend your money.** Replacing the value in Railway leaves the old key alive at the provider until you revoke it there. Railway's [recovery posts](https://blog.railway.com/) cover GCP, AWS, GitHub, Stripe, OpenAI, Anthropic, Grok and OpenRouter one by one.
+2. **Regenerate database passwords.** Railway's [PostgreSQL guide](https://blog.railway.com/p/security-disclosure-recommendation-rotate-postgresql-database-credentials) has you remove Public Access first if nothing outside the project needs the TCP proxy, then regenerate the password from the database's Config tab and restart the database, which drops every open session, including any an attacker holds. Redeploy dependent services afterwards.
+3. **Check the logs of every service a leaked key could reach.** That means provider dashboards, cloud audit logs, Stripe events, and your own database's role list and row counts.
+4. **Put hard spend limits on every key that can bill you.** One developer in the thread credited a fifty dollar cap with turning an open-ended charge into an annoyance.
+5. **Take a logical backup you own, and rehearse restoring it.** Railway's [backups guide](https://docs.railway.com/guides/postgres-backups-restores) recommends a scheduled `pg_dump` and a restore drill alongside its volume snapshots.
 
-Extensions decide the database side. [Prisma Postgres](https://www.prisma.io/docs/postgres) covers most of them, with PostGIS and TimescaleDB the usual ones it [doesn't](https://www.prisma.io/docs/postgres/import-from-existing-database). The app side is where I'd expect most people to bounce. Compute runs one shape of thing, a TypeScript HTTP service on Node, Bun or Next.js, and my Hono server happens to be that shape. If yours ships as a Dockerfile, holds WebSockets open, writes to a disk or leans on Railway's cron, keep the database half of this post and skip the rest; the [limitations](https://www.prisma.io/docs/compute/limitations) page is honest about all of it. One more Prisma name is coming, Composer, and it's nothing grander than a few lines of TypeScript telling Compute how to run the app.
+All five steps share one constraint. On most platforms, Prisma Compute included, a new secret takes effect only after a redeploy, so a host that pauses deploys to contain a breach also pauses your rotation. Keep an inventory of every secret and where to revoke it, because revocation never needs a deploy.
 
-I don't have a Railway account, so a local PostgreSQL 17 database with 500 users and 5,000 posts played the part of Railway, and the two Railway-side commands below come from Railway's docs rather than my terminal. Everything else ran on Prisma CLI 8.0.0-rc.27 and Composer 0.34.0, as `npx prisma@latest`, and the `@latest` is doing work. If your project already has an older Prisma package installed, plain `npx prisma` runs that one, and none of these commands exist in it.
+## If you are considering moving to Prisma
 
-### The database
+You can move the database on its own, which is one dump and one restore, or move a TypeScript service alongside it. [Prisma Postgres](https://www.prisma.io/docs/postgres) is managed PostgreSQL 17, and [Prisma Compute](https://www.prisma.io/docs/compute) hosts TypeScript services next to it in the same project.
 
-Prisma Postgres hands you two hostnames for the same credentials. The pooled hostname is the one the app talks to. It hands out a fresh connection per transaction, so anything you prepared on one request is gone by the next. `pg_restore` can't work like that; it needs one session for the whole job, and that's what the direct hostname is for. The create command prints the pooled string exactly once, so I pasted it into my password manager, and for the restore I swapped the hostname to the direct one.
+I rehearsed the path below against a local PostgreSQL 17 database with 500 users and 5,000 posts standing in for Railway. I do not use Railway, so its two commands come from Railway's documentation and I did not run them. Everything else ran on Prisma CLI 8.0.0-rc.27 and Composer 0.34.0 through `npx prisma@latest`, which sidesteps any older Prisma package in your project.
 
-My rehearsal was dull on purpose. I dumped from my stand-in database, restored into the empty Prisma one and counted rows on both sides. On Railway the dump comes from the public proxy URL, or through the CLI's tunnel on a big database so you're not paying egress just to rehearse. Cutover is the rehearsal again with writes paused: one last dump, then the same restore on top of what's already there.
+### Check compatibility
+
+Prisma Postgres supports most common extensions; PostGIS and TimescaleDB are not on its list, and the [import guide](https://www.prisma.io/docs/prisma-postgres/import-from-existing-database-postgresql) shows how to list what your source uses. Your source must be PostgreSQL 17 or older, and you need the version 17 client tools, since `pg_dump` must be at least as new as your source and `pg_restore` at least as new as the dump. Compute runs TypeScript HTTP services on Node, Bun or Next.js, not Dockerfiles or other languages, and its [limitations](https://www.prisma.io/docs/compute/limitations) page rules out WebSocket servers, persistent disks and built-in cron. If that describes your app, the database half of this guide still applies.
+
+### Back up Railway Postgres and restore it to Prisma Postgres
+
+Prisma Postgres gives you two hostnames for the same credentials, a pooled one for the application and a direct one, `db.prisma.io`, for `pg_restore`, `psql` and migrations, which need a single session. The create command prints the pooled string once, so save it and swap the hostname for the restore.
+
+Rehearse against a copy first. Dump through Railway's public TCP proxy URL, which Railway bills as egress, or through the CLI's database tunnel, then restore into an empty Prisma Postgres database and compare row counts. The restore runs in a single transaction, so a failure leaves the target empty rather than half filled.
 
 ```bash
 npx prisma@latest auth login
 npx prisma@latest project create my-db-project
 npx prisma@latest postgres create my-db --region us-east-1    # prints the connection string once
 
-pg_dump -Fc --no-owner --no-privileges -d "$DATABASE_PUBLIC_URL" -f railway.dump
-pg_restore --clean --if-exists --no-owner --no-privileges --exit-on-error \
-  -d 'postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' railway.dump
+umask 077    # the dump is a full copy of your data; keep the file private
+pg_dump --format=custom --no-owner --no-privileges \
+  --dbname="$DATABASE_PUBLIC_URL" --file=railway.dump
+
+pg_restore --single-transaction --exit-on-error --no-owner --no-privileges \
+  --dbname='postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' railway.dump
+
+psql 'postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' -c 'ANALYZE;'
 ```
 
-When it finished I compared row counts, a per-table checksum, foreign keys, indexes and sequence values against the source, and everything matched. Telling `pg_restore` to clear existing tables first is what makes that same command safe to run again at cutover. I used the PostgreSQL 17 client tools throughout, and you'll want them too, because the restore tool has to be at least as new as the server it restores into. If the database was all you wanted to move, this is where you stop. Your Railway service gets the pooled string where the Railway one used to be, and a redeploy picks it up.
+In my rehearsal the restore took eight seconds, and every count, checksum, constraint and sequence I compared matched the source. `pg_dump` copies row-level security policies but not the roles they reference, so read the import guide's section on Railway-only roles if you use RLS.
 
-### The app
+For the real cutover, stop writes on Railway, take a final dump and restore it into a fresh Prisma Postgres database. Verify the counts again, point your application at the pooled string, and keep the Railway database read-only until your rollback window closes. If the database is all you wanted to move, you are done once you replace the `${{Postgres.DATABASE_URL}}` reference on your Railway service with the pooled string and redeploy.
 
-Prisma Compute runs your service on Bun, and you describe the app to it with [Prisma Composer](https://www.prisma.io/docs/composer). Composer is in Early Access, so what follows is what the versions above accept. Its [porting guide](https://www.prisma.io/docs/composer/porting-an-app) assumes Composer creates the database for you; mine already existed, so I handed it the connection string as a secret instead. I expected this to be the painful part, and mostly it wasn't. My Hono server and its build step stayed exactly as they were. A few lines changed so the port and the database URL come from the service file rather than `process.env`, and three small files appeared beside the code:
+### Deploy the TypeScript app to Prisma Compute
 
-```ts
-// prisma.config.ts
-import { defineConfig as composer } from "@prisma/composer/config";
-import { nodeBuild } from "@prisma/composer/node/control";
-import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
-import { definePrismaConfig } from "prisma/config";
+You describe the app to Compute with [Prisma Composer](https://www.prisma.io/docs/composer), which is in Early Access. The [porting guide](https://www.prisma.io/docs/composer/porting-an-app) leaves your server and build alone and has you add a `service.ts` and `module.ts` beside them, plus a `composer` section in `prisma.config.ts` that names the region. The guide expects Composer to create the database; for an existing one, pass its connection string in as a secret. The only changes inside my Hono server were reading the port from `service.port()` and the connection string from the declared input instead of `process.env`.
 
-export default definePrismaConfig({
-  composer: composer({
-    extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
-    state: prismaState(),
-  }),
-});
-
-// src/service.ts
-import node from "@prisma/composer/node";
-import { secretString } from "@prisma/composer/arktype";
-import { compute } from "@prisma/composer-prisma-cloud";
-import { type } from "arktype";
-
-export default compute({
-  name: "api",
-  deps: {},
-  input: type({ databaseUrl: secretString() }),
-  build: node({ module: import.meta.url, entry: "../dist/server.mjs" }),
-});
-
-// module.ts
-import { module } from "@prisma/composer";
-import { envSecret } from "@prisma/composer-prisma-cloud";
-import api from "./src/service.ts";
-
-export default module("my-api", ({ provision }) => {
-  provision(api, { input: { databaseUrl: envSecret("POSTGRES_URL") } });
-});
-```
-
-In the server, `service.port()` gives you the port and `service.input().databaseUrl.expose()` the connection string; that `.expose()` call is Composer making you say out loud that you're turning a secret into a plain string. Two things tripped me up, and both were my fault. I first named the secret `DATABASE_URL`, and the deploy refused, because Prisma Cloud reserves that name, its pooled twin and anything starting with `COMPOSER_` for databases it provisions itself. Then I deployed into the same project my database lived in and got a `HostedStateBootstrapError`. The docs point you at a `--name` flag for that. What worked for me was giving the app its own project. I created it from the app's directory, which also meant the secret could go in before the first deploy:
+Composer refuses to bind that secret under the name `DATABASE_URL` or `DATABASE_URL_POOLED` (the deploy stops with `envSecret name "DATABASE_URL" is reserved`), because Prisma Cloud seeds those names for databases it provisions, so pick another. My first deploy into the project that already held the database stopped with `HostedStateBootstrapError`; the docs offer `--name` to target a different project, and what worked for me was creating an empty project from the app directory first, which also lets you store the secret before anything runs:
 
 ```bash
 npx prisma@latest project create my-api
-POSTGRES_URL='<pooled connection string>' npx prisma@latest project env add POSTGRES_URL --role production
+read -s POSTGRES_URL && export POSTGRES_URL     # paste the pooled string; it stays out of shell history
+npx prisma@latest project env add POSTGRES_URL --role production
 npm run build
 npx prisma@latest deploy module.ts
 ```
 
-I ran that from inside the git checkout so the Prisma Console could file the deployment under a commit. It printed a live URL in under thirty seconds, and reads and writes through it landed in the migrated database. My very first request came back as a 502, which gave me a moment. Hono's default export runs on `Bun.serve`, whose idle timeout defaults to ten seconds, and my cold first query ran past it. If yours is served the same way, that timeout is the one to raise. After that it behaved. I'd leave Railway up for a few days after this. The CLI registers your hostname and prints a CNAME target, and changing DNS to it is the actual cutover, so there's no reason to do it before the new URL has carried real traffic. Going back to Railway later is the same move in reverse, DNS back plus a dump of whatever was written since cutover. A broken deploy on Compute doesn't need any of that; you roll back to the previous version.
+The deploy printed a live URL, and reads and writes through it landed in the migrated database. The first request after the deploy returned a 502 because the cold query outlasted the ten second default idle timeout on `Bun.serve`; raise it if `Bun.serve` fronts your app too, which it does for Hono's default export.
 
-## Try it with your coding agent
+### Validate, cut over, and keep a way back
 
-Paste this into whatever coding agent you use, from inside your project:
+Run your smoke tests against the new URL while Railway still serves production. When you are satisfied, register your hostname with `prisma service domain add`, create the CNAME it prints, run `add` again once the record resolves, and let `prisma service domain wait` confirm TLS before you move traffic; the [domains guide](https://www.prisma.io/docs/compute/domains) covers apex domains. Rolling back to Railway means moving DNS back and, if you need the writes made after cutover, restoring a full dump of the Prisma database into a fresh Railway Postgres; never restore over the original with destructive flags. Rotating the database credential later works the way it does everywhere else, by updating the production variable and redeploying.
 
-```text
-Migrate this app from Railway to Prisma Postgres (database) and Prisma Compute (hosting). I have not used Prisma before. Ask me before any step that touches production or deletes anything, and do not modify the Railway project, service or variables. Refer to secrets by variable name only; never print, log or commit values, and check that a variable is set with [ -n "$VAR" ] rather than echoing it. Always run the Prisma CLI as `npx prisma@latest`.
-
-1. Inspect the app: framework, database client, env var names, railway.json or Dockerfile. Check the database for extensions Prisma Postgres does not support (PostGIS, TimescaleDB) and the app for WebSockets, cron, persistent disk, native Node addons or a non-TypeScript runtime. If any apply, stop and tell me.
-2. Read https://www.prisma.io/docs/postgres/import-from-existing-database, https://www.prisma.io/docs/composer/porting-an-app and https://www.prisma.io/docs/compute/limitations. Ask me which region to use for both the database and the app.
-3. These steps are mine, because they print or take secrets: `auth login`, `postgres create` (I will save the connection string), and `project env add POSTGRES_URL --role production` with the value read from my shell. Tell me when to run each.
-4. Database: confirm pg_dump and pg_restore are 17.x. Dump with `pg_dump -Fc --no-owner --no-privileges` from $DATABASE_PUBLIC_URL, restore with `pg_restore --clean --if-exists --no-owner --no-privileges --exit-on-error` over the direct db.prisma.io host (same credentials, different host), then compare row counts and a per-table checksum.
-5. App: add the Composer files per the porting guide, with the region and the matching build adapter (nodeBuild or nextjsBuild) in prisma.config.ts. Read the port from service.port() and the database URL from the declared input, named anything except DATABASE_URL, DATABASE_URL_POOLED or a name starting with COMPOSER_. From the app directory run `npx prisma@latest project create <app-name>` matching the module name, run the project's build (deploy does not build), then `npx prisma@latest deploy module.ts` from inside the git repository.
-6. Test the deployed URL, then write me a cutover checklist (pause writes, final dump and restore, `prisma service domain add`, DNS CNAME) and a rollback checklist (DNS back, reverse dump of anything written since cutover).
-```
-
-Whatever you decide about hosting, I'd rotate one key this week, on a day when nothing is broken, mostly to find out what your own deploy path does when you try.
+Whether you stay on Railway or move, write down the rotation you just did while it is fresh. Those notes are the drill for next time.
