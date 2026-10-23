@@ -51,7 +51,7 @@ CREATE ROLE app_user LOGIN PASSWORD '...';
 GRANT SELECT, UPDATE ON "public"."document" TO app_user;
 ```
 
-Order matters: the `CREATE POLICY` statements in the migration name `app_user`, so create the role before you run `db migrate`, and run the `GRANT` after it, once the table exists. Run the two statements by hand, or put the `GRANT` in a migration that holds only SQL: `npx prisma migration new --name app-user` creates an empty migration file, and [Limitations](#limitations) shows the `rawSql` step that goes in it.
+Order matters: the `CREATE POLICY` statements in the migration name `app_user`, so create the role before you run `db migrate`, and run the `GRANT` after it, once the table exists. Run the two statements by hand, or put the `GRANT` in a migration that holds only SQL: `npx prisma migration new --name app-user --from <hash>` creates an empty migration file, where `<hash>` is the `to` hash of your newest migration, which `npx prisma migration list` prints. Without `--from`, the command refuses with `MIGRATION.NO_CHANGES` because the contract has not changed. [Limitations](#limitations) shows the `rawSql` step that goes in the file.
 
 Policies apply to the role a connection logs in as, and the table's owner bypasses them. So your app needs a connection string that logs in as `app_user`, while the CLI keeps the owner's. The CLI reads `db.connection` in `prisma.config.ts`, and your app reads the `url` in `src/prisma/db.ts`, so give the two different values.
 
@@ -182,7 +182,7 @@ It runs `CREATE EXTENSION IF NOT EXISTS "citext"`, so running the migration twic
 
 ## Limitations
 
-These are the gaps at `8.0.0-rc.20`, each with what to do instead. Anything the contract cannot say yet goes in a raw SQL step in a migration, which runs the statements you give it. `npx prisma migration new --name <name>` creates a migration with no operations, and the step goes in its `operations` list, with `rawSql` imported from `@prisma/orm-postgres/migration`. Recompile the file afterwards, as [Editing a migration](/orm/migrations/editing-a-migration) shows. `operationClass` is `additive`, `widening`, `destructive`, or `data`, and the `GRANT` below loosens a rule, so it is `widening`. [Raw SQL](/orm/reference/migration-api#raw-sql) in the migration API reference has the full shape:
+These are the gaps at `8.0.0-rc.20`, each with what to do instead. Anything the contract cannot say yet goes in a raw SQL step in a migration, which runs the statements you give it. `npx prisma migration new --name <name> --from <hash>` creates a migration with no operations, with `<hash>` the `to` hash of your newest migration from `npx prisma migration list`, because without `--from` an unchanged contract is refused with `MIGRATION.NO_CHANGES`. The step goes in its `operations` list, with `rawSql` imported from `@prisma/orm-postgres/migration`. Recompile the file afterwards, as [Editing a migration](/orm/migrations/editing-a-migration) shows. `operationClass` is `additive`, `widening`, `destructive`, or `data`, and the `GRANT` below loosens a rule, so it is `widening`. [Raw SQL](/orm/reference/migration-api#raw-sql) in the migration API reference has the full shape:
 
 ```ts title="migration.ts (excerpt)"
 rawSql({
