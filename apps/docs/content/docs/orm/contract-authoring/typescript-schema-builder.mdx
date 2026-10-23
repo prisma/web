@@ -371,7 +371,7 @@ Post.relations({ ... }).sql(({ cols, constraints }) => ({
 }));
 ```
 
-`constraints.index` takes a list of columns, even when the list has one entry, or an object with `expression`, the whole index expression as SQL. The options are `unique`, `where` (a partial-index condition as SQL, without the `WHERE` keyword), `type` with `options` (the index method and its parameters; `options: {}` when there are none), and `name` or `map`. `name: "user_handle_active"` creates an index called `user_handle_active_2a0c4277`, with a hash on the end; `map` sets the exact name, which is what you want when the index already exists. An `expression` index needs one of the two:
+`constraints.index` takes a list of columns, even when the list has one entry, or an object with `expression`, the whole index expression as a `sql` value. The options are `unique`, `where` (a partial-index condition as a `sql` value, without the `WHERE` keyword), `type` with `options` (the index method and its parameters; `options: {}` when there are none), and `name` or `map`. `name: "user_handle_active"` creates an index called `user_handle_active_2a0c4277`, with a hash on the end; `map` sets the exact name, which is what you want when the index already exists. An `expression` index needs one of the two:
 
 ```typescript
 indexes: [
@@ -479,7 +479,7 @@ export const contract = defineContract({}, ({ field, model }) => {
 });
 ```
 
-`roles` lists role handles, and a role Prisma ORM should create goes in `entities` as well, as `authenticated` does above, while a role that already exists in the database, such as `public`, is `role("public")` in `roles` and left out of `entities`. `using` and `withCheck` are the two conditions as `sql` values, using column names: `policySelect` and `policyDelete` take `using`, `policyInsert` takes `withCheck`, and `policyUpdate` and `policyAll` take either or both. The policy `name` gets an eight-character hash on the end in the database.
+`roles` lists role handles. A role you declare with `role(...)` goes in `entities` as well, as `authenticated` does above, and that only names it: Prisma ORM never creates or drops a role, so create it yourself, and `db verify` fails when it is missing. A role PostgreSQL always has, such as `public`, is `role("public")` in `roles` and left out of `entities`. `using` and `withCheck` are the two conditions as `sql` values, using column names: `policySelect` and `policyDelete` take `using`, `policyInsert` takes `withCheck`, and `policyUpdate` and `policyAll` take either or both. The policy `name` gets an eight-character hash on the end in the database.
 
 ## Extension types
 
@@ -522,7 +522,7 @@ export default definePrismaConfig({
 The contract file describes structure, and these rules keep it usable:
 
 - Do not read `process.env`, the current time, or random values into the contract. A contract built from those values makes `npx prisma contract emit` produce a different `contract.json` on each run.
-- Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions and class instances do not serialize. A value passed to `.default(...)` is the exception: the field's codec encodes it, so a `Date` or `Temporal.Instant` default works on a field whose codec takes one, as [Fields](#fields) describes.
+- Keep field values plain: strings, numbers, booleans, and the builder's own objects. Functions and class instances do not serialize. A value passed to `.default(...)` is the exception: it is converted the way the column's values are, so a `Date` or `Temporal.Instant` default works on a field whose type takes one, as [Fields](#fields) describes.
 - Keep the file free of side effects. `npx prisma contract emit` loads the file with Node.js, so anything it does while loading, such as writing a file or calling a service, happens every time you run the command. The file is ordinary TypeScript, so `import` model definitions from other files as usual.
 - `npx prisma contract emit` runs the file but does not type-check it. Type errors show in your editor and when you run `tsc`.
 
