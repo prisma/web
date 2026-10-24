@@ -102,16 +102,24 @@ The request handler only sends the job. This one is a Next.js route handler in a
 import { startQueue, REPORT_QUEUE } from "@/queue";
 
 // Start pg-boss on the first request, then reuse it for every later one.
+// If startup fails (for example, the database is briefly unreachable), the next request tries again.
 let started: ReturnType<typeof startQueue> | undefined;
-const getQueue = () => (started ??= startQueue());
+const getQueue = () =>
+  (started ??= startQueue().catch((error) => {
+    started = undefined;
+    throw error;
+  }));
 
 export async function POST(request: Request) {
   const { reportId } = await request.json();
+  // Authenticate the caller and check that they can access this report before queueing it.
   const queue = await getQueue();
   const jobId = await queue.send(REPORT_QUEUE, { reportId });
   return Response.json({ jobId }, { status: 202 });
 }
 ```
+
+The route queues work on the caller's behalf, so check who is calling first, the same way your other routes do: authenticate the request and confirm the caller can access `reportId`. The example leaves that check out because it depends on your auth setup.
 
 pg-boss creates its tables in a `pgboss` schema the first time `start()` runs. Because the job is a row in your database, you can also send it inside the transaction that creates the report, so the job exists only if the report does ([pg-boss adapters](https://github.com/timgit/pg-boss/blob/master/docs/api/adapters.md)).
 
