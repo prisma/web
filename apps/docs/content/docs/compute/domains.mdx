@@ -54,18 +54,27 @@ If your provider expects names relative to the `acme.com` zone, use `_prisma-ver
 
 Set the hostname's **Proxy status** to **DNS only** (gray cloud) while connecting
 the domain. A proxied record returns Cloudflare's IP addresses, which prevents
-Prisma from verifying the routing target. If Prisma detects this, Console and the
+Prisma from verifying your CNAME target. If Prisma detects this, Console and the
 CLI show instructions to turn the proxy off and retry.
 
 After Prisma shows the domain as **Active**, you can turn **Proxied** (orange
-cloud) back on to use Cloudflare's CDN. Keep the CNAME target and TXT proof in
+cloud) back on to use Cloudflare's CDN. Keep the CNAME target and TXT record in
 place, and use **Full (strict)** SSL/TLS mode.
 
-Prisma renews certificates through HTTP validation. Ensure requests to
-`/.well-known/acme-challenge/*` reach Prisma without caching, security challenges,
-or rules that rewrite the response. If you reconnect the domain after removing
-it or recreating a branch, switch back to **DNS only** for verification. Manual
-provisioning retries also check DNS again.
+Prisma issues and renews certificates automatically. Your app does not need a
+route or validation file for `/.well-known/acme-challenge/*` because Prisma
+responds to these validation requests.
+
+If you manage the Cloudflare zone, ensure your Cloudflare rules let these requests
+reach Prisma. Custom security challenges, caching, redirects, or Workers can
+intercept them before they reach Prisma. Add exceptions only for rules that
+interfere with this path. Match requests whose URL path starts with
+`/.well-known/acme-challenge/`. See [Cloudflare's validation troubleshooting](https://developers.cloudflare.com/ssl/edge-certificates/changing-dcv-method/troubleshooting/)
+for rule checks and examples.
+
+If you remove a domain from Prisma and add it again, switch back to **DNS only**
+for verification. The [`service domain retry` command](#troubleshooting) also
+requires **DNS only** because it checks DNS again.
 
 See Cloudflare's [proxy status](https://developers.cloudflare.com/dns/proxy-status/)
 and [Full (strict) TLS](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/)
