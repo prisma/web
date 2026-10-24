@@ -34,6 +34,24 @@ export function countUpTokens(value: string, progress: number): string[] {
   });
 }
 
+export type CountUpStep = "final" | "reset" | "animate" | "keep";
+
+/**
+ * What the count-up effect does for a given state: show the final value,
+ * reset to zero (active but off screen), animate up (active, on screen, not
+ * yet at the end) or keep the current value.
+ */
+export function countUpStep(state: {
+  reduceMotion: boolean;
+  active: boolean;
+  inView: boolean | null;
+  progress: number;
+}): CountUpStep {
+  if (state.reduceMotion || !state.active || state.inView === null) return "final";
+  if (!state.inView) return "reset";
+  return state.progress >= 1 ? "keep" : "animate";
+}
+
 // Animates the numeric runs inside a price string up from zero.
 //
 // The server render and the first client render always show the final value,
@@ -42,9 +60,13 @@ export function countUpTokens(value: string, progress: number): string[] {
 //  - a figure that is off screen once the page is interactive is reset to zero
 //    while out of view and counts up when it scrolls in;
 //  - a figure already visible on load stays put (no flash to zero);
-//  - flipping `active` back on replays it (the pricing carousel uses this so
-//    each scenario counts as its tab is picked: the incoming slide is clipped
-//    out of view when the tab changes, then counts as it slides in);
+//  - an inactive figure shows its final value, so the hidden carousel slides
+//    and a slide that is sliding out never read "$0";
+//  - flipping `active` back on replays it once the figure has been out of view
+//    in between (the pricing carousel uses this so each scenario counts as its
+//    tab is picked: the incoming slide is clipped out of view when the tab
+//    changes, then counts as it slides in). A slide picked again before it
+//    left view keeps its final value rather than flashing to zero;
 //  - with prefers-reduced-motion it never animates.
 export function CountUp({ value, className, active = true, duration = 1.1 }: CountUpProps) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -74,15 +96,21 @@ export function CountUp({ value, className, active = true, duration = 1.1 }: Cou
   }, []);
 
   useEffect(() => {
-    if (reduceMotion || !active || inView === null) {
+    const step = countUpStep({
+      reduceMotion: Boolean(reduceMotion),
+      active,
+      inView,
+      progress: progress.get(),
+    });
+    if (step === "final") {
       progress.set(1);
       return;
     }
-    if (!inView) {
+    if (step === "reset") {
       progress.set(0);
       return;
     }
-    if (progress.get() >= 1) return;
+    if (step === "keep") return;
     const controls = animate(progress, 1, {
       duration,
       ease: [0.22, 1, 0.36, 1],
