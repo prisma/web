@@ -179,3 +179,20 @@ test("links to the docs and blog origin hosts point at www.prisma.io", () => {
   assert.doesNotMatch(mdx, /\]\(https:\/\/(?:docs|blog)\.prisma\.io/);
   assert.match(mdx, /^docs: https:\/\/docs\.prisma\.io\/docs\/orm/m);
 });
+
+test("links inside code spans and fences keep the origin hosts", () => {
+  const mdx = generate(
+    "### CLI.CONSENT_UNUSED\n\n" +
+      "```md\n[CLI.CONSENT_UNUSED](https://docs.prisma.io/docs/cli/error-reference)\n```\n\n" +
+      "Inline: `[the post](https://blog.prisma.io/blog/rethinking-database-migrations)`.",
+  );
+  assert.match(
+    mdx,
+    /^\[CLI\.CONSENT_UNUSED\]\(https:\/\/docs\.prisma\.io\/docs\/cli\/error-reference\)$/m,
+  );
+  assert.match(
+    mdx,
+    /`\[the post\]\(https:\/\/blog\.prisma\.io\/blog\/rethinking-database-migrations\)`/,
+  );
+  assert.doesNotMatch(mdx, /\]\(https:\/\/www\.prisma\.io\//);
+});
