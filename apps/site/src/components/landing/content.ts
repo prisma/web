@@ -544,7 +544,7 @@ export const providersLanding: LandingContent = {
     headline: "See how Prisma compares at scale",
     headlineEmphasis: "compares at scale",
     subheadline:
-      "At around 50K monthly active users, Prisma Pro can cost up to 5x less than a typical Neon + Vercel setup, while keeping your app and your Postgres database on one platform with one bill.",
+      "At around 50K monthly active users, Prisma Pro can cost less than half as much as a typical Neon + Vercel setup, while keeping your app and your Postgres database on one platform with one bill.",
     microline:
       "Starter is $10 a month, Pro is $49. Sign up free, pick a plan in the Console, cancel any time.",
   },

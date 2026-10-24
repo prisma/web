@@ -29,7 +29,8 @@
     // One validation for both destinations: an invalid handoff is neither measured nor acknowledged.
     const validConversion =
       conversion && typeof conversion.id === "string" && conversion.id.length > 0 && conversion.id.length <= 128 &&
-      ["sign_up", "login"].includes(conversion.event) && ["google", "github", "email"].includes(conversion.method)
+      (conversion.event === "project_created" ||
+        (["sign_up", "login"].includes(conversion.event) && ["google", "github", "email"].includes(conversion.method)))
         ? conversion
         : null;
     const measuredByOpenai = measureOpenaiConversion(consent, validConversion);
@@ -75,7 +76,9 @@
       }
       if (validConversion && !seen.has(validConversion.id)) {
         seen.add(validConversion.id);
-        gtag("event", validConversion.event, { ...parameters, method: validConversion.method });
+        const eventParameters = { ...parameters };
+        if (validConversion.event !== "project_created") eventParameters.method = validConversion.method;
+        gtag("event", validConversion.event, eventParameters);
       }
     }
     // Acknowledge once a destination has measured (or already holds) the handoff.
