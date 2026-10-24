@@ -247,6 +247,21 @@ this.createNativeEnumType({ schema: 'public', typeName: 'role', members: ['admin
 this.addNativeEnumValue({ schema: 'public', typeName: 'role', value: 'guest' }),
 ```
 
+### Stored enum values [#stored-enum-values]
+
+| Method | Options | Runs | Class |
+| --- | --- | --- | --- |
+| `replaceStoredValue` | `schema?`, `table`, `column`, `from`, `to`, `many?`, `codecRef?` | `UPDATE "public"."task" SET "state" = $2 WHERE "state" = $1` | widening |
+| `removeStoredValue` | `schema?`, `table`, `column`, `value`, `many?`, `codecRef?`, `enumValue?` | `UPDATE "public"."task" SET "state" = NULL WHERE "state" = $1` | destructive |
+
+`migration plan` writes these calls when the contract renames or removes a member of an `enum` block, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes. `replaceStoredValue` changes the stored value `from` to `to` in every row that holds it. `removeStoredValue` sets the column to `NULL` in every row that holds `value`; on a required column, its precheck fails while any row holds the value. With `many: true`, the column is a list, and the value is replaced in or removed from every list that holds it. Values are passed as parameters, in the form the column stores them. `codecRef` names the column's codec, and `enumValue` names the enum member, so that a failed check names it; `migration plan` fills in both.
+
+To keep the rows when a member stores a new value, replace the planned `removeStoredValue` with a `replaceStoredValue` to the new value, then run `node migration.ts`:
+
+```ts
+this.replaceStoredValue({ schema: 'public', table: 'task', column: 'state', from: 'archived', to: 'retired' }),
+```
+
 ### Row-level security
 
 | Method | Options | Runs | Class |

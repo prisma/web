@@ -470,6 +470,8 @@ On PostgreSQL, some types cannot hold enum members. JSON (`pg/json@1` and `pg/js
 
 At runtime, `db.enums` holds each member as a query returns it, such as a `bigint` for `pg/int8@1`.
 
+On PostgreSQL and SQLite, removing a member, or changing the value a member stores, changes rows that hold the old value, so `migration plan` and `db update` ask whether you renamed the member or want its value removed. [Renames and data loss](/cli/migration-plan#renames-and-data-loss) shows the answers.
+
 An `enum` block is not a PostgreSQL `enum` type: the column is text or an integer. For a PostgreSQL `enum` type, declare it in a `native_enum` block and type the field `pg.enum(Role)`:
 
 ```prisma
@@ -659,6 +661,8 @@ model User {
 
 A wildcard index covers every field under a path, which is how you index documents whose keys you do not know in advance. Write `wildcard()` in the field list to cover the whole document, or `wildcard(meta)` to cover the fields under `meta`; the key becomes `$**` or `meta.$**`. `include` and `exclude` are lists of field names, quoted, that narrow what the index covers; give one or the other, and only with `wildcard()`. An index can hold one `wildcard()`, and it cannot be an `@@unique`, take `expireAfterSeconds`, or set a `type:` such as `"hashed"`.
 
+`contract emit` refuses, with `PSL_INVALID_INDEX`, any other index MongoDB would refuse, such as a `type: "hashed"` index on several fields, collation options without `collationLocale`, or a second text index in one collection. It also refuses an index that the same model, or another model stored in the same collection, already declares, such as `@unique` and `@@unique([email])` on one field. Remove the duplicate. A TypeScript contract follows the same rules, as [the MongoDB builder](/orm/contract-authoring/typescript-schema-builder#how-definecontract-works) describes.
+
 ## Base models and variants
 
 A base model declares a discriminator field, the field whose value says which variant a row is. Each variant names its base and its discriminator value:
@@ -698,7 +702,7 @@ You query a variant through the base model: `db.orm.public.Task.variant('bug')` 
 
 On a variant, `@@map` does more than rename: on PostgreSQL it chooses between two storage layouts. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
 
-On MongoDB, a variant adds its fields to documents in the base model's collection, so it declares `@@base` but no `@@map` of its own.
+On MongoDB, a variant adds its fields to documents in the base model's collection, so it declares `@@base` but no `@@map` of its own. Because the variant's fields share documents with the base model's, a variant field stored under a name a base field uses, such as the discriminator's, is refused with `PSL_DUPLICATE_STORED_NAME`. A variant field that restates a base field with a different stored name, type, optionality or list shape is refused with `PSL_VARIANT_FIELD_DIFFERS_FROM_BASE`: restate it exactly as the base declares it, or leave it out.
 
 ## Extension types
 
