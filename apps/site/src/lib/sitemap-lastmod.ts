@@ -10,6 +10,11 @@ import path from "node:path";
  * mostly lives in `src/components/**` and `src/lib/**`, so the page file alone
  * would miss most edits.
  *
+ * Only imports that resolve under `src/` count. Modules from workspace
+ * packages (for example `@prisma-docs/ui/data/extensions`, which holds the
+ * `/extensions` listing) are not followed, so a change there does not move
+ * the date of the routes that import it.
+ *
  * When the date is not known, the route gets no `<lastmod>`. In particular a
  * file's modification time is never used: on a fresh checkout it is the build
  * time, which would stamp every route with the deploy date.
