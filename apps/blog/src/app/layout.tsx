@@ -30,6 +30,9 @@ const inter = localFont({
   ],
   variable: "--font-inter",
   display: "swap",
+  // Load the faces actually used by this page through CSS. Preloading both
+  // full Inter files also downloads 388 KB of unused italics on the archive.
+  preload: false,
 });
 
 // Sora replaces Mona Sans VF as the display face. next/font/local has no
@@ -50,6 +53,7 @@ const monaSansMono = localFont({
   variable: "--font-mona-mono",
   display: "swap",
   weight: "200 900",
+  preload: false,
 });
 
 export const metadata: Metadata = {

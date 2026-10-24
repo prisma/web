@@ -1,4 +1,4 @@
-import { composerNextConfig } from "../../composer/next-config.mjs";
+import { composerNextConfig, composerPublicDocumentHeaders } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -223,6 +223,7 @@ const llmsTxtHeader = {
 };
 
 const postMarkdownHeaders = [
+  ...composerPublicDocumentHeaders,
   {
     key: "Link",
     value:

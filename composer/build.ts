@@ -1,7 +1,8 @@
 import "./env.ts";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { publicAssetInventory } from "./public-assets.ts";
 import { websiteBuild } from "./website-build.ts";
 import { checkBudget } from "./budget.ts";
 
@@ -27,6 +28,10 @@ run("pnpm", [
 const gateway = new URL("../dist/composer/gateway/", import.meta.url);
 await rm(gateway, { recursive: true, force: true });
 await mkdir(gateway, { recursive: true });
+await writeFile(
+  new URL("public-assets.json", gateway),
+  JSON.stringify(await publicAssetInventory(root, names)),
+);
 run("bun", [
   "build",
   "composer/gateway/server.ts",

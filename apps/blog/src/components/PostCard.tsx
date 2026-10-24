@@ -158,6 +158,7 @@ export function PostCard({
             alt={post.imageAlt ?? post.title}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             loading={featured ? "eager" : "lazy"}
+            fetchPriority={featured ? "high" : "auto"}
           />
         </div>
       ) : null}

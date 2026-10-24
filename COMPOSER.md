@@ -284,43 +284,94 @@ enable HTML eligibility while leaving all cache lifetimes controlled by the
 origin. See [Cloudflare's defaults](https://developers.cloudflare.com/cache/concepts/default-cache-behavior/)
 and [origin CDN headers](https://developers.cloudflare.com/cache/concepts/cdn-cache-control/).
 
-The Composer gateway caps ordinary public prerendered HTML at 60 seconds in a
-shared cache with `CDN-Cache-Control: public, max-age=60`. The browser receives
-`Cache-Control: public, max-age=0, must-revalidate`. A shorter framework TTL is
-preserved. Explicit application `CDN-Cache-Control` or
-`Cloudflare-CDN-Cache-Control` policies are authoritative. Dynamic/private HTML,
-errors, cookie-setting responses, and HTML requested with credentials, cookies,
-Next navigation headers, Markdown negotiation or a query string receive the
-default `CDN-Cache-Control: no-store`. Assets, Markdown and RSC responses retain
-the upstream framework's policy. No response bodies are buffered.
+The Composer gateway gives public prerendered HTML, opted-in public MDX documents and the build's actual public
+files a one-minute edge lifetime, with up to five minutes of background
+revalidation: `CDN-Cache-Control: public, max-age=60, stale-while-revalidate=300`.
+Browsers revalidate HTML (`Cache-Control: public, max-age=0`). Shorter framework
+HTML lifetimes are preserved. Explicit application CDN policies and positive
+public-file lifetimes remain authoritative. Hashed Next assets retain their
+immutable caching. No bodies are buffered. The gateway uses the library’s Node HTTP adapter on
+Bun to preserve known lengths on streamed responses; `Bun.serve` discards these
+lengths. Already-compressed public media also uses `no-transform`.
 
-This policy is applied only by the Composer gateway. Vercel continues to own
-its existing deployment cache and invalidation behavior. The one-minute cap
-bounds preview HTML staleness without Cloudflare purge credentials; it is not
-instant deployment invalidation.
+Only successful prerendered HTML or explicitly public MDX documents can opt in;
+other request-rendered/private pages, errors,
+cookie-setting responses, authorization and Next navigation requests cannot.
+Cookies do not personalize these public documents. Query parameters stay in the
+CDN's full cache key, so tracked visits can reuse their own public HTML entry
+without conflating search/filter URLs. `_rsc` variants remain excluded. APIs,
+Markdown retains its upstream policy. RSC/navigation requests receive
+`CDN-Cache-Control: no-store` at the gateway until deployment-aware navigation
+caching is available; a generic CDN must not store Next’s default one-year TTL.
+The public-file inventory is generated from all five apps' `public` directories;
+an image-shaped API URL does not qualify merely because of its suffix. Public files are
+hashed as streams at build time; only paths, sizes and SHA-256 values ship in
+the roughly 442 KB inventory. The gateway supplies content validators instead
+of Next's size/mtime tags, which can miss same-size edits when archive timestamps
+are fixed. Identity files have strong ETags; encoded files have weak validators.
+Conditional reads and If-Range use the content digest, without buffering bodies.
 
-For the performance experiment, the exported
-[Cloudflare Cache Rule](composer/cloudflare-cache-rule.json) enables only `/`
-and `/blog` on `prisma.sorenbs.com`. It excludes credentials, cookies, query
-strings, Next/RSC navigation and agent/Markdown variants **before cache lookup**.
-Response headers alone cannot prevent an already-cached HTML response from
-being returned to a different request variant. Other routes keep Cloudflare's
-default eligibility until their variation and freshness requirements are
-reviewed.
+Docs and blog article routes deliberately render repository MDX on demand to fit
+the file budget. Their Composer-only `X-Composer-Public-Document` response marker
+opts them into the same policy without an unbounded runtime full-route cache.
+The gateway consumes that annotation, still checking status, request variants,
+Set-Cookie and Vary. Never annotate a route that reads user/session/request data.
+Vercel receives none of these annotations or cache policy overrides.
 
-In **Cloudflare → sorenbs.com → Caching → Cache Rules → Create rule**:
+The Composer site and docs use a 16 MiB / 256-entry image memory cache through
+Next's custom-cache hook. Next's prerendered seed reads and bounded page/fetch
+cache remain available without writing into Compute's read-only application
+directory. Vercel uses its original cache handler. Docs' standalone image
+sources include its `/docs` basePath.
 
-1. Name it **Prisma preview HTML — origin policy**.
-2. Choose **Custom filter expression → Edit expression** and paste the
-   `expression` from the JSON file.
+This policy is applied only by the Composer gateway. Vercel retains its existing
+cache and deployment invalidation. Without purge credentials, a cached document
+can remain visible for up to six minutes (freshness plus background revalidation)
+after a deployment. This is bounded staleness, not instant deployment invalidation.
+Before production, add deployment-aware purge or retention of old hashed assets:
+stale HTML can reference chunks removed by a newer deployment. A short TTL is
+not a substitute for that release boundary.
+
+The exported [Cloudflare Cache Rule](composer/cloudflare-cache-rule.json) is
+one hostname-wide rule. It makes all response types eligible, while the origin
+controls storage, freshness and representation variants. No path, cookie,
+agent, image-format or framework-specific rules are needed in Cloudflare.
+
+In **Cloudflare → sorenbs.com → Caching → Cache Rules**, replace the earlier
+HTML/image rules with this single rule:
+
+1. Name it **Prisma preview — origin policy**.
+2. Set **Custom filter expression** to `(http.host eq "prisma.sorenbs.com")`.
 3. Set **Cache eligibility → Eligible for cache**.
 4. Set **Edge TTL → Use cache-control header if present, bypass cache if not**.
-5. Set **Browser TTL → Respect origin**. Leave the cache key and other settings
-   at their defaults. Do not choose a TTL override or ignore query strings.
-6. Enable it only after the preview returns the new one-minute origin policy.
+5. Set **Browser TTL → Respect origin**.
+6. Set **Vary → Use raw header values** (API: default passthrough), with no per-header entries. This uses
+   each origin response's `Vary` header to keep its representations separate.
+7. Keep the default full cache key, including query parameters. Remove the
+   earlier overlapping HTML/image rules; do not add forced TTLs or ignore queries.
 
-Verify normal HTML requests return `CF-Cache-Status: MISS` followed by `HIT`, with
-an increasing `Age`. Verify RSC, Markdown, cookies, authorization and query
-variants still reach their appropriate upstream representation. `max-age=0`
-public images will continue to revalidate until their origin policy changes;
-this setup intentionally respects that policy.
+The equivalent API settings are included in the JSON file. Cloudflare's
+[origin cache control](https://developers.cloudflare.com/cache/concepts/cache-control/)
+is already enabled on Free, Pro and Business, but does not lift the default
+HTML eligibility restriction. Its [Vary setting](https://developers.cloudflare.com/cache/concepts/vary/)
+is available on all plans and must be enabled: without it, a JPEG-only request
+was observed receiving a cached WebP response. Raw header values preserve the
+origin's exact negotiation, at the cost of some cache fragmentation. There is
+no normalization/format allowlist to maintain in Cloudflare.
+
+The gateway declares `Vary` for HTML/Markdown and the authorization/Next headers
+that affect the request's representation or storage policy. HTML, Markdown and
+uncached navigation use the same canonical Vary list for a document; changing
+that list between representations was observed turning warm cache entries
+back into misses. Next's image
+optimizer declares `Vary: Accept`. Private/no-store responses remain private;
+requests without origin freshness headers bypass caching. Next controls
+optimized-image freshness (currently four hours); replacing an image at the
+same URL requires invalidation or a versioned source URL.
+
+Enable the rule after these origin changes deploy. Verify repeated HTML and
+image GETs become hits; HTML, Markdown, RSC, authenticated/private responses,
+and WebP/JPEG must remain separate when alternating request headers. Test raw
+media ranges and the HTML 60-second revalidation boundary too. A cold PoP or
+unique URL still needs the US origin; one rule alone cannot guarantee global
+latency parity with Vercel for every request.
