@@ -156,6 +156,11 @@ export async function generateMetadata({
     ...(noindex && { robots: { index: false, follow: true } }),
     alternates: {
       canonical,
+      // The page's Markdown rendition, for agents that look for one before
+      // parsing the HTML. next.config.mjs sends the same URL in a Link header.
+      types: {
+        "text/markdown": withMarkdownPath(page.url, "md"),
+      },
     },
     openGraph: {
       siteName: "Prisma",

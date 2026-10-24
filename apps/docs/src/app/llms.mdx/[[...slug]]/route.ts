@@ -1,4 +1,5 @@
 import { AGENT_MARKDOWN_VARY } from "@/lib/agent-markdown";
+import { absoluteCanonicalUrl, canonicalLinkHeader, resolveCanonicalUrl } from "@/lib/canonical";
 import { getLLMText } from "@/lib/get-llm-text";
 import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
@@ -117,9 +118,16 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
   if (!page) return getMarkdownNotFoundResponse(slug);
 
   const content = await getLLMText(page);
+  // The same canonical as the HTML page's `<link rel="canonical">`, including a
+  // `canonical` frontmatter override, so the `.md` URL is not indexed as a
+  // second copy of the page.
+  const canonical = absoluteCanonicalUrl(
+    resolveCanonicalUrl(page.url, (page.data as { canonical?: string }).canonical),
+    getBaseUrl(),
+  );
 
   return new Response(content, {
-    headers: MARKDOWN_HEADERS,
+    headers: { ...MARKDOWN_HEADERS, Link: canonicalLinkHeader(canonical) },
   });
 }
 

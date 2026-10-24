@@ -1,4 +1,5 @@
 import { AGENT_MARKDOWN_VARY } from "@/lib/agent-markdown";
+import { canonicalLinkHeader, getPostCanonicalUrl } from "@/lib/canonical";
 import { getLLMText } from "@/lib/get-llm-text";
 import { findCanonicalSlug } from "@/lib/slug-fallback";
 import { blog as source } from "@/lib/source";
@@ -71,6 +72,9 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
       // `Accept` or the agent's User-Agent. The route is static, so the `.md`
       // URL gets the same value.
       Vary: AGENT_MARKDOWN_VARY,
+      // Names the HTML post as the canonical URL, so the `.md` URL is not
+      // indexed as a second copy of the post.
+      Link: canonicalLinkHeader(getPostCanonicalUrl(page.url, page.data.canonicalUrl)),
     },
   });
 }
