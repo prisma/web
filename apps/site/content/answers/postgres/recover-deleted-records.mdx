@@ -161,7 +161,7 @@ If they don't, run `ROLLBACK` and check the condition.
 
 Rows that still exist in production are skipped, so newer edits stay as they are. Four cases need changes:
 
-- **`GENERATED ALWAYS AS IDENTITY` ids.** PostgreSQL [rejects explicit values](https://www.postgresql.org/docs/current/sql-insert.html) for them unless you add `OVERRIDING SYSTEM VALUE` after `INSERT INTO customers`.
+- **`GENERATED ALWAYS AS IDENTITY` ids.** PostgreSQL [rejects explicit values](https://www.postgresql.org/docs/current/sql-insert.html) for them unless you add `OVERRIDING SYSTEM VALUE` after the column list and before the `SELECT`, as in `INSERT INTO customers (id, email, name, created_at) OVERRIDING SYSTEM VALUE SELECT ...`.
 - **Generated columns.** Leave them out of both column lists. PostgreSQL computes them on insert.
 - **Other unique columns.** If a deleted customer has since signed up again with the same email, a unique index on `email` makes the insert fail and the transaction roll back. Merge those customers by hand and remove them from `customers_restored` first.
 - **Triggers on the table.** An insert trigger that sends a welcome email or calls a webhook fires for every restored row. Check the triggers with `\d customers` before you run the insert.
