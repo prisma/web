@@ -42,7 +42,9 @@ test("every Markdown response the route builds declares that Vary", () => {
     const body = call.slice(0, call.indexOf("});"));
     const ok =
       varyHeaders.test(body) ||
-      (sharedHeaders !== null && body.includes(`headers: ${sharedHeaders[1]}`));
+      (sharedHeaders !== null &&
+        (body.includes(`headers: ${sharedHeaders[1]}`) ||
+          body.includes(`headers: { ...${sharedHeaders[1]},`)));
     assert.ok(ok, `Response #${index + 1} in the Markdown route does not set Vary`);
   }
 });
