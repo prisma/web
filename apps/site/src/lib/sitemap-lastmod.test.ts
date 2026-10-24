@@ -13,17 +13,31 @@ import {
 
 const TOP = "/repo";
 
+/**
+ * `git log -z --format=commit:%H %cI --name-only` output for the given
+ * commits, newest first: every header and path ends in NUL, and a newline
+ * separates a header from its first path.
+ */
+function gitLog(commits: [header: string, paths: string[]][]): string {
+  return commits
+    .map(
+      ([header, paths]) =>
+        `commit:${header}\0` + paths.map((p, i) => `${i === 0 ? "\n" : ""}${p}\0`).join(""),
+    )
+    .join("");
+}
+
 test("parseGitLog keeps each file's newest commit date", () => {
-  const log = [
-    "commit:aaa 2026-10-22T10:00:00+02:00",
-    "",
-    "apps/site/src/app/pricing/page.tsx",
-    "apps/site/src/components/sections/pricing-hero.tsx",
-    "commit:bbb 2026-10-05T16:56:15+02:00",
-    "",
-    "apps/site/src/app/pricing/page.tsx",
-    "apps/site/src/app/orm/page.tsx",
-  ].join("\n");
+  const log = gitLog([
+    [
+      "aaa 2026-10-22T10:00:00+02:00",
+      ["apps/site/src/app/pricing/page.tsx", "apps/site/src/components/sections/pricing-hero.tsx"],
+    ],
+    [
+      "bbb 2026-10-05T16:56:15+02:00",
+      ["apps/site/src/app/pricing/page.tsx", "apps/site/src/app/orm/page.tsx"],
+    ],
+  ]);
 
   const dates = parseGitLog(log, TOP);
   assert.equal(dates.get("/repo/apps/site/src/app/pricing/page.tsx"), "2026-10-22");
@@ -32,19 +46,43 @@ test("parseGitLog keeps each file's newest commit date", () => {
 });
 
 test("parseGitLog drops dates from a shallow clone's boundary commit", () => {
-  const log = [
-    "commit:aaa 2026-10-24T09:00:00+00:00",
-    "",
-    "apps/site/src/app/pricing/page.tsx",
-    "commit:boundary 2026-10-23T09:00:00+00:00",
-    "",
-    "apps/site/src/app/pricing/page.tsx",
-    "apps/site/src/app/orm/page.tsx",
-  ].join("\n");
+  const log = gitLog([
+    ["aaa 2026-10-24T09:00:00+00:00", ["apps/site/src/app/pricing/page.tsx"]],
+    [
+      "boundary 2026-10-23T09:00:00+00:00",
+      ["apps/site/src/app/pricing/page.tsx", "apps/site/src/app/orm/page.tsx"],
+    ],
+  ]);
 
   const dates = parseGitLog(log, TOP, new Set(["boundary"]));
   assert.equal(dates.get("/repo/apps/site/src/app/pricing/page.tsx"), "2026-10-24");
   assert.equal(dates.has("/repo/apps/site/src/app/orm/page.tsx"), false);
+});
+
+test("parseGitLog keeps a path with a quote or backslash as it is on disk", () => {
+  const weird = 'apps/site/src/app/we"ird\\name/page.tsx';
+  const log = gitLog([["aaa 2026-10-22T10:00:00+00:00", [weird]]]);
+  assert.equal(parseGitLog(log, TOP).get(`/repo/${weird}`), "2026-10-22");
+});
+
+test("parseGitLog stores UTC days, so commits from different time zones compare in order", () => {
+  const log = gitLog([
+    // Newer instant (23:00Z on the 4th), recorded in UTC.
+    ["later 2026-10-04T23:00:00+00:00", ["apps/site/src/components/b.tsx"]],
+    // Older instant (20:00Z on the 4th), recorded in +05:00 as the 5th.
+    ["earlier 2026-10-05T01:00:00+05:00", ["apps/site/src/components/a.tsx"]],
+  ]);
+  const dates = parseGitLog(log, TOP);
+  assert.equal(dates.get("/repo/apps/site/src/components/a.tsx"), "2026-10-04");
+  assert.equal(dates.get("/repo/apps/site/src/components/b.tsx"), "2026-10-04");
+});
+
+test("getGitFileDates reads real git output into UTC days", () => {
+  const src = path.join(process.cwd(), "src");
+  for (const [file, day] of getGitFileDates(src)) {
+    assert.ok(path.isAbsolute(file), file);
+    assert.match(day, /^\d{4}-\d{2}-\d{2}$/, file);
+  }
 });
 
 test("a route's date is the newest among its page and the local modules it imports", () => {

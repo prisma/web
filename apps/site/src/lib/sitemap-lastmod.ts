@@ -26,9 +26,13 @@ export type FileDates = ReadonlyMap<string, string>;
 const COMMIT_PREFIX = "commit:";
 
 /**
- * Parses `git log --format=commit:%H %cI --name-only`, newest commit first,
- * into the date of the last commit that touched each file. Files whose last
- * commit is a shallow-clone boundary get no date.
+ * Parses `git log -z --format=commit:%H %cI --name-only`, newest commit first,
+ * into the date of the last commit that touched each file. With `-z` every
+ * header and path ends in NUL and paths are not C-quoted, so a path with a
+ * quote, backslash or control character comes through as it is on disk.
+ * Dates are UTC calendar days, so days from commits made in different time
+ * zones compare in commit order. Files whose last commit is a shallow-clone
+ * boundary get no date.
  */
 export function parseGitLog(
   stdout: string,
@@ -39,16 +43,20 @@ export function parseGitLog(
   const seen = new Set<string>();
   let date: string | undefined;
 
-  for (const line of stdout.split("\n")) {
-    if (line.startsWith(COMMIT_PREFIX)) {
-      const [sha = "", committedAt = ""] = line.slice(COMMIT_PREFIX.length).trim().split(" ");
-      const day = committedAt.slice(0, 10);
+  for (const record of stdout.split("\0")) {
+    // git writes a newline between a commit's header and its first path.
+    const entry = record.startsWith("\n") ? record.slice(1) : record;
+
+    if (entry.startsWith(COMMIT_PREFIX)) {
+      const [sha = "", committedAt = ""] = entry.slice(COMMIT_PREFIX.length).trim().split(" ");
+      const instant = new Date(committedAt);
+      const day = Number.isNaN(instant.getTime()) ? "" : instant.toISOString().slice(0, 10);
       date = boundaryCommits.has(sha) || !/^\d{4}-\d{2}-\d{2}$/.test(day) ? undefined : day;
       continue;
     }
 
-    if (!line) continue;
-    const file = path.join(topLevel, line);
+    if (!entry) continue;
+    const file = path.join(topLevel, entry);
     if (seen.has(file)) continue;
     seen.add(file);
     if (date) dates.set(file, date);
@@ -90,9 +98,8 @@ export function getGitFileDates(directory: string): Map<string, string> {
   if (!topLevel) return new Map();
 
   const log = git(directory, [
-    "-c",
-    "core.quotepath=off",
     "log",
+    "-z",
     // Committer date: when the change landed on the branch being built.
     "--format=commit:%H %cI",
     "--name-only",
