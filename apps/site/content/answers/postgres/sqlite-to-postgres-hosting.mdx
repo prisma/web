@@ -1,0 +1,127 @@
+---
+title: "Which Postgres host should I choose for my SQLite app?"
+description: "Choose managed Postgres for a TypeScript app moving from SQLite, then rehearse schema conversion, data checks and the customer launch."
+summary: "Choose managed Postgres with a PostgreSQL connection URL, a region near your server and a recovery plan that fits the customer data. [Prisma Postgres](/docs/postgres) is a good fit when you want to keep your choice of PostgreSQL client and add [Prisma Compute](/docs/compute) for TypeScript hosting in the same project. Neon and Supabase are also worth considering for their surrounding workflows. Moving from SQLite requires a schema and data migration; changing the connection string alone does not convert the app."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "6 min read"
+faq:
+  - question: "Can I upload my SQLite file to Prisma Postgres?"
+    answer: "A SQLite file is not a PostgreSQL database backup. Create a PostgreSQL schema, convert and import the records, then verify the result. Prisma Postgres accepts PostgreSQL clients; the app must use a client and queries compatible with PostgreSQL."
+  - question: "Does moving the database require moving my app host?"
+    answer: "No. A server on Vercel, Netlify or another compatible host can connect to Prisma Postgres. Choose Prisma Compute when its TypeScript runtime and project workflow fit the app, and evaluate that hosting change separately from converting the database."
+  - question: "Do I need Prisma ORM for the migration?"
+    answer: "No. Prisma Postgres works with ordinary PostgreSQL clients and other ORMs. If the app already uses an ORM, follow its PostgreSQL schema and migration workflow rather than applying SQLite migration files to PostgreSQL."
+  - question: "Can I keep SQLite for production?"
+    answer: "Yes, when SQLite fits the workload and the database file has a durable, backed-up home. An offline application or a small service with an appropriate persistent disk may suit SQLite. Prisma Compute has no persistent filesystem for that file."
+related:
+  - title: "Records that disappear after a restart"
+    href: "/postgres/app-data-lost-after-restart"
+  - title: "Postgres with an existing Node client"
+    href: "/postgres/node-postgres-hosting"
+  - title: "A separate test database"
+    href: "/postgres/typescript-test-environment"
+cta:
+  title: "Rehearse the move before inviting customers"
+  description: "Create a development Prisma Postgres database, test the converted schema and keep the original SQLite copy until the cutover is verified."
+  label: "Connect to Prisma Postgres"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+Before your first customers arrive, you can test a database change without coordinating a live cutover. Use that opportunity to check what the app actually saves, including the identifiers used in links and the meaning of dates, prices and missing values.
+
+We make Prisma Postgres and Prisma Compute. The linked provider and database documentation was checked on October 22, 2026.
+
+## What should decide the host?
+
+Choose the database around the deployed server, the data you need to preserve and the recovery procedure you can operate. A managed service takes care of running PostgreSQL; your team still owns the conversion from SQLite and the application's access rules.
+
+[SQLite's type system](https://www.sqlite.org/datatype3.html) differs from PostgreSQL's. Inspect the actual values, rather than assuming a column declaration describes every stored row. Decide how to translate booleans, dates, JSON, numeric amounts and empty values. Review constraints and case-sensitive comparisons with the application's tests.
+
+Keep the database close to the server that queries it. For a browser app, that is the API or server-rendering region, which can differ from the customer's location. Check [app and database regions](/postgres/nodejs-database-regions) together.
+
+## Which managed Postgres options fit?
+
+These providers expose PostgreSQL connection URLs and are listed alphabetically.
+
+| Provider | Choose it when | Check for this move |
+| --- | --- | --- |
+| Neon | Your team wants its [database branching workflow](https://neon.com/docs/get-started/workflow-primer). | Rehearse the import in the intended branch and verify the connection role and endpoint. |
+| Prisma Postgres | You want managed Postgres with [pooled and direct connections](/docs/postgres/database/connecting-to-your-database), optionally beside a TypeScript app on Compute. | Convert the schema, use the direct URL for migration work and select a suitable backup plan. |
+| Supabase | You also want its integrated [Auth, Storage or Realtime services](https://supabase.com/docs/guides/getting-started/architecture). | Decide which surrounding services you actually need and test the database connection mode. |
+
+Prisma Postgres lets you make the database change first. You can keep a working Vercel or Netlify deployment, then adopt Compute when you want the server and database described together through Composer.
+
+## How do I rehearse the migration?
+
+### 1. Prepare a separate target and a conversion plan
+
+Create a development database in [Prisma Console](https://console.prisma.io). Copy its direct PostgreSQL URL from the connection details into your local secret mechanism. Keep credentials out of Git and browser code.
+
+Create PostgreSQL migrations for the real schema using the project's chosen tool. Preserve existing record IDs and relationships. If imported IDs feed an identity sequence, advance the sequence past the imported values before new records can be created. A SQLite SQL dump is not automatically valid PostgreSQL SQL.
+
+### 2. Try one explicit conversion
+
+This fictional example demonstrates converting integer booleans through CSV. Run it in a new empty directory with the SQLite command-line tool installed:
+
+~~~sh
+sqlite3 source-demo.sqlite <<'SQL'
+CREATE TABLE customers (
+  id INTEGER PRIMARY KEY,
+  email TEXT NOT NULL,
+  active INTEGER NOT NULL CHECK (active IN (0, 1))
+);
+INSERT INTO customers VALUES
+  (7, 'ada@example.test', 1),
+  (12, 'sam@example.test', 0);
+.headers on
+.mode csv
+.once customers.csv
+SELECT id, email,
+       CASE active WHEN 1 THEN 'true' ELSE 'false' END AS active
+FROM customers ORDER BY id;
+SQL
+~~~
+
+With the PostgreSQL client installed and the development database's direct URL available as `DIRECT_DATABASE_URL`, open a session from that directory:
+
+~~~sh
+psql "$DIRECT_DATABASE_URL"
+~~~
+
+Paste the following into that one session. The [psql `\copy` command](https://www.postgresql.org/docs/17/app-psql.html) reads the CSV from your computer:
+
+~~~sql
+CREATE TEMP TABLE sqlite_import_demo (
+  id bigint PRIMARY KEY,
+  email text NOT NULL,
+  active boolean NOT NULL
+);
+\copy sqlite_import_demo (id, email, active) FROM 'customers.csv' WITH (FORMAT csv, HEADER true)
+
+SELECT count(*) AS rows_imported,
+       count(*) FILTER (WHERE active) AS active_rows
+FROM sqlite_import_demo;
+~~~
+
+The result is `rows_imported = 2` and `active_rows = 1`. The temporary table disappears when the session ends. This checks one conversion; it does not migrate your application or prepare another database.
+
+### 3. Test the application against PostgreSQL
+
+Apply the real schema migrations to the development target and import a copy of the real records. Compare row counts, IDs, relationships, representative totals and dates. Test missing values and duplicate records, then run the app's sign-in, create, update and delete flows.
+
+Switch the server's data-access configuration to PostgreSQL. Use the pooled URL for ordinary TCP application connections. The [Prisma Postgres serverless driver](/docs/postgres/database/serverless-driver) requires the direct URL; migrations and administrative tools also use the direct URL. Test SQL and ORM behavior rather than assuming SQLite-specific expressions work on PostgreSQL.
+
+### 4. Launch from a verified database
+
+For the final copy, stop writes to the source, import and verify the target, then point the app at PostgreSQL before reopening writes. Keep the source copy for reconciliation. This is a planned cutover, not a promise of zero downtime.
+
+If you also move the app to Compute, follow [Port an existing app](/docs/composer/porting-an-app). A Composer-declared database is a separate resource; importing the Console development database does not populate a new deployment database. Prepare each target through its own migration and import workflow before it receives customer traffic.
+
+## When should I choose another setup?
+
+Keep SQLite when local operation or a durable file is central to the app. A managed PostgreSQL connection does not provide offline synchronization.
+
+Check [Compute's runtime requirements](/docs/compute/limitations) before moving the server. Prisma Postgres has [plan-dependent snapshots](/docs/postgres/database/backups) and no point-in-time recovery. If restoring to a specific moment is a launch requirement, choose a database that provides it.

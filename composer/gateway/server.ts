@@ -3,6 +3,7 @@ import { createProxy, bunFetch } from "@prisma/proxy";
 import { agentFrontMiddleware } from "./agent-front.ts";
 import { gatewaySites } from "./config.ts";
 import { proxyRequestHeaders } from "../request-origin.ts";
+import { withOriginCache } from "./cache.ts";
 
 const { agentFront, proxyKey } = service.input();
 const origins = Object.fromEntries(
@@ -22,6 +23,7 @@ const proxy = createProxy(gatewaySites(), {
 Bun.serve({
   port: service.port(),
   hostname: "0.0.0.0",
-  fetch: (request) =>
+  fetch: withOriginCache((request) =>
     new URL(request.url).pathname === "/_composer/health" ? new Response("ok") : proxy(request),
+  ),
 });

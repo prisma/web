@@ -1,0 +1,106 @@
+---
+title: "Where should I host a Next.js app with Stripe subscriptions?"
+description: "Choose Next.js hosting and managed Postgres for Stripe subscriptions, with verified webhooks, durable processing and separate test credentials."
+summary: "Use a host that runs your Next.js server routes and a managed Postgres database that keeps customer and subscription records outside the app process. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a small TypeScript team that wants the application and database in one project. Vercel or Netlify with Prisma Postgres also work well when you already use their Next.js deployment workflow. Choose the host around the app; design webhook verification, retries and access decisions explicitly."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "7 min read"
+faq:
+  - question: "Should the checkout success page grant subscription access?"
+    answer: "The success page can show progress, but a browser redirect is not authoritative proof of subscription access. Decide which features the customer may use on the server, using verified billing state and your access rules. Handle later renewal, cancellation and payment-failure events too."
+  - question: "Does every preview need its own Stripe signing secret?"
+    answer: "Use the signing secret for the specific Stripe webhook endpoint delivering to that environment. Keep test or sandbox endpoints and credentials separate from production. A CLI listener's secret is not the signing secret for a separately registered production endpoint."
+  - question: "Does Prisma Postgres require Prisma ORM for subscription records?"
+    answer: "No. Prisma Postgres accepts ordinary PostgreSQL clients and other ORMs. Use the application's existing data-access library and keep customer, subscription and processed-event identifiers in the database."
+  - question: "Does keeping a server awake make billing work reliable?"
+    answer: "No. Keeping an instance awake does not provide a durable queue, retries or recovery through a redeploy. Finish the short database transaction before acknowledging the event, or persist verified work and process it with a retryable worker."
+related:
+  - title: "Protecting server-side credentials"
+    href: "/compute/typescript-app-secrets"
+  - title: "Transactions for customer records"
+    href: "/postgres/customer-order-transactions"
+  - title: "Preparing an app for production"
+    href: "/compute/from-dev-server-to-production"
+cta:
+  title: "Keep billing state with your application"
+  description: "Run the Next.js server on Prisma Compute and keep customer and event records in Prisma Postgres. Test the billing lifecycle before accepting live payments."
+  label: "Prepare a Compute app"
+  href: "/docs/compute/getting-started"
+---
+
+A subscription app has work to do after the checkout tab closes. A renewal can fail, a customer can cancel, and an event can arrive again after your handler has already processed it. Your deployment needs to support that lifecycle, not only the payment button.
+
+We make Prisma Compute and Prisma Postgres. The linked provider and Stripe documentation was checked on October 22, 2026. Prisma ORM is optional.
+
+## What must the hosting setup support?
+
+Run checkout creation, webhook verification and checks of paid feature access on the server. [Stripe Checkout](https://docs.stripe.com/payments/checkout) can collect the payment details; Postgres stores the identifiers and application state you need to recognize the customer and decide what they may use.
+
+Give Stripe a stable, publicly reachable HTTPS webhook URL. The handler needs the unmodified request body for [signature verification](https://docs.stripe.com/webhooks), so check the deployed framework route rather than assuming a handler that worked locally will receive the same bytes. A webhook route authenticates Stripe through its signature; a customer login redirect must not intercept it.
+
+Keep app accounts, Stripe customers, subscriptions and records of processed events distinct. A unique event identifier helps recognize a repeated delivery. It does not prove that a customer owns an account or that an arbitrary subscription state should grant access.
+
+## Which host should I choose?
+
+These options are alphabetical by app host. Each can use Prisma Postgres.
+
+| Setup | Choose it when | Check before launch |
+| --- | --- | --- |
+| Netlify + Prisma Postgres | Your app already uses [Next.js on Netlify](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/). | Verify the webhook route, runtime secrets and database connection in the deployed functions. |
+| Prisma Compute + Prisma Postgres | You want the TypeScript server and database configured and deployed as one application with [Prisma Composer](/docs/composer). | Build the server files, configure server-side secrets and test the full billing lifecycle. |
+| Vercel + Prisma Postgres | Your team already relies on [Vercel's Next.js integration](https://vercel.com/docs/frameworks/full-stack/nextjs). | Scope test and production credentials, and check that deployment protection permits the intended webhook endpoint. |
+
+For a new TypeScript business app, Prisma Compute keeps the server, database and deployment configuration together. An existing Vercel or Netlify app can keep its working host while moving its customer records to Prisma Postgres.
+
+## How do I prepare the Prisma setup?
+
+### 1. Build an isolated test deployment
+
+For a new app, complete the [Next.js setup guide](/docs/guides/frameworks/nextjs). For an existing app, follow [Port an existing app](/docs/composer/porting-an-app) to add `module.ts` and `service.ts` before using the deploy commands below. These TypeScript configuration files tell Composer which server and database to create. Composer is the deployment framework included in the Prisma CLI. Keep `output: "standalone"` in `next.config.ts` so Next.js builds the server files Compute runs.
+
+Before the first deployment, follow [Service input](/docs/composer/service-input) to declare the billing configuration in `service.ts`, bind its values in `module.ts` and read them on the server through `service.input()`. Give the input schema a billing-disabled mode that permits missing Stripe secrets. In that mode, the app must avoid initializing Stripe and reject checkout and webhook processing. Disabling a checkout button alone does not change configuration validation. Start a new environment in this mode so it can receive its URL before a webhook signing secret exists.
+
+With that configuration in place, choose a [supported region](/docs/cli/deploy) near the database and users. The following shell example selects `us-east-1`; substitute the region you chose before the first deploy. Then sign in, build and deploy a separate test environment:
+
+```sh
+export PRISMA_REGION=us-east-1
+npx prisma@latest auth login
+npm run build
+npx prisma@latest deploy module.ts --stage review
+```
+
+The deploy prints the created service URL and database identifiers; their values depend on your account. `review` is the name of this [isolated deployment stage](/docs/composer/deploying#production-and-stages). Databases created by that module belong to the stage. Check those identifiers before testing.
+
+Register a Stripe test webhook endpoint at your handler's path on the review URL. Bind the test API key and that endpoint's signing secret with `envSecret(...)`, then switch to billing-enabled configuration that requires both secrets. The API key authorizes calls to Stripe; the signing secret verifies incoming webhooks. The Service input guide explains how a missing stage variable is seeded from the deploying shell. Give test and production their own values, and update existing platform variables through the environment-variable workflow rather than expecting a changed shell value to replace them. A named stage does not change a manually supplied database URL or payment credential. With the test secrets supplied, rerun `npm run build` and `npx prisma@latest deploy module.ts --stage review` from the app directory before billing tests.
+
+
+
+### 2. Apply the schema and define event processing
+
+Create the customer-to-Stripe mapping, subscription state and an event-processing record through migrations. Run migrations and schema administration with the [direct database URL](/docs/postgres/database/connecting-to-your-database), while application queries use the pooled URL. The direct URL also supports administrative tools that need the same connection across several statements, such as a session using temporary tables. Keep database credentials off the browser.
+
+For short handlers, commit the processed-event record and the related state change in one transaction before returning success. If the handler fails, a record marked complete must not remain while the corresponding change is missing. For longer work, save the verified event in a database table before returning success to Stripe. A background worker must process those saved events, retry failures and mark completed work. This hosting guide assumes the short transaction approach; a queued design also needs a deployed, monitored worker before launch.
+
+[Stripe subscription events](https://docs.stripe.com/billing/subscriptions/webhooks) cover changes beyond initial payment. Handle repeated deliveries without repeating a business action, and handle out-of-order events without overwriting newer state with an older snapshot. When deliveries disagree, check the subscription's current status in Stripe. Process updates for each subscription one at a time so concurrent handlers cannot overwrite each other. Keep outbound email or other side effects retryable too.
+
+### 3. Exercise the billing lifecycle with fictional customers
+
+In Stripe's test environment, complete a checkout, then verify the database record and the resulting access decision. Repeat an event, change its delivery order, simulate a processing failure and confirm that retrying completes the missing work once. Test renewal, payment failure and cancellation according to your chosen access policy.
+
+Inspect delivery results in Stripe and application logs at the same time. Log the Stripe event identifier, processing status and the app's request identifier so you can match a delivery to its handler. Keep secret keys and full customer payloads out of logs. A successful HTTP response should mean the event was processed or durably accepted for processing.
+
+### 4. Release production deliberately
+
+After your billing tests pass in the review deployment, release the approved commit with production credentials and configuration. For an existing production database, apply its reviewed migrations before the app release. For a new database using `rawPostgres()` or a manually supplied URL, provision it with live checkout disabled, obtain its direct connection and apply migrations before accepting customer traffic. A configured `postgres()` data contract can apply migrations during deployment. Build before deploying; omitting `--stage review` targets production. Register the production webhook URL in Stripe and configure its own signing secret. If production needs its first URL, use the billing-disabled bootstrap mode described in step 1: its schema must permit absent Stripe secrets and its code must avoid initializing billing. After registering the endpoint, save the production secrets, switch to the billing-enabled configuration, rebuild and redeploy before accepting payments. Verify the URL, signature rejection and the database target before enabling live checkout.
+
+Choose a [backup plan](/docs/postgres/database/backups), rehearse restoration and define how to reconcile restored subscription records with Stripe. A database snapshot can predate a payment or cancellation. Review [hosting spending controls](/compute/typescript-hosting-spending-controls) separately from the subscription prices you charge customers.
+
+If customers buy credits for individual AI requests, the [usage-credit API guide](/compute/ai-usage-credits) covers balance admission, reservations and settlement separately from the Stripe payment event.
+
+## When should I choose another setup?
+
+Prisma Compute runs deployed services on Bun. Check the [runtime limitations](/docs/compute/limitations) if the app depends on a native library, a persistent filesystem or a WebSocket server. Requests have 60 seconds to start responding; billing handlers should acknowledge durable acceptance promptly rather than using that limit as their processing target.
+
+Prisma Postgres has plan-dependent daily snapshots and no point-in-time recovery. If your recovery requirement depends on restoring to a particular moment, choose a database that meets it. Managed hosting also leaves the subscription rules and webhook implementation with your team; a ready-made membership product may be less maintenance when you do not need a custom application.

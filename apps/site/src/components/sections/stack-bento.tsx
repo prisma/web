@@ -62,7 +62,7 @@ const HOME_CONTENT: StackBentoContent = {
     ],
   },
   compute: {
-    body: "TypeScript app hosting that runs on the same host as your database, so your agent can deploy, debug, and redeploy end-to-end.",
+    body: "TypeScript app hosting on the same platform and in the same region as your database, so your agent can deploy, debug, and redeploy end-to-end.",
     bullets: [
       "Bun runtime on bare metal",
       "Co-located with Prisma Postgres, single-digit ms query latency",

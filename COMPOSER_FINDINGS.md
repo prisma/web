@@ -924,3 +924,133 @@ Consolidation trades independent media deploy hashes for fewer services and
 less proxy/static-server code. Blog code/content deployments now carry its
 unchanged media too. Object storage or a separate media origin can avoid that
 re-upload if deployment size or further media growth becomes a concern.
+
+## Live blog performance comparison — 16 October 2026
+
+Compared the [Compute gateway blog](https://dwgv6bi6aljw05msqzcpvtgg.ewr.prisma.build/blog)
+with [production](https://www.prisma.io/blog) from the local Bangkok machine.
+Chrome 155.0.8059.80 / Lighthouse 13.5.0, sequential alternating runs, fresh browser
+profiles and no consent interaction. These are local lab results, not global
+measurements, field percentiles, controlled service cold starts, or load tests.
+The preview was verified against successful deployment run
+[38906855672](https://github.com/prisma/web/actions/runs/38906855672), head
+`ffb80bcf04c40bce842f095e44bc68f13920cf96`.
+
+| Median | Compute | Production |
+| --- | ---: | ---: |
+| Fresh-connection HTTP TTFB, 10 samples | 813 ms | 191 ms |
+| Full compressed HTML, 10 samples | 1.13 s | 0.19 s |
+| Desktop default Lighthouse score, 3 runs | 61 | 87 |
+| Desktop simulated LCP, 3 runs | 5.07 s | 2.40 s |
+| Applied mobile LCP, 3 runs | 3.95 s | 3.47 s |
+| Applied mobile blocking time, 3 runs | 482 ms | 723 ms |
+| Applied mobile Lighthouse score, 3 runs | 66 | 62 |
+
+Applied mobile settings: 150 ms request latency, 1,600 Kbps download, 750 Kbps
+upload, CPU slowdown ×4; 412×823 viewport. Default desktop uses Lighthouse's
+simulation, so the desktop and applied mobile rows use different methods.
+Default simulated mobile scores were 63 / 67 and simulated LCP 8.42 / 9.48 s;
+their LCP ranking differed from the observed trace. The separate applied
+throttling runs validate the mobile comparison. Scores alone obscure the
+tradeoff between earlier content and less JavaScript blocking.
+
+All 30 HTTP requests returned 200. Both indices are **prerendered**: Compute
+returned Next cache HIT/prerender headers and production Vercel cache HIT with
+`sin1` routing. Compute's TCP connect median was 268 ms versus production's
+21 ms. Direct Compute blog requests had 900 ms median TTFB, so bypassing the
+gateway did not remove the gap. This supports geography/edge delivery as a
+major factor; independent requests do not isolate the exact proxy overhead.
+Compressed HTML sizes were nearly equal at about 23.5 KB.
+
+This is a comparison of actual deployments with different commits/configuration.
+The preview listing includes `is-prisma-8-ready-for-long-lived-production-apps`
+where production includes `host-a-test-version-without-replacing-production`.
+The former's approximately 615 KB PNG explains much of the larger desktop
+Compute transfer (4.16 MB versus 3.72 MB during the audits). Both preload about
+0.83 MB of fonts and download a 482 KB author image displayed at about 28×28
+pixels. Desktop JavaScript transfer is about 1.21 / 1.30 MB, including third
+parties. Preview QA also reported missing PostHog configuration, a CookieYes
+hostname mismatch and a secondary FontAwesome kit 403; production shows the
+consent banner. These differences prevent a pure hosting-only attribution.
+
+**Improvements:** edge delivery of static HTML/assets with correct Next/RSC
+variation and invalidation; build-time responsive image formats/sizes; font
+subsetting and selective preloads; deferred optional client code and explicit
+preview analytics/consent configuration. Validate from EWR/US as well before
+making a global claim. Keep frontend optimizations separate from this structural
+Composer PR.
+
+Full methodology, ranges, HTTP headers, screenshots, 18 Lighthouse JSON/HTML
+reports and reproduction scripts are saved locally in
+`output/playwright/blog-performance-2026-10-16/`, with `REPORT.md` as the entry
+point. No application, deployment, or production configuration was changed.
+
+## Cloudflare custom-domain baseline and origin cache policy — 23 October 2026
+
+The custom domain `https://prisma.sorenbs.com` targets the branch gateway
+`https://bgbhakfqfiubyt7jh8c0eerb.ewr.prisma.build`, verified in successful
+[deployment run 39432175818](https://github.com/prisma/web/actions/runs/39432175818)
+on `043a33b5766c856f624c2a3571cc29c89300cb38`. The older generated domain used on
+16 October is a different gateway; it is not the direct-origin control for this
+experiment.
+
+Before any origin/cache-rule changes, 10 fresh-connection GET samples per page
+and target, followed by three sequential browser runs per profile, gave:
+
+| Median | Cloudflare custom domain | Same gateway directly | Production |
+| --- | ---: | ---: | ---: |
+| `/blog` TTFB | 330 ms | 836 ms | 199 ms |
+| `/` TTFB | 353 ms | 820 ms | 152 ms |
+| Blog desktop Lighthouse score | 81 | 69 | 90 |
+| Blog desktop simulated LCP | 2.35 s | 3.06 s | 2.04 s |
+| Blog applied mobile LCP | 4.94 s | 4.05 s | 3.50 s |
+| Blog applied mobile Lighthouse score | 61 | 63 | 61 |
+
+Chrome 155.0.8059.85 / Lighthouse 13.5.0 on the same Bangkok machine. Desktop
+uses standard Lighthouse simulation; mobile applies 150 ms request latency,
+1,600/750 Kbps download/upload and CPU ×4. Browser caches were reset, CDN caches
+were allowed to warm, and tests ran sequentially. A measurement round overlapping
+pnpm's automatic dependency verification was discarded and replaced after local
+checks finished. Raw discarded samples are retained separately. These are small
+local lab samples; mobile results are mixed and do not establish a universal
+Cloudflare speedup. Production and the preview also have different content and
+analytics/consent configuration.
+
+Cloudflare returned `DYNAMIC` for every landing HTML request despite the origin's
+`s-maxage=31536000`. Hashed CSS/fonts went from `MISS` to `HIT`; public blog
+images instead returned `REVALIDATED` because Next sends `public, max-age=0`.
+One stylesheet went from a 1.98 s miss to a 66 ms hit. Browser network logs
+confirm asset hits while HTML remains dynamic. The faster dynamic HTML path is
+consistent with Cloudflare's network and reused origin connections; it is not
+evidence of HTML cache hits.
+
+Cloudflare distinguishes eligibility from freshness: proxied DNS enables its
+default extension-based eligibility; HTML needs a Cache Rule. The user prefers
+the origin to own freshness. The gateway therefore caps default public
+prerendered HTML at `CDN-Cache-Control: public, max-age=60`, retaining browser
+revalidation, shorter framework lifetimes and explicit application CDN policies.
+Dynamic/private HTML and request variants cannot opt into this default shared
+cache. Streamed/compressed bodies, assets, RSC and Markdown keep their transport
+and existing non-HTML cache behavior. Conditional HTML 304s retain the cap.
+
+`composer/cloudflare-cache-rule.json` describes an eligibility-only experiment
+for `/` and `/blog`, with **no edge/browser TTL override**. Its request guards
+exclude cookies, authorization, queries, RSC/Next navigation and agent/Markdown
+negotiation before cache lookup. This prevents a cached HTML entry being served
+to another representation. The Cloudflare rule must be enabled only after the
+one-minute origin policy is deployed; then measure and verify actual `HIT`/`Age`
+responses and request variants. No Cloudflare configuration has been changed
+by the agent at this stage; the user requested instructions to apply the rule.
+
+**Compute/Composer improvements:** provide deployment-aware edge caching and
+invalidation for static HTML/assets, with framework-aware representation keys;
+make the difference between a proxied custom domain and HTML cache eligibility
+clear in setup documentation. Next's one-year prerender cache header assumes a
+platform invalidation mechanism and should not silently become a year of stale
+HTML on an independent CDN. Public-image caching needs its own explicit origin
+policy if repeated revalidation is undesirable; do not treat unhashed image
+URLs as immutable automatically.
+
+Raw HTTP samples, Lighthouse reports, network logs and reproduction scripts are
+saved locally in `output/playwright/blog-performance-2026-10-23/`. The historical
+baseline is kept separate from measurements after code/rule changes.

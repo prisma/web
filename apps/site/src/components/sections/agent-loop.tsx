@@ -43,7 +43,7 @@ const FEATURES = [
   {
     icon: Database,
     title: "Deploy your app, the database is already there",
-    body: "App and Postgres co-located on the same host.",
+    body: "App and Postgres on one platform, in the same region, in one project.",
   },
 ];
 
