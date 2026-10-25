@@ -474,6 +474,7 @@ export default function AIChatContent({
             "hidden md:flex",
           )}
           data-state={isOpen ? "open" : "closed"}
+          inert={!isOpen}
         >
           <ChatInner exampleQuestions={exampleQuestions} onClose={onClose} />
         </div>,

@@ -2045,3 +2045,32 @@ Record the UI behavior as passed and actual answer generation as unverified.
 Do not count this as a successful end-to-end answer or assume an allowlist change
 alone fixes it. No query was replayed, CAPTCHA token reused, protection relaxed,
 or external integration configuration changed during diagnosis.
+
+### Review corrections before merge
+
+CodeRabbit's review of `a14d74de6` identified three valid improvements, applied
+together without changing routing, cache policy or integration configuration:
+
+- The retained desktop chat panel is inert while closed. A real-browser check
+  of the production docs build confirms the open textarea accepts focus, the
+  closed panel rejects focus, and reopening restores interaction. No question
+  was submitted during this check.
+- Video source retention and playback use separate intersection observations.
+  The source becomes eligible near the viewport and stays attached offscreen;
+  playback follows actual visibility. A real-browser check confirms no source
+  initially, playback on entry, pause on exit with the source retained, resume
+  on re-entry, and no source/request on a fresh reduced-motion page.
+- The HTTP adapter reports upstream body errors through `onError`, then destroys
+  the response without passing the error into an unobserved response event.
+  A new regression test fails before the fix because the failure is not reported;
+  after the fix it verifies a partial response fails, the original error is
+  reported once, and another request to the same server succeeds. All four
+  transport tests pass on both Node and Bun 1.4.3.
+
+Validation after these fixes: proxy 41, Composer 41, docs 92 and site 289 tests
+pass; all eight type-check tasks pass with the required production origin
+values; ordinary production builds of Site and Docs succeed. Local browser
+artifacts, including test-setup failures and final passing checks, remain in
+`output/playwright/review-2026-10-25/`. The review's optional docstring-coverage
+warning does not identify another runtime defect. CI and deployed-preview
+verification still need to complete on the pushed correction commit.

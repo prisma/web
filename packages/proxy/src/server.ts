@@ -56,7 +56,10 @@ export function createHttpServer(
         return;
       }
       body = Readable.fromWeb(response.body as import("node:stream/web").ReadableStream);
-      body.once("error", (error) => outgoing.destroy(error));
+      body.once("error", (error) => {
+        options.onError?.(error);
+        outgoing.destroy();
+      });
       body.pipe(outgoing);
     } catch (error) {
       options.onError?.(error);

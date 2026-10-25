@@ -7,21 +7,23 @@ import { useInView, useReducedMotion } from "framer-motion";
 // near the viewport, and keep the existing background as the static fallback.
 export function DeferredVideo({ src, className }: { src: string; className?: string }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const visible = useInView(ref, { once: true, margin: "300px" });
+  const near = useInView(ref, { once: true, margin: "300px" });
+  const visible = useInView(ref);
   const reduce = useReducedMotion();
-  const active = visible && reduce === false;
+  const loaded = near && reduce === false;
+  const active = visible && loaded;
   useEffect(() => {
     if (active) void ref.current?.play().catch(() => {});
     else {
       ref.current?.pause();
-      ref.current?.load();
+      if (!loaded) ref.current?.load();
     }
-  }, [active]);
+  }, [active, loaded]);
   return (
     <video
       ref={ref}
       aria-hidden
-      src={active ? src : undefined}
+      src={loaded ? src : undefined}
       autoPlay={active}
       muted
       loop

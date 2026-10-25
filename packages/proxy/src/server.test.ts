@@ -4,8 +4,11 @@ import { request } from "node:http";
 import { gzipSync } from "node:zlib";
 import { createHttpServer, rawFetch } from "./node.ts";
 
-async function listen(handler: Parameters<typeof createHttpServer>[0]) {
-  const server = createHttpServer(handler);
+async function listen(
+  handler: Parameters<typeof createHttpServer>[0],
+  options?: Parameters<typeof createHttpServer>[1],
+) {
+  const server = createHttpServer(handler, options);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   assert.ok(address && typeof address !== "string");
@@ -118,3 +121,40 @@ test("a disconnected client aborts the handler and cancels its response stream",
     await new Promise<void>((r) => server.close(() => r()));
   }
 });
+
+test(
+  "a failed upstream body is reported and the adapter keeps serving requests",
+  { timeout: 5000 },
+  async () => {
+    const failure = new Error("upstream body failed");
+    const errors: unknown[] = [];
+    let upstream!: ReadableStreamDefaultController<Uint8Array>;
+    const { server, url } = await listen(
+      (req) => {
+        if (new URL(req.url).pathname === "/healthy") return new Response("still healthy");
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              upstream = controller;
+              controller.enqueue(new TextEncoder().encode("partial response"));
+            },
+          }),
+        );
+      },
+      { onError: (error) => errors.push(error) },
+    );
+    try {
+      const response = await rawFetch(new URL(url), {});
+      assert.equal(response.status, 200);
+      const body = response.text();
+      upstream.error(failure);
+      await assert.rejects(body);
+      assert.deepEqual(errors, [failure]);
+      const healthy = await rawFetch(new URL(url + "/healthy"), {});
+      assert.equal(await healthy.text(), "still healthy");
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  },
+);
