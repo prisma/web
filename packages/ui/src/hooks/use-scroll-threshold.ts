@@ -6,16 +6,39 @@ type ScrollStore = {
   getSnapshot: () => boolean;
 };
 
-const thresholdStores = new Map<number, ScrollStore>();
+export type ScrollThresholdOptions =
+  | number
+  | {
+      enter: number;
+      exit: number;
+    };
 
-const createStore = (threshold: number): ScrollStore => {
+const thresholdStores = new Map<string, ScrollStore>();
+
+const getThresholdConfig = (threshold: ScrollThresholdOptions) => {
+  if (typeof threshold === "number") {
+    return { enter: threshold, exit: threshold, key: `${threshold}` };
+  }
+  return {
+    enter: threshold.enter,
+    exit: threshold.exit,
+    key: `${threshold.enter}:${threshold.exit}`,
+  };
+};
+
+const createStore = (threshold: ScrollThresholdOptions): ScrollStore => {
+  const { enter, exit, key } = getThresholdConfig(threshold);
   const listeners = new Set<Listener>();
   let isScrolled = false;
   let rafId: number | null = null;
 
   const update = () => {
     rafId = null;
-    const next = window.scrollY >= threshold;
+    // Float once scrollY reaches `enter`; stay floating until it drops below
+    // `exit`. Both bounds are inclusive on the floating side, so a plain
+    // numeric threshold (enter === exit) is exactly `scrollY >= threshold`
+    // and cannot oscillate when repeated scroll events land on the boundary.
+    const next = isScrolled ? window.scrollY >= exit : window.scrollY >= enter;
 
     if (next === isScrolled) {
       return;
@@ -37,7 +60,7 @@ const createStore = (threshold: number): ScrollStore => {
     listeners.add(listener);
 
     if (listeners.size === 1) {
-      isScrolled = window.scrollY >= threshold;
+      isScrolled = window.scrollY >= enter;
       window.addEventListener("scroll", onScroll, { passive: true });
     }
 
@@ -52,7 +75,7 @@ const createStore = (threshold: number): ScrollStore => {
           rafId = null;
         }
 
-        thresholdStores.delete(threshold);
+        thresholdStores.delete(key);
       }
     };
   };
@@ -64,7 +87,7 @@ const createStore = (threshold: number): ScrollStore => {
 
     // Keep first paint in sync even before the first subscription cycle runs.
     if (listeners.size === 0) {
-      return window.scrollY >= threshold;
+      return window.scrollY >= enter;
     }
 
     return isScrolled;
@@ -73,19 +96,21 @@ const createStore = (threshold: number): ScrollStore => {
   return { subscribe, getSnapshot };
 };
 
-const getOrCreateStore = (threshold: number): ScrollStore => {
-  const existingStore = thresholdStores.get(threshold);
+// Exported for tests; apps should use the hook.
+export const getScrollThresholdStore = (threshold: ScrollThresholdOptions): ScrollStore => {
+  const { key } = getThresholdConfig(threshold);
+  const existingStore = thresholdStores.get(key);
 
   if (existingStore) {
     return existingStore;
   }
 
   const nextStore = createStore(threshold);
-  thresholdStores.set(threshold, nextStore);
+  thresholdStores.set(key, nextStore);
   return nextStore;
 };
 
-export const useScrollThreshold = (threshold: number = 64) => {
-  const store = getOrCreateStore(threshold);
+export const useScrollThreshold = (threshold: ScrollThresholdOptions = 64) => {
+  const store = getScrollThresholdStore(threshold);
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => false);
 };

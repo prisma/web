@@ -1,9 +1,10 @@
 "use client";
 
 import { UnifiedSearchTrigger } from "@prisma-docs/ui/components/unified-search";
+import { useScrollThreshold } from "@prisma-docs/ui/hooks/use-scroll-threshold";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, Menu } from "@/components/icons/forma";
 import { PLATFORM_PRODUCT_ICONS, PRODUCT_ICONS } from "@/components/product/icons";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,11 @@ const PLATFORM_ICONS = Object.fromEntries(
   Object.entries(PLATFORM_PRODUCT_ICONS).map(([href, name]) => [href, PRODUCT_ICONS[name]]),
 );
 
+// Scroll threshold with hysteresis: float when scrolling past 24px, dock when
+// scrolling back near the top (< 12px) to prevent boundary flickering and
+// ensure smooth animations when returning to top.
+const SCROLL_THRESHOLD = { enter: 24, exit: 12 };
+
 // At the very top of the page the navbar sits docked inside the hero wrapper.
 // From the first scroll it detaches into a sticky floating pill with its own
 // wrapper.
@@ -40,14 +46,7 @@ const PLATFORM_ICONS = Object.fromEntries(
 // rest of the page down.
 export function Header() {
   const [open, setOpen] = useState(false);
-  const [floating, setFloating] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setFloating(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const floating = useScrollThreshold(SCROLL_THRESHOLD);
 
   return (
     <header className="sticky top-0 z-50 h-0 flow-root">
@@ -56,10 +55,10 @@ export function Header() {
           transitioned so the change is smooth in both directions. */}
       <div
         className={cn(
-          "mx-auto flex items-center justify-between rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          "mx-auto flex items-center justify-between rounded-full border transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none [transform:translateZ(0)] will-change-[max-width,height,margin,padding]",
           floating
             ? "mt-3 h-14 max-w-[calc(100%-1.5rem)] border-black/[0.06] bg-white/85 px-5 shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_24px_-8px_rgba(21,21,21,0.16)] backdrop-blur-md sm:max-w-4xl"
-            : "mt-5 h-16 max-w-[96rem] border-transparent bg-white/0 px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-0 sm:mt-7 sm:h-[4.5rem] sm:px-16",
+            : "mt-5 h-16 max-w-[96rem] border-transparent bg-white/0 px-10 shadow-[0_1px_2px_rgba(21,21,21,0),0_8px_24px_-8px_rgba(21,21,21,0)] backdrop-blur-none sm:mt-7 sm:h-[4.5rem] sm:px-16",
         )}
       >
         <Logo />
