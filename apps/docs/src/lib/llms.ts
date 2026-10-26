@@ -169,7 +169,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm",
     title: "Prisma ORM",
     description:
-      "Current Prisma ORM (Prisma ORM 8) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma ORM 7 and legacy v6 trees).",
+      "Prisma ORM 8 (release candidate) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma ORM 7 and legacy v6 trees).",
     prefixes: ["/orm", "/prisma-orm", "/getting-started", "/full-stack-tutorial"],
     excludePrefixes: ["/orm/v6", "/orm/v7"],
   },
@@ -205,7 +205,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
+      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations, plus guides that build complete apps on Prisma Compute (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
     prefixes: ["/guides"],
     excludePrefixes: ["/guides/v7"],
   },
@@ -242,14 +242,14 @@ export const llmsSections: LLMsSection[] = [
     slug: "compute",
     title: "Prisma Compute",
     description:
-      "Prisma Compute: TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
+      "Prisma Compute: TypeScript app hosting that runs alongside Prisma Postgres, with isolated branch previews that can have their own databases, and a CLI-first deploy workflow.",
     prefixes: ["/compute"],
   },
   {
     slug: "composer",
     title: "Prisma Composer",
     description:
-      "Prisma Composer (Early Access): a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
+      "Prisma Composer: a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
     prefixes: ["/composer"],
   },
   {

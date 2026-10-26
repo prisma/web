@@ -1,3 +1,4 @@
+import robotImage from "@prisma-docs/ui/assets/brand/robot.webp";
 import { Database, Layers, Repeat } from "@/components/icons/forma";
 import { IconTile } from "@/components/brand/icon-tile";
 import { Texture } from "@/components/brand/texture";
@@ -43,7 +44,7 @@ const FEATURES = [
   {
     icon: Database,
     title: "Deploy your app, the database is already there",
-    body: "App and Postgres co-located on the same host.",
+    body: "App and Postgres on one platform, in the same region, in one project.",
   },
 ];
 
@@ -57,6 +58,21 @@ function LoopDiagram() {
       className="relative mx-auto aspect-square w-full max-w-[22rem] select-none sm:max-w-[26rem] lg:max-w-none"
     >
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 400 400" fill="none">
+        <g className="text-foreground/15" stroke="currentColor" strokeWidth="1">
+          {STEPS.map(({ label, x, y }) => (
+            <line key={label} x1="200" y1="200" x2={x * 4} y2={y * 4} />
+          ))}
+          <circle cx="200" cy="200" r="160" />
+        </g>
+      </svg>
+      {/* Rotate the SVG layer, rather than a <g> whose transform forces SVG
+          layout on every frame, even while the diagram is offscreen. */}
+      <svg
+        className="absolute inset-0 h-full w-full origin-center animate-[spin_14s_linear_infinite] motion-reduce:animate-none"
+        style={{ animationDuration: `${ORBIT}s` }}
+        viewBox="0 0 400 400"
+        fill="none"
+      >
         <defs>
           {/* The three brand primaries laid along the comet's arc (chord from
               the dash tail at 3 o'clock to its head at 50.4°, in user space so
@@ -74,39 +90,28 @@ function LoopDiagram() {
             <stop offset="100%" stopColor="#f34a60" />
           </linearGradient>
         </defs>
-        <g className="text-foreground/15" stroke="currentColor" strokeWidth="1">
-          {STEPS.map(({ label, x, y }) => (
-            <line key={label} x1="200" y1="200" x2={x * 4} y2={y * 4} />
-          ))}
-          <circle cx="200" cy="200" r="160" />
-        </g>
-        <g
-          className="origin-center animate-[spin_14s_linear_infinite] motion-reduce:animate-none"
-          style={{ animationDuration: `${ORBIT}s` }}
-        >
-          <circle
-            className="blur-[5px]"
-            cx="200"
-            cy="200"
-            r="160"
-            pathLength="100"
-            strokeDasharray="14 86"
-            strokeLinecap="round"
-            stroke="url(#loop-spectrum)"
-            strokeWidth="8"
-            opacity="0.5"
-          />
-          <circle
-            cx="200"
-            cy="200"
-            r="160"
-            pathLength="100"
-            strokeDasharray="14 86"
-            strokeLinecap="round"
-            stroke="url(#loop-spectrum)"
-            strokeWidth="3"
-          />
-        </g>
+        <circle
+          className="blur-[5px]"
+          cx="200"
+          cy="200"
+          r="160"
+          pathLength="100"
+          strokeDasharray="14 86"
+          strokeLinecap="round"
+          stroke="url(#loop-spectrum)"
+          strokeWidth="8"
+          opacity="0.5"
+        />
+        <circle
+          cx="200"
+          cy="200"
+          r="160"
+          pathLength="100"
+          strokeDasharray="14 86"
+          strokeLinecap="round"
+          stroke="url(#loop-spectrum)"
+          strokeWidth="3"
+        />
       </svg>
 
       {STEPS.map(({ label, x, y, angle }) => (
@@ -147,7 +152,9 @@ function LoopDiagram() {
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/brand/robot.png"
+            src={robotImage.src}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="absolute -top-11 left-1/2 hidden w-20 -translate-x-1/2 drop-shadow-[0_10px_16px_rgba(21,21,21,0.18)] motion-reduce:block sm:-top-16 sm:w-28"
           />
@@ -194,7 +201,7 @@ export function AgentLoop() {
 
           <Reveal
             delay={0.15}
-            className="relative flex items-center justify-center overflow-hidden rounded-2xl border border-black/[0.06] bg-[url('/brand/agent-loop.jpg')] bg-[length:135%] bg-[position:50%_100%] p-6 sm:p-8"
+            className="relative flex items-center justify-center overflow-hidden rounded-2xl border border-black/[0.06] brand-agent-loop bg-[length:135%] bg-[position:50%_100%] p-6 sm:p-8"
           >
             <Texture opacity={0.06} blend="multiply" />
             <LoopDiagram />

@@ -1,0 +1,232 @@
+---
+title: "Database connection string works locally but the deployed app times out? Check the allowlist, the host and the port"
+description: "A timeout means nothing answered. Find what drops the deployed app's traffic: an IP allowlist, a localhost or private host, IPv6, or a blocked port."
+summary: "When the same connection string connects from your laptop but times out from the deployed app, the string is usually fine and the network path isn't. A timeout means the connection attempt got no answer at all, while a wrong password or database name fails at once with an error. The usual causes are an IP allowlist or firewall that includes your laptop's address, or your VPN's, but not your host's outbound addresses (an AWS RDS security group, Cloud SQL authorized networks, Supabase network restrictions); a host name that only works on your machine, such as `localhost`, a Docker service name or a private VPC address; a database that has only an IPv6 address while your host only has IPv4, as with Supabase's direct connection; and outbound port 5432 blocked on the host's network. Run a connection check from inside the deployed environment, look at which address it resolves, and fix the rule that drops the traffic."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "10 min read"
+faq:
+  - question: "Should I allow 0.0.0.0/0 so the deployed app can connect?"
+    answer: "Only as a short test to confirm that the allowlist is the cause, and only with TLS required and a strong password. Allowing every address leaves nothing but the database password to keep others out. For a lasting fix, allow your host's outbound addresses, give the host fixed outbound IPs (Railway's Static Outbound IPs on Pro, Vercel's Static IPs on Pro and Enterprise), or connect over a private network. Azure's own docs warn that its **Allow public access from any Azure service within Azure to this server** option admits connections from other customers' subscriptions too."
+  - question: "Why does it time out instead of saying access denied?"
+    answer: "It depends on how the provider enforces the rule. On AWS RDS, [`Could not connect to server: Connection timed out`](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ConnectToPostgreSQLInstance.Troubleshooting.html) is the most common connection error, and AWS lists security group rules, public access and a firewall blocking port 5432 among its causes: nothing answers, so the client waits until its connect timeout or the operating system gives up. Azure Database for PostgreSQL's firewall rejects the connection instead, and its docs show the client getting `no pg_hba.conf entry for host \"...\"`. A wrong password always comes back as an error, because the server has to answer to check it."
+  - question: "My migrations fail to reach the database from CI, but the app connects. Is it the same problem?"
+    answer: "Often, yes: the CI runner connects from yet another address, and migrations usually use the direct connection string instead of the pooled one, so they can hit a different host or port. Run the same check from the CI job, and see [why prisma migrate can't reach the database](/postgres/migration-cannot-reach-database) for the migration-specific causes."
+  - question: "How long does a connection attempt wait before it times out?"
+    answer: "With no timeout set, node-postgres and libpq wait for the operating system: Linux retries the first packet for up to about 127 seconds with default settings, and in our test on macOS `pg` gave up after 75 seconds. Serverless platforms often stop the function first, so you see the function's own timeout instead. Set `connectionTimeoutMillis` in node-postgres, which ignores `connect_timeout` in the URL, or add `connect_timeout=5` to the connection string for libpq-based tools such as `psql`, so the error arrives in a few seconds and names the address."
+related:
+  - title: "A deployed app says DATABASE_URL is missing"
+    href: "/postgres/database-url-missing"
+  - title: "Node app gets an SSL error connecting to hosted Postgres"
+    href: "/postgres/ssl-connection-error"
+  - title: "Connecting to your Prisma Postgres database"
+    href: "/docs/postgres/database/connecting-to-your-database"
+  - title: "Prisma Postgres serverless driver"
+    href: "/docs/postgres/database/serverless-driver"
+cta:
+  title: "Connect on port 5432, or on port 443 where 5432 is blocked"
+  description: "Prisma Postgres takes TLS connections on port 5432, and its serverless driver connects on port 443 where port 5432 is blocked. Prisma ORM is optional; any Postgres client connects."
+  label: "Get your connection strings"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+A connection string that works on your laptop proves the credentials and the database are fine. It doesn't prove that the server your app runs on can reach the database. That server connects from a different IP address, often resolves names through a different DNS, sits on a different network and reads its own environment variables. A timeout tells you the connection attempt went out and nothing answered, so something on the way dropped it. Find out what the deployed app actually connects to, test that path from inside the deployed environment, and change the rule that drops the traffic. The steps work on any host and with any Postgres provider.
+
+We make Prisma Postgres and Prisma Compute. Provider and host behavior on this page links to each one's documentation, checked on October 22, 2026. The node-postgres errors below were reproduced with `pg` 8.23.1 on Node.js 22, and the Prisma ORM errors with Prisma ORM 7.10.1 and `@prisma/adapter-pg`.
+
+## What does the error tell you?
+
+Read the exact message first, because only some of these mean the network dropped the connection:
+
+| What you see | What it means | Where to look |
+| --- | --- | --- |
+| `connect ETIMEDOUT 203.0.113.10:5432` | No answer came back, and the operating system gave up. node-postgres reports this when no connect timeout is set. | [Steps 2 to 6](#2-check-which-host-the-deployed-app-resolves) |
+| `timeout expired` (`pg` `Client`) or `Connection terminated due to connection timeout` (`pg` `Pool`) | The connection didn't complete within the `connectionTimeoutMillis` you set, usually for the same reason. | [Steps 2 to 6](#2-check-which-host-the-deployed-app-resolves) |
+| Prisma CLI (`prisma migrate`, `prisma db push`): `P1001`: ``Can't reach database server at `host`:`5432` `` | Prisma's [error](/docs/orm/v7/reference/error-reference#p1001) for a server it couldn't reach. Same checks. | [Steps 2 to 6](#2-check-which-host-the-deployed-app-resolves) |
+| Prisma Client with `@prisma/adapter-pg`: `P1008` `Operation has timed out`, or the `pg` message `Connection terminated due to connection timeout` when `connectionTimeoutMillis` is set | The adapter reports a network timeout as [`P1008`](/docs/orm/v7/reference/error-reference#p1008), not `P1001`. At runtime, `P1001` means the name didn't resolve or the connection was refused (step 2). | [Steps 2 to 6](#2-check-which-host-the-deployed-app-resolves) |
+| `connect ECONNREFUSED 127.0.0.1:5432`, or `AggregateError [ECONNREFUSED]` listing `::1:5432` and `127.0.0.1:5432` when `localhost` has both an IPv4 and an IPv6 address | Something answered and refused: nothing listens on that address and port, or a firewall rejected the connection. In a deployed app this is usually `localhost` in the URL, or no URL at all. | [Step 2](#2-check-which-host-the-deployed-app-resolves) |
+| `getaddrinfo ENOTFOUND db.example.internal` | The name doesn't resolve from where the app runs. | [Step 2](#2-check-which-host-the-deployed-app-resolves) |
+| `no pg_hba.conf entry for host "..."` | The server got the connection and rejected it, for a missing TLS setting or an address it doesn't allow. Azure's firewall rejects this way instead of dropping packets. | [SSL errors](/postgres/ssl-connection-error) and [step 4](#4-allow-the-deployed-app-through-the-databases-network-rules) |
+| `timeout exceeded when trying to connect` (`pg` `Pool`) | A request waited in the pool's queue longer than `connectionTimeoutMillis`. Either every client was busy, or the pool's new connections are themselves timing out. If your logs also show `Connection terminated due to connection timeout` or `ETIMEDOUT`, it is the network. Otherwise every client was busy. | [Steps 2 to 6](#2-check-which-host-the-deployed-app-resolves) or [Too many connections](/postgres/too-many-connections) |
+
+Node.js documents [`ETIMEDOUT`](https://nodejs.org/api/errors.html#common-system-errors) as a connect request that got no proper response in time, and `ECONNREFUSED` as one the target refused. Without a timeout of its own, node-postgres [waits indefinitely](https://node-postgres.com/apis/client) for the connection and libpq does the same unless [`connect_timeout`](https://www.postgresql.org/docs/current/libpq-connect.html) is set, so the wait ends when the operating system gives up. On Linux that is [up to about 127 seconds](https://man7.org/linux/man-pages/man7/tcp.7.html) with the default `tcp_syn_retries`, and many serverless functions hit their own time limit first.
+
+## Why does it work locally and time out after deploy?
+
+Your laptop and your deployed app reach the database from different places. These are the differences that turn into a timeout:
+
+- **The source address.** Managed databases often accept connections only from listed addresses. Your laptop's IP, or your office or VPN exit IP, was often added when you set the database up, and your host's outbound addresses weren't. On AWS RDS, [DB instances don't allow access by default](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Troubleshooting.html#CHAP_Troubleshooting.Connecting): a security group rule has to let each address in, and the console's **My IP** source adds only the address of the browser you used.
+- **The host name.** `localhost` on your laptop is your laptop. On the server it is the server itself, where no database runs. A Docker Compose service name such as `db`, a private VPC address or a private DNS name such as Railway's [`SERVICE_NAME.railway.internal`](https://docs.railway.com/guides/private-networking) resolves or routes only inside its own network.
+- **The connection string itself.** If `DATABASE_URL` isn't set on the host, node-postgres falls back to [`PGHOST`, which defaults to `localhost`](https://node-postgres.com/features/connecting), and connects there. See [DATABASE_URL is missing after deploy](/postgres/database-url-missing) for setting it on your host.
+- **IPv4 and IPv6.** A database name with only an IPv6 address can't be reached from a host without outbound IPv6. Supabase's [direct connection is on IPv6](https://supabase.com/docs/guides/database/connecting-to-postgres) unless the project has the IPv4 add-on.
+- **Outbound rules.** Corporate networks, CI runners and private subnets can block outbound traffic on port 5432 or have no route to the internet at all. A Lambda function attached to a VPC [can reach only that VPC](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc-internet.html) unless the VPC gives it internet access, for example through a NAT gateway.
+
+## How do I fix it?
+
+### 1. Fail fast and log where the app connects
+
+Give the driver a connect timeout so the error arrives in seconds with the address in it, and log the host and port the app uses at startup, without the password:
+
+```ts
+// db.ts
+import pg from "pg";
+
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error("DATABASE_URL is not set");
+
+const { hostname, port } = new URL(url);
+console.log(`database target: ${hostname}:${port || "5432"}`);
+
+export const pool = new pg.Pool({
+  connectionString: url,
+  connectionTimeoutMillis: 5_000,
+});
+
+// A connection that fails while idle emits "error" on the pool. Without a listener, the process can crash.
+pool.on("error", (err) => {
+  console.error("Idle Postgres client error:", err.message);
+});
+```
+
+With libpq-based tools such as `psql`, add `connect_timeout=5` to the connection string. Compare the logged host with the one in your local `.env`. If they differ, the deployed app has another value, and that is the first thing to fix.
+
+### 2. Check which host the deployed app resolves
+
+Resolve the host name the way the app does. The `addresses` field of the check in step 3 comes from Node.js's own lookup. From a shell on a Linux server, `getent ahosts` follows `/etc/hosts` and the system's DNS settings, as the app does:
+
+```bash
+getent ahosts db.example.com
+```
+
+- **`127.0.0.1` or `::1`:** the URL says `localhost`. Put the database's real host name in the host's environment settings.
+- **A private address** (`10.x.x.x`, `172.16.x.x` to `172.31.x.x`, `192.168.x.x`): the database is on a private network. Your laptop reaches it through a VPN, a tunnel or the same office network, and the deployed app has no route. See [step 5](#5-reach-a-private-database-over-a-private-path).
+- **Only IPv6 addresses** (they contain colons): the name has no IPv4 address. See [step 6](#6-use-an-ipv4-path-when-the-host-has-no-ipv6).
+- **No answer:** the name only exists in your local DNS, your VPN's DNS or a Docker network.
+
+`dig` queries DNS servers directly and skips `/etc/hosts`, so `dig +short A db.example.com` and `dig +short AAAA db.example.com` show only the public DNS records, not what the app resolves.
+
+### 3. Test the connection from where the app runs
+
+A test from your laptop proves nothing here, because your laptop's path already works. If your host gives you a shell inside a running instance, test the port there. [AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Troubleshooting.html#CHAP_Troubleshooting.Connecting.Test) uses `nc` for the same check:
+
+```bash
+nc -zv -w 5 db.example.com 5432
+pg_isready -h db.example.com -p 5432 -t 5; echo $?
+```
+
+[`pg_isready`](https://www.postgresql.org/docs/current/app-pg-isready.html) needs no password and exits with `0` when the server accepts connections, `1` when it rejects them, for example during startup, and `2` when nothing answered.
+
+Serverless platforms usually have no shell. Deploy a temporary route that does the same check from inside a function, here as a Next.js route handler; the function body works in any Node.js handler:
+
+```ts
+// app/api/db-check/route.ts: temporary, delete it after debugging
+import { lookup } from "node:dns/promises";
+import net from "node:net";
+
+// Next.js 14 caches GET handlers by default; this runs the check on each request
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  // Set DB_CHECK_KEY on the host, then send the same value in a header:
+  // curl -H "x-db-check-key: <value>" https://your-app.example.com/api/db-check
+  // A header stays out of browser history and access logs, where a query string would end up.
+  const key = request.headers.get("x-db-check-key");
+  if (!process.env.DB_CHECK_KEY || key !== process.env.DB_CHECK_KEY) {
+    return new Response(null, { status: 404 });
+  }
+
+  const url = process.env.DATABASE_URL;
+  if (!url) return Response.json({ error: "DATABASE_URL is not set" });
+
+  const { hostname, port } = new URL(url);
+  const addresses = await lookup(hostname, { all: true }).catch((err) => err.code);
+  const tcp = await new Promise<string>((resolve) => {
+    const socket = net.connect({ host: hostname, port: Number(port || 5432) });
+    socket.setTimeout(5_000);
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve("connected");
+    });
+    socket.once("timeout", () => {
+      socket.destroy();
+      resolve("no answer after 5 s");
+    });
+    socket.once("error", (err: NodeJS.ErrnoException) => resolve(err.code ?? err.message));
+  });
+
+  return Response.json({ hostname, port: port || "5432", addresses, tcp });
+}
+```
+
+It opens a TCP connection without logging in. Because it returns the database host name, it answers only to the key you set in `DB_CHECK_KEY`, and you should remove it once you have the answer. The same function, run from a laptop against four test targets, returned:
+
+```json
+{"hostname":"db.prisma.io","port":"5432","addresses":[{"address":"217.69.3.105","family":4},{"address":"217.69.6.73","family":4}],"tcp":"connected"}
+{"hostname":"10.255.255.1","port":"5432","addresses":[{"address":"10.255.255.1","family":4}],"tcp":"no answer after 5 s"}
+{"hostname":"localhost","port":"5432","addresses":[{"address":"::1","family":6},{"address":"127.0.0.1","family":4}],"tcp":"ECONNREFUSED"}
+{"hostname":"db.does-not-exist.invalid","port":"5432","addresses":"ENOTFOUND","tcp":"ENOTFOUND"}
+```
+
+`connected` means the network path is open. If the app still fails, the problem is after the TCP connection: TLS, credentials or the app's own pool, and [the SSL guide](/postgres/ssl-connection-error) covers the first. `no answer` on a public address points to an allowlist or firewall (step 4), on a private address to the network (step 5), and an error such as `ENETUNREACH` on an IPv6 address to step 6.
+
+### 4. Allow the deployed app through the database's network rules
+
+Find the database's access rules and the host's outbound addresses, then add those addresses:
+
+| Database | Where the rule lives | Good to know |
+| --- | --- | --- |
+| AWS RDS and Aurora | Inbound rules on the [VPC security group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Troubleshooting.html#CHAP_Troubleshooting.Connecting) | Access from outside the VPC also needs **Public access** set to Yes and an internet gateway on the DB subnets |
+| Azure Database for PostgreSQL flexible server | [Firewall rules](https://learn.microsoft.com/en-us/azure/postgresql/network/concepts-networking-public) under **Networking** | No addresses are allowed by default. A blocked client can get a `no pg_hba.conf entry` error instead of a timeout. Changes can take up to five minutes, and rules take IPv4 only |
+| Google Cloud SQL | [Authorized networks](https://docs.cloud.google.com/sql/docs/postgres/authorize-networks) on the instance | Needed for direct connections to the public IP; enforced by a firewall on the instance. The [Cloud SQL Auth Proxy](https://docs.cloud.google.com/sql/docs/postgres/sql-proxy) and Cloud SQL Language Connectors connect without authorized networks |
+| Neon | [IP Allow](https://neon.com/docs/introduction/ip-allow) | On the Scale plan. Blocks every address not on the list |
+| Supabase | [Network restrictions](https://supabase.com/docs/guides/platform/network-restrictions) | Apply to direct and pooled connections, not to its HTTPS APIs |
+
+The table lists databases alphabetically, and the addresses you add come from wherever the app runs:
+
+- **Render** sends outbound traffic from [IP ranges shared by all services in a region](https://render.com/docs/outbound-ip-addresses). Find them on the service's page under **Connect**, **Outbound**.
+- **Railway** gives a service [static outbound IPv4 addresses](https://docs.railway.com/reference/static-outbound-ips) on the Pro plan. Turn them on under the service's **Settings**, **Networking**, then redeploy.
+- **Vercel** functions use dynamic addresses by default. [Static IPs](https://vercel.com/docs/networking/static-ips) on Pro and Enterprise route function traffic through fixed egress IPs per region, at $100 per month per project on Pro plus Private Data Transfer.
+- **Your own servers or containers** use the public IP of the server or of the NAT gateway in front of them.
+
+If the database lets your laptop in through a VPN or office address, that address is what's on the list. Add the host's addresses next to it. If the host can't give you fixed addresses, the choices are a paid static egress option, a private network between the two (step 5), or a connector that doesn't use address rules, such as Cloud SQL's Auth Proxy.
+
+### 5. Reach a private database over a private path
+
+A database that has only a private address can't be reached from a host outside its network, whatever the allowlist says. Either run the app inside that network, connect the networks (VPC peering, a private link or a VPN the host supports), or give the database a public endpoint and restrict it with step 4. On RDS, a publicly accessible instance's endpoint [resolves to the private IP inside the VPC and the public IP outside it](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html#USER_VPC.Hiding), so the same URL works from both. A Lambda function you attached to a VPC to reach a private database loses internet access, and needs a NAT gateway for IPv4 (or an [egress-only internet gateway](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc-internet.html) for IPv6) to reach anything outside the VPC.
+
+### 6. Use an IPv4 path when the host has no IPv6
+
+If the lookup in step 2 returns only IPv6 addresses, only hosts with outbound IPv6 can reach the database. On Supabase, the direct connection is IPv6, and the [IPv4 add-on](https://supabase.com/docs/guides/database/connecting-to-postgres) swaps its AAAA record for an A record rather than adding one. The shared pooler is IPv4 on every plan, in session mode on port 5432 and in transaction mode on port 6543, so switching the app to the pooler's connection string fixes it without the add-on. Session mode supports prepared statements; in transaction mode, [turn off prepared statements](/postgres/prepared-statement-already-exists) in your client.
+
+### 7. Check for a blocked outbound port
+
+If the check times out even for a database you know accepts connections from anywhere, the network the app runs on may block outbound PostgreSQL traffic. Test port 5432 from there against a different Postgres host you know is open, or ask the network owner whether outbound 5432 is allowed. If your provider also serves HTTPS on the database host name, `nc -zv -w 5 db.example.com 443` tells you whether 443 gets through when 5432 doesn't.
+
+If 5432 is blocked, ask for it to be opened to the database host, use a pooler or endpoint on a port that is open, or use an HTTP-based client if your provider has one: Neon's [serverless driver](https://neon.com/docs/serverless/serverless-driver) (`@neondatabase/serverless`) queries over HTTP instead of TCP, Supabase's [Data APIs](https://supabase.com/docs/guides/database/connecting-to-postgres) take REST and GraphQL requests, and Prisma Postgres has a serverless driver (below).
+
+## When does this fix not apply?
+
+- **The connection opens and drops later.** `Connection terminated unexpectedly` after the app has been running means the network path works and something closed an existing connection. See [Connection terminated unexpectedly](/postgres/connection-terminated-unexpectedly).
+- **The error names SSL or a certificate.** The path is open and the TLS handshake failed. See [SSL errors connecting to hosted Postgres](/postgres/ssl-connection-error).
+- **Only some requests time out under load.** If `timeout exceeded when trying to connect` appears with no connect-timeout or `ETIMEDOUT` errors alongside it, your app's own pool ran out of free clients. See [Too many connections](/postgres/too-many-connections).
+- **`password authentication failed` or `database "..." does not exist`.** The server answered, so the network is fine. Check the values in the host's environment settings against the ones that work locally.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and any Postgres client connects to it, including `pg`, Drizzle, Kysely and Prisma ORM, which is optional. Prisma Postgres fits when your app runs on a host without fixed outbound IPs, such as serverless functions, and access by credential and TLS meets your security policy: its [connection docs](/docs/postgres/database/connecting-to-your-database) describe no inbound IP allowlist, and where port 5432 is blocked, its [serverless driver](/docs/postgres/database/serverless-driver) connects on port 443 instead.
+
+Each database has a pooled host, `pooled.db.prisma.io`, for the app and a direct host, `db.prisma.io`, for migrations and admin tools. Both listen on port 5432, and the connection strings include `sslmode=require` because TLS is mandatory. On October 22, 2026, both names resolved to public IPv4 addresses with no AAAA record, so hosts without IPv6 reach them. For a timeout on first connect, the docs say to check `sslmode=require` and port 5432, and, behind a corporate firewall or VPN that blocks outbound PostgreSQL traffic, to allow `*.db.prisma.io` on port 5432 or switch to the serverless driver.
+
+The serverless driver, `@prisma/ppg` for raw SQL or `@prisma/adapter-ppg` for Prisma ORM, takes the direct connection string as its credential and doesn't open a PostgreSQL TCP connection. It reaches `db.prisma.io` on port 443 instead of 5432 (the [client source](https://github.com/prisma/ppg-client/blob/main/src/api/client.ts) builds an `https://` endpoint from the host name), so a network that blocks 5432 but allows 443 can use it. It uses Prisma Postgres connection pooling by default.
+
+Know the limits before you move a database to get rid of a network problem:
+
+- The connection docs describe no inbound IP allowlist on the database side, so access rests on the credential and TLS. If your security policy requires an IP allowlist or private networking such as VPC peering, the Prisma Postgres docs don't describe either, and RDS, Cloud SQL or Azure fit that requirement.
+- If your database already runs on RDS, Supabase or another provider and the allowlist is all that's wrong, fix the rule where it is. That takes minutes; moving a database is a migration.
+- The serverless driver is a different client API from `pg`, so switching to it means changing your query code. It works only with Prisma Postgres, not with a local Postgres database. Its transactions hold a long-lived connection open on port 443, so a proxy that passes only plain HTTPS requests can break transactions while single queries work; test a transaction through that network first.
+- [Connections](/docs/postgres/database/connection-pooling) are capped by plan: 10, 100, 500 and 1,000 pooled, and 10, 10, 50 and 100 direct, of which 5 are reserved for platform operations. Pooled queries end after 10 minutes.
+- [Daily backups](/docs/postgres/database/backups) are on Starter, Pro and Business only, taken on days when the database has activity and kept for 7 days on Starter and Pro and 30 days on Business. There is no point-in-time recovery yet (it is coming in November 2026).
+
+The Free plan includes 2 GB of storage and 200,000 operations a month, has no backups and needs no credit card. See [pricing](/pricing) for the paid plans.

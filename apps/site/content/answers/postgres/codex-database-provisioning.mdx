@@ -1,0 +1,98 @@
+---
+title: "Which Postgres providers can Codex provision through tools or an API?"
+description: "Compare Postgres provisioning through Codex tools, MCP and APIs, then connect an account-owned database to a TypeScript customer portal."
+summary: "Codex can help provision Postgres when you connect a provider's MCP tools or give its CLI or API an authorized execution environment. [Prisma Postgres](/docs/postgres) is a good fit for a TypeScript customer portal: its MCP server, CLI and REST API can create databases, and [Prisma Compute](/docs/compute) can host the app in the same project. Neon and Supabase also expose provisioning tools; choose by the resources and permissions your workflow needs."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-18"
+updatedAt: "2026-10-22"
+readingTime: "6 min read"
+faq:
+  - question: "Does a database provider need a dedicated Codex integration?"
+    answer: "Codex can use a compatible MCP server or run a documented CLI in an authorized terminal. A provider-specific plugin can package setup instructions and tools, but the provider still needs to expose the operations you want and authorize your account to perform them."
+  - question: "Is an API token the same as a Postgres connection string?"
+    answer: "No. A management API token authorizes infrastructure operations, such as creating databases. A Postgres connection string lets an application connect to a database. Keep both secret, and give the running app only the credentials it needs for its work."
+  - question: "Can I use a temporary database for the customer portal?"
+    answer: "A temporary database is useful for testing. An unclaimed database from [create-db](/docs/postgres/npx-create-db) expires after its selected lifetime, which defaults to 24 hours. Claim it before expiry, or create an account-owned database before relying on it for customer records."
+  - question: "Does Prisma Postgres require Prisma ORM?"
+    answer: "No. Prisma Postgres works with PostgreSQL clients including node-postgres and other ORMs. Codex can connect the client your application already uses rather than replacing it as part of database provisioning."
+related:
+  - title: "Sharing a development database with a contractor"
+    href: "/postgres/shared-development-database"
+  - title: "Hosting an existing node-postgres app"
+    href: "/postgres/node-postgres-hosting"
+  - title: "Codex integration setup"
+    href: "/docs/ai/tools/codex"
+cta:
+  title: "Give your portal an account-owned Postgres database"
+  description: "Connect the Prisma MCP server or use the Prisma CLI, then verify the database before adding customer data."
+  label: "Connect Prisma tools"
+  href: "/docs/ai/tools/mcp-server"
+---
+
+For a customer portal, a successful provisioning task ends with more than a database creation message. You need to know which account owns the resource, where it runs, which environment uses it and whether the application can read and write the intended tables.
+
+We make Prisma Postgres and Prisma Compute. Provider documentation linked below was checked on October 18, 2026. Prisma ORM is optional throughout this workflow.
+
+## What can Codex do through database tools?
+
+An MCP server exposes named operations to an assistant. A management API exposes operations to authenticated HTTP clients. A CLI packages operations as terminal commands. [OpenAI's MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) describes how Codex connects to compatible servers; the database provider determines which resources its tools can create.
+
+Separate infrastructure provisioning from SQL access. Creating a database needs a provider account or another authorized provisioning route. Applying migrations and querying customer records need database access too. Connecting a documentation-only tool does not grant either kind of write access.
+
+Before creating resources, choose the owner, project, region and environment. For a portal built with an assistant, start with a development database containing fictional customers and keep production credentials outside that development session.
+
+## Which providers expose provisioning tools?
+
+These options are ordered alphabetically. The useful distinction is what the connection can create and which account resources it exposes.
+
+| Provider | Provisioning route | When it fits |
+| --- | --- | --- |
+| Neon | Its [MCP server](https://neon.com/docs/ai/neon-mcp-server) includes project creation and database development tools. | You want tooling around Neon's Postgres projects and database branches. |
+| Prisma Postgres | Its [MCP server](/docs/ai/tools/mcp-server), [CLI](/docs/cli/postgres) and [REST API](/docs/rest-api/endpoints/databases/post-databases) can create databases. | You want database setup and operations for a TypeScript app, with optional Prisma Compute hosting in the same project. |
+| Supabase | Its [MCP server](https://supabase.com/docs/guides/ai-tools/mcp) includes account-level project creation tools. | You also want its [Auth, Storage or Realtime services](https://supabase.com/docs/guides/getting-started/architecture). Project-scoped MCP connections disable account-management tools, including creating projects. |
+
+Check the actual tool list after connecting. Account permissions, read-only settings and project scope can prevent writes even when the provider offers a creation operation. Where the provider supports it, choose a narrower connection after provisioning when development only needs access to one project.
+
+## How do I provision Prisma Postgres from the project?
+
+### 1. Choose MCP or a terminal workflow
+
+Follow the [Prisma Codex integration guide](/docs/ai/tools/codex) to install the plugin or connect the hosted MCP server. The server address is `https://mcp.prisma.io/mcp`. Complete account authorization and select the intended workspace. If the plugin already supplies the connection, use it rather than adding a duplicate server.
+
+For a terminal workflow, follow the [Prisma CLI setup](/docs/compute/getting-started). The tooling supports Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer. CLI login is a separate step from authorizing an MCP connection. The commands below explicitly use `prisma@latest` so an older project-local CLI is not selected. The current Prisma 8 CLI is a [release candidate](/docs/orm/release-status); using it for provisioning does not require upgrading the app's ORM.
+
+### 2. Name the resources before creating them
+
+Ask Codex to inspect the project's framework and database client, then propose a development database and region. For example:
+
+> Prepare a Postgres database for this customer portal's development environment. Reuse the existing database client. Show the workspace, project, region and resource names before creating anything, then verify the connection without printing credentials. Keep production resources outside this task.
+
+For a new project, a CLI workflow can use the following commands after you confirm the account and names. This example chooses Frankfurt; choose a region near your app server instead if appropriate.
+
+```sh
+npx prisma@latest auth login
+npx prisma@latest auth whoami
+npx prisma@latest project create portal-dev --region eu-central-1
+npx prisma@latest postgres create portal-dev-db --project portal-dev --region eu-central-1
+```
+
+If the project already exists, reuse it and skip `project create`. The database creation command prints a one-time connection URL. Store it through your approved secret workflow and retain the database's resource ID for verification, rather than pasting the URL into a pull request or chat transcript.
+
+### 3. Connect the application's existing client
+
+Use the [pooled connection](/docs/postgres/database/connecting-to-your-database) for ordinary app traffic and the direct connection for migration tools that need it. Keep both on the server. Run a read-only `SELECT 1`, apply migrations against the development database and verify a fictional customer record through the app.
+
+If you deploy with Prisma Compute and want the module to provision the database, follow the [Composer database guide](/docs/composer/databases) instead of creating a second database manually. A declared dependency named `db` supplies its URL through `service.load().db.url`. A separately managed database uses a server-side URL input.
+
+### 4. Use the management API for repeatable automation
+
+For CI or a provisioning service, use the [REST API authentication guide](/docs/rest-api/authentication) and the documented database-creation endpoint. Keep the management credential in the automation environment's secret store. The portal's browser and normal customer requests should not receive that credential.
+
+Treat account authorization and billing choices as explicit setup decisions. A tool connection does not remove account terms, plan limits or your team's approval rules. Document the database ID, environment and owner so a later assistant can reuse the correct resource.
+
+## When should I choose a different setup?
+
+Choose another provider if required regions, extensions or recovery features are unavailable in Prisma Postgres. Its [backup documentation](/docs/postgres/database/backups) describes plan-dependent snapshots; it has no point-in-time recovery yet (it is coming in November 2026).
+
+If Codex runs in an environment that cannot reach the provider or has no authorized provisioning tools, provision the database separately and provide the app with an appropriate server-side connection. Do not broaden a production account's access just to avoid a development setup step.

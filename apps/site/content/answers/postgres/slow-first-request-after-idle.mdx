@@ -1,0 +1,246 @@
+---
+title: "The first request after my app sits idle is slow. Is the database waking up, and how do I fix it?"
+description: "Find out what went to sleep: the app host, a database that scales to zero, or closed connections. Time each part, then keep that part warm."
+summary: "It can be the database, but three different things can be asleep. Your app host may have stopped the app (Render's Free plan after 15 minutes, Cloud Run by default, Fly.io with auto-stop on, Railway with Serverless on), a serverless database may have suspended its compute (Neon after 5 minutes idle, Aurora Serverless at 0 ACUs), and your connection pool has usually closed its idle connections, so the first query pays for a new TCP, TLS and authentication handshake. Time the first and second request and the database connection on its own to see which part woke up. Then fix that part: keep one app instance running, turn off or lengthen the database's auto-suspend where the plan allows it, reuse one pool per process and run the app in the database's region. A Supabase Free project paused after 7 days of low activity is a different case: Supabase's docs restore it from the dashboard with Resume project."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "10 min read"
+faq:
+  - question: "How long does a sleeping database take to wake up?"
+    answer: "It depends on the provider. Neon says a suspended compute [reactivates within a few hundred milliseconds](https://neon.com/docs/introduction/compute-lifecycle), a little longer if the project has been idle for more than 7 days, and the first queries can stay slower until Postgres memory buffers warm up. AWS says an auto-paused Aurora Serverless instance [typically resumes in about 15 seconds](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html), and can take 30 seconds or more after more than 24 hours paused, so it recommends client connection timeouts above 15 seconds, or 30 seconds for databases idle longer than a day. For a Supabase Free project paused for inactivity, Supabase's docs have you [resume it from the dashboard](https://supabase.com/docs/guides/platform/project-pausing)."
+  - question: "Will a scheduled ping every few minutes keep it fast?"
+    answer: "Only for what the ping reaches, and only if it runs more often than the shortest idle timeout involved, such as Neon's 5 minutes or Render Free's 15 minutes. Ping a route that queries the database, or the app wakes and the database stays asleep. The ping also creates the active time that scaling to zero was saving you, and it keeps one instance warm, not the extra instances a traffic spike starts. On a paid plan, the host's or database's own setting (minimum instances, scale to zero off) does the same job without a pinger to maintain."
+  - question: "Why are the first few queries slow even after the database is awake?"
+    answer: "A database that just resumed starts with an empty memory cache, so the first queries read from storage. [Neon's docs](https://neon.com/docs/introduction/compute-lifecycle) say its memory buffers are cold after a compute wakes, and that session state such as prepared statements and temporary tables is lost when it suspends, so a driver that prepares statements does that again too. Aurora Serverless [resumes at a small capacity](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html) and scales up from there. Queries that stay slow after a few requests are a query or index problem, not a wake-up problem."
+  - question: "Why does the first request after idle fail instead of being slow?"
+    answer: "Four common reasons. Railway says the first request to a slept service [may return 502](https://docs.railway.com/deployments/serverless). Aurora says that when many connections arrive while an instance resumes, some can fail, and recommends retrying. Your connection timeout may be shorter than the wake-up time. Or the pool handed out a connection that the server or a proxy closed while it was idle, which node-postgres reports as `Connection terminated unexpectedly` when the query runs. For a Railway 502, the caller can retry a request that is safe to repeat, such as a read; for a write, send an idempotency key or check that the first attempt didn't apply before retrying. For a timeout or a failed connection while the database resumes, set the connection timeout longer than its resume time and retry the connection, as step 2 under the database fix shows. That retry doesn't catch a closed pooled connection, because the pool hands it out without an error: keep the pool's `idleTimeoutMillis` below the provider's idle limit, keep the pool's `error` listener, and retry the query only if it is safe to run twice, such as a read. [Connection terminated unexpectedly](/postgres/connection-terminated-unexpectedly) covers that case."
+related:
+  - title: "Hosted Postgres says \"too many connections\""
+    href: "/postgres/too-many-connections"
+  - title: "Choosing regions for your Node app and Postgres"
+    href: "/postgres/nodejs-database-regions"
+  - title: "Keeping Prisma Compute instances awake"
+    href: "/docs/compute/keeping-instances-awake"
+  - title: "Prisma Postgres connection pooling and limits"
+    href: "/docs/postgres/database/connection-pooling"
+cta:
+  title: "Run your app next to Prisma Postgres"
+  description: "Deploy a TypeScript app on Prisma Compute next to Prisma Postgres. Idle instances sleep with a memory snapshot and resume with memory intact. Any Postgres client works; Prisma ORM is optional."
+  label: "Set up Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+A first request that takes seconds after a quiet spell, followed by fast ones, usually means something went to sleep. It can be the database: Neon suspends idle compute after 5 minutes, and Aurora Serverless can pause when its minimum capacity is 0. It can also be the app host, which stopped your app to save money, or your own connection pool, which closed its idle connections so the first query has to open a new one. Time the request in parts to see which one it is, then keep that part warm or make it cheaper to wake. Every step below works on any host. The code uses Node.js and node-postgres, and the same steps apply with other clients.
+
+We make Prisma Postgres and Prisma Compute. Provider behavior on this page links to each provider's documentation, checked on October 22, 2026.
+
+## What can be asleep after idle?
+
+### The app host
+
+Many hosts stop an app that gets no traffic, and start it again on the next request. Starting it again means booting the runtime and running your startup code before the request is handled. Hosts are listed alphabetically:
+
+| Host | When the app stops | What the first request waits for | How to keep it running |
+| --- | --- | --- | --- |
+| [AWS Lambda](https://docs.aws.amazon.com/lambda/latest/dg/provisioned-concurrency.html) | A request with no ready execution environment gets a new one (a cold start) | Lambda may rerun your initialization code on every cold start | Provisioned concurrency keeps pre-initialized environments ready, at an extra charge, on a published version or alias |
+| [Fly.io](https://docs.fly.io/launch/autostop-autostart) | With `auto_stop_machines = "stop"` or `"suspend"`, Fly Proxy stops or suspends Machines when the app has excess capacity | About 2 seconds or more for common apps from stopped, a few hundred milliseconds from suspended | `min_machines_running` (primary region only). `"suspend"` instead of `"stop"` makes the wake faster; check Fly's suspend caveats first |
+| [Google Cloud Run](https://docs.cloud.google.com/run/docs/about-instance-autoscaling) | By default, a revision with no traffic scales to zero instances; Cloud Run may keep idle instances for up to 15 minutes first | Container start time | [Minimum instances](https://docs.cloud.google.com/run/docs/configuring/min-instances), a best-effort target. Idle ones are billed at a lower rate with request-based billing |
+| [Railway](https://docs.railway.com/deployments/serverless) | With Serverless on, 5 to 10 minutes after the service's last outbound traffic, which includes database connections | A small delay, and the first request may return 502 | Turn Serverless off for the service |
+| [Render](https://render.com/docs/free) | Free web services, after 15 minutes without inbound traffic | About one minute, with a loading page in browsers | Any paid compute plan |
+| [Vercel Functions](https://vercel.com/docs/fluid-compute) | Vercel's docs don't give an idle timeout; functions invoked rarely get cold starts | Fluid compute reduces the effect of cold starts with bytecode caching (Node.js 20 and later, production only) and pre-warming on production deployments | Fluid compute, on by default for projects created since April 23, 2025 |
+
+### The database
+
+Some managed databases suspend their compute when idle and start it on the next connection. A database that runs on an instance with auto-suspend off doesn't, so if yours isn't one of these, look at the app host and the connections first:
+
+| Database | When it suspends | Resume time | How to change it |
+| --- | --- | --- | --- |
+| [Amazon Aurora Serverless](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html) | Only with a minimum capacity of 0 ACUs: after 5 minutes (default and minimum) to 1 day without user connections. An RDS Proxy keeps it from pausing | About 15 seconds; can be 30 seconds or more after over 24 hours paused | A minimum capacity of 0.5 ACUs or more turns auto-pause off. A longer `SecondsUntilAutoPause` makes it rarer |
+| [Neon](https://neon.com/docs/introduction/scale-to-zero) | After 5 minutes without activity | A few hundred milliseconds, longer after more than 7 days idle | Paid plans can turn scale to zero off, and the Scale plan can [set the timeout](https://neon.com/docs/guides/scale-to-zero-guide) from 1 minute to 1 week. On Free it is fixed at 5 minutes |
+| [Supabase, Free plan](https://supabase.com/docs/guides/platform/project-pausing) | Paused after too little database activity over 7 days, after a warning email | Restored from the dashboard with **Resume project**, within 1 year of the pause | Paid plans aren't paused for inactivity |
+
+### The connections
+
+Even when nothing sleeps, connections close. A [node-postgres pool](https://node-postgres.com/apis/pool) disconnects a client that has sat idle for 10 seconds (`idleTimeoutMillis`), providers close idle connections on their side, and a database that suspends closes every connection it had. So the first query after a quiet spell opens a new connection: a TCP handshake, a TLS handshake and authentication, each needing at least one round trip to the database's region. Across an ocean, those round trips add up before the query even starts. If the server closed a connection that your pool still holds, the first query fails instead of waiting.
+
+## How do I find which part is slow?
+
+### 1. Time the request from outside
+
+Wait longer than your host's and database's idle timeouts, then request a route that doesn't touch the database, a route that does, and the database route again:
+
+```bash
+URL=https://your-app.example.com
+FMT="dns %{time_namelookup}s  connect %{time_connect}s  tls %{time_appconnect}s  first byte %{time_starttransfer}s\n"
+
+curl -s -o /dev/null -w "$FMT" "$URL/healthz"    # no database query
+curl -s -o /dev/null -w "$FMT" "$URL/api/items"  # queries the database
+curl -s -o /dev/null -w "$FMT" "$URL/api/items"  # same route, warm
+```
+
+curl prints each time from the start of the request. The `dns`, `connect` and `tls` times cover the network between you and the host and should be similar on all three requests; if they aren't, look at DNS or the route to the host. The time between `tls` and `first byte` is the server's. If the first request is slow, the app host was probably asleep. If your app connects to the database while it starts, check the host's startup logs or run step 2 as well, because startup can also be waiting on a database that suspended. If the first request is fast and the first database request is slow while the second is fast, the database or its connection woke up, and the next step tells them apart. A Render loading page or a Railway 502 on the first request points to the host as well.
+
+### 2. Time the database connection on its own
+
+Run this from where the app runs, or at least from the same region, after the database has been idle longer than its suspend timeout:
+
+```js
+// connect-timing.mjs
+import pg from "pg";
+
+async function connectOnce() {
+  const client = new pg.Client({
+    connectionString: process.env.DATABASE_URL,
+    connectionTimeoutMillis: 60_000,
+  });
+  const start = performance.now();
+  await client.connect();
+  const connected = performance.now();
+  await client.query("select 1");
+  const queried = performance.now();
+  await client.end();
+  return {
+    connectMs: Math.round(connected - start),
+    firstQueryMs: Math.round(queried - connected),
+  };
+}
+
+console.log("after idle", await connectOnce());
+console.log("again     ", await connectOnce());
+```
+
+```bash
+npm install pg
+node --env-file=.env connect-timing.mjs
+```
+
+Read the two lines like this:
+
+- **The first `connectMs` is much higher than the second.** The database, or a proxy in front of it, was waking up.
+- **Both `connectMs` values are high.** Every new connection is expensive: the database is far away, or the TLS setup takes several round trips. Reusing connections and moving the app closer helps; a wake-up setting doesn't.
+- **`connectMs` is low but the app's first query is slow.** Look at the query and the cache (see the FAQ), not at the connection.
+
+Providers also show the state directly. Neon's **Branches** page shows each compute as **Active** or **Idle**. Aurora reports `ServerlessDatabaseCapacity` as 0 while an instance is paused and emits the events `RDS-EVENT-0370` to `RDS-EVENT-0374` when it pauses and resumes.
+
+### 3. Log the parts of a slow request in the app
+
+To catch it in production, time the pool checkout and the query separately, and log how long the process has been running:
+
+```ts
+// db.ts
+import pg from "pg";
+
+const processStart = performance.now();
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 5,
+  connectionTimeoutMillis: 20_000,
+});
+pool.on("error", (err) => console.error("Idle database client error", err));
+
+export async function timedQuery(text: string, values?: unknown[]) {
+  const idleBefore = pool.idleCount;
+  const start = performance.now();
+  const client = await pool.connect();
+  const acquired = performance.now();
+  try {
+    return await client.query(text, values);
+  } finally {
+    client.release();
+    console.log(JSON.stringify({
+      processAgeMs: Math.round(start - processStart),
+      idleBefore,
+      acquireMs: Math.round(acquired - start),
+      queryMs: Math.round(performance.now() - acquired),
+    }));
+  }
+}
+```
+
+A small `processAgeMs` on the slow request means the process had just started, so the host booted the app for it. On a host that resumes a process from a memory snapshot, such as Fly.io with `"suspend"`, the process doesn't restart, so use the host's logs there. A high `acquireMs` with `idleBefore` at 0 means the pool had to open a new connection or all clients were busy, and step 2 tells you whether the database was asleep or just far away.
+
+## How do I fix it?
+
+### If the app host was asleep
+
+Keep one instance running, and accept that you pay for it while it waits:
+
+- **Cloud Run:** `gcloud run services update SERVICE --min 1`
+- **Fly.io:** set `min_machines_running = 1` under `[http_service]` in `fly.toml`, or `auto_stop_machines = "suspend"`, which resumes faster than `"stop"`. The minimum applies to the primary region only.
+- **AWS Lambda:** add provisioned concurrency to the version or alias your trigger calls.
+- **Railway:** turn Serverless off for the service and redeploy, because Railway applies the setting when it creates a container.
+- **Render:** move the service from Free to any paid compute plan.
+
+Then make the boot itself cheaper. AWS's advice for Lambda carries over to other hosts: create clients such as the database pool once, outside the request handler, so warm requests reuse them, and defer setup that only some requests need. On Vercel, Node.js 20 or later gets bytecode caching on production deployments.
+
+### If the database was suspended
+
+1. **Change the suspend setting, if your plan allows it.** On a Neon paid plan, turn scale to zero off for the compute, or, on the Scale plan, set a longer `suspend_timeout_seconds` so it suspends less often. Neon notes that a compute that never suspends has to be restarted by hand to pick up its compute updates, which it releases about weekly. On Aurora Serverless, set the minimum capacity to 0.5 ACUs or more, or raise `SecondsUntilAutoPause` up to 86,400. The command sets the maximum capacity too, so look up the value your cluster already uses and pass that same value:
+
+   ```bash
+   aws rds describe-db-clusters --db-cluster-identifier my-cluster \
+     --query 'DBClusters[0].ServerlessV2ScalingConfiguration'
+
+   # Replace YOUR_CURRENT_MAX with the MaxCapacity printed above
+   aws rds modify-db-cluster --db-cluster-identifier my-cluster \
+     --serverless-v2-scaling-configuration MinCapacity=0.5,MaxCapacity=YOUR_CURRENT_MAX
+   ```
+
+   On Supabase's Free plan, resume the project from the dashboard. Supabase says a few requests to the database each day typically keep a project from being paused, and paid plans aren't paused.
+
+2. **If you keep auto-suspend, make the app wait for it.** Set the connection timeout longer than the resume time, such as 20 seconds for Aurora's typical 15, and retry a failed connection. Retrying the connection, not the query, is safe for writes, because no statement was sent:
+
+   ```ts
+   async function connectWithRetry(attempts = 3) {
+     for (let attempt = 1; ; attempt++) {
+       try {
+         return await pool.connect();
+       } catch (err) {
+         if (attempt >= attempts) throw err;
+         await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+       }
+     }
+   }
+
+   const client = await connectWithRetry();
+   try {
+     await client.query("insert into orders (customer_id, total) values ($1, $2)", [id, total]);
+   } finally {
+     client.release();
+   }
+   ```
+
+   Neon's [connection latency guide](https://neon.com/docs/connect/connection-latency) recommends the same: longer connection timeouts and retries with backoff.
+
+### If opening a connection is the slow part
+
+1. **Create one pool per process, at module scope,** and import it everywhere. A pool created inside a request handler opens a new connection for every request. The [too-many-connections guide](/postgres/too-many-connections) shows the setup, including the hot-reload case.
+2. **Keep a connection across short quiet spells.** node-postgres's `min` option keeps that many clients from being closed by `idleTimeoutMillis` (it doesn't open them for you), and a longer `idleTimeoutMillis` keeps the rest open longer. Keep the idle timeout below your provider's own idle limit, and keep the `error` listener so a connection the server closed doesn't crash the process. This doesn't stop a database from suspending: Neon closes the connections when it does. On Aurora, an open connection keeps the instance from pausing, which is the same trade-off as turning auto-pause off.
+3. **Know what a connection pooler fixes.** A pooler such as [PgBouncer](https://www.pgbouncer.org/features.html) keeps its server connections open and hands them to clients, so a client connection to it skips the database's own connection setup, and it caps how many connections reach the database. Your app still opens a TCP and TLS connection to the pooler on every new connection, so distance still counts. Whether a pooler keeps the database awake depends on the database: on Aurora, an [RDS Proxy keeps an open connection to each instance](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html), so those instances don't auto-pause, and a slow first request behind RDS Proxy is not an Aurora pause.
+4. **Run the app in the database's region.** Every new connection costs several round trips before the first query, so distance multiplies. Put the app and database in the same region, or pick the database region nearest the app.
+5. **Skip a round trip on new connections, if both sides support it.** With libpq from PostgreSQL 17 or later, or node-postgres 8.22 or later, [`sslnegotiation=direct`](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLNEGOTIATION) starts TLS right after the TCP connection, which saves one round trip ([node-postgres SSL docs](https://node-postgres.com/features/ssl)). It needs `sslmode=require` or stricter (node-postgres throws an error if SSL is off) and a server or proxy that accepts direct TLS; Neon documents support for it. Leave it out where your provider doesn't.
+
+## When does this fix not apply?
+
+- **Every request is slow, not only the first.** That is a query, index or capacity problem. [Inspecting slow queries and indexes](/postgres/managed-postgres-query-monitoring) covers it.
+- **The first request fails instead of being slow.** A Railway 502, a connection timeout shorter than the database's resume time or a connection that the server closed while the pool held it show up as errors, and a paused Supabase Free project has to be resumed from the dashboard. The FAQ lists the causes, and [Connection terminated unexpectedly](/postgres/connection-terminated-unexpectedly) covers the last one.
+- **Keeping things warm costs more than the delay is worth.** For an internal tool or a staging app that a few people use, a short wake-up on the first request of the day may be the right trade for paying nothing while it is idle.
+
+## Where do Prisma Postgres and Prisma Compute fit?
+
+[Prisma Compute](/docs/compute) runs TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/docs/postgres) in one project. Prisma Compute fits when booting the app host is the slow part and you still want an idle app to cost nothing: its docs say idle instances [sleep with a memory snapshot and resume with memory intact in milliseconds](/docs/compute/keeping-instances-awake), and the [pricing docs](/docs/compute/pricing) say an idle app scales to zero and costs nothing.
+
+Because memory is restored, objects your app created at startup, such as the pool object and loaded configuration, are still there after an idle spell. Open database connections are not: the [deploying docs](/docs/composer/deploying#production-behavior) say Compute scales to zero and idle database connections get closed, so the first query after idle opens a new connection, and a call from one service into another that is asleep can get `ECONNRESET` while it starts. So the first request after idle can still be slower than the next one. Keep the pool small and reconnect-friendly, as the docs' example does with one connection and a 10-second idle timeout, and retry calls between services.
+
+Prisma Postgres is managed PostgreSQL 17, and any Postgres client connects to it; Prisma ORM is optional. The Prisma Postgres docs don't describe scale to zero or a wake time for the database, so if your app uses Prisma Postgres, time the app host and the connection first (steps 1 and 2). You choose a database's region when you create it, and the [connection docs](/docs/postgres/database/connecting-to-your-database#regions-and-latency) say to run the app in or near that region, because every query travels there and back. Compute services run in one of the same six regions as Prisma Postgres (`us-east-1`, `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1` and `ap-southeast-1`), so create the service in the database's region. App traffic goes through the pooled host `pooled.db.prisma.io`, which [closes idle pooled connections after 60 minutes](/docs/postgres/database/connection-pooling), so keep your pool's idle timeout below that or let the `error` listener handle the close. For edge runtimes without TCP, the [serverless driver](/docs/postgres/database/serverless-driver) queries Prisma Postgres without opening a TCP connection.
+
+Know the limits before you move an app to fix a slow first request:
+
+- The Compute docs don't describe a setting that keeps a minimum number of instances running. `waitUntil` and `KeepAwakeGuard` exist for bounded, best-effort background work. If you need instances kept warm at all times, Cloud Run's minimum instances or Fly.io's `min_machines_running` are built for that, and Fly.io's `"suspend"` mode also brings the wake down to a few hundred milliseconds.
+- Each Compute service runs in one region, with no multi-region deployments, and WebSocket servers are not supported. Python and Go APIs need another host, such as Fly.io, Railway or Render.
+- If the slow part is a database that suspends and your app host is fine, changing the database's suspend setting is a smaller change than moving hosts.
+
+The Free plan includes 2 GB of storage, 200k database operations and 1M Compute requests a month and needs no credit card. See [pricing](/pricing) for the paid plans.

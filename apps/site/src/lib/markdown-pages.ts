@@ -1,3 +1,4 @@
+import { getComparisonMarkdownPages } from "./markdown/comparisons";
 import { computeContent } from "@/components/product/content/compute";
 import { ormContent, ormFeedback, ormMigrations } from "@/components/product/content/orm";
 import { postgresContent } from "@/components/product/content/postgres";
@@ -45,9 +46,14 @@ export type MarkdownPage = {
   subheadline: string;
   /** Everything after the subheadline. */
   renderBody: () => string;
+  /** Human-readable check month, printed at the top of the Markdown. */
+  checked?: string;
+  /** ISO date the page was last checked, independent of git. */
+  dateModified?: string;
 };
 
 export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
+  ...getComparisonMarkdownPages(),
   "/": {
     path: "/",
     title: SITE_HOME_TITLE,
@@ -85,16 +91,16 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   },
   "/postgres": {
     path: "/postgres",
-    title: "Prisma Postgres | Serverless PostgreSQL for TypeScript Apps",
+    title: "Prisma Postgres | Free Postgres database for TypeScript and AI",
     description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+      "Managed Postgres, part of Prisma's infrastructure for TypeScript and AI apps. Create a free database in seconds with npx create-db. No credit card.",
     h1: productH1(postgresContent),
     subheadline: productSubheadline(postgresContent),
     renderBody: () => renderProductMarkdown({ content: postgresContent }),
   },
   "/compute": {
     path: "/compute",
-    title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+    title: "Prisma Compute | Host TypeScript apps (Node.js, Bun or Next.js) next to Postgres",
     // The meta description, verbatim from app/compute/page.tsx.
     description:
       "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
@@ -167,12 +173,19 @@ export function getMarkdownPage(path: string): MarkdownPage | undefined {
 export function renderMarkdownDocument(page: MarkdownPage, baseUrl = getBaseUrl()): string {
   const llmsTxtUrl = new URL("/llms.txt", baseUrl).toString();
   const markdownPath = getMarkdownUrlPath(page.path);
+  const titleLead = /[.!?]$/.test(page.title) ? page.title : `${page.title}.`;
+  const freshness = [
+    page.checked ? `Checked ${page.checked}.` : "",
+    page.dateModified ? `dateModified: ${page.dateModified}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return `# ${page.h1} (${page.path})
 
-> ${page.title}. For the complete Prisma website index, see [llms.txt](${llmsTxtUrl}). A Markdown version of any listed page is available at its \`.md\` URL — this one is \`${markdownPath}\`.
+> ${titleLead} For the complete Prisma website index, see [llms.txt](${llmsTxtUrl}). A Markdown version of any listed page is available at its \`.md\` URL — this one is \`${markdownPath}\`.
 
-${page.description}
+${freshness ? `${freshness}\n\n` : ""}${page.description}
 
 ${page.subheadline}
 

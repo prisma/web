@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { formatPostMarkdown, getPostSlugs } from "@/lib/llms";
 import { toLlmsPost } from "@/lib/llms-source";
 import { blog as source, type BlogPage } from "@/lib/source";
@@ -9,7 +10,7 @@ import { getBaseUrl } from "@/lib/url";
  * drafts.
  */
 export async function getLLMText(page: BlogPage) {
-  const processed = await page.data.getText("processed");
+  const processed = await (await pageContent(page.data)).getText("processed");
   const postSlugs = getPostSlugs(source.getPages().map((candidate) => ({ path: candidate.url })));
 
   return formatPostMarkdown(toLlmsPost(page), processed, getBaseUrl(), postSlugs, {

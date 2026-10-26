@@ -17,13 +17,13 @@ Every command, code block, and output below was run with `wrangler dev` against 
 
 :::note[Using Prisma ORM 7?]
 
-Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/cloudflare-workers](/guides/v7/deployment/cloudflare-workers).
+Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/cloudflare-workers](/guides/v7/deployment/cloudflare-workers).
 
 :::
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) 24 or later
+- [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up/workers-and-pages) for the deploy step
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
@@ -39,7 +39,7 @@ Add Prisma ORM to a new Cloudflare Worker, query PostgreSQL from it, and prepare
 1. Scaffold: `npm create cloudflare@latest prisma-cloudflare-worker -- --type=hello-world --lang=ts --git --no-deploy --no-agents`. In `prisma-cloudflare-worker`, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them.
 2. Add `"compatibility_flags": ["nodejs_compat"]` to `wrangler.jsonc`. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`; both the Prisma CLI and `wrangler dev` read that file.
 3. Run `npx prisma db init` to create the tables from `src/prisma/contract.prisma`.
-4. Replace `src/index.ts` following https://www.prisma.io/docs/guides/deployment/cloudflare-workers.md: create one `postgres<Contract>({ contractJson, url: env.DATABASE_URL })` client per request inside `fetch`, run the queries, and close it with `ctx.waitUntil(db.close())`. Do not import the module-level client from `src/prisma/db.ts` in the Worker; a connection shared across requests hangs the second request. Run `npx wrangler types` so `Env` includes `DATABASE_URL`.
+4. Replace `src/index.ts` following https://www.prisma.io/docs/guides/deployment/cloudflare-workers.md: turn the emitted JSON into `const contract = contractFromJson<Contract>(contractJson)` (from `@prisma/orm-postgres/static`) once at module level, without exporting it, and create one `postgres({ contract, url: env.DATABASE_URL })` client per request inside `fetch`, run the queries, and close it with `ctx.waitUntil(db.close())`. Do not import the module-level client from `src/prisma/db.ts` in the Worker; a connection shared across requests hangs the second request. Run `npx wrangler types` so `Env` includes `DATABASE_URL`.
 5. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:8787` twice returns a created user and a growing count, then stop the dev server.
 6. Deploy: check `npx wrangler whoami`; if I am not logged in, stop and ask me to run `npx wrangler login`. Then run `npx wrangler secret put DATABASE_URL` with the production connection string and `npm run deploy`, and verify the live URL.
 ```
@@ -90,14 +90,34 @@ Prisma ORM has no Prisma Client to generate, no driver adapter package, and no q
 npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
-Without `--yes`, the command asks for the contract authoring style and the schema path instead; the values above are the defaults. It installs the packages and emits the contract:
+With `--yes`, the command asks no questions and uses the default for anything the flags do not set, such as the schema path `src/prisma/contract.prisma`. It installs the packages and emits the contract. `@prisma/cli-engine` is the library the `prisma` commands are built on, not a query engine:
 
-```json no-copy
-{"kind":"step-finished","step":"npm add @prisma/orm-postgres dotenv","outcome":"ok"}
-{"kind":"step-finished","step":"npm add -D prisma@latest","outcome":"ok"}
-{"kind":"step-finished","step":"npm add -D @prisma/cli-engine@0.6.3","outcome":"ok"}
-{"kind":"step-finished","step":"Emit the contract","outcome":"ok"}
-{"kind":"result","envelope":{"ok":true,"result":{"target":"postgres","authoring":"psl","schemaPath":"src/prisma/contract.prisma","filesWritten":["src/prisma/contract.prisma","prisma.config.ts","src/prisma/db.ts","prisma-8.md",".env.example","tsconfig.json",".gitignore",".gitattributes","package.json","README.md"]}}}
+```text no-copy
+✔ npm add @prisma/orm-postgres dotenv
+✔ npm add -D prisma@latest @types/node
+✔ npm add -D @prisma/cli-engine@0.9.0
+✔ Emit the contract
+│  target:     postgres
+│  authoring:  psl
+│  schema:     src/prisma/contract.prisma
+written
+├─ src/prisma/contract.prisma
+├─ prisma.config.ts
+├─ src/prisma/db.ts
+├─ prisma-8.md
+├─ .env.example
+├─ tsconfig.json
+├─ .gitignore
+├─ .gitattributes
+├─ package.json
+└─ README.md
+installed
+├─ @prisma/orm-postgres
+├─ dotenv
+├─ prisma@latest (dev)
+├─ @types/node (dev)
+└─ @prisma/cli-engine@0.9.0 (dev)
+✔ Done. Open prisma-8.md to get started.
 ```
 
 The important files:
@@ -106,6 +126,7 @@ The important files:
 - `src/prisma/contract.json` and `src/prisma/contract.d.ts`: emitted from the contract. The Worker imports both; there is no `prisma generate` step.
 - `prisma.config.ts`: tells the CLI where the contract is and reads `DATABASE_URL` from `.env`.
 - `src/prisma/db.ts`: a module-level client for Node.js scripts. The Worker does not import it; step 3 explains why.
+- `prisma-8.md`: a short quick reference for writing your first typed query.
 
 `orm init` also sets `"type": "module"` in `package.json` and adds a `contract:emit` script. Whenever you edit `src/prisma/contract.prisma`, run `npm run contract:emit` to refresh the emitted files.
 
@@ -155,15 +176,18 @@ Replace `src/index.ts` with a handler that creates a user and counts all users:
 
 ```typescript title="src/index.ts"
 import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
 import type { Contract } from "./prisma/contract.d";
 import contractJson from "./prisma/contract.json" with { type: "json" };
+
+const contract = contractFromJson<Contract>(contractJson);
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const path = new URL(request.url).pathname;
 		if (path === "/favicon.ico") return new Response("Not found", { status: 404 });
 
-		const db = postgres<Contract>({ contractJson, url: env.DATABASE_URL });
+		const db = postgres({ contract, url: env.DATABASE_URL });
 		try {
 			const user = await db.orm.public.User.create({
 				email: `user-${Math.ceil(Math.random() * 1000)}@prisma.io`,
@@ -181,11 +205,12 @@ export default {
 } satisfies ExportedHandler<Env>;
 ```
 
-Three things to notice:
+Keep these points in mind when you change the handler:
 
 - The client is created inside `fetch`, with the connection string from `env`, and closed after the response with `ctx.waitUntil(db.close())`. This is the opposite of a Node.js server, where you keep one client for the life of the process. Workers do not let a socket opened during one request be used by another, so a module-level client works for the first request and hangs the next one. That is why the Worker does not import `src/prisma/db.ts`.
-- Models are namespace-qualified on PostgreSQL: `db.orm.public.User`. `.create(...)` returns the inserted row, database defaults included.
-- `contract.json` is imported with `with { type: "json" }`. Wrangler bundles it into the Worker.
+- On PostgreSQL, you reach a model through the database namespace it lives in: `db.orm.public.User`, where `public` is the PostgreSQL schema (a namespace inside the database, not your `contract.prisma` file). `.create(...)` returns the inserted row, database defaults included.
+- `contract.json` is imported with `with { type: "json" }`. Wrangler bundles it into the Worker. The client does not take this JSON directly, so pass it through `contractFromJson` first. The handler does this once, outside `fetch`, and passes the result as `contract` to the client it creates in each request.
+- Do not export `contract` from `src/index.ts`. Cloudflare treats every named export of the Worker's entry file as an entrypoint. If another file needs `contract`, create it in its own file and import it from there in both places.
 
 ### 3.1. Generate the Env types
 
@@ -275,7 +300,7 @@ Add the binding it prints to `wrangler.jsonc`. The `localConnectionString` is wh
 Run `npx wrangler types` again, then pass the Hyperdrive connection string to the client instead of `env.DATABASE_URL`:
 
 ```typescript title="src/index.ts"
-const db = postgres<Contract>({ contractJson, url: env.HYPERDRIVE.connectionString });
+const db = postgres({ contract, url: env.HYPERDRIVE.connectionString });
 ```
 
 Everything else in the handler stays the same. The `localConnectionString` must include a password, even for a local server that does not check one; otherwise `wrangler dev` refuses to start with `You must provide a password`.
@@ -296,7 +321,29 @@ Create the client inside `fetch` and close it with `ctx.waitUntil(db.close())`, 
 
 :::info
 
-`@prisma/orm-postgres/serverless` exports `postgresServerless`, a client built for serverless runtimes. It runs in Workers with `nodejs_compat`. Create it once at module level, as `const postgres = postgresServerless<Contract>({ contractJson })`. It holds no database connection. Inside `fetch`, open a connection for the request with `await using db = await postgres.connect({ url: env.DATABASE_URL })`. The connection has `db.orm`, `db.sql`, and `db.transaction(...)`, like the client this guide creates, and `await using` closes it when the request scope ends, so await every query before then. `connect()` opens the connection before it returns, and rejects with `DRIVER.CONNECTION_FAILED` when the database cannot be reached. Reads load the whole result unless you create the serverless client with a `cursor` option, and reads through a cursor hang behind Hyperdrive. See [Serverless client on PostgreSQL](/orm/reference/transactions-and-runtime#serverless-client-on-postgresql).
+You can also use `postgresServerless` from `@prisma/orm-postgres/serverless` in place of the `postgres(...)` client above. Both open one database connection per request, and both work in Workers with `nodejs_compat`. They differ in what you create inside `fetch`. With `postgres(...)`, you create a whole client in each request. With `postgresServerless`, you create the client once, outside `fetch`, and each request only opens a connection from it with `connect()`:
+
+```typescript title="src/index.ts"
+import postgresServerless from "@prisma/orm-postgres/serverless";
+import { contractFromJson } from "@prisma/orm-postgres/static";
+import type { Contract } from "./prisma/contract.d";
+import contractJson from "./prisma/contract.json" with { type: "json" };
+
+const contract = contractFromJson<Contract>(contractJson);
+const postgres = postgresServerless({ contract });
+
+export default {
+	async fetch(_request, env): Promise<Response> {
+		await using db = await postgres.connect({ url: env.DATABASE_URL });
+		const { total } = await db.orm.public.User.aggregate((a) => ({ total: a.count() }));
+		return new Response(`Number of users in the database: ${total}.\n`);
+	},
+} satisfies ExportedHandler<Env>;
+```
+
+The connection `db` has `db.orm`, `db.sql`, and `db.transaction(...)`, like the client this guide creates. `await using` closes the connection when `fetch` returns, so await every query before then. If the database cannot be reached, `connect()` rejects with the error code `DRIVER.CONNECTION_FAILED`.
+
+Reads load the whole result into memory unless you pass a `cursor` option. Leave `cursor` out behind Hyperdrive, because reads through a cursor hang there. See [Serverless client on PostgreSQL](/orm/reference/transactions-and-runtime#serverless-client-on-postgresql).
 
 :::
 

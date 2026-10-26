@@ -14,7 +14,8 @@ const { pathToRegexp } = pathToRegexpModule as {
 
 type HeaderRule = { source: string; headers: { key: string; value: string }[] };
 
-const rules = (await nextConfig.headers?.()) as HeaderRule[];
+const config = await nextConfig("phase-production-server");
+const rules = (await config.headers?.()) as HeaderRule[];
 const postRule = rules.find((rule) => rule.source === POST_HEADER_SOURCE);
 
 test("a post sends a Link header naming its Markdown and the blog llms.txt", () => {

@@ -69,6 +69,16 @@ const footerItems = [
     links: [
       {
         _type: "footerLinkType",
+        title: "Postgres guides",
+        url: "/postgres/guides",
+      },
+      {
+        _type: "footerLinkType",
+        title: "Compute guides",
+        url: "/compute/guides",
+      },
+      {
+        _type: "footerLinkType",
         title: "Docs",
         url: "/docs",
       },
@@ -170,10 +180,6 @@ const footerItems = [
           {
             title: "Security & Compliance",
             url: "https://trust.prisma.io/",
-          },
-          {
-            title: "Report Abuse",
-            url: "mailto:abuse@prisma.io",
           },
         ],
       },

@@ -1,3 +1,4 @@
+import robotImage from "@prisma-docs/ui/assets/brand/robot.webp";
 import { cn } from "@/lib/utils";
 
 // The 3D agent character, introduced at the centre of the homepage's agent-loop
@@ -20,9 +21,10 @@ export function AgentRobot({ className }: { className?: string }) {
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/brand/robot.png"
-        alt=""
+        src={robotImage.src}
         loading="lazy"
+        decoding="async"
+        alt=""
         className={cn(shared, "hidden motion-reduce:block", className)}
       />
     </>

@@ -89,7 +89,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "A database from Neon, an ORM from Drizzle, hosting from Vercel",
       "Your agent writes the code, you wire it up",
-      "Per-branch databases that don't connect to your hosting previews",
+      "Preview databases from one vendor, preview deployments from another",
       "Bandwidth bills that scale faster than your traffic",
       "Context-switching between a database dashboard, ORM CLI, hosting console, and data browser",
     ]),
@@ -97,8 +97,8 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "Your agent runs the full loop: build, deploy, debug, fix, redeploy",
       "One platform: hosting, database, and ORM built to work together natively",
-      "Per-branch databases wired to your hosting previews automatically",
-      "App and database co-located on the same host, at latency no two-vendor setup can match",
+      "A preview database per feature branch, wired to its preview deployment",
+      "App and database on one platform in the same region, so queries stay low-latency and never leave the region",
       "Spend limits on every paid tier, so your bill stops where you tell it to",
     ]),
 
@@ -112,7 +112,7 @@ export function renderHomeMarkdown(): string {
     heading(3, "2. Deploy"),
     paragraphs(
       "Add Prisma Postgres and Compute when you're ready to ship. Your app and database deploy " +
-        "together on the same host, co-located by default.",
+        "together on one platform, in the same region, in one project.",
     ),
     heading(3, "3. Iterate"),
     paragraphs(
@@ -157,7 +157,7 @@ export function renderHomeMarkdown(): string {
     bulletList([
       "Unikernel microVMs on bare metal, single-digit ms boot",
       "Operation-based pricing with spend limits, no bill shock",
-      "Free per-branch databases, integrated with hosting previews",
+      "A preview database per feature branch, integrated with hosting previews",
       "Works with any ORM if you're not using Prisma's",
       "Query Insights built in: spot slow queries and get an agent-ready prompt to fix them",
     ]),
@@ -166,8 +166,8 @@ export function renderHomeMarkdown(): string {
     heading(3, "Prisma Compute"),
     paragraphs("*App hosting*"),
     paragraphs(
-      "TypeScript app hosting that runs on the same host as your database, so your agent can " +
-        "deploy, debug, and redeploy end-to-end.",
+      "TypeScript app hosting on the same platform and in the same region as your database, so " +
+        "your agent can deploy, debug, and redeploy end-to-end.",
     ),
     bulletList([
       "Bun runtime on bare metal",
@@ -209,7 +209,7 @@ export function renderHomeMarkdown(): string {
       },
       {
         name: "Deploy your app, the database is already there",
-        description: "App and Postgres co-located on the same host.",
+        description: "App and Postgres on one platform, in the same region, in one project.",
       },
     ]),
 
@@ -218,50 +218,46 @@ export function renderHomeMarkdown(): string {
     paragraphs(
       "Start free with the ORM, which will always be free. Prisma Postgres has a free tier with " +
         "a hard cap, so you can build without a credit card. When you outgrow it, you're on " +
-        "operation-based pricing with spend limits, and data transfer is always included.",
+        "operation-based pricing with spend limits, and database data transfer is always included.",
     ),
     ctaList([{ label: "See pricing", href: "/pricing" }]),
     bulletList([
       "**Free Postgres tier** with a hard cap, no credit card required",
       "**Spend limits on every paid tier**, so your bill never surprises you",
-      "**Unlimited data transfer included**, no bandwidth bill-shock",
+      "**Unlimited database data transfer included**, no database egress bill-shock",
       "**Prisma ORM is free, always**",
-      "**Per-branch databases included**, no surcharge",
-      "**SOC2, HIPAA, ISO 27001, and GDPR** at the Business tier",
+      "**A preview database per feature branch**, no surcharge",
+      "**SOC2, [HIPAA](/postgres/hipaa), ISO 27001, and GDPR** at the Business tier",
     ]),
-    // All three carousel scenarios are included: only one slide is visible at
-    // a time in the HTML, and Markdown has no interaction.
+    // Both carousel scenarios are included: only one slide is visible at a
+    // time in the HTML, and Markdown has no interaction. Figures and basis are
+    // in the SCENARIOS comment in pricing-scale.tsx.
     heading(3, "Side project (~5K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $19-39 per month"),
+    paragraphs("Typical stack (Neon + Vercel): $20-35 per month"),
     bulletList([
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
-      "Credit card required up front",
+      "Database and hosting from two vendors",
+      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10/GB",
+      "Paid Vercel plan for commercial use",
     ]),
-    paragraphs("Prisma: $0 per month"),
+    paragraphs("Prisma: $0-22 per month"),
     bulletList([
-      "No credit card required",
-      "Data transfer included",
+      "Free plan needs no credit card",
+      "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ]),
     heading(3, "Growing SaaS (~50K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $385-450 per month"),
+    paragraphs("Typical stack (Neon + Vercel): $110-270 per month"),
     bulletList([
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
-      "Spend limits not standard",
+      "Database and hosting from two vendors",
+      "Database data transfer: 500 GB per project included, then $0.10/GB",
+      "Spend controls: Neon notifications, Vercel budget with optional pause",
     ]),
-    paragraphs("Prisma: $70-90 per month"),
-    bulletList(["One bill, one platform", "Data transfer included", "Spend limits on by default"]),
-    heading(3, "At scale (~500K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $2,800-3,400 per month"),
+    paragraphs("Prisma: $72-90 per month"),
     bulletList([
-      "Committed-use contracts across vendors",
-      "Data transfer billed per GB",
-      "Spend limits not standard",
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
     ]),
-    paragraphs("Prisma: $640-780 per month"),
-    bulletList(["One bill, one platform", "Data transfer included", "Spend limits on by default"]),
 
     // ---- TestimonialsReveal (testimonials-reveal.tsx) ----
     // Shared renderer: the section is reused on other pages, and it already
@@ -305,8 +301,8 @@ export function renderHomeMarkdown(): string {
     ),
     heading(3, "What about Prisma 7 / Prisma ORM users today?"),
     paragraphs(
-      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now the current " +
-        "release, is a separate, opinionated product built for agentic workflows, not a forced " +
+      "Prisma 7 isn't going anywhere and remains fully supported. Prisma 8, now a release " +
+        "candidate, is a separate, opinionated product built for agentic workflows, not a forced " +
         "upgrade. When you are ready to move, the Prisma 8 docs include an upgrade guide from " +
         "Prisma 7.",
     ),

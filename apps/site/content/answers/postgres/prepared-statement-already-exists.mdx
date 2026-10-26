@@ -1,0 +1,169 @@
+---
+title: 'Getting "prepared statement already exists" through a Postgres connection pooler? How to fix it'
+description: "Named prepared statements break behind a pooler in transaction mode. Turn them off in the driver, enable PgBouncer support, or use a direct connection."
+summary: "The error means your driver created a named prepared statement in one database session, and a pooler in transaction mode, such as PgBouncer, then gave that session to a client that tried to create the same name. Pick one fix: turn off named prepared statements in the driver (`prepare: false` in postgres.js and Bun SQL, `statement_cache_size=0` in asyncpg, `default_query_exec_mode=exec` in pgx); or, on a self-hosted PgBouncer 1.21 or newer, set `max_prepared_statements` above zero; or move that client to session mode. Run migrations and admin tools over the direct connection, not the pooler."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-22"
+readingTime: "7 min read"
+faq:
+  - question: "Is it safe to turn off prepared statements?"
+    answer: "Yes, for correctness and security. Queries still send their parameters separately from the SQL text, so binding still protects against SQL injection. What you give up is speed: the server parses and plans each query again instead of reusing a plan. Bun's documentation notes that this can slow down queries that run often with different parameters, and node-postgres notes that most queries don't gain much from prepared statements in the first place."
+  - question: "Should I add pgbouncer=true to my Prisma connection string?"
+    answer: "Yes on Prisma ORM 6 and 7, behind PgBouncer older than 1.21.0 or behind a pooler that does not track prepared statements, such as Supabase's transaction mode on port 6543. Prisma's PgBouncer guides for [Prisma ORM 6](/docs/orm/v6/prisma-client/setup-and-configuration/databases-connections/pgbouncer) and [Prisma ORM 7](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/pgbouncer) say to add it there, and [Supabase's docs](https://supabase.com/docs/guides/database/connecting-to-postgres) list `pgbouncer=true` as the Prisma setting for transaction mode. On PgBouncer 1.21.0 or later, the guides recommend leaving it off and setting `max_prepared_statements` above zero. [Prisma ORM 8](/docs/orm) has no `pgbouncer` URL flag; it connects through node-postgres. Its [`db.prepare()`](/docs/orm/reference/transactions-and-runtime#prepared-statements-postgresql) API creates prepared statements, so behind a transaction-mode pooler that does not track them (PgBouncer below 1.21, `max_prepared_statements = 0`, or Supabase's transaction mode), run that code over the direct connection."
+  - question: "Can I use PREPARE and EXECUTE in SQL through PgBouncer?"
+    answer: "Not in transaction mode. PgBouncer tracks only protocol-level prepared statements and forwards SQL-level `PREPARE`, `EXECUTE` and `DEALLOCATE` straight to whichever server connection the transaction got, so a later `EXECUTE` can land on a connection that never saw the `PREPARE`. Run code that uses SQL-level prepared statements over a direct connection or in session mode."
+  - question: "Why does the error show up only after a deploy or under load?"
+    answer: "With one client and little traffic, the pooler often hands the same server connection back, so the names a driver cached still match. More clients, new app instances after a deploy, or a reconnect mean more clients sharing each server connection, each with its own list of statement names, and the first collision raises the error. The fix is the same: stop naming statements, or let the pooler track them."
+related:
+  - title: "Prisma Postgres connection pooling"
+    href: "/docs/postgres/database/connection-pooling"
+  - title: "Running database migrations safely in production"
+    href: "/postgres/production-database-migrations"
+  - title: "Configure Prisma ORM 7 with PgBouncer"
+    href: "/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/pgbouncer"
+  - title: "Hosting a node-postgres app on managed Postgres"
+    href: "/postgres/node-postgres-hosting"
+  - title: "Vercel functions get \"Connection terminated unexpectedly\" from Postgres"
+    href: "/postgres/connection-terminated-unexpectedly"
+cta:
+  title: "Use the pooled and direct connections for what each is for"
+  description: "Prisma Postgres gives every database a pooled connection string for app traffic and a direct one for migrations and admin tools. Prisma ORM is optional; any Postgres client connects."
+  label: "Set up both connection strings"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+`ERROR: prepared statement "s0" already exists` (SQLSTATE `42P05`) through a pooler comes from a session mismatch: your driver names statements per connection, and the pooler shares server connections between clients. The fix: turn off named prepared statements in the driver, or let the pooler track them, and run migrations over the direct connection.
+
+Every claim on this page links to its source, checked October 19, 2026. We make Prisma Postgres, one of the managed databases covered here.
+
+## Why does a pooler cause "prepared statement already exists"?
+
+A named prepared statement belongs to one database session. PostgreSQL's [`PREPARE` documentation](https://www.postgresql.org/docs/current/sql-prepare.html) says the name must be unique within a session and the statement lasts until the session ends. In the [extended query protocol](https://www.postgresql.org/docs/current/protocol-flow.html), drivers create the same kind of object with a Parse message, and a named statement must be closed before the name can be defined again. An unnamed statement is replaced by the next Parse.
+
+Many drivers create named statements automatically and remember, per client connection, which names they have already created. Behind a direct connection, the client connection and the server session are the same thing, so that memory is correct.
+
+A pooler in transaction mode breaks that link. [PgBouncer releases the server connection back to the pool when each transaction finishes](https://www.pgbouncer.org/config.html), so the next transaction from your app can run on a different server connection, and the same server connection serves many clients. Two errors follow:
+
+- **`prepared statement "..." already exists`.** A client with an empty cache creates `s0` on a server connection where another client, or an earlier connection of yours, already created `s0`.
+- **`prepared statement "..." does not exist`.** A client created a statement on one server connection and executes it on another.
+
+The [asyncpg FAQ](https://magicstack.github.io/asyncpg/current/faq.html) lists both errors as the usual sign of a transaction-mode PgBouncer, and Prisma's [PgBouncer guide](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/pgbouncer) shows the `s0` variant from Prisma Migrate.
+
+The error usually comes from one of three places:
+
+- **App traffic** through a transaction-mode pooler, from a driver that names its statements.
+- **Migrations and admin tools** pointed at the pooled connection string. Schema tools hold one session across several statements.
+- **A reconnect** against something that keeps the server session alive, such as a pooler or a local development database that shares one session across client connections.
+
+## How do I fix it?
+
+### 1. Check which connection and pool mode you are on
+
+Look at the host and port in the connection string the failing process uses. Managed providers usually give the pooler its own host or port. If you run PgBouncer yourself, `pool_mode` in its configuration (or `SHOW CONFIG;` on the [admin console](https://www.pgbouncer.org/usage.html)) shows the mode. In `session` mode, PgBouncer runs `server_reset_query` (by default `DISCARD ALL`) before it hands a server connection to another client, so statement names don't leak between clients. In `transaction` mode it skips that reset, so they can.
+
+### 2. Run migrations and admin tools over the direct connection
+
+Migration tools, schema introspection, `pg_dump` and `pg_restore` need a stable session. Give them the direct connection string and keep the pooled one for app traffic. With Prisma ORM 7, the [PgBouncer guide](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/pgbouncer) sets a direct URL in `prisma.config.ts` for CLI commands while Prisma Client keeps the pooled URL:
+
+```ts title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DIRECT_URL"),
+  },
+});
+```
+
+Other tools take the same idea: point the migration command's connection string at the direct host.
+
+### 3. Turn off named prepared statements in the driver
+
+This works with any pooler and any PgBouncer version. Each driver has its own setting:
+
+| Driver | Default | Setting behind a transaction-mode pooler |
+| --- | --- | --- |
+| [asyncpg](https://magicstack.github.io/asyncpg/current/faq.html) (Python) | Caches prepared statements | `statement_cache_size=0` on `connect()` and `create_pool()`, and no `Connection.prepare()` |
+| [Bun SQL](https://bun.com/docs/runtime/sql) | Named statements for static queries | `prepare: false` |
+| [node-postgres](https://node-postgres.com/features/queries) (`pg`) | Named only when a query has a `name` | Leave `name` off queries that go through the pooler |
+| [pgJDBC](https://jdbc.postgresql.org/documentation/server-prepare/) (Java) | Server-side prepared after `prepareThreshold` executions | `prepareThreshold=0` |
+| [pgx](https://github.com/jackc/pgx/blob/master/doc.go) (Go) | `cache_statement` | `default_query_exec_mode=exec`, or `QueryExecModeExec` in code |
+| [postgres.js](https://github.com/porsager/postgres#prepared-statements) | `prepare: true` | `prepare: false` |
+| [Prisma ORM 7 with `@prisma/adapter-pg`](/changelog/2026-03-27) | Unnamed; the adapter names and caches statements only when `statementNameGenerator` is set | Leave `statementNameGenerator` unset |
+| [psycopg 3](https://www.psycopg.org/psycopg3/docs/advanced/prepare.html) (Python) | Prepared after `prepare_threshold` executions | `prepare_threshold=None` |
+
+Drivers are listed alphabetically. Query builders and ORMs that run on these drivers take the driver's setting. Drizzle's [Supabase guide](https://orm.drizzle.team/docs/connect-supabase), for example, passes `prepare: false` to postgres.js for transaction pool mode:
+
+```ts
+import postgres from "postgres";
+
+// Pooled connection string, transaction mode
+const sql = postgres(process.env.DATABASE_URL!, { prepare: false });
+```
+
+`prepare: false` fixes the prepared-statement error but doesn't stop postgres.js from pipelining queries, which it does by default. Supabase [warns](https://supabase.com/docs/guides/database/postgres-js) that pipelining through its shared pooler in transaction mode can hang queries or return mismatched rows, and that `max_pipeline: 0` is not a fix because it breaks `sql.begin()` transactions. On Supabase, use the session pooler or a direct connection for postgres.js if you see those symptoms.
+
+```ts
+import { SQL } from "bun";
+
+const sql = new SQL({ url: process.env.DATABASE_URL!, prepare: false });
+```
+
+Parameters are still sent separately from the SQL text, so this doesn't open you to SQL injection. Queries are parsed and planned each time instead.
+
+### 4. Or let PgBouncer track prepared statements (1.21 and newer)
+
+If you run PgBouncer yourself, version 1.21.0 [added support for protocol-level named prepared statements](https://www.pgbouncer.org/changelog.html) in transaction and statement mode, and 1.24.0 turned it on by default with `max_prepared_statements = 200`. With a value above zero, [PgBouncer tracks the names each client uses](https://www.pgbouncer.org/config.html), prepares each query on the server under its own internal name, and prepares it on any server connection that doesn't have it yet. Most drivers can keep their default settings. Psycopg 3 [needs](https://www.psycopg.org/psycopg3/docs/advanced/prepare.html) version 3.2 or newer, PgBouncer 1.22 or newer and libpq 17 or newer; without them, keep `prepare_threshold=None` from step 3.
+
+```ini title="pgbouncer.ini"
+; excerpt: keep your [databases] section
+[pgbouncer]
+pool_mode = transaction
+max_prepared_statements = 200
+```
+
+Check the version with `SHOW VERSION;` and the setting with `SHOW CONFIG;` on the admin console. Three limits from the PgBouncer docs:
+
+- It covers protocol-level statements only. SQL-level `PREPARE`, `EXECUTE` and `DEALLOCATE` are forwarded straight to the server and still fail in transaction mode.
+- After a migration changes a table's columns, a reused statement can fail with `cached plan must not change result type`. Run `RECONNECT` on the admin console to make PgBouncer prepare again.
+- Each tracked statement costs memory on PgBouncer and on the server connections.
+
+### 5. Or move that client to session mode
+
+In session mode, PgBouncer [keeps a server connection for a client until the client disconnects](https://www.pgbouncer.org/config.html), so named statements, `SET`, advisory locks and `LISTEN` behave as they do on a direct connection. You give up most of the multiplexing: every connected client holds a server connection. Use it for a worker or tool that needs session state, not for serverless functions that open many connections.
+
+## What do managed poolers support?
+
+| Provider | Pool mode | Prepared statements through the pooler | Use the direct connection for |
+| --- | --- | --- | --- |
+| [Neon](https://neon.com/docs/connect/connection-pooling) | PgBouncer, transaction mode | Protocol-level statements supported, `max_prepared_statements=1000`; SQL-level `PREPARE` not supported | Schema migrations, `pg_dump`, logical replication |
+| [Prisma Postgres](/docs/postgres/database/connection-pooling) | Tenant-isolated PgBouncer, transaction mode, host `pooled.db.prisma.io` | The docs say prepared statements don't carry over between transactions | Migrations, Prisma CLI, `pg_dump`, `LISTEN`/`NOTIFY`, session-level `SET`, queries over 10 minutes (host `db.prisma.io`) |
+| [Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres) | Transaction mode on port 6543 | Not supported in transaction mode; turn them off in the driver | Session mode (port 5432) and direct connections support them |
+
+Providers are listed alphabetically. Check your provider's page before you change settings, since pooler versions and limits change.
+
+## When does this fix not apply?
+
+- **The error appears on a direct connection.** Then the pooler is not the cause. Your code, or a library, prepares the same name twice in one session. Use unique names, close the statement before creating it again, or run [`DEALLOCATE`](https://www.postgresql.org/docs/current/sql-deallocate.html).
+- **The error is `cached plan must not change result type`.** That is a schema change under a statement that was prepared before it. Reconnect the pool, or run `RECONNECT` on PgBouncer, after migrations.
+- **Your app uses SQL-level `PREPARE`.** No driver setting changes that. Use protocol-level prepared statements through the driver, or a direct or session-mode connection for that code.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and any Postgres client connects to it: `pg`, postgres.js, Bun SQL, Drizzle, Kysely or Prisma ORM, which is optional. Every database has [two connection strings](/docs/postgres/database/connecting-to-your-database): a pooled one through a PgBouncer in transaction mode for app traffic, and a direct one for migrations and admin tools. The docs list prepared-statement errors as the symptom of running migrations through the pooled string, and the fix is the direct host for every Prisma CLI command.
+
+For app traffic on the pooled host, use a driver setting from step 3: node-postgres and `@prisma/adapter-pg` with their defaults, or `prepare: false` for postgres.js and Bun SQL.
+
+The same error can appear on your laptop. In a Prisma Composer app, the local Postgres that `npx prisma dev` provisions shares one session across client connections, so after a pool reconnects, the first query fails with `prepared statement "..." already exists` unless prepared statements are off. The [Prisma Composer database docs](/docs/composer/databases) use `prepare: false` with Bun SQL for that reason. With Prisma ORM 7, the local database command is `npx prisma@7 dev` ([local development](/docs/local-development/postgres)).
+
+Know the limits before you move a workload:
+
+- [Pooled connections](/docs/postgres/database/connection-pooling) are capped at 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business. Direct connections are capped at 10, 10, 50 and 100, and 5 of them are reserved for platform operations.
+- Pooled queries end after 10 minutes. Long jobs go over the direct connection.
+- [Daily backups](/docs/postgres/database/backups) are on Starter, Pro and Business only, taken on days the database has activity, and there is no point-in-time recovery yet; it is coming in November 2026.
+
+The Free plan includes 2 GB of storage and needs no credit card. See [pricing](/pricing) for the paid plans.

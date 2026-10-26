@@ -1,3 +1,4 @@
+import { composerBuild, composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -156,7 +157,6 @@ const ContentSecurityPolicy = `
     https://pagead2.googlesyndication.com
     https://googleads.g.doubleclick.net
     https://td.doubleclick.net
-    https://calculator.prisma.io/
     https://ppg-pricing-calculator.vercel.app
     https://hcaptcha.com
     https://*.hcaptcha.com;
@@ -211,9 +211,11 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   reactStrictMode: true,
   transpilePackages: ["@prisma/eclipse"],
-  output: "export",
+  output: composerBuild ? "standalone" : "export",
+  ...(composerBuild ? { basePath: "/eclipse", assetPrefix: "/eclipse-static" } : {}),
   images: { unoptimized: true },
   async headers() {
     return [

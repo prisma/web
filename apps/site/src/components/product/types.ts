@@ -62,6 +62,8 @@ export type ProductPageContent = {
     secondaryCta: Cta;
     /** Reassurance directly under the CTA — price, licence or reach. */
     microline?: string;
+    /** Optional in-page link under the microline, for a related comparison. */
+    related?: { label: string; href: string };
     /**
      * The tour beside the copy (product-tour.tsx). Four stops. Pages still
      * carrying a single still frame fall back to `illustration`.
@@ -114,8 +116,17 @@ export type ProductPageContent = {
   compare?: { intro: string };
   /**
    * A visible FAQ (sections/faq.tsx) after the platform section, in the words
-   * people ask answer engines. Plain strings only, no FAQ schema: the Markdown
-   * rendition prints the answers as-is.
+   * people ask answer engines. Plain strings; the section recognises a tiny
+   * inline syntax (`[text](/path)` for links, backticks for inline code) so
+   * answers can carry real links and code chips without JSX in a .ts content
+   * file. See `lib/faq-answer.tsx`.
+   *
+   * The Markdown rendition prints the raw strings. A FAQPage JSON-LD block is
+   * added page-by-page where the SEO brief asks for it (see
+   * `app/postgres/page.tsx`), generated from the same strings with the inline
+   * markup stripped back to plain text, so visible and structured copy cannot
+   * drift. /compute still ships without a FAQ schema; add one there only when
+   * its brief asks for it.
    */
   faq?: { question: string; answer: string }[];
   cta: {

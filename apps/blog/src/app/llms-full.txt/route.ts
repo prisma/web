@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { buildLlmsFullContent, getPostSlugs } from "@/lib/llms";
 import { toLlmsPost } from "@/lib/llms-source";
 import { blog as source, getPublishedPages } from "@/lib/source";
@@ -9,7 +10,7 @@ export async function GET() {
   const entries = await Promise.all(
     getPublishedPages().map(async (page) => ({
       post: toLlmsPost(page),
-      body: await page.data.getText("processed"),
+      body: await (await pageContent(page.data)).getText("processed"),
     })),
   );
   // Every post, drafts included: a link to a draft still points at a live page.

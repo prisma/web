@@ -1,8 +1,8 @@
 ---
-title: "Branching: isolated preview and staging environments per Git branch"
+title: "Environments: production, staging and preview branches"
 description: Each branch maps to a Git branch, such as a preview per feature or a long-lived staging environment, and gets its own Compute services and deployments. Its data stays separate from production when previews use a preview-scoped DATABASE_URL.
 url: /compute/branching
-metaTitle: "Branching: preview and staging environments per Git branch | Prisma Compute"
+metaTitle: "Environments: production, staging and preview branches | Prisma Compute"
 metaDescription: How production, preview and staging branches work in Prisma Compute, how the CLI picks a branch, and how branches are created and cleaned up.
 ---
 
@@ -22,6 +22,21 @@ Every branch has a role:
 - **Every other branch** is a preview by default: disposable resources for testing changes before they merge. A preview branch you keep instead of deleting, such as `staging`, is a long-lived staging environment; see [A long-lived staging environment](/compute/deploy-on-push#a-long-lived-staging-environment).
 
 To learn more, see the [Deployments docs](/compute/deployments).
+
+## Preview vs staging environments
+
+With [deploy on push](/compute/deploy-on-push) set up, a staging environment is a preview branch you keep. The table compares it with a preview and with production:
+
+|                      | Preview                                                                                                                               | Staging                                                          | Production                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------ |
+| **Git branch**       | Any pushed branch other than the default one                                                                                          | A branch you keep, such as `staging`                             | The default branch, usually `main`         |
+| **What a push does** | Deploys or updates that branch's preview                                                                                              | Updates the same environment in place                            | Deploys production                         |
+| **Database**         | For databases declared in the [Prisma Composer](/composer) module, its own new database; production data is not copied                | Same as a preview                                                | The production database                    |
+| **Variables**        | Preview-scoped values                                                                                                                 | Preview-scoped values plus branch overrides (`--branch staging`) | Production values                          |
+| **URL**              | Generated, printed in the deploy report                                                                                               | Generated, printed in the deploy report                          | Generated; custom domains attach here only |
+| **Teardown**         | Deleting the Git branch removes it                                                                                                    | Deleting the Git branch removes it                               | Automated cleanup never touches it         |
+
+If the app reads `DATABASE_URL`, a preview or staging environment is only as separate as that value. Without GitHub, `npx prisma deploy module.ts --stage staging` creates a staging environment from your terminal or another CI system; see [Deploying](/composer/deploying#production-and-stages).
 
 ## How the CLI picks a branch
 

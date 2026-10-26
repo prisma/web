@@ -1,10 +1,12 @@
 import {
   AGENT_MARKDOWN_PATHS,
+  AGENT_MARKDOWN_VARY,
   getMarkdownUrlPath,
   type AgentMarkdownPath,
 } from "@/lib/agent-markdown";
 import { getMarkdownPage, markdownPageList, renderMarkdownDocument } from "@/lib/markdown-pages";
 import { getBaseUrl } from "@/lib/url";
+import { getAnswerEntries, renderAnswerMarkdown } from "@/lib/answer-page-content";
 
 /**
  * Markdown renditions of the marketing pages.
@@ -105,9 +107,11 @@ function markdownHeaders(extra: Record<string, string>) {
   // Pinning a value here would opt the renditions out of it.
   return {
     "Content-Type": MARKDOWN_CONTENT_TYPE,
-    // The same URL answers HTML to a browser and Markdown to an agent, so a
-    // shared cache has to key the two variants apart.
-    Vary: "Accept",
+    // The same URL answers HTML to a browser and Markdown to an agent, chosen
+    // by `Accept` or by the agent's User-Agent, so a shared cache has to key
+    // the two variants apart on both. This route is static, so it cannot tell
+    // a proxied page URL from a `.md` URL and sends the same value to both.
+    Vary: AGENT_MARKDOWN_VARY,
     ...extra,
   };
 }
@@ -146,8 +150,18 @@ ${available}
   });
 }
 
+/** Serve a guide or marketing-page Markdown rendition with canonical discovery headers. */
 export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[...slug]]">) {
   const { slug } = await params;
+  const answer = getAnswerEntries().find((entry) => entry.url === `/${(slug ?? []).join("/")}`);
+  if (answer) {
+    const baseUrl = getBaseUrl();
+    return new Response(renderAnswerMarkdown(answer), {
+      headers: markdownHeaders({
+        Link: `<${new URL(answer.url, baseUrl)}>; rel="canonical", <${new URL("/llms.txt", baseUrl)}>; rel="llms-txt"`,
+      }),
+    });
+  }
   const path = resolvePath(slug);
   if (!path) return notFoundResponse(slug);
 
@@ -177,5 +191,6 @@ export function generateStaticParams() {
     ...AGENT_MARKDOWN_PATHS.filter((path) => path !== "/").map((path) => ({
       slug: path.slice(1).split("/"),
     })),
+    ...getAnswerEntries().map((entry) => ({ slug: entry.url.slice(1).split("/") })),
   ];
 }

@@ -1,69 +1,134 @@
 ---
 title: Clerk (with Next.js)
-description: Learn how to use Prisma ORM in a Next.js app with Clerk Auth
+description: 'Add Clerk authentication to a Next.js app, sync users to Prisma Postgres with a webhook, build a posts API, and deploy to Prisma Compute.'
 image: /img/guides/prisma-clerk-nextjs-cover.png
 url: /guides/authentication/clerk/nextjs
-metaTitle: How to use Prisma ORM and Prisma Postgres with Clerk Auth and Next.js
-metaDescription: Learn how to use Prisma ORM in a Next.js app with Clerk Auth
+metaTitle: How to use Prisma ORM with Clerk and Next.js
+metaDescription: 'Wire Clerk into a Next.js 16 app on Prisma ORM, store users in Prisma Postgres through a Clerk webhook, expose an authenticated posts API, and deploy to Prisma Compute.'
 ---
-
-:::note[This guide uses Prisma ORM 7]
-
-The commands and code on this page target Prisma ORM 7, which remains fully supported. To start a new Prisma ORM 8 project, see [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql); to add Prisma ORM 8 to an existing app, see [Add Prisma ORM to an existing PostgreSQL database](/prisma-orm/add-to-existing-project/postgresql). A Prisma ORM 8 version of this guide is planned.
-
-:::
 
 ## Introduction
 
-[Clerk](https://clerk.com/) is a drop-in auth provider that handles sign-up, sign-in, user management, and webhooks so you don't have to.
+[Clerk](https://clerk.com/) is an auth provider: it handles sign-up, sign-in, user management, and webhooks.
 
-In this guide you'll wire Clerk into a brand-new [Next.js](https://nextjs.org/) app, persist users in a [Prisma Postgres](https://prisma.io/postgres) database, and expose a tiny posts API. You can find a complete example of this guide on [GitHub](https://github.com/prisma/prisma-examples/tree/latest/orm/clerk-nextjs).
+In this guide you wire Clerk into a new [Next.js](https://nextjs.org/) app, keep a copy of each Clerk user in a [Prisma Postgres](/postgres) database, expose a small posts API that only signed-in users can call, and deploy the app to [Prisma Compute](/compute). Every command below was run end to end against a live database.
+
+:::note[Using Prisma ORM 7?]
+
+Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/authentication/clerk/nextjs](/guides/v7/authentication/clerk/nextjs).
+
+:::
 
 ## Prerequisites
 
-- [Node.js 20+](https://nodejs.org)
-- [Clerk account](https://clerk.com)
-- [ngrok account](https://ngrok.com)
+- [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
+- A PostgreSQL connection string, or nothing at all: `npx create-db@latest` creates a [Prisma Postgres](/postgres) database for you
+- A [Clerk account](https://dashboard.clerk.com/sign-up)
+- [ngrok](https://ngrok.com/docs/getting-started) installed and signed in (`ngrok config add-authtoken`), or any other tool that gives your local server a public URL, so Clerk can reach your webhook while you develop
 
-## 1. Set up your project
+## 1. Scaffold the project
 
-Create the app:
+Create a Next.js app with Prisma ORM already wired in. The `next` template generates the app, installs dependencies, and sets up the files that Prisma Compute deploys later. `--no-deploy` skips the scaffold's offer to deploy right away; you deploy in step 8:
 
 ```npm
-npx create-next-app@latest clerk-nextjs-prisma
-```
-
-It will prompt you to customize your setup. Choose the defaults:
-
-:::info
-
-- _Would you like to use TypeScript?_ `Yes`
-- _Would you like to use ESLint?_ `Yes`
-- _Would you like to use Tailwind CSS?_ `Yes`
-- _Would you like your code inside a `src/` directory?_ `No`
-- _Would you like to use App Router?_ (recommended) `Yes`
-- _Would you like to use Turbopack for `next dev`?_ `Yes`
-- _Would you like to customize the import alias (`@/_`by default)?*`No`
-
-:::
-
-Navigate to the project directory:
-
-```bash
+npm create prisma@latest -- clerk-nextjs-prisma --template next --provider postgres --no-deploy
 cd clerk-nextjs-prisma
 ```
 
-## 2. Set up Clerk
+The scaffold asks three questions, and this guide answers them as follows: write your models in Prisma Schema Language, the `.prisma` syntax you know from Prisma ORM 7 (Prisma ORM 8 calls the file the contract, and step 2 edits it); use npm, to match the commands on this page; and install the Prisma agent skills for the coding agents you use, or none.
 
-### 2.1. Create a new Clerk application
+Next, create a Prisma Postgres database with `create-db`. It needs no account and prints a connection string and a claim URL; the database is deleted after 24 hours unless you open the claim URL, which adds it to your Prisma Data Platform account:
 
-[Sign in](https://dashboard.clerk.com/sign-in) to Clerk and navigate to the home page. From there, press the `Create Application` button to create a new application. Enter a title, select your sign-in options, and click `Create Application`.
+```npm
+npx create-db@latest
+```
 
-:::info
+Export the connection string in the shell you work in. The Prisma CLI, and the `npm run` scripts in `package.json` that call it, read the environment variable, not `.env`:
 
-For this guide, the Google, Github, and Email sign in options will be used.
+```bash
+export DATABASE_URL="<your connection string>"
+```
 
-:::
+## 2. Define the contract
+
+### 2.1. Replace the models
+
+The contract holds only models: the database connection lives in `prisma.config.ts`, and there are no `datasource` or `generator` blocks. The template ships demo models with seeded users. Replace the whole file with a `User` model that stores the Clerk user id next to the email, and a `Post` model that belongs to a user. Keep the `// use prisma-8` line: every Prisma ORM 8 contract file starts with it.
+
+In Prisma ORM 8, `DateTime` reads and writes `Temporal.Instant` objects. `TimestamptzString` is the same timestamp with time zone column read and written as a plain string, which is enough for a timestamp you only sort by.
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
+model User {
+  id      Int    @id @default(autoincrement())
+  clerkId String @unique
+  email   String @unique
+  name    String?
+  posts   Post[]
+}
+
+model Post {
+  id        Int               @id @default(autoincrement())
+  title     String
+  content   String?
+  author    User              @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt TimestamptzString @default(now())
+}
+```
+
+The template's seed helpers refer to fields that no longer exist, so delete them:
+
+```bash
+rm src/prisma/seed.ts src/prisma/users.ts
+```
+
+### 2.2. Emit the contract
+
+Emitting the contract replaces `prisma generate`: it writes the types your queries are checked against into `src/prisma/`:
+
+```npm
+npm run contract:emit
+```
+
+### 2.3. Plan the migration
+
+The template also ships a migration for its demo models. Delete it and plan one that creates your models. `migration plan` writes the migration file without touching the database; the deploy in step 8 builds the production database by replaying `migrations/`, so it needs this file:
+
+```bash
+rm -rf migrations
+```
+
+```npm
+npx prisma migration plan --name init
+```
+
+```json no-copy
+"dir": "migrations/app/20261019T0955_init"
+```
+
+### 2.4. Create the tables
+
+Now create the tables in the database from step 1. `db:init` applies the contract directly and records in the database which contract it matches (the output calls this signing). It does not replay the migration you just planned; that file is for the deploy:
+
+```npm
+npm run db:init
+```
+
+```text no-copy
+"summary": "Applied 6 operation(s) across 1 space(s), database signed"
+```
+
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat.
+
+## 3. Set up Clerk
+
+### 3.1. Create a Clerk application
+
+[Sign in](https://dashboard.clerk.com/sign-in) to Clerk and create an application, or open one you already have. On the application's overview page, select **Next.js** and the **Manual setup** tab: it shows the install command and your API keys.
+
+Under **Configure** > **User & authentication** > **Email**, turn on **Sign-up with email**, **Require email address**, and **Sign-in with email**. The sign-up form only shows the fields an application requires, so without **Require email address** the form offers social sign-in buttons only.
 
 Install the Clerk Next.js SDK:
 
@@ -71,597 +136,150 @@ Install the Clerk Next.js SDK:
 npm install @clerk/nextjs
 ```
 
-Copy your Clerk keys and paste them into **.env** in the root of your project:
+Create a `.env.local` file in the project root and paste your keys from the dashboard. Next.js loads this file in development and at build time; the Prisma CLI does not, which is why `DATABASE_URL` stays exported in your shell. Use `.env.local` rather than `.env`: with `output: "standalone"`, `next build` copies `.env` into the build output that step 8 uploads, and `.env.local` stays out of it:
 
-```bash title=".env"
-# Clerk # [!code ++]
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<your-publishable-key> # [!code ++]
-CLERK_SECRET_KEY=<your-secret-key> # [!code ++]
-```
-
-### 2.2. Protect routes with Clerk middleware
-
-The `clerkMiddleware` helper enables authentication and is where you'll configure your protected routes.
-
-Create a `middleware.ts` file in the root directory of your project:
-
-```tsx title="middleware.ts" showLineNumbers
-import { clerkMiddleware } from "@clerk/nextjs/server"; // [!code ++]
-// [!code ++]
-export default clerkMiddleware(); // [!code ++]
-// [!code ++]
-export const config = {
-  // [!code ++]
-  matcher: [
-    // [!code ++]
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)", // [!code ++]
-    "/(api|trpc)(.*)", // [!code ++]
-  ], // [!code ++]
-}; // [!code ++]
-```
-
-### 2.3. Add Clerk UI to your layout
-
-Next, you'll need to wrap your app in the `ClerkProvider` component to make authentication globally available.
-
-In your `layout.tsx` file, add the `ClerkProvider` component:
-
-```tsx title="app/layout.tsx" showLineNumbers
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs"; // [!code ++]
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Create Next App",
-  description: "Generated by create next app",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <ClerkProvider>
-      {" "}
-      // [!code ++]
-      <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          {children}
-        </body>
-      </html>
-    </ClerkProvider> // [!code ++]
-  );
-}
-```
-
-Create a `Navbar` component which will be used to display the Sign In and Sign Up buttons as well as the User Button once a user is signed in:
-
-```tsx title="app/layout.tsx" showLineNumbers
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import {
-  ClerkProvider,
-  UserButton, // [!code ++]
-  SignInButton, // [!code ++]
-  SignUpButton, // [!code ++]
-  SignedOut, // [!code ++]
-  SignedIn, // [!code ++]
-} from "@clerk/nextjs";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Create Next App",
-  description: "Generated by create next app",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <Navbar /> // [!code ++]
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
-  );
-}
-
-const Navbar = () => {
-  // [!code ++]
-  return (
-    // [!code ++]
-    <header className="flex justify-end items-center p-4 gap-4 h-16">
-      {" "}
-      // [!code ++]
-      <SignedOut>
-        {" "}
-        // [!code ++]
-        <SignInButton /> // [!code ++]
-        <SignUpButton /> // [!code ++]
-      </SignedOut>{" "}
-      // [!code ++]
-      <SignedIn>
-        {" "}
-        // [!code ++]
-        <UserButton /> // [!code ++]
-      </SignedIn>{" "}
-      // [!code ++]
-    </header> // [!code ++]
-  ); // [!code ++]
-}; // [!code ++]
-```
-
-## 3. Install and configure Prisma
-
-### 3.1. Install dependencies
-
-To get started with Prisma, you'll need to install a few dependencies:
-
-```npm
-npm install prisma@prev tsx @types/pg --save-dev
-```
-
-```npm
-npm install @prisma/client@7 @prisma/adapter-pg dotenv pg
-```
-
-:::info
-
-If you are using a different database provider (MySQL, SQL Server, SQLite), install the corresponding driver adapter package instead of `@prisma/adapter-pg`. For more information, see [Database drivers](/orm/v7/core-concepts/supported-databases/database-drivers).
-
-:::
-
-Once installed, initialize Prisma in your project:
-
-```npm
-npx prisma init --output ../app/generated/prisma
-```
-
-:::info
-
-`prisma init` creates the Prisma scaffolding and a local `DATABASE_URL`. In the next step, you will create a Prisma Postgres database and replace that value with a direct `postgres://...` connection string.
-
-:::
-This will create:
-
-- A `prisma/` directory with a `schema.prisma` file
-- A local `DATABASE_URL` in `.env`
-
-Create a Prisma Postgres database and replace the generated `DATABASE_URL` in your `.env` file with the `postgres://...` connection string from the CLI output:
-
-```npm
-npx create-db
-```
-
-### 3.2. Define your Prisma Schema
-
-In the `prisma/schema.prisma` file, add the following models:
-
-```prisma title="prisma/schema.prisma" showLineNumbers
-generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-model User { // [!code ++]
-  id      Int     @id @default(autoincrement()) // [!code ++]
-  clerkId String  @unique // [!code ++]
-  email   String  @unique // [!code ++]
-  name    String? // [!code ++]
-  posts   Post[] // [!code ++]
-} // [!code ++]
- // [!code ++]
-model Post { // [!code ++]
-  id        Int      @id @default(autoincrement()) // [!code ++]
-  title     String // [!code ++]
-  content   String? // [!code ++]
-  published Boolean  @default(false) // [!code ++]
-  authorId  Int // [!code ++]
-  author    User     @relation(fields: [authorId], references: [id]) // [!code ++]
-  createdAt DateTime @default(now()) // [!code ++]
-} // [!code ++]
-```
-
-This will create two models: `User` and `Post`, with a one-to-many relationship between them.
-
-Create a `prisma.config.ts` file to configure Prisma:
-
-```typescript title="prisma.config.ts" showLineNumbers
-import "dotenv/config"; // [!code ++]
-import { defineConfig, env } from "prisma/config"; // [!code ++]
-// [!code ++]
-export default defineConfig({
-  // [!code ++]
-  schema: "prisma/schema.prisma", // [!code ++]
-  migrations: {
-    // [!code ++]
-    path: "prisma/migrations", // [!code ++]
-  }, // [!code ++]
-  datasource: {
-    // [!code ++]
-    url: env("DATABASE_URL"), // [!code ++]
-  }, // [!code ++]
-}); // [!code ++]
-```
-
-:::note
-
-You'll need to install the `dotenv` package:
-
-```npm
-npm install dotenv
-```
-
-:::
-
-Now, run the following command to create the database tables and generate the Prisma Client:
-
-```npm
-npx prisma migrate dev --name init
-```
-
-```npm
-npx prisma generate
-```
-
-:::warning
-
-It is recommended that you add `/app/generated/prisma` to your `.gitignore` file.
-
-:::
-
-### 3.3. Create a reusable Prisma Client
-
-In the root directory, create a `lib` directory and a `prisma.ts` file inside it:
-
-```tsx title="lib/prisma.ts" showLineNumbers
-import { PrismaClient } from "../app/generated/prisma/client"; // [!code ++]
-import { PrismaPg } from "@prisma/adapter-pg"; // [!code ++]
-// [!code ++]
-const adapter = new PrismaPg({
-  // [!code ++]
-  connectionString: process.env.DATABASE_URL!, // [!code ++]
-}); // [!code ++]
-// [!code ++]
-const globalForPrisma = global as unknown as {
-  // [!code ++]
-  prisma: PrismaClient; // [!code ++]
-}; // [!code ++]
-// [!code ++]
-const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    // [!code ++]
-    adapter, // [!code ++]
-  }); // [!code ++]
-// [!code ++]
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma; // [!code ++]
-// [!code ++]
-export default prisma; // [!code ++]
-```
-
-## 4. Wire Clerk to the database
-
-### 4.1. Create a Clerk webhook endpoint
-
-Create a new API route at `app/api/webhooks/clerk/route.ts`:
-
-Import the necessary dependencies:
-
-```tsx title="app/api/webhooks/clerk/route.ts" showLineNumbers
-import { verifyWebhook } from "@clerk/nextjs/webhooks"; // [!code ++]
-import { NextRequest } from "next/server"; // [!code ++]
-import prisma from "@/lib/prisma"; // [!code ++]
-```
-
-Create the `POST` method that Clerk will call and verify the webhook:
-
-```tsx title="app/api/webhooks/clerk/route.ts" showLineNumbers
-import { verifyWebhook } from "@clerk/nextjs/webhooks";
-import { NextRequest } from "next/server";
-import prisma from "@/lib/prisma";
-
-export async function POST(req: NextRequest) {
-  // [!code ++]
-  try {
-    // [!code ++]
-    const evt = await verifyWebhook(req); // [!code ++]
-    const { id } = evt.data; // [!code ++]
-    const eventType = evt.type; // [!code ++]
-    console.log(
-      // [!code ++]
-      `Received webhook with ID ${id} and event type of ${eventType}`, // [!code ++]
-    ); // [!code ++]
-  } catch (err) {
-    // [!code ++]
-    console.error("Error verifying webhook:", err); // [!code ++]
-    return new Response("Error verifying webhook", { status: 400 }); // [!code ++]
-  } // [!code ++]
-} // [!code ++]
-```
-
-When a new user is created, they need to be stored in the database.
-
-You'll do that by checking if the event type is `user.created` and then using Prisma's `upsert` method to create a new user if they don't exist:
-
-```tsx title="app/api/webhooks/clerk/route.ts" showLineNumbers
-import { verifyWebhook } from "@clerk/nextjs/webhooks";
-import { NextRequest } from "next/server";
-import prisma from "@/lib/prisma";
-
-export async function POST(req: NextRequest) {
-  try {
-    const evt = await verifyWebhook(req);
-    const { id } = evt.data;
-    const eventType = evt.type;
-    console.log(`Received webhook with ID ${id} and event type of ${eventType}`);
-
-    if (eventType === "user.created") {
-      // [!code ++]
-      const { id, email_addresses, first_name, last_name } = evt.data; // [!code ++]
-      await prisma.user.upsert({
-        // [!code ++]
-        where: { clerkId: id }, // [!code ++]
-        update: {}, // [!code ++]
-        create: {
-          // [!code ++]
-          clerkId: id, // [!code ++]
-          email: email_addresses[0].email_address, // [!code ++]
-          name: `${first_name} ${last_name}`, // [!code ++]
-        }, // [!code ++]
-      }); // [!code ++]
-    } // [!code ++]
-  } catch (err) {
-    console.error("Error verifying webhook:", err);
-    return new Response("Error verifying webhook", { status: 400 });
-  }
-}
-```
-
-Finally, return a response to Clerk to confirm the webhook was received:
-
-```tsx title="app/api/webhooks/clerk/route.ts" showLineNumbers
-import { verifyWebhook } from "@clerk/nextjs/webhooks";
-import { NextRequest } from "next/server";
-import prisma from "@/lib/prisma";
-
-export async function POST(req: NextRequest) {
-  try {
-    const evt = await verifyWebhook(req);
-    const { id } = evt.data;
-    const eventType = evt.type;
-    console.log(`Received webhook with ID ${id} and event type of ${eventType}`);
-
-    if (eventType === "user.created") {
-      const { id, email_addresses, first_name, last_name } = evt.data;
-      await prisma.user.upsert({
-        where: { clerkId: id },
-        update: {},
-        create: {
-          clerkId: id,
-          email: email_addresses[0].email_address,
-          name: `${first_name} ${last_name}`,
-        },
-      });
-    }
-
-    return new Response("Webhook received", { status: 200 }); // [!code ++]
-  } catch (err) {
-    console.error("Error verifying webhook:", err);
-    return new Response("Error verifying webhook", { status: 400 });
-  }
-}
-```
-
-### 4.2. Expose your local app for webhooks
-
-You'll need to expose your local app for webhooks with [ngrok](https://ngrok.com/). This will allow Clerk to reach your `/api/webhooks/clerk` route to push events like `user.created`.
-
-Install ngrok and expose your local app:
-
-```npm
-npm install --global ngrok
-ngrok http 3000
-```
-
-Copy the ngrok `Forwarding URL`. This will be used to set the webhook URL in Clerk.
-
-Navigate to the **_Webhooks_** section of your Clerk application located near the bottom of the **_Configure_** tab under **_Developers_**.
-
-Click **_Add Endpoint_** and paste the ngrok URL into the **_Endpoint URL_** field and add `/api/webhooks/clerk` to the end of the URL. It should look similar to this:
-
-```text
-https://a60b-99-42-62-240.ngrok-free.app/api/webhooks/clerk
-```
-
-Copy the **_Signing Secret_** and add it to your `.env` file:
-
-```bash title=".env"
-# Prisma
-DATABASE_URL=<your-database-url>
-
-# Clerk
+```bash title=".env.local"
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<your-publishable-key>
 CLERK_SECRET_KEY=<your-secret-key>
-CLERK_WEBHOOK_SIGNING_SECRET=<your-signing-secret> # [!code ++]
 ```
 
-On the home page, press Sign Up and create an account using any of the sign-up options
+The template's `.gitignore` lists only `.env`, so add the new file to it:
 
-Open Prisma Studio and you should see a user record.
+```bash title=".gitignore"
+.env.local # [!code ++]
+```
 
-```npm
-npx prisma studio
+### 3.2. Add `clerkMiddleware()` as the Next.js proxy
+
+`clerkMiddleware()` reads the Clerk session on every request so that `auth()` and `currentUser()` work in your routes. Next.js 16 runs this kind of code from a `proxy.ts` file (the file was called `middleware.ts` in Next.js 15 and older). The template puts the app in `src/`, so create the file there:
+
+```ts title="src/proxy.ts"
+import { clerkMiddleware } from "@clerk/nextjs/server";
+
+export default clerkMiddleware();
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
+    // Always run for Clerk-specific frontend API routes
+    "/__clerk/(.*)",
+  ],
+};
 ```
 
 :::note
 
-If you don't see a user record, there are a few things to check:
-
-- Delete your user from the Users tab in Clerk and try again.
-- Check your ngrok URL and ensure it's correct _(it will change everytime you restart ngrok)_.
-- Check your Clerk webhook is pointing to the correct ngrok URL.
-- Make sure you've added `/api/webhooks/clerk` to the end of the URL.
+On Next.js 15 or older, name the file `middleware.ts` instead. The code is the same; only the file name changes.
 
 :::
 
-## 5. Build a posts API
+`clerkMiddleware()` leaves every route public, and the routes in this guide check for a user themselves, which is where Clerk recommends the check lives.
 
-To create posts under a user, you'll need to create a new API route at `app/api/posts/route.ts`:
+### 3.3. Add the Clerk provider and sign-in buttons
 
-Start by importing the necessary dependencies:
+Replace `src/app/layout.tsx` so that `ClerkProvider` wraps the app and a header shows sign-in, sign-up, and user buttons. `Show` renders its children only when the condition in `when` holds, so the header shows the sign-in and sign-up buttons to visitors and the user button to signed-in users; it replaces the `SignedIn` and `SignedOut` components from earlier Clerk versions. `mode="modal"` opens the sign-in and sign-up forms on your page instead of redirecting to Clerk's hosted pages:
 
-```tsx title="app/api/posts/route.ts" showLineNumbers
-import { auth } from "@clerk/nextjs/server"; // [!code ++]
-import prisma from "@/lib/prisma"; // [!code ++]
-```
+```tsx title="src/app/layout.tsx"
+import type { Metadata } from "next";
+import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import "./globals.css";
 
-Get the `clerkId` of the authenticated user. If there's no user, return a `401` Unauthorized response:
+export const metadata: Metadata = {
+  title: "clerk-nextjs-prisma",
+  description: "Generated by create-prisma",
+};
 
-```tsx title="app/api/posts/route.ts" showLineNumbers
-import { auth } from "@clerk/nextjs/server";
-import prisma from "@/lib/prisma";
-
-export async function POST(req: Request) {
-  // [!code ++]
-  const { userId: clerkId } = await auth(); // [!code ++]
-  if (!clerkId) return new Response("Unauthorized", { status: 401 }); // [!code ++]
-} // [!code ++]
-```
-
-Match the Clerk user to a user in the database. If none is found, return a `404` Not Found response:
-
-```tsx title="app/api/posts/route.ts" showLineNumbers
-import { auth } from "@clerk/nextjs/server";
-import prisma from "@/lib/prisma";
-
-export async function POST(req: Request) {
-  const { userId: clerkId } = await auth();
-  if (!clerkId) return new Response("Unauthorized", { status: 401 });
-
-  const user = await prisma.user.findUnique({
-    // [!code ++]
-    where: { clerkId }, // [!code ++]
-  }); // [!code ++]
-  // [!code ++]
-  if (!user) return new Response("User not found", { status: 404 }); // [!code ++]
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>
+        <ClerkProvider>
+          <header className="navbar">
+            <Show when="signed-out">
+              <SignInButton mode="modal" />
+              <SignUpButton mode="modal" />
+            </Show>
+            <Show when="signed-in">
+              <UserButton />
+            </Show>
+          </header>
+          {children}
+        </ClerkProvider>
+      </body>
+    </html>
+  );
 }
 ```
 
-Destructure the title and content from the incoming request and create a post. Once done, return a `201` Created response:
+Append styles for the header, and for the post form you build in step 5, to the template's stylesheet:
 
-```tsx title="app/api/posts/route.ts" showLineNumbers
+```css title="src/app/globals.css"
+.navbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  height: 4rem;
+  padding: 0 1rem;
+}
+
+.post-form {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.post-form input,
+.post-form textarea,
+.post-form button {
+  padding: 0.5rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.375rem;
+  font: inherit;
+}
+```
+
+## 4. Build a posts API
+
+Create a route that stores a post for the signed-in user. `auth()` returns the Clerk user id from the session; a request without one gets `401`. The route then looks up the matching database user, so a post always points at a `User` row:
+
+```ts title="src/app/api/posts/route.ts"
 import { auth } from "@clerk/nextjs/server";
-import prisma from "@/lib/prisma";
+import { db } from "@/src/prisma/db";
 
 export async function POST(req: Request) {
   const { userId: clerkId } = await auth();
   if (!clerkId) return new Response("Unauthorized", { status: 401 });
 
-  const { title, content } = await req.json(); // [!code ++]
+  const { title, content } = await req.json();
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId },
-  });
-
+  const user = await db.orm.public.User.where({ clerkId }).first();
   if (!user) return new Response("User not found", { status: 404 });
 
-  const post = await prisma.post.create({
-    // [!code ++]
-    data: {
-      // [!code ++]
-      title, // [!code ++]
-      content, // [!code ++]
-      authorId: user.id, // [!code ++]
-    }, // [!code ++]
-  }); // [!code ++]
+  const post = await db.orm.public.Post.create({
+    title,
+    content,
+    authorId: user.id,
+  });
 
-  return new Response(JSON.stringify(post), { status: 201 }); // [!code ++]
+  return Response.json(post, { status: 201 });
 }
 ```
 
-## 6. Add a Post creation UI
+`db` is the Prisma ORM client the template created in `src/prisma/db.ts`, and the template maps `@/` to the project root, so the import path is `@/src/prisma/db`. `db.orm` is the ORM query API, and on PostgreSQL every model sits under its schema, so the `User` table is `db.orm.public.User`. `.first()` returns one matching record or `null`, and `.create()` takes the fields directly and returns the inserted row. [Reading data](/orm/fundamentals/reading-data) and [Writing data](/orm/fundamentals/writing-data) cover the rest of the query API.
 
-In `/app`, create a `/components` directory and a `PostInputs.tsx` file inside it:
+## 5. Add a post form
 
-```tsx title="app/components/PostInputs.tsx" showLineNumbers
-"use client"; // [!code ++]
+Create a client component with a title field, a content field, and a submit button. On submit it calls the posts API and, if the API accepted the post, clears the fields and reloads the page so the new post appears in the list; a rejected post keeps the draft in the fields:
 
-import { useState } from "react"; // [!code ++]
-
-export default function PostInputs() {
-  // [!code ++]
-  const [title, setTitle] = useState(""); // [!code ++]
-  const [content, setContent] = useState(""); // [!code ++]
-} // [!code ++]
-```
-
-This component uses `"use client"` to ensure the component is rendered on the client. The title and content are stored in their own `useState` hooks.
-
-Create a function that will be called when a form is submitted:
-
-```tsx title="app/components/PostInputs.tsx" showLineNumbers
-"use client";
-
-import { useState } from "react";
-
-export default function PostInputs() {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-
-  async function createPost(e: React.FormEvent) {
-    // [!code ++]
-    e.preventDefault(); // [!code ++]
-    if (!title || !content) return; // [!code ++]
-    // [!code ++]
-    await fetch("/api/posts", {
-      // [!code ++]
-      method: "POST", // [!code ++]
-      headers: { "Content-Type": "application/json" }, // [!code ++]
-      body: JSON.stringify({ title, content }), // [!code ++]
-    }); // [!code ++]
-    // [!code ++]
-    setTitle(""); // [!code ++]
-    setContent(""); // [!code ++]
-    location.reload(); // [!code ++]
-  } // [!code ++]
-}
-```
-
-You'll be using a form to create a post and call the `POST` route you created earlier:
-
-```tsx title="app/components/PostInputs.tsx" showLineNumbers
+```tsx title="src/app/components/PostInputs.tsx"
 "use client";
 
 import { useState } from "react";
@@ -674,11 +292,12 @@ export default function PostInputs() {
     e.preventDefault();
     if (!title || !content) return;
 
-    await fetch("/api/posts", {
+    const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, content }),
     });
+    if (!res.ok) return;
 
     setTitle("");
     setContent("");
@@ -686,157 +305,257 @@ export default function PostInputs() {
   }
 
   return (
-    // [!code ++]
-    <form onSubmit={createPost} className="space-y-2">
-      {" "}
-      // [!code ++]
-      <input // [!code ++]
-        type="text" // [!code ++]
-        placeholder="Title" // [!code ++]
-        value={title} // [!code ++]
-        onChange={(e) => setTitle(e.target.value)} // [!code ++]
-        className="w-full p-2 border border-zinc-800 rounded" // [!code ++]
-      />{" "}
-      // [!code ++]
-      <textarea // [!code ++]
-        placeholder="Content" // [!code ++]
-        value={content} // [!code ++]
-        onChange={(e) => setContent(e.target.value)} // [!code ++]
-        className="w-full p-2 border border-zinc-800 rounded" // [!code ++]
-      />{" "}
-      // [!code ++]
-      <button className="w-full p-2 border border-zinc-800 rounded">
-        {" "}
-        // [!code ++] Post // [!code ++]
-      </button>{" "}
-      // [!code ++]
-    </form> // [!code ++]
-  ); // [!code ++]
-}
-```
-
-On submit:
-
-- It sends a `POST` request to the `/api/posts` route
-- Clears the input fields
-- Reloads the page to show the new post
-
-## 7. Set up `page.tsx`
-
-Now, update the `page.tsx` file to fetch posts, show the form, and render the list.
-
-Delete everything within `page.tsx`, leaving only the following:
-
-```tsx title="app/page.tsx" showLineNumbers
-export default function Home() {
-  return ()
-}
-```
-
-Import the necessary dependencies:
-
-```tsx title="app/page.tsx" showLineNumbers
-import { currentUser } from "@clerk/nextjs/server"; // [!code ++]
-import prisma from "@/lib/prisma"; // [!code ++]
-import PostInputs from "@/app/components/PostInputs"; // [!code ++]
-
-export default function Home() {
-  return ()
-}
-```
-
-To ensure only signed-in users can access the post functionality, update the `Home` component to check for a user:
-
-```tsx title="app/page.tsx" showLineNumbers
-import { currentUser } from "@clerk/nextjs/server"; // [!code ++]
-import prisma from "@/lib/prisma"; // [!code ++]
-import PostInputs from "@/app/components/PostInputs"; // [!code ++]
-
-export default async function Home() {
-  const user = await currentUser(); // [!code ++]
-  if (!user) return <div className="flex justify-center">Sign in to post</div>; // [!code ++]
-
-  return ()
-}
-```
-
-Once a user is found, fetch that user's posts from the database:
-
-```tsx title="app/page.tsx" showLineNumbers
-import { currentUser } from "@clerk/nextjs/server"; // [!code ++]
-import prisma from "@/lib/prisma"; // [!code ++]
-import PostInputs from "@/app/components/PostInputs"; // [!code ++]
-
-export default async function Home() {
-  const user = await currentUser();
-  if (!user) return <div className="flex justify-center">Sign in to post</div>;
-
-  const posts = await prisma.post.findMany({ // [!code ++]
-    where: { author: { clerkId: user.id } }, // [!code ++]
-    orderBy: { createdAt: "desc" }, // [!code ++]
-  }); // [!code ++]
-
-  return ()
-}
-```
-
-Finally, render the form and post list:
-
-```tsx title="app/page.tsx" showLineNumbers
-import { currentUser } from "@clerk/nextjs/server";
-import prisma from "@/lib/prisma";
-import PostInputs from "@/app/components/PostInputs";
-
-export default async function Home() {
-  const user = await currentUser();
-  if (!user) return <div className="flex justify-center">Sign in to post</div>;
-
-  const posts = await prisma.post.findMany({
-    where: { author: { clerkId: user.id } },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return (
-    <main className="max-w-2xl mx-auto p-4">
-      {" "}
-      // [!code ++]
-      <PostInputs /> // [!code ++]
-      <div className="mt-8">
-        {" "}
-        // [!code ++]
-        {posts.map(
-          (
-            post, // [!code ++]
-          ) => (
-            <div // [!code ++]
-              key={post.id} // [!code ++]
-              className="p-4 border border-zinc-800 rounded mt-4"
-            >
-              {" "}
-              // [!code ++]
-              <h2 className="font-bold">{post.title}</h2> // [!code ++]
-              <p className="mt-2">{post.content}</p> // [!code ++]
-            </div> // [!code ++]
-          ),
-        )}{" "}
-        // [!code ++]
-      </div>{" "}
-      // [!code ++]
-    </main> // [!code ++]
+    <form onSubmit={createPost} className="post-form">
+      <input
+        type="text"
+        placeholder="Title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <textarea
+        placeholder="Content"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+      />
+      <button type="submit">Post</button>
+    </form>
   );
 }
 ```
 
-You now have a Next.js application where Clerk handles authentication, new sign-ups are synced to your Prisma Postgres database through the webhook, and signed-in users can create and list their own posts.
+## 6. Render the home page
 
-## Next Steps
+Replace the template's home page with a server component that reads the Clerk session with `currentUser()`, finds the matching database user, loads that user's posts newest first, and renders the form above the list. The `shell` and `users` classes come from the template's stylesheet:
 
-- Add delete functionality to posts and users.
-- Add a search bar to filter posts.
-- Deploy to Vercel and set your production webhook URL in Clerk.
+```tsx title="src/app/page.tsx"
+import { currentUser } from "@clerk/nextjs/server";
+import { db } from "@/src/prisma/db";
+import PostInputs from "@/src/app/components/PostInputs";
 
-### More Info
+export default async function Home() {
+  const user = await currentUser();
+  if (!user) return <main className="shell">Sign in to post</main>;
 
-- [Prisma Docs](/orm/v7)
-- [Next.js Docs](https://nextjs.org/docs)
-- [Clerk Docs](https://clerk.com/docs)
+  const dbUser = await db.orm.public.User.where({ clerkId: user.id }).first();
+  if (!dbUser) return <main className="shell">Your user is not in the database yet</main>;
+
+  const posts = await db.orm.public.Post.where({ authorId: dbUser.id })
+    .orderBy((p) => p.createdAt.desc())
+    .all();
+
+  return (
+    <main className="shell">
+      <PostInputs />
+      <ul className="users">
+        {posts.map((post) => (
+          <li key={post.id}>
+            <div>
+              <strong>{post.title}</strong>
+              <p>{post.content}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+
+Start the dev server in the shell where `DATABASE_URL` is exported:
+
+```npm
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000): signed out, the page says **Sign in to post**, and the header shows **Sign in** and **Sign up**. Confirm that the posts API rejects anonymous requests:
+
+```bash
+curl -i -X POST http://localhost:3000/api/posts \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Hello","content":"World"}'
+```
+
+```text no-copy
+HTTP/1.1 401 Unauthorized
+```
+
+Leave sign-up for step 7, because Clerk sends `user.created` once, when it creates the user, and nothing in your app listens for it yet, so an account created now would never reach the database.
+
+## 7. Sync Clerk users with a webhook
+
+Clerk owns sign-up, so your database learns about a new user from a webhook. Clerk sends a `user.created` event to a route in your app, and the route stores the user.
+
+### 7.1. Create the webhook route
+
+`verifyWebhook()` checks the request signature with the secret in `CLERK_WEBHOOK_SIGNING_SECRET`, which you set in the next step, and returns the typed event. The handler rejects anything it cannot verify, then upserts the user. `conflictOn` names the unique field Prisma ORM uses to look for an existing row: keying on the email means a redelivered event does not create a duplicate, and a user you delete in Clerk and sign up again with the same email gets their new `clerkId` instead of a failed insert:
+
+```ts title="src/app/api/webhooks/clerk/route.ts"
+import { verifyWebhook } from "@clerk/nextjs/webhooks";
+import { NextRequest } from "next/server";
+import { db } from "@/src/prisma/db";
+
+export async function POST(req: NextRequest) {
+  let evt;
+  try {
+    evt = await verifyWebhook(req);
+  } catch (err) {
+    console.error("Error verifying webhook:", err);
+    return new Response("Error verifying webhook", { status: 400 });
+  }
+
+  console.log(`Received webhook with ID ${evt.data.id} and event type of ${evt.type}`);
+
+  if (evt.type === "user.created") {
+    const { id, email_addresses, primary_email_address_id, first_name, last_name } = evt.data;
+    const email = email_addresses.find((e) => e.id === primary_email_address_id)?.email_address;
+    if (!email) return new Response("User has no email address, skipped", { status: 200 });
+
+    const name = [first_name, last_name].filter(Boolean).join(" ") || null;
+    await db.orm.public.User.upsert({
+      create: { clerkId: id, email, name },
+      update: { clerkId: id, name },
+      conflictOn: { email },
+    });
+  }
+
+  return new Response("Webhook received", { status: 200 });
+}
+```
+
+The route returns `200` for a verified event it chooses to skip, because any other status makes Clerk retry the delivery.
+
+### 7.2. Register the endpoint in Clerk
+
+Clerk needs a public URL to reach your dev server. In a second terminal, expose port 3000 with ngrok and copy the `https://...` forwarding URL it prints:
+
+```bash
+ngrok http 3000
+```
+
+Open the [Webhooks](https://dashboard.clerk.com/~/webhooks) page of your Clerk application and select **Add Endpoint**. Paste the forwarding URL followed by `/api/webhooks/clerk` into **Endpoint URL**, select the `user.created` event under **Subscribe to events**, and select **Create**:
+
+```text no-copy
+https://a60b-99-42-62-240.ngrok-free.app/api/webhooks/clerk
+```
+
+The endpoint page shows a **Signing Secret**. Add it to `.env.local`; the dev server reloads the file when you save it and logs `Reload env: .env.local`:
+
+```bash title=".env.local"
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<your-publishable-key>
+CLERK_SECRET_KEY=<your-secret-key>
+CLERK_WEBHOOK_SIGNING_SECRET=<your-signing-secret> # [!code ++]
+```
+
+### 7.3. Test the webhook
+
+On the endpoint page, open the **Testing** tab, choose `user.created` under **Send event**, and select **Send Example**. Under **Message Attempts**, the delivery shows as **Succeeded**, and your dev server logs the event:
+
+```text no-copy
+Received webhook with ID user_abc123 and event type of user.created
+POST /api/webhooks/clerk 200
+```
+
+The example payload has no email addresses, so the handler skips it without writing a row. A real sign-up writes one.
+
+### 7.4. Sign up and post
+
+Open [http://localhost:3000](http://localhost:3000), select **Sign up**, and create an account. Clerk delivers `user.created` to your tunnel, the dev server logs it, and the page shows the post form. If the page says **Your user is not in the database yet**, it rendered before the webhook arrived, so reload it. Write a post and submit it: it appears below the form.
+
+If the message stays after a reload, the webhook did not reach your app. Check that the tunnel is still running, that the endpoint URL in Clerk matches it (an ngrok URL changes every time you restart ngrok unless you use a static domain), and that `/api/webhooks/clerk` is at the end of the URL. Then delete the user in Clerk's **Users** tab and sign up again with the same email: Clerk sends `user.created` once per user, and the upsert updates the existing row with the new `clerkId`.
+
+## 8. Deploy to Prisma Compute
+
+Next.js is supported on [Prisma Compute](/compute). The template already describes the app for the platform in `module.ts` and `service.ts`, which you don't need to edit, and sets `output: "standalone"` in `next.config.ts`. Keep that setting: Compute runs the standalone server that `next build` emits.
+
+Sign in to your Prisma Data Platform account once (it opens a browser):
+
+```npm
+npx prisma auth login
+```
+
+Build and deploy from the project directory. `next build` reads `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` from `.env.local` and bakes it into the client bundle, so that key is the one Clerk variable you never set on Compute; the two secrets stay out of the build. The deploy provisions a Prisma Postgres database for the app, replays the migration from step 2 against it, and starts the app:
+
+```npm
+npm run build
+npx prisma deploy module.ts
+```
+
+```text no-copy
+clerk-nextjs-prisma
+├─ database   postgres-database db_abc123
+└─ app        compute-service cps_abc123
+              https://xyz.ewr.prisma.build
+```
+
+The deploy creates a project named `clerk-nextjs-prisma` in your Prisma Data Platform workspace, and re-running the deploy reuses it. If the deploy stops with `HostedStateBootstrapError`, a project with that name already exists in your workspace; re-run it with `--name <unique-name>` and use that name in the `project link` command below. The deployed database is separate from the one you used locally, so it starts empty.
+
+The live URL already shows **Sign in to post**, but sign-in cannot complete yet, because the server needs two more values. It needs `CLERK_SECRET_KEY` to read sessions. It also needs the signing secret of a webhook endpoint that points at the live URL, so register that endpoint first. On the [Webhooks](https://dashboard.clerk.com/~/webhooks) page, add a second endpoint with the live URL followed by `/api/webhooks/clerk`, subscribe it to `user.created`, and copy its **Signing Secret**.
+
+Link the directory to the project the deploy created:
+
+```npm
+npx prisma project link clerk-nextjs-prisma
+```
+
+Then add both secrets to the production role, which is the scope a deploy without `--stage` targets (the one you just ran). Read each value into your shell with `read -rs`, which neither echoes it nor records it in your shell history: paste the secret key at the first prompt and the live endpoint's signing secret at the second, pressing Enter after each. When you pass only the variable name, the CLI reads the value from your shell environment. The values are stored encrypted and are never shown again, so keep your own copy:
+
+```bash
+read -rs CLERK_SECRET_KEY && read -rs CLERK_WEBHOOK_SIGNING_SECRET && export CLERK_SECRET_KEY CLERK_WEBHOOK_SIGNING_SECRET
+npx prisma project env add CLERK_SECRET_KEY --role production
+npx prisma project env add CLERK_WEBHOOK_SIGNING_SECRET --role production
+```
+
+Variables apply on the next deploy, so deploy again. The code has not changed, so there is no need to rebuild:
+
+```npm
+npx prisma deploy module.ts
+```
+
+Open the live URL and sign up with an email you have not used yet. Clerk sends `user.created` only when it creates a user, and the deployed database starts empty, so an account from step 7 would sign in without ever being written there. Clerk delivers the event to the live endpoint, the app writes the user, and the page shows the post form; if it says **Your user is not in the database yet**, reload. Create a post to confirm the posts API works on Compute.
+
+:::note
+
+This deploys your Clerk application's development instance: the `pk_test_` and `sk_test_` keys belong to it, and it runs on any domain. A Clerk production instance needs a domain you own, so it is a step for when you move off the `prisma.build` URL; see [Deploying to production](https://clerk.com/docs/guides/development/deployment/production) in the Clerk docs. For previews per Git branch and deploy on push, see [Deploy on push](/compute/deploy-on-push); there the build runs in GitHub Actions, which has no `.env.local`, so give that workflow `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` as a repository secret before you connect the repository.
+
+:::
+
+## Common gotchas
+
+**`Error verifying webhook: Error: @clerk/backend: Missing webhook signing secret`.** The route runs but `CLERK_WEBHOOK_SIGNING_SECRET` is not set. Add it to `.env.local`; if the dev server does not log `Reload env: .env.local`, restart it.
+
+**The page says `Your user is not in the database yet` right after sign-up.** Clerk delivers the webhook after the sign-up completes, so the first render can beat it. Reload the page. If it persists locally, check the tunnel and endpoint URL as described in step 7.
+
+**Deploy fails with `MIGRATION_PATH_NOT_FOUND`.** The deploy builds the production database by replaying `migrations/`, and `db:init` alone does not write a migration. Run `npx prisma migration plan --name init` as in step 2 and deploy again.
+
+**`npm run db:init` says `CONFIG.DB_CONNECTION_REQUIRED`.** `DATABASE_URL` is in a file but not exported. The Prisma CLI reads the environment, so run `export DATABASE_URL="..."` in the same shell.
+
+## Use with your agent
+
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Add Clerk authentication to a new Next.js app on Prisma ORM, sync users to Prisma Postgres with a webhook, and deploy to Prisma Compute. Follow https://www.prisma.io/docs/guides/authentication/clerk/nextjs.md.
+
+1. Scaffold: `npm create prisma@latest -- clerk-nextjs-prisma --template next --provider postgres --no-deploy --yes`. Then run `npx prisma@latest init` in `clerk-nextjs-prisma` so the Prisma agent skills are installed, and use them. Create a Prisma Postgres database with `npx create-db@latest`, show me the claim URL it prints, and export the connection string as `DATABASE_URL` in the shell.
+2. Replace `src/prisma/contract.prisma` with the `User` and `Post` models from the guide, delete `src/prisma/seed.ts` and `src/prisma/users.ts`, run `npm run contract:emit`, delete `migrations/`, run `npx prisma migration plan --name init`, then `npm run db:init`.
+3. Install `@clerk/nextjs`. Ask me for the publishable key and secret key from the Clerk Dashboard, put them in `.env.local`, and add `.env.local` to `.gitignore`; never print them. Create `src/proxy.ts` with `clerkMiddleware()`, and update `src/app/layout.tsx` with `ClerkProvider`, `Show`, `SignInButton`, `SignUpButton`, and `UserButton` as in the guide.
+4. Create the posts route at `src/app/api/posts/route.ts`, the `PostInputs` component, the home page, and the webhook route at `src/app/api/webhooks/clerk/route.ts` from the guide. Run `npx tsc --noEmit` and fix any errors.
+5. Start `npm run dev`, confirm `GET /` renders "Sign in to post" and `POST /api/posts` returns 401 without a session, then stop and ask me to register the webhook endpoint in Clerk and give you the signing secret for `.env.local`.
+6. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy module.ts` and show me the live URL. If the deploy fails with `HostedStateBootstrapError`, re-run it with `--name <a unique name>`.
+7. Ask me to register a second Clerk webhook endpoint for `<live URL>/api/webhooks/clerk` and give you its signing secret. Run `npx prisma project link clerk-nextjs-prisma`, add `CLERK_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` to the production role with `npx prisma project env add <NAME> --role production` (value from the environment, never on the command line or in the chat), then run `npx prisma deploy module.ts` again and confirm the live URL still responds.
+```
+
+</AgentPrompt>
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. Prompts that map to this guide:
+
+- "Handle Clerk's `user.updated` and `user.deleted` events in the webhook route so the `User` row stays in sync."
+- "Add a `DELETE /api/posts/[id]` route that only lets the author delete the post."
+
+## Next steps
+
+- [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
+- [Deploy on push](/compute/deploy-on-push): connect GitHub so every push deploys a preview branch.
+- [Clerk Next.js documentation](https://clerk.com/docs/nextjs/getting-started/quickstart) for the rest of the Clerk SDK.

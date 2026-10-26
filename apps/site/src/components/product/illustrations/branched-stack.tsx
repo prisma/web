@@ -34,7 +34,7 @@ function StackRow({ label, accent }: { label: string; accent?: boolean }) {
 
 export function BranchedStack() {
   return (
-    <SurfaceCard label="Illustration of a preview per pushed branch on Prisma Compute: a production stack and a branch's preview stack, each pairing an app with its own database">
+    <SurfaceCard label="Illustration of a preview per feature branch on Prisma Compute: a production stack and a branch's preview stack, each pairing an app with its own database">
       <CardChrome file="environments" />
       <div className="flex flex-1 flex-col justify-center gap-3 px-4 py-3 text-[0.625rem] leading-none">
         <div className="rounded-lg border border-border/80 bg-card p-3">

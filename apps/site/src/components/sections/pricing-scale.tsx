@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CheckBold, X } from "@/components/icons/forma";
 import { PrismButton } from "@/components/brand/prism-button";
@@ -15,14 +16,10 @@ const SPECTRUM =
 // the active tab and the panel share the same grain size — the pattern reads
 // as one continuous surface across the tab/panel junction.
 const GRAIN: React.CSSProperties = {
-  backgroundImage: "url(/brand/texture.jpg)",
   backgroundSize: "1200px auto",
   opacity: 0.06,
   mixBlendMode: "multiply",
 };
-
-// TODO: the ~5K and ~500K MAU scenario numbers are placeholders pending
-// client content — only the ~50K MAU column came from the client.
 
 const BULLETS = [
   {
@@ -34,19 +31,23 @@ const BULLETS = [
     rest: ", so your bill never surprises you",
   },
   {
-    lead: "Unlimited data transfer included",
-    rest: ", no bandwidth bill-shock",
+    lead: "Unlimited database data transfer included",
+    rest: ", no database egress bill-shock",
   },
   {
     lead: "Prisma ORM is free, always",
     rest: "",
   },
   {
-    lead: "Per-branch databases included",
+    lead: "A preview database per feature branch",
     rest: ", no surcharge",
   },
   {
+    // HIPAA on the Business tier deep-links to /postgres/hipaa (the landing
+    // page carries the BAA and scope); the row below splices a next/link in
+    // for the HIPAA token so the rest of the lead stays as plain text.
     lead: "SOC2, HIPAA, ISO 27001, and GDPR",
+    leadLink: { token: "HIPAA", href: "/postgres/hipaa" },
     rest: " at the Business tier",
   },
 ];
@@ -60,46 +61,62 @@ type Scenario = {
   prisma: string[];
 };
 
+// Scenario figures, checked 2026-10-22 against neon.com/pricing,
+// vercel.com/pricing (and docs/pricing, docs/plans/pro-plan,
+// docs/pricing/flat-rate-cdn) and prisma.io/pricing.
+//  - ~50K MAU is the /pricing comparison (pricing-comparison.tsx), same
+//    figures and same basis; see the methodology there.
+//  - ~5K MAU (up to 1M requests, about 1 GB of data): Vercel Hobby is for
+//    "personal, non-commercial use", so a commercial app needs Vercel Pro,
+//    $20 a month with a $20 usage credit that covers this traffic. Neon Free
+//    is $0 and needs no card; Neon Launch for 140 CU-hours plus 1 GB is about
+//    $15. Total $20-35. Prisma is $0 inside the Free plan limits (200K ops, 1M
+//    requests, 2 GB, 10 GB bandwidth), otherwise Starter at $10 plus metered
+//    memory and CPU, about $22 at the top of this range.
+//  - The ~500K MAU card was removed: no written basis existed for its
+//    $2,800-3,400, and a recompute on list prices put Neon + Vercel well
+//    below it.
+// Neon Free includes 5 GB of public network transfer per project; Launch and
+// Scale include 500 GB, then $0.10/GB. Those terms cover the database only,
+// so the line says "Database data transfer"; Vercel bills its own data
+// transfer separately (vercel.com/docs/pricing). Neon added from the Vercel
+// Marketplace is billed through the Vercel account
+// (vercel.com/docs/marketplace-storage), so the billing line names the two
+// vendors rather than two bills. Spend controls: Neon sends spending
+// notifications at 80% and 100%; Vercel has an on-demand budget with an
+// optional automatic pause (vercel.com/pricing FAQ).
 const SCENARIOS: Scenario[] = [
   {
     tab: "Side project",
     mau: "~5K MAU",
-    typicalCost: "$19-39",
-    prismaCost: "$0",
+    typicalCost: "$20-35",
+    prismaCost: "$0-22",
     typical: [
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
-      "Credit card required up front",
+      "Database and hosting from two vendors",
+      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10/GB",
+      "Paid Vercel plan for commercial use",
     ],
     prisma: [
-      "No credit card required",
-      "Data transfer included",
+      "Free plan needs no credit card",
+      "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ],
   },
   {
     tab: "Growing SaaS",
     mau: "~50K MAU",
-    typicalCost: "$385-450",
-    prismaCost: "$70-90",
+    typicalCost: "$110-270",
+    prismaCost: "$72-90",
     typical: [
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
-      "Spend limits not standard",
+      "Database and hosting from two vendors",
+      "Database data transfer: 500 GB per project included, then $0.10/GB",
+      "Spend controls: Neon notifications, Vercel budget with optional pause",
     ],
-    prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
-  },
-  {
-    tab: "At scale",
-    mau: "~500K MAU",
-    typicalCost: "$2,800-3,400",
-    prismaCost: "$640-780",
-    typical: [
-      "Committed-use contracts across vendors",
-      "Data transfer billed per GB",
-      "Spend limits not standard",
+    prisma: [
+      "One bill, one platform",
+      "Database data transfer included",
+      "Spend limits on by default",
     ],
-    prisma: ["One bill, one platform", "Data transfer included", "Spend limits on by default"],
   },
 ];
 
@@ -180,13 +197,17 @@ function ScenarioCarousel() {
       <div
         role="tablist"
         aria-label="Pricing scenarios"
-        className="relative z-10 -mb-px inline-grid grid-cols-3 overflow-hidden rounded-t-2xl border border-b-0 border-black/[0.06]"
+        className="relative z-10 -mb-px inline-grid grid-cols-2 overflow-hidden rounded-t-2xl border border-b-0 border-black/[0.06]"
       >
         {/* one grain plane behind the whole row, sharing the panel's x-origin
             — whichever tab is active exposes the same continuous texture
             (per-tab grain sampled a different crop on tabs 2 and 3). The
             inactive tabs paint opaque above it. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-card" style={GRAIN} />
+        <div
+          aria-hidden
+          className="brand-grain pointer-events-none absolute inset-0 bg-card"
+          style={GRAIN}
+        />
         {SCENARIOS.map(({ tab, mau }, i) => (
           <button
             key={tab}
@@ -240,7 +261,11 @@ function ScenarioCarousel() {
           <div className="absolute bottom-[-21rem] right-[8%] h-[44rem] w-24 origin-bottom rotate-[28deg] bg-prism-red-300/50 blur-[56px]" />
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-t from-transparent via-white/60 to-white" />
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={GRAIN} />
+        <div
+          aria-hidden
+          className="brand-grain pointer-events-none absolute inset-0"
+          style={GRAIN}
+        />
 
         <div className="relative flex-1 overflow-hidden pt-2">
           <div
@@ -254,6 +279,24 @@ function ScenarioCarousel() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Splice a single next/link into the plain-text `lead`, matching the first
+// occurrence of the token. The pricing bullets are static strings today, so a
+// one-token splice is enough and keeps the rest of the list rendering as the
+// plain <strong> text it always was.
+function renderLeadWithLink(lead: string, link: { token: string; href: string }) {
+  const index = lead.indexOf(link.token);
+  if (index === -1) return lead;
+  return (
+    <>
+      {lead.slice(0, index)}
+      <Link href={link.href} className="underline-offset-4 hover:underline">
+        {link.token}
+      </Link>
+      {lead.slice(index + link.token.length)}
+    </>
   );
 }
 
@@ -273,8 +316,8 @@ export function PricingScale() {
               <p className="mt-5 max-w-[54ch] text-pretty leading-relaxed text-muted-foreground">
                 Start free with the ORM, which will always be free. Prisma Postgres has a free tier
                 with a hard cap, so you can build without a credit card. When you outgrow it,
-                you&apos;re on operation-based pricing with spend limits, and data transfer is
-                always included.
+                you&apos;re on operation-based pricing with spend limits, and database data transfer
+                is always included.
               </p>
             </Reveal>
 
@@ -285,18 +328,24 @@ export function PricingScale() {
 
           <Reveal delay={0.12}>
             <ul className="flex flex-col gap-3">
-              {BULLETS.map(({ lead, rest }) => (
-                <li
-                  key={lead}
-                  className="flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground"
-                >
-                  <CheckBold className="mt-1 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
-                  <span>
-                    <strong className="font-semibold text-foreground">{lead}</strong>
-                    {rest}
-                  </span>
-                </li>
-              ))}
+              {BULLETS.map((bullet) => {
+                const { lead, rest } = bullet;
+                const leadLink = "leadLink" in bullet ? bullet.leadLink : undefined;
+                return (
+                  <li
+                    key={lead}
+                    className="flex items-start gap-3 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground"
+                  >
+                    <CheckBold className="mt-1 size-4 shrink-0 text-prism-cyan-500" aria-hidden />
+                    <span>
+                      <strong className="font-semibold text-foreground">
+                        {leadLink ? renderLeadWithLink(lead, leadLink) : lead}
+                      </strong>
+                      {rest}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </Reveal>
         </div>

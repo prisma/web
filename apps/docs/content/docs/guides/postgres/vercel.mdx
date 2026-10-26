@@ -6,20 +6,49 @@ metaTitle: Prisma Postgres on Vercel via the Marketplace integration
 metaDescription: Create Prisma Postgres databases via the Vercel Marketplace and deploy Next.js apps with built-in connection pooling. No pgBouncer setup required.
 ---
 
-The [Vercel Marketplace integration for Prisma Postgres](https://www.vercel.com/marketplace/prisma) connects your Vercel projects with Prisma Postgres instances. Once connected, the integration automatically sets the following environment variable on your deployed Vercel app:
+The [Vercel Marketplace integration for Prisma Postgres](https://www.vercel.com/marketplace/prisma) connects your Vercel projects with Prisma Postgres instances. When you connect a database to a project, the integration sets three environment variables on each environment you connect:
 
-- `DATABASE_URL`: A Prisma Postgres [connection string](/postgres/database/connecting-to-your-database) starting with `postgres://...`
+| Variable              | Value                                   |
+| --------------------- | --------------------------------------- |
+| `DATABASE_URL`        | The database's direct connection string |
+| `POSTGRES_URL`        | The same value as `DATABASE_URL`        |
+| `PRISMA_DATABASE_URL` | The same value as `DATABASE_URL`        |
 
-These enable you to connect to the Prisma Postgres instances via any ORM or database library you want to use (Prisma ORM, Drizzle, Kysely, ...).
+The direct [connection string](/postgres/database/connecting-to-your-database) has the form `postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require`. It works with any ORM or database library (Prisma ORM, Drizzle, Kysely, ...). It isn't the pooled connection string, so read [Use the pooled connection string for application traffic](#use-the-pooled-connection-string-for-application-traffic) before you send production traffic.
+
+On some older databases, `PRISMA_DATABASE_URL` still holds a hosted Accelerate URL (`prisma+postgres://accelerate.prisma-data.net/...`), which will be [retired on December 1, 2026](/postgres/database/switch-from-accelerate). Read `DATABASE_URL` in new code.
+
+## Set up with a coding agent
+
+A coding agent can install the integration, create the database, and connect it to your project with the [Vercel CLI](https://vercel.com/docs/cli/integration). Install the CLI and sign in first (`npm i -g vercel@latest`, then `vercel login`), then copy this prompt into your agent from the root of your project:
+
+<AgentPrompt title="Set up Prisma Postgres on Vercel">
+
+```text
+Set up Prisma Postgres for this project through the Vercel Marketplace integration, following https://www.prisma.io/docs/guides/postgres/vercel.md.
+
+1. Load the prisma-postgres-setup skill and follow its Vercel Marketplace reference. If it isn't installed, run `npx skills add prisma/skills --skill prisma-postgres-setup` first.
+2. Check that the project is linked to Vercel (`vercel link`). Run `vercel integration list` and reuse a Prisma Postgres database that is already connected.
+3. Otherwise run `vercel integration add prisma --help` to read the regions and plans, then `vercel integration add prisma/prisma-postgres --name <name> --no-env-pull` (step 4 pulls the variables). Use the `free` plan unless I choose a paid one. If the CLI asks me to accept Prisma's terms in the browser, tell me and wait.
+4. Run `vercel env pull` even if `DATABASE_URL` is already set, because a local value can point at another database. It writes the linked project's Development variables to `.env.local` and keeps variables that exist only in that file. If `.env.local` already exists and the Vercel CLI didn't create it, the pull asks before overwriting it (without a terminal, it stops and asks for `--yes`): ask me first. Then check that `DATABASE_URL` is set, without printing its value, and that the tools you run next load `.env.local`. If it's still missing, stop and tell me.
+5. Connect the ORM or driver the project already uses (ask me if there is none), run one read-only query such as `select 1`, and show me the result.
+6. Tell me which environments the database is connected to, and remind me that `DATABASE_URL` is the direct connection string: production traffic from Vercel Functions should use the pooled one.
+```
+
+</AgentPrompt>
+
+Unless you pass `-e <environment>`, `vercel integration add` connects the new database to the linked project's production, preview, and development environments, then runs `vercel env pull` unless you pass `--no-env-pull`, as the prompt does. One database on all three environments means local development, preview deployments, and production share the same data. To keep them apart, create one database per environment with `-e`.
+
+If Prisma isn't installed on your Vercel team yet, the CLI asks you to accept the integration's terms in the browser. Your agent can't do that step for you.
 
 ## Why Prisma Postgres works well on Vercel
 
-Vercel scales serverless functions automatically. Each new function instance opens a database connection, and with a traditional Postgres setup, that's how you hit connection limits under load. Prisma Postgres includes connection pooling by default, so you don't need to configure pgBouncer or maintain a separate pooler. The `DATABASE_URL` the Marketplace sets works in local dev, preview deployments, and production.
+Vercel scales serverless functions automatically. Each new function instance opens a database connection, and with a traditional Postgres setup, that's how you hit connection limits under load. Every Prisma Postgres database comes with a managed [connection pooler](/postgres/database/connection-pooling), so you don't configure pgBouncer or run a separate pooler: your app connects to the pooled endpoint, `pooled.db.prisma.io`. The variables the integration sets hold the direct connection string, so [add the pooled string](#use-the-pooled-connection-string-for-application-traffic) before production traffic.
 
 ## Features
 
 - Create and use Prisma Postgres instances without leaving the Vercel dashboard.
-- Automatic generation of Prisma Postgres URLs for production and preview environments.
+- Connection strings set as environment variables on the environments you connect: production, preview, and development by default.
 - Simplified environment configuration for your Vercel project.
 - Billing workflows to up-/ and downgrade your Prisma Postgres pricing plan.
 - Ready-to-deploy fullstack templates for Next.js, Nuxt, SvelteKit and with various ORMs and DB libraries.
@@ -53,7 +82,22 @@ The database is now ready and can be connected to your Vercel projects.
 
 ### Connect database to Vercel project
 
-In your Vercel project, you can now click the **Storage** tab, select the database you just created and then click **Connect**. This will automatically set the `DATABASE_URL` environment variable in that project and enable your application to access your newly created Prisma Postgres instance.
+In your Vercel project, you can now click the **Storage** tab, select the database you just created and then click **Connect**. This sets `DATABASE_URL`, `POSTGRES_URL`, and `PRISMA_DATABASE_URL` in that project and enables your application to access your newly created Prisma Postgres instance.
+
+When you connect, you choose the environments that get the variables. From the CLI, `vercel integration add` and `vercel integration resource connect` connect production, preview, and development unless you pass `-e`. Existing deployments don't get new variables, so redeploy after you connect.
+
+### Use the pooled connection string for application traffic
+
+The integration's variables hold the direct connection string (host `db.prisma.io`). It works for your app, for Prisma CLI commands such as migrations, and for Prisma Studio, so you can build and deploy with it as is.
+
+Direct connections are capped per plan: 10 on Free and Starter, and 5 of those are reserved for platform operations (see [Connection limits](/postgres/database/connection-pooling#connection-limits)). Vercel Functions scale out, and each instance opens its own connection, so under load your app should connect through the pooled connection string (host `pooled.db.prisma.io`) instead:
+
+1. Run `vercel integration open prisma` to open Prisma Console, signed in through Vercel.
+2. Select the database and create a connection string. Console shows a pooled and a direct string. See [Get your connection strings](/postgres/database/connecting-to-your-database#get-your-connection-strings).
+3. Add the pooled string to your Vercel project as a new variable, for example `DATABASE_URL_POOLED`, in the dashboard or with `vercel env add DATABASE_URL_POOLED <environment>` for each environment the database is connected to. Don't overwrite the variables the integration manages.
+4. Point your app's database client at the new variable, keep `DATABASE_URL` for Prisma CLI commands, and redeploy.
+
+[Rotating your Prisma integration secrets](#rotating-your-prisma-integration-secrets-in-vercel) replaces the integration's own credentials only. It doesn't touch connection strings you create in Console: manage those in Console.
 
 ### Viewing and editing data in Prisma Studio
 
@@ -73,7 +117,7 @@ The key things to set up on the Vercel side:
 
 ### Ensure your project uses the correct environment variable
 
-The generated `src/prisma/db.ts` reads `process.env.DATABASE_URL`, which is the variable the **Connect** step above sets on your Vercel project. Nothing else needs to be configured for the runtime to find the database.
+The generated `src/prisma/db.ts` reads `process.env.DATABASE_URL`, which is the variable the **Connect** step above sets on your Vercel project. Nothing else needs to be configured for the runtime to find the database. `DATABASE_URL` is the direct connection string: before production load, point `db.ts` at the pooled string as described in [Use the pooled connection string for application traffic](#use-the-pooled-connection-string-for-application-traffic).
 
 ### Commit the emitted contract files
 

@@ -1,3 +1,4 @@
+import { captureBrowserAcquisition } from "@prisma-docs/ui/lib/acquisition.browser";
 import posthog from "posthog-js";
 import * as Sentry from "@sentry/nextjs";
 import { hasAnalyticsConsent, onAnalyticsConsentChange } from "@prisma-docs/ui/lib/consent";
@@ -13,10 +14,22 @@ const SUPER_PROPERTIES = {
   environment: "production",
 };
 
+const acquisitionProperties = () => captureBrowserAcquisition("docs", hasAnalyticsConsent());
+acquisitionProperties();
+
 posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+  before_send: (event) => {
+    if (event?.event === "$pageview")
+      event.properties = { ...event.properties, ...acquisitionProperties() };
+    return event;
+  },
   api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   capture_pageview: "history_change",
   defaults: "2025-11-30",
+  // ChatGPT ad clicks land with `oppref` and no UTM params. Treating it as a
+  // campaign param puts it on every event and freezes `$initial_oppref` on
+  // the person, like `gclid`, so an ad-acquired person stays identifiable.
+  custom_campaign_params: ["oppref"],
   // GDPR/ePrivacy: no cookies, storage, or persistent identifiers until the
   // visitor grants analytics consent via CookieYes. Opt-in is handled below.
   // Until then (banner ignored or analytics rejected) visitors are counted
@@ -40,6 +53,7 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
 // device storage, and the visitor has not made a decision yet; cookieless
 // capture already covers them.
 onAnalyticsConsentChange((status) => {
+  acquisitionProperties();
   if (status === "granted") {
     posthog.opt_in_capturing();
     const stored = readStoredUtmAttribution(UTM_ATTRIBUTION_STORAGE_KEY);

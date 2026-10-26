@@ -12,7 +12,7 @@ Use this page when you already have an app and its database has no collections y
 
 :::note[Using Prisma ORM 7?]
 
-Prisma ORM 8 is the current release, as a release candidate. Prisma ORM 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
+Prisma ORM 8 is a release candidate. Prisma ORM 7 remains fully supported; its docs live at [/orm/v7](/orm/v7) and its setup paths at [/v7/getting-started](/v7/getting-started).
 
 For what release candidate means, when the final release is expected, and how to stay on version 7, see [Release status](/orm/release-status).
 
@@ -20,7 +20,7 @@ For what release candidate means, when the final release is expected, and how to
 
 ## Prerequisites
 
-- A project directory with a `package.json`, on Node.js 22.18 or newer.
+- A project directory with a `package.json`, on Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended). [Supported versions](/orm/supported-versions) has every floor.
 - A way to run a TypeScript file. This page uses `tsx`. If your project does not have it, run `npm install --save-dev tsx typescript`.
 - An empty MongoDB database, version 8.0 or newer. A single `mongod` server is enough. You need a replica set only for transactions and change streams.
 
@@ -59,7 +59,7 @@ installed
 ├─ dotenv
 ├─ prisma@latest (dev)
 ├─ @types/node (dev)
-└─ @prisma/cli-engine@0.6.3 (dev)
+└─ @prisma/cli-engine@0.9.0 (dev)
 
 ✔ Done. Open prisma-8.md to get started.
 ```
@@ -77,11 +77,14 @@ You do not need `prisma-8.md` for this page. It is a short reference for writing
 ```typescript title="src/prisma/db.ts"
 import 'dotenv/config';
 import mongo from '@prisma/orm-mongo/runtime';
+import { contractFromJson } from '@prisma/orm-mongo/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = mongo<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = mongo({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```
@@ -98,7 +101,7 @@ If you had no `.env`, `orm init` wrote one with a placeholder, `DATABASE_URL="mo
 DATABASE_URL="mongodb://username:password@host:27017/database"
 ```
 
-The part after the last `/`, and before any `?`, is the name of the database.
+The part after the last `/`, and before any `?`, is the name of the database. If you have no MongoDB server yet, [A database on your machine](/prisma-orm/local-database#mongodb) shows how to run one in Docker.
 
 `orm init` added `.env` to `.gitignore`, so the password stays out of version control.
 
@@ -117,7 +120,7 @@ model User {
 }
 ```
 
-Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `@@map("users")` names the collection that stores the model. MongoDB stores the identifier of every document in `_id`. On MongoDB, `contract emit` names each field in `contract.json` by the name in its `@map`, so in queries and in results you use `_id`, not `id`. The same goes for any other field with `@map`. The file has no `datasource` or `generator` block. The connection string comes from `.env`, and `contract emit` in the next step takes the place of the generator. [Data modeling](/orm/data-modeling) covers field types and relations.
+Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `@@map("users")` names the collection that stores the model. MongoDB stores the identifier of every document in `_id`, and `@map("_id")` stores the `id` field there. In queries and in their results you use the field name, `id`, and Prisma ORM reads and writes `_id` for you. The same goes for any other field with `@map`. The file has no `datasource` or `generator` block. The connection string comes from `.env`, and `contract emit` in the next step takes the place of the generator. [Data modeling](/orm/data-modeling) covers field types and relations.
 
 ## 4. Generate the files your code imports
 
@@ -206,20 +209,20 @@ npx tsx script.ts
 
 ```text no-copy
 Created: {
-  _id: '6abc2ce7b04f66be2c85564d',
+  id: '6abc2ce7b04f66be2c85564d',
   email: 'alice@example.com',
   name: 'Alice'
 }
 All users: [
   {
-    _id: '6abc2ce7b04f66be2c85564d',
+    id: '6abc2ce7b04f66be2c85564d',
     email: 'alice@example.com',
     name: 'Alice'
   }
 ]
 ```
 
-The script passes no identifier, and the new document gets one in `_id`, returned as a string. To find a document by it, filter on `_id`, as in `db.orm.users.where({ _id: created._id }).first()`.
+The script passes no identifier, and the new document gets one, returned as a string in `id`. To find a document by it, filter on `id`, as in `db.orm.users.where({ id: created.id }).first()`.
 
 In your app, import `db` from `src/prisma/db.ts` the same way. [Reading data](/orm/fundamentals/reading-data) and [Writing data](/orm/fundamentals/writing-data) show the other queries.
 

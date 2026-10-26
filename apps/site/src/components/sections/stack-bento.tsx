@@ -56,13 +56,13 @@ const HOME_CONTENT: StackBentoContent = {
     bullets: [
       "Unikernel microVMs on bare metal, single-digit ms boot",
       "Operation-based pricing with spend limits, no bill shock",
-      "Free per-branch databases, integrated with hosting previews",
+      "A preview database per feature branch, integrated with hosting previews",
       "Works with any ORM if you're not using Prisma's",
       "Query Insights built in: spot slow queries and get an agent-ready prompt to fix them",
     ],
   },
   compute: {
-    body: "TypeScript app hosting that runs on the same host as your database, so your agent can deploy, debug, and redeploy end-to-end.",
+    body: "TypeScript app hosting on the same platform and in the same region as your database, so your agent can deploy, debug, and redeploy end-to-end.",
     bullets: [
       "Bun runtime on bare metal",
       "Co-located with Prisma Postgres, single-digit ms query latency",

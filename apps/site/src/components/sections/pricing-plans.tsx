@@ -1,6 +1,8 @@
 import { Marker } from "@/components/brand/marker";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
+import { SpectrumRing } from "@/components/brand/spectrum-ring";
 import { CheckBold } from "@/components/icons/forma";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 
 // V2 plan cards. Corrections applied on top of V2:
@@ -36,7 +38,7 @@ const PLANS = [
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
-    postgres: ["200k operations / month", "1.01 GB storage", "50 databases"],
+    postgres: ["200k operations / month", "2 GB storage", "50 databases"],
     platform: [],
     blurb:
       "Everything you need to build and explore with no clock running. No credit card, no expiry.",
@@ -83,7 +85,7 @@ const PLANS = [
       "1,000 databases",
       "7-day daily backups",
     ],
-    platform: ["Spend limits", "GDPR, HIPAA"],
+    platform: ["Spend limits", "GDPR"],
     blurb:
       "For production apps with real traffic. More operations, lower overage rates, and headroom to grow without watching the meter.",
     cta: "Get started",
@@ -106,7 +108,10 @@ const PLANS = [
       "1,000 databases",
       "30-day backup retention",
     ],
-    platform: ["Spend limits", "GDPR, HIPAA, SOC 2, ISO 27001"],
+    // HIPAA deep-links to /postgres/hipaa (the Business-plan landing page);
+    // the card renders feature strings through `renderFaqAnswer`, which turns
+    // `[text](/path)` into an inline link.
+    platform: ["Spend limits", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
     blurb: "Built for high-growth teams with compliance requirements and sustained high volume.",
     cta: "Get started",
     href: "https://console.prisma.io/sign-up",
@@ -138,7 +143,7 @@ export function PricingPlans() {
             className={cn(
               "relative flex flex-col rounded-2xl border bg-white p-6 sm:p-7",
               plan.popular
-                ? "spectrum-border spectrum-border-on border-transparent shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                ? "border-transparent shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
                 : "border-black/[0.06]",
             )}
           >
@@ -172,7 +177,7 @@ export function PricingPlans() {
                             className="mt-0.5 size-4 shrink-0 text-prism-cyan-500"
                             aria-hidden
                           />
-                          {feature}
+                          <span>{renderFaqAnswer(feature)}</span>
                         </li>
                       ))}
                     </ul>
@@ -195,6 +200,7 @@ export function PricingPlans() {
                 </PrismButtonOutline>
               )}
             </div>
+            {plan.popular && <SpectrumRing />}
           </div>
         ))}
       </div>

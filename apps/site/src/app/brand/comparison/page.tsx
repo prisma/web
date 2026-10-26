@@ -36,13 +36,14 @@ const PAIRS = [
     tone: "yellow",
   },
   {
-    before: "Per-branch databases that don't connect to your hosting previews",
-    after: "Per-branch databases wired to your hosting previews automatically",
+    before: "Preview databases from one vendor, preview deployments from another",
+    after: "A preview database per feature branch, wired to its preview deployment",
     tone: "red",
   },
   {
     before: "A database from Neon, an ORM from Drizzle, hosting from Vercel",
-    after: "App and database co-located on the same host, at latency no two-vendor setup can match",
+    after:
+      "App and database on one platform in the same region, so queries stay low-latency and never leave the region",
     tone: "cyan",
   },
   {

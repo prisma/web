@@ -2,6 +2,7 @@ import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { LearnMore } from "@/components/brand/learn-more";
 import { Texture } from "@/components/brand/texture";
 import { Reveal } from "@/components/motion/reveal";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 import { PRODUCT_ILLUSTRATIONS } from "./illustrations";
 import type { ProductPageContent } from "./types";
@@ -13,9 +14,9 @@ const SPECTRUM =
 // Feature ray photos cycled across the cards — same backdrops (and crops) as
 // the homepage illustrations, saturation boosted on their own layer.
 const PHOTOS = [
-  "bg-[url('/brand/feature-orm.jpg')] bg-[position:0%_65%]",
-  "bg-[url('/brand/feature-postgres.jpg')] bg-[position:50%_55%]",
-  "bg-[url('/brand/feature-compute.jpg')] bg-[position:20%_90%]",
+  "brand-orm bg-[position:0%_65%]",
+  "brand-postgres bg-[position:50%_55%]",
+  "brand-compute bg-[position:20%_90%]",
 ];
 
 // Column count per feature count. V4 ships an uneven number per product, and a
@@ -134,7 +135,12 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
                     <div className="flex grow flex-col p-7">
                       <h3 className="text-xl">{name}</h3>
                       <p className="mt-3 grow text-pretty leading-relaxed text-muted-foreground">
-                        {description}
+                        {/* The inline markup parser is a no-op for strings
+                            without `[` or `` ` ``, so plain descriptions still
+                            render verbatim; the /postgres compliance card is
+                            the one card that uses a `[HIPAA](/postgres/hipaa)`
+                            link today. */}
+                        {renderFaqAnswer(description)}
                       </p>
                       {href ? (
                         <LearnMore href={href} product={name} className="mt-auto pt-4" />

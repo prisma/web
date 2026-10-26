@@ -15,13 +15,13 @@ In Prisma ORM the data move is not a separate script. A migration is a TypeScrip
 
 :::note[Using Prisma ORM 7?]
 
-Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/database/data-migration](/guides/v7/database/data-migration).
+Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/database/data-migration](/guides/v7/database/data-migration).
 
 :::
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) 24 or later
+- [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
 - A PostgreSQL connection string for a development database, and one for the database you deploy to
 - Git, for the branch-per-migration workflow
 
@@ -38,7 +38,7 @@ Perform an expand-and-contract migration with Prisma ORM, following https://www.
 2. Expand: add `enum Status { @@type("pg/text@1") Draft = "Draft" InProgress = "InProgress" InReview = "InReview" Published = "Published" }` and `status Status @default(Draft)` to `Post`. Keep `published`. Run `contract emit` and `migration plan --name add_status`.
 3. Open the planned `migration.ts` and append a `this.dataTransform(endContract, 'backfill-post-status', { check, run })` operation built with the typed SQL builder against the migration's own end contract: `check` selects `id` from `Post` where `published = true AND status != 'Published'` with `limit(1)`, `run` updates those rows to `status = 'Published'`. Recompile with `node <migration-dir>/migration.ts`, confirm `ops.json` contains a `data` operation, then apply with `npx prisma db migrate --advance-ref db`. Verify with a query that every row with `published = true` now has `status = 'Published'`.
 4. Update application code to read and write `status` instead of `published`.
-5. Contract: remove `published` from the contract, run `contract emit`, `migration plan --name drop_published`, review the destructive warning, and apply with `npx prisma db migrate --advance-ref db`.
+5. Contract: remove `published` from the contract, run `contract emit`, `migration plan --name drop_published --delete Post.published`, review the destructive warning, and apply with `npx prisma db migrate --advance-ref db`.
 6. For the production database, run `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"`, adding `--show` first if you want to preview the route. Do not use `db update` against production.
 ```
 
@@ -101,7 +101,7 @@ App space
 ✔ Advanced ref "db" → e8804d8e27d8737475c7be0c538afd9665907df8b82c605bd5cd50926dd73fde
 ```
 
-Seed a few posts so the migration has data to move. Node.js 24 runs TypeScript directly:
+Seed a few posts so the migration has data to move. Node.js runs TypeScript directly:
 
 ```typescript title="src/seed.ts"
 import { db } from "./prisma/db.ts";
@@ -379,11 +379,11 @@ model Post {
 }
 ```
 
-Emit and plan. The planner flags the drop as destructive, which is the review signal for this step:
+Emit and plan. Dropping the column loses its data, so `migration plan` asks before it writes anything; `--delete Post.published` answers in advance:
 
 ```npm
 npx prisma contract emit
-npx prisma migration plan --name drop_published
+npx prisma migration plan --name drop_published --delete Post.published
 ```
 
 ```text no-copy

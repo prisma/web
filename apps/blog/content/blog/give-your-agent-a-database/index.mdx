@@ -16,11 +16,11 @@ tags:
 
 The fastest way to give a coding agent a database is one command: `npx create-db@latest`. It provisions a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres) database, a managed serverless PostgreSQL instance, in a few seconds, with no sign-up and nothing to install. Add the `--json` flag and the output becomes machine-readable, so Cursor, Claude Code, Codex, or any other agent can provision a database and start testing without a human in the loop.
 
-The database deletes itself after 24 hours. If the work turns out to matter, one click on the claim URL keeps it permanently, for free. This post covers how `create-db` works, how it compares to Docker, SQLite, and mocks, and how to wire it into your agent's workflow.
+The database deletes itself after 24 hours. If the work turns out to matter, claim it with a free Prisma account to keep it. This post covers how `create-db` works, how it compares to Docker, SQLite, and mocks, and how to wire it into your agent's workflow.
 
 ## What is npx create-db?
 
-[`create-db`](https://www.prisma.io/docs/postgres/npx-create-db) is an open-source CLI that provisions temporary Prisma Postgres databases with a single command. Each database runs real PostgreSQL, requires no account, lives for 24 hours by default, and can be claimed into a permanent instance via a URL in the output. It runs anywhere Node.js 16 or later runs.
+[`create-db`](https://www.prisma.io/docs/postgres/npx-create-db) is an open-source CLI that provisions temporary Prisma Postgres databases with a single command. Each database runs real PostgreSQL, requires no account, lives for 24 hours by default, and can be claimed into a permanent instance via a URL in the output. It runs anywhere Node.js 20.5 or later runs.
 
 ```bash
 npx create-db@latest
@@ -111,7 +111,7 @@ Schema changes are the riskiest edits an agent makes. With a disposable database
 
 ### Integration tests without Docker
 
-CI-style integration tests normally mean maintaining a `docker-compose.yml` and hoping the runner has a working daemon. `npx create-db --json` replaces that with a single command that works anywhere Node.js runs, including environments where agents cannot run containers at all.
+CI-style integration tests normally mean maintaining a `docker-compose.yml` and hoping the runner has a working daemon. `npx create-db --json` replaces that with a single command that works anywhere Node.js 20.5 or later runs, including environments where agents cannot run containers at all.
 
 ### One database per task, branch, or agent
 
@@ -142,7 +142,7 @@ If your agent speaks MCP, the [Prisma MCP server](https://www.prisma.io/docs/ai/
 `create-db` is deliberately scoped, and it is worth knowing the edges:
 
 - **24-hour lifetime.** Unclaimed databases are deleted, data included. That is the point for scratch work, but do not put anything in one that you would miss. The `deletionDate` field tells you exactly when the clock runs out.
-- **Temporary means temporary.** Until claimed, treat the database as a scratch environment, not a home for real user data.
+- **Temporary means temporary.** Until claimed, treat the database as a scratch environment, not a home for real user data. For an app whose data keeps disappearing, see [why an app's records vanish after a restart](https://www.prisma.io/postgres/app-data-lost-after-restart).
 - **Fixed region set.** Six regions are available today. Pick the closest one with `--region` if latency matters for your test.
 
 None of these bite in the intended use case, and the claim flow covers the moment a throwaway database stops being throwaway.
@@ -151,13 +151,13 @@ None of these bite in the intended use case, and the claim flow covers the momen
 
 <Accordions type="single">
   <Accordion title="What is npx create-db?">
-`create-db` is an open-source CLI that provisions a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres) database with one command, `npx create-db@latest`. No account is required, the database lives for 24 hours by default, and a claim URL in the output converts it into a permanent instance for free.
+`create-db` is an open-source CLI that provisions a temporary [Prisma Postgres](https://www.prisma.io/docs/postgres) database with one command, `npx create-db@latest`. No account is required, the database lives for 24 hours by default, and you can claim it with a free Prisma account, via the claim URL in the output, to keep it permanently.
   </Accordion>
   <Accordion title="How long does a create-db database last?">
 24 hours from creation. After that the database and its data are deleted automatically. The exact timestamp is shown in the CLI output and returned as `deletionDate` in `--json` mode. Claiming the database before that time removes the expiry.
   </Accordion>
   <Accordion title="How does an AI agent use create-db without human input?">
-Run `npx create-db@latest --json`. The command prints a JSON object with `connectionString`, `claimUrl`, `deletionDate`, `region`, and `projectId`, then exits without any interactive prompts. The agent parses `connectionString` into `DATABASE_URL` and proceeds. This works in Claude Code, Cursor, Codex, and any environment that can run Node.js 16 or later.
+Run `npx create-db@latest --json`. The command prints a JSON object with `connectionString`, `claimUrl`, `deletionDate`, `region`, and `projectId`, then exits without any interactive prompts. The agent parses `connectionString` into `DATABASE_URL` and proceeds. This works in Claude Code, Cursor, Codex, and any environment that can run Node.js 20.5 or later.
   </Accordion>
   <Accordion title="Is npx create-db free, and can I keep the database?">
 Yes. Creating temporary databases costs nothing and requires no account. To keep one, open the claim URL from the output, sign in to the [Prisma Console](https://console.prisma.io/), and claim it into a workspace with capacity for a new project. The claimed database keeps its data and stops expiring.
