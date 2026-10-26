@@ -3,8 +3,8 @@
  *
  * - `/blog/llms.txt`: a small index (series, latest posts, links to the
  *   per-year indexes).
- * - `/blog/llms/<year>.txt`: every post from one year, with its description.
- * - `/blog/llms-full.txt`: every post's Markdown, newest first.
+ * - `/blog/llms/<year>.txt`: every published post from one year, with its description.
+ * - `/blog/llms-full.txt`: every published post's Markdown, newest first.
  *
  * Everything here takes plain data, so it runs under `node:test` without the
  * content source. `llms-source.ts` maps the source's pages onto `LlmsPost`.
@@ -57,11 +57,11 @@ function singleLine(value: string): string {
 /**
  * Link text for a Markdown link. Titles go in a code span, which keeps any
  * bracket inside them literal. A title that already contains a backtick cannot
- * be wrapped, so its brackets are escaped instead.
+ * be wrapped, so its brackets and backslashes are escaped instead.
  */
 export function formatLinkLabel(title: string): string {
   const text = singleLine(title);
-  return text.includes("`") ? text.replace(/[[\]]/g, "\\$&") : `\`${text}\``;
+  return text.includes("`") ? text.replace(/[\\[\]]/g, "\\$&") : `\`${text}\``;
 }
 
 /** Post count per year, for the years that have at least one post. */
@@ -98,7 +98,7 @@ function freshnessNotice(baseUrl: string): string {
 }
 
 function indexPointer(baseUrl: string): string {
-  return `> For an index of every post, fetch ${toAbsoluteBlogUrl(baseUrl, "/llms.txt")}.`;
+  return `> For an index of every published post, fetch ${toAbsoluteBlogUrl(baseUrl, "/llms.txt")}.`;
 }
 
 function markdownNotice(baseUrl: string): string {
@@ -243,7 +243,7 @@ export function buildLlmsFullContent(
 
   const header = `# Prisma Blog: full content
 
-> Every post on the Prisma blog as Markdown, newest first: ${count} ${count === 1 ? "post" : "posts"}. Each one starts with its URL and publication date.
+> Every published post on the Prisma blog as Markdown, newest first: ${count} ${count === 1 ? "post" : "posts"}. Each one starts with its URL and publication date.
 
 ${freshnessNotice(baseUrl)}
 

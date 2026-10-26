@@ -177,7 +177,7 @@ test("a post served on its own carries the freshness notice and a pointer to the
   const embedded = formatPostMarkdown(post({ path: "/hello" }), "Body.", BASE_URL, POST_SLUGS);
 
   assert.ok(
-    standalone.includes("> For an index of every post, fetch https://www.prisma.io/blog/llms.txt."),
+    standalone.includes("> For an index of every published post, fetch https://www.prisma.io/blog/llms.txt."),
   );
   assert.ok(standalone.includes("https://www.prisma.io/docs/llms.txt"));
   assert.ok(standalone.endsWith("\n\nBody."));
