@@ -2114,10 +2114,10 @@ The follow-up keeps the single hostname-wide Cloudflare rule and implements:
   Base UI modal supplies a cancellable loading state; the loaded search stays
   mounted so its query survives closing and reopening. Consent and analytics
   integrations remain enabled.
-- **Critical body-font discovery.** The blog preloads the exact Latin Inter
-  resource used by its CSS, following the already tested docs approach. The
-  before trace attributes the blog's small layout shift to that font arriving
-  after the hero paragraph paints. No new font family or font binary is added.
+- **Keep font changes evidence-driven.** An Inter preload experiment used the
+  CSS face's exact URL, but five paired mobile runs still showed the same
+  0.001837 CLS and later Compute paint. It was removed before the final
+  comparison. Existing font faces and the Sora preload remain unchanged.
 - **Cache/deploy observability.** The public manifest records the CI release,
   and public HTML carries `X-Composer-Release`. Deployment smoke waits for the
   expected release instead of accepting an older service returning HTTP 200.
@@ -2147,7 +2147,7 @@ these local gates alone do not establish a performance win.
 
 Review found that URL parsing preserves reserved filename characters such as
 `@` and `+`, while the image inventory encodes them. A regression using an actual
-file fails before normalizing the lookup and passes afterwards, for both raw
+file fails before normalizing the lookup and passes afterward, for both raw
 and encoded URLs. Malformed encodings still remain unchanged. This prevents
 some image names from silently retaining the short, unversioned cache policy.
 
@@ -2165,6 +2165,11 @@ authorize the preview domain.
 No third-party domain policy, credential or security setting was changed.
 Cache-specific tests remain useful independently; whole-page score and CPU
 comparisons must retain this qualification until integration parity is verified.
+Opening and reopening the deployed search dialog preserves focus and its query,
+but the preview's search API returns 503. `COMPOSER_INTEGRATIONS` has not selected
+Mixedbread, whose runtime key is required by the existing search handler. This
+is a preview configuration limitation, not evidence of successful search results
+or a reason to count reduced startup work as disabled functionality.
 
 The retention-enabled assembly is within both budgets: gateway 31.5 MB expanded
 / 9.8 MB compressed; blog 859.7 / 687.4 MB; other apps remain below those maxima.
@@ -2173,10 +2178,35 @@ of 487.8 MB in docs. Static bodies are streamed, not loaded as an in-memory cach
 
 Longer SWR trades freshness for availability: a quiet blog page can serve content
 up to one day plus one minute old before its background refresh. Retention is
-not instant deployment invalidation or full server-version pinning. First-ever
+not instant deployment invalidation or full server-version pinning. Public media
+changed in place redirects to its current version; a deleted public media file
+has no retained origin copy in this bridge. A durable release asset store should
+cover that case as well as Next chunks. First-ever
 misses, evicted entries and new full query keys still reach EWR. A Compute CDN
 should provide durable versioned assets, coordinated invalidation/promotion,
 shared fills/shielding and framework-aware representation keys rather than
 requiring this application-level bridge. No all-user/all-metric victory is
 inferred from warm lab medians; subsequent comparisons include a quiet period
 and first-cache misses as well as warmed delivery.
+
+The first full warm comparison on `e022326d2` was stopped after its five mobile
+pairs exposed a consistent paint regression, despite much faster cached HTML.
+The entire dataset remains in `output/playwright/blog-cache-2026-10-26/`, including
+the preliminary run and aborted next audit. The follow-up comparison uses a
+separate `blog-cache-final-2026-10-26` directory after removing the unproven
+preload; the slower measurements are not discarded or combined into a win.
+
+Cloudflare's generic Vary normalization only trims/combines arbitrary header
+values; it does not group browser user agents. Our negotiation needs `Vary:
+User-Agent` so crawlers and HTML readers do not share the wrong representation.
+Consequently, different browser/version strings can create distinct cold HTML
+entries even with the one-day SWR window. Removing that header without an edge
+representation classifier would break correctness. A Compute CDN should key
+on the representation class rather than the complete user-agent string. See
+[Vary normalization](https://developers.cloudflare.com/cache/concepts/vary/).
+Cloudflare's existing
+[Smart Tiered Cache](https://developers.cloudflare.com/cache/how-to/tiered-cache/)
+is also worth testing for shared fills: an upper-tier cache can satisfy a miss
+at a visitor-facing edge before reaching EWR. No zone-wide setting was changed
+in this work; tiering cannot remove a genuinely new representation/key's first
+origin request by itself.

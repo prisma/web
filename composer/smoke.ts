@@ -171,7 +171,7 @@ try {
           cssUrls.add(new URL(asset[1], css.url).href);
       }
       for (const name of path === "/blog"
-        ? ["InterVariable-latin."]
+        ? ["SoraVF_latin"]
         : ["InterVariable-latin.", "MonaSansMonoVF"]) {
         const fontPath: string | undefined = hints.find((url) => url.includes(name));
         assert.ok(fontPath, `${path}: missing critical font hint: ${name}`);

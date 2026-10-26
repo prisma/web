@@ -1,5 +1,4 @@
 import "@prisma-docs/ui/search.css";
-import { preload } from "react-dom";
 import { Provider } from "@/components/provider";
 import { createBlogStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
@@ -46,15 +45,6 @@ export const metadata: Metadata = {
 const blogStructuredData = createBlogStructuredData();
 
 export default function Layout({ children }: LayoutProps<"/">) {
-  // Use the CSS face's exact URL, so body text does not wait for a CSS/font
-  // discovery waterfall or swap line wraps after the first paint.
-  preload(
-    new URL(
-      "../../../../packages/eclipse/src/static/fonts/subsets/InterVariable-latin.woff2",
-      import.meta.url,
-    ).href,
-    { as: "font", type: "font/woff2", crossOrigin: "anonymous", fetchPriority: "high" },
-  );
   return (
     <html
       lang="en"
