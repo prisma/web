@@ -2150,9 +2150,12 @@ CookieYes rejects `prisma.sorenbs.com` as an unregistered website and PostHog
 reports a missing public token on Compute. The corresponding production runs
 do not report those errors. This is not a hosting performance improvement;
 disabled or failing integrations can reduce client work. The deploy workflow
-now accepts the existing public PostHog build values through repository
-variables `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST`. They must be
-configured by the operator, and CookieYes must authorize the preview domain.
+now reads the existing `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST`
+repository secrets, with same-named public variables as a fallback. Only secret
+names were inspected; their values were not exported or copied. Turbo's Next
+framework inference passes these values into builds and includes them in the
+cache key, verified with a dry run using dummy values. CookieYes must still
+authorize the preview domain.
 No third-party domain policy, credential or security setting was changed.
 Cache-specific tests remain useful independently; whole-page score and CPU
 comparisons must retain this qualification until integration parity is verified.
