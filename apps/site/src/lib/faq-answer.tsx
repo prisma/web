@@ -23,6 +23,8 @@ import * as React from "react";
  * Markup choices match the preview the VP approved (see changes.diff):
  *   - links are internal `next/link` for site-relative paths, raw `<a>` for
  *     absolute URLs, same hover/underline treatment as other content links;
+ *   - third-party (non-prisma.io) absolute URLs also get `target="_blank"`
+ *     and `rel="nofollow noopener"`;
  *   - inline code uses the same `bg-muted` chip as other sections.
  */
 
@@ -64,6 +66,15 @@ function isInternalHref(href: string): boolean {
   return href.startsWith("/");
 }
 
+function isPrismaHostedHref(href: string): boolean {
+  try {
+    const { hostname } = new URL(href);
+    return hostname === "prisma.io" || hostname.endsWith(".prisma.io");
+  } catch {
+    return false;
+  }
+}
+
 function renderInline(answer: string, keyPrefix: string): React.ReactNode {
   if (!answer.includes("[") && !answer.includes("`")) {
     return answer;
@@ -88,7 +99,14 @@ function renderInline(answer: string, keyPrefix: string): React.ReactNode {
           {children}
         </Link>
       ) : (
-        <a key={`${keyPrefix}-link-${index}`} href={href} className={LINK_CLASS}>
+        <a
+          key={`${keyPrefix}-link-${index}`}
+          href={href}
+          className={LINK_CLASS}
+          {...(!isPrismaHostedHref(href)
+            ? { target: "_blank", rel: "nofollow noopener" }
+            : {})}
+        >
           {children}
         </a>
       ),

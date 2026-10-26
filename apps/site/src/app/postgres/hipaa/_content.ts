@@ -106,6 +106,11 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
       "Yes. Prisma ORM is a library that runs inside your application, so it does not receive your data. Use it with Prisma Postgres or any Postgres database covered by your BAA, and keep PHI out of logs, error reports and query logging tools that are not covered.",
   },
   {
+    question: "Can I use Prisma Postgres for a healthcare app that isn't written in TypeScript?",
+    answer:
+      "Yes. Prisma Postgres is standard Postgres, so apps in Python, Ruby, PHP, Java or Go can connect with any Postgres driver, and the database is covered by your BAA on the Business plan. You also need a BAA-covered host for the app itself. This third-party [guide to HIPAA compliant app hosting](https://hipaacomplianthosting.com/blog/hipaa-compliant-app-hosting) walks through the options.",
+  },
+  {
     question: "Is there a liability cap in the BAA?",
     answer:
       "Yes. The standard BAA includes a liability cap of $250,000. Read the full terms in the [BAA](/legal/baa).",
