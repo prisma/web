@@ -776,17 +776,61 @@ h6 {
   animation: spectrum-slide 2.5s linear infinite;
 }
 
-/* Always-on variant — the ring stays lit without needing hover. */
+/* Always-on variant — the ring stays lit without needing hover.
+   Prefer <SpectrumRing /> (brand/spectrum-ring.tsx) for new work: this one
+   repaints every frame for the life of the page, for the reason above. */
 .spectrum-border-on::before {
   opacity: 1;
   animation: spectrum-slide 2.5s linear infinite;
+}
+
+/* Composited always-on ring, see brand/spectrum-ring.tsx. The outer span is
+   masked to the 1px ring exactly like .spectrum-border::before; the inner span
+   is four host-widths of gradient at two host-widths per cycle (the same
+   period as background-size: 200%), and translating it by half its own width
+   is one full cycle, so the loop is seamless and runs on the compositor. */
+@keyframes spectrum-ring-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.spectrum-ring {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  padding: 1px;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.spectrum-ring > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 400%;
+  background-image: linear-gradient(85deg, #01d7e4, #f3c306, #f37a03, #f43531, #f00e5c, #01d7e4);
+  background-size: 50% 100%;
+  animation: spectrum-ring-slide 2.5s linear infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .spectrum-border::before,
   .spectrum-border:hover::before,
   .spectrum-border:focus-visible::before,
-  .spectrum-border-on::before {
+  .spectrum-border-on::before,
+  .spectrum-ring > span {
     animation: none;
   }
 }
@@ -1055,6 +1099,15 @@ h6 {
       130% 0,
       32px 32px;
   }
+}
+
+/* All three sweeps animate background-position, which repaints every frame,
+   and they kept going after the banner scrolled off the top of the page. The
+   component sets data-paused while it is out of view (observeAnimationActivity). */
+#builders-day-banner.builders-day-banner[data-paused],
+#builders-day-banner.builders-day-banner[data-paused]::before,
+#builders-day-banner.builders-day-banner[data-paused]::after {
+  animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
