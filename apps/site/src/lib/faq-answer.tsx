@@ -103,9 +103,7 @@ function renderInline(answer: string, keyPrefix: string): React.ReactNode {
           key={`${keyPrefix}-link-${index}`}
           href={href}
           className={LINK_CLASS}
-          {...(!isPrismaHostedHref(href)
-            ? { target: "_blank", rel: "nofollow noopener" }
-            : {})}
+          {...(!isPrismaHostedHref(href) ? { target: "_blank", rel: "nofollow noopener" } : {})}
         >
           {children}
         </a>

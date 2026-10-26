@@ -14,7 +14,10 @@ test("third-party FAQ links open in a new tab with nofollow noopener", () => {
     </>,
   );
 
-  assert.match(html, /href="https:\/\/hipaacomplianthosting\.com\/blog\/hipaa-compliant-app-hosting"/);
+  assert.match(
+    html,
+    /href="https:\/\/hipaacomplianthosting\.com\/blog\/hipaa-compliant-app-hosting"/,
+  );
   assert.match(html, /target="_blank"/);
   assert.match(html, /rel="nofollow noopener"/);
   assert.match(html, />guide to HIPAA compliant app hosting</);
@@ -22,7 +25,9 @@ test("third-party FAQ links open in a new tab with nofollow noopener", () => {
 
 test("Prisma-hosted FAQ links keep their existing attributes", () => {
   const html = renderToStaticMarkup(
-    <>{renderFaqAnswer("Audit reports are in the [Prisma Trust Center](https://trust.prisma.io).")}</>,
+    <>
+      {renderFaqAnswer("Audit reports are in the [Prisma Trust Center](https://trust.prisma.io).")}
+    </>,
   );
 
   assert.match(html, /href="https:\/\/trust\.prisma\.io"/);
