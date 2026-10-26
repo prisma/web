@@ -2095,6 +2095,14 @@ The follow-up keeps the single hostname-wide Cloudflare rule and implements:
   requested through an old version redirects without caching new bytes under
   the old digest. Original paths and Vercel's native public-file handling work
   as before. No media is duplicated in the blog artifact.
+- **Hash the chrome's logos with Next.** The header's light/dark lockups and the
+  footer's two animated layers previously made one-second `REVALIDATED` origin
+  reads after quiet periods. Four static imports now publish them under Next's
+  immutable, content-hashed paths on both Vercel and Compute. Their original
+  bytes, dimensions, theme rules and animation are unchanged; a build-output
+  digest check verifies all four files are byte-identical. They also participate
+  in the retained Next asset store, without importing the full image inventory
+  into a client component.
 - **Longer blog SWR with static retention.** Deployment builds with
   `WEB_RETAIN_ASSETS=1` use the existing project credential to locate the branch's
   active gateway. Its public static manifest and digest endpoints let the next
