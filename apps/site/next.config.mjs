@@ -1082,6 +1082,11 @@ const config = {
   async headers() {
     return [
       {
+        // Keep social cards fetchable without indexing the generated images.
+        source: "/og/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
+      {
         source: "/:path*",
         headers: securityHeaders,
       },

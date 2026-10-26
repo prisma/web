@@ -7,13 +7,17 @@ import { observeAnimationActivity } from "@/lib/animation-activity";
 // Dismissal persists in localStorage; the inline script hides the banner
 // before hydration (same pattern as fumadocs' Banner in the docs app), so a
 // returning visitor never sees it flash in.
-const DISMISS_KEY = "builders-day-banner-dismissed";
+// New key for the on-demand release, so visitors who dismissed the ticket
+// banner still hear that the talks are out.
+const DISMISS_KEY = "builders-day-on-demand-banner-dismissed";
 const DISMISS_CLASS = "builders-day-banner-dismissed";
+const BANNER_HREF =
+  "https://builders.day/stream?utm_source=prisma.io&utm_medium=banner&utm_campaign=builders-day-on-demand";
 
 /**
  * Site-wide announcement strip for Builder's Day, Prisma's AI developer
- * conference. Sits above the sticky navigation, so it scrolls away with the
- * page.
+ * conference, now a collection of prerecorded talks. Sits above the sticky
+ * navigation, so it scrolls away with the page.
  *
  * Styled after the docs app's Prisma Next banner (`prisma-next-banner` in
  * apps/docs global.css): dark ink base with color glows pooling at each end,
@@ -53,14 +57,14 @@ export function BuildersDayBanner() {
       <a
         ref={bannerRef}
         id="builders-day-banner"
-        href="https://pris.ly/builders-day"
+        href={BANNER_HREF}
         target="_blank"
         rel="noreferrer"
         onClick={() =>
           trackCTA({
-            cta_text: "Get tickets",
+            cta_text: "Watch the talks",
             cta_location: "builders_day_banner",
-            cta_destination: "https://pris.ly/builders-day",
+            cta_destination: BANNER_HREF,
           })
         }
         className="builders-day-banner relative flex items-center justify-center py-2.5 pl-4 pr-10 text-xs outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white sm:text-sm"
@@ -68,11 +72,11 @@ export function BuildersDayBanner() {
         <span className="builders-day-banner-content flex items-center justify-center gap-2.5">
           <span className="font-semibold whitespace-nowrap">Builder&apos;s Day</span>
           <span className="hidden text-white/70 md:inline">
-            Prisma&apos;s AI developer conference · October 26 · San Francisco
+            Talks on building AI agents in production, free to watch on demand
           </span>
-          <span className="inline whitespace-nowrap text-white/70 md:hidden">October 26 · SF</span>
+          <span className="inline whitespace-nowrap text-white/70 md:hidden">Free, on demand</span>
           <span className="builders-day-banner-cta shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold">
-            Get tickets
+            Watch the talks
             <svg
               width="14"
               height="14"

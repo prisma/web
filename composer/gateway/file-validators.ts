@@ -9,7 +9,7 @@ export function assetKey(path: string) {
   }
 }
 
-function matches(list: string | null, etag: string, weak: boolean) {
+export function etagMatches(list: string | null, etag: string, weak: boolean) {
   const normalize = (value: string) => (weak ? value.replace(/^W\//, "") : value);
   return (
     list?.split(",").some((part) => {
@@ -34,7 +34,10 @@ export function withFileValidators(
     if (!file || !["GET", "HEAD"].includes(request.method)) return handler(request);
     const expected = `"asset-v1-${file.sha256}"`;
     const incoming = request.headers;
-    const headers = new Headers(incoming);
+    const readRequest = new Request(request);
+    // Bun 1.4 keeps the original headers when an override becomes empty.
+    // Mutating the clone also preserves all other request metadata.
+    const headers = readRequest.headers;
     // Next's size/mtime validators cannot detect equal-size edits after archive
     // timestamps are normalized. Evaluate conditional reads against the hash.
     for (const name of [
@@ -46,7 +49,7 @@ export function withFileValidators(
     ])
       headers.delete(name);
     if (incoming.has("if-range") && incoming.get("if-range") !== expected) headers.delete("range");
-    const response = await handler(new Request(request, { headers }));
+    const response = await handler(readRequest);
     if (![200, 206].includes(response.status)) return response;
     const outgoing = new Headers(response.headers);
     const original = outgoing.get("etag") ?? "";
@@ -70,13 +73,13 @@ export function withFileValidators(
     let status = response.status;
     if (
       incoming.has("if-match")
-        ? !matches(incoming.get("if-match"), etag, false)
+        ? !etagMatches(incoming.get("if-match"), etag, false)
         : modified > Date.parse(incoming.get("if-unmodified-since") ?? "")
     )
       status = 412;
     else if (
       incoming.has("if-none-match")
-        ? matches(incoming.get("if-none-match"), etag, true)
+        ? etagMatches(incoming.get("if-none-match"), etag, true)
         : modified <= Date.parse(incoming.get("if-modified-since") ?? "")
     )
       status = 304;

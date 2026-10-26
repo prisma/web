@@ -245,6 +245,12 @@ environment is `prisma-production`; branch previews use
 `prisma-preview/<branch-name>`. A repository-level variable applies to both, so
 all selected secrets must exist in both scopes when using that option.
 
+Public PostHog build values come from the existing `NEXT_PUBLIC_POSTHOG_KEY`
+and `NEXT_PUBLIC_POSTHOG_HOST` GitHub secrets, with same-named repository
+variables as a fallback. These are Next build inputs, separate from runtime
+`envSecret` bindings. Consent providers must also support the deployed hostname;
+an unregistered preview domain can fail even when its scripts load successfully.
+
 Pushes to the default branch deploy to production; pushes to other branches
 deploy their branch preview. Tags do not trigger this workflow. The deployment
 workflow also skips changes limited to these two operational Composer guides;
@@ -294,6 +300,38 @@ immutable caching. No bodies are buffered. The gateway uses the library’s Node
 Bun to preserve known lengths on streamed responses; `Bun.serve` discards these
 lengths. Already-compressed public media also uses `no-transform`.
 
+Blog cards and author images add `__asset=<SHA-256>` to their public URLs. A small
+image-version manifest is generated at Next build/dev configuration time and
+before blog tests; runtime rendering reads the compiled lookup without hashing
+files or copying media. The gateway checks the version against its public-file
+inventory and gives a matching URL one year of immutable browser/CDN caching.
+If an old page requests media changed by a deploy, an uncached redirect points
+to the current content version. New bytes are never cached under an old hash.
+Original unversioned URLs retain bounded freshness. Vercel accepts the query
+parameter through its existing public-file handling and keeps its own policy.
+
+Stale-while-revalidate already works with the hostname-wide rule and origin
+headers; it does not need another Cloudflare rule. After the five-minute stale
+window ends, an expired HTML request must wait for origin revalidation again.
+The immutable image URLs avoid that repeated wait for unchanged covers/avatars.
+The deploy workflow also sets `WEB_RETAIN_ASSETS=1`: the builder reads the existing
+gateway's public static manifest, verifies and carries forward historical Next
+assets for 48 hours, and packages the current assets as content-addressed blobs.
+It uses the deploy action's existing project credential to find the branch's
+gateway; no Cloudflare credential or new rule is needed. Identical bytes across
+apps share one blob. Current asset requests keep Next's normal compression;
+historical paths are streamed from the gateway. Bad history reads, changed bytes
+at an immutable URL and budget overflows stop the build rather than silently
+dropping files that a cached page needs.
+
+With retention enabled, **only public blog HTML** gets a 24-hour stale window
+after its one-minute freshness window. Cloudflare can serve it immediately and
+refresh in the background after a quiet period. Other sites and original
+unversioned public files keep the five-minute window. Offline/local builds
+without retention enabled also keep the five-minute HTML window. The public
+`/_composer/static-assets.json` manifest and its digest-addressed file endpoints
+contain only public Next assets, with no server source or credentials.
+
 Only successful prerendered HTML or explicitly public MDX documents can opt in;
 other request-rendered/private pages, errors,
 cookie-setting responses, authorization and Next navigation requests cannot.
@@ -325,12 +363,13 @@ directory. Vercel uses its original cache handler. Docs' standalone image
 sources include its `/docs` basePath.
 
 This policy is applied only by the Composer gateway. Vercel retains its existing
-cache and deployment invalidation. Without purge credentials, a cached document
-can remain visible for up to six minutes (freshness plus background revalidation)
-after a deployment. This is bounded staleness, not instant deployment invalidation.
-Before production, add deployment-aware purge or retention of old hashed assets:
-stale HTML can reference chunks removed by a newer deployment. A short TTL is
-not a substitute for that release boundary.
+cache and deployment invalidation. Blog content can remain visible for up to
+24 hours plus one minute after a deployment, with retention protecting its
+static dependencies; normally the next visitor triggers a background refresh.
+Other documents retain a six-minute bound. This is bounded staleness, not instant
+deployment invalidation or full server-version pinning. An integrated CDN should
+publish assets durably and coordinate version promotion, invalidation and
+framework/server-action skew. First-ever cache misses still reach EWR.
 
 The exported [Cloudflare Cache Rule](composer/cloudflare-cache-rule.json) is
 one hostname-wide rule. It makes all response types eligible, while the origin

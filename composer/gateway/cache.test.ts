@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { withOriginCache } from "./cache.ts";
+import { createHash } from "node:crypto";
 
 const request = (init: RequestInit = {}, path = "/blog") =>
   new Request(`https://web.test${path}`, { headers: { accept: "text/html" }, ...init });
@@ -38,6 +39,85 @@ test("prerendered HTML has origin-owned CDN freshness and browser revalidation",
     assert.ok(vary.includes(name), name);
   assert.equal(response.headers.get("etag"), '"unchanged"');
   assert.equal(await response.text(), "prerendered HTML");
+});
+
+test("content-versioned public media stays immutable while unversioned URLs keep bounded freshness", async () => {
+  const digest = createHash("sha256").update("current").digest("hex");
+  const files = new Map([["/blog/hero.svg", { bytes: 7, sha256: digest }]]);
+  const handler = withOriginCache(
+    (req) =>
+      new Response(req.method === "HEAD" ? null : "current", {
+        headers: {
+          "content-type": "image/svg+xml",
+          "cache-control": "public, max-age=0",
+          etag: 'W/"7-3e8"',
+        },
+      }),
+    files,
+  );
+  const url = `/blog/hero.svg?__asset=${digest}`;
+  for (const method of ["GET", "HEAD"]) {
+    const response = await handler(request({ method }, url));
+    assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
+    assert.equal(response.headers.get("cdn-cache-control"), "public, max-age=31536000, immutable");
+    assert.equal(await response.text(), method === "HEAD" ? "" : "current");
+  }
+  const conditional = await handler(
+    request({ headers: { "if-none-match": `"asset-v1-${digest}"` } }, url),
+  );
+  assert.equal(conditional.status, 304);
+  assert.equal(conditional.body, null);
+  assert.equal(conditional.headers.get("cdn-cache-control"), "public, max-age=31536000, immutable");
+  const unversioned = await handler(request({}, "/blog/hero.svg"));
+  assert.equal(unversioned.headers.get("cache-control"), "public, max-age=0");
+  assert.equal(
+    unversioned.headers.get("cdn-cache-control"),
+    "public, max-age=60, stale-while-revalidate=300",
+  );
+});
+
+test("old, invalid and ambiguous media versions redirect without caching bytes under the wrong hash", async () => {
+  const digest = createHash("sha256").update("new").digest("hex");
+  let reads = 0;
+  const handler = withOriginCache(
+    () => {
+      reads++;
+      return new Response("new");
+    },
+    new Map([["/blog/hero.svg", { bytes: 3, sha256: digest }]]),
+  );
+  for (const version of ["old", "", `${digest}&__asset=other`]) {
+    const response = await handler(request({}, `/blog/hero.svg?download=1&__asset=${version}`));
+    assert.equal(response.status, 307);
+    assert.equal(response.headers.get("location"), `/blog/hero.svg?download=1&__asset=${digest}`);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(response.headers.get("cdn-cache-control"), "no-store");
+    assert.equal(response.body, null);
+  }
+  assert.equal(reads, 0, "the release inventory resolves old versions before an upstream fetch");
+  const unknown = await handler(request({}, "/api/unknown.svg?__asset=old"));
+  assert.equal(unknown.status, 200);
+  assert.equal(await unknown.text(), "new");
+});
+
+test("versioned media still honors private requests, cookie-setting responses and explicit CDN policy", async () => {
+  const digest = createHash("sha256").update("media").digest("hex");
+  const files = new Map([["/blog/image.png", { bytes: 5, sha256: digest }]]);
+  const url = `/blog/image.png?__asset=${digest}`;
+  for (const [extra, init] of [
+    [{}, { headers: { authorization: "Bearer test" } }],
+    [{ "set-cookie": "session=test" }, {}],
+    [{ "cdn-cache-control": "no-store" }, {}],
+  ] as [Record<string, string>, RequestInit][]) {
+    const handler = withOriginCache(
+      () =>
+        new Response("media", {
+          headers: { "content-type": "image/png", "cache-control": "public, max-age=0", ...extra },
+        }),
+      files,
+    );
+    assert.equal((await handler(request(init, url))).headers.get("cdn-cache-control"), "no-store");
+  }
 });
 
 test("alternating HTML, Markdown and uncached navigation keep one document Vary schema", async () => {
@@ -101,6 +181,30 @@ test("the HTML freshness cap does not extend a shorter framework TTL", async () 
     response.headers.get("cdn-cache-control"),
     "public, max-age=30, stale-while-revalidate=300",
   );
+});
+
+test("retention-backed blog HTML can revalidate in the background for a day without extending other sites", async () => {
+  const handler = withOriginCache(() => html(), new Map(), { blogStaleSeconds: 86_400 });
+  for (const path of ["/blog", "/blog/article"]) {
+    const response = await handler(request({}, path));
+    assert.equal(
+      response.headers.get("cdn-cache-control"),
+      "public, max-age=60, stale-while-revalidate=86400",
+    );
+    assert.equal(response.headers.get("cache-control"), "public, max-age=0");
+  }
+  for (const path of ["/", "/docs/composer", "/blogger"]) {
+    assert.equal(
+      (await handler(request({}, path))).headers.get("cdn-cache-control"),
+      "public, max-age=60, stale-while-revalidate=300",
+    );
+  }
+  for (const init of [
+    { method: "POST" },
+    { headers: { authorization: "Bearer test" } },
+    { headers: { rsc: "1" } },
+  ] as RequestInit[])
+    assert.equal((await handler(request(init))).headers.get("cdn-cache-control"), "no-store");
 });
 
 test("explicit app CDN policies remain authoritative", async () => {
