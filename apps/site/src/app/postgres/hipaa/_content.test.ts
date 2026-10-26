@@ -38,6 +38,10 @@ test("the non-TypeScript answer links the connection docs first and stays valid 
       item.answer.indexOf("hipaacomplianthosting.com"),
   );
   assert.ok(!item.answer.toLowerCase().includes("prisma compute"));
+  assert.ok(
+    item.answer.includes("If a third-party provider hosts your app, it needs to sign a BAA too."),
+  );
+  assert.ok(!item.answer.includes("You also need a BAA-covered host for the app itself."));
 
   const plain = stripFaqAnswerMarkup(item.answer);
   assert.ok(!plain.includes("["));
