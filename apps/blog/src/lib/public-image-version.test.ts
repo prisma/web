@@ -32,6 +32,25 @@ test("image inventory versions exact bytes, encodes paths, skips links and non-i
   assert.notEqual(versionPublicImage(src, updated), src, "edited image bytes get a new URL");
 });
 
+test("raw and encoded reserved filename characters share the inventory's version", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "blog-media-reserved-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const name = "cover@2x+wide,blue.svg";
+  await writeFile(join(dir, name), "<svg>reserved filename</svg>");
+  const inventory = await publicImageVersions(dir);
+  const digest = inventory[`/blog/${encodeURIComponent(name)}`];
+  assert.ok(digest);
+  for (const path of [name, encodeURIComponent(name)]) {
+    const src = `/blog/${path}?download=1#art`;
+    const versioned = versionPublicImage(src, inventory);
+    const url = new URL(versioned, "https://blog.test");
+    assert.equal(url.searchParams.get("__asset"), digest);
+    assert.equal(url.searchParams.get("download"), "1");
+    assert.equal(url.hash, "#art");
+    assert.equal(versionPublicImage(versioned, inventory), versioned);
+  }
+});
+
 test("external, missing, traversal and non-image paths never get invented versions", () => {
   const inventory = { "/blog/known.svg": "digest" };
   for (const src of [

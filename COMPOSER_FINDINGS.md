@@ -2135,7 +2135,7 @@ The public-file validator now clones the request and deletes conditional headers
 on that clone, preserving metadata and avoiding that empty-override behavior.
 The existing conditional-read regression then passes on Node and Bun.
 
-Local verification includes blog 91, proxy 41, Composer 49 and root 65 tests,
+Local verification includes blog 92, proxy 41, Composer 49 and root 65 tests,
 all eight type tasks, ordinary Vercel and Composer production builds, and the full
 local five-site smoke. The focused cache/retention/validator suite passes on
 Node and Bun. A multi-generation test verifies old files survive a deploy and
@@ -2144,6 +2144,12 @@ blob download. Real-browser checks verify no search chunk initially, first-open
 focus, Escape, query retention, delayed-chunk cancellation and no late reopen.
 Deployed benchmark results are recorded in the follow-up PR after deployment;
 these local gates alone do not establish a performance win.
+
+Review found that URL parsing preserves reserved filename characters such as
+`@` and `+`, while the image inventory encodes them. A regression using an actual
+file fails before normalizing the lookup and passes afterwards, for both raw
+and encoded URLs. Malformed encodings still remain unchanged. This prevents
+some image names from silently retaining the short, unversioned cache policy.
 
 The retained before-run browser logs reveal an important comparison caveat:
 CookieYes rejects `prisma.sorenbs.com` as an unregistered website and PostHog

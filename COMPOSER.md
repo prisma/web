@@ -238,18 +238,18 @@ manual cloud deploy outside the workflow needs a random `WEB_PROXY_KEY` exported
 in its shell; subsequent deploys can use the stored platform value.
 
 The workflow reads the non-secret GitHub variable `COMPOSER_INTEGRATIONS`.
-Public PostHog build values come from the existing `NEXT_PUBLIC_POSTHOG_KEY`
-and `NEXT_PUBLIC_POSTHOG_HOST` GitHub secrets, with same-named repository
-variables as a fallback. These are Next build inputs, separate from runtime
-`envSecret` bindings. Consent providers must also support the deployed hostname;
-an unregistered preview domain can fail even when its scripts load successfully.
-
 Leave it unset for the initial preview. To enable integrations, first add their
 secrets in Prisma Console under the project's appropriate Preview/Production
 scope, then set the variable on the matching GitHub environment. The production
 environment is `prisma-production`; branch previews use
 `prisma-preview/<branch-name>`. A repository-level variable applies to both, so
 all selected secrets must exist in both scopes when using that option.
+
+Public PostHog build values come from the existing `NEXT_PUBLIC_POSTHOG_KEY`
+and `NEXT_PUBLIC_POSTHOG_HOST` GitHub secrets, with same-named repository
+variables as a fallback. These are Next build inputs, separate from runtime
+`envSecret` bindings. Consent providers must also support the deployed hostname;
+an unregistered preview domain can fail even when its scripts load successfully.
 
 Pushes to the default branch deploy to production; pushes to other branches
 deploy their branch preview. Tags do not trigger this workflow. The deployment
