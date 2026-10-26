@@ -35,7 +35,12 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     return (
       <div ref={ref} role="alert" className={cn(alertVariants({ variant }), className)} {...props}>
         {IconComponent}
-        <div className="[&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">{children}</div>
+        {/* min-w-0: flex items default to min-width auto, so wide unbreakable
+            content (e.g. a long URL in an embedded CodeBlock) would otherwise
+            stretch this wrapper and overflow the page column. */}
+        <div className="min-w-0 [&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">
+          {children}
+        </div>
       </div>
     );
   },
