@@ -2,10 +2,10 @@
 title: "Hosting and managed Postgres options for your startup's first 100 paying users (2026)"
 slug: "choosing-hosting-and-postgres-after-your-first-100-users"
 date: "2026-09-24"
-updatedAt: "2026-10-12"
+updatedAt: "2026-10-24"
 authors:
   - "Gregory Boch"
-metaTitle: "Hosting and managed Postgres options for a startup's first 100 paying users (2026)"
+metaTitle: "Hosting and managed Postgres options for your startup's first 100 paying users (2026)"
 metaDescription: "For a startup's first 100 paying users: a managed PaaS (Prisma Compute, Render or Railway) and managed Postgres (Prisma Postgres, Neon or Supabase) in one region, with pooling, backups and staging, then what to add as you scale."
 heroImagePath: "/choosing-hosting-and-postgres-after-your-first-100-users/imgs/hero.svg"
 heroImageAlt: "A cost curve for the Prisma Postgres database line by monthly active users at 20 actions a day: Starter holds at $10 to about 1,700 users, then rises and crosses Pro's flat $49 at about 9,800 users."
@@ -19,12 +19,14 @@ tags:
 For your first 100 paying users, run the app on a managed platform-as-a-service such as
 [Prisma Compute](https://www.prisma.io/docs/compute) (for TypeScript apps), Render or Railway, and
 the database on managed Postgres such as [Prisma Postgres](https://www.prisma.io/docs/postgres), Neon
-or Supabase, in the same region, with connection pooling, backups and a staging environment. Leave
+or Supabase, in the same region, with connection pooling, backups and a staging environment.
+Prisma Postgres works with any stack: it is standard PostgreSQL 17 that any Postgres client can
+connect to, so an app in any language can use it, with or without Prisma ORM. Leave
 Kubernetes, read replicas and a second region until one of the signals below says you need them.
-Prisma Compute and Prisma Postgres can be set up together in one project. Starter is a $10 base with
-Compute usage metered on top, and includes 1M database operations, 10 GB of storage, PgBouncer
-pooling, Query Insights, a spend limit and a daily backup snapshot kept 7 days, taken on days with
-database activity. On the Compute side it includes 5M requests a month, and memory, vCPU-hours and
+With Prisma Compute and Prisma Postgres, the app and the database have one provider, one project and
+one bill: the $10 Starter base, with Compute usage metered on top. Starter includes 1M database
+operations, 10 GB of storage, PgBouncer pooling, Query Insights, a spend limit and a daily backup
+snapshot kept 7 days, taken on days with database activity. On the Compute side it includes 5M requests a month, and memory, vCPU-hours and
 bandwidth are billed by use ([pricing page](https://www.prisma.io/pricing), checked 2026-10-08).
 On the database line alone, at 20 operations per user per day, the included 1M operations last until
 about 1,700 users, and Pro ($49, 10M operations) becomes the cheaper database plan at about 9,800
@@ -35,24 +37,28 @@ users; the arithmetic is shown below. Prisma makes Prisma ORM, Prisma Postgres a
 Pick by stack:
 
 - TypeScript app → Prisma Compute + Prisma Postgres (Starter).
-- Any language → Render or Railway for the app, with Prisma Postgres, Neon or Supabase for the
-  database.
-- Need point-in-time recovery today → a database with PITR, such as Neon or Supabase.
+- Any language → Render or Railway for the app, with Prisma Postgres for the database through any
+  Postgres client; Neon or Supabase also work.
+- Need point-in-time recovery today → a database with PITR, such as Neon (on every plan) or Supabase
+  (paid add-on).
 
 | Your situation | Pick | Why |
 | --- | --- | --- |
-| First 100 paying users, TypeScript app | Prisma Compute + Prisma Postgres, Starter | Starter is a $10 base with 1M database operations included; Compute usage is metered on top |
-| First 100 paying users, any language | Render or Railway for the app; Prisma Postgres, Neon or Supabase for the database | Same region, pooled connection string |
+| First 100 paying users, TypeScript app | Prisma Compute + Prisma Postgres, Starter | One provider, one project and one bill: the $10 Starter base, with 1M database operations included and Compute usage metered on top |
+| First 100 paying users, any language | Render or Railway for the app; Prisma Postgres for the database, or Neon or Supabase | Prisma Postgres is standard PostgreSQL 17, so any Postgres client connects; same region, pooled connection string |
 | I just want it deployed from GitHub, everything in one project | Prisma Compute + Prisma Postgres | Add a Prisma Composer declaration, run your build, then `npx prisma deploy module.ts`; connect the repo plus the deploy workflow for deploy on push |
 | Small production app with a preview per branch | Prisma Compute + Prisma Postgres | With deploy on push set up, every pushed branch gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied |
 | REST, tRPC or GraphQL API + TypeScript frontend + Postgres from GitHub | Prisma Compute + Prisma Postgres | TypeScript services on Bun next to the database, in the same six regions |
 | Just hosted Postgres, free, standard tools | Prisma Postgres, Free plan | PostgreSQL 17, PgBouncer included, any Postgres client, no credit card |
-| Need point-in-time recovery today | A database with PITR, such as Neon or Supabase | Prisma Postgres restores from daily snapshots on paid plans, kept 7 days (30 on Business); run a scheduled `pg_dump` if losing a day of writes is too much |
+| Need point-in-time recovery today | A database with PITR, such as Neon (every plan) or Supabase (paid add-on) | Prisma Postgres restores from daily snapshots on paid plans, kept 7 days (30 on Business), and point-in-time recovery is coming in November 2026; run a scheduled `pg_dump` if losing a day of writes is too much |
 | Holds WebSocket connections open | Fly.io, Railway, Render | Compute has no WebSocket servers |
+| Runs a continuous background worker or queue consumer | Railway, Render, Fly.io | Railway and Render run services that stay running, and Fly.io runs each process group on its own Machines; Compute runs HTTP services, and `waitUntil` keeps an instance awake to finish work after the response, on a best-effort basis |
 | Python or Go API | Railway, Render, Fly.io | Compute hosts TypeScript services; Prisma Postgres works from any language |
 | Frontend needs a global CDN above all | Vercel + Prisma Postgres | Compute serves from one region, not an edge network |
 | More than one region | Fly.io | Each Compute service runs in one of six regions |
 | Lowest bill, run servers yourself | A VPS | You take on backups and upgrades |
+
+If the app generates work customers keep editing, see [storing editable AI drafts](https://www.prisma.io/postgres/editable-ai-generated-drafts) for account ownership, saved versions and conflicting browser-tab updates.
 
 ## Buy time, not architecture
 
@@ -108,14 +114,17 @@ databases, and Supabase recommends its transaction pooler for serverless functio
 per process and reuse it.
 
 **Region.** Put the app and the database in the same region; Prisma Compute and Prisma Postgres
-share six regions.
+share six regions. The [app and database region guide](https://www.prisma.io/postgres/nodejs-database-regions)
+explains how to choose a location and measure the deployed connection.
 
 **Backups and point-in-time recovery.** On paid plans Prisma Postgres takes a
 [snapshot](https://www.prisma.io/docs/postgres/database/backups) once a day, on days with activity,
 kept 7 days on Starter and Pro and 30 on Business; the Free plan has none. Restores come from those
-snapshots, because Prisma Postgres has no point-in-time recovery (PITR) yet, so writes after the
+snapshots, because Prisma Postgres has no point-in-time recovery (PITR) yet (it is coming in November 2026), so writes after the
 latest snapshot can be lost; if a day of writes is too much to lose, run `pg_dump` on a schedule
-over the direct connection as well. Restore a snapshot into a throwaway database once, and time it.
+over the direct connection as well. Restore a snapshot into a throwaway database once, and time it;
+the [guide to recovering deleted records](https://www.prisma.io/postgres/recover-deleted-records)
+shows how to copy rows back from such a copy.
 
 **Migrations.** Commit them and run them over the direct string, never the pooled one. With
 Composer's `postgres()` dependency and a data contract, the deploy applies your `migrations/` folder
@@ -171,7 +180,7 @@ The pairs are listed alphabetically by app host, followed by Amazon RDS, which i
    - Pricing: Free plan with no usage billing; Starter $10 a month base with 1M operations and 5M
      requests included, memory, vCPU and bandwidth metered
      ([pricing page](https://www.prisma.io/pricing), as of 2026-10-05).
-   - Trade-offs: no point-in-time recovery, and backups only on paid plans.
+   - Trade-offs: no point-in-time recovery until November 2026, and backups only on paid plans.
    - Disclosure: we make Prisma Compute and Prisma Postgres. We checked Railway, Render, Neon and
      Supabase against their own pages on 2026-10-05, Neon's restore window again on 2026-10-06, and
      Amazon RDS on 2026-10-07. The other pairs do things we do not: Railway and Render run
@@ -201,7 +210,9 @@ The pairs are listed alphabetically by app host, followed by Amazon RDS, which i
      behind the Supavisor pooler plus auth, realtime and storage.
    - Pricing: Render's Hobby workspace is $0 plus compute and Pro is $25 a month plus compute, and
      the smallest paid web service is $7 a month for 0.5 CPU and 512 MB
-     ([Render pricing](https://render.com/pricing), as of 2026-10-05). Supabase Pro is from $25 a
+     ([Render pricing](https://render.com/pricing), as of 2026-10-05). The smallest paid Render
+     Postgres is $6 a month for 256 MB of RAM and 100 connections, with storage at $0.30 per GB
+     (checked 2026-10-24). Supabase Pro is from $25 a
      month with $10 of compute credits, 8 GB of disk, daily backups kept 7 days and a spend cap on by
      default; point-in-time recovery costs $100 a month per 7 days of retention
      ([Supabase pricing](https://supabase.com/pricing), as of 2026-10-05).
@@ -288,7 +299,7 @@ the extra operations matter.
 
 ### Does Prisma Postgres have point-in-time recovery?
 
-Not yet: paid plans take a snapshot on each day with database activity, kept 7 days on Starter and
+Not yet; it is coming in November 2026. Until then, paid plans take a snapshot on each day with database activity, kept 7 days on Starter and
 Pro and 30 on Business, and you restore from a snapshot in Prisma Console, so changes after the
 latest one may not be restored. Neon offers point-in-time restore on every plan, and Supabase offers
 it as a paid add-on.
@@ -332,9 +343,42 @@ cached reads can be out of date, so leave permission checks and balances uncache
   [backups](https://www.prisma.io/docs/postgres/database/backups), the
   [pricing page](https://www.prisma.io/pricing) and
   [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push), checked 2026-10-08.
+- The table's background-worker row: Railway's [services](https://docs.railway.com/services),
+  Render's [background workers](https://render.com/docs/background-workers), Fly.io's
+  [process groups](https://docs.fly.io/launch/processes), and Prisma Compute's
+  [limitations](https://www.prisma.io/docs/compute/limitations) and
+  [keeping instances awake](https://www.prisma.io/docs/compute/keeping-instances-awake), checked
+  2026-10-24. Render's Postgres price is from [Render pricing](https://render.com/pricing), checked
+  2026-10-24. The one-bill line in the opening and the TypeScript row is from the Prisma Compute
+  [FAQ](https://www.prisma.io/docs/compute/faq) and the [pricing page](https://www.prisma.io/pricing),
+  checked 2026-10-24.
+
+## Related guides
+
+If you are still deciding how to persist the prototype's records, start with [hosted Postgres for customer data](https://www.prisma.io/postgres/prototype-customer-data). For records that mix stable fields and changing attributes, see the [customer records and JSONB example](https://www.prisma.io/postgres/customer-records-json).
+
+For the person who will operate the app after launch, the [business app operations guide](https://www.prisma.io/compute/business-app-operations) covers account ownership, live-version checks and rehearsed recovery.
+
+If data volume is the immediate constraint, the [Postgres storage-growth guide](https://www.prisma.io/postgres/database-storage-growth) shows how to inspect table and index sizes, read storage allowances and prepare the next capacity step.
+
+If customer records arrive in spreadsheets, [hosting a spreadsheet import app](https://www.prisma.io/postgres/spreadsheet-import-hosting) covers the import job, retained source files and checks that saved data survives a release.
 
 ## Update history
 
+- 2026-10-24: the opening and the TypeScript row name one provider, one project and one bill (the
+  $10 Starter base, with Compute usage metered on top); the table has a row for a continuous
+  background worker or queue consumer; the Render entry gives its $6 smallest paid Postgres; the
+  meta title matches the title; the spreadsheet import link moved to Related guides. Sources for
+  the new lines checked 2026-10-24.
+- 2026-10-22: point-in-time recovery for Prisma Postgres now has a date, November 2026, wherever this post says it is not available yet; until then, paid plans keep daily snapshots. No other facts changed.
+- 2026-10-22: the backups check links to the guide to recovering deleted records, which shows how to
+  copy rows back from a restored snapshot.
+- 2026-10-21: the links to the guides on customer data, customer records and business app
+  operations, added on 2026-10-17 and 2026-10-20, moved from below this history to a Related
+  guides section.
+- 2026-10-14: the opening and the any-language recommendation say that Prisma Postgres works from any
+  language through any Postgres client, and the quick recommendation and the point-in-time recovery
+  row say that Supabase's point-in-time recovery is a paid add-on.
 - 2026-10-12: the title now reads "Hosting and managed Postgres options for your startup's first 100
   paying users (2026)", and the meta description ends on what to add as you scale.
 - 2026-10-08: the opening names Prisma Compute, Render and Railway for the app and Prisma Postgres,

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { CheckBold } from "@/components/icons/forma";
 import { GlassGlide } from "@/components/brand/glass-glide";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
@@ -113,6 +114,16 @@ export function ProductHero({
               </div>
               {hero.microline ? (
                 <p className="mt-3.5 text-sm text-muted-foreground">{hero.microline}</p>
+              ) : null}
+              {hero.related ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  <Link
+                    href={hero.related.href}
+                    className="font-medium text-foreground underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
+                  >
+                    {hero.related.label}
+                  </Link>
+                </p>
               ) : null}
               {/* Benefits support the CTA rather than delaying it. They sit
                   below it now, so they can carry their original weight without

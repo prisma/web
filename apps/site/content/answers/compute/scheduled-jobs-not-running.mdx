@@ -1,0 +1,246 @@
+---
+title: "Next.js cron job not running after deploy: how do I run scheduled jobs in production?"
+description: "In-app timers like node-cron stop when no server process is running. Have a scheduler call an authenticated route, and make each run safe to repeat."
+summary: "A job scheduled inside the app with `node-cron` or `setInterval` only fires while a server process is running. On a serverless or scale-to-zero host, no process is running at the scheduled time, and on a server with several instances the job fires once per instance. Move the schedule out of the app: put the job in a route handler that checks a secret, and have a scheduler call it, such as Vercel Cron Jobs on Vercel, a GitHub Actions schedule on any host, or the cron feature of Netlify, Render, Railway or Cloudflare. Then make each run safe to repeat or miss, because Vercel documents both missed and duplicate deliveries, and record every run so a missed one shows up. [Prisma Compute](/docs/compute) has no built-in cron scheduler, and the same steps work there: a scheduler outside the app calls the route."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "10 min read"
+faq:
+  - question: "Can I start node-cron from instrumentation.ts in Next.js?"
+    answer: "Only on a server that runs one long-lived instance, such as `next start` on a single VM. Next.js calls `register` in `instrumentation.ts` once when a new server instance starts, so a scheduler started there runs in every instance: with two replicas the job runs twice, and on a serverless host it runs only while an instance happens to be alive. Check `process.env.NEXT_RUNTIME === \"nodejs\"` before importing `node-cron`, because the file also loads in the Edge runtime. For anything else, call a route from an external scheduler."
+  - question: "Do Vercel cron jobs run on preview deployments?"
+    answer: "No. Vercel's troubleshooting guide says cron jobs only run on production deployments, and Vercel calls the production deployment URL with a GET request. To test a job before release, call the route yourself with the `Authorization: Bearer` header, or, once the job is deployed to production, run `vercel crons run /api/cron/daily-report`, a CLI command Vercel marks as beta, which triggers it without waiting for the schedule."
+  - question: "How often can a Vercel cron job run on the Hobby plan?"
+    answer: "Once per day. Vercel fails the deployment if a cron expression on a Hobby account would run more often, and it may invoke the job at any point within the scheduled hour. Pro and Enterprise run jobs as often as once per minute, within the scheduled minute. Every plan allows 100 cron jobs per project."
+  - question: "Should I use a job service such as Inngest or Trigger.dev instead?"
+    answer: "Consider one when the job needs retries, several steps, or more time than a single request allows. Inngest functions take a `cron` trigger and Trigger.dev has scheduled tasks, and both read cron expressions in UTC unless you set a time zone. A plain scheduler calling a route is enough for a short job that is safe to repeat."
+related:
+  - title: "Prisma Compute request timeout and background work"
+    href: "/docs/compute/request-timeout"
+  - title: "Where database passwords and API keys go when you deploy"
+    href: "/compute/typescript-app-secrets"
+  - title: "Files uploaded to my Node app disappear after a redeploy"
+    href: "/compute/file-uploads-disappear-after-redeploy"
+cta:
+  title: "Deploy your Next.js app to Prisma Compute"
+  description: "Build the standalone server, deploy it with the Prisma CLI, and point your scheduler at a route in the deployed app."
+  label: "Read the Next.js guide"
+  href: "/docs/guides/frameworks/nextjs"
+---
+
+On your laptop, `next dev` keeps one Node process running for hours, so a `node-cron` schedule or a `setInterval` loop fires on time. In production, that process may not exist when the schedule comes due. On Vercel, Netlify and other serverless hosts, your code runs when a request arrives. A host that scales idle apps to zero stops the process between requests. And a host that runs several instances runs the timer in each of them. The fix that works on every host: the schedule lives outside the app and calls it.
+
+We make Prisma Compute and Prisma Postgres. The fix below works on any host. The other vendors' documentation linked on this page was checked on October 22, 2026.
+
+## Why doesn't the scheduled job run after deploy?
+
+What you see points to the cause. Run the check before you change anything.
+
+| What you see | Likely cause | Check |
+| --- | --- | --- |
+| The job runs with `next dev` and never in production | A timer in the app on a host that runs code only per request | Where the schedule is defined: `node-cron`, `setInterval`, `instrumentation.ts` |
+| The job runs for a while after a visit, then stops | The host scaled the idle instance down, and the timer with it | The host's idle or scale-to-zero behavior |
+| The job runs twice or more each time | Every instance or replica starts its own timer, or the scheduler delivered the same run twice | The number of running instances, and your run log |
+| A Vercel cron job never fires | It is on a preview deployment, or a Hobby schedule runs more than once a day | The project's Cron Jobs settings and the latest production deployment |
+| The cron route returns `404` | The path in `vercel.json` doesn't match the route, or a `trailingSlash` setting changes it | The cron job's logs and the path in `vercel.json` |
+| A GitHub Actions schedule never runs | The workflow file isn't on the default branch, where scheduled workflows run | The branch that holds `.github/workflows/` |
+| The cron route returns `401` | `CRON_SECRET` is missing or different in production, or contains a newline | The production value of the variable |
+| The job runs at the wrong hour | The scheduler reads the expression in UTC | The expression converted from your local time |
+| Vercel shows no log for the run | The route returned a redirect (for example, auth middleware sending `/api/cron` to a login page) or a cached response, or the delivery was dropped | The route's response, middleware that matches the path, and a trailing slash on the path |
+
+The Vercel rows come from [Vercel's troubleshooting guide](https://vercel.com/kb/guide/troubleshooting-vercel-cron-jobs) and [Managing Cron Jobs](https://vercel.com/docs/cron-jobs/manage-cron-jobs): a cron job on a [path that doesn't exist](https://vercel.com/docs/cron-jobs/manage-cron-jobs#handling-nonexistent-paths) still runs and returns a `404`, cron invocations [don't follow redirects](https://vercel.com/docs/cron-jobs/manage-cron-jobs#cron-jobs-and-redirects), a [dropped delivery](https://vercel.com/docs/cron-jobs/manage-cron-jobs#cron-job-delivery-and-idempotency) creates no runtime log, and the guide suggests `export const dynamic = "force-dynamic"` on the route when caching hides runs. The GitHub row comes from GitHub's [`schedule` event docs](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
+## How do I run cron jobs in production?
+
+These steps work on any host. Replace `daily-report` with your job's name.
+
+### 1. Move the job into a route that checks a secret
+
+Put the work in a route handler, and accept only requests that carry a shared secret. This is the pattern [Vercel documents](https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs) for Vercel Cron Jobs, and any scheduler that can send a header can call it:
+
+```ts title="app/api/cron/daily-report/route.ts"
+import { sendDailyReport } from "@/lib/daily-report";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  await sendDailyReport();
+  return Response.json({ ok: true });
+}
+```
+
+Generate a random value of at least 16 characters, as Vercel recommends, and set it as `CRON_SECRET` in production. Delete the old `node-cron` or `setInterval` code, so a long-running instance doesn't run the job a second time.
+
+Call the route yourself once to check it:
+
+```sh
+curl -i -H "Authorization: Bearer $CRON_SECRET" https://your-app.example.com/api/cron/daily-report
+```
+
+### 2. Have a scheduler call the route
+
+Pick the scheduler that matches where the app runs. These are ordered alphabetically:
+
+| Scheduler | Use it when | Interval and timing | Time zone |
+| --- | --- | --- | --- |
+| [Cloudflare Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) | You use Cloudflare Workers. A Worker's `scheduled()` handler runs on the schedule and can call your route. | Changes can take up to 15 minutes to propagate. | UTC |
+| [Fly.io scheduled Machines](https://docs.fly.io/blueprints/task-scheduling) | The app runs on Fly.io. A Machine starts on the schedule. | Hourly, daily, weekly or monthly only; Fly.io describes it as not for precise timing. | Not documented |
+| [cron-job.org](https://cron-job.org/en/) | Any host. A free hosted service that sends an HTTP request with the method and headers you set. | Up to once a minute. By default, a request that hasn't finished after [30 seconds](https://cron-job.org/en/faq/) is closed. | UTC unless you [set one per job](https://docs.cron-job.org/rest-api.html) |
+| [GitHub Actions `schedule`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule) | Any host. A workflow calls the route with `curl`. The workflow file must be on the default branch; schedules run only there. | At most every 5 minutes. Runs can be delayed under high load, and some queued jobs may be dropped. In a public repository, schedules are disabled after 60 days with no activity. | UTC unless you set an IANA time zone |
+| [Netlify Scheduled Functions](https://docs.netlify.com/build/functions/scheduled-functions/) | The app runs on Netlify. | Only published deploys run on schedule, not Deploy Previews or branch deploys. 30-second execution limit. | UTC |
+| [Railway cron jobs](https://docs.railway.com/reference/cron-jobs) | The app runs on Railway. A service's start command runs on the schedule and must exit when done. | At least 5 minutes apart. A run is skipped while the previous one is still going. | UTC |
+| [Render cron jobs](https://render.com/docs/cronjobs) | The app runs on Render. A separate cron job service runs a command. | At most one active run; the next one waits. Runs stop after 12 hours. Minimum $1 a month per cron job service. | UTC |
+| [Upstash QStash schedules](https://upstash.com/docs/qstash/features/schedules) | Any host. QStash publishes a message to your URL and [signs it](https://upstash.com/docs/qstash/howto/signature) in the `Upstash-Signature` header. It sends `POST` unless you set `Upstash-Method`. | A new schedule can take up to 60 seconds to load. | UTC unless the expression starts with `CRON_TZ=` |
+| [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) | The app runs on Vercel. Vercel sends a GET request to the production deployment and adds `CRON_SECRET` as a bearer token. | [Hobby](https://vercel.com/docs/cron-jobs/usage-and-pricing): once per day, anywhere within the hour. Pro and Enterprise: once per minute, within the minute. 100 jobs per project. Each run is a Vercel Function, so the function's maximum duration applies. | UTC |
+
+QStash calls the route with `POST` by default and doesn't send `CRON_SECRET`. Create the schedule with `Upstash-Method: GET` and pass the secret with [`Upstash-Forward-Authorization: Bearer <CRON_SECRET>`](https://upstash.com/docs/qstash/api-refence/schedules/create-a-schedule), or check the `Upstash-Signature` header with QStash's `Receiver` instead of the bearer check.
+
+On Vercel, the schedule goes in `vercel.json`, and it takes effect with the next production deployment:
+
+```json title="vercel.json"
+{
+  "crons": [{ "path": "/api/cron/daily-report", "schedule": "15 6 * * *" }]
+}
+```
+
+On any other host, a GitHub Actions workflow can call the route. Store `CRON_SECRET` as a repository secret and the app's URL as a repository variable named `APP_URL`:
+
+```yaml title=".github/workflows/daily-report.yml"
+name: Daily report
+on:
+  schedule:
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  call-route:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the job route
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/daily-report"
+```
+
+`workflow_dispatch` adds a button to run the job by hand. `curl -f` fails the workflow on a `4xx` or `5xx` response, so GitHub shows a failed run instead of a green one.
+
+If you self-host with `next start` on a VM, the server's own crontab or a systemd timer can run the same `curl` command. A `node-cron` schedule started from [`instrumentation.ts`](https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation) also works there, as long as exactly one instance runs it: Next.js calls `register` once per server instance, so every replica starts its own copy. Fly.io's guide gives the same rule for a cron process that runs next to the app: [only run one copy](https://docs.fly.io/blueprints/task-scheduling).
+
+### 3. Make each run safe to repeat or miss
+
+A scheduler doesn't guarantee exactly one call per slot. Vercel's docs say [delivery is best effort](https://vercel.com/docs/cron-jobs/manage-cron-jobs#cron-job-delivery-and-idempotency): a transient network error can drop a run, the same run can arrive more than once, and a job that runs longer than its interval can [overlap with the next one](https://vercel.com/docs/cron-jobs/manage-cron-jobs#controlling-cron-job-concurrency). GitHub can delay or drop scheduled runs under load.
+
+Two habits cover all three cases. Write the job so a second run changes nothing ("mark these invoices as sent", not "add 10 credits"), and have it process everything outstanding since the last successful run, so a missed run is caught up by the next one.
+
+To stop overlapping or duplicate runs, record each run in the database and let the first caller claim the slot. In PostgreSQL, a primary key on the job and its slot does this with one statement:
+
+```sql
+CREATE TABLE job_runs (
+  job         text        NOT NULL,
+  slot        timestamptz NOT NULL,
+  started_at  timestamptz NOT NULL DEFAULT now(),
+  finished_at timestamptz,
+  error       text,
+  PRIMARY KEY (job, slot)
+);
+```
+
+```ts title="lib/run-once.ts"
+import { Pool } from "pg";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// Claims today's slot (UTC). A claim that never finished can be taken
+// over after 15 minutes, so a crashed run doesn't block the day.
+const CLAIM = `
+  INSERT INTO job_runs AS r (job, slot)
+  VALUES ($1, date_trunc('day', now(), 'UTC'))
+  ON CONFLICT (job, slot) DO UPDATE
+    SET started_at = now(), error = NULL
+    WHERE r.finished_at IS NULL
+      AND r.started_at < now() - interval '15 minutes'
+  RETURNING slot`;
+
+export async function runOnce(job: string, work: () => Promise<void>) {
+  const claim = await pool.query(CLAIM, [job]);
+  if (claim.rowCount === 0) return "skipped";
+
+  const { slot } = claim.rows[0];
+  try {
+    await work();
+    await pool.query("UPDATE job_runs SET finished_at = now() WHERE job = $1 AND slot = $2", [job, slot]);
+    return "done";
+  } catch (error) {
+    await pool.query("UPDATE job_runs SET error = $3 WHERE job = $1 AND slot = $2", [job, slot, String(error)]);
+    throw error;
+  }
+}
+```
+
+Wrap the job in the route with `await runOnce("daily-report", sendDailyReport)`. If five calls arrive at once, one claims the slot and runs the job, and the other four return `skipped`. Use `date_trunc('hour', now(), 'UTC')` for an hourly job, or [`date_bin`](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-BIN) for shorter intervals, such as `date_bin('5 minutes', now(), timestamptz '2000-01-01 00:00Z')` for a job every five minutes (PostgreSQL 14 or newer). Set the takeover window longer than the job takes. The statement uses `INSERT ... ON CONFLICT DO UPDATE ... WHERE` from [the PostgreSQL docs](https://www.postgresql.org/docs/current/sql-insert.html) and needs PostgreSQL 12 or newer for the three-argument `date_trunc`. It holds no lock after the statement ends, so it also works through a connection pooler.
+
+### 4. Find out when a run is missed
+
+A job that never ran leaves no error, and no row in `job_runs` either. Watch for the absence of a success instead, starting from the list of jobs you expect. This query lists daily jobs with no successful run in the last 26 hours, including a job that has never run:
+
+```sql
+SELECT j.job, max(r.finished_at) AS last_success
+FROM (VALUES ('daily-report')) AS j(job)
+LEFT JOIN job_runs r ON r.job = j.job
+GROUP BY j.job
+HAVING max(r.finished_at) IS NULL
+    OR max(r.finished_at) < now() - interval '26 hours';
+```
+
+Add each daily job to the `VALUES` list. Run this check, or the heartbeat monitor below, from somewhere other than the job's own scheduler, so it still alerts when that scheduler stops.
+
+A heartbeat monitor does the same from outside: the job sends a request to a unique URL at the end of each successful run, and a service such as [Healthchecks.io](https://healthchecks.io/docs/) alerts when that request is late by more than a grace time you set. Also check the scheduler's own logs. On Vercel, the Cron Jobs settings page links each job to its runtime logs, and [Vercel doesn't retry](https://vercel.com/docs/cron-jobs/manage-cron-jobs#cron-job-error-handling) a failed invocation.
+
+### 5. Write the schedule in UTC
+
+Vercel, Netlify, Railway, Render and Cloudflare read cron expressions in UTC. GitHub Actions and QStash also default to UTC, and accept a time zone if you set one. A report meant for 06:15 in Berlin is `15 4 * * *` in summer and `15 5 * * *` in winter, so either accept the UTC time or use a scheduler that takes a time zone.
+
+### Scheduling inside the database
+
+Some Postgres hosts run schedules in the database with the `pg_cron` extension, which suits jobs that are pure SQL, such as deleting expired sessions. [Supabase Cron](https://supabase.com/docs/guides/cron) is built on `pg_cron`, runs SQL, database functions or HTTP requests, and recommends no more than 8 concurrent jobs of up to 10 minutes each. [Neon supports `pg_cron`](https://neon.com/docs/extensions/pg_cron), but jobs run only while the compute is active, so Neon keeps it for in-database maintenance on an always-on compute. For other scheduled work, Neon recommends [scheduled Function Triggers](https://neon.com/docs/compute/functions/triggers/schedule), which run a Neon Function on a cron schedule and fire while the compute is scaled to zero. Prisma Postgres doesn't list `pg_cron` among its [supported extensions](/docs/postgres/database/postgres-extensions).
+
+## Where do Prisma Compute and Prisma Postgres fit?
+
+Prisma Compute fits when the job can run as a route in a Node.js, Bun or Next.js app that a scheduler calls, and you want that app next to Prisma Postgres in one project. Each call has 60 seconds to start responding, and for work that must not be lost, the [request timeout docs](/docs/compute/request-timeout#persist-then-process-in-steps) describe storing the job as a database row and processing it in steps that record progress.
+
+[Prisma Compute](/docs/compute) hosts TypeScript apps built for Node.js, Bun or Next.js; deployed apps run on Bun. The `nextjs` build adapter deploys a Next.js app built with `output: "standalone"` ([Next.js guide](/docs/guides/frameworks/nextjs)). Compute has no built-in cron scheduler ([Known limitations](/docs/compute/limitations#runtime)), and an idle instance [scales to zero](/docs/compute/keeping-instances-awake), so a `node-cron` timer inside the app has the same problem there as on a serverless host. The scheduler's request resumes a sleeping instance with its memory intact, like any other request. Compute doesn't require Prisma ORM or Prisma Postgres, so the following applies to any app you deploy there:
+
+1. Keep the job in a route as in step 1, and point the scheduler from step 2 at your production URL. GitHub Actions, cron-job.org and QStash work with any host.
+2. Give the route its secret. In a [Prisma Composer](/docs/composer) app, code reads configuration through `service.input()` instead of `process.env`: declare the secret as a `secretString()` field of the service's input, bind it in `module.ts` with `envSecret("CRON_SECRET")` ([Service input](/docs/composer/service-input)), and store the value with `npx prisma@latest project env add CRON_SECRET --role production`, run with `CRON_SECRET` exported in your shell ([Environment variables](/docs/compute/environment-variables)). In the route, compare against `service.input().cronSecret.expose()` (or whatever you named the field) instead of `process.env.CRON_SECRET`. Values resolve at deploy time, so deploy again after you set it.
+3. If a run takes longer than 60 seconds before it can answer, split it. For work that must finish, store the job as a row and process it in steps that each fit in one request, as the [request timeout docs](/docs/compute/request-timeout#persist-then-process-in-steps) describe. For work you can afford to lose occasionally, return `202` right away and finish it inside [`waitUntil`](/docs/compute/keeping-instances-awake) from `@prisma/compute`, which keeps the instance awake until the work settles.
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and the `job_runs` table and queries in steps 3 and 4 run on it as written. It works with any Postgres client, including `pg`, Drizzle, Kysely and Prisma ORM; Prisma ORM is optional. It counts each query as one [operation](/docs/postgres/faq#what-is-an-operation), so the claim and the finish of an hourly job add about 1,440 operations a month (720 runs, two queries each), plus the job's own queries. The Free plan includes 200,000 operations a month and 2 GB of storage, needs no credit card and has no backups ([pricing](/pricing)). Compute and Prisma Postgres can sit in the same Prisma project.
+
+Know the limits before you rely on it:
+
+- Prisma Compute has no built-in cron scheduler. When an external scheduler calls the route, that scheduler's limits apply, such as GitHub's 5-minute minimum and its delays under load.
+- `waitUntil` and `KeepAwakeGuard` are best effort. They don't retry failed work or continue through a restart or a new deployment ([Keeping instances awake](/docs/compute/keeping-instances-awake)), so don't use them to keep an instance awake for a `node-cron` timer.
+- A service has 60 seconds to start responding. A job that can't answer in time needs to run in steps, the `202` and `waitUntil` pattern, or a worker on a host built for long jobs, such as a Render cron job, which can run for up to 12 hours. See [long-running background jobs](/compute/long-running-background-jobs) for the options.
+- Prisma Compute has no persistent filesystem, so a job that writes files needs [object storage](/docs/compute/object-storage) or the database.
+- `pg_cron` isn't in Prisma Postgres's list of supported extensions. If you want the schedule inside the database, Supabase Cron, or Neon's scheduled Function Triggers or `pg_cron` on an always-on compute, fits better.
+- If the app already runs on Vercel, Netlify, Render or Railway, use that host's scheduler. Moving hosts doesn't fix a missing schedule.
+
+## How to prevent it
+
+Treat a schedule as part of the deployment. Keep the cron expression in the repository (`vercel.json`, a workflow file or the host's config), write it in UTC, and review it with the route it calls. Give every job a run record and an alert on a missed success from the first day, because a job that silently stops looks the same as one that has nothing to do.
+
+## When this fix doesn't apply
+
+If the job needs to react to an event rather than to the clock, such as a payment or an upload, call it from the code that handles the event, or put a message on a queue. A schedule that polls every minute for new work adds delay and requests.
+
+If the job runs for hours or needs many steps with retries, a single route call is the wrong shape. Use a cron service that runs a command, such as Render or Railway cron jobs, or a workflow service such as [Inngest](https://www.inngest.com/docs/guides/scheduled-functions) or [Trigger.dev](https://trigger.dev/docs/tasks/scheduled), which run functions on a cron schedule.
+
+If the route returns errors when you call it by hand, the schedule isn't the problem. Fix the route first: check its logs, the variables it reads and the database it connects to.

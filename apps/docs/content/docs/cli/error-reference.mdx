@@ -18,6 +18,8 @@ Recognize an error programmatically by running with `--json` and matching on `er
 
 Most codes on this page are expected failures. Some are warn-severity diagnostics that ride a successful run: the command completes and exits `0`, and the diagnostic carries the code (the entry says so where it applies). The process exit-code contract is in [Error Conventions](https://github.com/prisma/prisma-cli/blob/main/docs/product/error-conventions.md).
 
+Codes raised by the command families the CLI mounts are listed here too, because the hosted reference is where their errors' docs links point. `pnpm check:error-reference` verifies only the codes in this repository's source, so a family's entries are kept current by hand when the CLI moves to a new release of that family.
+
 Every code on this page is assigned where the error is raised. No boundary invents a code from a server response or rewrites one on the way out, so an error's code never depends on which command you reached the failure through. When a REST API request fails, the CLI raises the domain's registered `*.API_ERROR` code and carries the API's own code and HTTP status in `meta.apiCode` and `meta.status`, where they are data you can read rather than a code you have to guess at.
 
 Namespaces on this page:
@@ -26,6 +28,7 @@ Namespaces on this page:
 - [`BRANCH`](#branch): Branch listing (`prisma branch`)
 - [`BUCKET`](#bucket): Bucket and bucket-key management (`prisma bucket`)
 - [`CLI`](#cli): Engine-level invocation: arguments, config loading, prompts, consent, credentials, child processes
+- [`DEV`](#dev): Running an app on this machine with Composer (`prisma dev`, `prisma dev url`, `prisma dev stop`, `prisma emulator list`)
 - [`FEEDBACK`](#feedback): Sending product feedback (`prisma feedback`)
 - [`GIT`](#git): Git repository connections (`prisma git`)
 - [`INIT`](#init): Project initialization diagnostics (`prisma init`)
@@ -227,6 +230,34 @@ The `prisma telemetry status|enable|disable` commands could not resolve the user
 ### CLI.UNKNOWN_COMMAND [#CLI.UNKNOWN_COMMAND]
 
 The typed path routed to no command (stricli's route failure, mapped at the adapter boundary) and no redirect claims it; next actions carry up to three "did you mean" suggestions ranked by edit distance over command paths and their prefixes, plus a pointer to `--help`. Exits 2. Meta: none.
+
+## DEV
+
+These codes come from Composer, the command family behind `prisma dev`, `prisma dev url`, `prisma dev stop` and `prisma emulator list`. A node is one service, database or bucket in your app; its address is its name in the app, with dots for a nested node (`catalog.database`). Each node runs on a local emulator: a program on this machine that stands in for Prisma Cloud.
+
+### DEV.ADDRESS_UNKNOWN [#DEV.ADDRESS_UNKNOWN]
+
+`prisma dev url <address>` named an address that the app `prisma dev` last ran from this directory does not have. The `why` lists the addresses that are recorded for it. The fix is to pass one of those; a nested node has a dotted address, such as `catalog.database`. Meta: `address`, `known` (the recorded addresses).
+
+### DEV.EMULATOR_FAILED [#DEV.EMULATOR_FAILED]
+
+A local emulator answered a request with an error. `prisma dev url`, `prisma dev stop` and `prisma dev` raise it when the emulator that runs a node fails a request. In `prisma emulator list` it is not a failure of the command: the emulator is listed with this code and the emulator's message instead of its instances, and the command still exits `0`. Meta: none.
+
+### DEV.EMULATOR_UNREACHABLE [#DEV.EMULATOR_UNREACHABLE]
+
+A local emulator could not be reached. `prisma dev url` raises it when the emulator that runs the node is not running; the fix is to run `prisma dev <entry>` in this directory, which starts the emulators the app needs. It is also raised when an emulator is registered and its process is alive but it did not accept the connection; the fix then is to run the command again, and if it keeps failing, to end the emulator's process so the next `prisma dev` starts a new one. Meta: `address` and `kind` (the node's address and kind) when the emulator is not running; `url` (the emulator's address) when it did not accept the connection.
+
+### DEV.EMULATORS_DIR_INVALID [#DEV.EMULATORS_DIR_INVALID]
+
+Any command that reaches the local emulators (`prisma dev`, `prisma dev url`, `prisma dev stop`, `prisma emulator list`) found the `PRISMA_COMPOSER_EMULATORS_DIR` environment variable set to a relative path. Every process that starts or reaches the local emulators resolves this directory, and a relative path would name a different directory in each working directory. The fix is to set it to an absolute path (`~` is not expanded) or to unset it, which uses `~/.prisma-composer/emulators`. Meta: `variable`, `value`.
+
+### DEV.NOT_RUNNING [#DEV.NOT_RUNNING]
+
+`prisma dev url` named a node that is not running, so it has no URL that answers. The `why` says which of three cases applies: the node is stopped (`prisma dev stop`, `prisma dev` ending, and running another app in this directory all stop an app's services and database servers; the fix is to run `prisma dev <entry>` in this directory); the node exited after it started and is being restarted or was held after repeated crashes (the fix is to read its log, whose path is in the `fix` and `meta.logPath` when known, fix the cause and rebuild); or the emulator no longer has it, for example because a Composer upgrade discarded the emulator's state (running `prisma dev <entry>` creates it again, empty). Meta: `address`, `kind`, `state`, and `logPath` when known.
+
+### DEV.NOT_STARTED_HERE [#DEV.NOT_STARTED_HERE]
+
+`prisma dev url` or `prisma dev stop` ran in a directory where `prisma dev` has not run. An app's local services, databases and buckets are recorded in the directory `prisma dev` runs from, and there is no such record here. The fix is to run `prisma dev <entry>` in this directory, or to run the command from the directory where `prisma dev` ran. Meta: `cwd`.
 
 ## FEEDBACK
 
@@ -452,10 +483,6 @@ A `project` or `branch` group command was invoked with unusable arguments — fo
 
 A `--branch` flag was passed with an empty or whitespace-only value to a service command; the check runs before any resolution because a blank value must never fall through to the default-branch behavior of omitting the flag. The fix is to pass a non-empty branch name, or omit `--branch` to target the default branch. Meta: none.
 
-### SERVICE.BRANCH_NOT_DEPLOYABLE [#SERVICE.BRANCH_NOT_DEPLOYABLE]
-
-A `service domain` command was pointed at a non-production branch, which the domain-target resolver refuses because custom domains on preview branches are not supported in Public Beta. The fix is to use `--branch production`, or attach the domain after promoting to the production branch. Meta: none.
-
 ### SERVICE.DELETE_FAILED [#SERVICE.DELETE_FAILED]
 
 `service delete` called the platform's app-teardown API and it rejected; the underlying error's message becomes `why` and the original error is carried in `cause`. Next actions point at `service show` and `service version list` for the service. Meta: none.
@@ -476,13 +503,30 @@ The general "REST API call failed" wrapper for the `service` command family — 
 
 The hostname given to a `service domain` command is not a usable custom domain — raised either by local validation before any API call (protocol, path, port, wildcard, single label, or bad DNS labels) or when `service domain add` gets a plain HTTP 400 rejection from the domain API. The fix is to pass a bare hostname such as `shop.acme.com`. Meta: `status`, `apiCode`, `hint` (API-rejection path only; none for local validation).
 
+### SERVICE.DOMAIN_OWNERSHIP_REQUIRED [#SERVICE.DOMAIN_OWNERSHIP_REQUIRED]
+
+The API could not find the TXT record proving that this workspace may attach the
+hostname. Add the exact name and value in the API hint, keep the TXT record for
+future attachments in this workspace, and rerun the suggested command. Recovery
+preserves the selected service, project, and branch. This does not mean that the
+service needs another deployment. Meta: `status`, `apiCode`, `hint`.
+
+### SERVICE.DOMAIN_CLOUDFLARE_PROXY [#SERVICE.DOMAIN_CLOUDFLARE_PROXY]
+
+The API found Cloudflare proxy addresses while the hostname's routing check
+failed. Set that DNS record to DNS only (gray cloud) and rerun the suggested
+command. After the domain is Active, Proxied can be enabled again with Full
+(strict) SSL/TLS. Keep `/.well-known/acme-challenge/*` accessible without caching
+or security challenges so Prisma can renew the certificate. Meta: `status`,
+`apiCode`, `hint`.
+
 ### SERVICE.DOMAIN_NOT_FOUND [#SERVICE.DOMAIN_NOT_FOUND]
 
 A `service domain` command targeted a hostname that is not attached to the resolved service — raised when the service's domain listing has no matching hostname, or when a show/delete/retry/wait call gets HTTP 404. The fix is to check the hostname and service, or add the domain first. Meta: none.
 
 ### SERVICE.DOMAIN_QUOTA_EXCEEDED [#SERVICE.DOMAIN_QUOTA_EXCEEDED]
 
-`service domain add` was refused because the custom-domain quota is reached — HTTP 429, or a 409 whose text mentions a quota, maximum, or limit. The fix is to delete an existing custom domain before adding another. Meta: `status`, `apiCode`, `hint`.
+`service domain add` was refused because the custom-domain quota is reached — HTTP 429, or a 409 whose text mentions a quota, maximum, or limit. The CLI uses the API's recovery hint when supplied, including waiting for an hourly creation budget. Without a hint, it advises deleting an existing custom domain before adding another. Meta: `status`, `apiCode`, `hint`.
 
 ### SERVICE.DOMAIN_RETRY_NOT_ELIGIBLE [#SERVICE.DOMAIN_RETRY_NOT_ELIGIBLE]
 
@@ -530,7 +574,7 @@ A `service logs` response body ended without the terminal record that closes a p
 
 ### SERVICE.NO_VERSIONS [#SERVICE.NO_VERSIONS]
 
-The resolved service has no usable version for the command — raised by `service open` when the service has no versions, by `service logs` when it has no live version, and by `service domain add` when the API answers 422 because the production service has no promoted version that can receive a custom domain. The fix on the domain path is to promote a version on the production branch first, then add the domain again. Meta: `status`, `apiCode`, `hint` (domain-add path only; otherwise none).
+The resolved service has no usable version for the command — raised by `service open` when the service has no versions, by `service logs` when it has no live version, and by `service domain add` when the API answers 422 because the selected service has no promoted version that can receive a custom domain. The fix on the domain path is to promote a version on the selected branch first, then add the domain again. Meta: `status`, `apiCode`, `hint` (domain-add path only; otherwise none).
 
 ### SERVICE.SELECTION_INVALID [#SERVICE.SELECTION_INVALID]
 

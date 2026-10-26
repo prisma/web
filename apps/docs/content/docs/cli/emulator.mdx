@@ -1,0 +1,74 @@
+---
+title: emulator
+description: List the local emulators that prisma dev runs your app on, and every instance they hold.
+url: /cli/emulator
+metaTitle: emulator | Prisma CLI
+metaDescription: Reference for the prisma emulator list command, which lists the local emulators that run Prisma Composer services, databases, and buckets on your machine.
+---
+
+Use `emulator` commands to inspect the local emulators. An emulator is a program on your machine that stands in for Prisma Compute, Prisma Postgres, or a bucket while [`prisma dev`](/cli/dev) runs a [Prisma Composer](/composer) app: one runs services, one runs Postgres databases, and one runs S3-compatible buckets. Each emulator holds instances, one for every service, database, or bucket that a `prisma dev` started, from any directory on the machine.
+
+The emulators keep running after `prisma dev` ends. An instance keeps its port and data until `prisma dev --fresh`, run from the directory that started it, deletes it. There is no command yet to remove the instances of a directory you deleted.
+
+`emulator list` is in `prisma` since `8.0.0-rc.24`.
+
+## Usage
+
+```npm
+npx prisma emulator list
+npx prisma emulator list --json
+```
+
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `emulator list` | List every local emulator, whether it is running, and every instance it holds |
+
+## emulator list
+
+`emulator list` works from any directory and needs no `prisma.config.ts`, because it describes the machine rather than one project. For each instance it shows the instance id, its URL, its state, and the node address and directory of the `prisma dev` that started it.
+
+```npm
+npx prisma emulator list
+```
+
+```text no-copy
+✔ Service emulator at http://127.0.0.1:4304
+└─ svc_56b2c1618f6488d2  http://localhost:3001  running  gateway in /Users/ada/my-app
+✔ Database emulator at http://127.0.0.1:4305
+└─ db_7cff71f83ae35c90  postgres://…:51650/template1?sslmode=disable  running  catalog.database in /Users/ada/my-app
+ℹ Bucket emulator (not running)
+```
+
+An emulator that is not running is listed with no instances. One that is running but does not answer, or answers with an error, is shown with that error, and the other emulators are still listed.
+
+When standard output is a pipe or a file, `emulator list` writes one line per instance, with six tab-separated fields:
+
+| Field | Value |
+| --- | --- |
+| 1 | The emulator's kind: `service`, `database`, or `bucket` |
+| 2 | The instance id |
+| 3 | The instance's URL |
+| 4 | The instance's state |
+| 5 | The address of the node it runs, such as `gateway` or `catalog.database` |
+| 6 | The directory `prisma dev` ran from |
+
+The last two fields are empty for an instance that the emulator holds without a record of which app started it. For example, to print the URL of every running instance started from the current directory:
+
+```bash
+npx prisma emulator list | awk -F '\t' -v dir="$PWD" '$4 == "running" && $6 == dir { print $3 }'
+```
+
+With `--json`, the result is `{ emulators: [{ kind, running, url, instances: [{ id, kind, url, state, labels }], error }] }`, where `url` is `null` for an emulator that is not running, and `error` is `null` unless the emulator is running but could not be listed.
+
+There is no `prisma emulator start` or `prisma emulator stop` yet, so to stop one app's services and databases, run [`prisma dev stop`](/cli/dev#dev-stop) from that app's directory.
+
+## Global flags
+
+The Prisma CLI's [global flags](/cli/global-flags) also apply: `--format`, `--json`, `--log-level`, `--verbose`, `--quiet`, `--yes`, `--confirm`, `--interactive`, `--color`, and `--config`.
+
+## Next steps
+
+- [`dev`](/cli/dev): run a Composer app on the emulators, and find or stop its services.
+- [Local development](/composer/local-development): how local services, databases, and buckets are kept per directory.

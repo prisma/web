@@ -55,7 +55,7 @@ const PLANS = [
       "4 active vCPU-hours / month",
       "10 GB outbound bandwidth / month",
     ],
-    postgres: ["200k operations / month", "1.01 GB storage", "50 databases"],
+    postgres: ["200k operations / month", "2 GB storage", "50 databases"],
     platform: [],
     cta: "Start for free",
     popular: false,
@@ -116,7 +116,7 @@ const PLANS = [
       "1,000 databases",
       "30-day backup retention",
     ],
-    platform: ["Spend limits", "GDPR, HIPAA, SOC 2, ISO 27001"],
+    platform: ["Spend limits", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
     cta: "Get started",
     popular: false,
   },
@@ -163,7 +163,7 @@ const CALCULATOR_PRESETS = [
 // only the monthly totals and the "Recommended" / "Not available" states depend
 // on the slider positions, and those are interactive-only, so they are omitted.
 const CALCULATOR_PLAN_TERMS = [
-  { name: "Free plan", description: "200,000 ops • 1.01GB storage • free forever" },
+  { name: "Free plan", description: "200,000 ops • 2 GB storage • free forever" },
   {
     name: "Starter plan",
     description: "1,000,000 ops included, then $0.008 per 1,000 • 10GB included, then $2/GB",
@@ -189,17 +189,22 @@ const COMPARISON_HEADERS = [
 ];
 
 const COMPARISON_ROWS = [
-  ["Monthly cost at ~50K MAU", "$385–450", "$95–145", "$72–90"],
+  ["Monthly cost at ~50K MAU", "$110–270", "$95–145", "$72–90"],
   [
     "Billing",
-    "Separate database + hosting bills",
+    "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",
     "Platform subscription + Postgres compute + function usage",
     "One bill, one platform",
   ],
-  ["Database data transfer", "Pay per GB", "250 GB egress included, then $0.09/GB", "Included"],
+  [
+    "Database data transfer",
+    "500 GB egress per project included, then $0.10/GB",
+    "250 GB egress included, then $0.09/GB",
+    "Included",
+  ],
   [
     "Spend limits",
-    "Not standard",
+    "Neon: spending notifications at 80% and 100%. Vercel: a spend budget with an optional pause",
     "Spend cap on by default for covered usage; database compute excluded",
     "On by default",
   ],
@@ -231,11 +236,11 @@ const SPEC_GROUPS: {
     rows: [
       ["Operations included", "200k", "1M", "10M", "50M"],
       ["Operation overage", "—", "$8 per million", "$2 per million", "$1 per million"],
-      ["Storage included", "1.01 GB", "10 GB", "50 GB", "100 GB"],
+      ["Storage included", "2 GB", "10 GB", "50 GB", "100 GB"],
       ["Storage overage", "—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
       ["Databases", "50", "1,000", "1,000", "1,000"],
       ["Data transfer", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-      ["Spend limits", "—", INCLUDED, INCLUDED, INCLUDED],
+      ["Spend limits", "Fixed at $0, no card required", INCLUDED, INCLUDED, INCLUDED],
     ],
   },
   {
@@ -270,9 +275,15 @@ const SPEC_GROUPS: {
       ["Connection limit (pooled)", "10", "100", "500", "1,000"],
       ["Connection limit (direct)", "10", "10", "50", "100"],
       ["Connection idle timeout", "60 minutes", "60 minutes", "60 minutes", "60 minutes"],
-      ["Auto-scaling", INCLUDED, INCLUDED, INCLUDED, INCLUDED],
+      ["Pool mode", "Transaction", "Transaction", "Transaction", "Transaction"],
       ["Operation response size", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-      ["Operation duration (db queries)", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
+      [
+        "Operation duration (db queries)",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+      ],
       ["Operation duration (interactive)", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
     ],
   },
@@ -318,7 +329,7 @@ const SPEC_GROUPS: {
     label: "Platform",
     rows: [
       ["Support", "Community", "Community", "Standard", "Premium"],
-      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR, HIPAA, SOC 2, ISO 27001"],
+      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
       ["Prisma ORM", "Free", "Free", "Free", "Free"],
     ],
   },
@@ -423,12 +434,12 @@ export function renderPricingMarkdown(): string {
       "Prisma charges per operation: each query your app runs against your database counts as " +
         "one. No seats. No database egress fees. And every paid plan includes a hard spend limit so there " +
         "are no surprises.",
-      "At around 50K monthly active users, Prisma Pro can cost up to 5x less than a typical " +
+      "At around 50K monthly active users, Prisma Pro can cost less than half as much as a typical " +
         "Neon + Vercel setup, with one bill, included database data transfer, and spend limits on by " +
         "default.",
       // The badge on the Prisma Pro column; its multiple is derived from the
       // costs in the table below.
-      "Up to 5x less vs Neon + Vercel",
+      "Up to 2x less vs Neon + Vercel",
     ]),
     table(COMPARISON_HEADERS, COMPARISON_ROWS),
 

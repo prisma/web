@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildSiteRef,
+  getClickIdParams,
   getUtmParams,
   mergeUtmAttribution,
   readStoredUtmAttribution,
@@ -162,6 +163,7 @@ test("captures the ChatGPT ads click id like other ad click ids and forwards it 
   const query = new URLSearchParams("oppref=chatgpt-click&utm_source=chatgpt&utm_medium=paid");
   assert.equal(getUtmParams(query).oppref, "chatgpt-click");
   assert.equal(getUtmParams(query, { includeClickIds: false }).oppref, undefined);
+  assert.deepEqual(getClickIdParams(query), { oppref: "chatgpt-click" });
 
   const attribution = mergeUtmAttribution(
     undefined,

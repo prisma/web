@@ -62,6 +62,8 @@ export type ProductPageContent = {
     secondaryCta: Cta;
     /** Reassurance directly under the CTA — price, licence or reach. */
     microline?: string;
+    /** Optional in-page link under the microline, for a related comparison. */
+    related?: { label: string; href: string };
     /**
      * The tour beside the copy (product-tour.tsx). Four stops. Pages still
      * carrying a single still frame fall back to `illustration`.

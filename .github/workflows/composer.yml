@@ -1,0 +1,39 @@
+name: Composer
+
+on:
+  pull_request:
+    paths:
+      - "composer/**"
+      - "module.ts"
+      - "prisma.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - "apps/**"
+      - "packages/**"
+      - ".github/workflows/composer.yml"
+      - ".github/workflows/prisma-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local:
+    name: Build and run locally
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm composer:check
+      - run: pnpm composer:build
+      - run: pnpm composer:smoke

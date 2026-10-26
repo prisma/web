@@ -1,0 +1,134 @@
+---
+title: "How can I practice restoring a hosted Postgres database?"
+description: "Compare managed Postgres recovery workflows, restore fictional data into a separate database and test the app before customer records depend on it."
+summary: "Choose a provider whose recovery method meets the amount of data you can afford to lose, then rehearse restoration into an isolated database before customer data depends on it. [Prisma Postgres](/docs/postgres) fits a TypeScript team that wants ordinary PostgreSQL tools and plan-dependent snapshots, with [Prisma Compute](/docs/compute) available for the app in the same project. Choose a provider with point-in-time recovery when restoring to a particular moment is a requirement. A backup is useful only when the team can restore and use it."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-23"
+updatedAt: "2026-10-24"
+readingTime: "8 min read"
+faq:
+  - question: "Does rolling back the app restore deleted database rows?"
+    answer: "No. An application rollback replaces code; it does not undo committed database writes. Database recovery needs its own backup, restore and reconciliation procedure. Test that procedure separately from deployment rollback."
+  - question: "Does a successful pg_restore prove the app has recovered?"
+    answer: "No. Check expected records, constraints, permissions and the application's actual read/write workflow after restoration. Review migrations and reconcile external systems such as billing and email before allowing recovered data to trigger actions."
+  - question: "Does Prisma Postgres have point-in-time recovery?"
+    answer: "Not yet: point-in-time recovery is coming to Prisma Postgres in November 2026. Until then, it has plan-dependent daily snapshots, taken on days with database activity. Choose a provider with point-in-time recovery when you need recovery to a particular moment within its retention window."
+  - question: "Are uploaded files included in a database dump?"
+    answer: "A database dump includes data stored in the selected database, such as file references. It does not include file bytes kept in a separate object store. Keep a recovery policy for those objects and test that restored records still point to usable files."
+related:
+  - title: "Keeping prototype customer records permanently"
+    href: "/postgres/prototype-customer-data"
+  - title: "Separate test environments"
+    href: "/postgres/typescript-test-environment"
+  - title: "Operating a business app"
+    href: "/compute/business-app-operations"
+cta:
+  title: "Test the recovery path before you need it"
+  description: "Create separate practice databases, restore fictional records and verify a review app against the recovered data."
+  label: "Read the backup guide"
+  href: "/docs/postgres/database/backups"
+---
+
+A backup entry in a dashboard answers whether a backup exists. A rehearsal answers whether someone can recover the right records, reconnect the application and explain what happened after the backup was taken. Start with fictional data so mistakes in that rehearsal cannot affect customers.
+
+We make Prisma Postgres and Prisma Compute. The linked provider and PostgreSQL documentation was checked on October 23, 2026. Prisma ORM is optional.
+
+## What should I decide before choosing a provider?
+
+Write down how much recent work the business can reconstruct and how long the app can be unavailable. These are often called the recovery point objective and recovery time objective. For example, a team might accept reconstructing one day's demo edits but require much finer recovery for paid bookings.
+
+Check the actual recovery window and the destination of a restore. Restoring over an existing database and restoring into a new database have different consequences. The first practice run should use an isolated target with outbound payments, email and other real side effects disabled.
+
+[PostgreSQL's backup overview](https://www.postgresql.org/docs/current/backup.html) distinguishes logical dumps, filesystem backups and continuous archiving. A provider's snapshot is not interchangeable with a downloadable SQL dump, and a dump taken now cannot recover a row that was deleted yesterday.
+
+## Which managed Postgres recovery workflow fits?
+
+The providers below are alphabetical, with their different recovery methods shown side by side.
+
+| Provider | Documented recovery path | Check before choosing |
+| --- | --- | --- |
+| Neon | [Instant restore](https://neon.com/docs/postgres/backup-restore/branch-restore) restores an eligible root branch to a point within its available history. | Branch eligibility, your configured retention window, restore target and whether the desired point is still available. |
+| Prisma Postgres | [Snapshots in Console and direct-connection pg_dump](/docs/postgres/database/backups). Starter, Pro and Business have snapshots taken daily on activity days; Free has no automatic backups. | No point-in-time recovery yet (coming in November 2026). Starter and Pro retain seven days of snapshots, Business thirty days; inspect available timestamps. |
+| Supabase | [Paid-plan daily backups and a point-in-time recovery add-on](https://supabase.com/docs/guides/platform/backups). | Plan eligibility, the add-on's recovery window and compute requirements, and downtime for an in-place restore. |
+
+Prisma Postgres is a practical choice when its snapshot schedule fits the business and you want a recovery process based on ordinary PostgreSQL tools. The same database can serve an app on Prisma Compute, Vercel, Netlify or another host; recovery does not require adopting Prisma ORM.
+
+If a particular minute matters to recovery, choose a provider that supports it. A daily snapshot schedule cannot supply that precision. Also check [current plan costs](/pricing) before retaining extra practice databases or enabling a recovery add-on.
+
+## How do I rehearse recovery with Prisma Postgres?
+
+### 1. Create two empty, isolated databases
+
+Create a source practice database and a separate restore practice database in an account you control. Record both database identifiers and their [direct connection settings](/docs/postgres/database/connecting-to-your-database). Do not use production as the destination, and confirm that the restore database contains no application tables.
+
+Use PostgreSQL client tools compatible with the source server. Prisma Postgres is based on PostgreSQL 17; PostgreSQL 17 tools are an appropriate choice for this exercise. Keep both practice databases on the same server major version. Check the [pg_dump compatibility rules](https://www.postgresql.org/docs/current/app-pgdump.html) if your real migration crosses versions.
+
+For the commands below, configure two [libpq connection services](https://www.postgresql.org/docs/current/libpq-pgservice.html) named `source_practice` and `restore_practice` in your local service file. Each entry needs its own host, port, database name, user and TLS settings from the direct connection. Supply its password through a protected [password file](https://www.postgresql.org/docs/current/libpq-pgpass.html), keeping credentials out of source control. `psql`, `pg_dump` and `pg_restore` use these same named connections.
+
+### 2. Save a known record and take a logical dump
+
+Connect only to the source practice database:
+
+```sh
+psql "service=source_practice" -v ON_ERROR_STOP=1
+```
+
+In that interactive session, create a fictional marker:
+
+```sql
+CREATE TABLE recovery_marker_demo (
+  id integer PRIMARY KEY,
+  note text NOT NULL
+);
+INSERT INTO recovery_marker_demo VALUES (1, 'before backup');
+```
+
+Exit with `\q`, then create a custom-format archive. This format is read by `pg_restore`; a plain SQL file is restored with `psql` instead.
+
+```sh
+pg_dump --dbname="service=source_practice" --format=custom --file=practice.dump
+```
+
+Reconnect to the source practice database and add a later record:
+
+```sql
+INSERT INTO recovery_marker_demo VALUES (2, 'after backup');
+```
+
+Exit the source session with `\q` before running the next shell command. The dump predates that second row. This gives the rehearsal a known answer about what should and should not be recovered.
+
+### 3. Restore into the empty target
+
+Reconfirm the target identifier and that it is the empty practice database. Run:
+
+```sh
+pg_restore --dbname="service=restore_practice" --exit-on-error \
+  --single-transaction --no-owner --no-privileges practice.dump
+```
+
+These [pg_restore options](https://www.postgresql.org/docs/current/app-pgrestore.html) stop on an error and keep this restore in one transaction. Omitting source ownership and grants avoids replaying them into this simple destination; it also means the rehearsal does not verify your real application's role and permission setup. Recreate and test those permissions in the full recovery plan.
+
+Connect to the restore practice database with `psql "service=restore_practice" -v ON_ERROR_STOP=1` and inspect the marker:
+
+```sql
+SELECT id, note FROM recovery_marker_demo ORDER BY id;
+```
+
+The restored target should contain one row, `1`, `before backup`, because the dump predates the `after backup` row in the source. Record how long the dump, restore and verification took, and keep the archive access-controlled. This exercise demonstrates logical recovery; it does not test the provider's automatic snapshot machinery.
+
+### 4. Test the actual recovery method and the application
+
+On a paid Prisma Postgres plan, open the source database's **Backups** tab in [Console](https://console.prisma.io) and inspect its available snapshots. Wait for an activity-day snapshot before attempting that rehearsal. Record whether each marker exists when that snapshot is taken. After its timestamp is available, add a new fictional marker to the source, then follow the [backup workflow](/docs/postgres/database/backups), verify its destination and use practice resources. Check that the recovered database contains the markers present at the snapshot and excludes the later marker. Record the selected timestamp and recovered database identifier; do not assume the manual dump result proves a snapshot can be recovered.
+
+For the application rehearsal, first populate a separate practice source with the app schema and fictional accounts and records, then back it up and restore it into another empty target using the method you intend to rely on. The marker-only exercise above cannot test sign-in or application permissions. Point an isolated review app at this app-populated recovered database, keeping production credentials out of its configuration. If the app declares its database through Composer, [resource wiring](/docs/composer/databases) must refer to the intended recovered resource rather than silently provisioning a fresh empty one. A separately supplied server-side URL can target the recovered database explicitly. Verify the identifier before running migrations or tests.
+
+Check sign-in, one authorized read and one fictional write. Verify that another account cannot read those records. If the app version expects a newer schema, rehearse the required migration path before release; a successful connection is not proof of compatibility.
+
+Compare restored state with external systems. A payment, sent email or removed object can postdate the snapshot and will not be undone by restoring Postgres. Define how staff will reconcile those differences before re-enabling side effects. Keep the measured timings, missing-data interval, operator steps and cleanup procedure with the business.
+
+## When should I choose a different recovery setup?
+
+Choose a provider with point-in-time recovery if daily snapshots cannot meet the data-loss requirement. Use a recovery service or specialist support when your team cannot operate the procedure within the required time; a managed database does not automatically meet an application recovery objective.
+
+A logical dump of one database also leaves separately managed roles, uploaded files and external services outside this exercise. Test those dependencies explicitly. Repeat the rehearsal after a substantial schema, permission or storage change so the recovery instructions describe the app you actually run.

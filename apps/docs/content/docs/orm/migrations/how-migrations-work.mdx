@@ -118,22 +118,28 @@ Inside `ops.json`, an operation is not only the change itself: it also carries t
 
 - **Precheck**: confirms the database is in the state the change expects, here that `"user"` has no `phone` column.
 - **Execute**: the statements that make the change, here `ALTER TABLE "public"."user" ADD COLUMN "phone" text`.
-- **Postcheck**: confirms the change is in the database, here that the `phone` column exists. Some operations have no postcheck. `db migrate` skips an operation only when its postcheck already passes, so an operation with no postcheck always runs.
+- **Postcheck**: confirms the full change is in the database, here that the `phone` column exists with the type `text`. A postcheck compares the whole definition, such as a column's type and nullability or an index's table and columns, not just a name. Some operations have no postcheck. `db migrate` skips an operation only when its postcheck already passes, so an operation with no postcheck always runs.
 
 When `db migrate` reaches an operation, it runs the postcheck first. If the postcheck passes, the change is already in the database, so `db migrate` skips the operation. If it does not pass, `db migrate` runs the precheck, then the statements, then the postcheck again, and it stops the run if either check fails. Once the operations are done, it checks the database against the contract before it updates the marker, which catches a database that satisfied every individual operation but still doesn't match what you declared.
 
-Say `"user"` already has a `phone` column of another type. The postcheck only asks whether a `phone` column exists, so it passes and the operation is skipped. The check against the contract then finds the wrong type, and the run fails with an error whose `code` is `MIGRATION.RUNNER_FAILED` and whose `why:` line reads `The resulting database schema does not satisfy the destination contract.` To see which columns differ, run [`npx prisma db verify --schema-only`](/cli/db-verify), which compares the tables with your contract and skips the marker check. Then change the column by hand to the type your contract declares, here `text`, with `ALTER TABLE "public"."user" ALTER COLUMN "phone" TYPE text;`, and run `db migrate` again. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) covers other changes made outside a migration.
+Say `"user"` already has a `phone` column of another type. The postcheck does not pass, because the type differs, so `db migrate` runs the precheck. The precheck finds a `phone` column, and the run fails with an error whose `code` is `MIGRATION.PRECHECK_FAILED`. To see which columns differ, run [`npx prisma db verify --schema-only`](/cli/db-verify), which compares the tables with your contract and skips the marker check. Then change the column by hand to the type your contract declares, here `text`, with `ALTER TABLE "public"."user" ALTER COLUMN "phone" TYPE text;`, and run `db migrate` again. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) covers other changes made outside a migration.
+
+The checks are written into `ops.json` when `migration.ts` runs. If you planned migrations with a Prisma ORM 8 release before `8.0.0-rc.19`, their `ops.json` files keep the older checks, some of which only asked whether an object with that name exists. Before you apply such a migration, run its `migration.ts` again with `node <migration directory>/migration.ts`. A migration you have already applied needs nothing, because its operations do not run again.
 
 Each operation also has an `operationClass`, which says what kind of change the operation makes to the database and which you choose yourself when you write a raw SQL operation:
 
 - **Additive**: adds something new, like a column.
-- **Widening**: loosens a constraint or lets a type accept more values, like dropping `NOT NULL` from a column.
-- **Destructive**: removes or changes something that exists, like dropping a column, and can lose data.
+- **Widening**: changes a structure without losing rows or values, like dropping `NOT NULL` from a column, dropping an index or a constraint, or setting `NOT NULL`, which fails on a `NULL` rather than losing it.
+- **Destructive**: can lose rows or values, like dropping a column or a type change that can change values.
 - **Data**: changes rows, not structure.
 
-Destructive operations are the only class that gets a warning, and it is only a warning: nothing stops and waits for your answer. `migration plan` prints `This migration contains destructive operations that may cause data loss.` when it writes the migration, and `npx prisma migration show <dir>` prints it for any migration on disk, so you see it while reviewing. `db migrate` runs those operations without asking and prints the warning again afterwards.
+Destructive operations are the only class that `migration plan` asks about: it writes nothing until you answer each one with `--delete`, `--rename`, or, for a type change, `--convert`, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes. It prints `This migration contains destructive operations that may cause data loss.` when it writes the migration, and `npx prisma migration show <dir>` prints it for any migration on disk, so you see it while reviewing. `db migrate` runs those operations without asking and prints the warning again afterwards.
 
-Those checks are also what ends a run early when the database isn't in the state your migration assumed, because a precheck stops the run before the change is made, for example when a migration sets `NOT NULL` on a column that still holds `NULL`. The error names the operation and the check that failed, so you know exactly which assumption was wrong. [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) covers what a stopped run leaves behind on each database and how to pick up from it.
+Those checks are also what ends a run early when the database isn't in the state your migration assumed, because a precheck stops the run before the change is made, for example when a migration sets `NOT NULL` on a column that still holds `NULL`. The error names the operation and the check that failed, so you know exactly which assumption was wrong. When the check is about one object, the error also names it, for example `the database already has table "user"`.
+
+The error also says whether the failed apply changed the database. On MongoDB it can, because MongoDB has no transaction around a migration. [When an apply fails](/cli/db-migrate#when-an-apply-fails) shows the output.
+
+A migration planned before `8.0.0-rc.20` still works, but its errors say only that the check failed, without the object. You need to do nothing. If you want the names in a migration that no database has applied yet, run `node migration.ts` in its folder again; leave applied migrations as they are, because this changes the migration's hash. [When something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) covers what a stopped run leaves behind on each database and how to pick up from it.
 
 ## The commands
 
@@ -204,6 +210,12 @@ Here is the whole loop, from idea to typed code:
 ## The same model for SQL and MongoDB
 
 The commands, the file layout, the migration history, and the checks work the same way on PostgreSQL and MongoDB. On PostgreSQL, operations run SQL statements such as `ALTER TABLE`. On MongoDB, they create collections, indexes, and JSON Schema validators.
+
+On MongoDB, Prisma ORM gives each collection it manages a `$jsonSchema` validator, so that MongoDB itself refuses a document that does not match its model. The validator is closed: it refuses a field the model does not declare, as well as a missing required field and a value of the wrong BSON type. This is the same whether you write the contract in `contract.prisma` or in TypeScript with `defineContract`. One collection can store more than one model. When they are a base model and its [variants](/orm/contract-authoring/psl-syntax#base-models-and-variants), its validator accepts a document of the base model or of any variant. When they are separate models stored in the same collection, its validator accepts a document of any of those models.
+
+MongoDB does not check the documents already in a collection when a validator is added. So before you apply a validator, fix any stored document that does not match its model. Then apply it with `npx prisma db update`, or with `npx prisma migration plan` followed by `npx prisma db migrate`.
+
+In a contract written in TypeScript, you can leave a collection without a validator, for example because other applications write fields your contract does not declare. Give its model `controlPolicy: 'observed'`, which tells Prisma ORM to leave the collection as it is: Prisma ORM then creates and changes nothing in it, not even a validator. The [TypeScript schema builder](/orm/contract-authoring/typescript-schema-builder) page shows the option.
 
 Each database keeps its own [marker and ledger](/orm/migrations/the-migration-graph#terms-used-on-this-page), where the ledger is that database's list of every migration applied to it, and `migration log` is the command that reads it.
 

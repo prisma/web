@@ -26,6 +26,7 @@ import { Callout, type CalloutType } from "@/components/handbook/callout";
 import { Aside } from "@/components/handbook/aside";
 import { Playbook, Step } from "@/components/handbook/playbook";
 import { Check, Checklist } from "@/components/handbook/checklist";
+import { ToolContent, ToolInstructions } from "@/components/handbook/building-tool";
 import { withHandbookBasePath } from "@/lib/url";
 
 function withBasePathForImageSrc(src: unknown): unknown {
@@ -53,6 +54,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Step,
     Checklist,
     Check,
+    ToolInstructions,
+    ToolContent,
     ...components,
     img: (props: any) => <ImageZoom {...props} src={withBasePathForImageSrc(props.src)} />,
     pre: ({ ref: _ref, ...props }) => (

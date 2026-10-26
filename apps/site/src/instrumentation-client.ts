@@ -1,3 +1,5 @@
+import { captureBrowserAcquisition } from "@prisma-docs/ui/lib/acquisition.browser";
+import { onCtaClick } from "@prisma-docs/ui/lib/analytics";
 import posthog from "posthog-js";
 import { hasAnalyticsConsent, onAnalyticsConsentChange } from "@prisma-docs/ui/lib/consent";
 import { getPaidPersonProperties, onAttributionChange } from "@prisma-docs/ui/lib/attribution";
@@ -12,7 +14,15 @@ const SUPER_PROPERTIES = {
   environment: "production",
 };
 
+const acquisitionProperties = () => captureBrowserAcquisition("website", hasAnalyticsConsent());
+acquisitionProperties();
+
 posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+  before_send: (event) => {
+    if (event?.event === "$pageview")
+      event.properties = { ...event.properties, ...acquisitionProperties() };
+    return event;
+  },
   api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   capture_pageview: "history_change",
   defaults: "2025-11-30",
@@ -43,6 +53,7 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
 // device storage, and the visitor has not made a decision yet; cookieless
 // capture already covers them.
 onAnalyticsConsentChange((status) => {
+  acquisitionProperties();
   if (status === "granted") {
     posthog.opt_in_capturing();
     const stored = readStoredUtmAttribution(UTM_ATTRIBUTION_STORAGE_KEY);
@@ -68,6 +79,27 @@ function recordPaidTouch(attribution: UtmAttribution) {
 }
 
 onAttributionChange(recordPaidTouch);
+
+// Console-bound CTA clicks, with where on the page they happened. GTM gets
+// the same click as `cta_click` for GA4, but only with analytics consent;
+// this one is counted cookielessly before consent too, so a landing page's
+// clicks can be set against its visits and the Console's arrivals. Sent at
+// once over a beacon: the click navigates to another origin and a batched
+// request would be lost with the page. The campaign params and the ad click
+// id are on the event already, as PostHog attaches them to every event.
+onCtaClick((cta) => {
+  posthog.capture(
+    "site:cta_clicked",
+    {
+      cta_text: cta.cta_text,
+      cta_location: cta.cta_location,
+      cta_destination: cta.cta_destination,
+      section: cta.section ?? "website",
+      page_path: window.location.pathname,
+    },
+    { send_instantly: true, transport: "sendBeacon" },
+  );
+});
 
 // Landings that arrive before UtmPersistence mounts are covered by replaying
 // whatever is already stored.

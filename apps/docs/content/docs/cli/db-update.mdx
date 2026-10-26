@@ -23,6 +23,9 @@ npx prisma db update --db "$DATABASE_URL"
 | `--db <url>` | Connects to the database. |
 | `--dry-run` | Shows planned operations without applying them. |
 | `--to <contract>` | Updates to a specific contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). It refuses `@contract`, `@db`, and `@empty` with the error code `MIGRATION.REF_WRONG_GRAMMAR`. To update to the contract in `contract.json`, leave out `--to`. |
+| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, or every model of a namespace the contract removed. Repeatable. |
+| `--allow <Model>` | Lets one operation change who can read or write the model's data. Repeatable. |
 | `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-command contract hash. Without it, `db update` advances `db` when `--db` is omitted, and advances nothing when `--db` is passed. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
@@ -37,13 +40,40 @@ Run without `--db`, `db update` takes the connection from `db.connection` in `pr
 
 The `db` ref is what [`migration plan`](/cli/migration-plan) uses as its starting point when you do not pass `--from`. Passing `--db` only suppresses the advancement; it never removes a `db` ref that already exists. So a loop that always passes `--db` without `--advance-ref db` leaves the ref wherever it was last set, and the next `migration plan` starts from that stale contract. If the ref was never created, `migration plan` plans from an empty database while `migrations/app/` is empty, and refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN` once migrations exist on disk.
 
-## Destructive changes need consent
+## Renames and data loss [#renames-and-data-loss]
 
-An operation that would destroy data is applied only with your consent: the command asks you to type the database name. In a CI job or a run with `--no-interactive`, where the command cannot ask, pass the consent as `--confirm <database>` instead:
+Before it applies anything, `db update` asks one question for each model, field or table whose data the update would lose, such as a dropped column or a type change that can change values. Answer each one on the command line:
+
+- `--delete <subject>` lets the data go. A subject is `Model`, `Model.field`, or, for data no model stores, its storage name, such as `public.audit_log`.
+- `--rename <old>:<new>` keeps the data. The update renames the table or column, and the constraints and indexes named after it, instead of dropping and creating it. Each side is `Model`, `namespace.Model`, `Model.field` or `namespace.Model.field`, and a field's model is named as the new contract names it: `--rename Profile:User --rename User.name:User.fullName`.
+
+It also asks before each operation that changes who can read or write a model's data, such as dropping a row-level-security policy or disabling row-level security. The question ends with "would widen who can read and write its data" or "would change who can read and write its data". Answer each with `--allow <Model>`; two such operations on one model take `--allow User --allow User`. A script reading `--dry-run --json` finds these operations in `accessChanges`, which before `8.0.0-rc.20` was named `accessWidening`.
 
 ```npm
-npx prisma db update --db "$DATABASE_URL" --no-interactive --confirm appdb
+npx prisma db update --db "$DATABASE_URL" --advance-ref db --no-interactive --delete Legacy --rename User.name:User.fullName
 ```
+
+In a terminal, the command asks the questions you did not answer with a flag. In a CI job or a run with `--no-interactive`, it fails with [`CLI.CONSENT_REQUIRED`](/cli/error-reference#CLI.CONSENT_REQUIRED) instead. The error lists each question still unanswered, and its next actions give the flags to add. A `--delete` or `--allow` that answers no question fails the run with `CLI.CONSENT_UNUSED`. To list the questions without applying anything, run with `--dry-run --json` and read `dataLoss` and `accessChanges`. `--confirm` does not answer them: only `--rename`, `--delete`, `--allow` or your answers in a terminal do.
+
+Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type loses no data, so the update asks nothing about it.
+
+`db update` names each subject by model and field from the contract the database was last updated to, which it stores when it advances a ref. With `--db`, pass `--advance-ref <name>` on every run so that contract is stored for the next run. Without a stored contract, each subject is its storage name, and a run with `--rename` fails with `MIGRATION.STATEMENT_ORIGIN_UNKNOWN`. Adding `--advance-ref` to that run does not help, because the missing contract is the one the database is at before it. To store it, emit the contract the database is at, run `db update --advance-ref db --dry-run` with the same `--db`, and check that it plans no operations. Then run it again without `--dry-run`, which changes nothing in the database and stores the contract. Then emit the new contract and run the rename.
+
+On PostgreSQL, a namespace is renamed, moved or removed with the same flags. `--rename billing:finance` renames the schema, and everything in it stays in it. `--rename public.Invoice:billing.Invoice` moves the model's table to another schema with its rows, constraints, indexes and policies, and creates the schema first when the database does not have it. Namespace renames run before the other renames, whatever order you give them in. `public` and a schema another contract space declares are not renamed.
+
+A namespace is a PostgreSQL schema that your contract declares with a `namespace` block. When you remove that block, the command asks about each model in the namespace, as it asks about any removed model. Answer with the flag that matches what you meant:
+
+- If you renamed the namespace, answer with `--rename billing:finance`. Nothing is dropped.
+- To keep one model's data, move it to a namespace the contract keeps, as in `--rename billing.Invoice:public.Invoice`.
+- To drop the namespace, answer with `--delete billing`. This answers for every model in it, and drops its tables and the schema.
+
+The schema can also hold objects that no contract declares. A table created by hand is asked about by its storage name, as in `--delete billing.audit_log`, because `--delete billing` does not answer for it. Any other such object, such as a view or a function, makes the run fail before it changes anything. The error names each object, so drop or move it yourself, then run the command again.
+
+The command leaves alone a schema that no contract declared, such as Supabase's `auth`, and a namespace that only another contract space declares. Before `8.0.0-rc.20`, the command did not ask about a removed namespace and left its tables in place.
+
+On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. Removing a field from a model removes it from every document that holds it, so the update asks about it: answer with `--delete <Model>.<field>`, or with `--rename`. Without a stored contract, the field is named by its collection, as in `--delete profiles.nickname`.
+
+On PostgreSQL and SQLite, a type change that can lose values is answered with `--delete <Model.field>`, which lets the database's own cast run; it may cut or round values, and a value it cannot cast fails the update. To write the conversion yourself, use [`migration plan --convert`](/cli/migration-plan#type-changes-and-required-fields) instead.
 
 ## Recommended flow
 
@@ -55,6 +85,16 @@ npx prisma db verify --db "$DATABASE_URL"
 ```
 
 Use `--dry-run` before applying changes in shared environments.
+
+## Data lines
+
+`db update` prints nothing on standard output. Its exit code is the result, and `--json` carries the plan and what ran. The `--json` output is one JSON object per line, and the result is on the line whose `kind` is `result`:
+
+```bash
+npx prisma db update --db "$DATABASE_URL" --dry-run --json | jq 'select(.kind == "result") | .envelope.result.dataLoss'
+```
+
+[Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the data lines of the other commands.
 
 ## When to use migrations instead
 

@@ -62,10 +62,23 @@ function sanitizeUtmParams(input: unknown): UtmParams {
   );
 }
 
+/** The ad-platform click IDs on a URL, and nothing else. */
+export function getClickIdParams(searchParams: URLSearchParams): UtmParams {
+  const clickIds: UtmParams = {};
+
+  for (const [key, value] of searchParams.entries()) {
+    if (value && isClickIdKey(key)) {
+      clickIds[key] = value;
+    }
+  }
+
+  return clickIds;
+}
+
 /**
  * @param includeClickIds Capture ad-platform click IDs too. These are
- *   advertising identifiers, so callers gate this on analytics consent —
- *   without consent nothing downstream records them anyway.
+ *   advertising identifiers, so callers gate what they persist on advertising
+ *   consent; `getClickIdParams` reads them on their own for the hand-off.
  */
 export function getUtmParams(
   searchParams: URLSearchParams,

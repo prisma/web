@@ -23,7 +23,7 @@ Say `migrations/app/` has no migrations yet, the `db` ref is set, and `migration
 
 `db migrate` never applies the baseline to a database that already records which contract it matches, such as one you ran `db sign` on. It applies only the migrations after the contract that database records.
 
-The baseline only creates things, because it is planned from an empty database, so it never removes data. The second migration can remove data. `migration plan` writes it without asking, and the command's output marks each destructive operation in it and warns that it may cause data loss. Review that migration before you apply it.
+The baseline only creates things, because it is planned from an empty database, so it never removes data. The second migration can remove data, and `migration plan` asks about it before it writes either one, as [Renames and data loss](#renames-and-data-loss) describes.
 
 If a migration already starts from the contract the `db` ref points at, `migration plan` writes a second migration that starts from the same contract, so the [migration history](/orm/migrations/the-migration-graph) splits into two branches. This happens, for example, after `db migrate` without `--advance-ref db`, which applies migrations but leaves the `db` ref where it was. `migration plan` still writes the migration and prints a warning. A database that has already run the existing migration then has no migration leading to your new contract, so `db migrate` on that database fails with `MIGRATION.PATH_UNREACHABLE`. To build on the newest migration instead, delete the directory this run wrote and plan again with `--from` set to the newest migration's directory name.
 
@@ -42,12 +42,74 @@ npx prisma migration plan --name add_users_table
 | `--name <slug>` | Sets the migration directory name suffix. |
 | `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
+| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the migration lose the data of a model, a field, a table no model stores, or every model of a namespace the contract removed. For a type change, accepts the database's own cast. Repeatable. |
+| `--convert <Model.field>` | For a type change that can lose values, writes an `alterColumnType` whose conversion you fill in. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
+| `--backfill <Model.field>` | For a new required field or a field made required, writes a backfill step you fill in, instead of a temporary value. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
 ### Contract references [#contract-references]
 
 A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. `@empty` names the empty database, before any migration. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+
+## Renames and data loss [#renames-and-data-loss]
+
+When the migration would lose data, because it drops a model, a field, a table or a collection, or changes a field's type in a way that can change values, `migration plan` asks you what to do before it writes anything. Answer each question on the command line:
+
+- `--delete <subject>` lets the data go. A subject is `Model`, `Model.field`, or, for data no model stores, its storage name.
+- `--rename <old>:<new>` keeps the data. The migration renames the table or column, and the constraints and indexes named after it, instead of dropping and creating it. Each side is `Model`, `namespace.Model`, `Model.field` or `namespace.Model.field`, and a field's model is named as the new contract names it: `--rename Profile:User --rename User.name:User.fullName`. A rename on the command line is planned from the start, so the drop it replaces is never asked about.
+- `--convert <Model.field>` answers a type change that can lose values: the migration gets a `placeholder(...)` call that you replace with your own conversion code.
+
+```npm
+npx prisma migration plan --name rename_full_name --rename User.name:User.fullName
+```
+
+In a terminal, the command asks the questions you did not answer with a flag. With `--yes`, in a CI job, or with `--no-interactive`, where it cannot ask, it fails with `CLI.CONSENT_REQUIRED` instead. The error lists each question, and its next actions give the flags to add. `--rename` is offered only for a model or field the new contract no longer has, so a field whose type changes is answered with `--convert` or `--delete`. `--confirm` answers none of these questions.
+
+Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type, and setting `NOT NULL`, lose no data, so the command asks nothing about them.
+
+On PostgreSQL, a changed `onDelete` or `onUpdate` on a relation is planned as dropping the foreign key and adding it back with the new actions. A changed or removed primary key is planned the same way, and because PostgreSQL does not drop a primary key while a foreign key points at it, the migration first drops every foreign key that points at the old key, then adds back each one the new contract still declares. A foreign key the new contract leaves out stays dropped. When such a foreign key is on a table the migration must not change, such as a table whose model has an [`@@control(...)`](/orm/contract-authoring/psl-syntax#control-policy) value other than `managed`, or a table in a schema the contract no longer declares, the command refuses and names that foreign key. Before `8.0.0-rc.20`, both changes failed with `MIGRATION.PLANNING_FAILED`.
+
+On PostgreSQL, a namespace is renamed, moved or removed with the same flags. `--rename billing:finance` renames the schema, and everything in it stays in it. `--rename public.Invoice:billing.Invoice` moves the model's table to another schema with its rows, constraints, indexes and policies, and creates the schema first when the database does not have it. Namespace renames run before the other renames, whatever order you give them in. `public` and a schema another contract space declares are not renamed.
+
+A namespace is a PostgreSQL schema that your contract declares with a `namespace` block. When you remove that block, the command asks about each model in the namespace, as it asks about any removed model. Answer with the flag that matches what you meant:
+
+- If you renamed the namespace, answer with `--rename billing:finance`. Nothing is dropped.
+- To keep one model's data, move it to a namespace the contract keeps, as in `--rename billing.Invoice:public.Invoice`.
+- To drop the namespace, answer with `--delete billing`. The migration drops each of its tables and then the schema.
+
+`migration plan` does not read the database, so it cannot see a table, view or function in that schema that no contract declares. If the schema holds one, `db migrate` fails before it drops the schema, and the error names the object. Drop or move it yourself, then run `db migrate` again.
+
+The command leaves alone a schema that no contract declared, such as Supabase's `auth`, and a namespace that only another contract space declares. Before `8.0.0-rc.20`, the command did not ask about a removed namespace and left its tables in place.
+
+On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. Removing a field from a model removes it from every document that holds it, so the command asks about it as it asks about a dropped collection: answer with `--delete User.nickname` or `--rename User.nickname:User.<new name>`. The planner refuses a rename of the field stored as `_id`, of a field whose stored name contains `.` or starts with `$`, of a time-series collection, and of a variant whose discriminator value changes, and says what to do instead.
+
+On MongoDB, `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. For a field `id ObjectId @id @map("_id")`, write `--rename User.id:User.userId`, not `User._id`.
+
+The first MongoDB migration you plan after upgrading from a release before `8.0.0-rc.19` is the exception. The [upgrade instructions](https://github.com/prisma/orm/blob/v8.0.0-rc.19/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.18-to-8.0.0-rc.19/) include a script that rewrites the copies of your old contract under `migrations/`, and those copies name each field by its stored name. That first migration starts from such a copy, so in it you name the old field by its stored name and the new field by its schema name. For a field that was `name String @map("display_name")` and is now `title String`, write `--rename User.display_name:User.title`. From the next migration on, use schema names only.
+
+## Type changes and required fields [#type-changes-and-required-fields]
+
+On PostgreSQL and SQLite, a type change that can lose values, such as `String` to `Int` or a longer `VarChar` to a shorter one, is a question like a drop. Answer it in one of two ways:
+
+- `--convert <Model.field>` writes an `alterColumnType` with `using: placeholder('<Model.field>:convert')`. Replace the placeholder with the conversion as SQL over the column, such as `using: '"age"::integer'`, then run `node migration.ts`. On SQLite the slot is the column's copy expression in `recreateTable`, such as `copyExpressions: { age: 'CAST("age" AS INTEGER)' }`.
+- `--delete <Model.field>` lets the database's own cast run. It may cut or round values, and a value it cannot cast fails the apply.
+
+A new required field on a table with rows gets a temporary value in the existing rows, such as `''` for text or `0` for a number, and the command's output names it. An optional field made required is tightened directly, so the apply fails while any row holds `NULL`, with a message that counts those rows. To fill the rows yourself, pass `--backfill <Model.field>`: the migration gets a `dataTransform` step with `check` and `run` placeholders to fill in, as [Editing a migration](/orm/migrations/editing-a-migration) shows. A new unique, primary-key or foreign-key field has no temporary value, so use `--backfill` when the table has rows.
+
+```npm
+npx prisma migration plan --name age_to_int --convert User.age --backfill User.displayName
+```
+
+## When nothing in the database changes [#no-database-change]
+
+If the storage part of the contract did not change, `migration plan` writes nothing and reports `No changes detected between contracts`. That is not an error, and there is nothing to do. If the storage part changed but the database needs no change, `migration plan` writes nothing and fails with `MIGRATION.PLANNING_FAILED`. This happens after a Prisma upgrade that changes how `contract.json` records values, after you change how a field's values are written in `contract.json` while its database type stays the same, or after you change a control policy. In that case the message gives the next step:
+
+- If you deploy with migrations, run `prisma migration new --from <hash>`, with the hash from the message, to write a migration with no operations, then `prisma db migrate`.
+- If you manage the database with `db init` or `db update`, run [`prisma db sign`](/cli/db-sign) on each database instead.
+
+If you expected the database to change, report it with the output of `prisma migration plan --json`.
 
 ## Recommended flow
 
@@ -66,6 +128,10 @@ Because `--to` accepts `<dir>^` (the source contract of a migration), you can pl
 ```npm
 npx prisma migration plan --to <migration-dir>^ --name rollback
 ```
+
+## Data lines
+
+Without `--json`, standard output gets one line per directory the command wrote, each once: the [automatic baseline](#the-automatic-baseline) first when the command wrote one, then the new migration, then any migration it wrote for an extension's contract space. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
 
 ## When to use migration plan
 

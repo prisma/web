@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getBaseUrl } from "@/lib/url";
 import { SITE_NAME } from "@/lib/site-metadata";
 import { getOgCardUrl } from "@/lib/og-card";
+import { getAgentMarkdownPath, getMarkdownUrlPath } from "@/lib/agent-markdown";
 import type { OgAccent } from "@prisma-docs/ui/components/og-image";
 
 type PageMetadataOptions = {
@@ -67,6 +68,13 @@ export function createPageMetadata({
   const baseUrl = getBaseUrl();
   const url = new URL(pathname, baseUrl).toString();
   const ogImageUrl = new URL(ogImagePath, baseUrl).toString();
+  // A page with a Markdown rendition names it, for agents that look for one
+  // before parsing the HTML, as blog posts, docs pages and the product guides
+  // do. next.config.mjs sends the same URL in a Link header.
+  const markdownPath = getAgentMarkdownPath(pathname);
+  const markdownUrl = markdownPath
+    ? new URL(getMarkdownUrlPath(markdownPath), baseUrl).toString()
+    : undefined;
 
   return {
     // Absolute: this helper already brands the title itself (word-boundary
@@ -76,6 +84,7 @@ export function createPageMetadata({
     description,
     alternates: {
       canonical: url,
+      ...(markdownUrl && { types: { "text/markdown": markdownUrl } }),
     },
     openGraph: {
       title,
