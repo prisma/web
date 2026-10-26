@@ -477,6 +477,11 @@ const config = {
   async headers() {
     return [
       {
+        // Next adds /blog; social crawlers can fetch cards without indexing them.
+        source: "/og/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
+      {
         source: "/:path*",
         headers: [...securityHeaders, llmsTxtHeader],
       },
