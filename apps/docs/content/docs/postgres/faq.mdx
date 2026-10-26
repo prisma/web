@@ -28,6 +28,16 @@ Yes, on [Prisma Compute](/compute), which runs TypeScript apps built for Node.js
 
 In three steps: create a Prisma Postgres database, `pg_dump` the local database, and `pg_restore` the dump over the direct connection, whose host is `db.prisma.io`. The copy is a snapshot, so stop writing to the local database before the final dump, and resume writes only on Prisma Postgres, after you have verified the restored database and pointed the app at it. [Migrate a local Postgres database to the cloud](/postgres/import-from-existing-database) has the commands and the checks to run first: PostgreSQL 17 tools, extensions, and the roles that row-level security policies name.
 
+### Can I create my own database roles?
+
+Prisma Postgres doesn't support custom roles. The database user in your connection string can't create roles, so `CREATE ROLE` fails with this error:
+
+```text
+ERROR: restricted superuser cannot create roles
+```
+
+If you wanted a role to give one part of your application read-only access, enforce that in your application instead. When that part sends its queries through Prisma ORM 8, a [middleware can refuse any query that isn't a read](/orm/middleware/how-middleware-works#beforeencode-validate-or-block) before it reaches the database.
+
 ### How do I switch from GitHub login to email and password login?
 
 If you previously signed up using GitHub and want to switch to email and password login, follow these steps:
@@ -77,7 +87,7 @@ Prisma Postgres bills based on _operations_ and _storage_ consumed. It does not 
 
 When you use all the queries included in your Free plan, your Prisma Postgres database stops accepting read and write requests. You can upgrade to a [paid plan](https://www.prisma.io/pricing) to restore access, usually within a minute, or wait until your query allowance resets at the start of the next calendar month.
 
-If you need to export your data or need more time before upgrading, you can activate a grace period for 24 hours. In the [Prisma Console](https://console.prisma.io/), open the workspace that groups your projects and databases, then select **Restore access for 24 hours** in the warning about your query limit. This lifts the query limit for all Prisma Postgres databases in the workspace. The grace period is available only once per workspace and does not renew each month.
+If you need to export your data or need more time before upgrading, you can activate a grace period for 24 hours. In the [Prisma Console](https://console.prisma.io/), open the workspace that groups your projects and databases, then select **Restore access for 24 hours** in the warning about your query limit. This lifts the query limit for all Prisma Postgres databases in the workspace. The grace period is available only once per workspace and does not renew each month. When the 24 hours end, queries are blocked again until you upgrade or your included queries reset at the start of the next month. The warning won't offer to restore access again. While queries are blocked, your data is not deleted.
 
 ### What is an operation?
 
@@ -255,6 +265,23 @@ If you installed Prisma Postgres through the [Vercel Marketplace integration](/g
 - Navigate to the **Settings** tab.
 - Under Current Installation Plan Level, click **Change Plan**.
 - Select the plan you want to upgrade to.
+
+### How do I delete a Prisma Postgres database I created through Vercel?
+
+Delete it in your Vercel dashboard. The Prisma Console has no delete option for databases created through Vercel, and deleting the Vercel project that was connected to the database leaves the database in place.
+
+Deleting a database is permanent, so before you start, [export any data you want to keep with `pg_dump`](/postgres/database/backups#manually-creating-a-backup-file-via-pg_dump).
+
+1. Open your [Vercel](https://vercel.com/) Dashboard and select the team that owns the database.
+2. Open **Storage** in the sidebar and select the database.
+3. In the database's **Settings**, choose the option to delete the database, then confirm.
+
+Usage charges for the database stop when you delete it. Usage from before that still appears on your Vercel invoice.
+
+Deleting a database doesn't cancel a paid plan, so you keep paying the monthly plan fee until you either change the plan or uninstall the integration:
+
+- Follow the steps in the previous answer and select the Free plan. The change takes effect at the end of the current billing period.
+- Uninstall the integration: in **Integrations**, click **Manage** on the Prisma integration, then click **Uninstall Integration** at the bottom of the page. This deletes the Prisma workspace the integration created and all its databases, so export first. A final Vercel invoice covers the usage up to that point.
 
 ## Caching
 

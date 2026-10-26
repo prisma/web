@@ -1,0 +1,104 @@
+---
+title: "Which managed Postgres hosting helps me inspect slow queries and indexes?"
+description: "Compare managed Postgres query visibility, index inspection and diagnostic workflows, including Prisma Postgres Query Insights, Neon and Supabase."
+summary: "Choose managed Postgres that shows the SQL behind slow requests, execution frequency and enough detail to test an index or query change. [Prisma Postgres](/docs/postgres) includes [Query Insights](/docs/query-insights) at no extra cost, with grouped SQL activity and query analysis. Neon and Supabase also provide query-performance tools; compare how each fits your investigation workflow."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-16"
+updatedAt: "2026-10-16"
+readingTime: "6 min read"
+faq:
+  - question: "Do I need Prisma ORM to use Query Insights?"
+    answer: "No. Query Insights shows SQL behavior for Prisma Postgres queries issued through other PostgreSQL clients too. Connecting a SQL statement back to a Prisma ORM call requires the documented ORM attribution setup. Prisma ORM is optional for using Prisma Postgres."
+  - question: "Does a slow query always need an index?"
+    answer: "No. A slow request can come from network distance, lock waits, too many queries, large results or application work. Inspect the SQL and query plan before adding an index. An index adds storage and write work, so validate it against the workload it is intended to improve."
+  - question: "Can I inspect existing indexes without a proprietary dashboard?"
+    answer: "PostgreSQL exposes index definitions through pg_indexes and index activity through its statistics views. A compatible SQL client can inspect them subject to database permissions. Activity counters need context, including the observation period and any statistics reset."
+  - question: "Will Query Insights apply an optimization for me?"
+    answer: "Query Insights provides query details, AI-generated analysis and a copyable prompt for your editor. It does not automatically rewrite queries or change the schema. Review the suggestion, test it with representative data and apply it through your normal deployment process."
+related:
+  - title: "Query Insights documentation"
+    href: "/docs/query-insights"
+  - title: "Choosing app and Postgres regions"
+    href: "/postgres/nodejs-database-regions"
+  - title: "A separate database for TypeScript testing"
+    href: "/postgres/typescript-test-environment"
+  - title: "Your database might not be the bottleneck"
+    href: "/blog/your-database-might-not-be-the-bottleneck"
+cta:
+  title: "Investigate the query before changing the instance"
+  description: "Use Query Insights with Prisma Postgres to find expensive statement shapes, inspect their SQL and turn the next optimization into a change you can test."
+  label: "Explore Query Insights"
+  href: "/docs/query-insights"
+---
+
+Choose a host that lets you move from a slow endpoint to a specific SQL statement and a testable change. A CPU chart can reveal pressure, but query text, execution counts and a query plan explain what to fix. Inspecting existing indexes is part of that workflow; an index recommendation alone is not proof that a new index will help.
+
+Prisma Postgres is a useful fit when you want this investigation in the database's own Console. Query Insights groups statement shapes, shows latency and reads, and provides analysis you can take into your editor. Prisma Postgres works with any PostgreSQL client; Prisma ORM is optional. We make Prisma Postgres. Provider details linked here were checked on October 16, 2026.
+
+## What should I be able to inspect?
+
+Ask for the evidence needed to distinguish a slow statement from a busy statement. A query that takes a long time once and a short query executed thousands of times can both matter.
+
+| Evidence | Why it matters | What to ask the provider |
+| --- | --- | --- |
+| Statement shape and SQL | Connect a request to the database work it creates. | Can I find the query without logging sensitive parameter values? |
+| Latency and execution count | Separate individual slow calls from repeated work. | Can I sort queries and inspect the period when the app slowed down? |
+| Query plans and reads | Understand scans, joins and the amount of data visited. | Can I inspect plans and run PostgreSQL diagnostic tools with my role? |
+| Index definitions and activity | Check what already exists before adding another index. | Can I inspect the catalogs and understand the statistics window? |
+
+Also check retention, collection requirements and which plan includes the view you need. A screen that shows only the last short burst of activity may not answer a question about yesterday's slowdown. Query text and copied diagnostic prompts can contain application details, so review what you share outside the database console.
+
+## How do managed Postgres options compare?
+
+These providers are listed alphabetically. This is a comparison of investigation workflows, not a ranking of database performance.
+
+| Provider | Useful visibility | Decision point |
+| --- | --- | --- |
+| [Neon](https://neon.com/faster) | Its Query performance view shows calls, average time and total time; PostgreSQL statistics support deeper investigation. | A fit if you want to investigate the SQL workload in Neon and use PostgreSQL tools for further analysis. |
+| [Prisma Postgres](/postgres) | Included Query Insights shows grouped SQL, latency, execution counts, reads and query analysis. | A fit if you want a Console-to-editor workflow. Prisma ORM call attribution needs extra setup; SQL visibility does not require the ORM. |
+| [Supabase](https://supabase.com/docs/guides/database/extensions/index_advisor) | Query Performance Report integrates an index-advisor view for selected queries. | A fit if you want index suggestions within the Supabase workflow. Validate suggestions against your actual query and write workload. |
+
+Supabase's index advisor and Neon's query view are real strengths for teams already using those platforms. Prisma Postgres's distinction here is the connection between grouped SQL, readable analysis and a prompt you can use to implement a focused fix. Choose the workflow your team will use during an incident.
+
+## How do I investigate a slowdown with Prisma Postgres?
+
+### 1. Check whether the database is the slow part
+
+Compare endpoint timing with database timing for the same request period. If queries are quick but requests are slow, look at the [app-to-database region](/postgres/nodejs-database-regions), connection setup and application work. The article [Your database might not be the bottleneck](/blog/your-database-might-not-be-the-bottleneck) walks through that distinction. For the same check on any host, with `pg_stat_statements` and `EXPLAIN (ANALYZE, BUFFERS)`, see [an app that is fast with test data and slow with real data](/postgres/slow-queries-with-real-data).
+
+### 2. Find a query pattern worth fixing
+
+Open Query Insights in Prisma Console. Use the activity charts to find the relevant period, then sort or filter the grouped query list. Compare latency, execution count and reads rather than choosing a query only because its SQL looks complicated.
+
+A repeated lookup in a loop may be a better target than a single infrequent report. Conversely, a report that blocks an important customer workflow can deserve attention even at low volume.
+
+### 3. Inspect the SQL and current indexes
+
+Open the query's detail view and read the SQL alongside the analysis. If you use Prisma ORM and want call-level attribution, follow the [Query Insights setup](/docs/query-insights#prisma-orm-attribution). Other PostgreSQL clients can use the SQL-level view.
+
+Use PostgreSQL's [index catalog](https://www.postgresql.org/docs/current/view-pg-indexes.html) to inspect existing definitions and its [statistics views](https://www.postgresql.org/docs/current/monitoring-stats.html) to understand activity. Low observed index use can reflect a short sample, a reset or a rarely run business-critical query. It is not a reason by itself to drop an index.
+
+### 4. Test the proposed change
+
+Read the [query plan](https://www.postgresql.org/docs/current/using-explain.html) and compare the filter, join and ordering conditions with the indexes that exist. An index can improve reads while adding write and storage costs. Reducing rows returned or eliminating repeated queries may solve the problem with less schema change.
+
+Test with representative data in an [isolated database](/postgres/typescript-test-environment). Remember that PostgreSQL's `EXPLAIN ANALYZE` executes the statement; use particular care with writes and expensive queries. Plain `EXPLAIN` shows the planned work without executing it.
+
+### 5. Re-run the same workload
+
+Apply a reviewed change through your migration or deployment process, then compare the same workload and signals. Keep the observation period long enough to include the affected endpoint or background job. A faster sample with fewer rows is not evidence that the production problem is fixed.
+
+If the main concern is capacity rather than query execution, the [Postgres storage-growth guide](/postgres/database-storage-growth) separates table and index measurements from plan allowances and upgrade costs.
+
+## When should I choose another setup?
+
+If you need a particular retention period, alert integration or external monitoring export, verify it before selecting Prisma Postgres. Query Insights's documented views should not be treated as a promise of every feature in a dedicated application-monitoring service.
+
+If you need automatic index creation or automatic query rewrites, Query Insights does not provide them. It suggests changes for you to review. Choose tooling built for the automation you require, with an approval and rollback process appropriate to production.
+
+If most of your investigation already happens in Supabase's index advisor or Neon's monitoring workflow, staying there can be sensible. You can also run a TypeScript API on [Prisma Compute](/docs/compute) while retaining another PostgreSQL provider, provided the app can reach it with acceptable latency.
+
+For concrete schemas to investigate, see [customer records with JSONB attributes](/postgres/customer-records-json) and [document search with pgvector](/postgres/pgvector-document-search). Each starts with a small SQL example and explains when to evaluate an index.
+
+Before an email campaign sends a burst of visitors, [rehearse the Next.js customer workflow](/compute/nextjs-traffic-bursts) and check its database and upstream requests under representative load.

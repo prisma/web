@@ -1,0 +1,77 @@
+---
+title: Bucket behavior
+description: Regions, consistency, conditional writes, S3 compatibility, key revocation, and deletion semantics for Object Store buckets.
+url: /storage/behavior
+metaTitle: Bucket behavior | Prisma Object Store
+metaDescription: "How Prisma Object Store buckets behave: regions, strong consistency, If-None-Match conditional writes, supported S3 operations, access key revocation, and what deleting an object or bucket removes."
+---
+
+This page describes how hosted Object Store buckets behave, for designing upload and deletion flows that depend on it. For creating buckets and keys, see [Storage](/storage).
+
+## Regions
+
+Each bucket is stored in a single region, chosen from the project's region when the bucket is created:
+
+| Project region | Bucket location |
+| --- | --- |
+| `us-east-1` | US East (Virginia) |
+| `us-west-1` | US West (California) |
+| `eu-central-1` | Frankfurt |
+| `eu-west-3` | Frankfurt |
+| `ap-northeast-1` | Tokyo |
+| `ap-southeast-1` | Singapore |
+
+Projects in `eu-west-3` (Paris) store their buckets in Frankfurt. A project without a region uses `us-east-1`. Buckets are not replicated to other regions, and an existing bucket does not move.
+
+## Consistency
+
+Buckets are strongly consistent. A read after a successful write returns the new object, and a read after a successful delete returns `404`.
+
+## Conditional writes
+
+`PutObject` honors `If-None-Match: *`: if an object already exists at the key, the write fails with `412 Precondition Failed` and the existing object is unchanged. The check runs against the latest state of the object, so of two concurrent conditional creates for the same key, at most one succeeds.
+
+Conditional reads with `If-Match`, `If-None-Match`, `If-Modified-Since`, and `If-Unmodified-Since` are supported on `GetObject`.
+
+If you rely on conditional headers in presigned `PUT` URLs, include the header when generating the URL and test the behavior against a hosted bucket.
+
+
+:::warning
+The local stand-in buckets that Composer provisions in `dev` are a development emulator and do not enforce conditional headers. Validate conditional-write behavior against a hosted bucket.
+:::
+
+## S3 compatibility
+
+Buckets speak the S3 API, so any S3 client or SDK works. Some bucket-level features are not available:
+
+| Feature | Supported |
+| --- | --- |
+| Object reads, writes, deletes, listing, and batch `DeleteObjects` | Yes |
+| Multipart uploads, including `ListMultipartUploads` and `AbortMultipartUpload` | Yes |
+| Conditional requests (see above) | Yes |
+| Bucket versioning (`GetBucketVersioning`, `PutBucketVersioning`) | No |
+| Bucket policies (`GetBucketPolicy`, `PutBucketPolicy`) | No |
+
+There is no runtime check needed for the unsupported features: design without them.
+
+## Access keys and revocation
+
+Access keys are scoped to one bucket with a `read` or `read_write` role. There are no bucket policies and no per-prefix or per-object permissions, so a `read_write` key can write any key in its bucket.
+
+Deleting an access key revokes it immediately. Requests that start after the key is deleted are rejected, including further parts of a multipart upload. Do not rely on revocation to stop a single request that is already in progress. To bound how long an issued upload authorization stays usable, keep presigned URL expiry short.
+
+## Deleting objects
+
+Buckets have no versioning, no soft delete, and no snapshots. When `DeleteObject` succeeds, the object cannot be read or restored through any API, and there are no older versions to remove.
+
+Incomplete multipart uploads are not cleaned up automatically. Their uploaded parts stay in the bucket until the upload is completed or aborted, so a deletion flow should list open uploads with `ListMultipartUploads` and abort the ones under the affected keys.
+
+To stop a key from being recreated after its contents are deleted, you can keep an empty object at that key and write with `If-None-Match: *`: the existing object makes later conditional creates fail.
+
+## Deleting a bucket
+
+Deleting a bucket permanently removes the bucket, every object and incomplete upload in it, and all its access keys in one call, even when the bucket is not empty. It cannot be undone. See [Deleting a bucket](/storage#deleting-a-bucket).
+
+## Not covered
+
+Prisma does not currently publish guarantees on when deleted data is physically erased from the underlying storage, or on retention in internal backups. If you need a statement on either for compliance work, [contact support](mailto:support@prisma.io).

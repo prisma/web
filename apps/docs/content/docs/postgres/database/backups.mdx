@@ -8,7 +8,7 @@ metaDescription: Learn about backups in Prisma Postgres
 
 ## Overview
 
-On [Starter, Pro, and Business plans](https://www.prisma.io/pricing), Prisma Postgres automatically creates snapshots of your database to support recovery and backup workflows. Navigate to the **Backups** tab of your Prisma Postgres instance in the [Prisma Console](https://console.prisma.io) to view and re-instantiate your available backups.
+On [Starter, Pro, and Business plans](https://www.prisma.io/pricing), Prisma Postgres automatically creates snapshots of your database to support recovery and backup workflows. Navigate to the **Backups** tab of your Prisma Postgres instance in the [Prisma Console](https://console.prisma.io) to view your available backups and [restore them](#restoring-a-backup).
 
 Snapshots are created _daily_, but only on days when the database has activity. Depending on your plan, you will see a different number of available snapshots:
 
@@ -20,11 +20,30 @@ Snapshots are created _daily_, but only on days when the database has activity. 
 
 Database changes or events that occurred after the most recent snapshot may not be restored.
 
+To recover rows that were deleted by mistake without overwriting newer data, [restore a snapshot to a new database](#restoring-a-backup) and copy the missing rows back. [Recover deleted records from a hosted Postgres database](https://www.prisma.io/postgres/recover-deleted-records) walks through the steps.
+
 For more details about backup availability and plan-specific features, visit our [pricing page](https://www.prisma.io/pricing).
 
 :::note
-In the future, Prisma Postgres will provide more fine-grained backup mechanisms based on user specific configurations and with point-in-time restore functionality.
+Point-in-time recovery is coming to Prisma Postgres in November 2026. It will restore a database to a moment you choose, rather than to a retained daily snapshot.
 :::
+
+## Restoring a backup
+
+In the **Backups** tab, select **Restore backup** next to a completed backup and choose where the backup goes:
+
+- **Restore to a new database** creates a new database from the backup in the same project and leaves the original database as it is. The original database's connection strings don't reach the new database, so [generate a connection string](/postgres/database/connecting-to-your-database#get-your-connection-strings) for it and point your app at that, or copy the rows you need back into the original database.
+- **Restore to an existing database**, with the database you are restoring selected as the target, rolls that database back to the backup in place. All of its data is overwritten with the backup, and anything written after the backup was taken is lost. Open connections are closed while the restore runs. The database keeps its connection strings, so your app can use the same `DATABASE_URL` once the restore completes.
+
+Restoring a backup into a different database that already exists is not supported. Restore it to a new database instead.
+
+If the database is connected to Vercel through the integration, restore it in place so the connection strings in your Vercel project keep working.
+
+### Restoring with the REST API, CLI, or MCP server
+
+- [`POST /v1/databases/{targetDatabaseId}/restore`](/rest-api/endpoints/databases/post-databases-by-target-database-id-restore) and [`prisma postgres backup restore <database>`](/cli/postgres) restore in place, like **Restore to an existing database**.
+- [`POST /v1/projects/{projectId}/databases`](/rest-api/endpoints/databases/post-projects-by-project-id-databases) with a `source` of type `backup` creates a new database from a backup. The response includes the new database's connection string.
+- The `create_prisma_postgres_recovery` [MCP tool](/ai/mcp-tools) restores a backup into a new database.
 
 ## Manually creating a backup file via `pg_dump`
 

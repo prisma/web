@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { formatTag, formatDate } from "@/lib/format";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
@@ -196,8 +197,9 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const params = await props.params;
   const page = getPageOrRedirect(params.slug);
 
-  const MDX = page.data.body;
-  const blogPostingJsonLd = getBlogPostingJsonLd(page);
+  const content = await pageContent(page.data);
+  const MDX = content.body;
+  const blogPostingJsonLd = getBlogPostingJsonLd({ ...page, data: content });
   const seriesContext = getSeriesContext(page);
   // Series posts get recommendations too. `getRelatedPosts` excludes the
   // current post's own series, so "Keep reading" points outside it and the
@@ -330,8 +332,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             larger gap and neither needed a style change. */}
         <KeepReading posts={relatedPosts} />
 
-        {/* Conversion CTA */}
-        <BlogCTA />
+        {/* Conversion CTA. A post can relabel it and point it at a tracked
+            Console URL through the `cta` frontmatter field instead of adding
+            a second button inside the article. */}
+        <BlogCTA {...(page.data.cta ?? {})} />
 
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />
@@ -350,7 +354,7 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             <Text className="size-4" />
             On this page
           </h3>
-          <InlineTOC items={page.data.toc as TOCItem[]} />
+          <InlineTOC items={content.toc as TOCItem[]} />
         </div>
       </div>
     </div>
@@ -405,8 +409,7 @@ export async function generateMetadata({
   };
 }
 
-export function generateStaticParams(): { slug: string }[] {
-  return blog.getPages().map((page) => ({
-    slug: page.slugs[0],
-  }));
-}
+export const generateStaticParams =
+  process.env.COMPOSER_BUILD === "1"
+    ? undefined
+    : () => blog.getPages().map((page) => ({ slug: page.slugs[0] }));

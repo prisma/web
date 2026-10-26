@@ -120,8 +120,11 @@ export const postgresContent: ProductPageContent = {
         // 2026-10-08: compliance claims rewritten to match pricing and the
         // page's own FAQ, which pin each certification to the plan it starts
         // from. Daily backups are paid-plan only (Free has none).
+        // 2026-10-14: HIPAA (with signed BAA) moved to Business only; the
+        // deep link points at /postgres/hipaa, which the card renders through
+        // `renderInlineMarkup` (see product-features.tsx).
         description:
-          "Daily backups on paid plans, encryption at rest and in transit, full tenant isolation. GDPR on every plan, HIPAA from Pro, SOC 2 Type II and ISO 27001 on Business.",
+          "Daily backups on paid plans, encryption at rest and in transit, full tenant isolation. GDPR on every plan. [HIPAA](/postgres/hipaa), SOC 2 Type II and ISO 27001 on Business.",
         illustration: "compliance",
       },
       {
@@ -170,12 +173,12 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Can I manage my databases from Claude Code, Cursor or Codex?",
       answer:
-        "Yes, through Prisma's [hosted MCP server](/docs/ai/tools/mcp-server) at https://mcp.prisma.io/mcp, which you connect with your Prisma sign-in. In Claude Code, run `claude mcp add --transport http prisma https://mcp.prisma.io/mcp`. Cursor adds it from its MCP settings or a one-click link, and Codex through the Prisma plugin. An agent can then create databases, inspect the schema, run SQL, apply schema changes and, on paid plans, restore a backup into a new database. For scripts, there is also a REST API that uses a workspace service token.",
+        "Yes, through Prisma's [hosted MCP server](/docs/ai/tools/mcp-server) at https://mcp.prisma.io/mcp, which you connect with your Prisma sign-in. In Claude Code, run `claude mcp add --transport http prisma https://mcp.prisma.io/mcp`. Cursor adds it from its MCP settings or a one-click link, and Codex through the Prisma plugin. An agent can then create databases, inspect the schema, run SQL, apply schema changes and, on paid plans, restore a backup into a new database. For scripts, there is also a REST API that uses a workspace service token. To keep test writes away from customer data, see [hosting a TypeScript test app with a separate database](/postgres/typescript-test-environment).",
     },
     {
       question: "Where do I find my connection string?",
       answer:
-        "In the Prisma Console: open your project, select Connect to your database, then Generate new connection string. You get [two connection strings](/docs/postgres/database/connecting-to-your-database). Use the pooled one as `DATABASE_URL` for your app and serverless functions, and the direct one for migrations, Prisma Studio and `pg_dump`. SSL is required, so keep `sslmode=require` in the URL. `npx create-db` also prints a connection string.",
+        "In the Prisma Console: open your project, select Connect to your database, then Generate new connection string. You get [two connection strings](/docs/postgres/database/connecting-to-your-database). Use the pooled one as `DATABASE_URL` for your app and serverless functions, and the direct one for migrations, Prisma Studio and `pg_dump`. SSL is required, so keep `sslmode=require` in the URL. `npx create-db` also prints a connection string. Once connected, the [query-monitoring guide](/postgres/managed-postgres-query-monitoring) explains how to inspect slow SQL and existing indexes.",
     },
     {
       question: "Does Prisma Postgres support pgvector?",
@@ -185,17 +188,17 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Are backups included?",
       answer:
-        "Yes, every paid plan includes daily [automatic backups](/docs/postgres/database/backups). Starter and Pro keep them for 7 days and Business keeps them for 30; the Free plan has none. You restore a backup from the database's Backups tab in the Console, or ask an agent to restore one into a new database through the MCP server. Point-in-time restore is not available yet. To keep your own copy, run `pg_dump` against the direct connection string, on any plan with available usage.",
+        "Yes, every paid plan includes daily [automatic backups](/docs/postgres/database/backups). Starter and Pro keep them for 7 days and Business keeps them for 30; the Free plan has none. You restore a backup from the database's Backups tab in the Console, or ask an agent to restore one into a new database through the MCP server. Point-in-time restore is coming in November 2026. To keep your own copy, run `pg_dump` against the direct connection string, on any plan with available usage.",
     },
     {
       question: "Which regions can I choose?",
       answer:
-        "Six: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1). You pick the region for each database when you create it in the Console, through MCP or with `npx create-db --region`. Without the flag, `npx create-db` picks the region closest to you.",
+        "Six: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1). You pick the region for each database when you create it in the Console, through MCP or with `npx create-db --region`. Without the flag, `npx create-db` picks the region closest to you. For deployed apps, see [choosing app and database regions](/postgres/nodejs-database-regions).",
     },
     {
       question: "Is Prisma Postgres HIPAA compliant?",
       answer:
-        "Yes, from the Pro plan up. HIPAA is available on Pro ($49 a month) and Business ($129 a month), so you can run workloads with protected health information on either; it is not available on Free or Starter. Business adds SOC 2 Type II and ISO 27001, and GDPR applies on every plan, including Free. Audit reports and control details are in the [Prisma Trust Center](https://trust.prisma.io).",
+        "Yes, on the Business plan at $129 a month, with a signed Business Associate Agreement (BAA). HIPAA is not available on the Free, Starter or Pro plans. For comparison, Supabase only offers HIPAA from its Team plan at $599 a month, plus a paid HIPAA add-on. Business also includes SOC 2 Type II and ISO 27001, and GDPR applies on every plan, including Free. See [HIPAA on the Business plan](/postgres/hipaa) for the BAA and scope. Audit reports and control details are in the [Prisma Trust Center](https://trust.prisma.io).",
     },
   ],
   cta: {

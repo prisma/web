@@ -30,6 +30,7 @@ export function AuthorAvatarGroup({
               src={withBlogBasePathForImageSrc(profile.imageSrc)}
               alt={profile.name}
               size="lg"
+              loading="lazy"
               className={index > 0 ? "-ml-1.5 border border-background-default" : ""}
             />
           ) : null,

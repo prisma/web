@@ -1,3 +1,5 @@
+import { captureBrowserAcquisition } from "@prisma-docs/ui/lib/acquisition.browser";
+import { onCtaClick } from "@prisma-docs/ui/lib/analytics";
 import posthog from "posthog-js";
 import { hasAnalyticsConsent, onAnalyticsConsentChange } from "@prisma-docs/ui/lib/consent";
 import { getPaidPersonProperties, onAttributionChange } from "@prisma-docs/ui/lib/attribution";
@@ -12,7 +14,15 @@ const SUPER_PROPERTIES = {
   environment: "production",
 };
 
+const acquisitionProperties = () => captureBrowserAcquisition("blog", hasAnalyticsConsent());
+acquisitionProperties();
+
 posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+  before_send: (event) => {
+    if (event?.event === "$pageview")
+      event.properties = { ...event.properties, ...acquisitionProperties() };
+    return event;
+  },
   api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   capture_pageview: "history_change",
   defaults: "2025-11-30",
@@ -43,6 +53,7 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
 // device storage, and the visitor has not made a decision yet; cookieless
 // capture already covers them.
 onAnalyticsConsentChange((status) => {
+  acquisitionProperties();
   if (status === "granted") {
     posthog.opt_in_capturing();
     const stored = readStoredUtmAttribution(UTM_ATTRIBUTION_STORAGE_KEY);
@@ -68,6 +79,28 @@ function recordPaidTouch(attribution: UtmAttribution) {
 }
 
 onAttributionChange(recordPaidTouch);
+
+// Every `trackCTA` click (the post footer button, the logo menu's asset
+// downloads), as the same `site:cta_clicked` event the marketing site sends,
+// so a post's footer button can be set against its pageviews and the
+// Console's arrivals in one funnel; filter on `cta_location`. `trackCTA`
+// already pushes `cta_click` to GTM for GA4 (consent-gated); this capture is
+// counted cookielessly before consent too. Sent at once over a beacon because the click navigates to
+// another origin and a batched request would be lost with the page. The
+// campaign params ride on the event, as PostHog attaches them to every event.
+onCtaClick((cta) => {
+  posthog.capture(
+    "site:cta_clicked",
+    {
+      cta_text: cta.cta_text,
+      cta_location: cta.cta_location,
+      cta_destination: cta.cta_destination,
+      section: cta.section ?? "blog",
+      page_path: window.location.pathname,
+    },
+    { send_instantly: true, transport: "sendBeacon" },
+  );
+});
 
 // Landings that arrive before UtmPersistence mounts are covered by replaying
 // whatever is already stored.

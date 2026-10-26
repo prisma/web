@@ -189,7 +189,7 @@ test("getAgentMarkdownPath normalises to a member of AGENT_MARKDOWN_PATHS", () =
 // --- the two places the page list is spelled out have to agree -----------
 //
 // The proxy is no longer a third: its matcher covers every page for Agent
-// Front, and the nine-page boundary is `getAgentMarkdownRewritePathname`
+// Front, and the registered-page boundary is `getAgentMarkdownRewritePathname`
 // itself. `proxy-matcher.test.ts` checks that the proxy honours it.
 
 const siteRoot = new URL("../..", import.meta.url).pathname;

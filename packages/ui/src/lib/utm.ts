@@ -1,5 +1,6 @@
 export const CONSOLE_HOST = "console.prisma.io";
 export const UTM_ATTRIBUTION_STORAGE_KEY = "prisma_utm_attribution";
+const ATTRIBUTION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
 export type UtmParams = Record<string, string>;
 export interface UtmAttribution {
@@ -39,7 +40,7 @@ function isClickIdKey(key: string) {
   return CLICK_ID_KEYS.has(key);
 }
 
-/** Keys that are rewritten onto internal links. */
+/** Campaign keys carried at the Console handoff. */
 function isAttributionKey(key: string) {
   return key.startsWith("utm_") || key === "ref";
 }
@@ -61,10 +62,23 @@ function sanitizeUtmParams(input: unknown): UtmParams {
   );
 }
 
+/** The ad-platform click IDs on a URL, and nothing else. */
+export function getClickIdParams(searchParams: URLSearchParams): UtmParams {
+  const clickIds: UtmParams = {};
+
+  for (const [key, value] of searchParams.entries()) {
+    if (value && isClickIdKey(key)) {
+      clickIds[key] = value;
+    }
+  }
+
+  return clickIds;
+}
+
 /**
  * @param includeClickIds Capture ad-platform click IDs too. These are
- *   advertising identifiers, so callers gate this on analytics consent —
- *   without consent nothing downstream records them anyway.
+ *   advertising identifiers, so callers gate what they persist on advertising
+ *   consent; `getClickIdParams` reads them on their own for the hand-off.
  */
 export function getUtmParams(
   searchParams: URLSearchParams,
@@ -163,11 +177,11 @@ export function syncUtmAttribution(
   attribution: UtmAttribution,
   options: { includeFirstTouch?: boolean } = {},
 ) {
-  let updated = syncUtmParams(url, attribution.last);
-
   if (!options.includeFirstTouch) {
-    return updated;
+    return false;
   }
+
+  let updated = syncUtmParams(url, attribution.last);
 
   const firstTouchParams = Object.fromEntries(
     Object.entries(attribution.first).map(([key, value]) => [`first_${key}`, value]),
@@ -258,7 +272,22 @@ export function readStoredUtmAttribution(storageKey: string) {
       return undefined;
     }
 
-    return sanitizeUtmAttribution(JSON.parse(storedAttribution));
+    const attribution = sanitizeUtmAttribution(JSON.parse(storedAttribution));
+    const firstSeenAt = Date.parse(attribution?.firstSeenAt ?? "");
+    const lastSeenAt = Date.parse(attribution?.lastSeenAt ?? "");
+    const now = Date.now();
+    if (
+      !attribution ||
+      !Number.isFinite(firstSeenAt) ||
+      !Number.isFinite(lastSeenAt) ||
+      firstSeenAt > lastSeenAt ||
+      lastSeenAt > now ||
+      now - firstSeenAt >= ATTRIBUTION_MAX_AGE_MS
+    ) {
+      window.localStorage.removeItem(storageKey);
+      return undefined;
+    }
+    return attribution;
   } catch {
     return undefined;
   }

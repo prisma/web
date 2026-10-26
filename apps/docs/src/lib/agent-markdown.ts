@@ -32,6 +32,21 @@ export const AGENT_USER_AGENT_TOKENS = [
 
 const AGENT_USER_AGENT_PATTERNS = AGENT_USER_AGENT_TOKENS.map((token) => new RegExp(token, "i"));
 
+/**
+ * The `Vary` value for a Markdown rendition. A docs page URL answers Markdown on
+ * `Accept: text/markdown` or an agent user agent (`getAgentMarkdownSignal`),
+ * so a shared cache has to key on both request headers. Same value as
+ * apps/site/src/lib/agent-markdown.ts.
+ *
+ * Both src/proxy.ts (on the rewrite) and the Markdown route send it, because
+ * on Vercel each one covers a different response (measured on www.prisma.io,
+ * 2026-10-19). A 200 carries the route's own `Vary` and drops the proxy's;
+ * before this the route sent none and the client got only Next's RSC `Vary`
+ * (blog) or nothing (docs). A CDN 304 on a page URL carries the proxy's
+ * `Vary` and not the route's.
+ */
+export const AGENT_MARKDOWN_VARY = "Accept, User-Agent";
+
 const SKIPPED_DOCS_PREFIXES = ["/api", "/llms", "/llms.mdx", "/og"];
 const SKIPPED_DOCS_PATHS = new Set(["/favicon.ico", "/rss.xml", "/sitemap", "/sitemap.xml"]);
 

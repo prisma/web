@@ -11,7 +11,7 @@ Prisma Postgres takes a PostgreSQL database from your laptop in three steps: cre
 The Free plan includes 2 GB of storage and 200k operations a month, with no credit card.
 
 1. **Create the database.** In the Console, create a project with a Prisma Postgres database, open the database, click **Connect to your database** and then **Generate new connection string**. Copy both strings it shows. They have the same credentials and a different host: `pooled.db.prisma.io` for the application, and `db.prisma.io` for `pg_restore`, `psql` and migrations.
-2. **Dump the local database.** This writes a compressed archive of the local database `mydb`; add `-h`, `-p` and `-U` if it does not run on the default socket.
+2. **Dump the local database.** The Free plan holds 2 GB of storage for the whole [workspace](/console/concepts#workspace), shared by its databases; check that the database is well under what is left first with `psql -d mydb -c 'SELECT pg_size_pretty(pg_database_size(current_database()));'`. The command below writes a compressed archive of the local database `mydb`; add `-h`, `-p` and `-U` if it does not run on the default socket.
 
    ```bash title="Terminal"
    pg_dump -Fc -d mydb -f mydb.dump
@@ -69,13 +69,13 @@ Run the same count against the local database. The [full import guide](/prisma-p
 
 ## Moving from Neon or Supabase?
 
-The same dump and restore works from a hosted database. The [Neon guide](/guides/switch-to-prisma-postgres/from-neon) covers selecting the branch and the unpooled endpoint, and the [Supabase guide](/guides/switch-to-prisma-postgres/from-supabase) lists what does not move with the data: Auth users, Storage objects and Edge Functions.
+The same dump and restore works from a hosted database. The [Neon guide](/guides/switch-to-prisma-postgres/from-neon) covers selecting the branch and the unpooled endpoint, and the [Supabase guide](/guides/switch-to-prisma-postgres/from-supabase) lists what does not move with the data: Auth users, Storage objects and Edge Functions. PlanetScale Postgres uses the same dump and restore over a direct (non-PgBouncer) connection; [Prisma Postgres vs PlanetScale](https://www.prisma.io/compare/planetscale) is the head-to-head.
 
 The dump is a snapshot of the source at the moment `pg_dump` runs, so stop or drain writes to the source before the final dump and keep them stopped until you have verified the import and switched the application over, as the [full guide's export step](/prisma-postgres/import-from-existing-database-postgresql#3-stop-source-writes-and-export-the-final-snapshot) spells out. If you cannot pause writes for that long, this snapshot process is not the right fit: you need a separately tested process that captures and replays every write made after the snapshot.
 
 ## Put the app online too
 
-[Prisma Compute](/compute) hosts TypeScript apps built for Node.js, Bun or Next.js next to Prisma Postgres; deployed apps run on Bun. An existing repository adds a [Prisma Composer (Early Access)](/composer) declaration, which is a `service.ts` per server, one `module.ts` and the deploy config in the `composer` section of `prisma.config.ts`. The server itself needs three changes: read the port from `service.port()` and bind `0.0.0.0`, turn its other `process.env` reads into service inputs or dependencies, and build the Postgres client from the injected `db.url`. The [porting page](/composer/porting-an-app) has a prompt your coding agent can make these changes from. Then run your build, and `npx prisma deploy module.ts` provisions the service. To deploy on push, connect the repository and add the `prisma/cloud-deploy-action` workflow as shown in [Deploy on push](/compute/deploy-on-push). From then on a push to the default branch updates production, and every other pushed branch gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied. If the app reads `DATABASE_URL`, the preview is only as separate as that value. The [Compute FAQ](/compute/faq#where-it-has-trade-offs) lists what Compute does not do yet.
+[Prisma Compute](/compute) hosts TypeScript apps built for Node.js, Bun or Next.js next to Prisma Postgres; deployed apps run on Bun. An existing repository adds a [Prisma Composer](/composer) declaration, which is a `service.ts` per server, one `module.ts` and the deploy config in the `composer` section of `prisma.config.ts`. The server itself needs three changes: read the port from `service.port()` and bind `0.0.0.0`, turn its other `process.env` reads into service inputs or dependencies, and build the Postgres client from the injected `db.url`. The [porting page](/composer/porting-an-app) has a prompt your coding agent can make these changes from. Then run your build, and `npx prisma deploy module.ts` provisions the service. To deploy on push, connect the repository and add the `prisma/cloud-deploy-action` workflow as shown in [Deploy on push](/compute/deploy-on-push). From then on a push to the default branch updates production, and every other pushed branch gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied. If the app reads `DATABASE_URL`, the preview is only as separate as that value. The [Compute FAQ](/compute/faq#where-it-has-trade-offs) lists what Compute does not do yet.
 
 ## Do I need to change my ORM?
 
@@ -83,7 +83,15 @@ No, because Prisma Postgres is standard PostgreSQL behind a connection string: P
 
 ## Does it cost anything?
 
-The Free plan includes 200k operations a month and 50 databases, with no credit card, no time limit and no usage billing. Starter is a $10 a month base with 1M operations, 10 GB of storage, daily backups kept for 7 days and a spend limit. See [pricing](https://www.prisma.io/pricing).
+The Free plan includes 200k operations a month, 2 GB of storage and 50 databases, with no credit card, no time limit and no usage billing. Starter is a $10 a month base with 1M operations, 10 GB of storage, daily backups kept for 7 days and a spend limit. See [pricing](https://www.prisma.io/pricing).
+
+## How big a database fits on the Free plan?
+
+The Free plan includes 2 GB of storage for the whole workspace, shared by its databases. `SELECT pg_size_pretty(pg_database_size(current_database()));` on the source database shows how much disk space it uses. The [comparison post's size check](https://www.prisma.io/blog/from-local-to-production-with-prisma-postgres#how-big-is-your-laptop-database) sets that figure against the free storage of Neon, Render, Railway and Supabase.
+
+## Which services host a small PostgreSQL database online for free?
+
+Prisma Postgres, Neon, Render, Railway and Supabase each have a free plan for a small PostgreSQL database, and they differ on storage and on what happens to a free database over time. The Prisma Postgres Free plan includes 2 GB of storage, with no time limit. Neon's Free plan has 1 GB of Postgres storage per project, 20 GB across all projects, with no time limit ([pricing](https://neon.com/pricing), [plans](https://neon.com/docs/introduction/plans)). Render's free database has 1 GB, expires 30 days after creation, and is deleted with its data 14 days later unless you upgrade it ([free tier](https://render.com/docs/free)). Railway's Free plan has 0.5 GB of volume storage and $1 of credit a month after a one-time $5 trial; volumes created during the trial are deleted 30 days after the trial credits expire unless the account is upgraded ([free trial](https://docs.railway.com/pricing/free-trial), [pricing](https://railway.com/pricing)). Supabase's Free plan has a 500 MB database size per project on a 2 GB Free disk, and sums database size across the organization's projects for its plan quota ([database size](https://supabase.com/docs/guides/platform/database-size)); it pauses a project after a week without activity ([pricing](https://supabase.com/pricing)). Figures checked on 2026-10-24; the [comparison post](https://www.prisma.io/blog/from-local-to-production-with-prisma-postgres) sets the import steps side by side.
 
 ## Can I try it without an account?
 

@@ -75,7 +75,7 @@ The `No db ref set` line is telling you that nothing in this project records whi
 - If the database is empty, you need nothing: `npx prisma db migrate` creates the tables for you, though it does not create the database itself.
 - If every table in the database already matches your contract, run [`npx prisma db sign`](/cli/db-sign) and then read [The automatic baseline](#the-automatic-baseline) below. `db sign` checks the tables against your contract and then writes the [marker](/orm/migrations/the-migration-graph#terms-used-on-this-page), which is the record in the database of which contract state it matches.
 - If the database has only some of your tables, run [`npx prisma db init`](/cli/db-init). It adds what is missing and nothing else, and it stops if matching your contract would need a change that could lose data, such as dropping a column.
-- If this is a development or preview database that you want to match your contract without keeping migration files for it, run [`npx prisma db update`](/cli/db-update). Unlike `db init`, it will make changes that could lose data, so it asks you to type the database name first.
+- If this is a development or preview database that you want to match your contract without keeping migration files for it, run [`npx prisma db update`](/cli/db-update). Unlike `db init`, it will make changes that could lose data, so it first asks about each model or field whose data it would lose. See [Renames and data loss](/cli/db-update#renames-and-data-loss).
 
 A migration is a directory, and there is no SQL file in it. `migration.ts` is the one you read and sometimes edit, and the `ops.json` and `migration.json` beside it are what `db migrate` reads, as [What a migration contains](/orm/migrations/how-migrations-work#what-a-migration-contains) describes. Commit all three, along with `contract.prisma`, `contract.json`, `contract.d.ts`, and any new directories under `migrations/snapshots/`, which are saved copies of your contract. The change itself is in `migration.ts`, written as a list of method calls:
 
@@ -186,11 +186,11 @@ None of these steps changes your `db` ref.
 
 ## When the planner needs your input
 
-Some changes cannot be planned in full, because the answer depends on your data rather than on your contract. Adding a **required** field with no default to a table that already has rows is the common one: `migration plan` writes the `ADD COLUMN` and the `SET NOT NULL`, but only you know what the rows that already exist should contain, so it leaves that part for you to fill in as a **placeholder**. To see one, apply `add_user_phone`, then add a required `displayName String` field to `User` and run both commands again:
+Some changes cannot be planned in full, because the answer depends on your data rather than on your contract. Adding a **required** field with no default to a table that already has rows is the common one. On its own, `migration plan` gives the rows that already exist a temporary value, such as `''` for a string, and says so in its output. When only you know what those rows should contain, pass `--backfill <Model.field>`, and it leaves that part for you to fill in as a **placeholder**. A type change that can lose values works the same way with `--convert <Model.field>`; [Type changes and required fields](/cli/migration-plan#type-changes-and-required-fields) has both. To see a placeholder, apply `add_user_phone`, then add a required `displayName String` field to `User` and run both commands again:
 
 ```npm
 npx prisma contract emit
-npx prisma migration plan --name add_display_name
+npx prisma migration plan --name add_display_name --backfill User.displayName
 ```
 
 ```text
@@ -224,7 +224,7 @@ npx prisma migration check
 
 :::note[What's early]
 
-Planning covers tables, columns, indexes, constraints, and the backfill placeholder shown above. What it cannot do yet is notice that you renamed something: if you rename an optional field, it plans the change as **drop column + add column**, and `migration plan` prints a warning that the change can lose data. Take that warning seriously, because `db migrate` runs destructive operations without asking, so read `migration show <dir>` before you apply anything. To rename a column and keep the data in it, edit `migration.ts`, replace that pair of operations with a [`rawSql` operation](/orm/migrations/editing-a-migration#escape-hatch-raw-sql) that runs `ALTER TABLE ... RENAME COLUMN`, and recompile. To rename a table, replace the dropped and created table with [`renameTable`](/orm/reference/migration-api#schemas-and-tables), which keeps the rows and renames the constraints and indexes named after the table. One more difference from Prisma ORM 7: `migration plan` never asks you questions the way `migrate dev` did.
+Planning covers tables, columns, indexes, constraints, and the backfill placeholder shown above. It cannot tell on its own whether you renamed a model, a field or, on PostgreSQL, a namespace, or dropped it and created a new one. So when a plan would drop a model or field that holds data, `migration plan` asks you about it before it writes anything. To keep the data, answer with `--rename <old>:<new>`, such as `--rename User.name:User.fullName`. To let it go, answer with `--delete` and the name of the model or field, such as `--delete User.legacy`. On PostgreSQL, `--rename billing:finance` renames a namespace, `--rename public.Invoice:billing.Invoice` moves a model to another namespace, and `--delete billing` drops a namespace the contract removed. [Renames and data loss](/cli/migration-plan#renames-and-data-loss) has the details. When the command cannot ask you, because it is not running in an interactive terminal, as in CI, it fails with `CLI.CONSENT_REQUIRED` and lists each question with the flags that answer it. `db migrate` runs destructive operations without asking, so read `migration show <dir>` before you apply anything.
 
 :::
 

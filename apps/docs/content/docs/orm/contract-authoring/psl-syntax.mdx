@@ -8,6 +8,7 @@ metaDescription: 'Learn how to write a Prisma ORM contract in the Prisma schema 
 
 PSL, the Prisma Schema Language, is the preferred way to author [your contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`. You usually write one file, `src/prisma/contract.prisma`, or [split it into several](#split-the-contract-across-several-files), and [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it. If you know the Prisma schema language, most of a contract file reads exactly as you expect. The five biggest additions are listed here, and the rest of the page is the full reference for every attribute and block:
 
+- mixins: write a set of fields, attributes or enum members once and include it in several blocks.
 - named types: give a database column type a name you can reuse on many fields.
 - enums: an enum can now say how its values are stored, and what each member stores.
 - value objects: a structured value stored inside its parent row, with no table of its own.
@@ -42,7 +43,7 @@ enum Priority {
 }
 
 model User {
-  id        Uuid     @id @default(uuid())
+  id        Uuid     @id @onCreate(uuid())
   email     String
   createdAt DateTime @default(now())
   address   Address?
@@ -52,7 +53,7 @@ model User {
 }
 
 model Post {
-  id        Uuid      @id @default(uuid())
+  id        Uuid      @id @onCreate(uuid())
   title     ShortName
   userId    Uuid
   priority  Priority  @default(Low)
@@ -132,36 +133,26 @@ Set `contract` to a glob, such as `"./src/prisma/**/*.prisma"`, to write the con
 
 ## Models and fields
 
-Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`. On PostgreSQL, plain `String` is a `text` column, `Int` is `int4`, and `DateTime` is `timestamptz`. You can also use one of these PostgreSQL types as the field type: `VarChar`, `Char`, `Numeric`, `Timestamp`, `Timestamptz`, `Time`, `Timetz`, `Date`, `Uuid`, `Inet`, `SmallInt`, or `Real`. Their arguments are optional: `VarChar(35)` and `Char(2)` set a length, `Numeric(10, 2)` sets a precision and scale, and `Timestamp(3)`, `Timestamptz(3)`, `Time(3)`, and `Timetz(3)` set how many digits of a second are kept. `Timestamptz` without an argument is the same column as `DateTime`, so use it only when you want to set that precision.
+Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`. On PostgreSQL, plain `String` is a `text` column, `Int` is `int4`, and `DateTime` is `timestamptz`. You can also use one of these PostgreSQL types as the field type: `VarChar`, `Char`, `Numeric`, `Timestamp`, `Timestamptz`, `Time`, `Timetz`, `Date`, `Uuid`, `Inet`, `SmallInt`, `Real`, `Bit`, `VarBit`, or `Interval`. Their arguments are optional: `VarChar(35)`, `Char(2)`, `Bit(8)`, and `VarBit(64)` set a length, `Numeric(10, 2)` sets a precision and scale, and `Timestamp(3)`, `Timestamptz(3)`, `Time(3)`, `Timetz(3)`, and `Interval(3)` set how many digits of a second are kept. Write each argument as a whole number without quotes: `VarChar("35")` and `VarChar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Timestamptz` without an argument is the same column as `DateTime`, so use it only when you want to set that precision.
 
 On PostgreSQL, the date and time types reach your code as `Temporal` values: `DateTime` and `Timestamptz` as a `Temporal.Instant`, `Timestamp` as a `Temporal.PlainDateTime`, `Date` as a `Temporal.PlainDate`, and `Time` as a `Temporal.PlainTime`. Your app needs a global `Temporal` to read and write them, and [Scalar fields](/orm/data-modeling#scalar-fields) says how to check for it. When you want a string instead, use `DateString`, a `date` column your code gets as a string, or `TimestampString`, `TimestamptzString`, and `TimeString`, which do the same for `timestamp`, `timestamptz`, and `time`. `TimestamptzJsDate` is a `timestamptz` column your code gets as a JavaScript `Date`, so it needs no `Temporal`, but a `Date` drops the microseconds PostgreSQL stores.
 
 - `@id` marks the primary key. `@@id([a, b])` declares a composite key.
 - `@unique` adds a unique constraint on one field. `@@unique([userId, title])` adds one across several fields.
 - `@@index([...])` declares a secondary index.
-- `@default(...)` sets a default the database fills in when it is a literal, `now()`, `autoincrement()`, or any other SQL expression. Write the SQL as a `sql` tagged literal, which is `sql` followed by the SQL in backticks, such as ``@default(sql`gen_random_uuid()`)``. See [Default values](#default-values) for how to write each kind of literal.
-- `@default(...)` sets a default Prisma ORM generates when it is `uuid()` (a version 4 UUID, the same as `uuid(4)`), `uuid(7)`, `cuid(2)`, `ulid()`, or `nanoid()`, where `nanoid(n)` sets the length, from 2 to 255. Prisma ORM computes the value when it writes the row and the database will not fill it in for you, so a row written by raw SQL or another application gets no value. Prisma ORM 7's `cuid()` is rejected with a hint to use `cuid(2)`.
+- `@default(...)` sets a database default: the database fills in the column when an insert leaves it out. The default is a literal, `now()`, `autoincrement()`, or any other SQL expression. Write the SQL as a `sql` tagged literal, which is `sql` followed by the SQL in backticks, such as ``@default(sql`gen_random_uuid()`)``. See [Default values](#default-values) for how to write each kind of literal.
+- `@onCreate(...)` sets a value Prisma ORM generates when it creates the row, and `@onUpdate(...)` one it generates on every update. See [Generated values](#generated-values).
 - `@map("column_name")` sets a field's column name in the database. `@@map("table_name")` sets the table or collection name when it differs from the model name. Without `@@map`, the table or collection has the model's name exactly as written, so `model UserProfile` is the table `"UserProfile"`.
-- `@@check(expression: "total >= 0", name: "order_total_positive")` adds a check constraint of your own to the table. See [Check constraints](#check-constraints).
+- ``@@check(expression: sql`total >= 0`, name: "order_total_positive")`` adds a check constraint of your own to the table. See [Check constraints](#check-constraints).
 - `@@control(observed)` says how far Prisma ORM manages the table. See [Control policy](#control-policy).
 
-A field can be a list on PostgreSQL: `tags String[]` is a `text[]` column, and the same works for `Int[]` and the other scalar types. Prisma ORM adds a check constraint to a list column so it cannot hold a `NULL` element. To allow `NULL` elements, put the `?` on the element type: `String?[]` allows `null` elements, `String[]?` allows a `null` list, and `String?[]?` allows both. In your code, `String?[]` is a `ReadonlyArray<string | null>`, `String[]?` is a `ReadonlyArray<string> | null`, and `String?[]?` is a `ReadonlyArray<string | null> | null`. To leave the check constraint out of a list that does not allow `NULL` elements, for example when the column already exists without it, add `@noCheck(elementNotNull)` to the field. The field's type does not change. A list of an enum or of a named type works the same way, and so does a list of a value object, as [Value objects](#value-objects) shows.
-
-`@updatedAt` is gone, so write `temporal.updatedAt()` where the field's type would go:
-
-```prisma
-model Post {
-  updatedAt temporal.updatedAt()
-}
-```
-
-Prisma ORM sets the field to the current time on every create and update. `temporal` is a built-in group of timestamp field types, such as `temporal.createdAt()` and `temporal.updatedAt()`, so you do not import it or declare it. On PostgreSQL the column is `timestamptz`, and you can still set the field yourself on a write. `temporal.createdAt()` sets the field once, when the row is created. Both take the time from your application's clock, not from the database, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `DateTime @default(now())` instead. `temporal.createdAtJsDate()` and `temporal.updatedAtJsDate()` do the same with a JavaScript `Date` in place of a `Temporal` value. `temporal.createdAt()` and `temporal.updatedAt()` need a global `Temporal` for writes as well as reads, so when your runtime has none, install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` to your app's entry file.
+A field can be a list on PostgreSQL: `tags String[]` is a `text[]` column, and the same works for `Int[]` and the other scalar types. Prisma ORM adds a check constraint to a list column so it cannot hold a `NULL` element. To allow `NULL` elements, put the `?` on the element type: `String?[]` allows `null` elements, `String[]?` allows a `null` list, and `String?[]?` allows both. In your code, `String?[]` is a `ReadonlyArray<string | null>`, `String[]?` is a `ReadonlyArray<string> | null`, and `String?[]?` is a `ReadonlyArray<string | null> | null`. A `String?[]` column has no check constraint, so use it for a list column that already exists without one. A list of an enum or of a named type works the same way, and so does a list of a value object, as [Value objects](#value-objects) shows.
 
 How IDs map differs by database:
 
 ```prisma tab="PostgreSQL"
 model User {
-  id Uuid @id @default(uuid())
+  id Uuid @id @onCreate(uuid())
 }
 ```
 
@@ -171,7 +162,63 @@ model User {
 }
 ```
 
-On PostgreSQL the primary key is an ordinary column, so pick its type and default yourself. On MongoDB the primary key is the document's `_id`, so type it `ObjectId` and map it to `_id`.
+On PostgreSQL the primary key is an ordinary column, so pick its type and default yourself. On MongoDB the primary key is the document's `_id`, so type it `ObjectId` and map it to `_id`. Your code still names the field `id`, in rows, `where`, `select`, `orderBy`, and write data: `@map` changes only the name in the stored document. A field of a [value object](#value-objects) cannot take `@map`, because it is always stored under its own name.
+
+### Generated values
+
+`@onCreate(fn())` and `@onUpdate(fn())` name a function that Prisma ORM runs in your application to fill the field: `@onCreate` when it creates the row and you leave the field out, `@onUpdate` on every update. The functions are:
+
+- `uuid()`, a version 4 UUID, the same as `uuid(4)`, and `uuid(7)`, a version 7 UUID.
+- `cuid(2)`, `ulid()`, and `ksuid()`.
+- `nanoid()`, 21 characters long, and `nanoid(n)`, `n` characters long, from 2 to 255.
+- `now()`, the current time.
+
+```prisma
+model Post {
+  id        String   @id @onCreate(uuid(7))
+  slug      String   @onCreate(nanoid(12))
+  createdAt DateTime @default(now())
+  updatedAt DateTime @onCreate(now()) @onUpdate(now())
+}
+```
+
+Each function makes a value for the field's type: `uuid()` works on `String`, `VarChar(n)`, `Char(n)`, and `Uuid`, and `now()` works on every PostgreSQL date and time type, `Date`, `Time`, and `Timetz` included. The database does not fill these columns, so a row written by raw SQL or another application gets no value. A field may have both a database `@default` and an `@onCreate(...)`: `createdAt DateTime @default(now()) @onCreate(now())` takes its time from your application when Prisma ORM creates the row, and from the database for other inserts. On an optional field, `@onCreate(...)` fills the field when you leave it out, and an explicit `null` is stored as `null`.
+
+`@onUpdate(...)` alone generates nothing on create. If a required field has `@onUpdate(...)` and no `@onCreate(...)` or `@default`, you must pass a value for it in ORM `create` and `upsert`. To have it generated on create too, add `@onCreate(...)`.
+
+`@default(uuid())` and the other functions that generate a value are refused in `@default` with `PSL_GENERATOR_IN_DEFAULT`, which names the `@onCreate(...)` to write. `@default(now())` and `@default(autoincrement())` stay: they are database defaults.
+
+An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The value a function writes must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `VarChar(5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a bare `VarChar` has no limit.
+
+Prisma ORM 8 has no `@updatedAt`. To replace `@updatedAt`, write `updatedAt temporal.updatedAt()`:
+
+```prisma
+model Post {
+  updatedAt temporal.updatedAt()
+}
+```
+
+Prisma ORM sets the field to the current time on every create and update, and you can still set it yourself on a write. `temporal.createdAt()` sets its field once, when the row is created. You do not import or declare `temporal`: it is a group of timestamp field types built into the contract syntax. On PostgreSQL the column is `timestamptz`.
+
+Both take the time from your application's clock, not from the database, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `DateTime @default(now())` instead.
+
+`temporal.UpdatedAt`, without parentheses, is the same column written as a [named type](#named-types). Write `@onCreate(now()) @onUpdate(now())` yourself only for another type or a precision. The example at the top of this section writes them on a `DateTime` field only to show the attributes.
+
+`temporal.createdAt()` and `temporal.updatedAt()` need a global `Temporal` for writes as well as reads. When your Node.js version has none, install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` at the top of `src/prisma/db.ts`. `temporal.createdAtJsDate()` and `temporal.updatedAtJsDate()` work the same way, but with a JavaScript `Date` in place of a `Temporal` value.
+
+### Columns of any database type
+
+For a column of a database type no field type covers, write ``Raw(sql`...`)`` with the type written the way the database reports it. To see that text for a column that already exists, run [`prisma db schema`](/cli/db-schema):
+
+```prisma
+model Category {
+  id   Int                @id
+  path Raw(sql`ltree`)
+  area Raw(sql`circle`)?  @default(sql`'<(0,0),1>'::circle`)
+}
+```
+
+Migrations create the column with that text, and [`db verify`](/cli/db-verify) compares it with the type the database reports, so write `integer`, not `int4`, and quote a name that needs it, as in ``Raw(sql`"MyType"`)``. Your code reads and writes the value as `unknown`, and a default is a `sql` tagged literal. `Raw("ltree")`, without the `sql` tag, is refused. `Raw` works on PostgreSQL and on SQLite, which Prisma ORM 8 supports as an [experimental package](/orm/supported-databases).
 
 ### Default values
 
@@ -186,19 +233,22 @@ model Account {
   ratio     Float    @default(NaN)
   role      String   @default("member")
   active    Boolean  @default(true)
-  startsOn  Date     @default("2024-01-01")
+  startsOn  Date     @default(date`2024-01-01`)
+  validFrom DateTime @default(timestamptz`2024-01-01T00:00:00Z`)
+  payload   Bytes    @default(bytea`\x010203`)
   createdAt DateTime @default(now())
   expiresAt DateTime @default(sql`(now() + '00:03:00'::interval)`)
 }
 ```
 
 - A JSON default is a `json` tagged literal: `json` followed by the JSON document in backticks. Write a JSON array the same way, as `tags` shows.
-- A decimal default is a bare number, and it keeps every digit you write, trailing zeros included.
+- A decimal default is a bare number.
 - `NaN`, `Infinity`, and `-Infinity` are written without quotes, and so are `true` and `false`.
-- A text default is a quoted string, and so is a fixed date or time, as `startsOn` shows. A `DateTime` default is a point in time with a UTC offset, such as `"2024-01-01T00:00:00Z"`, and a `Timestamp` default has no offset, such as `"2024-01-01 00:00:00"`.
-- `contract emit` stores a fixed date or time default in one canonical text for each value, however you write it. `@default("2024-01-01T01:00:00+01:00")` on a `DateTime` field is stored as `"2024-01-01T00:00:00Z"`, the same instant in UTC, and `@default("2024-01-01 12:34:56.500")` on a `Timestamp` field is stored as `"2024-01-01T12:34:56.5"`. `contract infer` and `contract print` write date and time defaults in the same form.
-- A `Bytes` default is a quoted string of base64 text, such as `@default("aGVsbG8=")`, or of PostgreSQL hex text, which starts with `\x`.
-- Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `VarChar(n)` or `Char(n)` takes, a number a `Numeric(p, s)` would round, an integer outside the range of `Int` or `SmallInt`, or text that is not a UUID on a `Uuid` field.
+- A text default is a quoted string.
+- A fixed date, time, or interval is a tagged literal named after the column's PostgreSQL type: `timestamptz` for `DateTime` and `Timestamptz`, and `timestamp`, `date`, `time`, `timetz`, and `interval` for the types of those names, as in ``@default(interval`P1D`)``. A `timestamptz` default is a point in time with a UTC offset, such as ``timestamptz`2024-01-01T00:00:00Z` ``, and a `timestamp` default has no offset, such as ``timestamp`2024-01-01 00:00:00` ``. A quoted string on one of these fields is refused, and the message shows the tagged literal to write.
+- A `Bytes` default is a `bytea` tagged literal holding the bytes as hexadecimal after `\x`, as `payload` shows. Base64 text is not accepted.
+- On SQLite, a `DateTime` default uses the `datetime` tag, as in ``@default(datetime`2024-01-01T00:00:00Z`)``, and a `Bytes` default the `blob` tag, which holds hexadecimal digits, as in ``@default(blob`68656c6c6f`)``.
+- Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `VarChar(n)` or `Char(n)` takes, a number a `Numeric(p, s)` would round, more digits of a second than a `Timestamptz(3)` keeps, an integer outside the range of `Int` or `SmallInt`, or text that is not a UUID on a `Uuid` field.
 - A date or time default that the field's type does not hold makes `contract emit` fail with `PSL_INVALID_DEFAULT_LITERAL`, and the message shows a text the field takes. That includes an offset on a `Timestamp`, `Date`, or `Time` default, a missing offset on a `DateTime`, `Timestamptz`, or `Timetz` default, more than six digits after the decimal point (three on SQLite), and a date or time that does not exist, such as `2024-02-30`. The CLI checks these defaults on Node.js 24 too, which has no built-in `Temporal`.
 - On a field typed with an `enum` block, the default is the member's name without quotes, as in `@default(Low)`. On a `pg.enum(...)` field, it is the value the member stores, in quotes, as in `@default("admin")`. [Enums](#enums) covers both.
 - Any other SQL expression is a `sql` tagged literal, and it goes into the column default exactly as written. Write the current time as `now()` and a sequence as `autoincrement()`, not as `` sql`now()` `` or `` sql`autoincrement()` ``, which are refused.
@@ -211,8 +261,8 @@ Prisma ORM 7's `dbgenerated("...")` is not accepted, and `contract emit` reports
 
 ```prisma
 model User {
-  @@index([name], where: "(name IS NOT NULL)", name: "user_name_active")
-  @@index(expression: "lower(handle)", unique: true, name: "user_handle_lower")
+  @@index([name], where: sql`(name IS NOT NULL)`, name: "user_name_active")
+  @@index(expression: sql`lower(handle)`, unique: true, name: "user_handle_lower")
   @@index([slug], type: "hash", name: "user_slug_hash")
 }
 ```
@@ -223,22 +273,29 @@ model User {
 - `type:` picks the index method, such as `"hash"` or `"gin"`.
 - `name:` names the index. The name in the database is not exactly what you typed: it gets an eight-character hash on the end, `user_name_active_000a85d8`, and if you change `name:` later, the next `migration plan` renames the index instead of dropping and recreating it. `map:` instead sets the exact name, for an index that already exists in the database, which is what [`contract infer`](/cli/contract-infer) writes for indexes it finds. Give one or the other, not both.
 
-The `expression:` and `where:` strings go into the SQL as written, so they use column names, not field names (they differ when a field has `@map`), and you quote the names yourself. Prisma ORM does not check the SQL until the migration runs. On MongoDB, `@@index` takes different arguments; see [MongoDB indexes](#mongodb-indexes).
+[Advanced PostgreSQL](/orm/contract-authoring/advanced-postgresql) shows when each kind of index is the right one. `expression:` and `where:` take a `sql` tagged literal, as `@default` does; a quoted string there is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. Inside the literal no quote is escaped, and it may span lines. Prisma ORM stores the SQL with its shared indentation and the blank lines at its start and end removed. The SQL goes into the database as written, so it uses column names, not field names (they differ when a field has `@map`), and you quote the names yourself. Prisma ORM does not check the SQL until the migration runs. On MongoDB, `@@index` takes different arguments; see [MongoDB indexes](#mongodb-indexes).
 
 ### Full-text indexes
 
-`@@fullTextIndex([field])` creates the GIN index that PostgreSQL [full-text search](/orm/reference/orm-client#full-text-search) uses. It takes one text field, and it needs either `name:` or `map:`, but not both:
+`@@fullTextIndex([...])` creates the GIN index that PostgreSQL [full-text search](/orm/reference/orm-client#full-text-search) uses. It takes one or more text fields, and it needs either `name:` or `map:`, but not both:
 
 ```prisma title="src/prisma/contract.prisma (excerpt)"
 model Post {
-  id    Int    @id
-  title String
+  id       Int     @id
+  title    String
+  subtitle String?
+  body     String?
 
   @@fullTextIndex([title], name: "post_title_search")
+  @@fullTextIndex([[title, subtitle], body], name: "post_search")
 }
 ```
 
-`language:` sets the text-search language, which tells PostgreSQL how to break the text into searchable words. It defaults to `english`, and you set it as in `@@fullTextIndex([title], name: "post_title_search", language: "german")`. In a query, you search with the text field's `fullTextMatches` and `fullTextRank` functions, which take the same `language` option, as in `p.title.fullTextMatches(query, { language: "german" })`, and that option also defaults to `english`. Give the index and the search the same language, because PostgreSQL does not use the index for a search in another language. `where:` makes it a partial index, as on `@@index`. A field typed `pg.enum(...)`, a PostgreSQL enum type as [Enums](#enums) describes, cannot have a full-text index. PostgreSQL only.
+Each top-level item of the list is a weight group, strongest first, and an item can itself be a list of fields that share a weight. In `post_search`, a match in `title` or `subtitle` ranks above a match in `body`. An index takes one to four groups, a group cannot be empty, and a field can appear only once. In an index of several fields, Prisma ORM wraps every column in `coalesce(column, '')`, so the index does not change when a column becomes optional or required.
+
+`language:` sets the text-search language, which tells PostgreSQL how to break the text into searchable words. It defaults to `english`, and you set it as in `@@fullTextIndex([title], name: "post_title_search", language: "german")`. `where:` makes it a partial index, as on `@@index`. A field typed `pg.enum(...)`, a PostgreSQL enum type as [Enums](#enums) describes, cannot have a full-text index. PostgreSQL only.
+
+To search an index, name it in the query: `fns.fullTextMatches(indexes.post_search, q)` in an ORM `where` callback, as [Full-text search](/orm/reference/orm-client#full-text-search) shows. The query then reads the index's fields, weights and language from the contract, so it searches exactly what the index covers and PostgreSQL can use the index. For a partial index, made with `where:`, PostgreSQL uses it only when the query's own `where` also implies the index's condition, so add that condition to the query and check the plan with `EXPLAIN`. You can also search one text field with its own `fullTextMatches` and `fullTextRank` functions, as in `p.title.fullTextMatches(query, { language: "german" })`; give that search the same language as the index, because PostgreSQL does not use the index for a search in another language.
 
 ### Check constraints
 
@@ -249,13 +306,13 @@ model Order {
   id    Int     @id @default(autoincrement())
   total Decimal
 
-  @@check(expression: "total >= 0", name: "order_total_positive")
+  @@check(expression: sql`total >= 0`, name: "order_total_positive")
 }
 ```
 
-`expression:` is the condition as SQL, using column names, as on `@@index`. `name:` and `map:` work as they do on `@@index`: `name:` for a constraint you are adding, and `map:` for one that already exists in the database under that exact name. A model can carry any number of `@@check` attributes. PostgreSQL only.
+`expression:` is the condition as a `sql` literal, using column names, as on `@@index`. `name:` and `map:` work as they do on `@@index`: `name:` for a constraint you are adding, and `map:` for one that already exists in the database under that exact name. A model can carry any number of `@@check` attributes. PostgreSQL only.
 
-Prisma ORM also adds two check constraints of its own: one on every enum column, so it accepts only the enum's values, and one on every list column, so it rejects `NULL` elements. When one of them gets in your way, `@noCheck` on the field leaves both out, `@noCheck(membership)` leaves out only the enum check, and `@noCheck(elementNotNull)` only the list check. The field's TypeScript type does not change, so the database can then hold values the type does not describe.
+Prisma ORM also adds two check constraints of its own: one on every enum column, so it accepts only the enum's values, and one on every list column, so it rejects `NULL` elements. A list whose elements may be `NULL` is written `T?[]`, and it gets no check, as [Models and fields](#models-and-fields) describes.
 
 ### Control policy
 
@@ -279,6 +336,46 @@ model AuditLog {
 }
 ```
 
+## Mixins
+
+A mixin is a named set of members you write once and include in several blocks. Declare it with the block's keyword followed by `mixin`, and include it with `+` and its name:
+
+```prisma
+model mixin Timestamps {
+  createdAt DateTime @default(now())
+  updatedAt temporal.updatedAt()
+
+  @@index([createdAt])
+}
+
+enum mixin BaseRoles {
+  ADMIN = "admin"
+  USER  = "user"
+}
+
+model User {
+  id    Int    @id
+  +Timestamps
+  email String
+}
+
+enum Role {
+  @@type("pg/text@1")
+  +BaseRoles
+  GUEST = "guest"
+}
+```
+
+The contract is the same as if the mixin's members were written where the `+` line is, so `User` has the fields `id`, `createdAt`, `updatedAt` and `email`, in that order, and the index on `createdAt`, and `Role` has the members `ADMIN`, `USER` and `GUEST`.
+
+- A `model mixin` goes only in models, a `type mixin` only in composite types, an `enum mixin` only in enums, and a mixin for a block an extension adds, such as `policy_select mixin`, only in blocks of that keyword.
+- A field or enum member that the block already has, from its own body or from another mixin, is an error, and so is including the same mixin twice in one block.
+- A mixin's own attributes can name only its own fields, as `@@index([createdAt])` does. A model's attributes can name the fields a mixin gives it, as in `@@id([tenantId, id])`.
+- A mixin cannot include another mixin, and it is not a type, so it cannot be a field's type.
+- A mixin declared in `namespace auth { }` is included from another namespace as `+auth.Timestamps`, and the types of its fields are looked up in `auth`.
+
+The language server completes mixin names after `+`, and goes to, hovers, renames and colors them.
+
 ## Named types
 
 The `types` block gives a database column type a name you can reuse on many fields:
@@ -291,6 +388,30 @@ types {
 
 Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. You do not have to name a type: a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Numeric(10, 2)`, `Uuid`, or `Timestamptz`.
 
+A named type is shorthand: the contract stores the column type, not the name.
+
+A named type can also set `@default`, `@onCreate` and `@onUpdate`, and every field typed by it gets them. In this example, `TimestampString(3)` is a PostgreSQL `timestamp(3)` column that your code reads as a string:
+
+```prisma
+types {
+  Slug      = VarChar(64)
+  UpdatedAt = TimestampString(3) @onCreate(now()) @onUpdate(now())
+}
+
+model Post {
+  id        String             @id @onCreate(uuid())
+  slug      Slug               @unique
+  createdAt temporal.CreatedAt
+  updatedAt UpdatedAt          @default(now())
+}
+```
+
+- `@id` and `@unique` belong to a field, not to a type, so write them on the field, as `slug` does. On a named type they are refused with `PSL_UNSUPPORTED_NAMED_TYPE_ATTRIBUTE`.
+- A field may add any attribute its named type does not set. Here `updatedAt` adds `@default(now())`, a database default, so a row inserted outside Prisma ORM also gets a time. A field that repeats an attribute its named type already sets is refused with `PSL_DUPLICATE_ATTRIBUTE`.
+- A named type is built on a type or an enum, not on another named type.
+
+Prisma ORM provides two named types you do not declare: `temporal.CreatedAt`, set to the current time on create, and `temporal.UpdatedAt`, set on create and on every update. Write them without parentheses, as `createdAt` does above. They are the named-type form of `temporal.createdAt()` and `temporal.updatedAt()`, and store the same column: a `timestamptz` column on PostgreSQL. PostgreSQL also has `temporal.CreatedAtString` and `temporal.UpdatedAtString`, which give your code the time as a string, and `temporal.CreatedAtJsDate` and `temporal.UpdatedAtJsDate`, which give it a JavaScript `Date`. They take no arguments; for a precision, write the type and the attributes yourself, as `UpdatedAt` above does.
+
 Three types cover big integers, and they differ in what your code receives:
 
 | Type | Column | In your code |
@@ -299,11 +420,11 @@ Three types cover big integers, and they differ in what your code receives:
 | `BigIntNumber` | `bigint` | a JavaScript `number`; a read or write outside the safe integer range fails |
 | `UnboundedInt` | `numeric` | a JavaScript `bigint` of any size |
 
-In Prisma ORM 8 the native type is the field's type, so `String @db.VarChar(35)` from Prisma ORM 7 becomes `VarChar(35)`, and the `@db.` attributes are gone. The `types` block is PostgreSQL only.
+In Prisma ORM 8 the native type is the field's type, so `String @db.VarChar(35)` from Prisma ORM 7 becomes `VarChar(35)`, and the `@db.` attributes are gone. The `types` block works on PostgreSQL, SQLite and MongoDB. On MongoDB a named type cannot set `@default`, because MongoDB has no database defaults; [MongoDB data modeling](/orm/data-modeling/mongodb#named-types) covers the differences.
 
 ## Enums
 
-An enum lists its members. It can also say, with `@@type`, how their values are stored, and what each member stores:
+An enum lists its members, and with `@@type` it can also say how their values are stored and what each member stores:
 
 ```prisma
 enum Priority {
@@ -316,7 +437,38 @@ enum Priority {
 
 In `pg/text@1`, `pg` is PostgreSQL, `text` is the column type, and `@1` is the version of how the value is stored and read. Write `@@type("pg/int4@1")` to store the values as integers instead. When a member has no explicit value, the member name itself is stored.
 
+Each member's value is a value of the enum's type, written as a `@default` of that type is: a quoted string for text, a bare number for a number type, and a tagged literal for a date or time. A quoted member on a number type, such as `Half = "0.5"` under `@@type("pg/numeric@1")`, is refused, and the message shows what to write, here `Half = 0.5`. Two members may not store the same value. Prisma ORM compares the values, not the text you wrote, so on `pg/numeric@1` the members `0.5` and `0.50` store the same value and are refused.
+
+On MongoDB the same rule applies, with MongoDB's types. A quoted member is text (`mongo/string@1`), and `true` and `false` are booleans. Write a number bare, `NaN` and the infinities included, and a date or binary value with its tag, as in ``date`2024-01-01T00:00:00Z` `` or ``binary`aGVsbG8=` ``:
+
+```prisma
+enum Ratio {
+  @@type("mongo/double@1")
+  Unknown = NaN
+  Half    = 0.5
+}
+
+enum Level {
+  @@type("mongo/int32@1")
+  One = 1
+}
+```
+
+These members are refused:
+
+- A quoted member on a type that does not take text, such as `Unknown = "NaN"` under `mongo/double@1`. The error is `PSL_VALUE_TYPE_INCOMPATIBLE`, and its message says what to write.
+- A `mongo/int32@1` or `mongo/int64@1` member written with a fraction, such as `1.0`. Write `1`.
+- A `mongo/decimal128@1` member that a Decimal128 would round, such as one with more than 34 significant digits. It is read as a Double, so the error is `PSL_VALUE_TYPE_INCOMPATIBLE`.
+
+Do not use an enum on an Int64, Date, Decimal128, Binary or ObjectId type, or a Double enum with a `NaN` or infinite member, such as `Ratio` above. You can declare it, but it is refused when a collection Prisma ORM manages uses it, because the validator Prisma ORM writes for each collection cannot list those members.
+
+Before `8.0.0-rc.20`, MongoDB read a quoted member as JSON, so `"NaN"` was a number. A contract emitted before `8.0.0-rc.20` with a Decimal128 member written with leading zeros, such as `"007.5"`, is refused when it loads: run `npx prisma contract emit` again.
+
+On PostgreSQL, some types cannot hold enum members. JSON (`pg/json@1` and `pg/jsonb@1`), byte strings (`pg/bytea@1`), text-search queries (`pg/tsquery@1`), time with a time zone (`pg/timetz@1`), vectors (`pg/vector@1`), and geometries (`pg/geometry@1`) are refused in `@@type`: use a text enum instead. For a PostgreSQL `enum` type, use a `native_enum` block, not `@@type("pg/enum@1")`.
+
 `@@type` is optional, and when you leave it out Prisma ORM picks the type from the member values: bare member names and string values give the database's text type, and integer values give its integer type. Give every member the same kind of value, because a mix of string and integer values throws an error whose `code` is `PSL_ENUM_CANNOT_INFER_TYPE`. A `@default` names the member, as in `priority Priority @default(Low)`, even where the member stores a different value.
+
+At runtime, `db.enums` holds each member as a query returns it, such as a `bigint` for `pg/int8@1`.
 
 An `enum` block is not a PostgreSQL `enum` type: the column is text or an integer. For a PostgreSQL `enum` type, declare it in a `native_enum` block and type the field `pg.enum(Role)`:
 
@@ -331,7 +483,7 @@ model User {
 }
 ```
 
-Each member needs a value. `pg` comes with `@prisma/orm-postgres`, so there is nothing to import. You do not create the PostgreSQL type yourself: `npx prisma migration plan` includes the `CREATE TYPE`.
+Unlike an `enum` block, a `native_enum` block needs a value for every member. `pg` comes with `@prisma/orm-postgres`, so there is nothing to import. You do not create the PostgreSQL type yourself: `npx prisma migration plan` includes the `CREATE TYPE`. A field can name a `native_enum` declared in another [namespace](#namespaces) by putting the namespace first, as in `pg.enum(auth.OrderStatus)`.
 
 ## Value objects
 
@@ -346,7 +498,7 @@ type Address {
 }
 
 model User {
-  id        Uuid     @id @default(uuid())
+  id        Uuid     @id @onCreate(uuid())
   address   Address?
   addresses Address[]
 }
@@ -384,6 +536,8 @@ model User {
   edited Post[] @relation("Edited")
 }
 ```
+
+On a SQL database, each relation's foreign key gets an index on its columns, so that deleting or updating a referenced row can find the rows that point at it. If the model already has a plain index, a unique constraint or a primary key on exactly those columns, that one serves instead and no second index is created. A partial index, or one with a non-default `type` or `options`, does not count. To use an index whose first columns are the foreign key's, name it on the relation with `index: "<name>"`, using the `name` or `map` you gave it; to have no index at all, write `index: false`. An unnamed `@@index` on exactly the columns of a unique constraint or the primary key is left out of the contract, because the unique one already serves its lookups.
 
 When two relations join the same two models, as `Authored` and `Edited` do here, give each pair the same `@relation("Name")` on both ends so Prisma ORM can tell which list belongs to which foreign key; otherwise `npx prisma contract emit` fails with an error whose `code` is `PSL_AMBIGUOUS_BACKRELATION`. For a one-to-one, make the other side singular instead of a list, so `User` declares `profile Profile?`, and put `@unique` on the foreign-key field:
 
@@ -436,11 +590,11 @@ namespace audit {
 }
 ```
 
-Models outside any block are in `public`. In queries, the block name is the segment after `db.orm`, so this model is `db.orm.audit.AuditLog`. Two `namespace` blocks with the same name in one file are one namespace, so you can open a block again further down the file. A relation can also point at a model that an [extension pack](#extension-types), an npm package you add to your config, declares in a different PostgreSQL schema. Write that model as the relation field's type, in the form `<pack>:<schema>.<Model>`, where `<schema>` is the PostgreSQL schema. For example, the Supabase pack declares `AuthUser` in the `auth` schema:
+Models outside any block are in `public`, the same namespace as a `namespace public { }` block, so the top level and that block share one set of names: declaring `Account` in both is `PSL_DUPLICATE_DECLARATION`, and so is a top-level declaration named `public`. On SQLite and MongoDB the same holds for the names `unbound` and `__unbound__`. In queries, the block name is the segment after `db.orm`, so this model is `db.orm.audit.AuditLog`. To rename a namespace, move a model to another one, or remove one from a database that has it, see [Renames and data loss](/cli/migration-plan#renames-and-data-loss). Two `namespace` blocks with the same name in one file are one namespace, so you can open a block again further down the file. A relation can also point at a model that an [extension pack](#extension-types), an npm package you add to your config, declares in a different PostgreSQL schema. Write that model as the relation field's type, in the form `<pack>:<schema>.<Model>`, where `<schema>` is the PostgreSQL schema. For example, the Supabase pack declares `AuthUser` in the `auth` schema:
 
 ```prisma title="src/prisma/contract.prisma (excerpt)"
 model Profile {
-  id     Uuid                   @id @default(uuid())
+  id     Uuid                   @id @onCreate(uuid())
   userId Uuid                   @unique
   user   supabase:auth.AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -454,7 +608,7 @@ Two block kinds and one attribute declare PostgreSQL row-level security, and [`m
 
 ```prisma
 model User {
-  id Uuid @id @default(uuid())
+  id Uuid @id @onCreate(uuid())
 
   @@map("user")
   @@rls
@@ -467,19 +621,19 @@ namespace unbound {
 policy_select user_self_read {
   target = User
   roles  = [authenticated]
-  using  = "id = current_setting('app.user_id')::uuid"
+  using  = sql`id = current_setting('app.user_id')::uuid`
 }
 
 policy_update user_self_write {
   target     = User
   roles      = [authenticated]
-  using      = "id = current_setting('app.user_id')::uuid"
-  withCheck  = "id = current_setting('app.user_id')::uuid"
+  using      = sql`id = current_setting('app.user_id')::uuid`
+  withCheck  = sql`id = current_setting('app.user_id')::uuid`
   permissive = false
 }
 ```
 
-Policy and role blocks assign their settings with `=`, unlike model attributes. `target` names the model, which must carry `@@rls`; put the policy blocks inside the same `namespace` block as the model when it has one. `roles` lists bare role names. A role Prisma ORM should create needs a `role` block, whose braces stay empty; a role that already exists in the database, such as `public`, is written bare with no block: `roles = [public]`. `using` and `withCheck` are the two conditions as SQL, using column names: `policy_select` and `policy_delete` take `using`, `policy_insert` takes `withCheck`, and `policy_update` and `policy_all` take either or both. `permissive = false` makes the policy `AS RESTRICTIVE` in PostgreSQL's terms, so a row must pass it as well as the permissive policies. The block's name becomes the policy name with a hash on the end, as index names do. A `role` block must be inside `namespace unbound { }`; `unbound` is a reserved word meaning "not in any schema", which is where a role belongs.
+Policy and role blocks assign their settings with `=`, unlike model attributes. `target` names the model, which must carry `@@rls`; put the policy blocks inside the same `namespace` block as the model when it has one. `roles` lists bare role names. A `role` block, whose braces stay empty, names a role the policies refer to. Prisma ORM never creates or drops a role: create it yourself, and `db verify` fails when a declared role is missing. A role PostgreSQL always has, such as `public`, is written bare with no block: `roles = [public]`. `using` and `withCheck` are the two conditions as `sql` literals, using column names: `policy_select` and `policy_delete` take `using`, `policy_insert` takes `withCheck`, and `policy_update` and `policy_all` take either or both. `permissive = false` makes the policy `AS RESTRICTIVE` in PostgreSQL's terms, so a row must pass it as well as the permissive policies. The block's name becomes the policy name with a hash on the end, as index names do. A `role` block must be inside `namespace unbound { }`; `unbound` is a reserved word meaning "not in any schema", which is where a role belongs.
 
 ## MongoDB indexes
 
@@ -488,7 +642,7 @@ On MongoDB, `@@index` and `@@unique` take a list of fields, each with an optiona
 ```prisma
 model Post {
   @@index([authorId])
-  @@index([createdAt(sort: Desc), authorId])
+  @@index([sort(createdAt, Desc), authorId])
   @@index([expiresAt], expireAfterSeconds: 3600, sparse: true)
   @@index([title], filter: "{ \"kind\": \"article\" }")
   @@index([location], type: "2dsphere")
@@ -501,7 +655,7 @@ model User {
 }
 ```
 
-`sort: Asc` or `sort: Desc` on a field sets its direction; this form is MongoDB only. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), `default_language` and `languageOverride` for a `type: "text"` index, `include` or `exclude` for a wildcard index, and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options. There is no `name:` on MongoDB; MongoDB names the index from its keys.
+`sort(field, Asc)` or `sort(field, Desc)` in the field list sets a field's direction; this form is MongoDB only. Since `8.0.0-rc.17` the earlier `field(sort: Desc)` form is refused. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), `default_language` and `languageOverride` for a `type: "text"` index, `include` or `exclude` for a wildcard index, and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options. There is no `name:` on MongoDB; MongoDB names the index from its keys.
 
 A wildcard index covers every field under a path, which is how you index documents whose keys you do not know in advance. Write `wildcard()` in the field list to cover the whole document, or `wildcard(meta)` to cover the fields under `meta`; the key becomes `$**` or `meta.$**`. `include` and `exclude` are lists of field names, quoted, that narrow what the index covers; give one or the other, and only with `wildcard()`. An index can hold one `wildcard()`, and it cannot be an `@@unique`, take `expireAfterSeconds`, or set a `type:` such as `"hashed"`.
 
@@ -511,7 +665,7 @@ A base model declares a discriminator field, the field whose value says which va
 
 ```prisma
 model Task {
-  id     Uuid   @id @default(uuid())
+  id     Uuid   @id @onCreate(uuid())
   title  String
   type   String
 
@@ -529,6 +683,16 @@ model Bug {
 ```
 
 Field and model names are written bare, as `type` and `Task` are, while table names and discriminator values are quoted, as `"task"` and `"bug"` are. Rows whose `type` column holds `"bug"` are `Bug` records. A variant reuses its base model's fields, so a `Bug` has `id`, `title`, and `type` as well as `severity` and `stepsToRepro`. The base model can be declared before or after its variants. A variant does not declare an `@id` of its own: it takes the base model's primary key.
+
+The discriminator field must be required and hold one value, so it cannot be optional (`?`) or a list (`[]`); since `8.0.0-rc.20` this holds on every database. It must also have a text type:
+
+- on PostgreSQL, `String`, `Char(n)` or `VarChar(n)`;
+- on SQLite, `String` or `sql.String(n)`, SQLite's text type with a length;
+- on MongoDB, `String`.
+
+A [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be the value a member stores, such as `"bug"` for `Bug = "bug"`, or `contract emit` lists the values you can write. A `@@base` value the field's type refuses, such as one longer than a `VarChar(5)` holds, is `PSL_VALUE_REFUSED`.
+
+A variant can be in a different `namespace` block from its base, on PostgreSQL a different schema. Name the base with its namespace, as in `@@base(a.Task, "chore")`. In `contract.json`, the base model lists its variants by discriminator value, each naming the variant model and its namespace: `"variants": { "bug": { "model": "Bug", "namespace": "public" } }`.
 
 You query a variant through the base model: `db.orm.public.Task.variant('bug')` returns the `Bug` rows only, and `public` here is the PostgreSQL schema. `variant()` takes the discriminator value from `@@base`, not the model name. Writing a row of a variant starts with the same `variant('bug')` call. See [`variant()`](/orm/reference/orm-client#variant).
 
@@ -559,7 +723,7 @@ types {
 }
 
 model Post {
-  id        Uuid           @id @default(uuid())
+  id        Uuid           @id @onCreate(uuid())
   embedding Embedding1536?
 }
 ```

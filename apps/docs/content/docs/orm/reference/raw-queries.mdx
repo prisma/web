@@ -16,20 +16,20 @@ Raw SQL comes in two forms.
 
 A **raw fragment** is a piece of SQL you put inside a builder query. Write it as a tagged template with `fns.raw` and pass it to a `select()`, `where()`, `orderBy()`, or `update()` call. The rest of the query stays typed.
 
-A **whole raw statement** is a complete SQL statement written with `db.raw.sql`. If it returns rows, end it with `.returnsRow(spec).build()`, where the spec is a column list [defined below](#the-client-level-dbrawsql-tag), and pass the result to `runtime.query(...)`. If it does not, end it with `.affectedCount().build()` and pass the result to `runtime.execute(...)`.
+A **whole raw statement** is a complete SQL statement written with `db.raw.sql`. It takes the place of `$queryRaw` and `$executeRaw` from Prisma ORM 7. If it returns rows, as a `$queryRaw` query did, end it with `.returnsRow(spec).build()`, where the spec is a column list [defined below](#the-client-level-dbrawsql-tag), and pass the result to `db.query(...)`. If it does not, as with `$executeRaw`, end it with `.affectedCount().build()` and pass the result to `db.execute(...)`. To see the SQL a built query would send, without running it, pass it to [`db.toSql(...)`](/orm/reference/transactions-and-runtime#dbtosqlplan).
 
 :::warning[Only `.returnsRow()` converts values for you]
 A type id such as `pg/text@1` tells Prisma ORM what JavaScript type a column should become, and the property is named `codecId`. `.returnsRow(spec)` names a type id for every column of a whole `db.raw.sql` statement, so you get real JavaScript values back. A fragment's `.returns(...)` does not convert anything: it only tells TypeScript what type to expect, so the value is whatever the `pg` package, the PostgreSQL driver underneath, gives you. For a `text` or an `integer` column that is already a JavaScript string or number, while a `numeric` column arrives as a string. A date column gets no conversion by Prisma ORM, so you get the `pg` package's own value for that column.
 :::
 
-The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)` and reach tables through `db.sql.public`, which is keyed by table name (the model name exactly as written, unless the model sets the `@@map` attribute, which renames a table). `db.runtime()` gives you the connection that runs a built query.
+The examples in this section run against the `user` / `post` schema from the SQL query builder page. See its [example schema](/orm/reference/sql-query-builder#example-schema) for the full model definitions. As on that page, create the client with `postgres(...)` and reach tables through `db.sql.public`, which is keyed by table name (the model name exactly as written, unless the model sets the `@@map` attribute, which renames a table). `db.query(...)` and `db.execute(...)` run a built query.
 
 ```ts
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
-const db = postgres<Contract>({ contractJson, url: process.env.DATABASE_URL });
-const runtime = db.runtime();
+const db = postgres({ contract: contractFromJson<Contract>(contractJson), url: process.env.DATABASE_URL! });
 const aliceId = '00000000-0000-4000-8000-000000000001';
 ```
 
@@ -43,7 +43,7 @@ const plan = db.sql.public.user
   .select('upperEmail', (f, fns) => fns.raw`UPPER(${f.email})`.returns('pg/text@1'))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.query(plan);
+const rows = await db.query(plan);
 // rows === [{ id: aliceId, upperEmail: 'ALICE@EXAMPLE.COM' }]
 ```
 
@@ -58,7 +58,7 @@ const plan = db.sql.public.user
   .select('id', 'email')
   .where((f, fns) => fns.raw`LENGTH(${f.email}) > 15`.returns('pg/bool@1'))
   .build();
-const rows = await runtime.query(plan);
+const rows = await db.query(plan);
 // only users whose email is longer than 15 characters
 ```
 
@@ -71,7 +71,7 @@ const plan = db.sql.public.user
   .select('id', 'kind')
   .select('kindLabel', (f, fns) => fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN 'admin' ELSE 'regular user' END`.returns('pg/text@1'))
   .build();
-const rows = await runtime.query(plan);
+const rows = await db.query(plan);
 // each row's kindLabel is 'admin' or 'regular user'
 ```
 
@@ -101,7 +101,7 @@ const plan = db.sql.public.user
   .select('id', 'email')
   .where((f, fns) => fns.raw`${f.createdAt} > ${cutoff}`.returns('pg/bool@1'))
   .build();
-const rows = await runtime.query(plan);
+const rows = await db.query(plan);
 // users created after the start of 2024
 ```
 
@@ -114,7 +114,7 @@ const plan = db.sql.public.user
   .select('id')
   .select('adminName', (f, fns) => fns.raw`CASE WHEN ${fns.eq(f.kind, 'admin')} THEN ${f.displayName} END`.returns({ codecId: 'pg/text@1', nullable: true }))
   .build();
-const rows = await runtime.query(plan);
+const rows = await db.query(plan);
 // adminName is the displayName for admins, null for everyone else
 ```
 
@@ -130,7 +130,7 @@ const plan = db.sql.public.user
   .select((f) => ({ id: f.id, serverNow }))
   .where((f, fns) => fns.eq(f.id, aliceId))
   .build();
-const rows = await runtime.query(plan);
+const rows = await db.query(plan);
 ```
 
 Use `.returnsRow(spec)` to run a whole statement and get converted rows back. The spec names the columns of every returned row, and each entry is either a column from your contract or a type id. A column such as `db.sql.public.user.columns.id` brings its own conversion, nullability, and TypeScript type. Write a type id for a column your contract has no match for, and the object form `{ codecId: 'pg/text@1', nullable: true }` when that column can be `NULL`, as a `LEFT JOIN` column can. If a returned row has no column your spec names, the query throws an error whose `code` is `RUNTIME.RAW_ROW_COLUMN_MISSING`. A failing statement throws a `SqlQueryError` whose `sqlState` is the PostgreSQL error code for the failure, such as `23505` for a unique-constraint violation.
@@ -150,11 +150,11 @@ const plan = db.raw.sql`
   .returnsRow({ id: user.columns.id, email: user.columns.email, postCount: 'pg/int8@1' })
   .build();
 
-const rows = await runtime.query(plan);
+const rows = await db.query(plan);
 // row.email is a string; row.postCount is a bigint
 ```
 
-Use `.affectedCount()`, which takes no spec, for a statement that returns no rows. Pass the built query to `runtime.execute(...)`, which resolves to `{ affectedRows }`, the number of rows the statement changed. You can also run a built raw query inside a transaction: [`db.transaction()`](/orm/reference/transactions-and-runtime#dbtransactioncallback) gives you a `tx`, and `tx.query(...)` and `tx.execute(...)` take the same built queries as `runtime.query(...)` and `runtime.execute(...)` do.
+Use `.affectedCount()`, which takes no spec, for a statement that returns no rows. Pass the built query to `db.execute(...)`, which resolves to `{ affectedRows }`, the number of rows the statement changed. You can also run a built raw query inside a transaction: [`db.transaction()`](/orm/reference/transactions-and-runtime#dbtransactioncallback) gives you a `tx`, and `tx.query(...)` and `tx.execute(...)` take the same built queries as `db.query(...)` and `db.execute(...)` do.
 
 ```ts
 const plan = db.raw.sql`
@@ -163,7 +163,7 @@ const plan = db.raw.sql`
   WHERE "userId" IN (SELECT id FROM "user" WHERE kind = ${'admin'})
 `.affectedCount().build();
 
-const stats = await runtime.execute(plan);
+const stats = await db.execute(plan);
 // stats.affectedRows
 ```
 
@@ -204,20 +204,21 @@ To bind any value whose type is not in the list, wrap it in [`param(value, { cod
 
 `db.raw.collection(collectionName)` returns an object with nine methods for running MongoDB commands directly against a collection. The collection name is the one your contract declares (`'users'`, `'posts'`), the same name the ORM client uses (`db.orm.users`). MongoDB has no schemas, so there is no `public` segment here and none on `db.orm`. There is no raw `find()`, so use `aggregate<Row>()` with a `$match` stage. MongoDB has no transactions in Prisma ORM, so a raw command cannot run inside one. See [Transactions (MongoDB)](/orm/reference/transactions-and-runtime#transactions-mongodb).
 
-Each of these nine methods builds a command: call `.build()` on it, then run every one of them with `runtime.query(...)`, including the writes. The raw collection methods all run through `query()`. A write returns a one-element array, so destructure it with `const [result] = ...`.
+Each of these nine methods builds a command: call `.build()` on it, then run it with `runtime.query(...)`, where `runtime` is what `await db.runtime()` returns. This is true of the writes too. A write returns a one-element array, so destructure it with `const [result] = ...`. An update or delete command can also run with `runtime.execute(...)`, which resolves to `{ affectedRows }`. You cannot run a command with `db.query(...)` as you would on PostgreSQL, because on MongoDB `db.query` is the [pipeline builder](/orm/reference/pipeline-builder), which builds aggregation pipelines.
 
 :::warning[MongoDB raw results are native BSON values]
-Nothing on the MongoDB side of this page is converted for you. An `_id` comes back as it is stored: one that MongoDB generated is an `ObjectId` instance from the `mongodb` package, the MongoDB driver underneath, not a hex string. Compare one with `String(row._id) === aliceId`. Raw filters take native BSON values too, so build ids with that package's `ObjectId` class. The write methods give you the counts and ids under the `mongodb` package's own key names, `{ insertedId }`, `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`, and `{ deletedCount }`, and you read those keys directly.
+Nothing on the MongoDB side of this page is converted for you. Raw commands name fields as they are stored in the database, so a field the ORM calls `id` because it is declared `id ObjectId @id @map("_id")` is `_id` here, in filters and in the rows you get back. An `_id` comes back as it is stored: one that MongoDB generated is an `ObjectId` instance from the `mongodb` package, the MongoDB driver underneath, not a hex string. Compare one with `String(row._id) === aliceId`. Raw filters take native BSON values too, so build ids with that package's `ObjectId` class. The write methods give you the counts and ids under the `mongodb` package's own key names, `{ insertedId }`, `{ matchedCount, modifiedCount, upsertedCount, upsertedId }`, and `{ deletedCount }`, and you read those keys directly.
 :::
 
 The examples in this section run against the `users` / `posts` schema from the pipeline builder page. See its [example schema](/orm/reference/pipeline-builder#example-schema) for the full model definitions. Create the client with `mongo(...)`, get the connection that runs a built query from `await db.runtime()`, and declare the two example ids once:
 
 ```ts
 import mongo from '@prisma/orm-mongo/runtime';
+import { contractFromJson } from '@prisma/orm-mongo/static';
 import { ObjectId } from 'mongodb';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
-const db = mongo<Contract>({ contractJson, url: process.env.MONGODB_URL, dbName: 'app' });
+const db = mongo({ contract: contractFromJson<Contract>(contractJson), url: process.env.MONGODB_URL!, dbName: 'app' });
 const runtime = await db.runtime();
 const aliceId = '6539a1f2c3d4e5f60718293a';
 const bobId = '6539a1f2c3d4e5f60718293b';

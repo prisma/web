@@ -1,3 +1,9 @@
+import {
+  composerBuild,
+  composerNextConfig,
+  composerPublicDocumentHeaders,
+} from "../../composer/next-config.mjs";
+import { fileURLToPath } from "node:url";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import { createMDX } from "fumadocs-mdx/next";
 
@@ -244,6 +250,7 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   async redirects() {
     return [
       {
@@ -760,11 +767,18 @@ const config = {
   },
   basePath: "/docs",
   assetPrefix: "/docs-static",
+  ...(composerBuild
+    ? {
+        cacheHandler: fileURLToPath(new URL("../../composer/next-cache.cjs", import.meta.url)),
+        images: { customCacheHandler: true },
+      }
+    : {}),
   allowedDevOrigins,
   reactStrictMode: true,
 
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
+    ...composerNextConfig.experimental,
     globalNotFound: true,
   },
   // No Cache-Control here, deliberately. The SEO audit's TTFB finding invited a
@@ -790,12 +804,12 @@ const config = {
       },
       {
         source: "/",
-        headers: docsRootMarkdownHeaders,
+        headers: [...docsRootMarkdownHeaders, ...composerPublicDocumentHeaders],
       },
       {
         source:
           "/:path((?!api(?:/|$)|llms(?:\\.|/|$)|og(?:/|$)|rss\\.xml$|sitemap(?:\\.xml)?$|favicon\\.ico$|.*\\.[^/]+$).+)",
-        headers: docsMarkdownHeaders,
+        headers: [...docsMarkdownHeaders, ...composerPublicDocumentHeaders],
       },
     ];
   },

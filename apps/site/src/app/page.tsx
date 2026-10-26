@@ -11,7 +11,9 @@ import { Faq } from "@/components/sections/faq";
 import { CtaBurst } from "@/components/sections/cta-burst";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/" },
+  // The homepage's Markdown rendition is /index.md, as in next.config.mjs's
+  // Link header.
+  alternates: { canonical: "/", types: { "text/markdown": "/index.md" } },
 };
 
 export default function HomePage() {

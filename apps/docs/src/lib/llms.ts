@@ -242,14 +242,14 @@ export const llmsSections: LLMsSection[] = [
     slug: "compute",
     title: "Prisma Compute",
     description:
-      "Prisma Compute: TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
+      "Prisma Compute: TypeScript app hosting that runs alongside Prisma Postgres, with isolated branch previews that can have their own databases, and a CLI-first deploy workflow.",
     prefixes: ["/compute"],
   },
   {
     slug: "composer",
     title: "Prisma Composer",
     description:
-      "Prisma Composer (Early Access): a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
+      "Prisma Composer: a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
     prefixes: ["/composer"],
   },
   {
