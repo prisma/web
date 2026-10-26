@@ -2074,3 +2074,100 @@ artifacts, including test-setup failures and final passing checks, remain in
 `output/playwright/review-2026-10-25/`. The review's optional docstring-coverage
 warning does not identify another runtime defect. CI and deployed-preview
 verification still need to complete on the pushed correction commit.
+
+## 26 October: blog cache expiry, startup work and release assets
+
+The production comparison after #8586 measured mobile blog LCP at 2.46 seconds
+on Vercel and 6.05 seconds on Compute plus Cloudflare. The Compute runs were
+6.054 / 2.486 / 6.047 seconds; both slow runs synchronously revalidated the
+unversioned hero SVG, while the faster one served it `UPDATING`. Public HTML and
+files already advertised 60 seconds freshness plus 300 seconds SWR. A request
+after that stale window ends still waits for origin. Cloudflare SWR was working;
+it was not a missing dashboard switch. See its
+[origin cache-control documentation](https://developers.cloudflare.com/cache/concepts/cache-control/).
+
+The follow-up keeps the single hostname-wide Cloudflare rule and implements:
+
+- **Content versions for blog media.** Next configuration generates a roughly
+  230 KB lookup for 1,463 public images. Cards and avatars use a `__asset` SHA-256
+  query parameter. The gateway validates it against the existing public-file
+  inventory and gives matching media one-year immutable caching. Changed media
+  requested through an old version redirects without caching new bytes under
+  the old digest. Original paths and Vercel's native public-file handling work
+  as before. No media is duplicated in the blog artifact.
+- **Longer blog SWR with static retention.** Deployment builds with
+  `WEB_RETAIN_ASSETS=1` use the existing project credential to locate the branch's
+  active gateway. Its public static manifest and digest endpoints let the next
+  build retain historical Next files for 48 hours, alongside the current release.
+  Content deduplication avoids storing the same font once per app. Only public
+  Next static files are published, not server code, source maps or credentials.
+  Current requests preserve Next compression; historical files stream from the
+  gateway, which can also cover a current-file 404 during promotion. Incorrect
+  history, immutable-path collisions and excess size stop the build.
+- **A one-day stale window for public blog HTML.** Its browser policy remains
+  revalidation and its edge freshness remains one minute. Retained assets cover
+  the dependencies of cached HTML across deployments. Other sites, private
+  requests, Next navigation and unversioned public files retain their prior
+  policies. Offline builds without retention enabled keep the five-minute window.
+- **Less initial client work.** Static post cards render on the server. Blog
+  search code loads on first open, or preloads on hover/focus/touch intent. A
+  Base UI modal supplies a cancellable loading state; the loaded search stays
+  mounted so its query survives closing and reopening. Consent and analytics
+  integrations remain enabled.
+- **Critical body-font discovery.** The blog preloads the exact Latin Inter
+  resource used by its CSS, following the already tested docs approach. The
+  before trace attributes the blog's small layout shift to that font arriving
+  after the hero paragraph paints. No new font family or font binary is added.
+- **Cache/deploy observability.** The public manifest records the CI release,
+  and public HTML carries `X-Composer-Release`. Deployment smoke waits for the
+  expected release instead of accepting an older service returning HTTP 200.
+
+The first image-version prototype hashed files from server components. Next
+warned that dynamic filesystem access would trace the whole project; it was
+replaced by a build-time lookup before publishing. This is a useful monorepo
+deployment diagnostic: a small helper can otherwise defeat artifact budgets.
+The runtime-only routing library still loads original Vercel files at boot;
+the image/static inventories describe assets, not a precompiled routing plan.
+
+Bun verification found another compatibility detail: in Bun 1.4.3,
+`new Request(original, { headers: emptyHeaders })` retains the original headers.
+The public-file validator now clones the request and deletes conditional headers
+on that clone, preserving metadata and avoiding that empty-override behavior.
+The existing conditional-read regression then passes on Node and Bun.
+
+Local verification includes blog 91, proxy 41, Composer 49 and root 65 tests,
+all eight type tasks, ordinary Vercel and Composer production builds, and the full
+local five-site smoke. The focused cache/retention/validator suite passes on
+Node and Bun. A multi-generation test verifies old files survive a deploy and
+expire only after their retention window; oversized history is rejected before
+blob download. Real-browser checks verify no search chunk initially, first-open
+focus, Escape, query retention, delayed-chunk cancellation and no late reopen.
+Deployed benchmark results are recorded in the follow-up PR after deployment;
+these local gates alone do not establish a performance win.
+
+The retained before-run browser logs reveal an important comparison caveat:
+CookieYes rejects `prisma.sorenbs.com` as an unregistered website and PostHog
+reports a missing public token on Compute. The corresponding production runs
+do not report those errors. This is not a hosting performance improvement;
+disabled or failing integrations can reduce client work. The deploy workflow
+now accepts the existing public PostHog build values through repository
+variables `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST`. They must be
+configured by the operator, and CookieYes must authorize the preview domain.
+No third-party domain policy, credential or security setting was changed.
+Cache-specific tests remain useful independently; whole-page score and CPU
+comparisons must retain this qualification until integration parity is verified.
+
+The retention-enabled assembly is within both budgets: gateway 31.5 MB expanded
+/ 9.8 MB compressed; blog 859.7 / 687.4 MB; other apps remain below those maxima.
+The full local smoke sampled gateway RSS at 178.7 MB, blog 228.0 MB and a maximum
+of 487.8 MB in docs. Static bodies are streamed, not loaded as an in-memory cache.
+
+Longer SWR trades freshness for availability: a quiet blog page can serve content
+up to one day plus one minute old before its background refresh. Retention is
+not instant deployment invalidation or full server-version pinning. First-ever
+misses, evicted entries and new full query keys still reach EWR. A Compute CDN
+should provide durable versioned assets, coordinated invalidation/promotion,
+shared fills/shielding and framework-aware representation keys rather than
+requiring this application-level bridge. No all-user/all-metric victory is
+inferred from warm lab medians; subsequent comparisons include a quiet period
+and first-cache misses as well as warmed delivery.

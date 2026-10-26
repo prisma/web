@@ -22,11 +22,35 @@ const SUPPORTED_VARY = new Set([
 export function withOriginCache(
   handler: Handler,
   publicAssets: ReadonlyMap<string, PublicFile> = new Map(),
+  options: { blogStaleSeconds?: number; release?: string } = {},
 ): Handler {
+  const blogStaleSeconds = options.blogStaleSeconds ?? 300;
+  if (![300, 86_400].includes(blogStaleSeconds)) throw new Error("Unsupported blog stale window");
   const read = withFileValidators(handler, publicAssets);
   return async (request) => {
-    let response = await read(request);
     const url = new URL(request.url);
+    const file = publicAssets.get(assetKey(url.pathname));
+    const versions = url.searchParams.getAll("__asset");
+    if (
+      file &&
+      versions.length &&
+      ["GET", "HEAD"].includes(request.method) &&
+      (versions.length !== 1 || versions[0] !== file.sha256)
+    ) {
+      // An old page can refer to media changed by a newer deploy. Redirect to
+      // the current content version; never cache new bytes under an old hash.
+      url.searchParams.set("__asset", file.sha256);
+      return new Response(null, {
+        status: 307,
+        headers: {
+          location: `${url.pathname}${url.search}`,
+          "cache-control": "no-store",
+          "cdn-cache-control": "no-store",
+        },
+      });
+    }
+    const versionedAsset = Boolean(file && versions.length === 1 && versions[0] === file.sha256);
+    let response = await read(request);
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
     const prerendered = /(?:^|,)\s*1\s*(?:,|$)/.test(
       response.headers.get("x-nextjs-prerender") ?? "",
@@ -114,6 +138,7 @@ export function withOriginCache(
     // An app's positive public-file lifetime already enables edge reuse.
     if (
       publicFile &&
+      !versionedAsset &&
       /(?:^|,)\s*(?:s-maxage\s*=\s*\d+|max-age\s*=\s*[1-9]\d*)\s*(?:,|$)/.test(control)
     )
       return response;
@@ -158,12 +183,20 @@ export function withOriginCache(
     // credentials. Browsers revalidate; CDNs can reuse public HTML for a minute.
     headers.set(
       "cdn-cache-control",
-      publicHtml || publicAsset
-        ? `public, max-age=${publicHtml && sharedAge > 0 ? Math.min(sharedAge, 60) : 60}, stale-while-revalidate=300${noTransform ? ", no-transform" : ""}`
-        : "no-store",
+      publicAsset && versionedAsset
+        ? `public, max-age=31536000, immutable${noTransform ? ", no-transform" : ""}`
+        : publicHtml || publicAsset
+          ? `public, max-age=${publicHtml && sharedAge > 0 ? Math.min(sharedAge, 60) : 60}, stale-while-revalidate=${publicHtml && (url.pathname === "/blog" || url.pathname.startsWith("/blog/")) ? blogStaleSeconds : 300}${noTransform ? ", no-transform" : ""}`
+          : "no-store",
     );
-    if (publicHtml) headers.set("cache-control", "public, max-age=0");
-    if (noTransform) headers.set("cache-control", `${control}, no-transform`);
+    if (publicHtml && options.release) headers.set("x-composer-release", options.release);
+    if (publicAsset && versionedAsset)
+      headers.set(
+        "cache-control",
+        `public, max-age=31536000, immutable${noTransform ? ", no-transform" : ""}`,
+      );
+    else if (publicHtml) headers.set("cache-control", "public, max-age=0");
+    else if (noTransform) headers.set("cache-control", `${control}, no-transform`);
 
     return new Response(response.body, {
       status: response.status,

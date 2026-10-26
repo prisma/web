@@ -8,6 +8,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { staticManifestPath, type StaticAssets } from "./static-assets.ts";
 
 let session: DevSession | undefined;
 let origin: string | undefined = process.argv[2];
@@ -58,6 +59,25 @@ async function get(url: URL, init?: RequestInit, startup = false): Promise<Respo
 }
 
 try {
+  const expectedRelease =
+    process.env.WEB_EXPECTED_RELEASE ?? process.env.GITHUB_SHA ?? (session ? "local" : undefined);
+  let retained: StaticAssets | undefined;
+  for (let attempt = 0; attempt < 120; attempt++) {
+    const response = await get(new URL(staticManifestPath, origin), undefined, true);
+    assert.equal(response.status, 200, "gateway: public static retention manifest");
+    const candidate = (await response.json()) as StaticAssets;
+    if (
+      candidate.version === 1 &&
+      candidate.release &&
+      (!expectedRelease || candidate.release === expectedRelease)
+    ) {
+      retained = candidate;
+      break;
+    }
+    await delay(1000);
+  }
+  assert.ok(retained, "gateway: expected deployed release must become active");
+  assert.ok([300, 86_400].includes(retained.blogStaleSeconds));
   let documentVary: string | null = null;
   for (const path of ["/", "/docs/composer", "/blog", "/handbook", "/eclipse"]) {
     const response: Response = await get(
@@ -74,6 +94,37 @@ try {
     const html = await response.text();
     if (path === "/docs/composer") {
       documentVary = response.headers.get("vary");
+    }
+    if (path === "/blog") {
+      const media = [
+        ...new Set(
+          [...html.matchAll(/<img\b[^>]*\bsrc="([^"]*\?[^\"]*__asset=[a-f0-9]{64}[^\"]*)"/g)].map(
+            (match) => match[1].replaceAll("&amp;", "&"),
+          ),
+        ),
+      ];
+      assert.ok(media.length > 0, "blog: missing content-versioned images");
+      for (const src of media.slice(0, 2)) {
+        const url = new URL(src, origin);
+        const image = await get(url, { headers: { "accept-encoding": "identity" } });
+        assert.equal(image.status, 200);
+        assert.match(image.headers.get("cache-control") ?? "", /max-age=31536000, immutable/);
+        assert.match(image.headers.get("cdn-cache-control") ?? "", /max-age=31536000, immutable/);
+        assert.equal(
+          createHash("sha256")
+            .update(Buffer.from(await image.arrayBuffer()))
+            .digest("hex"),
+          url.searchParams.get("__asset"),
+        );
+        url.searchParams.set("__asset", "previous-release");
+        const old = await get(url, { redirect: "manual" });
+        assert.equal(old.status, 307);
+        assert.equal(old.headers.get("cache-control"), "no-store");
+        assert.equal(old.headers.get("location"), src);
+      }
+      console.log(
+        "PASS blog: immutable content versions, exact media bytes and uncached old-version redirects",
+      );
     }
     if (path === "/" || path === "/docs/composer") {
       assert.ok(html.includes("brand-grain"), `${path}: missing brand grain`);
@@ -101,7 +152,7 @@ try {
       }
       console.log(`PASS ${path}: immutable baked grain, AVIF and JPEG fallback`);
     }
-    if (path === "/docs/composer") {
+    if (path === "/docs/composer" || path === "/blog") {
       // Next can emit resource hints as HTTP Link headers rather than tags.
       const hints: string[] = [
         ...[...html.matchAll(/<link\b[^>]+>/g)]
@@ -119,22 +170,25 @@ try {
         for (const asset of text.matchAll(/url\(["']?([^\s)"']+\.woff2)["']?\)/g))
           cssUrls.add(new URL(asset[1], css.url).href);
       }
-      for (const name of ["InterVariable-latin.", "MonaSansMonoVF"]) {
+      for (const name of path === "/blog"
+        ? ["InterVariable-latin."]
+        : ["InterVariable-latin.", "MonaSansMonoVF"]) {
         const fontPath: string | undefined = hints.find((url) => url.includes(name));
-        assert.ok(fontPath, `docs: missing critical font hint: ${name}`);
+        assert.ok(fontPath, `${path}: missing critical font hint: ${name}`);
         const fontUrl = new URL(fontPath, origin);
         const font = await get(fontUrl);
         assert.equal(font.status, 200);
         assert.ok((await font.arrayBuffer()).byteLength < 180_000);
-        assert.ok(cssUrls.has(fontUrl.href), `docs: preload/CSS URL mismatch: ${fontUrl.href}`);
+        assert.ok(cssUrls.has(fontUrl.href), `${path}: preload/CSS URL mismatch: ${fontUrl.href}`);
       }
-      console.log("PASS docs: matching body/code font preloads and subset budget");
+      console.log(`PASS ${path}: matching critical font preloads and subset budget`);
     }
     assert.match(html, /<html/);
     if (["/", "/blog", "/docs/composer"].includes(path)) {
+      assert.equal(response.headers.get("x-composer-release"), retained.release);
       assert.equal(
         response.headers.get("cdn-cache-control"),
-        "public, max-age=60, stale-while-revalidate=300",
+        `public, max-age=60, stale-while-revalidate=${path === "/blog" ? retained.blogStaleSeconds : 300}`,
         path,
       );
       assert.equal(response.headers.get("cache-control"), "public, max-age=0", path);
@@ -313,7 +367,7 @@ try {
     assert.match(await response.text(), /<html/);
     assert.equal(
       response.headers.get("cdn-cache-control"),
-      "public, max-age=60, stale-while-revalidate=300",
+      `public, max-age=60, stale-while-revalidate=${pathname.startsWith("/blog/") ? retained.blogStaleSeconds : 300}`,
       pathname,
     );
   }

@@ -14,7 +14,8 @@ function config(composer: boolean) {
         `
     const result = {};
     for (const name of ['site', 'docs', 'blog', 'handbook', 'eclipse']) {
-      const { default: config } = await import('./apps/' + name + '/next.config.mjs');
+      const { default: exported } = await import('./apps/' + name + '/next.config.mjs');
+      const config = typeof exported === 'function' ? await exported('phase-production-server') : exported;
       result[name] = { output: config.output, basePath: config.basePath, assetPrefix: config.assetPrefix };
       result[name].imageCache = { handler: !!config.cacheHandler, custom: config.images?.customCacheHandler === true };
       result[name].routing = { redirects: await config.redirects?.() ?? [], rewrites: await config.rewrites?.() ?? [], headers: await config.headers?.() ?? [] };

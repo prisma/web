@@ -1,5 +1,7 @@
 import { composerNextConfig, composerPublicDocumentHeaders } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
+import { writePublicImageVersions } from "./scripts/public-image-versions.ts";
+import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants.js";
 
 const withMDX = createMDX();
 
@@ -486,4 +488,8 @@ const config = {
   },
 };
 
-export default withMDX(config);
+export default async function nextConfig(phase) {
+  if (phase === PHASE_PRODUCTION_BUILD || phase === PHASE_DEVELOPMENT_SERVER)
+    await writePublicImageVersions();
+  return withMDX(config);
+}
