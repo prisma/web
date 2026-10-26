@@ -2094,7 +2094,7 @@ The follow-up keeps the single hostname-wide Cloudflare rule and implements:
   inventory and gives matching media one-year immutable caching. Changed media
   requested through an old version redirects without caching new bytes under
   the old digest. Original paths and Vercel's native public-file handling work
-  as before. No media is duplicated in the blog artifact.
+  as before. The version lookup does not bulk-copy the blog's media.
 - **Hash the chrome's logos with Next.** The header's light/dark lockups and the
   footer's two animated layers previously made one-second `REVALIDATED` origin
   reads after quiet periods. Four static imports now publish them under Next's
@@ -2218,3 +2218,127 @@ is also worth testing for shared fills: an upper-tier cache can satisfy a miss
 at a visitor-facing edge before reaching EWR. No zone-wide setting was changed
 in this work; tiering cannot remove a genuinely new representation/key's first
 origin request by itself.
+
+### Final deployment and performance verification
+
+Application commit `2c4c88533cbfa2fbecd34b13a961b6bf1fc954f3` passed all checks,
+all five ordinary Vercel previews, Composer local build/smoke and the
+[Compute preview deployment/smoke](https://github.com/prisma/web/actions/runs/40287389755).
+The final CI archive sizes are gateway 35.5 MB assembled / 11.0 MB compressed and
+blog 860.3 / 686.6 MB. The other sites also pass the existing 900 MB assembled /
+750 MB upload guards. Earlier RSS figures above are local samples, not remote
+peak-memory measurements.
+
+The final comparison contains 40 Lighthouse 13.5.0 / Chrome 155.0.8059.85 audits:
+four explicit warm-ups, five warm pairs per profile, three new-query pairs per
+profile and one quiet pair per profile. They use the exact saved mobile and
+desktop applied-DevTools profiles from the preceding comparison. Runs are
+serial/counterbalanced with fresh browser profiles; all 40 match the expected
+configuration. No Lighthouse runtime errors, run warnings, first-party HTTP
+failures or non-cancelled first-party loading errors were observed. The
+production control's script/CSS asset fingerprint stayed constant throughout;
+main stayed at `0d360d034`, whose Production–blog deployment is `7321580277`.
+
+| Observation | Compute + Cloudflare | Current Vercel production |
+| --- | ---: | ---: |
+| Warm mobile LCP, five-run median | 2,413 ms | 2,446 ms |
+| Warm desktop LCP, five-run median | 367 ms | 489 ms |
+| Warm mobile HTML TTFB | 71 ms | 151 ms |
+| Warm desktop HTML TTFB | 69 ms | 144 ms |
+| Mobile LCP after quiet period, one run | 2,380 ms | 2,525 ms |
+| Desktop LCP after quiet period, one run | 363 ms | 558 ms |
+| New-query mobile HTML TTFB, three-run median | 1,456 ms | 149 ms |
+| New-query desktop LCP, three-run median | 1,585 ms | 494 ms |
+
+Mobile warm LCP ranges overlap (Compute 2,382–2,520 ms; Vercel
+2,424–2,468 ms): this is effectively a tie, rather than a clear mobile paint
+win. Desktop warm paint improves. CLS ties at 0.001837 mobile and 0.000327
+desktop; desktop TBT is effectively tied at about 10 ms. Mobile TBT measured
+619 vs 775 ms and first-party JS transfer 663 vs 776 KB, but whole-page CPU,
+paint and byte comparisons retain the vendor-configuration qualification below.
+The shared application improvements will also help Vercel after merge, so this
+is not a same-code hosting A/B. Field INP and client-navigation performance were
+not measured.
+
+The quiet Compute requests served `UPDATING` at ages 872 seconds mobile and
+444 seconds desktop, beyond the old six-minute total window. Their immutable
+media remained hits; the previous six-second expiry behavior did not recur in
+these observations. Vercel served all six unused-query requests as `HIT` while
+Cloudflare served all six as `MISS`. Cold mobile LCP was 2,694 vs 2,464 ms; the
+one slightly higher Compute CLS sample is retained in the raw data.
+
+The earlier Inter experiment is also retained: five mobile pairs measured
+3.482 seconds on Compute, versus 2.441 seconds on Vercel, with unchanged CLS.
+Removing the preload restored Compute to 2.492 seconds across two diagnostic
+runs, with a 2.508-second Vercel control. No font preload remains in the final
+diff. Four small logo layers now use native immutable Next paths instead; their
+emitted SVGs are byte-identical to the originals.
+
+A real promotion retained 21 historical static paths. Five prior files,
+including the 680 KB client chunk, returned their exact original hashes through
+the new gateway. Later generations preserved historical expiry times instead
+of extending them indefinitely. The featured hero also has identical decoded
+bytes and SHA-256 on production and Compute.
+
+The final regional quiet pass served all seven Compute entries `UPDATING` after
+about 26 minutes. In the immediate repeat, with warm DNS and cache, total HTTP/2
+HEAD times were:
+
+| Probe | Compute + Cloudflare | Vercel |
+| --- | ---: | ---: |
+| Buffalo, AS36352 | 147 ms | 232 ms |
+| Los Angeles, AS36352 | 46 ms | 98 ms |
+| Falkenstein, AS24940 | 61 ms | 85 ms |
+| Singapore, AS59253 | 545 ms | 69 ms |
+| São Paulo, AS31898 | 34 ms | 59 ms |
+| Johannesburg, AS37153 | 45 ms | 189 ms |
+| Sydney, AS31898 | 37 ms | 72 ms |
+
+The Singapore probe reached Cloudflare MRS (Marseille), while Vercel used SIN.
+That path loses despite a cache hit. Some earlier regional losses were DNS
+cost instead: São Paulo's 281 ms DNS lookup dominated its 310 ms stale response.
+All results, including an earlier Buffalo expiry after a colo change, remain
+in the dataset. Seven networks do not establish an all-user result.
+
+There is a reproducible new-key cost independent of rendering. Reusing one
+HTTP/2 client connection, render-free health requests with new query strings
+took 1,009 / 1,027 ms through Cloudflare; repeating the same key took 269 ms.
+Bypassing Cloudflare with the same custom hostname, SNI and valid TLS to EWR
+took 266 / 267 ms for new keys. Generated-domain controls were similarly fast.
+All reported zero gateway handler time, and later transfers had no new client
+TLS connection. This isolates additional cost on the Cloudflare-specific path
+before the handler; its exact internal lookup/tier/origin-connection component
+still needs provider tracing. The 7/30-second idle-gap control did not establish
+a simple five-second application keep-alive timeout, so no speculative timeout
+change was introduced.
+
+New Chrome/Safari User-Agent variants likewise produced Cloudflare
+`MISS` then `HIT`; Vercel remained `HIT`. The first Chrome variant took
+1,521 ms and its repeat 23 ms. The current default key includes full search
+strings. Globally ignoring queries would collapse image version/optimizer keys
+and can skip query-dependent routing; it is not a safe generic fix. Cloudflare's
+[documented selective query-key controls](https://developers.cloudflare.com/cache/how-to/cache-keys/)
+are Enterprise-only. Origin freshness headers alone do not supply the missing
+routing/framework semantics.
+
+The preview still reports CookieYes domain rejection, a FontAwesome kit 403
+and a Promptwatch preflight 404/CORS failure; production reports none of these.
+PostHog's missing-token warning is fixed using existing build secrets. Missing
+vendor work is not counted as a hosting improvement. Search's existing 503
+also remains a preview integration configuration issue, separate from the
+verified dialog interaction. These limitations prevent an unconditional claim
+of full functional parity or victory on every page metric.
+
+The next Compute/Composer improvements should be routing- and framework-aware
+keys (including RSC/private behavior), durable globally served public assets,
+atomic release promotion/invalidation, shared fills and reusable origin
+connections, and timing/colo/ASN/configuration diagnostics. These should be
+managed from Composer/framework metadata rather than application-specific
+Cloudflare rules or a hand-maintained asset-retention bridge. The current work
+improves cached delivery and expiry behavior; it does not make new keys or poor
+client-to-edge paths universally faster than Vercel.
+
+The complete local report, raw reports/traces and supplemental controls are in
+`output/playwright/blog-cache-final-2026-10-26/`. The rejected experiment and its
+controls remain in the separate directories named above. Aggregates are also
+recorded in [PR #8602](https://github.com/prisma/web/pull/8602).
