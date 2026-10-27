@@ -61,6 +61,11 @@ export const docs = defineDocs({
       // `/orm/v7/more/troubleshooting/nuxt`. Set only where two docs URLs are
       // materially the same document; pages are self-canonical otherwise.
       canonical: z.string().optional(),
+      // When the page was first published, for its TechArticle structured data
+      // (structured-data.tsx), e.g. `datePublished: 2024-03-01`. Quoted or not,
+      // the value parses as a string and becomes a Date here; a page that sets
+      // none gets no `datePublished`.
+      datePublished: z.coerce.date().optional(),
       aiPrompt: z.string().optional(),
       noindex: z.boolean().optional(),
       // Visually hides the docs sidebar on landing pages; the pages stay in
