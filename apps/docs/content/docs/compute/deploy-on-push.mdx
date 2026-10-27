@@ -15,7 +15,7 @@ This guide sets that up for a [Prisma Composer](/composer) app that you deploy t
 When the workflow from this guide runs, each Git branch you push, other than the default one, becomes its own environment next to production. The preview gets the following, separate from production:
 
 - **Its own deployment and URL.** The deploy action deploys the branch as a preview named after it, and the workflow run prints the preview's URL in its deploy report. Custom domains attach to production only, so a preview is reached at its generated URL.
-- **The whole app, not only the frontend.** Every service your module declares, such as a frontend and an API, runs in the preview as its own service. Apart from a database the app reaches through `DATABASE_URL`, the code is the only thing a preview shares with production.
+- **The whole app, not only the frontend.** Every service your module declares, such as a frontend and an API, runs in the preview as its own service. The services, databases and buckets your module declares are separate from production; anything the app reaches through an environment variable, such as a database at `DATABASE_URL` or an API at `API_BASE_URL`, is only as separate as that variable's preview-scoped value, so check those values too.
 - **Preview environment variables.** Every preview reads the preview-scoped values, and a branch override changes a value for one branch; production values are used only by production. See [Environment variables](/compute/environment-variables).
 - **Its own databases.** Each Prisma Postgres database your module declares is created for the branch, so what you write in the preview stays out of the production database. Production data is not copied into it; [What a preview database starts with](#what-a-preview-database-starts-with) lists what is in it. If the app reads its connection string from a variable such as `DATABASE_URL` instead, the preview is only as separate as that value, so set a preview-scoped `DATABASE_URL` that points at a non-production database.
 - **Production stays on the default branch.** The workflow deploys production only from the default branch, so a push to any other branch never touches production. If a production deploy goes wrong, `npx prisma service version rollback <service>` puts the previous version back without a rebuild; see [Deployments](/compute/deployments#promote-and-roll-back).
@@ -30,7 +30,7 @@ No production data is copied into a preview. What each database and bucket start
 - **A bucket your module declares** is created new for the branch and starts empty.
 - **A database the app reaches through `DATABASE_URL`** or another variable is not created by the deploy, and no migrations run against it. The preview uses whatever database the preview-scoped value points at, so it is only as separate as that value.
 
-Seed the data you test with yourself.
+Seed each preview with your own test data.
 
 ### A long-lived staging environment
 
@@ -163,7 +163,7 @@ git switch -c feature/search
 git push -u origin feature/search
 ```
 
-The action deploys the branch as a [stage](/composer/deploying#production-and-stages) named after it, which is a [preview branch](/compute/branching) of the same project. The preview has its own services, a new database for each database your module declares, its own buckets, and its own URL. Apart from a database the app reaches through `DATABASE_URL`, which is only as separate as that value, the only thing it shares with production is the code. Confirm it from your terminal:
+The action deploys the branch as a [stage](/composer/deploying#production-and-stages) named after it, which is a [preview branch](/compute/branching) of the same project. The preview has its own services, a new database for each database your module declares, its own buckets, and its own URL. A database, API or other service the app reaches through an environment variable such as `DATABASE_URL` is only as separate as that variable's preview-scoped value. Confirm it from your terminal:
 
 ```npm
 npx prisma service list --branch feature/search
