@@ -6,7 +6,7 @@ metaTitle: "Should I use Prisma Compute? FAQ | Prisma Compute"
 metaDescription: Deploy TypeScript apps and Postgres together with isolated branch previews and memory-preserving scale-to-zero. Compare Prisma Compute with Cloudflare Workers and other hosting platforms.
 ---
 
-Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/postgres) in one project. **Its main advantage is deploying the app and its database as one system:** [Prisma Composer](/composer) declares their dependencies in TypeScript, and [deploy on push](/compute/deploy-on-push) gives each branch its own app and database environment. It has been generally available since August 2026, and the Free plan runs an app and a database with no credit card and no usage billing. See [trade-offs](#where-it-has-trade-offs) for runtime, region and storage requirements.
+Prisma Compute hosts TypeScript apps (Node.js, Bun or Next.js) next to [Prisma Postgres](/postgres) in one project. **Its main advantage is deploying the app and its database as one system:** [Prisma Composer](/composer) declares their dependencies in TypeScript, and with [deploy on push](/compute/deploy-on-push) each branch other than the default one gets a preview with its own services and, for databases declared in the Composer module, its own new database. Prisma Compute has been generally available since August 2026, and the Free plan runs an app and a database with no credit card and no usage billing. See [trade-offs](#where-it-has-trade-offs) for runtime, region and storage requirements.
 
 ## Who Prisma Compute is built for
 
@@ -22,7 +22,7 @@ Compute is built for apps whose server code is TypeScript and whose database is 
 ## What it does well
 
 - One deploy for the app and its database. With [Prisma Composer](/composer) you describe each service and the databases it depends on in TypeScript; `npx prisma dev module.ts` runs it on your laptop, and `npx prisma deploy module.ts` provisions the services on Compute, the databases on Prisma Postgres and the authenticated connections between them.
-- A preview per branch, with its own database. Once [deploy on push](/compute/deploy-on-push) is set up, a push to any non-default branch deploys a stage named after it, with its own services, databases and URL, and deleting the branch tears it down. A branch you keep, such as `staging`, is a long-lived staging environment.
+- A preview per non-default branch. Once [deploy on push](/compute/deploy-on-push) is set up, a push to any non-default branch deploys a stage named after it, with its own services and URL and, for databases declared in the Composer module, its own new database; production data is not copied, and deleting the branch tears it down. A branch you keep, such as `staging`, is a long-lived staging environment.
 - Memory-preserving scale-to-zero. Idle instances suspend with a memory snapshot, stop incurring Compute charges, and resume in milliseconds with memory intact. Deployments and preview branch creation are not billed on their own. See [Pricing](/compute/pricing) for billing and [Keeping instances awake](/compute/keeping-instances-awake) for bounded background work.
 - Standard Postgres underneath. Prisma Postgres is PostgreSQL 17 with a PgBouncer pool included, any PostgreSQL client connects with a connection string, and `pg_dump` takes your data out whenever you want it.
 - Streaming and background work inside the limits. Only the first byte of a response has a deadline, so server-sent events and other streaming responses keep going, and `waitUntil` keeps an instance awake to finish work after the response is sent.
@@ -41,7 +41,7 @@ This is the full list of what Compute and Prisma Postgres do not do today.
 - No built-in cron and no persistent filesystem. Compute runs HTTP services, so a schedule comes from Composer's [`cron` building block](/composer/building-blocks#cron), which adds a scheduler service that never scales to zero, or from an external scheduler that calls your service, and files you need to keep go to [Object Store](/compute/object-storage) or the database.
 - No point-in-time recovery on Prisma Postgres yet; it is coming in November 2026. Paid plans take daily snapshots, kept 7 days on Starter and Pro and 30 days on Business; the Free plan has no backups. `pg_dump` over a direct connection makes your own copies; see [Backups](/postgres/database/backups).
 - No query cache. Prisma Postgres includes connection pooling but has no query cache of its own.
-- Previews are not copies of production. A preview branch gets its own database with no production data in it; the deploy applies your `migrations/` to a Composer `postgres()` database before the service starts, and a `rawPostgres()` database is yours to migrate.
+- Previews are not copies of production. A preview gets a new database for each database declared in the Composer module, with no production data in it; the deploy applies your `migrations/` to a Composer `postgres()` database before the service starts, a `rawPostgres()` database is yours to migrate, and a database the app reaches through `DATABASE_URL` is not created or migrated by the deploy, so the preview is only as separate as that value.
 - Custom domains are production-only. They attach to the default branch by CNAME, the service needs a promoted version first, and each service can have up to 3.
 
 [Known limitations](/compute/limitations) lists the same items with the CLI, environment variable, GitHub and log details.
@@ -70,12 +70,12 @@ The Prisma blog compares more vendors and situations. [App hosting platforms wit
 | Decision | Prisma Compute | Cloudflare Workers with Postgres |
 | --- | --- | --- |
 | App and database deployment | One [Composer declaration](/composer) provisions services, Prisma Postgres databases and their authenticated connections. | Deploy Workers and connect an existing Postgres database through [Hyperdrive](https://developers.cloudflare.com/hyperdrive/). |
-| Isolated branch previews | [Deploy on push](/compute/deploy-on-push) creates each branch's services and databases, applies Composer `postgres()` migrations and tears the environment down when the branch is deleted. | Workers has previews; [Postgres isolation](https://developers.cloudflare.com/workers/previews/resources/) requires a separate database or schema and a separate Hyperdrive configuration. |
+| Isolated branch previews | [Deploy on push](/compute/deploy-on-push) creates each preview branch's services and the databases declared in its Composer module, applies Composer `postgres()` migrations and tears the environment down when the branch is deleted. | Workers has previews; [Postgres isolation](https://developers.cloudflare.com/workers/previews/resources/) requires a separate database or schema and a separate Hyperdrive configuration. |
 | Database locality | Keep Compute and Prisma Postgres in the same region on one platform. | [Placement](https://developers.cloudflare.com/workers/configuration/placement/) moves Workers closer to the database; Hyperdrive pools connections and optionally caches reads. |
 
 Placement and Hyperdrive reduce database latency. Prisma Compute adds integrated app and Postgres provisioning, typed dependencies and per-branch connection wiring. Hyperdrive's [query cache](https://developers.cloudflare.com/hyperdrive/reference/faq/#does-hyperdrive-invalidate-cached-reads-when-i-write-to-my-database) does not invalidate reads on writes; use a cache-disabled configuration for fresh reads. Prisma Postgres includes pooling and serves queries without a query cache.
 
-Compute runs TypeScript apps on Bun. Workers offers a [subset of Node.js APIs](https://developers.cloudflare.com/workers/runtime-apis/nodejs/), and Cloudflare also offers [Containers](https://developers.cloudflare.com/containers/) for other workloads. Runtime choice is one part of the decision; Compute brings it together with managed Postgres, isolated database previews and memory-preserving suspension. Prisma ORM is optional.
+Compute runs TypeScript apps on Bun. Workers offers a [subset of Node.js APIs](https://developers.cloudflare.com/workers/runtime-apis/nodejs/), and Cloudflare also offers [Containers](https://developers.cloudflare.com/containers/) for other workloads. Runtime choice is one part of the decision; Compute brings it together with managed Postgres, a new preview database for each database the Composer module declares, and memory-preserving suspension. Prisma ORM is optional.
 
 ### Should I use Prisma Compute for an Express or Hono API?
 
@@ -91,7 +91,7 @@ Yes, for a backend whose API is TypeScript and whose data fits Postgres: Starter
 
 ### Should I use Prisma Compute for an existing GitHub repo?
 
-Yes, with one addition: a [Prisma Composer](/composer) declaration, one `service.ts` per server and a `module.ts` that composes them, placed next to the code you already have, and the [porting page](/composer/porting-an-app) has a prompt a coding agent can write it from. `npx prisma deploy module.ts` deploys it from your terminal or CI; deploying on every push needs the repository connection plus the `prisma/cloud-deploy-action` workflow, and only then does each pushed branch other than the default one get a preview with its own database.
+Yes. You add a [Prisma Composer](/composer) declaration, one `service.ts` per server and a `module.ts` that composes them, and make three changes to each Node.js or Bun server: read the port from `service.port()` and bind `0.0.0.0`, turn other `process.env` reads into service inputs or dependencies, and, if it uses Postgres, build the client from the injected `db.url`; the [porting page](/composer/porting-an-app) also covers Next.js apps and has a prompt a coding agent can work from. `npx prisma deploy module.ts` deploys it from your terminal or CI; deploying on every push needs the repository connection plus the `prisma/cloud-deploy-action` workflow, and only then does each pushed branch other than the default one get a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied, and a push to the default branch deploys production. If the app reads its connection string from a variable such as `DATABASE_URL` instead of declaring its database in the module, the preview connects to whatever database the preview-scoped value points at, and the deploy neither creates nor migrates it, so the preview is only as separate as that value and keeping it off production data is up to you; see [Connect a database](/compute/environment-variables#connect-a-database).
 
 ### Should I use Prisma Compute for a WebSocket server?
 
@@ -117,7 +117,7 @@ A project groups the resources for one product or codebase. An app is a single H
 
 ## What's a branch?
 
-A branch is an isolated environment for one line of work. It usually matches a Git branch name, but in Prisma it is a real resource that owns its own apps and databases. To learn more, see the [Environments docs](/compute/branching).
+A branch is an isolated environment for one line of work. It usually matches a Git branch name, but in Prisma it is a real resource that owns its own apps and any databases created on it. To learn more, see the [Environments docs](/compute/branching).
 
 ## Does `git connect` deploy my app?
 
@@ -129,7 +129,7 @@ Nothing without a workflow, because the platform does not handle pushes. Once yo
 
 ## How do I test a new feature without replacing the version customers use?
 
-Push the feature to its own Git branch: once [deploy on push](/compute/deploy-on-push) is set up, every branch other than the default one deploys as a preview that has its own URL, services and databases and uses the preview environment variables, while production keeps serving the default branch. When the preview works, merge the branch, and the push to the default branch updates production; deleting the feature branch removes its preview. A branch you keep, such as `staging`, works as a long-lived staging environment, as [A long-lived staging environment](/compute/deploy-on-push#a-long-lived-staging-environment) explains.
+Push the feature to its own Git branch: once [deploy on push](/compute/deploy-on-push) is set up, every branch other than the default one deploys as a preview that has its own URL and services and, for databases declared in the Composer module, its own new database, and uses the preview environment variables, while production keeps serving the default branch. If the app reads `DATABASE_URL`, the preview is only as separate as that value. When the preview works, merge the branch, and the push to the default branch updates production; deleting the feature branch removes its preview. A branch you keep, such as `staging`, works as a long-lived staging environment, as [A long-lived staging environment](/compute/deploy-on-push#a-long-lived-staging-environment) explains.
 
 ## Can my coding assistant deploy a test version without touching production?
 
@@ -186,7 +186,7 @@ No, custom domains are production-only, so they cannot be attached to preview br
 
 ## Does Prisma clone my production database for previews?
 
-No, a preview's databases are provisioned for that branch with no production data in them. For a Composer `postgres()` database the deploy applies your `migrations/` before the service starts; a `rawPostgres()` database, or one you point at through [environment variables](/compute/environment-variables), is yours to migrate. See [Where it has trade-offs](#where-it-has-trade-offs).
+No. Databases declared in the Composer module are created new for each preview with no production data in them; a database you point at through [environment variables](/compute/environment-variables) is not created, copied or migrated by the deploy, so the preview uses whatever the preview-scoped value points at. For a Composer `postgres()` database the deploy applies your `migrations/` before the service starts; a `rawPostgres()` database is yours to migrate. See [Where it has trade-offs](#where-it-has-trade-offs).
 
 ## Do I need Prisma Postgres to use Compute?
 
