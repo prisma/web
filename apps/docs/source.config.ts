@@ -63,9 +63,11 @@ export const docs = defineDocs({
       canonical: z.string().optional(),
       // When the page was first published, for its TechArticle structured data
       // (structured-data.tsx), e.g. `datePublished: 2024-03-01`. Quoted or not,
-      // the value parses as a string and becomes a Date here; a page that sets
-      // none gets no `datePublished`.
-      datePublished: z.coerce.date().optional(),
+      // the value parses as a string and becomes a Date here. An empty, numeric
+      // or unparseable value fails the build (without `z.string()` first, an
+      // empty or numeric one would become a 1970 date); a page that sets none
+      // gets no `datePublished`.
+      datePublished: z.string().pipe(z.coerce.date()).optional(),
       aiPrompt: z.string().optional(),
       noindex: z.boolean().optional(),
       // Visually hides the docs sidebar on landing pages; the pages stay in
