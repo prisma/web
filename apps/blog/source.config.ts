@@ -25,8 +25,24 @@ export const blogPosts = defineCollections({
     series: z.string().optional(),
     seriesIndex: z.number().int().positive().optional(),
     pinned: z.boolean().optional(),
+    /** Kept out of the agent-facing text files. The HTML page still renders. */
+    draft: z.boolean().optional(),
     prev: z.string().optional(),
     next: z.string().optional(),
+    /**
+     * Per-post override for the end-of-post conversion panel. The panel is
+     * rendered for every post; a post that wants a campaign-specific label or
+     * a tracked Console URL (UTMs) sets these instead of adding a second CTA
+     * inside the article.
+     */
+    cta: z
+      .object({
+        title: z.string().trim().min(1).optional(),
+        description: z.string().trim().min(1).optional(),
+        text: z.string().trim().min(1).optional(),
+        href: z.string().url().optional(),
+      })
+      .optional(),
     tags: z
       .array(
         z.enum([

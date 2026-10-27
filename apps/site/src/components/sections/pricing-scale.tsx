@@ -16,7 +16,6 @@ const SPECTRUM =
 // the active tab and the panel share the same grain size — the pattern reads
 // as one continuous surface across the tab/panel junction.
 const GRAIN: React.CSSProperties = {
-  backgroundImage: "url(/brand/texture.jpg)",
   backgroundSize: "1200px auto",
   opacity: 0.06,
   mixBlendMode: "multiply",
@@ -204,7 +203,11 @@ function ScenarioCarousel() {
             — whichever tab is active exposes the same continuous texture
             (per-tab grain sampled a different crop on tabs 2 and 3). The
             inactive tabs paint opaque above it. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-card" style={GRAIN} />
+        <div
+          aria-hidden
+          className="brand-grain pointer-events-none absolute inset-0 bg-card"
+          style={GRAIN}
+        />
         {SCENARIOS.map(({ tab, mau }, i) => (
           <button
             key={tab}
@@ -258,7 +261,11 @@ function ScenarioCarousel() {
           <div className="absolute bottom-[-21rem] right-[8%] h-[44rem] w-24 origin-bottom rotate-[28deg] bg-prism-red-300/50 blur-[56px]" />
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-t from-transparent via-white/60 to-white" />
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={GRAIN} />
+        <div
+          aria-hidden
+          className="brand-grain pointer-events-none absolute inset-0"
+          style={GRAIN}
+        />
 
         <div className="relative flex-1 overflow-hidden pt-2">
           <div

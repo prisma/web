@@ -1,0 +1,244 @@
+---
+title: "I accidentally deleted customer records from my hosted Postgres database. How do I recover them, and what backups should I set up?"
+description: "Restore a copy from before the delete into a new database and copy the missing rows back. Then set up tested backups: host recovery plus your own pg_dump."
+summary: "If the `DELETE` is still inside an open transaction, run `ROLLBACK`. Once it is committed, PostgreSQL has no command that brings the rows back, so you recover them from a copy taken before the delete: your host's point-in-time recovery, its daily backups, a `pg_dump` you made, or the other systems your app sent the data to. Restore that copy into a new database rather than over production, then copy only the missing rows back, so you keep everything customers wrote since. Recovery windows roll forward, so check how far back yours reaches today. Then set up backups you have tested: the host's automated backups with point-in-time recovery where it offers it, and a scheduled `pg_dump` stored outside your host's account."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "9 min read"
+faq:
+  - question: "Can I recover deleted Postgres rows without a backup?"
+    answer: "Only from another copy of the data. A committed `DELETE` can't be undone with SQL, and on a hosted database you have no access to the data files, so tools that scan disk pages don't apply. Look for copies outside the database: a staging or analytics database loaded from production, CSV exports, application logs, and the payment, CRM or email tools your app sent customer details to. Ask your host's support as well, and ask early, because any recovery window it has keeps moving forward."
+  - question: "Does a read replica protect against accidental deletes?"
+    answer: "Usually not. A streaming replica applies the `DELETE` shortly after the primary does, so the rows are gone there too, unless the replica was set up to replay changes with a deliberate delay. Replicas protect against losing a server, not against a bad statement. For a mistaken delete you need a copy from before it: point-in-time recovery, a backup or a `pg_dump`."
+  - question: "How long should I keep backups?"
+    answer: "At least as long as it can take someone to notice missing data. A deletion that nobody spots for two weeks is gone if your backups are kept for 7 days. Check your host's retention against that, and pair it with your own weekly or monthly `pg_dump` files, kept for months in storage outside the host's account. Check any retention limits your customer contracts or data protection rules set, because they can require deleting old copies as well as keeping them."
+  - question: "Is pg_dump enough as a backup?"
+    answer: "Not on its own. A dump is a consistent snapshot of the moment it ran, so restoring it loses everything written since, and the [PostgreSQL docs](https://www.postgresql.org/docs/current/app-pgdump.html) say that except in simple cases it is generally not the right choice for regular production backups. Use the host's continuous or daily backups as the main recovery path, and keep `pg_dump` files as a second, independent copy that you control and can restore anywhere."
+related:
+  - title: "Prisma Postgres backups"
+    href: "/docs/postgres/database/backups"
+  - title: "Running database migrations safely in production"
+    href: "/postgres/production-database-migrations"
+  - title: "Rolling back a deployment that broke your app"
+    href: "/compute/roll-back-deployment"
+  - title: "Protecting production with a separate test database"
+    href: "/postgres/typescript-test-environment"
+cta:
+  title: "Keep a copy you control"
+  description: "Prisma Postgres paid plans take daily snapshots you can restore from the Console. Add your own pg_dump over the direct connection, and test a restore before you need it."
+  label: "Read the backups guide"
+  href: "/docs/postgres/database/backups"
+---
+
+Deleted rows come back from a copy of the database taken before the delete. The steps below find the most recent copy you have, restore it next to production instead of over it, and copy back only the rows you lost. They work with any hosted PostgreSQL. The later sections cover the backups to set up before the next mistake.
+
+We make Prisma Postgres. PostgreSQL and provider behavior on this page links to each project's or provider's documentation, checked on October 22, 2026.
+
+## What to do in the first hour
+
+1. **Stop whatever deleted the rows.** Pause the job, script, migration or agent session, and take away its database credentials if it might run again. If an AI coding agent ran the delete, the [guide to an agent that wiped a database](/postgres/ai-agent-wiped-database) covers locking it out.
+2. **Check for an open transaction.** If the `DELETE` ran inside `BEGIN` and you haven't committed, run `ROLLBACK` in that same session and the rows are back. `psql` commits each statement by default ([`AUTOCOMMIT` is on](https://www.postgresql.org/docs/current/app-psql.html)). Drivers differ: Python's psycopg [opens a transaction automatically](https://www.psycopg.org/psycopg3/docs/basic/transactions.html) and saves nothing until `commit()`, so a delete run from a script or notebook without `commit()` can still be rolled back while that connection is open. A `with psycopg.connect()` block commits when it ends without an error.
+3. **Write down when and what.** Note the time of the delete in UTC from your logs, the tables involved and the statement or condition that ran. Point-in-time recovery needs the time, and the condition tells you which rows to copy back.
+4. **Check how long you have.** Point-in-time windows and backup retention keep moving forward. A point-in-time window of a few hours can pass before anyone notices, and a 7-day backup taken before the delete expires 7 days after it was taken. Look up your host's window in the table below now.
+5. **Take a dump of production as it is.** `pg_dump` makes a [consistent export without blocking readers or writers](https://www.postgresql.org/docs/current/app-pgdump.html), so you can run it while the app is up. If the recovery goes wrong, this copy lets you start again.
+6. **Don't restore over production.** A restore that replaces the live database also removes every order, sign-up and edit made after the restore point. Restore into a new database and copy rows across.
+
+Before you restore anything, find out whether the delete reached other tables. A foreign key with `ON DELETE CASCADE` removes the child rows, such as a customer's orders, along with the customer. `ON DELETE SET NULL` and `SET DEFAULT` keep the child rows but change them. This query lists the tables the delete from `customers` changed:
+
+```sql
+SELECT conrelid::regclass AS child_table, conname, confdeltype
+FROM pg_constraint
+WHERE contype = 'f'
+  AND confrelid = 'customers'::regclass
+  AND confdeltype IN ('c', 'n', 'd');
+```
+
+In [`pg_constraint`](https://www.postgresql.org/docs/current/catalog-pg-constraint.html), a `confdeltype` of `c` means cascade: the child rows were deleted too. Run the query again for each of those child tables, because cascades can chain. `n` (set null) and `d` (set default) mean the delete changed the child rows instead of removing them, so re-inserting the customers doesn't reconnect them. Step 6 below covers both.
+
+## What are my recovery options?
+
+From the most data recovered to the least:
+
+- **Point-in-time recovery (PITR).** The host keeps a base backup plus the write-ahead log, and [replays the log up to a time you choose](https://www.postgresql.org/docs/current/continuous-archiving.html), such as one minute before the delete. You lose nothing written before that time.
+- **The host's daily backups or snapshots.** You get the database as it was when the last backup before the delete ran. Rows created after that backup and then deleted aren't in it.
+- **Your own `pg_dump` files.** Same trade-off: the dump holds the data as of the moment it ran.
+- **Copies outside the database.** A staging or analytics database loaded from production, CSV exports, application logs and audit tables, and the payment, CRM or email tools your app sent customer details to. They may hold the fields you need when no backup does.
+
+A read replica doesn't help: a streaming replica applies the `DELETE` too, unless you set it up to replay changes with a delay. Ask your host's support as well, early, in case it holds something its dashboard doesn't show.
+
+## Recovery features by host
+
+Providers are listed alphabetically. Each cell links to the provider's documentation, checked on October 22, 2026.
+
+| Host | Automatic backups | Point-in-time recovery | Where a restore goes |
+| --- | --- | --- | --- |
+| AWS RDS for PostgreSQL | [Automated backups kept 0 to 35 days](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.BackupRetention.html): 7 by default when created in the console, 1 through the API or CLI. 0 turns them off | [To any time in the retention period](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html). Transaction logs are uploaded every 5 minutes | A new DB instance. The source is not modified |
+| Azure Database for PostgreSQL flexible server | [Daily snapshots plus archived WAL](https://learn.microsoft.com/en-us/azure/postgresql/backup-restore/concepts-backup-restore), kept 7 days by default, up to 35 | To any time in the retention period, with an RPO of up to 5 minutes | Always a new server |
+| Google Cloud SQL for PostgreSQL | [Automated backups](https://docs.cloud.google.com/sql/docs/postgres/backup-recovery/backups) | [On by default](https://docs.cloud.google.com/sql/docs/postgres/backup-recovery/configure-pitr) for Enterprise Plus, and for Enterprise when created in the console. Logs kept 1 to 7 days on Enterprise (default 7), 1 to 35 on Enterprise Plus (default 14) | [Always a new instance](https://docs.cloud.google.com/sql/docs/postgres/backup-recovery/pitr) |
+| Neon | [Change history kept for a restore window](https://neon.com/docs/introduction/history-window) | Free: 6 hours, capped at 1 GB of history. Launch: 1 day by default, up to 7. Scale: 1 day by default, up to 30 | [Overwrites the branch you restore](https://neon.com/docs/introduction/branch-restore) and keeps its previous state as a backup branch. [Creating a branch from past data](https://neon.com/docs/manage/branches) within that window leaves the original branch as it is. [Time Travel Assist](https://neon.com/docs/postgres/backup-restore/time-travel-assist) runs read-only queries at a past time first |
+| Prisma Postgres | [Daily snapshots](/docs/postgres/database/backups), on days with database activity: 7 days on Starter and Pro, 30 on Business. None on Free | Not available yet (it is coming in November 2026) | In the Console's [Backups tab](/docs/postgres/database/backups#restoring-a-backup), **Restore to a new database** creates a new database and leaves the original as it is. **Restore to an existing database** rolls the same database back in place. The [MCP tool `create_prisma_postgres_recovery`](/docs/ai/mcp-tools) also restores into a new database. The [REST API restore](/docs/rest-api/endpoints/databases/post-databases-by-target-database-id-restore) overwrites the target database |
+| Railway | [Volume backups](https://docs.railway.com/volumes/backups), [off until you turn them on](https://docs.railway.com/databases/postgresql): manual, or scheduled daily (kept 6 days), weekly (27) or monthly (89) | [Opt-in](https://docs.railway.com/volumes/point-in-time-recovery): archives WAL with pgBackRest to a Railway bucket and keeps the last 4 full backups, roughly 4 weeks | PITR creates a new service. A volume backup restore mounts a new volume and keeps the old one unmounted |
+| Render | [Continuous backups on paid databases](https://render.com/docs/postgresql-backups). None on Free databases | 3 days in a Hobby workspace, 7 days on Pro and higher. Not within 10 minutes of the current time | A new database instance |
+| Supabase | [Daily backups](https://supabase.com/docs/guides/platform/backups): 7 days on Pro, 14 on Team, up to 30 on Enterprise. Free projects are advised to export with `supabase db dump`. Files in Supabase Storage are not included | Paid add-on on Pro, Team and Enterprise, with at least a Small compute add-on. [7, 14 or 28 days, about $100 to $400 a month](https://supabase.com/docs/guides/platform/manage-your-usage/point-in-time-recovery). RPO of 2 minutes | Restores the project itself, which is inaccessible until the restore finishes. [Restoring to a new project](https://supabase.com/docs/guides/platform/clone-project) is a separate flow |
+
+On a host that restores in place, such as a Neon branch or a Supabase project, restore into a new branch created from past data or a new project, or accept that writes made after the restore point leave the live database. Neon keeps them in the backup branch it creates. On Supabase they are gone unless you dumped the database first.
+
+## How do I copy the deleted rows back?
+
+The commands use `psql`, a `customers` table with an `id` primary key, and two connection strings: `RESTORED_URL` for the restored copy and `PROD_URL` for production. They assume the mistaken statement was `DELETE FROM customers WHERE created_at < '2026-10-01'`.
+
+### 1. Restore a copy into a new database
+
+Pick the latest restore point before the delete: a minute before it with PITR, or the last backup before it. Use the restore flow from the table above. When the copy is ready, run the delete's condition against it:
+
+```sh
+psql "$RESTORED_URL" -c "SELECT count(*) FROM customers WHERE created_at < '2026-10-01';"
+```
+
+If the count is 0, the copy is from after the delete. Pick an earlier restore point.
+
+### 2. Export the table from the restored copy
+
+[`\copy`](https://www.postgresql.org/docs/current/app-psql.html) runs on your machine and needs no superuser rights, so it works on hosted databases:
+
+```sh
+psql "$RESTORED_URL" -c "\copy customers TO 'customers_restored.csv' WITH (FORMAT csv, HEADER)"
+```
+
+### 3. Load it into a staging table in production
+
+Open a session with `psql "$PROD_URL"` and run:
+
+```sql
+CREATE TABLE customers_restored (LIKE customers INCLUDING DEFAULTS INCLUDING GENERATED);
+\copy customers_restored FROM 'customers_restored.csv' WITH (FORMAT csv, HEADER)
+```
+
+`LIKE` copies the columns in the same order. [`INCLUDING GENERATED`](https://www.postgresql.org/docs/current/sql-createtable.html) keeps generated columns generated, so they match the CSV, which [leaves them out](https://www.postgresql.org/docs/current/sql-copy.html). If a migration changed the table since the restore point, create the staging table from the restored copy's definition instead.
+
+### 4. Count the rows that are missing
+
+```sql
+SELECT count(*)
+FROM customers_restored r
+WHERE NOT EXISTS (SELECT 1 FROM customers c WHERE c.id = r.id);
+```
+
+Without a condition, this also counts rows that were deleted on purpose after the restore point, such as a customer who closed their account. Add the original delete's condition so the count covers only rows the mistaken statement could have removed:
+
+```sql
+SELECT count(*)
+FROM customers_restored r
+WHERE r.created_at < '2026-10-01'
+  AND NOT EXISTS (SELECT 1 FROM customers c WHERE c.id = r.id);
+```
+
+A row that matches the condition but was deleted on purpose after the restore point still shows up. Check the list against your logs or account-closure records, and remove those rows from `customers_restored` before the next step.
+
+### 5. Insert them in one transaction
+
+```sql
+BEGIN;
+
+INSERT INTO customers (id, email, name, created_at)
+SELECT r.id, r.email, r.name, r.created_at
+FROM customers_restored r
+WHERE r.created_at < '2026-10-01'
+  AND NOT EXISTS (SELECT 1 FROM customers c WHERE c.id = r.id);
+```
+
+Name the columns in both lists; the example uses `id`, `email`, `name` and `created_at`, so replace them with your table's columns. Named columns can't land in the wrong place if a migration added, dropped or reordered columns since the restore point. A column added since then gets its default when it has one. If an added column is `NOT NULL`, isn't a generated column and has no default or identity generation, give it a value in both lists. A renamed or retyped column needs its own expression in the `SELECT`.
+
+`psql` prints `INSERT 0 <n>`. Compare `n` with the count from step 4, rerunning that count first if you removed rows deleted on purpose. If they match, run:
+
+```sql
+COMMIT;
+```
+
+If they don't, run `ROLLBACK` and check the condition.
+
+Rows that still exist in production are skipped, so newer edits stay as they are. Four cases need changes:
+
+- **`GENERATED ALWAYS AS IDENTITY` ids.** PostgreSQL [rejects explicit values](https://www.postgresql.org/docs/current/sql-insert.html) for them unless you add `OVERRIDING SYSTEM VALUE` after the column list and before the `SELECT`, as in `INSERT INTO customers (id, email, name, created_at) OVERRIDING SYSTEM VALUE SELECT ...`.
+- **Generated columns.** Leave them out of both column lists. PostgreSQL computes them on insert.
+- **Other unique columns.** If a deleted customer has since signed up again with the same email, a unique index on `email` makes the insert fail and the transaction roll back. Merge those customers by hand and remove them from `customers_restored` first.
+- **Triggers on the table.** An insert trigger that sends a welcome email or calls a webhook fires for every restored row. Check the triggers with `\d customers` before you run the insert.
+
+### 6. Repeat for child tables, then clean up
+
+Restore the cascade (`c`) tables from the query above in the same way, parents before children, so the foreign keys are satisfied. For `n` and `d` tables, load the restored copy into a staging table as in steps 2 and 3, then put the foreign key values back with an `UPDATE ... FROM` that joins on the child table's primary key:
+
+```sql
+UPDATE invoices i
+SET customer_id = r.customer_id
+FROM invoices_restored r
+WHERE i.id = r.id
+  AND i.customer_id IS NULL
+  AND r.customer_id IN (
+    SELECT id FROM customers_restored WHERE created_at < '2026-10-01'
+  );
+```
+
+For a `SET DEFAULT` key, match on the default value instead of `IS NULL`. Check a few customers in the app, then drop the staging tables and delete the restored database once you no longer need it.
+
+## What backups should I set up?
+
+Aim for two independent copies, each tested with a real restore.
+
+### Turn on the host's backups and point-in-time recovery
+
+Check that automated backups are on and how long they are kept. Where the host offers point-in-time recovery, enable it and set the window to at least how long it can take your team to notice missing data. Several hosts charge for it or include it only on paid plans, and Prisma Postgres doesn't have it yet (it is coming in November 2026; see the table).
+
+### Keep your own pg_dump outside the host's account
+
+A dump you store yourself protects against what the host's backups can't: a deleted account or project, a mistake noticed after the retention window, or a move to another host. Run it on a schedule from a CI job or a machine you control, over the direct connection rather than a transaction-mode pooler, with client tools at least as new as the server. `pg_dump` [refuses to dump a newer major version](https://www.postgresql.org/docs/current/app-pgdump.html):
+
+```sh
+pg_dump --format=custom \
+  --file="backup-$(date -u +%Y-%m-%d).dump" \
+  "$DIRECT_DATABASE_URL"
+```
+
+Upload the file to storage in a separate account, and keep weekly or monthly copies for longer than the host's retention. The custom format is compressed and lets [`pg_restore`](https://www.postgresql.org/docs/current/app-pgrestore.html) pick single tables later. `pg_dump` copies one database and leaves out roles and other cluster-wide objects, so keep a note of the roles and grants your app needs. A dump is a snapshot of one moment, and the PostgreSQL docs say that except in simple cases it is generally not the right choice for regular production backups, so treat it as the second copy.
+
+### Test a restore every month
+
+A backup you have never restored is a guess. Restore the latest dump into a scratch database, compare row counts with production for the tables that matter, and time how long it took:
+
+```sh
+pg_restore --no-owner --no-privileges --dbname="$SCRATCH_DATABASE_URL" backup-2026-10-22.dump
+```
+
+`--no-owner` and `--no-privileges` skip ownership and `GRANT` commands, which fail when the role names on the scratch database differ. Rehearse the host's restore flow too, so the first time you use it isn't during an incident.
+
+### Make the next delete harder
+
+- **Give each role only what it needs.** The app's role rarely needs `TRUNCATE` or schema changes, so [revoke those privileges](https://www.postgresql.org/docs/current/ddl-priv.html) and run migrations with a separate role, where your host lets you create roles. A table's owner can drop or empty it whatever the grants say, so the app's role shouldn't own the tables.
+- **Keep development off production.** Give local development, previews and coding agents their own database and credentials, so a reset or seed script can't reach customer data. The [test environment guide](/postgres/typescript-test-environment) shows the setup.
+- **Make manual sessions ask before committing.** In `psql`, `\set AUTOCOMMIT off` [opens a transaction before each statement](https://www.postgresql.org/docs/current/app-psql.html), and nothing is saved until you run `COMMIT`. `ROLLBACK` undoes it. Run a `SELECT count(*)` with the same `WHERE` before any `DELETE`.
+- **Soft-delete customer records.** Set a `deleted_at` timestamp instead of deleting the row, filter it out in queries, and purge old rows on purpose later.
+- **Log deletes to an audit table.** An `AFTER DELETE` trigger that copies the old row into another table, like the [auditing example in the PostgreSQL docs](https://www.postgresql.org/docs/current/plpgsql-trigger.html#PLPGSQL-TRIGGER-AUDIT-EXAMPLE), lets you restore single rows without a backup.
+
+## When these steps don't apply
+
+- **A whole table was dropped or the database was deleted.** Restore the full database to a point before it and switch the app to the restored copy, or copy the table across with `pg_dump --table` and `pg_restore`. Before you delete any database, including the restored copy, check whether your host keeps its backups afterward.
+- **The delete is older than every backup you have.** Only the copies outside the database are left.
+- **The rows are someone else's personal data.** Restoring customer records can bring back data a customer asked you to erase. Check deletion requests made since the restore point before you insert.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17. Prisma Postgres fits when a restore point up to a day before the delete is good enough: paid plans keep daily snapshots, and a restore with the Console's **Restore to a new database** option or the `create_prisma_postgres_recovery` MCP tool goes into a new database and leaves production as it is. Recovery works like this, from the [backups docs](/docs/postgres/database/backups) and [pricing](/pricing):
+
+- **Automatic snapshots on paid plans.** Starter ($10 a month) and Pro ($49) keep daily snapshots for 7 days, and Business ($129) for 30 days. Snapshots are taken only on days when the database has activity.
+- **Restore.** Open the database's Backups tab in the [Prisma Console](https://console.prisma.io) to see the snapshots and restore one. Choose **Restore to a new database**: it creates a new database and leaves the original as it is, and you generate a connection string for it in the Console ([backups docs](/docs/postgres/database/backups#restoring-a-backup)). **Restore to an existing database** rolls the same database back in place, which removes everything written after the snapshot. From a terminal, [`prisma postgres backup list`](/docs/cli/postgres) lists them. Agents connected to the [Prisma MCP server](/docs/ai/mcp-tools) can list backups and restore one into a new database with the `create_prisma_postgres_recovery` tool. Then copy the missing rows across as in the steps above, or, if the whole database was lost, point the app at the new connection string. The [REST API restore endpoint](/docs/rest-api/endpoints/databases/post-databases-by-target-database-id-restore) is different: it overwrites the target database.
+- **Your own dumps.** Run `pg_dump` with PostgreSQL 17 tools, as the [backups docs](/docs/postgres/database/backups) say, against the direct host `db.prisma.io`. The pooled host `pooled.db.prisma.io` is for application traffic. Any Postgres client works; Prisma ORM is optional.
+
+Know the limits before you rely on them:
+
+- **No point-in-time recovery yet (it is coming in November 2026).** A snapshot holds the database as of the time it was taken, so anything written between the last snapshot and the delete isn't in it.
+- **The Free plan has no backups.** It includes 2 GB of storage and needs no credit card, but on Free your own `pg_dump` is your backup.
+- **Retention is 7 days on Starter and Pro.** A delete noticed after a week can only come back from a copy you kept yourself.
+
+If your app needs to recover to the minute, for example because orders arrive all day and a day of lost writes is too much, choose a host that has point-in-time recovery today from the table above.

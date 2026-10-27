@@ -128,3 +128,51 @@ Certain processes, such as bulk data imports, ETL operations, or extended CRON j
 
 - Use batching or chunking techniques to break large operations into smaller parts.
 - Establish throttling or scheduling to distribute the load more evenly.
+
+## `Failed to identify your database` errors
+
+When Prisma Postgres refuses a connection to your database, the error message starts with `Failed to identify your database:`, and the rest of the message tells you why. You see it from Prisma Client and from other tools that connect to Prisma Postgres.
+
+### `Your account has restrictions: unpaidPlanInvoice`
+
+```text title="Error message"
+Failed to identify your database: Your account has restrictions: unpaidPlanInvoice
+```
+
+The workspace that owns the database is blocked because a plan invoice wasn't paid. Queries to the workspace's databases fail until the invoice is paid, but no data is deleted.
+
+**Suggested solution:** Pay the outstanding invoice. Where you pay depends on how the workspace was created.
+
+For a workspace you created in the [Prisma Console](https://console.prisma.io/), click **Pay your outstanding balance** in the banner at the top of the Console, or go to **Workspace Settings** > **Billing** and click **View Invoices**. The block lifts once the invoice is paid. After you pay, restart any long-running processes that connect to the database, such as app servers and background workers. [If a payment fails](/console/more/billing#if-a-payment-fails) explains when a workspace gets blocked.
+
+For a workspace created through the Vercel Marketplace, you must pay the invoice in Vercel: the banner in the Console reads **Resolve billing in Vercel** and opens your Vercel dashboard. Paying the invoice any other way, such as through a Prisma invoice link, doesn't lift the block. If you already paid outside Vercel, contact [support](/console/more/support) with the workspace name before you pay again, so you aren't charged twice.
+
+If you have already paid and still see this error, contact [support](/console/more/support) and include the workspace name.
+
+### `Your account has restrictions: planLimitReached`
+
+```text title="Error message"
+Failed to identify your database: Your account has restrictions: planLimitReached
+```
+
+The workspace is on the Free plan and has used up the queries included in the Free plan. Queries fail until you restore access, but your data stays in place.
+
+**Suggested solution:** Upgrade the workspace to a paid plan, which usually restores access within a minute. If you can't upgrade yet, wait for your included usage to reset, or select **Restore access for 24 hours** in the Console's warning about your query limit. That option is available only once per workspace and doesn't renew each month. [What happens if I exceed the included queries on the Free tier?](/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) explains each option.
+
+If the workspace was created through the Vercel Marketplace, you change its plan in Vercel, as described in [How do I upgrade my plan if I am using Prisma Postgres via Vercel?](/postgres/faq#how-do-i-upgrade-my-plan-if-i-am-using-prisma-postgres-via-vercel)
+
+### `Your Postgres credentials are incorrect`
+
+```text title="Error message"
+Failed to identify your database: Your Postgres credentials are incorrect
+```
+
+The username and password in your connection string don't match any [credential](/postgres/database/connecting-to-your-database#access-and-permissions) on the database you are connecting to.
+
+**Suggested solution:** [Create a new credential](/postgres/database/connecting-to-your-database#get-your-connection-strings), copy the whole connection string it gives you, and replace the old connection string in your app's environment variables. Avoid building the connection string by hand from a username and password you copied separately. A credential's password is shown only once, when the credential is created, so if you no longer have the full connection string, a new credential is the way to get one.
+
+When you pass the connection string to a command-line tool such as `psql` or `pg_dump`, wrap it in double quotes. Without quotes, your shell can change special characters in the password before the tool sees them:
+
+```bash title="Terminal"
+psql "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```

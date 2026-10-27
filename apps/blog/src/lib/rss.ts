@@ -1,12 +1,15 @@
 import { generateRSS } from "@prisma-docs/ui/lib/rss";
-import { blog } from "@/lib/source";
-import { getBaseUrl, withBlogBasePath, withBlogBasePathForImageSrc } from "@/lib/url";
+import { blog, sortPagesNewestFirst } from "@/lib/source";
+import {
+  getBaseUrl,
+  toAbsoluteUrl,
+  withBlogBasePath,
+  withBlogBasePathForImageSrc,
+} from "@/lib/url";
 
 export function getRSS() {
   const baseUrl = getBaseUrl();
-  const pages = [...blog.getPages()].sort(
-    (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime(),
-  );
+  const pages = sortPagesNewestFirst(blog.getPages());
 
   return generateRSS(
     {
@@ -22,7 +25,7 @@ export function getRSS() {
       const date = new Date(page.data.date);
       const cover = page.data.metaImagePath ?? page.data.heroImagePath;
       const rel = cover ? withBlogBasePathForImageSrc(cover) : "";
-      const image = rel.startsWith("/") ? `${baseUrl.replace(/\/$/, "")}${rel}` : undefined;
+      const image = rel.startsWith("/") ? toAbsoluteUrl(baseUrl, rel) : undefined;
 
       return {
         id: withBlogBasePath(page.url),

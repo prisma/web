@@ -188,7 +188,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Are backups included?",
       answer:
-        "Yes, every paid plan includes daily [automatic backups](/docs/postgres/database/backups). Starter and Pro keep them for 7 days and Business keeps them for 30; the Free plan has none. You restore a backup from the database's Backups tab in the Console, or ask an agent to restore one into a new database through the MCP server. Point-in-time restore is not available yet. To keep your own copy, run `pg_dump` against the direct connection string, on any plan with available usage.",
+        "Yes, every paid plan includes daily [automatic backups](/docs/postgres/database/backups). Starter and Pro keep them for 7 days and Business keeps them for 30; the Free plan has none. You restore a backup from the database's Backups tab in the Console, or ask an agent to restore one into a new database through the MCP server. Point-in-time restore is coming in November 2026. To keep your own copy, run `pg_dump` against the direct connection string, on any plan with available usage.",
     },
     {
       question: "Which regions can I choose?",

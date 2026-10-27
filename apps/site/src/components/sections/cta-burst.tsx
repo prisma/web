@@ -1,3 +1,4 @@
+import { DeferredVideo } from "@/components/brand/deferred-video";
 import { CheckBold } from "@/components/icons/forma";
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
@@ -52,18 +53,11 @@ export function CtaBurst({
   return (
     <section className="bg-white px-3 py-24 sm:px-4 sm:py-32">
       <div className="mx-auto max-w-[96rem]">
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-[url('/brand/agent-loop.jpg')] bg-cover bg-center p-8">
-          <video
-            aria-hidden
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-black/[0.06] brand-agent-loop bg-cover bg-center p-8">
+          <DeferredVideo
+            src="/brand/cta-clouds-loop.mp4"
             className="pointer-events-none absolute inset-0 size-full object-cover motion-reduce:hidden"
-          >
-            <source src="/brand/cta-clouds-loop.mp4" type="video/mp4" />
-          </video>
+          />
           {/* translucent over the clouds — the video ghosts through the glass */}
           <div className="relative overflow-hidden rounded-xl border border-border bg-card/70 shadow-[0_12px_32px_-14px_rgba(21,21,21,0.18)] backdrop-blur-lg">
             {/* the hero's spectral bottom: wash + beam fan, dispersing to

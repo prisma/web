@@ -14,6 +14,9 @@ import * as React from "react";
  *
  *   `code`                   -> inline code chip
  *   [text](/path or https://...) -> link (`text` may itself contain `code`)
+ *   [text](url){newtab}      -> same link, plus target=_blank, rel=noopener
+ *                               noreferrer, and an sr-only "opens in a new tab"
+ *                               cue. Opt-in only; ordinary links are unchanged.
  *   ```lang fences           -> a `<pre data-language>` block (comparison FAQs)
  *
  * Both inline forms are escaped from the surrounding paragraph so the
@@ -26,7 +29,8 @@ import * as React from "react";
  *   - inline code uses the same `bg-muted` chip as other sections.
  */
 
-const LINK_PATTERN = /\[((?:[^[\]\\`]|`[^`]*`)+)\]\((\/[^\s)]*|#[^\s)]+|https?:\/\/[^\s)]+)\)/g;
+const LINK_PATTERN =
+  /\[((?:[^[\]\\`]|`[^`]*`)+)\]\((\/[^\s)]*|#[^\s)]+|https?:\/\/[^\s)]+)\)(?:\{(newtab)\})?/g;
 const CODE_PATTERN = /`([^`]+)`/g;
 const FENCE_PATTERN = /```(\w*)\n([\s\S]*?)```/g;
 
@@ -79,8 +83,9 @@ function renderInline(answer: string, keyPrefix: string): React.ReactNode {
       nodes.push(...renderCode(answer.slice(lastIndex, start), `${keyPrefix}-t-${index}`));
     }
 
-    const [, label, href] = match;
+    const [, label, href, newTabMarker] = match;
     const children = renderCode(label, `${keyPrefix}-l-${index}`);
+    const newTab = newTabMarker === "newtab";
 
     nodes.push(
       isInternalHref(href) ? (
@@ -88,8 +93,14 @@ function renderInline(answer: string, keyPrefix: string): React.ReactNode {
           {children}
         </Link>
       ) : (
-        <a key={`${keyPrefix}-link-${index}`} href={href} className={LINK_CLASS}>
+        <a
+          key={`${keyPrefix}-link-${index}`}
+          href={href}
+          className={LINK_CLASS}
+          {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        >
           {children}
+          {newTab ? <span className="sr-only"> (opens in a new tab)</span> : null}
         </a>
       ),
     );
