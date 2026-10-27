@@ -37,9 +37,9 @@ This post walks through the workflow: why a shared staging database breaks under
 
 Three Prisma products appear here, each with one job:
 
-- **Prisma Compute** hosts your app, which you declare as a [Prisma Composer](https://www.prisma.io/docs/composer) module, and deploys a preview for each pushed branch other than the default one. It provides the isolation. Its commands are part of the Prisma CLI: `npx prisma deploy`, which the [deploy-on-push](https://www.prisma.io/docs/compute/deploy-on-push) GitHub Action runs for you.
+- **Prisma Compute** hosts your app, which you declare as a [Prisma Composer](https://www.prisma.io/docs/composer) module, and deploys a preview for each pushed branch other than the default one. It provides the isolation. Its commands are part of the unified Prisma CLI that ships with Prisma 8: `npx prisma deploy`, which the [deploy-on-push](https://www.prisma.io/docs/compute/deploy-on-push) GitHub Action runs for you.
 - **Prisma Postgres** is the database each preview gets: a new one for each database the module declares.
-- **[Prisma 8](https://www.prisma.io/docs/orm)** provides the migration toolchain in the examples, via the unified Prisma CLI (`npx prisma@latest`). For a database declared with `postgres()`, the deploy applies those migrations itself. The same workflow also works with Prisma 7's `prisma migrate deploy` against a `rawPostgres()` database, which you migrate yourself.
+- **[Prisma 8](https://www.prisma.io/docs/orm)** provides the migration toolchain in the examples, through the same CLI (`npx prisma`). For a database declared with `postgres()`, the deploy applies those migrations itself. Your app can query its database with any PostgreSQL client, but deploying needs this CLI; the FAQ covers Prisma 7.
 
 :::
 
@@ -130,7 +130,7 @@ Add `displayName` as nullable, so existing code that only knows about `name` kee
   skill="prisma-8"
   before={expandContractBefore}
   after={expandContractAfter}
-  terminalCommand="npx prisma@latest migration plan --name add_display_name"
+  terminalCommand="npx prisma migration plan --name add_display_name"
   terminalLines={expandTerminalLines}
 />
 
@@ -169,7 +169,7 @@ model User {
 ```
 
 ```bash
-npx prisma@latest migration plan --name require_display_name --backfill User.displayName
+npx prisma migration plan --name require_display_name --backfill User.displayName
 ```
 
 Without a flag, the planner tightens the column directly, and the apply fails while any row holds `NULL`. Only you know what existing rows should contain, so `--backfill User.displayName` has it scaffold a backfill placeholder in front of the constraint and leave the query to you. The backfill lives [inside the migration](https://pris.ly/data-migrations-pn) as a `dataTransform`, written with the same type-safe query builder you use in your app, instead of a standalone script that runs outside your migration history. Filled in:
@@ -214,7 +214,7 @@ Once all code reads `displayName` and the backfill is verified, remove the old c
   skill="prisma-8"
   before={contractContractBefore}
   after={contractContractAfter}
-  terminalCommand="npx prisma@latest migration plan --name drop_legacy_name --delete User.name"
+  terminalCommand="npx prisma migration plan --name drop_legacy_name --delete User.name"
   terminalLines={contractTerminalLines}
 />
 
@@ -233,7 +233,7 @@ flowchart LR
 
 Rollbacks are the wrong mental model for schema changes, and that's why the rehearsal matters.
 
-Promoting an earlier deployment on Compute restores your app code, not your schema; the database keeps the state from the most recent migration. On the schema side, Prisma 8 has no `migrate down` and no down-migration files. Rolling back means planning one more migration to a state your database has already been in: the planner diffs the two states, writes the operations that undo the change, and asks before it writes one that loses data, marking it with a data-loss warning so you can read and edit the plan before applying it. History stays append-only, `git revert` rather than `git reset`, and no rollback can resurrect the data a dropped column held.
+Rolling back to an earlier version on Compute (`npx prisma service version rollback <service>`) restores your app code, not your schema; the database keeps the state from the most recent migration. On the schema side, Prisma 8 has no `migrate down` and no down-migration files. Rolling back means planning one more migration to a state your database has already been in: the planner diffs the two states, writes the operations that undo the change, and asks before it writes one that loses data, marking it with a data-loss warning so you can read and edit the plan before applying it. History stays append-only, `git revert` rather than `git reset`, and no rollback can resurrect the data a dropped column held.
 
 Expand-and-contract keeps every forward step small, and preview databases give you a place to rehearse the sequence until it's boring.
 
@@ -274,9 +274,9 @@ jobs:
           build-command: npm run build
 ```
 
-The action derives the target from the branch: a push to the default branch deploys production, and a push to any other branch runs `prisma deploy module.ts --stage <branch>`. The job exchanges its GitHub OIDC token for a short-lived Prisma token, so the workflow needs no repository secrets. A branch's first push creates its preview database, and every deploy applies your committed `migrations/` before the service starts, so each step of the expand-and-contract sequence runs on the preview before it reaches production.
+The action derives the target from the branch: a push to the default branch deploys production, and a push to any other branch runs `prisma deploy module.ts --stage <branch>`. The job exchanges its GitHub OIDC token for a short-lived Prisma token, so the workflow needs no repository secrets. A branch's first push creates its preview database, and every deploy applies your committed `migrations/` to a `postgres()` database before the service starts, so each step of the expand-and-contract sequence runs on the preview before it reaches production.
 
-One piece of wiring is yours to choose: how integration tests get the preview database's connection string. The action keeps its credential to its own step, so a test step that needs one uses a service token: set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` as Actions secrets, find the branch's database with `npx prisma postgres list --project my-app --branch "$GITHUB_REF_NAME"`, and create a connection for it with `npx prisma postgres connection create <database> --project my-app --branch "$GITHUB_REF_NAME"`, which prints the connection string once. Keep any stored value in your own secret store; Compute's [environment variables](https://www.prisma.io/docs/compute/environment-variables) are write-only, so CI can't read them back.
+One piece of wiring is yours to choose: how integration tests get the preview database's connection string. The action keeps its credential to its own step, so a test step that needs one uses a service token: set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` as Actions secrets, find the branch's database with `npx prisma postgres list --project my-app --branch "$GITHUB_REF_NAME"`, and create a connection for it with `npx prisma postgres connection create <database> --name ci --project my-app --branch "$GITHUB_REF_NAME"`, which prints the connection string once. Each run adds a connection, so delete it after the tests with `npx prisma postgres connection delete <connection-id> --confirm <connection-id>`. Keep any stored value in your own secret store; Compute's [environment variables](https://www.prisma.io/docs/compute/environment-variables) are write-only, so CI can't read them back.
 
 The repository connection also cleans up: when you [connect the project to GitHub](https://www.prisma.io/docs/compute/github), deleting a Git branch removes its preview's services, databases and buckets.
 
@@ -301,7 +301,7 @@ No. Each preview database is new, and production data is not copied. For a `post
 When the repository is connected to the project, deleting a Git branch tears down the matching preview: its services, databases and buckets are removed. Automated cleanup never touches production or the default branch.
   </Accordion>
   <Accordion title="Can I use preview databases without Prisma 8?">
-Yes. The isolation comes from Prisma Compute previews, not from Prisma 8. Declare the database with `rawPostgres()`, which hands your service a connection string, and run Prisma 7's `prisma migrate deploy` against it yourself; the deploy applies migrations only for a `postgres()` database. This post uses Prisma 8 because its TypeScript migrations and `dataTransform` make expand-and-contract easier to write and review.
+Partly. The isolation comes from Prisma Compute previews, not from Prisma ORM 8, and Compute doesn't require Prisma ORM: declare the database with `rawPostgres()`, which hands your service a connection string, query it with any PostgreSQL client, and run your migrations against it yourself, since the deploy applies migrations only for a `postgres()` database. The deploy itself needs the Prisma 8 CLI: `prisma deploy` exists only there (8.0.0-rc.8 or later), and deploy on push runs your repository's installed `prisma` CLI when it has one. In a repository whose `prisma` package is Prisma 7, that is Prisma 7's CLI, which has no `deploy` command, so the deploy step fails. This post uses Prisma 8 because its TypeScript migrations and `dataTransform` make expand-and-contract easier to write and review.
   </Accordion>
   <Accordion title="How does this compare to Neon's branching?">
 Neon branches copy schema and data from a parent branch by default. A Compute preview database is not a copy: it is new, and your migrations and seeds build it up. Copying is faster for manual poking around; a database built only from your migrations proves they work end-to-end and keeps production data out of previews.
