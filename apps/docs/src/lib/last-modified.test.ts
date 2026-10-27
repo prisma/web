@@ -1,13 +1,23 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, test } from "node:test";
 
 import {
   collectLastModified,
+  describeGitError,
   gitLogArgs,
+  ISOLATED_GIT_ENV,
   loadManifest,
   lookupLastModified,
   MANIFEST_FILE,
@@ -126,6 +136,23 @@ test("resolveCommit prefers the checked-out commit and accepts only full SHAs", 
   assert.equal(resolveCommit({ VERCEL_GIT_COMMIT_SHA: "main" }), undefined);
 });
 
+test("describeGitError keeps git's first stderr line and hides URL credentials", () => {
+  const error = Object.assign(new Error("Command failed: git fetch"), {
+    stderr:
+      "\nfatal: unable to access 'https://x-access-token:secret@github.com/prisma/web.git/': " +
+      "Could not resolve host: github.com\nmore\n",
+  });
+  assert.equal(
+    describeGitError(error),
+    "fatal: unable to access 'https://***@github.com/prisma/web.git/': Could not resolve host: github.com",
+  );
+  // No stderr (git missing, timeout): the spawn error.
+  assert.equal(
+    describeGitError(Object.assign(new Error("spawnSync git ETIMEDOUT"), { stderr: "" })),
+    "spawnSync git ETIMEDOUT",
+  );
+});
+
 test("lookupLastModified resolves absolute and app-relative paths", () => {
   const manifest = {
     history: "local" as const,
@@ -160,6 +187,8 @@ describe("collectLastModified against real repositories", () => {
       stdio: ["ignore", "pipe", "ignore"],
       env: {
         ...process.env,
+        // Run from a git hook, the tests must not act on the outer repository.
+        ...ISOLATED_GIT_ENV,
         ...identity,
         ...(date ? { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date } : {}),
       },
@@ -282,7 +311,54 @@ describe("collectLastModified against real repositories", () => {
       fetchHistory: true,
       remote: `file://${origin}`,
     });
-    assert.deepEqual(none, { history: "none", files: {} });
+    assert.deepEqual(none, {
+      history: "none",
+      files: {},
+      fetchError: "no commit to fetch (no local HEAD, VERCEL_GIT_COMMIT_SHA or GITHUB_SHA)",
+    });
+  });
+
+  test("a failed fetch keeps the shallow dates and reports git's reason", () => {
+    const shallow = path.join(root, "shallow-unreachable");
+    git(root, ["clone", "-q", "--depth", "1", `file://${origin}`, shallow]);
+    const manifest = collectLastModified({
+      appDir: docs(shallow),
+      env: noEnv,
+      fetchHistory: true,
+      remote: `file://${path.join(root, "missing")}`,
+    });
+    assert.equal(manifest.history, "shallow");
+    assert.deepEqual(manifest.files, {});
+    assert.match(manifest.fetchError ?? "", /^git fetch: fatal: .*missing/);
+  });
+
+  test("the fetch ignores GIT_DIR and GIT_WORK_TREE set by a caller", () => {
+    const exported = path.join(root, "exported-git-dir");
+    cpSync(origin, exported, {
+      recursive: true,
+      filter: (source) => path.basename(source) !== ".git",
+    });
+    const outer = path.join(root, "outer.git");
+    const saved = { GIT_DIR: process.env.GIT_DIR, GIT_WORK_TREE: process.env.GIT_WORK_TREE };
+    process.env.GIT_DIR = outer;
+    process.env.GIT_WORK_TREE = exported;
+    try {
+      const manifest = collectLastModified({
+        appDir: docs(exported),
+        env: { VERCEL_GIT_COMMIT_SHA: originHead },
+        fetchHistory: true,
+        remote: `file://${origin}`,
+      });
+      assert.equal(manifest.history, "fetched");
+      assert.deepEqual(manifest.files, fullHistory);
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+    // The temporary repository was created where intended, not at GIT_DIR.
+    assert.equal(existsSync(outer), false);
   });
 
   test("loadManifest uses the build's manifest only for the checked-out commit", () => {

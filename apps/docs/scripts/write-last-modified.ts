@@ -16,7 +16,7 @@ const SOURCES: Record<HistorySource, string> = {
 
 const appDir = process.cwd();
 const started = Date.now();
-const manifest = collectLastModified({ appDir, fetchHistory: true });
+const { fetchError, ...manifest } = collectLastModified({ appDir, fetchHistory: true });
 const target = path.join(appDir, MANIFEST_FILE);
 
 await mkdir(path.dirname(target), { recursive: true });
@@ -25,7 +25,9 @@ await writeFile(target, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 const count = Object.keys(manifest.files).length;
 console.log(
   `Wrote ${MANIFEST_FILE}: ${count} page dates from ${SOURCES[manifest.history]}` +
-    `${manifest.commit ? ` at ${manifest.commit.slice(0, 12)}` : ""} in ${Date.now() - started} ms`,
+    `${manifest.commit ? ` at ${manifest.commit.slice(0, 12)}` : ""} in ${Date.now() - started} ms` +
+    // Network, credential and missing-variable failures otherwise look alike.
+    `${fetchError ? ` (history fetch failed: ${fetchError})` : ""}`,
 );
 if (count === 0) {
   console.warn("No page has a known last-change date; pages will be built without one.");

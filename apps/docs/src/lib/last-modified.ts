@@ -57,11 +57,39 @@ export interface LastModifiedManifest {
 /** Environment variables, as `process.env` or a plain object in tests. */
 export type Env = Readonly<Record<string, string | undefined>>;
 
-export type GitRunner = (
-  cwd: string,
-  args: string[],
-  options?: { timeout?: number; env?: Env },
-) => string | undefined;
+export interface GitOptions {
+  timeout?: number;
+  /** Merged over `process.env`; an `undefined` value removes that variable. */
+  env?: Env;
+  /** Called with a one-line reason when the command fails. */
+  onError?: (message: string) => void;
+}
+
+export type GitRunner = (cwd: string, args: string[], options?: GitOptions) => string | undefined;
+
+/**
+ * Variables that point git at another repository. Git sets some of them for
+ * hooks, and a command run in a temporary repository must not inherit them.
+ */
+export const ISOLATED_GIT_ENV: Env = {
+  GIT_DIR: undefined,
+  GIT_WORK_TREE: undefined,
+  GIT_INDEX_FILE: undefined,
+  GIT_COMMON_DIR: undefined,
+  GIT_OBJECT_DIRECTORY: undefined,
+  GIT_ALTERNATE_OBJECT_DIRECTORIES: undefined,
+};
+
+/** The first line of git's stderr, or the spawn error (missing git, timeout). */
+export function describeGitError(error: unknown): string {
+  const { stderr, message } = error as { stderr?: unknown; message?: unknown };
+  const line = String(stderr ?? "")
+    .split("\n")
+    .map((text) => text.trim())
+    .find(Boolean);
+  // A remote URL may carry credentials; build logs must not.
+  return (line ?? String(message ?? error)).replace(/(\w+:\/\/)[^/@\s]+@/g, "$1***@");
+}
 
 /** Runs git and returns stdout, or undefined when git is missing or the command fails. */
 export const runGit: GitRunner = (cwd, args, options = {}) => {
@@ -70,11 +98,12 @@ export const runGit: GitRunner = (cwd, args, options = {}) => {
       cwd,
       encoding: "utf8",
       maxBuffer: 256 * 1024 * 1024,
-      stdio: ["ignore", "pipe", "ignore"],
+      stdio: ["ignore", "pipe", options.onError ? "pipe" : "ignore"],
       timeout: options.timeout ?? 60_000,
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0", ...options.env },
     });
-  } catch {
+  } catch (error) {
+    options.onError?.(describeGitError(error));
     return undefined;
   }
 };
@@ -211,25 +240,37 @@ function getShallowBoundary(cwd: string, git: GitRunner): ReadonlySet<string> | 
   }
 }
 
-/** Dates for the docs pages from a full history of `commit` fetched from `remote`. */
+/**
+ * Dates for the docs pages from a full history of `commit` fetched from
+ * `remote` into a temporary repository, or why that failed.
+ */
 function readFetchedHistory(
   remote: string,
   commit: string,
   pathspec: string,
   git: GitRunner,
-): Map<string, string> | undefined {
+): { dates: Map<string, string> } | { error: string } {
   const dir = mkdtempSync(path.join(tmpdir(), "docs-last-modified-"));
+  let reason = "unknown error";
+  const onError = (message: string) => {
+    reason = message;
+  };
   try {
-    if (git(dir, ["init", "--quiet", "--bare"]) === undefined) return undefined;
+    if (git(dir, ["init", "--quiet", "--bare"], { env: ISOLATED_GIT_ENV, onError }) === undefined) {
+      return { error: `git init: ${reason}` };
+    }
     const fetched = git(
       dir,
       ["fetch", "--quiet", "--no-tags", "--filter=blob:none", remote, commit],
-      { timeout: 180_000 },
+      { timeout: 180_000, env: ISOLATED_GIT_ENV, onError },
     );
-    if (fetched === undefined) return undefined;
+    if (fetched === undefined) return { error: `git fetch: ${reason}` };
     // The log reads commits and trees only; never fetch file contents lazily.
-    const log = git(dir, gitLogArgs(commit, pathspec), { env: { GIT_NO_LAZY_FETCH: "1" } });
-    return log === undefined ? undefined : parseGitLog(log);
+    const log = git(dir, gitLogArgs(commit, pathspec), {
+      env: { ...ISOLATED_GIT_ENV, GIT_NO_LAZY_FETCH: "1" },
+      onError,
+    });
+    return log === undefined ? { error: `git log: ${reason}` } : { dates: parseGitLog(log) };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -246,6 +287,11 @@ export interface CollectOptions {
   git?: GitRunner;
 }
 
+export interface CollectedManifest extends LastModifiedManifest {
+  /** Why the history fetch failed, when one was needed; for the build log, not the manifest file. */
+  fetchError?: string;
+}
+
 /** Last-change dates for every page under `content/docs`, from the best history available. */
 export function collectLastModified({
   appDir,
@@ -253,7 +299,7 @@ export function collectLastModified({
   fetchHistory = false,
   remote,
   git = runGit,
-}: CollectOptions): LastModifiedManifest {
+}: CollectOptions): CollectedManifest {
   const prefix = findAppPrefix(appDir, git);
   if (prefix === undefined) return { history: "none", files: {} };
   const pathspec = `${prefix}${CONTENT_DIR}`;
@@ -282,19 +328,32 @@ export function collectLastModified({
     if (log !== undefined) return toManifest("local", commit, parseGitLog(log));
   }
 
-  if (fetchHistory && commit) {
+  let fetchError: string | undefined;
+  if (fetchHistory && !commit) {
+    fetchError = "no commit to fetch (no local HEAD, VERCEL_GIT_COMMIT_SHA or GITHUB_SHA)";
+  } else if (fetchHistory && commit) {
     const origin = topLevel ? git(topLevel, ["remote", "get-url", "origin"]) : undefined;
     const url = remote ?? resolveRemote(env, origin);
-    const dates = url ? readFetchedHistory(url, commit, pathspec, git) : undefined;
-    if (dates) return toManifest("fetched", commit, dates);
+    const fetched = url
+      ? readFetchedHistory(url, commit, pathspec, git)
+      : {
+          error:
+            "no repository to fetch from (no VERCEL_GIT_* or GITHUB_* variables, no https origin)",
+        };
+    if ("dates" in fetched) return toManifest("fetched", commit, fetched.dates);
+    fetchError = fetched.error;
   }
+  const fallback = (manifest: LastModifiedManifest): CollectedManifest =>
+    fetchError ? { ...manifest, fetchError } : manifest;
 
   if (topLevel && boundary) {
     const log = git(topLevel, gitLogArgs("HEAD", pathspec));
-    if (log !== undefined) return toManifest("shallow", commit, parseGitLog(log, boundary));
+    if (log !== undefined) {
+      return fallback(toManifest("shallow", commit, parseGitLog(log, boundary)));
+    }
   }
 
-  return toManifest("none", commit, new Map());
+  return fallback(toManifest("none", commit, new Map()));
 }
 
 /** Reads a manifest written by `scripts/write-last-modified.ts`, or undefined if absent or invalid. */
