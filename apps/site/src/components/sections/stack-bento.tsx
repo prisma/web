@@ -69,7 +69,18 @@ const HOME_CONTENT: StackBentoContent = {
       <>
         Long-running workloads: WebSockets, cron, background jobs <em>(coming soon)</em>
       </>,
-      "Versioned deployments with preview URLs, deploy by git push or CLI",
+      // A plain <a>: /docs is another zone (lib/zones.ts). The homepage's
+      // Markdown rendition (lib/markdown/home.ts) carries the same link.
+      <>
+        Versioned deployments with preview URLs,{" "}
+        <a
+          href="/docs/compute/deploy-on-push"
+          className="underline decoration-black/20 underline-offset-4 transition-colors hover:decoration-black/60"
+        >
+          deploy by git push
+        </a>{" "}
+        or CLI
+      </>,
     ],
   },
   studio: {
