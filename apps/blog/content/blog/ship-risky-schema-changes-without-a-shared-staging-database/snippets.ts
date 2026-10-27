@@ -35,10 +35,10 @@ export const expandTerminalLines = [
 ];
 
 export const contractContractBefore = `model User {
-  id          Int    @id @default(autoincrement())
-  email       String @unique
+  id          Int     @id @default(autoincrement())
+  email       String  @unique
   displayName String
-  name        String // no code reads this anymore
+  name        String? // no query reads or writes this since step 4
 
   @@map("user")
 }`;

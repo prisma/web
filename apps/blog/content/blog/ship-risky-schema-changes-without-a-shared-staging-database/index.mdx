@@ -109,15 +109,17 @@ Isolation solves the concurrency problem. It also gives you a safe place to rehe
 
 ## Rehearse the risky change: expand and contract
 
-Renaming a column, changing a type, dropping a field that production code still reads: one big migration for any of these breaks whatever is running while it applies. The safe version splits the change into three small, individually harmless migrations:
+Renaming a column, changing a type, dropping a field that production code still reads: one big migration for any of these breaks whatever is running while it applies. The safe version splits the change into five small, individually harmless steps, three of them migrations:
 
 1. **Expand**: add the new schema next to the old. Both code paths work.
-2. **Migrate**: backfill data from old to new, inside a migration.
-3. **Contract**: remove the old schema once nothing reads it.
+2. **Dual write**: deploy app code that writes both the old and the new schema.
+3. **Migrate**: once no running version writes only the old schema, backfill data from old to new, inside a migration, and switch reads to the new schema in the same deploy.
+4. **Stop using the old schema**: deploy app code whose queries neither write nor read the old schema.
+5. **Contract**: remove the old schema once no running version reads or writes it.
 
-The pattern is well known and rarely practiced, because rehearsing a three-migration sequence on a shared database is exactly the kind of multi-deploy work that collides with everyone else. On a preview database, you run the whole cycle in isolation, verify each step, and only then promote it to production.
+The pattern is well known and rarely practiced, because rehearsing a three-migration sequence on a shared database is exactly the kind of multi-deploy work that collides with everyone else. On a preview database, you run the whole cycle in isolation, verify each step, and only then promote it to production, one step per deploy and in the same order. With deploy on push, that means merging each step to the default branch on its own, as one pull request per step or the branch merged commit by commit, and letting its production deploy finish before you merge the next.
 
-Here's the cycle for replacing a legacy `name` column with `displayName`: the same two columns from the Alice and Bob story, now done properly as one deliberate sequence on one branch. Each step edits `contract.prisma`, runs `npx prisma contract emit` to regenerate `contract.json`, and plans a migration. Plans start from the `db` ref, which a Composer deploy doesn't move, so keep it current by applying each migration to your local database with `npx prisma db migrate --advance-ref db`, or pass `--from` with the previous migration's directory to each plan.
+Here's the cycle for replacing a legacy `name` column with `displayName`: the same two columns from the Alice and Bob story, now done properly as one deliberate sequence on one branch. Steps 1, 3 and 5 each edit `contract.prisma`, run `npx prisma contract emit` to regenerate `contract.json`, and plan a migration; steps 2 and 4 change only app code. Plans start from the `db` ref, which a Composer deploy doesn't move, so keep it current by applying each migration to your local database with `npx prisma db migrate --advance-ref db`, or pass `--from` with the previous migration's directory to each plan.
 
 ### Step 1: Expand
 
@@ -150,19 +152,34 @@ override get operations() {
 }
 ```
 
-Commit it and push the branch: the deploy applies it to the preview database before the service starts. Old code still reads `name`; new code can start writing `displayName`.
+Commit it and push the branch: the deploy applies it to the preview database before the service starts. Old code still reads and writes only `name`, and keeps working because `displayName` is nullable.
 
-### Step 2: Migrate
+### Step 2: Dual write
 
-Next, make `displayName` required in the contract:
+Before any migration requires `displayName`, every running version of the app has to write it. Deploy app code that sets both columns on every insert and update. `name` is still required, and rows written before this deploy have no `displayName` until the backfill runs, so this version keeps reading `name`. Keep writing both columns until step 4, because until then some running version still reads `name`:
+
+```typescript
+// Until step 4, every write sets both columns
+await db.orm.public.User.create({ email, name, displayName: name });
+
+await db.orm.public.User.where({ id }).update({ name: newName, displayName: newName });
+```
+
+This step has no migration. Push it to the preview and check that new rows get both columns.
+
+### Step 3: Migrate
+
+Start this step only once no running version writes `name` alone. The backfill below fills the rows that exist when it runs; after that, `NOT NULL` rejects any insert that leaves `displayName` out, so an instance still running code from before step 2 would start failing. In production, ship this migration only after the step 2 deploy has replaced every instance of the previous version.
+
+Make `displayName` required in the contract, and `name` optional, so that step 4 can stop writing it:
 
 ```prisma
 // contract.prisma
 model User {
-  id          Int    @id @default(autoincrement())
-  email       String @unique
-  displayName String // was String?
-  name        String // still here until step 3
+  id          Int     @id @default(autoincrement())
+  email       String  @unique
+  displayName String  // was String?
+  name        String? // was String; dropped in step 5
 
   @@map("user")
 }
@@ -183,32 +200,62 @@ override get operations() {
       check: () =>
         db.public.user
           .select("id")
-          .where((f, fns) => fns.eq(f.displayName, null))
+          .where((f, fns) =>
+            fns.or(fns.eq(f.displayName, null), fns.ne(f.displayName, f.name)),
+          )
           .limit(1),
       run: () =>
         db.public.user
           .update((f, fns) => ({
             displayName: fns.raw`COALESCE(${f.name}, 'Anonymous')`.returns("pg/text@1"),
           }))
-          .where((f, fns) => fns.eq(f.displayName, null)),
+          .where((f, fns) =>
+            fns.or(fns.eq(f.displayName, null), fns.ne(f.displayName, f.name)),
+          ),
     }),
     this.setNotNull({ schema: "public", table: "user", column: "displayName" }),
+    this.dropNotNull({ schema: "public", table: "user", column: "name" }),
   ];
 }
 ```
 
-`check` asks "are there rows that still need this?" and `run` performs the change, here copying each row's `name` into `displayName`. Each migration imports a snapshot of the contract as it stood at that point in history, saved under `migrations/snapshots/`, and both queries are typed against this migration's snapshot rather than your live schema. That's why the query can reference `name` even though a later migration drops it.
+`check` asks "are there rows that still need this?" and `run` performs the change, here copying each row's `name` into `displayName`. Both also match rows where the two columns differ: while step 2 rolled out, an instance of the older version could still change `name` on a row that a new instance had already given a `displayName`, and step 2 code always keeps the two equal, so a difference is a stale copy. Each migration imports a snapshot of the contract as it stood at that point in history, saved under `migrations/snapshots/`, and both queries are typed against this migration's snapshot rather than your live schema. That's why the query can reference `name` even though a later migration drops it.
 
 After editing, recompile with `node migration.ts`. The `dataTransform` compiles to the same `precheck` / `execute` / `postcheck` JSON as every other operation: reviewers read your intent in `migration.ts` and the exact SQL in `ops.json`, and production only ever runs the compiled JSON, never your TypeScript. See [Editing a migration](https://www.prisma.io/docs/orm/migrations/editing-a-migration) for the full file, including the wiring that builds the typed `db` handle.
 
+In the same push, switch the app's reads from `name` to `displayName`, and keep writing both columns. The deploy applies the migration before the new service starts, so every row the new code reads already has a `displayName`, and instances of the step 2 version, which still read `name`, keep seeing every change until they are replaced.
+
 Push it to the preview and check the data. Seed the preview database with realistic data first: it starts with your schema and no rows, because production data is not copied. An empty database proves the sequence applies cleanly, but only a real-shaped dataset tells you anything about the backfill. Nothing has touched production yet.
 
-### Step 3: Contract
+### Step 4: Stop using name
 
-Once all code reads `displayName` and the backfill is verified, remove the old column:
+Start this step once the step 3 deploy has replaced every instance of the step 2 version: from then on, every running version reads `displayName`, so `name` no longer has to stay current. Deploy app code that writes only `displayName`; since step 3, `name` is optional, so inserts without it succeed.
+
+Writing only `displayName` is not enough, because step 5's deploy drops the column while this version is still running. `name` stays in the contract until then, and a query without `.select(...)` reads every field the contract declares; so do `create` and `update`, which return the row they wrote. So in this version, give every query on `User` a `.select(...)` that leaves `name` out:
+
+```typescript
+// From step 4, no query writes or reads name
+await db.orm.public.User.select("id", "email", "displayName").create({ email, displayName });
+
+await db.orm.public.User.select("id", "email", "displayName")
+  .where({ id })
+  .update({ displayName: newDisplayName });
+
+const user = await db.orm.public.User.select("id", "email", "displayName").where({ id }).first();
+```
+
+A query on another model that includes `User` narrows it the same way, with `.select(...)` in the include callback. Two kinds of call ignore `.select(...)` and still read every `User` column: a create or update with a relation callback, when it runs on `User` or creates, connects or disconnects a `User` through the callback (`User.create({ email, displayName, posts: (p) => p.create([...]) })`, `Post.create({ title, author: (a) => a.connect({ id }) })`), and `.distinct(...)` on `User`. In this version, split those writes into plain queries that set the foreign key yourself (`Post.create({ title, authorId: id })`, or for a many-to-many relation, create or delete the row of its join model), inside one `db.transaction(...)` when they must succeed together, and leave `.distinct(...)` off `User` queries.
+
+Removing `name` from the contract in this step instead doesn't work: the deploy migrates the database to the contract, and no committed migration leads to a contract without `name` until step 5.
+
+Like step 2, this step has no migration. Push it to the preview and check that new rows have `name` set to `NULL`.
+
+### Step 5: Contract
+
+Once no running version reads or writes `name` and the backfill is verified, remove the old column. In production, ship this migration only after the step 4 deploy has replaced every instance of the previous version: the deploy drops the column before the new service starts, and an instance that still reads or writes `name`, as step 3 code does in every query without `.select(...)`, fails once it is gone:
 
 <AgentPrompt
-  prompt="Nothing reads the legacy name column anymore. Remove it."
+  prompt="No query reads or writes the legacy name column anymore. Remove it."
   language="prisma"
   fileName="contract.prisma"
   skill="prisma-8"
@@ -218,15 +265,19 @@ Once all code reads `displayName` and the backfill is verified, remove the old c
   terminalLines={contractTerminalLines}
 />
 
-Dropping the column loses its data, so `migration plan` asks before it writes anything, and `--delete User.name` answers in advance. Plan, commit, push. Three small migrations, and the whole sequence rehearsed on a preview database before production sees any of it.
+Dropping the column loses its data, so `migration plan` asks before it writes anything, and `--delete User.name` answers in advance. Plan, commit, push. Once this deploy is out, the contract no longer has `name`, so the `.select(...)` lists and split writes from step 4 are optional again. Three small migrations and two code-only deploys, and the whole sequence rehearsed on a preview database before production sees any of it.
 
 ```mermaid
 flowchart LR
-    E[1. Expand: add displayName, nullable] --> M[2. Migrate: backfill, then require]
-    M --> C[3. Contract: drop name]
+    E[1. Expand: add displayName, nullable] --> W[2. Dual write: set both columns]
+    W --> M[3. Migrate: backfill, require, read displayName]
+    M --> S[4. Stop using name: no query writes or reads it]
+    S --> C[5. Contract: drop name]
     style E fill:#14b8a6,color:#fff
-    style M fill:#0d9488,color:#fff
-    style C fill:#0f766e,color:#fff
+    style W fill:#0d9488,color:#fff
+    style M fill:#0f766e,color:#fff
+    style S fill:#115e59,color:#fff
+    style C fill:#134e4a,color:#fff
 ```
 
 ## Roll forward, not back
