@@ -6,6 +6,7 @@ import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
 import remarkConsoleUtm from "@/lib/remark-console-utm";
+import { docsLastModified } from "@/lib/last-modified";
 import { BADGE_TYPES } from "@/lib/badge-types";
 import { rehypeCodeOptions } from "@prisma-docs/ui/mdx/rehype-code-options";
 
@@ -78,7 +79,10 @@ export const docs = defineDocs({
 });
 
 export default defineConfig({
-  plugins: [lastModified()],
+  // Dates come from cache/last-modified.json, written before the build from
+  // full git history (fetched when the build host has none); see
+  // src/lib/last-modified.ts.
+  plugins: [lastModified({ versionControl: docsLastModified })],
   mdxOptions: {
     // Class-based Shiki token colours instead of a style attribute per token.
     rehypeCodeOptions,
