@@ -1,0 +1,202 @@
+---
+title: 'Vercel functions get "Connection terminated unexpectedly" from Postgres? How to fix it'
+description: "A pooled connection closed while your function was suspended. Add a pool error listener, a short idle timeout, attachDatabasePool and a pooler."
+summary: "node-postgres throws `Connection terminated unexpectedly` when the socket to Postgres closes without your code closing it. On Vercel, the usual cause is a pooled connection that sat idle while the function instance was suspended: the pool's idle timer doesn't run during suspension, the database, its pooler or something in the network closes the connection, and the resumed instance either crashes on the pool's unhandled `error` event or sends its next query down the closed socket. Create one pool at module scope, give it an `error` listener and a short `idleTimeoutMillis` (Vercel suggests about 5 seconds), call `attachDatabasePool(pool)` from `@vercel/functions` on Fluid compute, connect through your provider's pooled connection string, and retry a read once when the error still happens."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "9 min read"
+faq:
+  - question: "Should the pool's max be 1 on Vercel?"
+    answer: "Not on Fluid compute. Vercel's connection pooling guide says a maximum of 1 doesn't reduce total connections and hurts concurrency, because one Fluid instance serves several invocations at once. Supabase's docs start at a pool of 1 per function instance and raise it only when invocations on one instance queue for the connection. Either way, the number of instances times the pool size has to fit under your database's or pooler's connection limit."
+  - question: "Does keepAlive: true stop the error?"
+    answer: "It can help a long-running server notice a dead connection, but it doesn't help while a function is suspended. node-postgres's `keepAlive` turns on TCP keepalive for the socket, and Supabase's troubleshooting guide for serverless functions explains that the client-side keepalive timers are paused while the function is frozen, so the pooler or a NAT can still drop the connection unseen. Closing idle connections before suspension, with a short idle timeout and `attachDatabasePool`, deals with the cause."
+  - question: "How do I tell whether it's my code or a database incident?"
+    answer: "Look at when the errors happen. Errors on the first request after a quiet period, on a few instances at a time, point to stale pooled connections and the fixes on this page. Errors on every instance in the same minute, or ones that come with `terminating connection due to administrator command`, point to the database side: a restart or maintenance. On Neon, the same message also comes from routine scale to zero, when a compute suspends after 5 minutes without queries by default. Check your provider's status page and logs, and let the retry carry requests over the gap."
+  - question: "Do I still need ?pgbouncer=true&connection_limit=1 with Prisma ORM?"
+    answer: "It depends on the version. Prisma ORM 6 takes both as URL parameters. Prisma ORM 7's driver adapters take pool settings from the driver, so with `@prisma/adapter-pg` the pool size is the `max` field (default 10), which replaces `connection_limit`, and the idle timeout is `idleTimeoutMillis`; Prisma's PgBouncer docs recommend leaving out `pgbouncer=true` on PgBouncer 1.21.0 or later. Prisma ORM 8 has no `pgbouncer` URL flag and connects through node-postgres. In Prisma ORM 7 and 8, pass your own `pg` pool so you can attach the `error` listener and `attachDatabasePool` to it."
+related:
+  - title: "Fixing \"too many connections\" on hosted Postgres"
+    href: "/postgres/too-many-connections"
+  - title: "Getting \"prepared statement already exists\" through a pooler"
+    href: "/postgres/prepared-statement-already-exists"
+  - title: "Prisma Postgres on the Vercel Marketplace"
+    href: "/docs/guides/postgres/vercel"
+  - title: "Pooled and direct connection strings"
+    href: "/docs/postgres/database/connecting-to-your-database"
+cta:
+  title: "Use Prisma Postgres from Vercel"
+  description: "Create a Prisma Postgres database from the Vercel Marketplace, add its pooled connection string for your functions and keep the direct one for migrations. Any Postgres client works; Prisma ORM is optional."
+  label: "Set up Prisma Postgres on Vercel"
+  href: "/docs/guides/postgres/vercel"
+---
+
+`Connection terminated unexpectedly` means the connection between your function and Postgres closed while node-postgres still expected to use it. On Vercel, that usually happens to a pooled connection that sat idle while the function instance was suspended, so the database, its pooler or the network closed it and the resumed instance tried to use it. The fix works on any Postgres host: create one pool per instance with an `error` listener and a short idle timeout, attach it with `attachDatabasePool` on Fluid compute, connect through your provider's pooled connection string, and retry a read once when a connection still drops.
+
+We make Prisma Postgres and Prisma Compute; Prisma Postgres is one of the Vercel Marketplace databases on this page. Vercel, node-postgres, PgBouncer and provider behavior links to each project's or provider's documentation or source, checked on October 22, 2026. The idle-client crash and the stale-socket query below, and the retry in step 5, were reproduced with `pg` 8.23.1 on Node.js 22 through a TCP proxy that closed or reset the connection.
+
+## Why do Vercel functions get "Connection terminated unexpectedly"?
+
+node-postgres creates this error when the socket [ends without the client having called `end()`](https://github.com/brianc/node-postgres/blob/master/packages/pg/lib/client.js). It has no error code and it doesn't say who closed the connection, so the timing tells you more than the message. It shows up at different points:
+
+- **On an idle client in the pool.** When an idle connection closes, the pool [removes the client and emits an `error` event](https://node-postgres.com/apis/pool). Without a listener for that event, Node.js treats it as an unhandled `'error'` event and the process can crash. The log shows `Error: Connection terminated unexpectedly`, or `Error: read ECONNRESET` when the other end reset the connection, followed by `Emitted 'error' event on BoundPool instance`.
+- **On a query sent over a connection that has already closed.** If the pool hands out a client before it has noticed that the connection is gone, the query fails with the same message, or with `read ECONNRESET` or `write EPIPE` when the other end answered with a reset instead of a normal close. The pool discards that client, so the next query opens a new connection.
+- **While connecting.** The server or a proxy in front of it closed the connection before the startup handshake finished.
+
+Vercel adds a reason for connections to close. A function instance is suspended between requests, and Vercel's [connection pooling guide](https://vercel.com/kb/guide/connection-pooling-with-functions) notes that idle timeouts don't run while it is suspended. A pool created at module scope keeps its idle connections open, and its `idleTimeoutMillis` timer can't close them. Meanwhile the other end keeps counting. Supabase's [troubleshooting guide for serverless functions](https://supabase.com/docs/guides/troubleshooting/troubleshooting-connect_timeout-or-hanging-queries-in-vercel-serverless-functions-775f92) describes the same mechanism: the pooler or a NAT drops the inactive connection while the client's keepalive timers are paused, and the resumed function reuses the dead socket. Common idle cutoffs on the database side, with the providers in alphabetical order:
+
+| What closes the connection | When | Source |
+| --- | --- | --- |
+| AWS RDS Proxy | A client connection idle for 30 minutes (`IdleClientTimeout`, adjustable) | [AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy-connections.html) |
+| Neon | The compute suspends after 5 minutes without activity by default, ending the connections it holds; paid plans can turn this off | [Neon](https://neon.com/docs/connect/connection-errors) |
+| Prisma Postgres | Idle pooled connections after 60 minutes | [Prisma docs](/docs/postgres/database/connection-pooling) |
+| Self-hosted PgBouncer | `client_idle_timeout`, off by default | [PgBouncer](https://www.pgbouncer.org/config.html) |
+| A NAT in the path | Its own idle timeout, which the client can't see | [Supabase](https://supabase.com/docs/guides/troubleshooting/troubleshooting-connect_timeout-or-hanging-queries-in-vercel-serverless-functions-775f92) |
+
+A longer timeout on the database side doesn't fix it, because the pool still can't close its own connections while the instance is suspended. The fix belongs in the app.
+
+## How do I fix it?
+
+### 1. Match the error to its case
+
+Search your Vercel function logs for the message and look at what surrounds it:
+
+- `Emitted 'error' event on BoundPool instance` in the stack trace, and the instance restarts: the pool has no `error` listener. Step 2 fixes it.
+- A request fails on its first query after a quiet period, with this message, `read ECONNRESET` or `write EPIPE`, and the next request works: a stale pooled connection. Steps 2 to 4 fix it, and step 5 covers what's left.
+- Every connection attempt fails, also from your own machine: the connection never gets established. See [when this fix doesn't apply](#when-does-this-fix-not-apply).
+
+### 2. Create one pool with an error listener and a short idle timeout
+
+Create the pool once, at module scope, so the invocations on an instance share it:
+
+```ts
+// lib/db.ts
+import { Pool } from "pg";
+import { attachDatabasePool } from "@vercel/functions";
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // must hold a pooled connection string (step 4)
+  max: 5, // per instance: instances x max has to fit under the connection limit
+  idleTimeoutMillis: 5_000, // close idle clients after 5 seconds
+  connectionTimeoutMillis: 5_000, // fail instead of waiting forever for a connection
+});
+
+// A closed idle connection emits "error" on the pool. Without a listener, the process can crash.
+pool.on("error", (err) => {
+  console.error("Idle Postgres client error:", err.message);
+});
+
+// Fluid compute: keep the instance running until the pool has closed its idle clients.
+attachDatabasePool(pool);
+```
+
+Use whichever variable holds your provider's pooled string. Neon's Vercel integration puts it in `DATABASE_URL`. Prisma Postgres's integration puts the direct string there, so add the pooled one as `DATABASE_URL_POOLED` and read that instead, as step 4 describes.
+
+The listener only logs: the pool has already removed the broken client, and the next query opens a new connection. `pool.query()` checks a client out and returns it for you. If you check one out with `pool.connect()`, for a transaction for example, release it in a `finally` block. The node-postgres pool keeps idle clients for 10 seconds by default, and Vercel's guide suggests a short idle timeout of about 5 seconds. For the `max` value, the [too many connections guide](/postgres/too-many-connections#3-size-the-pool-for-the-number-of-instances) shows how to size the pool against your plan's limit.
+
+### 3. Attach the pool with attachDatabasePool
+
+[`attachDatabasePool`](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package) from `@vercel/functions` makes sure idle pool clients are released before the function suspends. Vercel documents it for [Fluid compute](https://vercel.com/docs/fluid-compute), which is enabled by default for projects created since April 23, 2025, and can be turned on in older projects' settings or with the `fluid` property in `vercel.json`. In the [source](https://github.com/vercel/vercel/blob/main/packages/functions/src/db-connections/index.ts), every time a client goes back to a `pg` pool, the function asks Vercel to keep the instance running for the pool's `idleTimeoutMillis` plus 100 milliseconds, capped by the function's remaining time, so the pool's own idle timer can close the connection before the suspension. That is a second reason for a short idle timeout: with the default of 10 seconds, each request keeps the instance running for about 10 seconds after it returns its client to the pool. Outside Vercel, where `VERCEL_URL` and `VERCEL_REGION` aren't set, it keeps nothing running, so the same module works locally.
+
+Vercel's guide also advises against a pool maximum of 1 on Fluid compute, where one instance serves several invocations at once. Vercel documents `attachDatabasePool` only for Fluid compute, so without it, steps 4 and 5 carry more of the load.
+
+### 4. Connect through your provider's pooled connection string
+
+A pooler such as PgBouncer in transaction mode lends a database connection to a client only for the length of a transaction, so many short-lived function instances share a few database connections. Most providers give you a separate connection string for it, listed here alphabetically:
+
+| Provider | Pooled connection | On the Vercel Marketplace |
+| --- | --- | --- |
+| AWS Aurora PostgreSQL | [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) runs inside your AWS VPC and can't be publicly accessible, so Vercel functions can reach it only through [Secure Compute](https://vercel.com/docs/connectivity/secure-compute), which Vercel offers on Enterprise plans. Without it, rely on steps 2, 3 and 5 | [Listed](https://vercel.com/docs/marketplace-storage) |
+| Neon | [PgBouncer in transaction mode](https://neon.com/docs/connect/connection-pooling): add `-pooler` to the endpoint ID in the host name | The [Vercel-managed integration](https://neon.com/docs/guides/vercel-managed-integration) sets `DATABASE_URL` to the pooled string and `DATABASE_URL_UNPOOLED` to the direct one |
+| Prisma Postgres | [PgBouncer in transaction mode](/docs/postgres/database/connection-pooling) on `pooled.db.prisma.io` | The [integration](/docs/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic) sets the direct string; add the pooled one as a separate variable |
+| Supabase | [Shared pooler in transaction mode](https://supabase.com/docs/guides/database/connecting-to-postgres) on port 6543, plus a dedicated pooler on paid plans | [Listed](https://vercel.com/docs/marketplace-storage) |
+
+Vercel Postgres itself is [no longer available](https://vercel.com/docs/postgres): Vercel moved existing databases to Neon in December 2024. Keep the direct connection string for migrations, `pg_dump` and anything that relies on session state, such as `SET` or `LISTEN`, because transaction mode doesn't carry it from one transaction to the next. If a pooled connection then fails with `prepared statement "..." already exists`, the [prepared statements guide](/postgres/prepared-statement-already-exists) covers it.
+
+A pooler doesn't stop the error by itself, since the connection from your function to the pooler can go stale in the same way. It keeps the number of database connections down while instances come and go.
+
+### 5. Retry a read once when the connection drops
+
+With steps 2 to 4 in place, a connection can still drop, for example when the provider restarts the database. node-postgres discards the broken client, so a second attempt opens a new connection. The helper below retries this message, the socket errors `ECONNRESET` and `EPIPE` that a reset connection produces instead, and SQLSTATE [`57P01`](https://www.postgresql.org/docs/current/errcodes-appendix.html) (`terminating connection due to administrator command`), which the server sends when it ends a session itself:
+
+```ts
+// lib/db.ts, continued
+function isDroppedConnection(err: unknown) {
+  if (!(err instanceof Error)) return false;
+  const code = (err as Error & { code?: string }).code;
+  return (
+    err.message === "Connection terminated unexpectedly" ||
+    code === "ECONNRESET" || // the other end reset the connection
+    code === "EPIPE" ||
+    code === "57P01" // terminating connection due to administrator command
+  );
+}
+
+export async function queryWithRetry(text: string, params?: unknown[]) {
+  try {
+    return await pool.query(text, params);
+  } catch (err) {
+    if (!isDroppedConnection(err)) throw err;
+    return pool.query(text, params); // the pool opens a new connection
+  }
+}
+```
+
+Use it for reads and for writes that are safe to run twice, such as an upsert on a unique key that sets fixed values. An upsert whose update changes a value relative to itself, such as `count = count + 1`, applies the change twice if the first attempt went through. The error doesn't tell you whether the server ran the statement before the connection closed, so a retried `INSERT` can create a duplicate row. Don't retry a single statement of a transaction: the transaction ended with the connection. Run the whole transaction again from `BEGIN` on a new client, and only if it is safe to run twice, because a `COMMIT` that was on its way may have gone through.
+
+### 6. If you use Prisma ORM
+
+Prisma ORM 7 uses the pool of the driver you give it. Create the `pg` pool yourself, as in step 2, and pass it to the adapter, which is the setup Prisma's [Vercel deployment guide](/docs/orm/v7/prisma-client/deployment/serverless/deploy-to-vercel#using-prisma-orm-with-vercel-fluid) shows:
+
+```ts
+// lib/prisma.ts
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client";
+import { pool } from "./db"; // the pool from step 2, with its error listener and attachDatabasePool
+
+export const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+```
+
+The pool size and timeouts come from the `pg` settings, as the [connection pool docs](/docs/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool) list them: `max` replaces Prisma ORM 6's `connection_limit` URL parameter, and `idleTimeoutMillis` replaces `max_idle_connection_lifetime`. Advice to add `?connection_limit=1` to the URL is for Prisma ORM 6; with your own pool, set `max` and the timeouts on the pool.
+
+Prisma ORM 8 also connects through node-postgres. Given a `url`, it creates its own pool, with an idle timeout of 30 seconds by default. Pass the pool from step 2 instead, so its `error` listener, 5-second idle timeout and `attachDatabasePool` apply, as the [runtime reference](/docs/orm/reference/transactions-and-runtime#bind-to-an-existing-pg-pool) shows:
+
+```ts
+// prisma/db.ts, next to contract.json
+import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+import { pool } from "../lib/db"; // the pool from step 2
+
+export const db = postgres({ contract: contractFromJson<Contract>(contractJson), pg: pool });
+```
+
+Prisma ORM 8 has a [serverless client](/docs/orm/reference/transactions-and-runtime#serverless-client-on-postgresql), `postgresServerless`, which holds no connection between requests: each request opens its own with `connect({ url })`, so no idle connection is left to go stale, at the cost of a new connection per request.
+
+### 7. In Edge functions, use an HTTP driver
+
+Vercel's [Edge runtime](https://vercel.com/docs/functions/runtimes/edge) supports only some Node.js APIs, and packages that use native Node.js APIs can't run there, which rules out `pg` and its TCP socket. Vercel recommends Node.js functions over Edge. If you stay on Edge, use your provider's HTTP driver, such as Neon's [serverless driver](https://neon.com/docs/serverless/serverless-driver), whose `neon()` function sends each query as an HTTP request, or the Prisma Postgres [serverless driver's](/docs/postgres/database/serverless-driver#transport-modes) HTTP transport, which sends each query as a separate HTTP request. Sessions created with its `newSession()` hold a persistent connection, so the pool advice above applies to them. A query sent over HTTP leaves no idle database connection behind to go stale, which is why Supabase's troubleshooting guide suggests its HTTP Data API for the same problem. Neon's docs make `neon()` over HTTP their default for single queries.
+
+## When does this fix not apply?
+
+- **The error happens on every request, including the first one after a deploy.** The connection never works, so look at the connection string and the network: the host and port, `sslmode`, and any IP allowlist on the database that would reject connections from Vercel.
+- **The message is `terminating connection due to administrator command`.** The server ended the session. On Neon, that is usually a compute that [suspended after 5 minutes](https://neon.com/docs/introduction/scale-to-zero) while the connection was open; on other hosts, a restart or an administrator. The retry in step 5 handles it, and on Neon's paid plans you can turn off scale to zero.
+- **Queries hang until the function times out instead of failing.** The connection was dropped silently, without the close reaching your function. `connectionTimeoutMillis` limits how long the pool waits for a new connection, and `query_timeout` (in milliseconds) makes a query that never gets an answer fail instead of hanging. Supabase's [troubleshooting guide](https://supabase.com/docs/guides/troubleshooting/troubleshooting-connect_timeout-or-hanging-queries-in-vercel-serverless-functions-775f92) covers this case.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17 that any Postgres client can use, whether that is `pg`, Drizzle, Kysely or Prisma ORM, which is optional. Prisma Postgres fits when you're creating a new database for Vercel functions and want a PgBouncer pooled connection string on every plan, including Free, created and billed through the Vercel Marketplace. It doesn't change why the error happens: the pool settings and `attachDatabasePool` above apply to it the same way.
+
+The [Vercel Marketplace integration](/docs/guides/postgres/vercel) creates the database from your Vercel project's **Storage** tab, sets `DATABASE_URL`, `POSTGRES_URL` and `PRISMA_DATABASE_URL` on the environments you connect, and bills Prisma Postgres usage through your Vercel account. Each database has a pooled host, `pooled.db.prisma.io`, for application queries, and a direct host, `db.prisma.io`, for migrations, `pg_dump` and admin tools, with the same credentials. The pooler closes idle pooled connections after 60 minutes, so a pool with a 5-second idle timeout closes its own connections long before that. For Edge functions, the [serverless driver](/docs/postgres/database/serverless-driver) (`@prisma/ppg`) runs without a TCP connection, and its HTTP transport sends each query as a separate HTTP request.
+
+Know the limits before you rely on them:
+
+- You add the pooled string yourself: the integration's variables hold the direct connection string. Direct connections are capped at 10 on Free and Starter, and 5 of them are reserved for platform operations, so [add the pooled string](/docs/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic) as a separate variable, for example `DATABASE_URL_POOLED`, and point your functions at it. Neon's integration sets the pooled string in `DATABASE_URL` from the start.
+- Pooled connections are capped at 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business, per the [pooling docs](/docs/postgres/database/connection-pooling) and [pricing](/pricing). On Free, two instances with a pool of 5 use all 10.
+- The pooler runs in transaction mode, so session features go over the direct host, and queries through the pooler stop after 10 minutes.
+- If your database already runs on Neon, Supabase or AWS, fix the pool where it is. The steps above are the same, and moving a database is a migration.
+- Hosting the app on [Prisma Compute](/docs/compute) instead of Vercel doesn't remove the need for the pool `error` listener, short idle timeout and retry: Compute scales idle instances to zero, and its [deploying docs](/docs/composer/deploying#production-behavior) recommend a small pool that reconnects when a connection drops.
+
+The Free plan includes 2 GB of storage and 200,000 operations a month, has no backups and needs no credit card. See [pricing](/pricing) for the paid plans.

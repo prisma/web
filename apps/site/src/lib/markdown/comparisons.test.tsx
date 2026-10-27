@@ -22,6 +22,13 @@ import * as supabase from "@/app/compare/supabase/_content";
 import { getSupabaseArticleFields, getSupabaseFacts } from "@/app/compare/supabase/facts";
 import { GET as getSupabaseFactsResponse } from "@/app/compare/supabase.json/route";
 import { getSupabaseReadingStats } from "@/app/compare/supabase/_sections";
+import * as vercelNeonDrizzle from "@/app/compare/vercel-neon-drizzle/_content";
+import {
+  getVercelNeonDrizzleArticleFields,
+  getVercelNeonDrizzleFacts,
+} from "@/app/compare/vercel-neon-drizzle/facts";
+import { GET as getVercelNeonDrizzleFactsResponse } from "@/app/compare/vercel-neon-drizzle.json/route";
+import { getVercelNeonDrizzleReadingStats } from "@/app/compare/vercel-neon-drizzle/_sections";
 import { WORDS_PER_MINUTE, readingMinutes } from "@/app/compare/reading-time";
 import { GET as getMongooseFactsResponse } from "@/app/compare/mongoose.json/route";
 import {
@@ -61,7 +68,15 @@ function plainMarkdown(text: string): string {
 
 for (const entry of COMPARISONS) {
   test(`${entry.slug} Markdown preserves comparison cells and every FAQ answer`, () => {
-    const content = { convex, kysely, mongoose, neon, planetscale, supabase }[entry.slug];
+    const content = {
+      convex,
+      kysely,
+      mongoose,
+      neon,
+      planetscale,
+      supabase,
+      "vercel-neon-drizzle": vercelNeonDrizzle,
+    }[entry.slug];
     const page = getMarkdownPage(`/compare/${entry.slug}`);
     assert.ok(page);
     const markdown = renderMarkdownDocument(page);
@@ -405,6 +420,27 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     planetscaleMarkdown,
     /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
   );
+  const vercelNeonDrizzlePage = getMarkdownPage("/compare/vercel-neon-drizzle");
+  assert.ok(vercelNeonDrizzlePage);
+  const vercelNeonDrizzleMarkdown = renderMarkdownDocument(vercelNeonDrizzlePage);
+  assert.ok(vercelNeonDrizzleMarkdown.includes("Free to start, no credit card required."));
+  assert.ok(vercelNeonDrizzleMarkdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(
+    vercelNeonDrizzleMarkdown.includes("Prisma ORM is free and open source, and always will be."),
+  );
+  assert.ok(
+    vercelNeonDrizzleMarkdown.includes("[Get started with Prisma](https://console.prisma.io)"),
+  );
+  assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Get started with Prisma Postgres/);
+  assert.ok(
+    vercelNeonDrizzleMarkdown.includes("Get started with Prisma and start building in minutes"),
+  );
+  assert.ok(vercelNeonDrizzleMarkdown.includes("Read the docs for guides and API reference"));
+  assert.ok(vercelNeonDrizzleMarkdown.includes("[Get started free](https://console.prisma.io)"));
+  assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Create a database and start building in minutes/);
+  assert.doesNotMatch(vercelNeonDrizzleMarkdown, /create-db\.prisma\.io/);
+  assert.doesNotMatch(vercelNeonDrizzleMarkdown, /Create an instant database/);
+  assert.doesNotMatch(vercelNeonDrizzleMarkdown, /\[Talk to us\]/);
   assert.equal(POSTGRES_HERO_CTAS.secondary.href, CREATE_DB_WEB);
   assert.equal(POSTGRES_HERO_CTAS.secondary.label, "Create an instant database");
   assert.equal(POSTGRES_HERO_CTAS.primary.href, "https://console.prisma.io");
@@ -1097,7 +1133,8 @@ test("Neon Markdown carries the byline, disclosure, and Sources on the shared ch
   assert.ok(markdown.includes("$0.222"));
   assert.ok(markdown.includes("$0.35"));
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
   assert.doesNotMatch(markdown, /the only|the first|the best/);
@@ -1213,7 +1250,8 @@ test("Supabase Markdown carries the byline, disclosure, and Sources on the share
     /HIPAA starts with Pro|HIPAA from Pro|HIPAA support starts with Pro/,
   );
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
   assert.doesNotMatch(markdown, /listed in one place/);
@@ -1310,7 +1348,8 @@ test("PlanetScale Markdown carries the byline, disclosure, and Sources on the sh
   assert.ok(markdown.includes("platform preview"));
   assert.doesNotMatch(markdown, /500 MB storage on Free/);
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
   assert.doesNotMatch(markdown, /the only|the first|the best/);
@@ -1367,4 +1406,120 @@ test("planetscale metadata advertises Markdown and JSON alternates", () => {
   assert.ok(types);
   assert.match(types["text/markdown"] ?? "", /\/compare\/planetscale\.md$/);
   assert.match(types["application/json"] ?? "", /\/compare\/planetscale\.json$/);
+});
+
+test("Vercel + Neon + Drizzle Markdown carries the byline, disclosure, and Sources on the shared chrome", () => {
+  const page = getMarkdownPage("/compare/vercel-neon-drizzle");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const minutes = getVercelNeonDrizzleReadingStats().minutes;
+  assert.ok(
+    markdown.includes(
+      `By [${vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_AUTHOR.name}](${vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_AUTHOR.path}) · Updated ${vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_UPDATED.label} · ${minutes} min read`,
+    ),
+  );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(
+    markdown.includes(`dateModified: ${vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_UPDATED.iso}`),
+  );
+  assert.ok(markdown.includes("Prisma makes Prisma ORM, Prisma Postgres, and Prisma Compute"));
+  assert.ok(markdown.includes("\n## Sources\n"));
+  assert.ok(markdown.includes("\n## When should I choose Vercel + Neon + Drizzle or Prisma?\n"));
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose Vercel + Neon + Drizzle or Prisma?"),
+    markdown.indexOf("## How do Vercel + Neon + Drizzle and Prisma compare?"),
+  );
+  assert.match(choose, /^\| Vercel \+ Neon \+ Drizzle \| Prisma \|$/m);
+  assert.doesNotMatch(choose, /### Vercel/);
+  assert.ok(markdown.includes("\n## How do Vercel + Neon + Drizzle and Prisma compare?\n"));
+  assert.ok(markdown.includes("\n## Where does each one fit?\n"));
+  assert.ok(markdown.includes("\n## How much do Vercel + Neon + Drizzle and Prisma cost?\n"));
+  assert.ok(markdown.includes("| Backend need | Vercel + Neon + Drizzle | Prisma |"));
+  assert.ok(markdown.includes("| Cost | Vercel + Neon + Drizzle | Prisma |"));
+  assert.ok(markdown.includes("$0.106"));
+  assert.ok(markdown.includes("$20"));
+  assert.ok(markdown.includes("200,000"));
+  assert.ok(markdown.includes("2 GB"));
+  assert.ok(markdown.includes(vercelNeonDrizzle.DRIZZLE_ORM_COMPARE_PATH));
+  assert.doesNotMatch(markdown, /\/compare\/drizzle/);
+  assert.doesNotMatch(markdown, /500 MB storage on Free/);
+  assert.doesNotMatch(markdown, /database branching/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
+  assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
+  assert.doesNotMatch(markdown, /requires Prisma ORM/);
+  assert.doesNotMatch(markdown, /the only|the first|the best/);
+  assert.doesNotMatch(markdown, /listed in one place/);
+  assert.doesNotMatch(markdown, /When should I choose Kysely/);
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /"vercel-neon-drizzle": "\/compare\/vercel-neon-drizzle\.md"/);
+  const sections = readFileSync(join(compareDir, "vercel-neon-drizzle/_sections.tsx"), "utf8");
+  assert.match(sections, /comparisonChooseTable/);
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.match(sections, /comparisonProofCards/);
+  assert.match(sections, /comparisonDisclosure/);
+  assert.match(sections, /secondary: false/);
+  assert.match(sections, /instantDatabase: false/);
+  assert.match(sections, /primaryLabel: "Get started with Prisma"/);
+  assert.match(sections, /firstCheck: "Get started with Prisma and start building in minutes"/);
+  assert.doesNotMatch(sections, /create-db\.prisma\.io/);
+  assert.doesNotMatch(sections, /defaultValue=/);
+  assert.doesNotMatch(sections, /PageAiActions/);
+  assert.doesNotMatch(sections, /dark:/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /pageMdUrl.includes\("\/compare\/vercel-neon-drizzle\.md"\)/);
+  assert.match(
+    ai,
+    /I am choosing between the Prisma platform and Vercel \+ Neon \+ Drizzle for a TypeScript backend/,
+  );
+  assert.match(ai, /wire Drizzle, Neon, and Vercel myself/);
+});
+
+test("vercel-neon-drizzle JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getVercelNeonDrizzleFacts();
+  assert.equal(facts.path, "/compare/vercel-neon-drizzle");
+  assert.equal(facts.dateChecked, vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_UPDATED.iso);
+  assert.equal(facts.tools.drizzle.softwareVersion, "current");
+  assert.ok(!("combo" in facts.tools));
+  assert.ok(!("license" in facts.tools.vercel));
+  assert.equal(facts.features.length, vercelNeonDrizzle.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.combo.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.combo.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  const response = getVercelNeonDrizzleFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getVercelNeonDrizzleArticleFields();
+  const stats = getVercelNeonDrizzleReadingStats();
+  assert.equal(fields.datePublished, vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_PUBLISHED.iso);
+  assert.equal(fields.dateModified, vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_UPDATED.iso);
+  assert.equal(WORDS_PER_MINUTE, 225);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
+  assert.deepEqual(
+    fields.about.map((entity) => entity.name),
+    ["Prisma", "Drizzle", "Neon", "Vercel"],
+  );
+  assert.ok(!("license" in (fields.about[3] ?? {})));
+});
+
+test("vercel-neon-drizzle metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("vercel-neon-drizzle").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/vercel-neon-drizzle\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/vercel-neon-drizzle\.json$/);
 });

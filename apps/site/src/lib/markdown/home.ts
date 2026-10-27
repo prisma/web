@@ -98,7 +98,7 @@ export function renderHomeMarkdown(): string {
       "Your agent runs the full loop: build, deploy, debug, fix, redeploy",
       "One platform: hosting, database, and ORM built to work together natively",
       "A preview database per feature branch, wired to its preview deployment",
-      "App and database co-located on the same host, at latency no two-vendor setup can match",
+      "App and database on one platform in the same region, so queries stay low-latency and never leave the region",
       "Spend limits on every paid tier, so your bill stops where you tell it to",
     ]),
 
@@ -112,7 +112,7 @@ export function renderHomeMarkdown(): string {
     heading(3, "2. Deploy"),
     paragraphs(
       "Add Prisma Postgres and Compute when you're ready to ship. Your app and database deploy " +
-        "together on the same host, co-located by default.",
+        "together on one platform, in the same region, in one project.",
     ),
     heading(3, "3. Iterate"),
     paragraphs(
@@ -166,8 +166,8 @@ export function renderHomeMarkdown(): string {
     heading(3, "Prisma Compute"),
     paragraphs("*App hosting*"),
     paragraphs(
-      "TypeScript app hosting that runs on the same host as your database, so your agent can " +
-        "deploy, debug, and redeploy end-to-end.",
+      "TypeScript app hosting on the same platform and in the same region as your database, so " +
+        "your agent can deploy, debug, and redeploy end-to-end.",
     ),
     bulletList([
       "Bun runtime on bare metal",
@@ -209,7 +209,7 @@ export function renderHomeMarkdown(): string {
       },
       {
         name: "Deploy your app, the database is already there",
-        description: "App and Postgres co-located on the same host.",
+        description: "App and Postgres on one platform, in the same region, in one project.",
       },
     ]),
 
@@ -229,42 +229,30 @@ export function renderHomeMarkdown(): string {
       "**A preview database per feature branch**, no surcharge",
       "**SOC2, [HIPAA](/postgres/hipaa), ISO 27001, and GDPR** at the Business tier",
     ]),
-    // All three carousel scenarios are included: only one slide is visible at
-    // a time in the HTML, and Markdown has no interaction.
+    // Both carousel scenarios are included: only one slide is visible at a
+    // time in the HTML, and Markdown has no interaction. Figures and basis are
+    // in the SCENARIOS comment in pricing-scale.tsx.
     heading(3, "Side project (~5K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $19-39 per month"),
+    paragraphs("Typical stack (Neon + Vercel): $20-35 per month"),
     bulletList([
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
-      "Credit card required up front",
+      "Database and hosting from two vendors",
+      "Database data transfer: 5 GB on Neon Free; 500 GB on Launch, then $0.10/GB",
+      "Paid Vercel plan for commercial use",
     ]),
-    paragraphs("Prisma: $0 per month"),
+    paragraphs("Prisma: $0-22 per month"),
     bulletList([
-      "No credit card required",
+      "Free plan needs no credit card",
       "Database data transfer included",
       "Hard free-tier cap, no surprises",
     ]),
     heading(3, "Growing SaaS (~50K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $385-450 per month"),
+    paragraphs("Typical stack (Neon + Vercel): $110-270 per month"),
     bulletList([
-      "Separate database + hosting bills",
-      "Data transfer billed per GB",
-      "Spend limits not standard",
+      "Database and hosting from two vendors",
+      "Database data transfer: 500 GB per project included, then $0.10/GB",
+      "Spend controls: Neon notifications, Vercel budget with optional pause",
     ]),
-    paragraphs("Prisma: $70-90 per month"),
-    bulletList([
-      "One bill, one platform",
-      "Database data transfer included",
-      "Spend limits on by default",
-    ]),
-    heading(3, "At scale (~500K MAU)"),
-    paragraphs("Typical stack (Neon + Vercel): $2,800-3,400 per month"),
-    bulletList([
-      "Committed-use contracts across vendors",
-      "Data transfer billed per GB",
-      "Spend limits not standard",
-    ]),
-    paragraphs("Prisma: $640-780 per month"),
+    paragraphs("Prisma: $72-90 per month"),
     bulletList([
       "One bill, one platform",
       "Database data transfer included",

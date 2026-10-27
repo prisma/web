@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-// Small status label — "Most popular", "Recommended", "Up to 5x less".
+// Small status label — "Most popular", "Recommended", "Up to 2x less".
 //
 // Deliberately NOT a pill. prism-button.tsx owns `rounded-full` for both of its
 // variants: the primary is a dark filled pill, the secondary a white pill with a

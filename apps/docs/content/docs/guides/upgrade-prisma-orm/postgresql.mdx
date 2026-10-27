@@ -10,11 +10,11 @@ This guide is for teams running a Prisma ORM 7 application on PostgreSQL who wan
 
 Both versions run against the same PostgreSQL database the whole time. The database, its data, and its connection string do not change; only application code and tooling do. Because each route stays on Prisma ORM 7 until you deliberately move it, the application remains shippable at every point in the migration.
 
-The guide covers **PostgreSQL only**. Guidance for other databases will follow. If you are coming from v6 on MongoDB, see the [MongoDB guide](/guides/upgrade-prisma-orm/mongodb).
+This guide covers **PostgreSQL only**, and guidance for other databases will follow. If you are coming from v6 on MongoDB, see the [MongoDB guide](/guides/upgrade-prisma-orm/mongodb).
 
 :::info
 
-Step 2.1 installs the `latest` version of both Prisma ORM 8 packages: `prisma`, the Prisma ORM 8 CLI, and `@prisma/orm-postgres`. This guide was written with `prisma` as of `8.0.0-rc.21` and `@prisma/orm-postgres` as of `8.0.0-rc.16`: the CLI is released separately, so the two numbers differ. Prisma ORM 7 stays at `7.10.1`: the example app in step 1.1 starts on it, and step 1.2 installs `@prisma/prisma7@7.10.1`.
+Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for the Prisma ORM 8 CLI as of `8.0.0-rc.26` and `@prisma/orm-postgres` as of `8.0.0-rc.20`. The two packages have separate version numbers. The Prisma ORM 7 side of the app stays at `7.10.1` throughout.
 
 :::
 
@@ -228,7 +228,7 @@ After this install, `npx prisma <command>` runs the Prisma ORM 8 CLI and `npx pr
 npx prisma --version
 ```
 
-**Expected result:** the command prints `8.0.0-rc.23` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
+**Expected result:** the command prints `8.0.0-rc.27` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
 
 ### 2.2. Create the Prisma ORM 8 config
 
@@ -305,13 +305,13 @@ Prisma ORM 8 describes your schema as a [contract](/orm/contract-authoring/the-d
 npx prisma contract infer --output prisma8/contract.prisma
 ```
 
-### 2.4. Edit the inferred contract
+### 2.4. Review the inferred contract
 
-`contract infer` reads every table in the database, so it also writes a `PrismaMigrations` model for `_prisma_migrations`, the table where Prisma ORM 7 records which migrations it has applied. Delete that model from the contract, because Prisma ORM 8 must not manage the table. The table itself stays in the database, and an extra table that the contract does not describe is fine.
+`contract infer` reads every table in the database except `_prisma_migrations`, the table where Prisma ORM 7 records which migrations it has applied, so the contract has no model for it and Prisma ORM 8 never manages it. The table itself stays in the database, and `db verify --strict` does not report it.
 
 You do not need to add `@@map` to the other models: a model without `@@map` uses its name, exactly as written, as its table name, so `User` reads and writes the `"User"` table that Prisma ORM 7 created.
 
-After that edit, the contract looks like this:
+The inferred contract looks like this:
 
 ```prisma title="prisma8/contract.prisma"
 // use prisma-8
@@ -387,6 +387,7 @@ Pick one small route and move only that code. The rest of the application stays 
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import postgres from "@prisma/orm-postgres/runtime"; // [!code ++]
+import { contractFromJson } from "@prisma/orm-postgres/static"; // [!code ++]
 import type { Contract } from "../generated/prisma8/contract.d"; // [!code ++]
 import contractJson from "../generated/prisma8/contract.json" with { type: "json" }; // [!code ++]
 import { PrismaClient } from "../generated/prisma/client";
@@ -397,10 +398,12 @@ const adapter = new PrismaPg({ connectionString });
 
 export const prisma = new PrismaClient({ adapter });
 
-export const db = postgres<Contract>({ url: connectionString, contractJson }); // [!code ++]
+export const contract = contractFromJson<Contract>(contractJson); // [!code ++]
+
+export const db = postgres({ url: connectionString, contract }); // [!code ++]
 ```
 
-`prisma` is the Prisma ORM 7 client and `db` is the Prisma ORM 8 client, both connected to the same database.
+`prisma` is the Prisma ORM 7 client and `db` is the Prisma ORM 8 client, both connected to the same database. `contractFromJson` turns the emitted `contract.json` into a typed contract value, which the Prisma ORM 8 client takes as `contract`.
 
 ### 3.2. Rewrite the route
 
@@ -563,7 +566,7 @@ Start the app and run a query against every route. The application now runs enti
 
 :::note
 
-Prisma ORM 7's `_prisma_migrations` table remains in the database. It is inert (Prisma ORM 8 ignores it) and you can drop it whenever you like.
+Prisma ORM 7's `_prisma_migrations` table remains in the database. It is inert: Prisma ORM 8 leaves it out of `db verify`, `db update` and `contract infer`, and you can drop it whenever you like.
 
 :::
 

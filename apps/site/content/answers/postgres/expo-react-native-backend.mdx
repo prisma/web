@@ -1,0 +1,89 @@
+---
+title: "Which Postgres backend should I use for an Expo app?"
+description: "Choose a shared Postgres backend for Expo and React Native, with server-side credentials, authenticated API access and separate local storage."
+summary: "Use managed Postgres behind an authenticated HTTPS API for shared Expo or React Native app data. [Prisma Postgres](/docs/postgres) with [Prisma Compute](/docs/compute) fits a TypeScript team that wants to write that API and manage the server and database in one project. Choose Supabase when its generated API and integrated authentication suit the app better than a custom backend. Keep PostgreSQL passwords on the server; local device storage serves a different purpose from the shared database."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-26"
+updatedAt: "2026-10-26"
+readingTime: "6 min read"
+faq:
+  - question: "Can I put DATABASE_URL in an Expo environment variable?"
+    answer: "Keep the PostgreSQL connection string on the backend. Expo variables prefixed EXPO_PUBLIC_ are embedded in the client bundle and readable by app users. A public API base URL can go there; a database password cannot."
+  - question: "Is SQLite on the phone a replacement for hosted Postgres?"
+    answer: "Local SQLite can store a cache or support offline work on one device. Shared records still need a backend and a synchronization design. Decide how edits, retries and conflicts reach the shared database rather than treating local storage as automatic multi-device sync."
+  - question: "Can my backend use Prisma Postgres without Prisma ORM?"
+    answer: "Yes. Prisma Postgres works with ordinary PostgreSQL clients and other ORMs. The backend can keep its current database library; the React Native app communicates with the backend's API rather than holding the SQL credential."
+  - question: "Does choosing Prisma Compute deploy my mobile app?"
+    answer: "Prisma Compute hosts the TypeScript backend. Building and distributing the native Expo app is a separate workflow. Verify the API URL and authentication on a real device as well as in local development."
+related:
+  - title: "Keeping server credentials private"
+    href: "/compute/typescript-app-secrets"
+  - title: "Saving shared customer records"
+    href: "/postgres/prototype-customer-data"
+  - title: "Separating development and production"
+    href: "/postgres/typescript-test-environment"
+cta:
+  title: "Give the mobile app a TypeScript backend"
+  description: "Keep shared records in Prisma Postgres and put your authorization and business logic in a Prisma Compute API."
+  label: "Build a Compute API"
+  href: "/docs/composer/getting-started"
+---
+
+A phone should know how to request a customer's orders, but it should not receive a credential that can query the whole database. An API gives the app a smaller contract: authenticate the request, check whose records it may access, then return the fields the screen needs.
+
+We make Prisma Postgres and Prisma Compute. The linked provider and Expo documentation was checked on October 26, 2026. Prisma ORM is optional for the server's database access.
+
+## Which backend shape fits the app?
+
+The approaches below are alphabetical by provider. Pick according to how much backend behavior you want to write.
+
+| Approach | Useful fit | Responsibility |
+| --- | --- | --- |
+| [Neon](https://neon.com/docs/introduction/branching) + a TypeScript API host | You already use Neon and want its database workflow behind your API. | Host the API and implement authentication, record authorization and mobile-facing responses. |
+| Prisma Postgres + Prisma Compute | You want a custom TypeScript API and its database declared in the same project. | Implement the API's authentication, authorization and mobile retry behavior. |
+| [Supabase](https://docs.expo.dev/guides/using-supabase/) | Its integrated authentication and generated data API meet the mobile app's needs. | Maintain row-level security policies and keep privileged keys out of the app. |
+
+Supabase's Expo integration lets the app call its generated API with a public key and the user's session, backed by row-level security. That public key is different from a PostgreSQL password or privileged secret key. Both approaches can enforce business rules: a custom Prisma Compute API puts those operations in your TypeScript service, while Supabase can combine policies with server-side functions. Choose where your team wants to maintain that logic.
+
+Vercel or Netlify can also host the TypeScript API while Prisma Postgres stores the data. Keep an existing host if it works, and place the API near the database rather than choosing the database region from the phone's location alone.
+
+## How do I build this with Prisma?
+
+### 1. Define one shared workflow
+
+Start with a small feature such as a signed-in user listing their own saved records. Define the request, response fields and expected denial for a different user's record. Do not begin with an endpoint that accepts arbitrary table names or SQL from the device.
+
+Choose the development workspace, project name and region, and use fictional users. The Composer path below provisions its own database; do not create a second Console database for the same dependency. Record the actual resource ID after deployment, and keep every database URL in backend configuration only.
+
+### 2. Add the TypeScript API
+
+Follow [Composer getting started](/docs/composer/getting-started) to create an HTTP service, then the [database guide](/docs/composer/databases). Declare `rawPostgres()` in the service and provision that dependency in its module; build the server's PostgreSQL client from `service.load().db.url`. Local development uses a local database, and a cloud stage gets its declared cloud database. If you choose the ORM-typed `postgres()` dependency instead, follow that guide's data-contract and migration workflow.
+
+For `rawPostgres()`, apply the app's migrations to the stage database through its [direct connection](/docs/postgres/database/connecting-to-your-database) before acceptance testing; provisioning a database does not create the app's tables. Follow [deployment and stages](/docs/composer/deploying) to release the API to the intended development stage. Check the printed service URL and database resource before the mobile app uses them.
+
+Verify the identity token using your chosen authentication provider's server-side instructions. Derive the allowed user or organization from that verified session and your membership data. A `userId` sent by the phone is an input to check, not evidence that the caller owns that user's records.
+
+### 3. Connect the Expo app to HTTPS
+
+Store the API's public base URL in the mobile app configuration and send the signed-in user's token with requests. Follow [Expo's environment-variable guidance](https://docs.expo.dev/guides/environment-variables/): `EXPO_PUBLIC_` values are inlined into the app bundle and must not contain secrets.
+
+Keep development and production API URLs separate. A real phone's `localhost` points to the phone, so verify with a reachable development address and test again against the deployed HTTPS service before distributing a build.
+
+### 4. Test retries and two accounts
+
+Use two fictional accounts to confirm that each sees its own records and cannot retrieve the other's record by changing an ID. Test an expired token and a signed-out request too; hiding a button is not an API access control.
+
+For writes, test a lost connection after the server has saved the record. Give a retryable operation a stable request identifier and a database uniqueness rule so a retry does not create a second order. Return the original saved result when the same authorized request is repeated.
+
+### 5. Decide what works offline
+
+Local SQLite can hold cached data or pending edits, but synchronization is application work. Define which fields may be edited offline, how conflicts are presented and when a pending action becomes confirmed. Treat a queued local write differently from a server-confirmed reservation or payment.
+
+Keep uploaded files in object storage and file references in Postgres. The API should authorize upload and download access for the current user, rather than exposing a storage administrator credential to the mobile client.
+
+## When should I choose another backend?
+
+Choose Supabase when its authentication and data API remove backend work you do not want to own. If the app depends on an offline-first synchronization system, evaluate that feature directly; a hosted SQL database alone does not provide it.
+
+Prisma Compute does not currently host WebSocket servers. Use another host for a WebSocket service when that is part of the app's realtime design, while keeping Prisma Postgres if it fits. Also decide the required recovery point before launch: Prisma Postgres has plan-dependent snapshots, not point-in-time recovery today.

@@ -57,7 +57,7 @@ For Prisma ORM 7 users, `findMany` and `findFirst` / `findUnique` map directly o
 
 ## Example schema
 
-All examples on this page are based on the contract below. The file is `contract.prisma`, and it is still written in the Prisma schema language, so it looks like the `schema.prisma` you already know. `@default(cuid(2))` generates a CUID version 2 id.
+All examples on this page are based on the contract below. The file is `contract.prisma`, and it is still written in the Prisma schema language, so it looks like the `schema.prisma` you already know. `@onCreate(cuid(2))` generates a CUID version 2 id.
 
 <details>
 
@@ -65,7 +65,7 @@ All examples on this page are based on the contract below. The file is `contract
 
 ```prisma tab="PostgreSQL"
 model User {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
@@ -73,7 +73,7 @@ model User {
 }
 
 model Post {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   title     String
   content   String?
   published Boolean
@@ -108,7 +108,7 @@ model Post {
 </details>
 
 :::note
-On MongoDB, `@map("_id")` renames the field to `_id` everywhere: you filter on `_id`, you select `_id`, and the returned document has an `_id` key. That is why the MongoDB examples below never say `id`.
+On MongoDB, `@map("_id")` stores the field as the document's `_id`, but your code still calls it `id`: you filter on `id`, you select `id`, and the returned document has an `id` key.
 :::
 
 ## Fetch many records or one
@@ -145,16 +145,18 @@ const user = await db.orm.public.User.first({ id: userId });
 ```
 
 ```typescript tab="MongoDB"
-const user = await db.orm.users.where({ _id: userId }).first();
+const user = await db.orm.users.where({ id: userId }).first();
 ```
 
 If you want an error instead of `null` when nothing matches, call `.firstOrThrow()`, the replacement for `findUniqueOrThrow` and `findFirstOrThrow`:
 
 ```typescript
-const user = await db.orm.public.User.where({ email }).limit(1).all().firstOrThrow();
+const user = await db.orm.public.User.firstOrThrow({ email });
 ```
 
-`.limit(1)` keeps it to one row, and `.firstOrThrow()` throws an error with code `RUNTIME.NO_ROWS` when nothing matches. There is no `.firstOrThrow()` on `.first()`. The error is an `Error` with a `code` property, so check `"code" in error` before you read it. The same form works on MongoDB, with `db.orm.users`.
+`.firstOrThrow()` reads one row, as `.first()` does, and throws an error with code `RUNTIME.NO_ROWS` when nothing matches. The error is an `Error` with a `code` property, so check `"code" in error` before you read it. On MongoDB it takes no argument, so write `db.orm.users.where({ email }).firstOrThrow()`.
+
+On PostgreSQL, `.whereUnique(...)` says that a lookup names one row by its primary key or a unique constraint, as `findUnique` did: `db.orm.public.User.whereUnique({ email }).first()`. A field that is not part of such a key is a type error, and so is a call that could return many rows after it, such as `.all()` or `.limit(10)`.
 
 ## Filter records
 
@@ -260,7 +262,7 @@ const users = await db.orm.public.User.select("id", "email").all();
 ```
 
 ```typescript tab="MongoDB"
-const users = await db.orm.users.select("_id", "email").all();
+const users = await db.orm.users.select("id", "email").all();
 ```
 
 ```js no-copy
@@ -412,7 +414,7 @@ for await (const post of db.orm.public.Post.all()) {
 }
 ```
 
-It does not fetch less: on the standard client (`postgres({...})` in `src/prisma/db.ts`) every row is loaded first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)). A client created with the `cursor` option, such as `postgres({ contractJson, url, cursor: { batchSize: 100 } })`, reads the rows through a server-side cursor instead, in batches, as your loop asks for them. See [`postgres(options)`](/orm/reference/transactions-and-runtime#postgresoptions).
+It does not fetch less: with the `db` that `postgres({...})` creates in `src/prisma/db.ts`, every row is loaded into memory first. For large tables page with `.limit()` and `.cursor()` (see [Sort and paginate](#sort-and-paginate)). A client created with the `cursor` option, such as `postgres({ contract, url, cursor: { batchSize: 100 } })`, reads the rows through a server-side cursor instead, in batches, as your loop asks for them. See [`postgres(options)`](/orm/reference/transactions-and-runtime#postgresoptions).
 
 The queries on this page also run on the serverless client from `@prisma/orm-postgres/serverless`, through the connection that its `connect({ url })` returns. Its reads load every row first too, unless you create it with `cursor`. See [Serverless client on PostgreSQL](/orm/reference/transactions-and-runtime#serverless-client-on-postgresql).
 

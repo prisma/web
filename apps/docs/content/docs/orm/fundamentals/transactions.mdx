@@ -12,7 +12,7 @@ Prisma ORM 8 runs on PostgreSQL, SQLite, and MongoDB, but there is no MySQL supp
 
 ## Run writes in a transaction
 
-Use a transaction whenever one business operation spans more than one write: creating a user with their first records, moving a value between two rows, or deleting a parent after its children. Pass a callback to `db.transaction(...)`, and inside it, query through `tx` instead of `db`. `tx.orm` is the model API, what `prisma.user` was in Prisma ORM 7; `tx.sql` is the SQL query builder, and both work the same as `db.orm` and `db.sql`. Every query you make on `tx` runs inside the transaction, and `db.transaction(...)` returns whatever your callback returns:
+Use a transaction whenever one business operation spans more than one write: creating a user with their first records, moving a value between two rows, or deleting a parent after its children. Pass a callback to `db.transaction(...)`, and inside it, query through `tx` instead of `db`. Every query you make on `tx` runs inside the transaction, and `db.transaction(...)` returns whatever your callback returns:
 
 ```typescript
 import { db } from "./prisma/db";
@@ -22,6 +22,8 @@ const result = await db.transaction(async (tx) => {
   return { userId: user.id, postId: post.id }; // both records exist once this returns
 });
 ```
+
+`tx` has the same query members as `db`. `tx.orm` is the model API, what `prisma.user` was in Prisma ORM 7, and `tx.sql` is the SQL query builder. `tx` also has `raw` for raw SQL, `query` and `execute` to run a query you built, and `prepare` for a statement you run many times with different values.
 
 `db` is the client you create once in `src/prisma/db.ts`, and `prisma orm init` writes that file for you. It writes the file once; it is your code, so edit it freely. Under `tx.orm.public`, the property name is the model name, so `User` and `Post` are spelled exactly as you spelled them in your contract.
 
@@ -153,19 +155,22 @@ Run `npx prisma contract emit` once first; `db.ts` imports the two files it writ
 ```typescript title="src/prisma/db.ts"
 import "dotenv/config";
 import mongo from "@prisma/orm-mongo/runtime";
+import { contractFromJson } from "@prisma/orm-mongo/static";
 import { MongoClient } from "mongodb";
 import type { Contract } from "./contract.d"; // the two files `prisma contract emit` writes
 import contractJson from "./contract.json" with { type: "json" };
 
+export const contract = contractFromJson<Contract>(contractJson);
 export const client = new MongoClient(process.env["DATABASE_URL"]!);
-export const db = mongo<Contract>({
-  contractJson,
+export const db = mongo({
+  contract,
   mongoClient: client,
   dbName: "app",
 });
 ```
 
-Keep the `contractJson` import and the `Contract` type, and run `prisma contract emit` after every change to your contract, on PostgreSQL and on MongoDB alike.
+Keep the `contract` value built from `contract.json` and the `Contract` type, and run `prisma contract emit` after every change to your contract, on PostgreSQL and on MongoDB alike.
+
 `dbName` is now the only thing that picks the database, so set it to the database your driver code reads, and `client.db("app")` and Prisma ORM stay on the same one. An empty `dbName` is an error.
 
 ```typescript

@@ -10,7 +10,7 @@ This page uses MongoDB. [Use PostgreSQL instead](/prisma-orm/add-to-existing-pro
 
 On this page you add Prisma ORM to an app whose MongoDB database already has collections. You run `orm init`, write a contract that describes your collections, and run two queries. The contract is the file that holds your models. In earlier Prisma ORM versions, it was `schema.prisma`.
 
-Your app must reach its MongoDB database and run on Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer. A single `mongod` server is enough. You need a replica set only for transactions and change streams, and MongoDB Atlas already runs one.
+Your app must reach its MongoDB database and run on Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer ([Supported versions](/orm/supported-versions)). A single `mongod` server is enough. You need a replica set only for transactions and change streams, and MongoDB Atlas already runs one.
 
 If your database has no collections yet, follow [Add Prisma ORM and MongoDB to an existing app](/prisma-orm/quickstart/existing-app/mongodb) instead, which creates the collections for you. If you want Prisma ORM to create a new app for you, follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb).
 
@@ -60,18 +60,21 @@ If you had no `.env`, `orm init` wrote one with a placeholder, `DATABASE_URL="mo
 DATABASE_URL="mongodb://username:password@host:27017/database"
 ```
 
-The part after the last `/`, and before any `?`, is the name of the database.
+The part after the last `/`, and before any `?`, is the name of the database. To work against a copy on your machine instead, [A database on your machine](/prisma-orm/local-database#mongodb) shows how to run MongoDB in Docker.
 
 `orm init` wrote `src/prisma/db.ts`, and you do not need to change it:
 
 ```typescript title="src/prisma/db.ts"
 import 'dotenv/config';
 import mongo from '@prisma/orm-mongo/runtime';
+import { contractFromJson } from '@prisma/orm-mongo/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = mongo<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = mongo({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```
@@ -106,7 +109,7 @@ model Post {
 }
 ```
 
-Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `@@map("users")` names the collection that stores the model. MongoDB stores the identifier of every document in `_id`. On MongoDB, `contract emit` names each field in `contract.json` by the name in its `@map`, so in queries and in results you use `_id`, not `id`. The same goes for any other field with `@map`.
+Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `@@map("users")` names the collection that stores the model. MongoDB stores the identifier of every document in `_id`, and `@map("_id")` stores the `id` field there. In `db.orm` queries and in their results you use the field name, `id`, and Prisma ORM reads and writes `_id` for you. The same goes for any other field with `@map`.
 
 Change the models to match your documents: one model for each collection, with one field for each field of its documents. [Data modeling](/orm/data-modeling) lists the field types.
 
@@ -151,7 +154,7 @@ npx tsx script.ts
 ```text no-copy
 {
   username: null,
-  _id: '6abca6a1e7a9bb8d8c716f65',
+  id: '6abca6a1e7a9bb8d8c716f65',
   email: 'existing@example.com',
   name: 'Existing User'
 }
@@ -162,6 +165,8 @@ The document has no `username` field, and `username` is optional in the contract
 ## 7. Query a collection with a pipeline
 
 `db.query` builds a MongoDB aggregation pipeline on a collection, which it names as it is stored in MongoDB. `.build()` returns the pipeline, and `runtime.query()` runs it, where `runtime` is the object that `await db.runtime()` returns. Replace `users`, `email`, and the value with your own again.
+
+A pipeline reads documents as MongoDB stores them, so it uses stored names, not the field names in your schema. Write `_id`, not `id`, and use the name in `@map` for every other field that has one.
 
 Replace `script.ts` with this version:
 

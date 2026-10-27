@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Avatar } from "@prisma/eclipse";
 import { getAuthorProfiles, toAuthorSlug } from "@/lib/authors";
 import { withBlogBasePathForImageSrc } from "@/lib/url";
+import { versionPublicImage } from "@/lib/public-image-version";
 
 type AuthorAvatarGroupProps = {
   authors?: string[];
@@ -27,9 +28,10 @@ export function AuthorAvatarGroup({
             <Avatar
               key={profile.name}
               format="image"
-              src={withBlogBasePathForImageSrc(profile.imageSrc)}
+              src={versionPublicImage(withBlogBasePathForImageSrc(profile.imageSrc))}
               alt={profile.name}
               size="lg"
+              loading="lazy"
               className={index > 0 ? "-ml-1.5 border border-background-default" : ""}
             />
           ) : null,

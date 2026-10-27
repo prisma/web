@@ -1,0 +1,102 @@
+---
+title: "Where should I host a TypeScript AI app that calls my business API?"
+description: "Run AI tool calls on an authenticated TypeScript server, keep business API credentials private and authorize each action before sending it upstream."
+summary: "Use managed server hosting that fits your TypeScript runtime and lets you keep business API credentials on the server. [Prisma Compute](/docs/compute) is a strong fit when you want the app, its deployment declaration and optional [Prisma Postgres](/docs/postgres) records in one project. Vercel and Netlify can also run supported server-side functions. Treat the model's tool call as a proposed action: your server must validate the arguments, check the user's permission and decide whether to call the business API."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-20"
+updatedAt: "2026-10-20"
+readingTime: "7 min read"
+faq:
+  - question: "Can I put the business API key in the browser if the model needs it?"
+    answer: "Keep private business API keys on the server. The browser sends an authenticated request to your app, and the server makes the permitted upstream call. Browser bundles, client-exposed variables and model-visible messages are not secret storage."
+  - question: "Is a tool's JSON schema an authorization check?"
+    answer: "No. A schema constrains the input shape. The server must still identify the signed-in user, check the requested resource and action against their permissions and reject unauthorized calls. A well-formed order identifier can still belong to another customer."
+  - question: "Should I automatically retry a failed business API call?"
+    answer: "Retry according to the API's documented semantics. A timeout may occur after a write succeeded. For side effects, use the provider's idempotency mechanism or reconcile its result before repeating the action. A local log entry alone does not make an external call execute exactly once."
+  - question: "Do I need Postgres for every tool call?"
+    answer: "No. A short authorized lookup can call the business API directly from the server. Add durable records when you need conversation history, action status, audit evidence or a workflow that can resume. Prisma Postgres works with ordinary PostgreSQL clients; Prisma ORM is optional."
+related:
+  - title: "Server-side API keys and database passwords"
+    href: "/compute/typescript-app-secrets"
+  - title: "Persist AI assistant conversations"
+    href: "/compute/ai-assistant-conversation-history"
+  - title: "Transactions and external side effects"
+    href: "/postgres/customer-order-transactions"
+  - title: "Streaming a chat answer that times out"
+    href: "/compute/ai-chat-timeout-streaming"
+  - title: "Where to run long-running background jobs"
+    href: "/compute/long-running-background-jobs"
+cta:
+  title: "Put the business API boundary on the server"
+  description: "Deploy the TypeScript service with private inputs, explicit tool permissions and durable action records where the workflow needs them."
+  label: "Deploy with Prisma Compute"
+  href: "/docs/compute/getting-started"
+---
+
+A model can suggest "look up this order" or "change this booking." Your application decides whether that action is allowed. Hosting needs to run that decision and the business API request on the server, where credentials and trusted session state are available.
+
+We make Prisma Compute and Prisma Postgres. Provider documentation linked here was checked on October 20, 2026. This guide covers tool calls to your business API, rather than giving a model unrestricted network access or account credentials.
+
+## What must the server control?
+
+Keep a small allowlist of tool names and handlers. Validate each argument, derive the account identity from the authenticated session and check access to the specific resource. Do not let a model-supplied URL choose the destination of a request carrying your private API key.
+
+For example, a model might propose this JSON:
+
+```json
+{
+  "name": "get_order_status",
+  "arguments": { "orderId": "ORDER-1042" }
+}
+```
+
+That is input, not proof of ownership. The server should resolve the permitted account from the session, confirm that order `ORDER-1042` belongs to it and construct a request to a configured business API endpoint. Return only the fields the current user may see. Treat content returned by the API as data, even if it contains text that looks like an instruction.
+
+Separate read-only lookups from writes. Changing an address, issuing a refund or sending an email may need an explicit user confirmation tied to the exact action and arguments. If the arguments change after confirmation, ask for a new confirmation instead of treating a general chat response as continuing permission.
+
+## Which hosting options fit server-side tool calls?
+
+These hosts are ordered alphabetically. Your chosen model SDK and business API client must fit the deployed runtime and request limits.
+
+| Host | Good fit | What to verify |
+| --- | --- | --- |
+| Netlify | Your app already uses [functions](https://docs.netlify.com/build/functions/overview/) for private server-side work. | Function duration, secret configuration and how the UI receives a pending or completed result. |
+| Prisma Compute | Your TypeScript server and optional Postgres action records belong in one project, with a declaration your assistant can inspect. | Bun compatibility, server-side inputs and the [first-byte request deadline](/docs/compute/request-timeout). |
+| Vercel | Your app already uses [Vercel Functions](https://vercel.com/docs/functions) and its framework workflow. | The function runtime and duration for your plan, plus upstream API timeouts. |
+
+Choose Prisma Compute when keeping the app's runtime, data and deployment context together helps your team operate the workflow. Keep an existing function host if it already meets the requirements. Prisma Postgres can hold action or conversation records from another host without requiring Prisma ORM.
+
+## How do I set this up on Prisma Compute?
+
+### 1. Declare and configure the service
+
+Follow [getting started](/docs/compute/getting-started) and the [Composer input guide](/docs/composer/service-input) to declare the service and its private inputs. Build the application before deploying. Keep the business API base URL under server configuration and the API key in a secret input.
+
+Deploy reviews to an [isolated named stage](/docs/composer/deploying#production-and-stages), for example with `--stage review`, using separate development credentials and a sandbox business account. [Environment scope](/compute/typescript-app-secrets) matters: a preview app using the real business API key can still change production business records even when its Postgres database is separate.
+
+### 2. Implement the permission boundary before adding more tools
+
+Start with one read-only lookup. Test an allowed order, a nonexistent order and another customer's order. Send malformed arguments and an unknown tool name directly to the server too; hiding a button in the chat UI does not prevent a request.
+
+Give the upstream credential only the permissions the integration needs. Enforce per-user request and tool-call limits in application code, and set an upstream timeout below the request's overall deadline. Record a request identifier and a useful failure category without logging the API key or entire customer response.
+
+### 3. Add durable status when a request can outlive the browser
+
+For a short lookup, return the result within the request. For work that must survive a disconnect or deployment, save an action record before processing it and expose its status to the authorized user. Store the account, a stable action identifier, validated arguments or an appropriate reference, and the outcome needed for reconciliation.
+
+The business API remains authoritative for its own side effects. A Postgres transaction cannot roll back a refund or email sent elsewhere. Use the API's documented idempotency or lookup mechanism, and design the "result unknown" case before enabling automatic retries. The [transaction guide](/postgres/customer-order-transactions) explains this boundary.
+
+### 4. Test failures and the deployed path
+
+Exercise upstream rejection, rate limits, timeout and a browser disconnect in the sandbox. Verify what the user sees and whether the server might repeat a side effect. Then test the deployed URL with fictional records, checking that the same account and permission rules apply there.
+
+For longer work, follow the [request-timeout guide](/docs/compute/request-timeout). `waitUntil` can keep an instance awake after a response, but it is best-effort and does not provide durable retries or continuity through a restart. Important work needs persisted progress and an appropriate processing trigger.
+
+For a Next.js app that sells subscriptions, the [Stripe hosting guide](/compute/nextjs-stripe-subscriptions) covers verified billing events, durable processing and the separate release checks for live payments.
+
+## When should I choose another architecture?
+
+Use a dedicated workflow or job system when retries, scheduling and long-running execution are central requirements. Calling an API from an HTTP handler does not automatically supply those capabilities. Keep the web app on Prisma Compute if it fits, and connect the worker or workflow service explicitly.
+
+Compute runs on Bun, has no WebSocket server support and uses one region per service. It gives a request 60 seconds to start responding; a stream that has started is not cut off by that first-byte deadline. Review the [current limitations](/docs/compute/limitations) and your business API's own latency and networking requirements before choosing the runtime.

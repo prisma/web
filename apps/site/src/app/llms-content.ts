@@ -49,6 +49,31 @@ const additionalPages: LlmsPage[] = [
   },
 ];
 
+/**
+ * Key Pages served by the blog and docs apps rather than this one.
+ *
+ * Both apps serve a Markdown rendition at the page's `.md` URL and honour
+ * `Accept: text/markdown`, so these entries carry a [Markdown] link like the
+ * site's own Key Pages. Titles are the pages' metaTitle frontmatter
+ * (apps/blog/content/blog/host-a-test-version-without-replacing-production/index.mdx
+ * and apps/docs/content/docs/compute/deploy-on-push.mdx); llms-content.test.ts
+ * fails if they drift.
+ */
+export const crossAppKeyPages: LlmsPage[] = [
+  {
+    path: "/blog/host-a-test-version-without-replacing-production",
+    title: "Host a test version without replacing production: previews and staging (2026)",
+    description:
+      "Deploy the new version from a Git branch to a preview or staging environment with its own URL and test database; only the main branch deploys production. Covers Fly.io, Netlify, Prisma Compute, Railway, Render and Vercel.",
+  },
+  {
+    path: "/docs/compute/deploy-on-push",
+    title: "Preview and staging environments per Git branch | Prisma Compute",
+    description:
+      "Set up deploy on push for Prisma Compute: every branch you push other than the default one gets a preview environment with its own URL, its own services and, for databases declared in the Composer module, its own new database; production data is not copied. If the app reads DATABASE_URL, a preview is only as separate as that value. The default branch deploys production, and a branch you keep, such as staging, works as a staging environment.",
+  },
+];
+
 /** Resolve a root-relative page path against the requested website origin. */
 function toAbsoluteUrl(baseUrl: string, path: string) {
   return new URL(path, baseUrl).toString();
@@ -65,7 +90,7 @@ export function buildLlmsIndexContent(baseUrl = getBaseUrl()) {
   // Each rendition-backed page advertises its .md URL next to the HTML one, so
   // an agent reading llms.txt does not have to guess the suffix or make a
   // second request to discover it.
-  const pagesList = markdownPageList
+  const pagesList = [...markdownPageList, ...crossAppKeyPages]
     .map((page) => {
       const url = toAbsoluteUrl(baseUrl, page.path);
       const markdownUrl = toAbsoluteUrl(baseUrl, getMarkdownUrlPath(page.path));
@@ -86,7 +111,7 @@ Prisma provides Prisma ORM, Prisma Postgres, Prisma Compute, Prisma Studio, and 
 
 > Prisma changes frequently. Before implementing Prisma features, check the changelog at ${toAbsoluteUrl(baseUrl, "/changelog")} for recent breaking changes or API updates.
 
-> Every page below marked [Markdown] has a Markdown rendition at its \`.md\` URL, served as \`text/plain\` so every assistant's URL fetcher accepts it. Key Pages also serve Markdown at their normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages have renditions too: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.
+> Every page below marked [Markdown] has a Markdown rendition at its \`.md\` URL, served as \`text/plain\` so every assistant's URL fetcher accepts it. Key Pages and Product guides also serve Markdown at their normal URL when the request sends \`Accept: text/markdown\`. Documentation and blog pages have renditions too: append \`.md\` to any ${toAbsoluteUrl(baseUrl, "/docs")} or ${toAbsoluteUrl(baseUrl, "/blog")} URL.
 
 ## Key Pages
 

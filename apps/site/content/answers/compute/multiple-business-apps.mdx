@@ -1,0 +1,117 @@
+---
+title: "How should I host several separate TypeScript business apps?"
+description: "Manage several TypeScript apps together while keeping their projects, databases, credentials, releases and recovery procedures separate."
+summary: "Use one platform account for administration and a separate project, database and deployment configuration for each independent business app. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a small TypeScript team that wants to manage those projects together while keeping each app's saved data and releases separate. Share code where it helps, but give each app its own production target, credentials, test environment and recovery procedure."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "6 min read"
+faq:
+  - question: "Should every app use the same Postgres database?"
+    answer: "Independent business apps usually benefit from separate databases, migrations and credentials. Share a database only when the apps intentionally share one data model and the team accepts the release, access and recovery coupling that creates."
+  - question: "Does one project per app guarantee separate team permissions?"
+    answer: "No. Resource organization and account permissions are different controls. Verify the platform's current roles and token scopes, and choose a stronger account or workspace boundary when different clients or teams must not administer one another's resources."
+  - question: "Can the apps share a repository?"
+    answer: "Yes, if each app has an explicit build, deployment target and environment configuration. A shared repository does not require a shared database or simultaneous releases. Test which apps a change will rebuild or deploy before relying on the workflow."
+  - question: "Does separating projects give every app its own spending cap?"
+    answer: "Do not assume it does. Check the scope of the platform's billing allowance and spending controls. Use usage reports that identify the project responsible to investigate charges, and choose the account or billing structure that meets the budget boundary you need."
+related:
+  - title: "Tracking what drives the hosting bill"
+    href: "/compute/typescript-hosting-cost-visibility"
+  - title: "Keeping production credentials separate"
+    href: "/compute/typescript-app-secrets"
+  - title: "Accepting a deployment handoff"
+    href: "/compute/deployment-handoff-checks"
+cta:
+  title: "Give each app a clear home"
+  description: "Manage the TypeScript apps on Prisma Compute and give each project its own Prisma Postgres data and release procedure."
+  label: "Explore Prisma projects"
+  href: "/docs/cli/project"
+---
+
+An order portal, a booking tool and a reporting app can belong to the same business without becoming one application. Updating the booking tool should not require changing the portal's schema or rotating a database credential used by all three.
+
+We make Prisma Compute and Prisma Postgres. The provider documentation linked here was checked on October 22, 2026. Prisma ORM is optional for every database in this setup.
+
+## What should stay separate?
+
+Give each independent app a production URL, database, migration history and set of server-side credentials. Record its repository or subdirectory, the Git branch used for production releases and the person responsible for releases. A clearly named project helps someone find those things without guessing.
+
+Keep a separate test environment for each app too. Three apps pointing to one test database can interfere with one another when a seed script resets records or a migration changes a shared table. A preview is useful only when its dependencies point at the intended test resources.
+
+Share a library for common validation or UI components when it reduces maintenance. Treat a shared database as a larger decision: it couples data access, schema changes and recovery. A common company name is not enough reason to create that coupling.
+
+## Which platform structure fits?
+
+The alphabetically listed options can each manage multiple applications; compare how they organize the data and release workflow.
+
+| Platform approach | Useful fit | Boundary to verify |
+| --- | --- | --- |
+| Prisma Compute + Prisma Postgres | Independent TypeScript apps, each with its own [project](/docs/cli/project) and configuration describing its server and database. | Exact project and environment targets, database credentials and who can administer the workspace. |
+| Railway projects | Apps that benefit from a [project canvas of services and environments](https://docs.railway.com/projects). | Which services share a project, who administers it and how database maintenance is handled. |
+| Vercel projects + managed Postgres | Apps already using [Vercel's project and deployment workflow](https://vercel.com/docs/projects). | The database resource and credentials connected to each project and environment. |
+
+Prisma Compute uses TypeScript configuration files to describe each app's server and Prisma Postgres database together. Repeating that pattern in separate projects gives an AI assistant explicit targets for inspection and changes. It still needs to verify the target before acting.
+
+## How do I organize the apps on Prisma?
+
+### 1. Make a small resource inventory
+
+Use stable names that describe the app rather than a contractor or a temporary experiment. An example inventory might look like this:
+
+| App | Project | Database purpose | Release check |
+| --- | --- | --- | --- |
+| Customer orders | `orders` | Orders and customer-visible status | Sign in and read a fictional order. |
+| Appointments | `bookings` | Availability and reservations | Reserve one test slot and reject a competing reservation. |
+| Reporting | `reports` | Report jobs and saved results | Generate and download a report for a test account. |
+
+These are example names, not resources created by this guide. Record the actual identifiers, URLs and owners after provisioning.
+
+### 2. Inspect targets before configuring a deployment
+
+A workspace is the administrative group containing your projects. Sign in, then use [workspace sessions](/docs/cli/auth) to select the intended workspace before using the [project CLI](/docs/cli/project). If the list shows several, run `npx prisma@latest auth workspace use YOUR_WORKSPACE_ID`, replacing `YOUR_WORKSPACE_ID` with the intended identifier from that list:
+
+```sh
+npx prisma@latest auth login
+npx prisma@latest auth workspace list
+npx prisma@latest auth whoami
+npx prisma@latest project list
+npx prisma@latest project show orders
+```
+
+Replace `orders` with an existing project's actual name or identifier. The output depends on your account. A folder name does not select the cloud project. `npx prisma@latest project show` without a name shows its local project link; the deploy target comes from the exported app name in `module.ts` or the explicit `--name` flag below. Check that name as well as the inspected project before deploying.
+
+For each app, complete [Composer getting started](/docs/composer/getting-started) to create `module.ts`, `service.ts`, the build script and deploy configuration. Composer is the framework that reads these TypeScript files and creates the server and its resources. Follow [Databases](/docs/composer/databases) to connect the app to its own database, with one app responsible for its migrations.
+
+The first [deploy](/docs/cli/deploy) creates the project and the resources described by `module.ts`. Choose an unused project name for a new app and configure a supported region before that first deploy. An existing app should reuse its verified project rather than create another copy.
+
+### 3. Give each app its own credentials and test data
+
+Give each app its own Prisma Postgres database and connect it only to the one it owns. For other configuration and credentials, [Service input](/docs/composer/service-input) shows the fields to add to `service.ts`, their bindings in `module.ts` and the server-side read. Supply separate [environment values](/docs/compute/environment-variables) for production and test deployments. A test deployment must not receive another app's production URL. `deploy --name` selects the deployment project but does not change the directory's local project link. For every `project env` command, pass the intended app's explicit `--project` value as well as its production, preview or branch scope. For example, once `orders` exists, `npx prisma@latest project env list --project orders --role preview` inspects that project's preview variable names without displaying their values. This avoids writing credentials to a different project linked by a parent directory.
+
+Review who can administer the projects and which projects an automation credential can affect. Separate projects may still be accessible to the same administrators and automation credentials. If the apps belong to different clients, choose the workspace and account ownership around that access requirement.
+
+### 4. Release and recover one app at a time
+
+From one configured app's directory, build and deploy its test environment. This example selects the supported `us-east-1` region; choose an appropriate [region](/docs/cli/deploy) before the first deploy. For example, use `orders` only after checking that it is the intended project name:
+
+```sh
+export PRISMA_REGION=us-east-1
+npm run build
+npx prisma@latest deploy module.ts --name orders --stage review
+```
+
+The deploy prints the service URL and created resource identifiers; these vary by account. `review` names an [isolated deployment stage](/docs/composer/deploying#production-and-stages). The module's own database is created for that stage; manually supplied URLs must point to separate test resources. Repeat from the other apps' directories with their own names and configurations. Apply each app's migrations to its review database before acceptance tests. With `rawPostgres()` or a manually supplied URL, use that database's direct connection; a configured `postgres()` data contract can apply migrations during deployment. Production deployment omits `--stage review`.
+
+For [deploy on push](/docs/compute/deploy-on-push), connect each project to GitHub and configure a deployment job for each app. The guide's example runs from the repository root by default; copying it once does not deploy all apps in a shared repository. Set the deploy action's `working-directory`, `build-command` and `module` inputs for that app. If the lockfile is at the workspace root, also set `install-command` to install dependencies from that root; the action's automatic detection only checks its working directory. Set each module's exported app name to its intended project, such as `orders`, before enabling the action. The action does not carry over the earlier CLI `--name` override; its module name must select the same verified project. The connection permits authentication; the workflow installs dependencies, builds and deploys. Check each job's project target before relying on push deployment.
+
+After approval, release the intended app with its production credentials, configuration and migration plan. For a first production database managed through `rawPostgres()` or a supplied URL, provision it with customer traffic disabled, apply migrations through its direct connection, then verify before enabling customers. Verify its public URL and representative workflow. A shared dependency update may justify testing all three apps, but it should not silently change all three databases.
+
+Choose and rehearse a [backup and restore procedure](/docs/postgres/database/backups) for each database. Restoring one app should not rewind records another app needs. Review usage by app and the scope of [spending controls](/compute/typescript-hosting-spending-controls); resource separation does not automatically create independent billing limits.
+
+## When should I use a different boundary?
+
+Use stronger account separation when separate clients, legal owners or teams must control their own administration and billing. Conversely, components that always release together and share one domain model may belong in one application with several services rather than several independent projects.
+
+Check [Compute's runtime limits](/docs/compute/limitations) for each app separately. An app requiring a persistent local disk or a WebSocket server may need a different host while the other TypeScript apps stay on Compute. Prisma Postgres remains usable from those hosts with an ordinary PostgreSQL client.

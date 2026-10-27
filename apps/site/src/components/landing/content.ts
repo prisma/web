@@ -1,6 +1,7 @@
 import type { OgAccent } from "@prisma-docs/ui/components/og-image";
 import type { ProductAccentName, ProductIconName } from "@/components/product/icons";
 import type { ProductTourStop } from "@/components/product/types";
+import type { PlanName } from "./landing-plans";
 
 // Copy for the ChatGPT ads landing pages under /lp. One object per ad message,
 // rendered by the shared components in this folder, so a new campaign is a
@@ -36,7 +37,7 @@ import type { ProductTourStop } from "@/components/product/types";
 export const CONSOLE_SIGNUP_URL = "https://console.prisma.io/sign-up";
 export const CTA_LABEL = "Get started for free";
 
-export type LandingSlug = "compute" | "postgres" | "free";
+export type LandingSlug = "compute" | "postgres" | "free" | "1000-databases" | "providers";
 
 export type LandingContent = {
   slug: LandingSlug;
@@ -62,6 +63,12 @@ export type LandingContent = {
   /** Product role kicker above the headline and its dot colour. */
   kicker: string;
   accent: ProductAccentName;
+  /**
+   * The CTA wording for this page. The default, "Get started for free", is
+   * the free-plan pages' promise; the paid-plan pages name the plan instead.
+   * Every CTA on a page uses the same label and the same Console URL.
+   */
+  ctaLabel?: string;
   hero: {
     /** The ad's promise, 4 to 8 words. */
     headline: string;
@@ -74,14 +81,25 @@ export type LandingContent = {
     /** The product tour beside the copy; pages without one pass a visual. */
     tour?: ProductTourStop[];
   };
-  flow: {
+  /** The three-product flow panel. Omitted on pages that sell one plan. */
+  flow?: {
     headline: string;
     body: string;
   };
-  benefits: {
+  benefits?: {
     headline: string;
     bridge: string;
     items: { icon: ProductIconName; name: string; description: string }[];
+  };
+  /**
+   * The plan ladder. The default lights the Free plan and shows all four;
+   * a paid-plan page lights the plan the ad sells and can drop the rest.
+   */
+  plans?: {
+    headline: string;
+    body: string;
+    highlight: PlanName;
+    include?: PlanName[];
   };
   faq: { question: string; answer: string }[];
   cta: {
@@ -401,8 +419,182 @@ export const freeLanding: LandingContent = {
   },
 };
 
+// The two paid-plan pages for the October 2026 "Starter and Pro" campaign.
+// Both campaigns (landing pages and direct to Console) share the creatives
+// and the targeting; the pages exist to test whether a page between the ad
+// and the Console brings users who activate and pay. Figures were read from
+// the live prisma.io/pricing on 2026-10-21; the provider figures on the
+// comparison page carry their own check date in provider-compare.tsx.
+//
+// The CTA on these pages leads to the Console sign-up, which is free; the
+// plan is chosen in the Console afterwards. The Console has no public
+// plan-selection entry point for a visitor without a workspace, so the label
+// and the offer line say exactly that rather than promising a one-click
+// subscription.
+
+const STARTER_PRO_CAMPAIGN = "us_desktop_starter_pro_oct2026_lp";
+
+export const starterDatabasesLanding: LandingContent = {
+  slug: "1000-databases",
+  path: "/lp/1000-databases",
+  campaign: STARTER_PRO_CAMPAIGN,
+  variant: "lp-1000-databases",
+  hypothesis:
+    "A paid-plan promise brings builders, not browsers: a developer whose agents and previews are starved for databases recognises the problem in the headline, and is more likely to activate and pay than a visitor sent by a free-tier promise.",
+  meta: {
+    title: "1,000 databases for your agents | Prisma Starter",
+    description:
+      "The Prisma Starter plan includes 1,000 Prisma Postgres databases, 10 GB of storage and 5M app requests a month for $10. One database per agent task, preview and experiment.",
+    ogKicker: "Prisma Starter",
+    ogAccent: "yellow",
+  },
+  kicker: "Prisma Starter",
+  accent: "postgres",
+  ctaLabel: "Start on Starter",
+  hero: {
+    headline: "1,000 databases for your agents",
+    headlineEmphasis: "1,000 databases",
+    subheadline:
+      "Coding agents, preview branches and experiments each want a database of their own. The Starter plan includes 1,000 Prisma Postgres databases for $10 a month, so you build, test and ship without rationing them.",
+    microline: "$10 a month. Sign up free, choose Starter in the Console, cancel any time.",
+  },
+  plans: {
+    headline: "What Starter includes",
+    body: "Starter is the first paid plan: $10 a month for the app and the database together, usage beyond the allowances metered at the plan's rates, and a spend limit you set. Free covers 50 databases; Pro lifts every allowance and lowers the overage rates.",
+    highlight: "Starter",
+    include: ["Free", "Starter", "Pro"],
+  },
+  benefits: {
+    headline: "Why one database is never enough",
+    bridge:
+      "Every workflow below wants a database of its own. Share one and tests collide, data leaks between tasks, and someone eventually migrates production by mistake.",
+    items: [
+      {
+        icon: "bot",
+        name: "One database per agent task",
+        description:
+          "Give each agent run a fresh Postgres database, let it migrate and seed freely, and delete it when the task is done.",
+      },
+      {
+        icon: "gitBranch",
+        name: "A database for every preview",
+        description:
+          "Each pull request can get its own database next to its preview deployment, so reviewers test real behaviour without touching production data.",
+      },
+      {
+        icon: "repeat",
+        name: "Experiments that start in seconds",
+        description:
+          "Try a schema change or a new migration path on a database of its own. A database you are not querying uses no operations.",
+      },
+      {
+        icon: "layoutGrid",
+        name: "Room for every app you run",
+        description:
+          "Side projects, customer sandboxes, staging and production can each have their own database on one plan and one bill.",
+      },
+    ],
+  },
+  faq: [
+    {
+      question: "Does $10 cover all 1,000 databases?",
+      answer:
+        "Yes. The plan includes up to 1,000 databases. What you pay for is usage across them: 1M operations a month are included, then $8 per million, and 10 GB of storage is included, then $2 per GB. A spend limit, on by default, caps the bill.",
+    },
+    {
+      question: "How do my agents create databases?",
+      answer:
+        "From the Console, with npx create-db in a terminal, through the Management API, or through the Prisma MCP server from Claude Code, Cursor or Codex. Every database is standard Postgres with a pooled connection string, ready in seconds.",
+    },
+    {
+      question: "What happens when I reach an allowance?",
+      answer:
+        "Usage beyond the included operations or storage is billed at the plan's rates until your spend limit, which is on by default on every paid plan. Nothing is deleted. You can raise the limit, move to Pro for larger allowances and lower overage rates, or stay where you are.",
+    },
+  ],
+  cta: {
+    headline: "Stop rationing databases",
+    body: "Sign up, choose Starter in the Console, and give every agent, preview and experiment a database of its own. $10 a month, cancel any time, with a spend limit you set.",
+    checks: [
+      "1,000 databases included",
+      "10 GB storage and 5M app requests a month",
+      "Spend limit on by default",
+    ],
+  },
+};
+
+export const providersLanding: LandingContent = {
+  slug: "providers",
+  path: "/lp/providers",
+  campaign: STARTER_PRO_CAMPAIGN,
+  variant: "lp-providers",
+  hypothesis:
+    "Price at scale converts the developer who already pays for a stack: showing what the same app costs on Prisma next to Neon + Vercel and Supabase, on list prices, brings visitors who are ready to pay rather than to try.",
+  meta: {
+    title: "See how Prisma compares at scale | Prisma Starter and Pro",
+    description:
+      "Prisma Starter ($10 a month) and Pro ($49 a month) put your app and its Postgres database on one bill, with database data transfer included and spend limits on by default. Compared with Neon + Vercel and Supabase on list prices, October 2026.",
+    ogKicker: "Prisma Starter and Pro",
+    ogAccent: "red",
+  },
+  kicker: "Prisma Starter and Pro",
+  accent: "compute",
+  ctaLabel: "Choose your plan",
+  hero: {
+    headline: "See how Prisma compares at scale",
+    headlineEmphasis: "compares at scale",
+    subheadline:
+      "At around 50K monthly active users, Prisma Pro can cost less than half as much as a typical Neon + Vercel setup, while keeping your app and your Postgres database on one platform with one bill.",
+    microline:
+      "Starter is $10 a month, Pro is $49. Sign up free, pick a plan in the Console, cancel any time.",
+  },
+  plans: {
+    headline: "Starter or Pro?",
+    body: "Starter fits a first production app: 1M database operations, 10 GB of storage and 5M app requests a month. Pro fits real traffic: ten times the operations, 50 GB of storage, 20M requests and lower overage rates. Both include 1,000 databases, daily backups and a spend limit.",
+    highlight: "Starter",
+    include: ["Starter", "Pro"],
+  },
+  faq: [
+    {
+      question: "Where do the 50K MAU figures come from?",
+      answer:
+        "They are Prisma's published scenario on prisma.io/pricing: an app of about 50K monthly active users, priced on each provider's list prices. It is an estimate for one shape of app. Your usage will differ, so the table of list prices above is what to check your own numbers against.",
+    },
+    {
+      question: "Can I keep Vercel or Neon and still use Prisma?",
+      answer:
+        "Yes. Prisma Postgres is standard Postgres, so an app hosted anywhere connects with the connection string, and Prisma ORM works with any Postgres. Prisma Compute is optional hosting next to the database. Moving in or out is pg_dump and pg_restore.",
+    },
+    {
+      question: "What do spend limits cover?",
+      answer:
+        "On Prisma, the spend limit is a hard cap on usage across the app and the database, on by default on every paid plan. Neon sends spending notifications at 80% and 100% of a threshold. Vercel has a spend budget with an optional pause. Supabase's Spend Cap is on by default on Pro and excludes database compute.",
+    },
+  ],
+  cta: {
+    headline: "One platform, one bill, a limit you set",
+    body: "Sign up, pick Starter or Pro in the Console, and run the app next to its database. No seats, no database egress bill, and a spend limit on by default.",
+    checks: [
+      "Database data transfer included",
+      "Spend limits on by default",
+      "Standard Postgres, leave any time",
+    ],
+  },
+};
+
 export const landingPages: Record<LandingSlug, LandingContent> = {
   compute: computeLanding,
   postgres: postgresLanding,
   free: freeLanding,
+  "1000-databases": starterDatabasesLanding,
+  providers: providersLanding,
 };
+
+/**
+ * The CTA label for the landing page at `pathname`, for the chrome shared by
+ * every page (header, sticky bar) that cannot take it from the page's content.
+ */
+export function landingCtaLabel(pathname: string): string {
+  const page = Object.values(landingPages).find((content) => content.path === pathname);
+  return page?.ctaLabel ?? CTA_LABEL;
+}

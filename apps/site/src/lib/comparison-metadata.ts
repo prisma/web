@@ -23,7 +23,8 @@ export function getComparisonMetadata(slug: ComparisonSlug) {
     slug === "convex" ||
     slug === "neon" ||
     slug === "planetscale" ||
-    slug === "supabase"
+    slug === "supabase" ||
+    slug === "vercel-neon-drizzle"
   ) {
     types["application/json"] = new URL(`${page.path}.json`, baseUrl).toString();
   }

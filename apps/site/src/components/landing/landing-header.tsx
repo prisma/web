@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 import { PrismButton } from "@/components/brand/prism-button";
 import { siteConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
-import { CONSOLE_SIGNUP_URL, CTA_LABEL } from "./content";
+import { CONSOLE_SIGNUP_URL, landingCtaLabel } from "./content";
 
 const LOGIN_URL = "https://console.prisma.io/login";
 
@@ -18,6 +19,7 @@ const LOGIN_URL = "https://console.prisma.io/login";
 // action this page exists for.
 export function LandingHeader() {
   const [floating, setFloating] = useState(false);
+  const ctaLabel = landingCtaLabel(usePathname());
 
   useEffect(() => {
     const onScroll = () => setFloating(window.scrollY > 24);
@@ -63,7 +65,7 @@ export function LandingHeader() {
               the sticky bar (landing-sticky-cta.tsx) takes over once it
               scrolls away, so a third copy in the header is only noise. */}
           <PrismButton href={CONSOLE_SIGNUP_URL} ctaLocation="lp_navbar" className="max-md:hidden">
-            {CTA_LABEL}
+            {ctaLabel}
           </PrismButton>
         </div>
       </div>

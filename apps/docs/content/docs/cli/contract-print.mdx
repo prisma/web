@@ -22,8 +22,7 @@ npx prisma contract print [--output <path>]
 
 | Option | What it does |
 | --- | --- |
-| `--output <path>` | Writes the PSL to this file. Without it, the command prints the PSL and writes no file. |
-| `--format human` | Prints the PSL to standard output, so you can redirect it to a file. |
+| `--output <path>` | Writes the PSL to this file. Without it, the command writes the PSL to standard output and writes no file. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result, with the PSL in `psl.text`. |
 
@@ -35,9 +34,23 @@ npx prisma contract print --output ./src/prisma/contract.prisma
 npx prisma contract print --json
 ```
 
+Without `--output`, standard output gets only the PSL, while the status line goes to standard error. So you can redirect or pipe it:
+
+```bash
+npx prisma contract print > contract.v8.prisma
+```
+
+The PSL is printed as it is, not as data lines, so tabs and line breaks in it are not escaped. With `--output`, standard output gets nothing. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the data lines of the other commands.
+
 ## What it writes
 
-The file starts with `// use prisma-8`. When you point `contract` at the file and run `contract emit`, you get the same contract as before, with the same hashes, so the database needs no migration and no new `db sign`.
+The file starts with `// use prisma-8`, the first line `contract emit` looks for in a `.prisma` file. When you point `contract` at the file and run `contract emit`, you get the same contract as before, with the same hashes, so the database needs no migration and no new `db sign`.
+
+A value that Prisma ORM generates in your application, rather than in the database, is written with `@onCreate(...)` and `@onUpdate(...)` after the field's type. `@onCreate` sets the value when a row is created, and `@onUpdate` sets it again on every update. So a Prisma ORM 7 `@default(uuid())` prints as `@onCreate(uuid())`, and an `@updatedAt` field prints as, for example, `Timestamptz(3) @onCreate(now()) @onUpdate(now())`. In a Prisma ORM 8 schema you write these attributes too: `contract emit` refuses `@default(uuid())` and points you to `@onCreate(uuid())`. `@default(now())` and `@default(autoincrement())` still work, because the database fills those values.
+
+A date, time, or bytes default prints with the name of its type in front of the value, and the value in backticks, such as ``@default(timestamptz`2024-01-01T00:00:00Z`)``. A column whose database type has no Prisma ORM 8 field type prints as ``Raw(sql`...`)``, which declares the column by the database's name for its type, such as ``Raw(sql`ltree`)``.
+
+A Prisma ORM 7 schema with an `Unsupported(...)` field cannot be printed yet. Prisma ORM 8 reads such a field as a column with no field on the model, so your code cannot read or write it. A `Raw(...)` field is different: it is a field on the model, and your code reads and writes its value. Prisma ORM 8 PSL has no way to declare a column without a field, so keep the Prisma ORM 7 schema as the contract source until it does.
 
 When a part of the contract has no PSL form, the command names that part, fails, and writes nothing. It also refuses an `--output` path that is one of the files it reads, `prisma.config.ts`, or a file `contract emit` writes.
 

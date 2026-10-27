@@ -22,7 +22,7 @@ const tree: DecisionTreeData = {
       id: "free-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "200k operations, 2 GB and 50 databases per month free, with no card. Always ready, with no cold starts (our own architecture claim).",
+      why: "200k operations, 2 GB and 50 databases per month free, with no card.",
       caveat: "Grows into $10/month for 1M operations. Prisma publishes this guide.",
     },
     {
@@ -53,7 +53,7 @@ const tree: DecisionTreeData = {
       accent: true,
       why: "A different bundle: database, ORM, and TypeScript app hosting designed together, with one schema and one config, and the app deployed next to the database.",
       caveat:
-        "Prisma Compute is in public beta. Auth, storage, and realtime are not part of this bundle; that is Supabase's territory.",
+        "S3-compatible object storage buckets live in the same project. End-user auth and realtime are not part of this bundle; that is Supabase's territory.",
     },
     {
       id: "shape",
@@ -122,7 +122,7 @@ const tree: DecisionTreeData = {
       id: "r-ppg",
       accent: true,
       title: "Prisma Postgres",
-      why: "Operation-based billing fits this shape: the database is always ready (no cold starts, by our own architecture claim), idle time costs nothing extra, and up to about 10M queries a month stays inside the plan allowances ($10 covers 1M, $49 covers 10M).",
+      why: "Operation-based billing fits this shape: idle time costs nothing extra, and up to about 10M queries a month stays inside the plan allowances ($10 covers 1M, $49 covers 10M).",
       caveat:
         "Prisma publishes this guide, so hold this recommendation to the same skepticism as the rest. Past roughly 24M queries a month the guide's own worked example shows an always-on Neon compute becomes cheaper.",
     },
@@ -137,7 +137,7 @@ const tree: DecisionTreeData = {
       id: "x-ppg",
       title: "Prisma Postgres, higher tier",
       accent: true,
-      why: "$1 per million operations at the top tier ($129/month with 50M included), always ready with no cold starts (our own claim).",
+      why: "$1 per million operations at the top tier ($129/month with 50M included).",
       caveat:
         "Compare against the dedicated-instance options at your exact query count. Prisma publishes this guide.",
     },

@@ -16,7 +16,7 @@ On PostgreSQL the path to a model is `db.orm.<schema>.<ModelName>`, so the `User
 
 ## Example schema
 
-Examples use this contract. In Prisma ORM 8 the schema file is `contract.prisma` instead of `schema.prisma`; the docs call it your contract. `@default(cuid(2))` means Prisma ORM generates the `id` for you, so you never pass one:
+The examples on this page use the contract below. In Prisma ORM 8 the schema file is `contract.prisma` instead of `schema.prisma`, and the docs call it your contract. `@onCreate(cuid(2))` means Prisma ORM generates the `id` for you, so you never pass one:
 
 <details>
 
@@ -24,7 +24,7 @@ Examples use this contract. In Prisma ORM 8 the schema file is `contract.prisma`
 
 ```prisma tab="PostgreSQL"
 model User {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
@@ -32,7 +32,7 @@ model User {
 }
 
 model Post {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   title     String
   content   String?
   published Boolean
@@ -72,7 +72,7 @@ To put models in another PostgreSQL schema, wrap them in a `namespace` block:
 ```prisma
 namespace billing {
   model Invoice {
-    id     String @id @default(cuid(2))
+    id     String @id @onCreate(cuid(2))
     amount Int
   }
 }
@@ -102,10 +102,10 @@ const user = await db.orm.users.create({
   name: "Jane",
   createdAt: new Date(),
 });
-// user._id is filled in by the server
+// user.id is filled in by the server
 ```
 
-The returned record is complete, so you can use the generated values right away (PostgreSQL shown; on MongoDB the key is `_id`):
+The returned record is complete, so you can use the generated values right away (PostgreSQL shown):
 
 ```js no-copy
 { id: 'cuid20000000000000000003', email: 'jane@prisma.io', name: 'Jane', createdAt: 2026-07-06T09:09:56.119Z }
@@ -143,7 +143,7 @@ On MongoDB the driver throws its own error, and a duplicate key gives you an err
 
 MongoDB contracts do not support `@default`. For a timestamp, type the field `temporal.createdAt()` or `temporal.updatedAt()` and a client created by `mongo()` fills it in, as [Field types](/orm/data-modeling/mongodb#field-types) shows. Pass any other value yourself.
 
-`@map("_id")` renames the id field to `_id` everywhere, so the returned document has an `_id` key and not an `id` key.
+`@map("_id")` stores the id field as the document's `_id`, and the returned document still has an `id` key, the field's name in the contract.
 
 :::
 
@@ -210,13 +210,13 @@ The callback returns an array, so you can apply several operations in one update
 
 `set` and `unset` work on any field, while `inc` and `mul` are on number fields only. `push`, `pull`, `addToSet`, and `pop` are for array fields, and you call them the same way: `p.tags.push("news")`. These field operations are MongoDB only: PostgreSQL has no callback form of `update`, so on PostgreSQL you pass an object. See [Field update operations](/orm/reference/orm-client#field-update-operations) in the reference.
 
-There is no `increment` on PostgreSQL, so to add to a number in place, write the update as raw SQL. For a `views Int` column added to `Post`, `db.raw.sql` writes a raw statement, `.affectedCount()` says you want the row count back as `{ affectedRows }`, `.build()` finishes it, and `db.runtime().execute(...)` runs it; [Advanced queries](/orm/fundamentals/advanced-queries) explains raw SQL:
+There is no `increment` on PostgreSQL, so to add to a number in place, write the update as raw SQL. For a `views Int` column added to `Post`, `db.raw.sql` writes a raw statement, `.affectedCount()` says you want the row count back as `{ affectedRows }`, `.build()` finishes it, and `db.execute(...)` runs it; [Advanced queries](/orm/fundamentals/advanced-queries) explains raw SQL:
 
 ```typescript
-const query = db.raw.sql`UPDATE post SET views = views + 1 WHERE id = ${postId}`
+const query = db.raw.sql`UPDATE "Post" SET views = views + 1 WHERE id = ${postId}`
   .affectedCount()
   .build();
-const { affectedRows } = await db.runtime().execute(query);
+const { affectedRows } = await db.execute(query);
 ```
 
 ## Delete one record

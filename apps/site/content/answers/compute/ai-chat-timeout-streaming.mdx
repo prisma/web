@@ -1,0 +1,236 @@
+---
+title: "TypeScript AI chat app times out before the answer appears: how do I stream the response and choose hosting?"
+description: "Stream model tokens as they arrive, set the host's duration limit, turn off proxy buffering and move long agent runs out of the request."
+summary: "The request is waiting for the whole model answer, and a duration limit or a buffering proxy ends it first. Stream the answer: return a streaming response right away and forward tokens as the model produces them, with the AI SDK's `streamText` or your provider's streaming API. Then check the host's limit for a streamed response. Vercel counts the whole stream against `maxDuration` (with fluid compute, the default for projects created since April 23, 2025: 300 seconds by default, up to 800 on Pro and Enterprise), Google Cloud Run's request timeout defaults to 5 minutes and goes up to 60, Netlify stops synchronous and streaming functions at 60 seconds, Railway allows 15 minutes while data keeps flowing, and Cloudflare Workers have no wall-clock limit while the client stays connected. Turn off proxy buffering, and move agent runs that take longer than your host allows into a background job. On [Prisma Compute](/docs/compute), a service has 60 seconds to send its first bytes, and a response that has started streaming is not cut off when it passes 60 seconds."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "11 min read"
+faq:
+  - question: "Should an AI chat app use server-sent events or WebSockets?"
+    answer: "For streaming a model's answer, server-sent events or a plain streamed HTTP response are enough: the browser sends each message as a new request, and the server streams the answer back on that request. WebSockets fit when the server has to push messages between requests, for example presence or multi-user rooms, and they need a host that runs a WebSocket server. [Railway](https://docs.railway.com/networking/public-networking/specs-and-limits), [Render](https://render.com/docs/websocket) and [Fly.io](https://fly.io/docs/networking/websockets/) run WebSocket servers. [Vercel Functions](https://vercel.com/docs/functions/websockets) also serve WebSocket connections, and a connection closes when the function reaches its maximum duration. Prisma Compute doesn't support WebSocket servers."
+  - question: "What happens when the user refreshes the page while the answer is streaming?"
+    answer: "The browser closes the connection. If the route passes the request's abort signal to the model call, generation stops and the partial answer is lost unless you saved it. To keep it, save the user's message before you call the model, leave out the abort signal and call `result.consumeStream()` without awaiting it, so the answer finishes and is saved after a disconnect, as the AI SDK's [message persistence docs](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence#handling-client-disconnects) show. The AI SDK's [resumable streams](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-resume-streams) (`resume` in `useChat`) reconnect to a running generation, and its docs list Redis and a store for active stream IDs as requirements. If you use resumable streams, don't pass the request's abort signal to the model call, because a disconnect would then cancel the generation the client wants to reconnect to. Add a separate stop endpoint for user cancellation, as the [AI SDK docs](https://ai-sdk.dev/docs/troubleshooting/abort-breaks-resumable-streams) describe. The [conversation history guide](/compute/ai-assistant-conversation-history) covers the Postgres side."
+  - question: "Do I need the Vercel AI SDK to stream a chat response?"
+    answer: "No. Provider SDKs stream on their own: the [OpenAI SDK](https://developers.openai.com/api/docs/guides/streaming-responses)'s `client.responses.create({ stream: true })` returns events you can iterate with `for await`, and a route handler can forward the text deltas in a `ReadableStream` as server-sent events. The AI SDK adds a stream format that its `useChat` hook reads, tool calling and one API across providers. Both work on any host that streams responses."
+  - question: "How long can a Vercel function stream an AI response?"
+    answer: "Until its maximum duration, which includes the time spent streaming the response. With fluid compute, which Vercel enables by default for projects created since April 23, 2025, Vercel's [limits page](https://vercel.com/docs/functions/limitations#max-duration) lists 300 seconds as the default and maximum on Hobby, and a 300-second default with an 800-second maximum on Pro and Enterprise, plus a 1,800-second maximum in beta. If an older project doesn't have [fluid compute](https://vercel.com/docs/fluid-compute) on, enable it in the project's Functions settings first. Then set `export const maxDuration = 800` in the route file to use the Pro maximum. Past the limit, Vercel returns a 504 `FUNCTION_INVOCATION_TIMEOUT`."
+related:
+  - title: "Where to host a TypeScript AI assistant that saves conversations"
+    href: "/compute/ai-assistant-conversation-history"
+  - title: "AI tool calls that use business APIs"
+    href: "/compute/ai-business-api-tool-calls"
+  - title: "Prisma Compute request timeout"
+    href: "/docs/compute/request-timeout"
+cta:
+  title: "Stream a TypeScript chat endpoint on Prisma Compute"
+  description: "Deploy the chat server next to its Prisma Postgres database in one project. The first bytes have 60 seconds; a started stream keeps going."
+  label: "Read the request timeout guide"
+  href: "/docs/compute/request-timeout"
+---
+
+A chat request that waits for the full model answer fails in one of two ways. Either nothing appears until the whole answer has been generated, or the request ends with a timeout before any of it arrives. Long answers, reasoning models and tool calls make both worse, because the time until the last token grows while the user sees nothing. The fix is to stream the answer as the model produces it and to give the whole stream enough time on your host.
+
+We make Prisma Compute and Prisma Postgres. The fix below works on any host. The host and library limits on this page link to their documentation, checked on October 22, 2026.
+
+## Which timeout are you hitting?
+
+What the user sees, and when, points to the cause.
+
+| What you see | Likely cause | Check |
+| --- | --- | --- |
+| Nothing for a while, then the whole answer at once | The handler waits for the full answer, or a proxy buffers the stream | Whether the route returns before the model finishes, and the proxy's buffering setting |
+| A `504` with `FUNCTION_INVOCATION_TIMEOUT` on Vercel | The invocation ran past its maximum duration, which includes streaming | `maxDuration` for the route and your plan's maximum |
+| The function stops after 10 to 60 seconds on Vercel | The project runs without fluid compute, so the limits in Vercel's current tables don't apply to it | Whether fluid compute is on in the project's Functions settings, then `maxDuration` |
+| The answer stops partway at the same time on every long reply | A limit on the total request time | The host's limit for a streamed response, in the table below |
+| A `504 Gateway Time-out` from `openresty` after about 60 seconds on Prisma Compute | No bytes were sent within 60 seconds | Whether the route sends something before the model's first token |
+| A Cloudflare `524` page | Cloudflare's proxy got no response from your server within its read timeout | Whether the response starts within 125 seconds |
+| The stream dies during a long tool call | An idle timeout between two chunks | Proxy read timeouts, such as nginx's 60-second default |
+
+To tell a buffering proxy from a route that doesn't stream, call the route with [`curl -N`](https://curl.se/docs/manpage.html#-N), which turns off curl's own output buffering. If curl prints the answer in pieces and the browser shows it all at once, look at the proxy or the client code. A buffering proxy holds the response for curl too, so if curl waits, send the same request once through the proxy and once straight to the app, for example to its port on the server. If curl also waits on the direct request, the route itself isn't streaming.
+
+## Why it happens
+
+Chat code often starts with a call that resolves when the model has finished, such as the AI SDK's `generateText` or a provider call without streaming. The server can't send anything until that call returns, so the user's wait is the model's total generation time, and the host's request limit applies to all of it.
+
+Streaming changes what the user waits for: the server returns a response at once and writes each token as the model produces it. It doesn't remove the host's limits. On [Vercel](https://vercel.com/docs/functions/limitations#max-duration), the maximum duration "includes time spent processing the request and sending the response, including streamed responses." So a streamed answer that runs longer than the limit is still cut off.
+
+A proxy in front of the server can undo streaming. [nginx](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering) buffers responses from the proxied server by default (`proxy_buffering on`), so the browser gets chunks in batches or at the end.
+
+## How to fix it
+
+These steps work on any host. The code is TypeScript for a Next.js App Router route handler; apart from the OpenAI SDK, the second example uses only the Fetch API's `Request`, `Response` and `ReadableStream`, so it moves to other servers that take Fetch API handlers.
+
+### 1. Stream the model's answer from the route
+
+With the AI SDK, `streamText` starts the model call, and `createUIMessageStreamResponse` with `toUIMessageStream` returns a streaming response that the `useChat` hook reads, as in the [Next.js quickstart](https://ai-sdk.dev/docs/getting-started/nextjs-app-router). Older examples write the same response as `result.toUIMessageStreamResponse()`, which the [`streamText` reference](https://ai-sdk.dev/docs/reference/ai-sdk-core/stream-text) still lists. This route was type-checked and run with `ai` 7.0.148 and `@ai-sdk/openai` 4.0.99:
+
+```ts title="app/api/chat/route.ts"
+import { openai } from "@ai-sdk/openai";
+import {
+  convertToModelMessages,
+  createUIMessageStreamResponse,
+  streamText,
+  toUIMessageStream,
+  type UIMessage,
+} from "ai";
+
+// Seconds this route may run, on hosts that read it from the Next.js build (Vercel does).
+export const maxDuration = 300;
+
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
+
+  const result = streamText({
+    model: openai("gpt-5.5"),
+    messages: await convertToModelMessages(messages),
+    // Stops the model call when the connection closes. Leave it out if you
+    // save answers or use resumable streams (see below).
+    abortSignal: req.signal,
+  });
+
+  return createUIMessageStreamResponse({
+    stream: toUIMessageStream({ stream: result.stream }),
+  });
+}
+```
+
+Passing `req.signal` stops the model call, and the tokens it uses, when the user closes the tab. It also stops it when a proxy drops the connection or the user refreshes, and then the answer is lost. If you save answers, leave out `abortSignal` and call `result.consumeStream()` without awaiting it: generation then runs to the end after a disconnect, and the `onEnd` callback of `toUIMessageStream` can save the finished messages, as the AI SDK's [message persistence docs](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-message-persistence#handling-client-disconnects) show.
+
+On the client, `useChat` from `@ai-sdk/react` posts to `/api/chat` and renders each message's `parts` as they arrive, as the [AI SDK quickstart](https://ai-sdk.dev/docs/getting-started/nextjs-app-router) shows. Tutorials written for AI SDK 4 use `toDataStreamResponse()` and `handleSubmit`, which AI SDK 5 replaced ([migration guide](https://ai-sdk.dev/docs/migration-guides/migration-guide-5-0)), so check the docs for the version in your `package.json` before copying code.
+
+When we ran it against a local mock of the model API that waited three seconds before answering, the response sent its first event (`{"type":"start"}`) at once, before the model returned anything. A route that awaits other work first, such as loading history or a slow tool, delays that event.
+
+### 2. Or stream server-sent events without the AI SDK
+
+A provider SDK can stream on its own. With the [OpenAI SDK](https://developers.openai.com/api/docs/guides/streaming-responses), `stream: true` returns an iterable of events, and the text arrives in `response.output_text.delta` events. This route forwards them as [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events), type-checked and run with `openai` 7.42.0:
+
+```ts title="app/api/chat/route.ts"
+import OpenAI from "openai";
+
+const client = new OpenAI();
+const encoder = new TextEncoder();
+
+export async function POST(req: Request) {
+  const { input }: { input: string } = await req.json();
+  let closed = false;
+  // Stops the model call when the client cancels the stream or the request is aborted
+  const abort = new AbortController();
+
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (text: string) => {
+        if (!closed) controller.enqueue(encoder.encode(text));
+      };
+
+      // Lines that start with ":" are SSE comments: they reach the client
+      // right away and keep idle proxies from closing the connection.
+      send(": started\n\n");
+      const heartbeat = setInterval(() => send(": keep-alive\n\n"), 15_000);
+
+      try {
+        const stream = await client.responses.create(
+          { model: "gpt-5.5", input, stream: true },
+          { signal: AbortSignal.any([req.signal, abort.signal]) },
+        );
+        for await (const event of stream) {
+          if (event.type === "response.output_text.delta") {
+            send(`data: ${JSON.stringify({ text: event.delta })}\n\n`);
+          }
+        }
+        send("data: [DONE]\n\n");
+      } catch (err) {
+        console.error("chat stream failed", err);
+        send(`event: error\ndata: ${JSON.stringify({ message: "Generation failed" })}\n\n`);
+      } finally {
+        clearInterval(heartbeat);
+        if (!closed) controller.close();
+      }
+    },
+    cancel() {
+      closed = true;
+      abort.abort();
+    },
+  });
+
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+```
+
+The first comment line goes out before the model call starts, and the heartbeat sends another every 15 seconds while a long tool call or reasoning step produces no text. MDN describes comment lines as a way "to prevent connections from timing out." On the client, read `response.body` with a reader and append each `data:` line's text as it arrives.
+
+### 3. Give the stream enough time on your host
+
+Compare your longest answer, including tool calls, with the limit for a streamed response on your host. These hosts are ordered alphabetically:
+
+| Host | Before the first byte | A response that is streaming |
+| --- | --- | --- |
+| Cloudflare Workers | No separate limit | [No wall-clock limit](https://developers.cloudflare.com/workers/platform/limits/#duration) while the client stays connected. CPU time is limited separately: 10 ms on Free, 30 seconds by default and up to 5 minutes on Paid; waiting on `fetch()` doesn't count. |
+| Google Cloud Run | Part of the request timeout | The [request timeout](https://cloud.google.com/run/docs/configuring/request-timeout) is 5 minutes by default and can be raised to 60 minutes; long-running requests, [WebSocket streams](https://cloud.google.com/run/docs/triggering/websockets) included, are subject to it. For more than 15 minutes, Google recommends retries and clients that can reconnect. |
+| Netlify Functions | Part of the function's limit | 60 seconds for [synchronous](https://docs.netlify.com/build/functions/configuration/) (not configurable) and [streaming](https://docs.netlify.com/build/functions/api/) functions. Background functions run for 15 minutes but answer the client with a `202` at once. |
+| Prisma Compute | [60 seconds](/docs/compute/request-timeout) | Not cut off when it passes 60 seconds. The docs advise keeping data flowing and having the client reconnect for anything long-lived. |
+| Railway | 5 minutes with no data | [15 minutes](https://docs.railway.com/networking/public-networking/specs-and-limits) if data keeps transferring; closed after 5 minutes with no data. |
+| Vercel Functions | Part of the function's limit | [`maxDuration`](https://vercel.com/docs/functions/limitations#max-duration) covers the whole invocation. With [fluid compute](https://vercel.com/docs/fluid-compute) (the default for projects created since April 23, 2025): 300 seconds on Hobby; 300 seconds by default and up to 800 on Pro and Enterprise (1,800 in beta). The Edge runtime must start responding within 25 seconds and can stream for up to 300. |
+
+On Vercel, set the limit in the route file with `export const maxDuration = 800` (a [Next.js route segment option](https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config/maxDuration) that deployment platforms can read). Vercel gives the limits above only with fluid compute, so on a project created before April 23, 2025, check that fluid compute is on in the project's Functions settings first.
+
+### 4. Turn off buffering in proxies
+
+If nginx sits in front of the app, turn off buffering for the chat route, or send `X-Accel-Buffering: no` from the route as the second example does. nginx's [`proxy_read_timeout`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout) defaults to 60 seconds between two reads, so keep the heartbeat shorter than that or raise the timeout. The AI SDK route in step 1 sends no heartbeat: after its first event, nothing goes out until the model produces output, so raise `proxy_read_timeout` for it when a tool call or reasoning step can run longer than 60 seconds:
+
+```nginx
+location /api/chat {
+    proxy_pass http://app:3000;
+    proxy_buffering off;
+    proxy_read_timeout 300s;
+}
+```
+
+Behind Cloudflare's proxy, the server has to start responding within 125 seconds or the visitor gets a [`524` error](https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/). Enterprise plans can raise that to 6,000 seconds. A route that returns its streaming response at once, with an early comment line, starts responding well inside that window.
+
+### 5. Move long agent runs out of the request
+
+An agent loop that can run longer than your host allows doesn't belong in one HTTP request. Save the job, start it in a worker or a background job, and have the browser follow its progress: poll an endpoint, reconnect to a stream that reads saved output, or use the AI SDK's [resumable streams](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-resume-streams). If you use resumable streams, don't pass the request's abort signal to the model call, because a disconnect would then cancel the generation the client wants to reconnect to. Add a separate stop endpoint for user cancellation, as the [AI SDK docs](https://ai-sdk.dev/docs/troubleshooting/abort-breaks-resumable-streams) describe. Save the user's message before you call the model, so a dropped connection doesn't lose the question as well as the answer.
+
+## How to choose hosting for a streaming chat app
+
+Pick the host by the longest answer you need to deliver and by the connections your app holds open:
+
+- **Answers finish in a few minutes, and the app already runs on Vercel:** stream, and set `maxDuration` to cover the longest answer.
+- **Answers or agent runs can take longer than a serverless limit:** a host with a longer request limit, such as Google Cloud Run (up to 60 minutes per request) or Railway (15 minutes per request while data flows), a long-running server on Render, Fly.io or a VM you run, or a background job that the browser follows.
+- **The app needs WebSocket connections:** a host that runs a WebSocket server, such as [Railway](https://docs.railway.com/networking/public-networking/specs-and-limits), where WebSocket connections are exempt from the duration limits, [Render](https://render.com/docs/websocket), which doesn't enforce a maximum duration for them, or [Fly.io](https://fly.io/docs/networking/websockets/), whose proxy doesn't close idle WebSocket connections. On [Vercel](https://vercel.com/docs/functions/websockets), a WebSocket connection closes when the function reaches its maximum duration.
+- **Answers start streaming within 60 seconds but can run longer, and you want the server and its Postgres database in one project:** Prisma Compute with Prisma Postgres, covered next (no WebSocket servers).
+
+## Where does Prisma Compute fit?
+
+Prisma Compute fits a TypeScript chat endpoint that starts streaming within 60 seconds: its [request timeout](/docs/compute/request-timeout) applies only to the wait for the first bytes, so a streamed answer that runs longer is not cut off when it passes 60 seconds. [Prisma Compute](/docs/compute) hosts TypeScript apps built for Node.js, Bun or Next.js, and deployed apps run on Bun. It doesn't require Prisma ORM or Prisma Postgres.
+
+A Next.js app deploys with [Prisma Composer](/docs/composer)'s `nextjs` build adapter and `output: "standalone"`, as the [Next.js guide](/docs/guides/frameworks/nextjs) shows, so the chat route stays a route handler. Keep the model's API key in the deployment's secret configuration, as the [secrets guide](/compute/typescript-app-secrets) describes. The 60 seconds are counted by Compute's ingress, so `maxDuration` and timeouts inside the route don't change them.
+
+When the 60 seconds pass with nothing sent, the client gets a `504` and Compute cancels the request. Your code sees that as an aborted `req.signal`, not as an error in the logs. While a stream waits on the model, the instance uses little CPU but stays running, and the [pricing docs](/docs/compute/pricing) bill provisioned memory for that time and active CPU only while code runs. The Free plan includes 1M requests, 360 GB-hours of memory and 4 active vCPU-hours per month, with no credit card.
+
+Conversations can live in [Prisma Postgres](/docs/postgres) in the same project. The [conversation history guide](/compute/ai-assistant-conversation-history) covers the schema and ownership checks, and the [AI SDK guide](/docs/guides/integrations/ai-sdk) saves each chat from the stream's `onEnd` callback with Prisma ORM. Any Postgres client works.
+
+Know the limits before you rely on it:
+
+- WebSocket servers are not supported. Stream over HTTP or server-sent events, or run the socket server on another host.
+- The docs don't state a maximum length for a started stream. They say to keep data flowing rather than let it sit idle, and to have the client reconnect for anything long-lived ([streaming responses](/docs/compute/request-timeout#streaming-responses)), so send a heartbeat during long tool calls and use a background job the client reconnects to for agent runs.
+- The 60 seconds include everything before the first byte. A route that awaits a slow tool call or a long reasoning step before sending anything gets a `504`, so send an early event first.
+- Work after the response, with `waitUntil` or `KeepAwakeGuard`, is best effort. It keeps the instance awake, but it doesn't retry failures or continue through a restart or a new deployment ([Keeping instances awake](/docs/compute/keeping-instances-awake)). Generation that continues after the browser disconnects, as with `consumeStream()`, is background work in this sense. An agent run that must finish needs saved progress and a separate trigger.
+- Each service runs in one region, and Compute has no edge runtime ([Known limitations](/docs/compute/limitations)). Pick the region nearest your users or your database.
+- If your answers fit inside a serverless limit and the app already runs on Vercel or Netlify, moving hosts doesn't fix a timeout. Stream and set the limit where the app runs.
+
+## How to prevent it
+
+Stream from the first version of the chat route, even when answers are short, so a slower model delays the first token instead of the whole answer. Set an explicit limit on the model call below the host's limit, with the AI SDK's [`timeout` option](https://ai-sdk.dev/docs/reference/ai-sdk-core/stream-text) or an [`AbortSignal.timeout()`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static), so your code returns an error the client can show instead of a gateway page. On Prisma Compute, keep a timeout on work before the first byte under 60 seconds, for example 50, as the [request timeout docs](/docs/compute/request-timeout#what-your-service-sees) advise. Log how long the first token and the full answer take, and compare the slowest answers with your host's limit before you add tools or switch to a slower model.
+
+## When this fix doesn't apply
+
+If the error comes from the model provider, such as a `429` rate limit or a provider timeout, streaming and hosting changes won't help; check the provider's error and retry rules. If the browser gives up first, look for a client-side timeout in a `fetch` wrapper or HTTP client. And if the request fails in under a second, the route is erroring, not timing out: read the server logs before changing limits.

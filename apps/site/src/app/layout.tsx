@@ -17,14 +17,16 @@ import { BuildersDayBanner } from "@/components/builders-day-banner";
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { GoogleTagManager } from "@prisma-docs/ui/components/google-tag-manager";
 import { OpenAiPixel } from "@prisma-docs/ui/components/openai-pixel";
+import { PromptwatchScript } from "@prisma-docs/ui/components/promptwatch-script";
 import { FontAwesomeScript as WebFA } from "@prisma/eclipse";
 import "./globals.css";
 
 // The 2026-rebrand shell (Sora/Inter, redesign Header/Footer) carrying the
-// production analytics stack unchanged: CookieYes consent, GTM (Consent Mode),
-// Tolt affiliate, PostHog (src/instrumentation-client.ts), UTM persistence,
-// and site structured data. FontAwesome stays mounted while pages that still
-// use fa-* glyphs are being rebuilt in the new system.
+// production analytics stack: CookieYes consent, GTM (Consent Mode), Tolt
+// affiliate, PostHog (src/instrumentation-client.ts), Promptwatch (cookieless,
+// ungated), UTM persistence, and site structured data. FontAwesome stays
+// mounted while pages that still use fa-* glyphs are being rebuilt in the
+// new system.
 
 const sora = Sora({
   subsets: ["latin"],
@@ -109,6 +111,8 @@ export default function RootLayout({
         <GoogleTagManager section="website" />
         {/* ChatGPT ads pixel, consent-gated on the CookieYes advertisement category */}
         <OpenAiPixel />
+        {/* Promptwatch visitor analytics — cookieless, loaded without a consent gate */}
+        <PromptwatchScript />
         <JsonLd id="site-structured-data" data={siteStructuredData} />
       </head>
       <body className="antialiased">
