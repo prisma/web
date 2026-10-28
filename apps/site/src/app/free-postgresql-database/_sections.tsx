@@ -190,7 +190,7 @@ function FreeLimit() {
                 </div>
               </div>
 
-              <div className="bg-prism-red-500/[0.05] p-6 sm:p-8">
+              <div className="p-6 sm:p-8">
                 <div className="flex items-start gap-3">
                   <span
                     aria-hidden
@@ -203,7 +203,7 @@ function FreeLimit() {
                     </p>
                   </div>
                 </div>
-                <div className="mt-5 border-t border-prism-red-500/20 pt-5">
+                <div className="mt-5 border-t border-black/[0.06] pt-5">
                   <div className="flex items-start gap-3">
                     <span
                       aria-hidden
