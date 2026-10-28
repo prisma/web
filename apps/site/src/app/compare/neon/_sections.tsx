@@ -163,6 +163,17 @@ function buildNeonPage(minutes: number) {
           competitorItems: CHOOSE_NEON,
           prismaItems: CHOOSE_PRISMA,
         })}
+        <p className="max-w-[68ch]">
+          Want the app hosted next to the database too? See{" "}
+          <a href="/blog/neon-vs-prisma-postgres-app-hosting-in-one-place" className={INLINE}>
+            Neon alternatives with app hosting and Postgres in one place (2026)
+          </a>{" "}
+          and, for more hosts,{" "}
+          <a href="/blog/app-hosting-platforms-with-managed-postgres-2026" className={INLINE}>
+            App hosting platforms with managed Postgres compared (2026)
+          </a>
+          .
+        </p>
       </section>
 
       <section className={SECTION}>

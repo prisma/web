@@ -17,7 +17,7 @@ export const metadata = createPageMetadata({
   // metered on top. lib/markdown-pages.ts repeats it verbatim for the .md
   // rendition.
   description:
-    "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
+    "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. With deploy on push, every pushed branch other than the default gets a preview with its own URL and declared databases, without production data. Any Postgres client works; Prisma ORM is optional.",
   path: "/compute",
   ogKicker: "Prisma Compute",
   ogAccent: "red",

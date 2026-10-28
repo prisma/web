@@ -73,9 +73,11 @@ const PAGES: PageCopy[] = [
     // /postgres and the docs Compute index, except that since 2026-10-07 its
     // first sentence calls Compute a platform-as-a-service (PaaS) and carries
     // no plan or project wording (the shared wording said "on one plan" then
-    // and says "in one project" since 2026-10-08).
+    // and says "in one project" since 2026-10-08). Since 2026-10-28 it names
+    // the per-branch preview after the Free line, in the deploy-on-push docs'
+    // terms (own URL, declared databases, no production data).
     description:
-      "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
+      "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. With deploy on push, every pushed branch other than the default gets a preview with its own URL and declared databases, without production data. Any Postgres client works; Prisma ORM is optional.",
   },
   {
     path: "/pricing",
