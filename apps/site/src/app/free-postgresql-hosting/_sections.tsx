@@ -223,40 +223,44 @@ function FreeLimit() {
 function FreeLimitCases() {
   return (
     <section className="bg-white px-4 pb-24 sm:px-8 sm:pb-32">
-      <ul className="mx-auto grid max-w-site grid-cols-1 gap-3 lg:grid-cols-3">
+      <ul className="mx-auto grid max-w-site grid-cols-1 items-stretch gap-3 lg:grid-cols-3">
         {FREE_POSTGRES_CASES.map((item) => {
           const card = (
             <>
-              <div className="flex h-32 items-center justify-center bg-[#f3f3f3]">
-                <img src={item.image} alt={item.imageAlt} className="h-full w-auto" />
+              <div className="flex h-32 shrink-0 items-center justify-center bg-[#f3f3f3]">
+                <img
+                  src={item.image}
+                  alt={item.imageAlt}
+                  className="h-full w-auto object-contain"
+                />
               </div>
-              <div className="px-4 py-3">
+              <div className="flex flex-1 flex-col px-4 py-3">
                 <h3 className="text-base leading-snug">{item.name}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                <p className="mt-3 text-sm font-semibold tabular-nums text-foreground">
-                  {item.count}
-                </p>
-                <p className="mt-0.5 text-sm text-foreground">{item.plan}</p>
-                {item.linkLabel ? (
-                  <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-black/25 underline-offset-4 group-hover:decoration-foreground">
-                    {item.linkLabel}
-                    <ArrowRightBold className="size-3.5 shrink-0" aria-hidden />
-                  </p>
-                ) : null}
+                <div className="mt-auto pt-3">
+                  <p className="text-sm font-semibold tabular-nums text-foreground">{item.count}</p>
+                  <p className="mt-0.5 text-sm text-foreground">{item.plan}</p>
+                  {item.linkLabel ? (
+                    <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-black/25 underline-offset-4 group-hover:decoration-foreground">
+                      {item.linkLabel}
+                      <ArrowRightBold className="size-3.5 shrink-0" aria-hidden />
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </>
           );
           return (
-            <li key={item.name}>
+            <li key={item.name} className="flex">
               {item.href ? (
                 <a
                   href={item.href}
-                  className="group block overflow-hidden rounded-xl border border-black/[0.06] bg-white text-inherit no-underline outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="group flex h-full w-full flex-col overflow-hidden rounded-xl border border-black/[0.06] bg-white text-inherit no-underline outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   {card}
                 </a>
               ) : (
-                <div className="overflow-hidden rounded-xl border border-black/[0.06] bg-white">
+                <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-black/[0.06] bg-white">
                   {card}
                 </div>
               )}
