@@ -6,13 +6,13 @@ metaTitle: Deploying | Prisma Composer
 metaDescription: Deploy Prisma Composer apps to Prisma Compute with prisma deploy, use stages for isolated environments and per-PR previews, wire CI, and tear environments down safely.
 ---
 
-`deploy` takes your entry file (the one whose default export is the root module) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). You choose the target environment, production or an isolated **stage**, on the command line rather than in your code. Tearing an environment down is the `destroy` operation of the [control API](#driving-deploys-from-code).
+`deploy` loads your entry file (the one whose default export is the root module, named by `entry` in the `composer` section of `prisma.config.ts`) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). You choose the target environment, production or an isolated **stage**, on the command line rather than in your code. Tearing an environment down is the `destroy` operation of the [control API](#driving-deploys-from-code).
 
 | You want to... | Run |
 | --- | --- |
-| Deploy to production | `npx prisma deploy module.ts` |
-| Deploy an isolated environment | `npx prisma deploy module.ts --stage <name>` |
-| Deploy under a different app name | `npx prisma deploy module.ts --name demo-42` |
+| Deploy to production | `npx prisma deploy` |
+| Deploy an isolated environment | `npx prisma deploy --stage <name>` |
+| Deploy under a different app name | `npx prisma deploy --name demo-42` |
 
 ## Credentials
 
@@ -35,7 +35,7 @@ A fresh checkout with those two variables set deploys successfully once the app'
 
 ```npm
 npm run build
-npx prisma deploy module.ts
+npx prisma deploy
 ```
 
 Deploy state records what is already provisioned, so a re-deploy applies the difference instead of recreating everything. The platform stores this state with the environment it describes, scoped to that environment's branch inside the app's project. It is not stored on your machine, so your laptop and CI see the same state. Concurrent deploys of the same environment take turns through a lease on that state. While one deploy holds the lease, a second deploy fails immediately with a message naming the holder. If a deploy crashes, its lease expires after about a minute, and the next deploy takes over.
@@ -47,9 +47,9 @@ Deploying with no `--stage` targets **production**. In platform terms, the app i
 `--stage <name>` deploys a complete, isolated copy of the app as a [preview branch](/compute/branching) of that same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code. Composer's *stage* and Compute's *preview branch* are the same object seen from two tools, which is why the stage's variables are the branch's [environment variables](/compute/environment-variables):
 
 ```npm
-npx prisma deploy module.ts                  # production
-npx prisma deploy module.ts --stage staging  # a persistent staging environment
-npx prisma deploy module.ts --stage pr-42    # one environment per PR
+npx prisma deploy                  # production
+npx prisma deploy --stage staging  # a persistent staging environment
+npx prisma deploy --stage pr-42    # one environment per PR
 ```
 
 Re-deploying any environment is idempotent: it updates the resources in place. A stage name must be a valid git ref name. An invalid name fails the deploy rather than being renamed.
@@ -113,7 +113,7 @@ On GitHub, connect the repository and add [prisma/cloud-deploy-action](https://g
 Any other CI runs the same commands as your machine: set the two credential variables as CI secrets, build, and deploy. The per-PR environment pattern:
 
 ```npm
-npx prisma deploy module.ts --stage "pr-$PR_NUMBER"    # on push
+npx prisma deploy --stage "pr-$PR_NUMBER"    # on push
 ```
 
 When the PR closes, tear the stage down with the `destroy` operation, targeting `{ kind: 'stage', stage: 'pr-<number>' }` from a small script.
