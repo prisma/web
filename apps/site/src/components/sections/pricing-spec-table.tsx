@@ -80,7 +80,7 @@ const PLAN_ROW: Row = {
   values: ["$0", "$10", "$49", "$129"],
 };
 
-const GROUPS: Group[] = [
+export const GROUPS: Group[] = [
   {
     label: "Prisma Postgres",
     icon: Database,
@@ -107,7 +107,9 @@ const GROUPS: Group[] = [
         label: "Data transfer",
         values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
       },
-      { label: "Spend limits", values: ["—", YES, YES, YES] },
+      // Free has a spend limit too: it is fixed at $0 and the plan needs no card,
+      // so "Every plan includes: Spend limits" (pricing-includes.tsx) holds.
+      { label: "Spend limits", values: ["Fixed at $0, no card required", YES, YES, YES] },
     ],
   },
   {
@@ -171,14 +173,29 @@ const GROUPS: Group[] = [
         label: "Connection idle timeout",
         values: ["60 minutes", "60 minutes", "60 minutes", "60 minutes"],
       },
-      { label: "Auto-scaling", values: [YES, YES, YES, YES] },
+      // Was "Auto-scaling: Included", carried over from the Accelerate
+      // connection pool. The Prisma Postgres pool has fixed per-plan limits
+      // and runs PgBouncer "in transactional pool mode"
+      // (docs/postgres/database/connection-pooling, checked 2026-10-22).
+      {
+        label: "Pool mode",
+        values: ["Transaction", "Transaction", "Transaction", "Transaction"],
+      },
       {
         label: "Operation response size",
         values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
       },
+      // "Pooled connections enforce a 10-minute query timeout ... a direct
+      // connection where no timeout is enforced"
+      // (docs/postgres/database/connection-pooling, checked 2026-10-22).
       {
         label: "Operation duration (db queries)",
-        values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
+        values: [
+          "10 min pooled, unlimited direct",
+          "10 min pooled, unlimited direct",
+          "10 min pooled, unlimited direct",
+          "10 min pooled, unlimited direct",
+        ],
       },
       {
         label: "Operation duration (interactive)",
@@ -324,11 +341,7 @@ function renderCellWithLinks(value: string, links: CellLink[]) {
     if (index === -1) return;
     if (index > cursor) nodes.push(value.slice(cursor, index));
     nodes.push(
-      <Link
-        key={`${href}-${i}`}
-        href={href}
-        className="underline-offset-4 hover:underline"
-      >
+      <Link key={`${href}-${i}`} href={href} className="underline-offset-4 hover:underline">
         {token}
       </Link>,
     );
@@ -398,11 +411,7 @@ function DesktopRow({ row }: { row: Row }) {
       </th>
       {row.values.map((v, i) => (
         <td key={i} className="px-5 py-3.5 align-top">
-          <Cell
-            value={v}
-            highlight={i === HIGHLIGHT}
-            links={row.cellLinks?.[i as 0 | 1 | 2 | 3]}
-          />
+          <Cell value={v} highlight={i === HIGHLIGHT} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
         </td>
       ))}
     </tr>

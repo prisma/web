@@ -1,9 +1,12 @@
 import "./env.ts";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { publicAssetInventory } from "./public-assets.ts";
 import { websiteBuild } from "./website-build.ts";
 import { checkBudget } from "./budget.ts";
+import { prepareRetainedAssets } from "./retained-assets.ts";
+import path from "node:path";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const names = ["site", "docs", "blog", "handbook", "eclipse"];
@@ -27,6 +30,44 @@ run("pnpm", [
 const gateway = new URL("../dist/composer/gateway/", import.meta.url);
 await rm(gateway, { recursive: true, force: true });
 await mkdir(gateway, { recursive: true });
+const retain = process.env.WEB_RETAIN_ASSETS === "1";
+let previousOrigin: string | undefined;
+if (retain) {
+  const branch =
+    process.env.GITHUB_HEAD_REF ||
+    process.env.GITHUB_REF_NAME ||
+    spawnSync("git", ["branch", "--show-current"], { cwd: root, encoding: "utf8" }).stdout?.trim();
+  if (!branch) throw new Error("Cannot determine the deployment branch for static retention");
+  const result = spawnSync(
+    path.join(root, "node_modules/.bin/prisma"),
+    ["service", "list", "--project", "web", "--branch", branch, "--json"],
+    { cwd: root, encoding: "utf8" },
+  );
+  if (result.error || result.status !== 0)
+    throw new Error("Cannot inspect the existing gateway for static retention");
+  const envelope = JSON.parse(result.stdout).envelope;
+  if (!envelope.ok || !Array.isArray(envelope.result?.services))
+    throw new Error("Invalid service inventory for static retention");
+  previousOrigin = envelope.result.services.find(
+    (service: { name: string }) => service.name === "gateway",
+  )?.liveUrl;
+  if (
+    previousOrigin &&
+    (new URL(previousOrigin).protocol !== "https:" ||
+      !new URL(previousOrigin).hostname.endsWith(".prisma.build"))
+  )
+    throw new Error("Unexpected previous gateway address");
+}
+await prepareRetainedAssets({
+  root,
+  gateway: fileURLToPath(gateway),
+  previousOrigin,
+  enabled: retain,
+});
+await writeFile(
+  new URL("public-assets.json", gateway),
+  JSON.stringify(await publicAssetInventory(root, names)),
+);
 run("bun", [
   "build",
   "composer/gateway/server.ts",

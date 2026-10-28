@@ -1,0 +1,214 @@
+---
+title: "Node app gets an SSL error connecting to hosted Postgres? Check sslmode, the CA and your driver"
+description: "Match the error to its cause: TLS turned off, a CA that Node doesn't trust, a hostname mismatch, or a driver that reads sslmode differently from psql."
+summary: "Most SSL errors between a Node app and hosted Postgres have one of four causes: the client never turned TLS on (`no pg_hba.conf entry ... no encryption`), the server's certificate chains to a CA that Node doesn't trust (`self-signed certificate in certificate chain`, `unable to verify the first certificate`), the host name you connect to isn't on the certificate, or the client asked for TLS from a server that doesn't offer it. A common trigger is that your driver reads `sslmode` differently from `psql`: node-postgres (`pg` 8.x) treats `sslmode=require` as `verify-full` and checks the certificate, while `psql` and postgres.js treat `require` as encrypt-only, so a connection string that works in `psql` can fail in Node. Turn TLS on, then give Node your provider's CA certificate if Node doesn't already trust it. `rejectUnauthorized: false` also makes the error go away, but the connection stays encrypted without checking which server it reached."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "11 min read"
+faq:
+  - question: "Why does the app connect locally but fail with an SSL error after I deploy it?"
+    answer: "Compare what each environment actually uses. A local database in a container often has no TLS, so a local URL without `sslmode` works, and the deployed URL to hosted Postgres needs TLS. A CA file referenced by a relative path (`sslrootcert=./certs/ca.pem` or `readFileSync(\"./certs/ca.pem\")`) resolves against the process's working directory, so it has to be in the deployed files at that path. And `NODE_EXTRA_CA_CERTS` is read only when Node starts, so set it in the host's environment settings; setting it from code, for example with dotenv, has no effect. Also check whether `NODE_TLS_REJECT_UNAUTHORIZED=0` is set locally but not in production: it turns off certificate checks for the whole process, so the local app connects and the deployed one doesn't."
+  - question: "What does \"SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'\" mean?"
+    answer: "pg-connection-string 2.10.0 and later, which `pg` 8.17.0 and later require, print it once when a connection string uses one of those modes. Today they all verify the certificate and the host name, like `verify-full`. The warning says that pg 9 will switch them to the weaker libpq meanings. Write `sslmode=verify-full` to keep today's checks and silence the warning, or add `uselibpqcompat=true` to get the libpq behavior now."
+  - question: "Should I use sslmode=require or sslmode=verify-full?"
+    answer: "Use `verify-full` whenever Node can verify the certificate, either because the provider's CA is public or because you give Node the provider's CA file. The [PostgreSQL docs](https://www.postgresql.org/docs/current/libpq-ssl.html) recommend it in most security-sensitive environments, and in libpq `require` encrypts without checking the server. In `pg` 8 the two behave the same today, but `require` is the one that changes in pg 9."
+  - question: "Does SSL work differently through a connection pooler?"
+    answer: "The certificate your app verifies belongs to whatever it connects to, so on a pooled host that is the pooler's certificate, and the pooler opens its own connection to the database. Use the host name from the provider's pooled connection string and check that host with the `openssl` command in step 1, because the pooled and direct hosts can present different certificates."
+related:
+  - title: "Hosting Postgres without replacing your pg code"
+    href: "/postgres/node-postgres-hosting"
+  - title: "A deployed app says DATABASE_URL is missing"
+    href: "/postgres/database-url-missing"
+  - title: "Connecting to your Prisma Postgres database"
+    href: "/docs/postgres/database/connecting-to-your-database"
+  - title: "Prisma ORM 7 upgrade: SSL certificate validation changes"
+    href: "/docs/guides/upgrade-prisma-orm/v7#ssl-certificate-validation-changes"
+cta:
+  title: "Get your Prisma Postgres connection strings"
+  description: "Prisma Postgres connection strings include sslmode=require, and its hosts use Let's Encrypt certificates, so node-postgres verifies them without a CA file. Prisma ORM is optional; any Postgres client connects."
+  label: "Get your connection strings"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+When a Node app can't reach hosted Postgres and the error mentions SSL or a certificate, the exact message tells you which side is wrong: the client didn't ask for TLS, Node doesn't trust the certificate the server sent, the host name doesn't match that certificate, or the client asked for TLS from a server that doesn't offer it. The fix is to turn TLS on in the driver and, if the provider uses a private CA, give Node that CA certificate. Turning off certificate verification also makes the error go away, but then the client no longer checks which server it is talking to.
+
+We make Prisma Postgres, one of the hosted databases on this page. The checks work with any provider. Driver behavior comes from the node-postgres, postgres.js and PostgreSQL source and docs, checked on October 22, 2026, against `pg` 8.23.1, pg-connection-string 2.14.1 and postgres 3.4.9, and the `pg`, postgres.js and `@prisma/adapter-pg` errors below were reproduced against a local TLS server signed by a private CA.
+
+## Which error do you have?
+
+| Error | What it means | Fix |
+| --- | --- | --- |
+| `no pg_hba.conf entry for host "...", user "...", database "...", no encryption` (`SSL off` before PostgreSQL 14) | Usually, the server accepts only TLS connections and your client connected without TLS. The same message also appears when no rule matches your client's address, user or database at all: if it comes back after you turn TLS on, ending in `SSL encryption`, check those three values and the provider's IP allow list, because the server [denies access when no record matches](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html). | [Step 2](#2-turn-tls-on-in-the-driver) |
+| Neon: ``connection is insecure (try using `sslmode=require`)`` | The same thing: [Neon rejects connections without TLS](https://neon.com/docs/connect/connect-securely), and its [proxy](https://github.com/neondatabase/neon/blob/main/proxy/src/pglb/mod.rs) sends this message. | [Step 2](#2-turn-tls-on-in-the-driver) |
+| `self-signed certificate in certificate chain` (`SELF_SIGNED_CERT_IN_CHAIN`) | The server's certificate chains to a root CA that isn't in Node's list. Providers with a private CA, such as AWS RDS and Supabase, produce this error or the next one until you give Node their CA. | [Step 3](#3-give-node-the-providers-ca-certificate) |
+| `unable to verify the first certificate` (`UNABLE_TO_VERIFY_LEAF_SIGNATURE`) or `unable to get local issuer certificate` | The server sent its certificate without a chain that Node can follow to a trusted root. Either the root CA isn't one Node trusts, which Step 3 fixes, or the server left out an intermediate certificate, which a root CA alone can't replace: the server has to [send its intermediates](https://nodejs.org/api/tls.html#tlscreatesecurecontextoptions). If the chain from Step 1 shows only the server's own certificate, the provider or your proxy needs to fix its certificate bundle. | [Step 1](#1-read-the-full-error-and-look-at-the-certificate), then [Step 3](#3-give-node-the-providers-ca-certificate) |
+| `self-signed certificate` (`DEPTH_ZERO_SELF_SIGNED_CERT`) | The server's own certificate is self-signed, with no CA behind it. If the provider publishes that certificate, give it to Node as the CA; if it doesn't, read what [turning verification off](#what-does-rejectunauthorized-false-give-up) gives up. | [Step 3](#3-give-node-the-providers-ca-certificate) |
+| `certificate has expired` (`CERT_HAS_EXPIRED`) | A certificate in the chain is past its end date. If you load a CA file, download the provider's current one, because providers replace their CAs. If the server's own certificate expired, the provider has to renew it; on Railway's Postgres image, a restart or redeploy does. | [Step 1](#1-read-the-full-error-and-look-at-the-certificate), then [Step 3](#3-give-node-the-providers-ca-certificate) |
+| `Hostname/IP does not match certificate's altnames` (`ERR_TLS_CERT_ALTNAME_INVALID`) | You connected by IP address or by a name that isn't on the certificate. | [Step 4](#4-connect-with-the-host-name-on-the-certificate) |
+| `The server does not support SSL connections` | Your client asked for TLS and the server answered that it has none. This is usually a local database, or the wrong host or port. | [When the fix doesn't apply](#when-does-this-fix-not-apply) |
+| Prisma ORM 7: `P1010: User was denied access on the database` or `P1011: Error opening a TLS connection: ...` | `P1010` wraps the `pg_hba.conf` rejection above; `P1011` wraps a certificate error or a server without TLS. Both can appear after an upgrade from Prisma ORM 6. | [Step 5](#5-if-you-use-prisma-orm) |
+
+Certificate errors come from Node's TLS layer with the [OpenSSL error code](https://nodejs.org/api/tls.html#x509-certificate-error-codes) in `err.code`, and `pg` and postgres.js throw them with that code. Node 16 and older, built on [OpenSSL 1.1.1](https://github.com/openssl/openssl/blob/OpenSSL_1_1_1-stable/crypto/x509/x509_txt.c), print the same messages without the hyphen, such as `self signed certificate in certificate chain`. The two `pg_hba.conf` wordings are from the [PostgreSQL server source](https://github.com/postgres/postgres/blob/master/src/backend/libpq/auth.c), and on RDS, [`rds.force_ssl`](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/PostgreSQL.Concepts.General.SSL.html) is on by default from PostgreSQL 15, so those servers send the `no encryption` form. AWS's example shows `SSL off` from an older version.
+
+## Why does sslmode=require fail in Node when psql connects?
+
+`sslmode` comes from libpq, the C library behind `psql`, and Node drivers don't share it. Each one parses the connection string itself. In the [libpq SSL docs](https://www.postgresql.org/docs/current/libpq-ssl.html), `require` encrypts the connection without checking the server's certificate. node-postgres reads the same word as encrypt and check both the certificate and the host name:
+
+| `sslmode` | `psql` (libpq) | node-postgres (`pg` 8.x) | `pg` with `uselibpqcompat=true` | postgres.js 3.4 |
+| --- | --- | --- | --- | --- |
+| `disable` | No TLS | No TLS | No TLS | No TLS |
+| `prefer` | TLS if the server offers it, no check | TLS, full check | TLS, no check | TLS if offered, no check |
+| `require` | TLS, no check | TLS, full check | TLS, no check | TLS, no check |
+| `verify-ca` | TLS, checks the CA chain | TLS, full check | TLS, checks the CA chain, needs `sslrootcert` | TLS, full check |
+| `verify-full` | TLS, checks the chain and host name | TLS, full check | TLS, full check | TLS, full check |
+| `no-verify` | Error: `invalid sslmode value` | TLS, no check | TLS, full check | TLS, full check |
+
+Sources: libpq's [`sslmode` table](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS) and the [`fe-connect.c`](https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/fe-connect.c) check that rejects other values; [pg-connection-string's README](https://github.com/brianc/node-postgres/blob/master/packages/pg-connection-string/README.md) and [source](https://github.com/brianc/node-postgres/blob/master/packages/pg-connection-string/index.js); postgres.js's [connection code](https://github.com/porsager/postgres/blob/master/src/connection.js), which turns verification off only for `require`, `prefer` and `allow`. "Full check" means the certificate chain must reach a trusted root and the host name must be on the certificate. In libpq, `require` also checks the chain when a root certificate file exists, for backward compatibility. Unlike libpq and postgres.js, `pg` never falls back to an unencrypted connection: with any mode except `disable`, a server without TLS gives `The server does not support SSL connections`.
+
+So the same `postgres://...?sslmode=require` string connects in `psql` and with postgres.js, and fails in `pg` with `self-signed certificate in certificate chain` when the provider's CA is private. Since pg-connection-string 2.10.0, which `pg` 8.17.0 and later require, `pg` also prints a one-time `SECURITY WARNING` when the URL uses `prefer`, `require` or `verify-ca`: in pg 9 these modes switch to the libpq meanings, and `require` will stop checking the certificate. Write `verify-full` if you want the check to stay.
+
+Two more details cause most of the confusion:
+
+- **`pg` replaces your `ssl` object when the URL has SSL parameters.** The [node-postgres SSL docs](https://node-postgres.com/features/ssl) say that if the connection string contains `sslmode`, `sslrootcert`, `sslcert` or `sslkey`, the `ssl` object in your config is replaced. A `ca` you pass in code is then silently dropped, and the error stays the same.
+- **`sslmode=no-verify` exists only in node-postgres.** `psql` and `pg_dump` reject it, and postgres.js or `pg` with `uselibpqcompat=true` treat it as a full check, so a `DATABASE_URL` shared with those tools can't use it.
+
+## How do I fix it?
+
+### 1. Read the full error and look at the certificate
+
+Log `err.code` and `err.message` where the pool connects, because the code names the cause more precisely than the surrounding stack trace. Then look at the certificate chain the server sends. OpenSSL 1.1.1 and later speak the Postgres TLS handshake with [`-starttls postgres`](https://docs.openssl.org/master/man1/openssl-s_client/), and the command sends no credentials. On macOS, `/usr/bin/openssl` is LibreSSL, which doesn't support `-starttls postgres`, so check `openssl version` first and use OpenSSL instead, for example Homebrew's `"$(brew --prefix openssl)/bin/openssl"`. If the command prints nothing, remove `2>/dev/null` to see the error:
+
+```bash
+HOST=db.example.com
+openssl s_client -starttls postgres -connect "$HOST:5432" -servername "$HOST" </dev/null 2>/dev/null \
+  | grep -E "^ *[0-9] s:|^ *i:|^Verify return code"
+```
+
+Against a server whose CA isn't trusted, the output ends with:
+
+```text
+ 0 s:CN=localhost
+   i:CN=Test Root CA
+ 1 s:CN=Test Root CA
+   i:CN=Test Root CA
+Verify return code: 19 (self-signed certificate in certificate chain)
+```
+
+The issuer on the last `i:` line names the CA you need. `Verify return code: 0 (ok)` means the chain verifies against your system's CA store. Node ships its own list of root CAs, which can differ from the system's, so treat `0 (ok)` as a strong hint, and the issuer name as the CA to look for.
+
+### 2. Turn TLS on in the driver
+
+`pg` and postgres.js both default to no TLS. Turn it on in the connection string or in code, not both:
+
+```ts
+import pg from "pg";
+
+// In the URL: postgres://USER:PASSWORD@HOST:5432/DB?sslmode=verify-full
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+```
+
+```ts
+import postgres from "postgres";
+
+// postgres.js: "verify-full" checks the certificate, "require" only encrypts
+const sql = postgres(process.env.DATABASE_URL!, { ssl: "verify-full" });
+```
+
+`pg` also reads `PGSSLMODE` when neither the URL nor the config sets SSL. If the provider's CA is public, as with [Neon](https://neon.com/docs/connect/connect-securely) and Prisma Postgres, which both use Let's Encrypt, this step is the whole fix.
+
+### 3. Give Node the provider's CA certificate
+
+When the chain ends at a private root, Node needs that root. Download it from the provider, keep it in the repository or the deployed files (it is public, not a secret), and pick one way to load it:
+
+```ts
+import { readFileSync } from "node:fs";
+import pg from "pg";
+
+const pool = new pg.Pool({
+  // No sslmode, sslrootcert, sslcert or sslkey in this URL, or pg replaces the ssl object
+  connectionString: process.env.DATABASE_URL,
+  ssl: { ca: readFileSync("./certs/global-bundle.pem", "utf8") },
+});
+```
+
+- **In the connection string (`pg` only):** `?sslmode=verify-full&sslrootcert=./certs/global-bundle.pem`. node-postgres reads the file when it parses the URL. `pg` doesn't support libpq's `sslrootcert=system` and fails with `ENOENT` because it looks for a file named `system`. postgres.js doesn't read `sslrootcert` files, and it sends URL parameters it doesn't know, including `sslrootcert`, to the server as settings, which PostgreSQL rejects with `unrecognized configuration parameter "sslrootcert"`. With postgres.js, keep `sslrootcert` out of the URL and pass the CA in code, `ssl: { ca: readFileSync("./certs/global-bundle.pem", "utf8") }`, or use `NODE_EXTRA_CA_CERTS`.
+- **For the whole process:** set [`NODE_EXTRA_CA_CERTS`](https://nodejs.org/api/cli.html#node_extra_ca_certsfile) to the file's path in the host's environment settings. Node adds those certificates to its default list for every TLS connection, so it works with any driver and with `sslmode=require` left in the URL. Node reads the variable only at startup, and ignores it for a connection whose code sets `ca`. If the CA is already in the operating system's trust store, [`NODE_USE_SYSTEM_CA=1`](https://nodejs.org/api/cli.html#node_use_system_ca1) (Node 22.19 and later) makes Node trust that store as well.
+
+Sequelize, TypeORM, Knex and Drizzle connect through `pg`, so the same `ssl` object applies once it is in the right place: `dialectOptions: { ssl: { ca } }` in [Sequelize](https://sequelize.org/docs/v6/other-topics/dialect-specific-things/), the `ssl` option in [TypeORM](https://typeorm.io/docs/drivers/postgres/), `connection: { connectionString, ssl: { ca } }` in [Knex](https://knexjs.org/guide/#configuration-options), and in [Drizzle](https://orm.drizzle.team/docs/get-started-postgresql) either the same `connection` object or a `pg.Pool` you configure yourself. When the URL reaches `pg` as a connection string, keep `sslmode` out of it, or `pg` replaces the `ssl` object as described above.
+
+Setting `ca` replaces Node's [default root list](https://nodejs.org/api/tls.html#tlscreatesecurecontextoptions) for that connection, which is what you want for a private CA. What the common providers document, alphabetically:
+
+| Provider | CA to give Node | Source |
+| --- | --- | --- |
+| AWS RDS | `global-bundle.pem` from `https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem`, or the bundle for your region | [RDS SSL/TLS docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html) |
+| Azure Database for PostgreSQL | None: the chain ends at DigiCert Global Root G2 or Microsoft RSA Root CA 2017, both in Node's list. TLS is required unless you turn off `require_secure_transport`. Don't put Azure's intermediate or server certificates in `ca`, because Azure rotates them without notice. | [Azure TLS docs](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/security-tls) |
+| DigitalOcean | Standard Edition: download the CA certificate from the cluster's Overview page, under Connection Details. The connection details use `sslmode=require`, which `pg` treats as a full check, so `pg` needs this file. Advanced Edition has no CA file and verifies against the system trust store. | [DigitalOcean docs](https://docs.digitalocean.com/products/databases/postgresql/how-to/connect/) |
+| Google Cloud SQL | `server-ca.pem`, from `gcloud sql instances describe INSTANCE --format="value(serverCaCert.cert)"`. Unencrypted connections are allowed until you set the SSL mode to `ENCRYPTED_ONLY`. Connecting by IP address fails Node's host name check, so connect with a name from the instance's `dnsNames` where it has one, or use a Cloud SQL Connector or the Cloud SQL Auth Proxy, which verify the server for you. | [Cloud SQL SSL docs](https://docs.cloud.google.com/sql/docs/postgres/configure-ssl-instance) |
+| Heroku Postgres, Essential and Advanced | The AWS RDS global bundle, the same file as the RDS row. Heroku's stack images include it at `/usr/lib/ssl/certs/ca-certificates.crt`; Node doesn't read that file by default, so pass the path as `ca` or `NODE_EXTRA_CA_CERTS`. Heroku also suggests `sslrootcert=system`, which `pg` doesn't support. | [Heroku Dev Center](https://devcenter.heroku.com/articles/connecting-heroku-postgres#connecting-to-essential-and-advanced-databases) |
+| Heroku Postgres, other plans | Heroku's help article says the certificates are not verifiable, except that Private and Shield databases can get verifiable certificates with Mutual TLS. The Dev Center's Node example uses `rejectUnauthorized: false`. | [Heroku help](https://help.heroku.com/3DELT3RK/why-can-t-my-third-party-utility-connect-to-heroku-postgres-with-ssl), [Node example](https://devcenter.heroku.com/articles/connecting-heroku-postgres#connecting-in-node-js) |
+| Neon | None: ISRG Root X1 (Let's Encrypt) is already in Node's list | [Neon docs](https://neon.com/docs/connect/connect-securely) |
+| Prisma Postgres | None: the hosts use Let's Encrypt certificates | [Connection strings](/docs/postgres/database/connecting-to-your-database), checked with `openssl` on October 22, 2026 |
+| Railway | Not documented. Railway's SSL Postgres image creates its own root CA (`CN=root-ca`) when the service starts and signs a server certificate for `localhost` and the service's private Railway domain, so Node can't verify it with a public CA list, and the public host name isn't on it. For connections over the private domain, read that root CA with `railway ssh -- cat /var/lib/postgresql/data/certs/root.crt` ([railway ssh](https://docs.railway.com/cli/ssh)) and pass it as `ca`. The certificates last 820 days by default, and a restart or redeploy replaces them, root CA included, when they expire within 30 days, so copy the CA again after that. | [Image source](https://github.com/railwayapp-templates/postgres-ssl) |
+| Render | Not documented. External connections always use TLS, and Render rejects `sslmode=disable`. Check the chain with step 1 to see whether Node needs a CA. | [Render docs](https://render.com/docs/postgresql-creating-connecting) |
+| Supabase | Download the CA from the SSL Configuration section of the project's Database Settings | [Supabase SSL docs](https://supabase.com/docs/guides/platform/ssl-enforcement) |
+
+Supabase accepts connections without TLS unless you turn on its SSL enforcement setting, so a Supabase app can run with TLS off and start failing once enforcement is turned on.
+
+### 4. Connect with the host name on the certificate
+
+Node checks that the name you connect to is on the server's certificate, so an IP address, a CNAME you created or an SSH tunnel to `localhost` fails with `Hostname/IP does not match certificate's altnames`. Use the host name from the provider's connection string. For an SSH tunnel or a local proxy in `pg`, connect to its IP address, such as `127.0.0.1`, and pass the provider's host name as `ssl.servername`, so Node checks the certificate against that name. When the host is a name rather than an IP address, node-postgres sets the server name from the host itself and replaces yours.
+
+### 5. If you use Prisma ORM
+
+**Prisma ORM 7** connects through a driver adapter. With `@prisma/adapter-pg`, the config you pass to `PrismaPg` goes to a node-postgres `Pool`, so everything above applies, and the [upgrade guide](/docs/guides/upgrade-prisma-orm/v7#ssl-certificate-validation-changes) lists the certificate change. The adapter turns the driver's errors into Prisma error codes. In `@prisma/adapter-pg` 7.10.1, a server's `pg_hba.conf` rejection (SQLSTATE `28000`) becomes `P1010: User was denied access on the database`, and a certificate error becomes `P1011: Error opening a TLS connection:` followed by Node's message. Two differences from Prisma ORM 6 cause them:
+
+- **No `sslmode` in the URL.** Prisma ORM 6 defaulted to `prefer` and used TLS whenever the server offered it. node-postgres defaults to no TLS, so a server that requires TLS refuses the connection and you get `P1010`. Add `sslmode=verify-full` (step 2).
+- **A certificate Node doesn't trust.** Prisma ORM 6 accepted invalid certificates by default; node-postgres checks them, and you get `P1011`. Give the adapter the CA (step 3):
+
+```ts
+import { readFileSync } from "node:fs";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client";
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL, // without sslmode or sslrootcert
+  ssl: { ca: readFileSync("./certs/ca.pem", "utf8") },
+});
+
+export const prisma = new PrismaClient({ adapter });
+```
+
+If you'd rather keep `sslmode` in the URL, for example because other tools read the same `DATABASE_URL`, set `NODE_EXTRA_CA_CERTS` instead. The upgrade guide also shows `ssl: { rejectUnauthorized: false }` to keep the Prisma ORM 6 behavior, with the trade-off described below.
+
+**Prisma ORM 6** uses its Rust query engine, where [`sslmode`](/docs/orm/v6/overview/databases/postgresql) accepts `disable`, `prefer` (the default) and `require`, and `sslaccept` defaults to `accept_invalid_certs`, which the docs describe as bypassing the certificate check. That is why the same database connected without errors before the upgrade. To check certificates on Prisma ORM 6, set `sslaccept=strict`, and point `sslcert` at the root certificate if it isn't in your system's trust store; the path resolves relative to the `prisma` folder.
+
+### What does rejectUnauthorized: false give up?
+
+`ssl: { rejectUnauthorized: false }` in `pg`, `sslmode=no-verify` in a `pg` URL and `ssl: "require"` in postgres.js keep the connection encrypted and stop checking the certificate. Anyone who can redirect the connection, through DNS or a network they control, can then present their own certificate, read the password and the data, and pass them on. The [libpq table](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS) lists this mode as eavesdropping protection without man-in-the-middle protection.
+
+Use it when the provider's certificates can't be verified, as Heroku's help article says for plans other than Essential, Advanced, Private and Shield, and as with Railway's Postgres image over its public host name, which isn't on the certificate, or for a few minutes to confirm that the certificate is what's failing. When the provider publishes a CA, give Node the CA instead.
+
+`NODE_TLS_REJECT_UNAUTHORIZED=0` is a wider version of the same setting: it [turns off certificate checks](https://nodejs.org/api/cli.html#node_tls_reject_unauthorizedvalue) for every TLS connection in the process, HTTPS calls to other APIs included, and Node prints a warning when it is set. If you find it in any environment, remove it and fix the CA instead.
+
+## When does this fix not apply?
+
+- **`The server does not support SSL connections` on a local database.** Many local setups run without TLS. Use `sslmode=disable` in the local `.env` only, and keep TLS settings in the production value. If you see it against a hosted provider, check the host and port: you may be pointing at a service that doesn't speak Postgres TLS.
+- **`ECONNREFUSED`, `ENOTFOUND` or a timeout.** The client never reached the database, so TLS isn't involved yet. Check the host, the port, the provider's IP allowlist and whether your network allows outbound traffic on port 5432.
+- **`Connection terminated unexpectedly` in `pg`, or `SSL SYSCALL error: EOF detected` in `psql`.** The connection closed after it opened. The server restarted, a proxy closed an idle connection, or the network dropped it. These messages don't say that a certificate failed; retry, and look at the provider's status page and logs.
+- **`password authentication failed`.** The server got as far as checking the password, so look at the credentials, not the certificate. On Neon, old drivers without SNI support also cause it, as [Neon's error page](https://neon.com/docs/connect/connection-errors) explains.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and any Postgres client connects to it, including `pg`, postgres.js, Drizzle, Kysely and Prisma ORM, which is optional. Prisma Postgres fits when you are picking a host for a new Node app and want certificate checks to pass without a CA file: Node's default CA list verifies its certificates, so `pg` connects with the Console's `sslmode=require` string or with `sslmode=verify-full`, and there is no CA file to download or deploy. Its [connection strings](/docs/postgres/database/connecting-to-your-database) come with `sslmode=require`, and the docs say SSL is mandatory. The pooled host, `pooled.db.prisma.io`, and the direct host, `db.prisma.io`, both listen on port 5432.
+
+Both hosts present Let's Encrypt certificates issued for their own names. On October 22, 2026, the `openssl` command from step 1 returned `Verify return code: 0 (ok)` for both, and a Node 22 TLS handshake with the default CA list reported the connection as authorized. So node-postgres verifies them with no CA file: the connection string from the Console works as it is, and `sslmode=verify-full` works too and avoids the `pg` warning. If it fails with a timeout or a refused connection, the docs say to check `sslmode=require` and port 5432, and a corporate firewall or VPN that blocks outbound traffic to `*.db.prisma.io` on that port; the [serverless driver](/docs/postgres/database/serverless-driver), which connects over HTTPS, is the docs' other option there.
+
+Know the limits before you move a database to get rid of a certificate problem:
+
+- If your database already runs on RDS, Supabase or Heroku and the certificate is all that's wrong, fix the CA where it is. That takes one CA file, while moving a database is a migration.
+- [Direct connections](/docs/postgres/database/connection-pooling) are capped at 10 on Free and Starter, 50 on Pro and 100 on Business, and 5 of them are reserved for platform operations. Pooled connections are capped at 10, 100, 500 and 1,000, and pooled queries end after 10 minutes.
+- [Daily backups](/docs/postgres/database/backups) are on Starter, Pro and Business only, kept for 7 days on Starter and Pro and 30 days on Business, and taken on days the database has activity. There is no point-in-time recovery yet (it is coming in November 2026).
+
+The Free plan includes 2 GB of storage and needs no credit card. See [pricing](/pricing) for the paid plans.

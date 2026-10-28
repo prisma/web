@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Marker } from "@/components/brand/marker";
 import { RoleKicker } from "@/components/brand/role-kicker";
+import { SpectrumRing } from "@/components/brand/spectrum-ring";
 import { CheckBold, XCircle } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
@@ -145,10 +146,10 @@ export function PricingCalculator() {
                 <Reveal key={e.plan.id} delay={0.25 + i * 0.05} className="flex-1">
                   <div
                     className={cn(
-                      "flex h-full flex-col justify-center rounded-2xl border px-5 py-4",
+                      "relative flex h-full flex-col justify-center rounded-2xl border px-5 py-4",
                       !e.eligible && "opacity-60",
                       isRec
-                        ? "spectrum-border spectrum-border-on border-transparent bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                        ? "border-transparent bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
                         : "border-black/[0.06] bg-paper",
                     )}
                   >
@@ -171,6 +172,7 @@ export function PricingCalculator() {
                     <p className="mt-2 text-pretty text-xs leading-relaxed text-muted-foreground">
                       {planTerms(e.plan)}
                     </p>
+                    {isRec && <SpectrumRing />}
                   </div>
                 </Reveal>
               );

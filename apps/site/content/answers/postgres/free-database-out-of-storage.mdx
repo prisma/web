@@ -1,0 +1,219 @@
+---
+title: "My free hosted Postgres database ran out of storage. What are my options?"
+description: "Export a copy first, find what fills the database, then delete or archive old rows, move files out, upgrade the plan or move to a host with more free storage."
+summary: "On Aiven, Neon and Supabase, a full database stops taking writes and stays readable: Supabase puts a Free project in read-only mode above 500 MB, Neon fails writes that would grow a Free project past 1 GB, and Aiven turns on read-only mode when the disk is nearly full. Render instead suspends a database that goes past its storage limit until you resume it. Take a `pg_dump` first, because several free plans include no backups. Then find what fills the database with `pg_total_relation_size` and pick a way out: delete or archive rows you no longer need and reclaim the space with `TRUNCATE` or `VACUUM`, move files stored in table columns to object storage, upgrade to the provider's paid plan, or restore the dump on a host with more free storage. On Render, a free database also expires 30 days after it is created, so move or upgrade it either way."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "10 min read"
+faq:
+  - question: "Will my free database be deleted when it runs out of storage?"
+    answer: "Not for being full, on the hosts that document it. Neon says its Free plan limits don't delete data, and Supabase switches a full Free project to read-only. Deletion comes from other free-plan rules: a free Render database expires 30 days after creation and is deleted 14 days later unless you upgrade it, Railway deletes volumes created during its trial 30 days after the trial credits expire unless you upgrade. Supabase pauses Free projects after a week of low activity, but a paused project is not deleted: you can restore it from the dashboard for up to a year."
+  - question: "Why is my database bigger than the data I put in it?"
+    answer: "Postgres stores more than your rows. Indexes take space of their own, long values such as JSON documents or base64 images go to a TOAST table next to the main table, and deleted or updated rows stay on disk as dead rows until `VACUUM` marks the space for reuse. Hosts also count what they install: Supabase says a new project starts at about 40 to 60 MB of database size from its extensions and schemas."
+  - question: "Should I run VACUUM FULL on every table?"
+    answer: "No. `VACUUM FULL` takes an exclusive lock on each table it rewrites, so the app can't read or write that table until it finishes, and it needs room for a full new copy of the table while it runs. Run it only on the tables where you deleted a large share of the rows, starting with the smaller ones. Plain `VACUUM` and autovacuum make freed space reusable without that lock, which is enough when the table will fill up again."
+  - question: "Do free Postgres plans include backups?"
+    answer: "Several don't. Supabase's Free plan has no automatic backups and Render's free databases support no backups, and neither does the Prisma Postgres Free plan. Neon's Free plan keeps 6 hours of history you can restore from, and Aiven says its free PostgreSQL plan includes automated backups. Keep your own `pg_dump` either way, stored outside the host's account."
+related:
+  - title: "Migrate a Postgres database to Prisma Postgres"
+    href: "/docs/postgres/import-from-existing-database"
+  - title: "Where to store files your app uploads"
+    href: "/compute/file-uploads-disappear-after-redeploy"
+  - title: "Hosted Postgres for a prototype's customer details"
+    href: "/postgres/prototype-customer-data"
+  - title: "Prisma Postgres backups"
+    href: "/docs/postgres/database/backups"
+cta:
+  title: "Restore the dump on a 2 GB free plan"
+  description: "Create a Prisma Postgres database, restore your pg_dump over the direct connection with PostgreSQL 17 tools and point DATABASE_URL at the pooled string. Any Postgres client works."
+  label: "Read the import guide"
+  href: "/docs/postgres/import-from-existing-database"
+---
+
+On Aiven, Neon and Supabase, a free database at its storage cap still answers reads and refuses writes that would grow it, so you have time to act. Render suspends a database that goes past its limit until you resume it, and other hosts don't document what happens. The steps below work on any host: save a copy, find what takes the space, free it, and then decide between upgrading and moving.
+
+We make Prisma Postgres. PostgreSQL and provider behavior on this page links to each project's or provider's documentation, checked on October 22, 2026.
+
+## What happens when a free Postgres database fills up?
+
+Each provider sets its own cap, and they differ on what the cap measures and what happens when you reach it. Providers are listed alphabetically.
+
+| Provider | Free storage | At the limit | Other free-plan rules | Next step up |
+| --- | --- | --- | --- | --- |
+| Aiven | [1 GB](https://aiven.io/free-postgresql-database) | [Writes stop](https://aiven.io/docs/products/postgresql/howto/prevent-full-disk): Aiven turns on `default_transaction_read_only` when the disk is nearly full | [Powers off after a period of inactivity](https://aiven.io/docs/platform/concepts/service-pricing#free-tier), after a notice. You can power it back on | [Developer tier](https://aiven.io/docs/platform/concepts/service-pricing#developer-tier) with up to 8 GB of disk |
+| Neon | [1 GB per project, 20 GB across all projects](https://neon.com/docs/introduction/plans) | [Inserts, updates and deletes that would increase storage fail](https://neon.com/faqs/free-plan-limits-and-quotas) until you free space or upgrade. No overage billing, and no data is deleted | 100 CU-hours of compute per project a month. Computes scale to zero after 5 minutes | [Launch](https://neon.com/docs/introduction/plans): no monthly minimum, $0.35 per GB-month of storage plus $0.106 per CU-hour of compute |
+| Prisma Postgres | [2 GB](/pricing) for the workspace, [shared by its databases](/docs/full-stack-tutorial) | Not stated. The Free plan has [no usage billing](/docs/full-stack-tutorial#check-your-usage-and-upgrade), so a limit never adds a charge. To store more, move the workspace to a paid plan | 200k operations a month. No backups | [Starter](/pricing), $10 a month: 10 GB, then $2 per GB |
+| Railway | [0.5 GB volume](https://docs.railway.com/volumes/reference) on Free and Trial | Not stated. Volumes can be resized only on paid plans | [$1 of credit a month](https://docs.railway.com/pricing/free-trial) after a one-time $5 trial. Trial volumes are deleted 30 days after the credits expire unless you upgrade | [Hobby](https://docs.railway.com/pricing/plans), $5 a month including $5 of usage: 5 GB volumes, storage at $0.15 per GB-month |
+| Render | [1 GB, fixed](https://render.com/docs/free) | [Render suspends the database](https://render.com/docs/postgresql-creating-connecting#running-out-of-storage). You resume it and add storage, and Free storage is fixed at 1 GB, so upgrade first | Expires 30 days after creation and is deleted after a 14-day grace period unless you upgrade. One free database per workspace. No backups | [Paid instances](https://render.com/pricing) from $6 a month, storage at $0.30 per GB |
+| Supabase | [500 MB database size per project](https://supabase.com/pricing) | [The project goes read-only](https://supabase.com/docs/guides/platform/database-size): writes fail with `cannot execute INSERT in a read-only transaction` (SQLSTATE `25006`) | Paused after 1 week of inactivity. 2 active projects. No automatic backups | [Pro](https://supabase.com/pricing), from $25 a month: 8 GB of disk per project, then $0.125 per GB |
+
+Supabase also has an organization-level [Fair Use restriction](https://supabase.com/docs/guides/platform/database-size#fair-use-database-size-restriction), which returns `402` responses when the average daily database size over the billing period is above the plan quota. Shrinking the database doesn't lift it right away, because the average only comes down as smaller days add up.
+
+## 1. Export a copy before you change anything
+
+Supabase and Render include no backups on their free plans, and neither does Prisma Postgres. Before you delete anything, take a dump. A read-only database still allows reads, so `pg_dump` works on one. On Render, resume the suspended database first and dump it straight away, because Render suspends it again if you wait too long:
+
+```sh
+pg_dump --format=custom --file="before-cleanup.dump" "$DIRECT_DATABASE_URL"
+```
+
+Use the direct connection string, not a transaction-mode pooler such as Neon's `-pooler` host or Supabase's port 6543, and a `pg_dump` at least as new as the server: it [refuses to dump a newer major version](https://www.postgresql.org/docs/current/app-pgdump.html). On Supabase, the [direct connection is IPv6 only](https://supabase.com/docs/guides/database/connecting-to-postgres#direct-connection) unless the project has the IPv4 add-on. From an IPv4-only network, use the shared pooler in session mode (port 5432 on the pooler host), not transaction mode on port 6543.
+
+## 2. Find what is using the space
+
+Start with the total, then list the largest tables. [`pg_total_relation_size`](https://www.postgresql.org/docs/current/functions-admin.html) counts a table with its indexes and TOAST data, so the query splits it into parts:
+
+```sql
+SELECT pg_size_pretty(pg_database_size(current_database())) AS database_size;
+
+SELECT c.oid::regclass AS table_name,
+       pg_size_pretty(pg_total_relation_size(c.oid)) AS total,
+       pg_size_pretty(pg_relation_size(c.oid)) AS rows_only,
+       pg_size_pretty(pg_indexes_size(c.oid)) AS indexes,
+       pg_size_pretty(pg_total_relation_size(c.oid) - pg_relation_size(c.oid)
+                      - pg_indexes_size(c.oid)) AS toast_and_other
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind IN ('r', 'm')
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND n.nspname NOT LIKE 'pg_toast%'
+ORDER BY pg_total_relation_size(c.oid) DESC
+LIMIT 15;
+```
+
+Supabase's reported [database size](https://supabase.com/docs/guides/platform/database-size) adds up `pg_database_size` for every database in the project and its disk metrics update daily, so its number can differ from the first query and lag behind a cleanup.
+
+What the columns usually point to:
+
+- **One table holds most of it.** Logs, events, sessions, webhook payloads, audit rows and job history grow without anyone deciding they should. Start with them when you delete or archive.
+- **A large `toast_and_other` value.** When a row is wider than about 2 kB, PostgreSQL compresses its long values or moves them into a [TOAST table](https://www.postgresql.org/docs/current/storage-toast.html). Large JSON documents, long text and files stored as `bytea` or base64 strings end up there. Measure a suspect column with `SELECT pg_size_pretty(sum(pg_column_size(avatar))) FROM users;`.
+- **Indexes larger than the rows.** Each index is stored separately, and an index nobody queries still takes space.
+- **Dead rows.** An `UPDATE` or `DELETE` leaves the old row version on disk until `VACUUM` marks the space for reuse.
+
+To see dead rows per table:
+
+```sql
+SELECT relname, n_live_tup, n_dead_tup, last_autovacuum
+FROM pg_stat_user_tables
+ORDER BY n_dead_tup DESC
+LIMIT 10;
+```
+
+To list indexes with no recorded scans, leaving out the ones that back a primary key, unique or other constraint:
+
+```sql
+SELECT s.relname AS table_name, s.indexrelname AS index_name,
+       pg_size_pretty(pg_relation_size(s.indexrelid)) AS size
+FROM pg_stat_user_indexes s
+WHERE s.idx_scan = 0
+  AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conindid = s.indexrelid)
+ORDER BY pg_relation_size(s.indexrelid) DESC;
+```
+
+`idx_scan` counts scans since the statistics were last reset, which `stats_reset` in `pg_stat_database` shows, so a recent reset makes every index look unused. On Neon, [statistics are lost whenever the compute suspends](https://neon.com/docs/reference/compatibility#statistics-collection), which on Free happens after 5 minutes idle, so `idx_scan = 0` and `n_dead_tup` say little there. Check the queries in your code that would use an index before you drop it.
+
+Some space doesn't belong to any table. An inactive [replication slot](https://www.postgresql.org/docs/current/logicaldecoding-explanation.html), for example one left behind by a sync tool you tried once, keeps write-ahead log that would otherwise be removed. `SELECT slot_name, active FROM pg_replication_slots;` lists them. On Supabase, the write-ahead log counts toward disk size but not toward the 500 MB database size that triggers read-only mode. On Neon, [child branches count toward storage](https://neon.com/docs/introduction/plans#storage) by the changes they hold, up to the data size, so delete branches you no longer need first.
+
+## 3. Free the space
+
+### Get write access back for the cleanup
+
+On Supabase, a read-only project accepts writes again in the session where you [change the transaction mode](https://supabase.com/docs/guides/platform/database-size#disabling-read-only-mode):
+
+```sql
+SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE;
+```
+
+Run the cleanup in that session. Supabase's docs say read-write mode comes back automatically once usage is below 95% of the disk size, and they show `SET default_transaction_read_only = 'off';` for after you have reclaimed space. On Aiven, running `SET default_transaction_read_only = OFF;` in your session [allows the deletes](https://aiven.io/docs/products/postgresql/howto/prevent-full-disk#enable-database-writes-for-a-specific-session).
+
+### Archive, then delete rows you don't need
+
+Copy old rows to a file first if you might want them later. [`\copy`](https://www.postgresql.org/docs/current/app-psql.html) runs on your machine and needs no superuser rights:
+
+```sql
+\copy (SELECT * FROM events WHERE created_at < '2026-01-01') TO 'events-before-2026.csv' WITH (FORMAT csv, HEADER)
+```
+
+To empty a whole table, such as expired sessions, use [`TRUNCATE`](https://www.postgresql.org/docs/current/sql-truncate.html), which gives the space back right away, without waiting for `VACUUM`. To remove part of a table, delete in batches so each transaction stays short, and repeat until `psql` prints `DELETE 0`:
+
+```sql
+DELETE FROM events
+WHERE id IN (
+  SELECT id FROM events
+  WHERE created_at < '2026-01-01'
+  LIMIT 10000
+);
+```
+
+### Reclaim the space
+
+A `DELETE` doesn't shrink the files. [Plain `VACUUM`](https://www.postgresql.org/docs/current/routine-vacuuming.html) marks the dead rows' space for reuse, so new rows fill it and the table stops growing, but it returns space to the host only when whole pages at the end of the table are empty. Supabase's database size comes from `pg_database_size`, which counts the files on disk, so to bring a number like that down, run [`VACUUM FULL`](https://www.postgresql.org/docs/current/sql-vacuum.html) on the tables you cleaned:
+
+```sql
+VACUUM FULL events;
+```
+
+`VACUUM FULL` writes a new copy of the table and holds an exclusive lock until it finishes, so the app can't read or write that table meanwhile, and it needs room for the copy. On a database that is already at its cap, start with the smaller tables, or truncate what you can first. Plain `VACUUM` and `VACUUM FULL` can't run inside a transaction block. You need to own the table or have the `MAINTAIN` privilege on it (PostgreSQL 17 and later), or own the database.
+
+To shrink a table the app is still using, the `pg_repack` extension ([Supabase](https://supabase.com/docs/guides/database/extensions/pg_repack), [Neon](https://neon.com/docs/extensions/pg_repack)) rewrites it with only brief locks, but like `VACUUM FULL` it needs free space about twice the size of the table and its indexes. On Neon, the pg_repack docs say a rewrite's writes stay in the restore history until they age out of the history window (6 hours by default on Free), so project storage can rise before it falls. `VACUUM FULL` rewrites tables the same way, so delete rows and branches before you rewrite tables there.
+
+### Drop indexes you don't use
+
+[`DROP INDEX CONCURRENTLY`](https://www.postgresql.org/docs/current/sql-dropindex.html) removes an index without blocking reads and writes on its table:
+
+```sql
+DROP INDEX CONCURRENTLY events_payload_idx;
+```
+
+### Move files out of the database
+
+Images, PDFs and other uploads stored in table columns fill a small database quickly. Put the files in object storage, such as Amazon S3, Cloudflare R2 or, for a Supabase project, Supabase Storage, and keep only the object key in a column. The guide to [files that disappear after a redeploy](/compute/file-uploads-disappear-after-redeploy) shows the pattern.
+
+### Keep it from filling again
+
+- **Delete on a schedule.** A daily job that removes rows older than your retention period keeps logs and sessions from growing without limit.
+- **Partition tables you delete by date.** With a table [partitioned by month](https://www.postgresql.org/docs/current/ddl-partitioning.html), dropping an old partition is faster than a bulk `DELETE` and avoids the `VACUUM` work a bulk delete causes.
+- **Watch the number.** Check the size query above weekly, or turn on the host's usage alerts, and act at around 80% of the cap instead of at 100%.
+
+## 4. Upgrade, or move to another host?
+
+Pick by how much data you need to keep and how fast it grows:
+
+- **The data is needed and keeps growing.** Upgrade on your current host. You keep the same database and connection string, and the table above lists each provider's next step.
+- **After cleanup, the data fits a larger free plan.** Move it with `pg_dump` and `pg_restore`. Read the target's free-plan rules first: an expiry date or an inactivity pause can matter more than the storage.
+- **You're on a free Render database.** It expires 30 days after creation however full it is, so upgrade it or move it before then.
+- **You'd rather self-host.** Postgres on a small VPS lets you choose the disk size, but you take on backups, upgrades and security.
+
+To move, stop or drain the app's writes to the old database, take a final dump under a new file name so `before-cleanup.dump` stays as your backup, and restore it on the new host over its direct connection:
+
+```sh
+pg_dump --format=custom --file="final.dump" "$DIRECT_DATABASE_URL"
+pg_restore --no-owner --no-privileges --single-transaction --dbname="$NEW_DIRECT_DATABASE_URL" final.dump
+```
+
+`--no-owner` and `--no-privileges` skip the ownership and `GRANT` commands that name roles the new host doesn't have. `--single-transaction` runs the restore as one transaction, so an error rolls it all back instead of leaving a partly restored database ([pg_restore](https://www.postgresql.org/docs/current/app-pgrestore.html)). Compare row counts for your main tables on both databases, then point the app's `DATABASE_URL` at the new one. Check two things before you start: the extensions you use exist on the new host (`SELECT extname FROM pg_extension;`), and its client tools are at least as new as the old server. From Supabase, follow the dump and restore steps in the [Supabase migration guide](/docs/guides/switch-to-prisma-postgres/from-supabase#4-stop-source-writes-and-export-the-final-snapshot) instead: it dumps only your own schemas, adds the extensions back with `--extension`, and uses a restore list so the existing `public` schema doesn't cause an error. Leave out Supabase-managed schemas such as `auth` and `storage`.
+
+## When these steps don't apply
+
+- **You run Postgres on your own server or VM.** That is a full disk, not a plan quota. The PostgreSQL docs say a full data disk doesn't corrupt data, but if the [disk holding the write-ahead log fills](https://www.postgresql.org/docs/current/diskusage.html), the server can panic and shut down. Writes fail with errors such as `could not extend file ... No space left on device` ([SQLSTATE `53100`](https://www.postgresql.org/docs/current/errcodes-appendix.html), `disk_full`). Add disk space before you clean up.
+- **Supabase's Fair Use restriction.** It is based on the average size over the billing period, so a cleanup takes effect slowly. Upgrading or turning off the spend cap lifts it straight away.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17. Prisma Postgres fits when the data has outgrown a free plan of 1 GB or less but still fits in 2 GB: its Free plan includes 2 GB of storage and 200k operations a month, with no credit card and no time limit ([pricing](/pricing)). Moving works like this:
+
+- **Import with `pg_dump` and `pg_restore`.** Create a database in the [Prisma Console](https://console.prisma.io), then restore your dump over the direct host `db.prisma.io` with PostgreSQL 17 tools, as the [import guide](/docs/postgres/import-from-existing-database) shows. PostgreSQL 17 `pg_dump` can't dump a PostgreSQL 18 server: moving from 18 or later needs a separate downgrade-compatible process, per the [full import guide](/docs/prisma-postgres/import-from-existing-database-postgresql#prerequisites), so check the source's version (`SELECT version();`) before you stop its writes. The dump is a snapshot, so writes to the old database stay stopped until the import is verified and the app is switched, per the [full import guide](/docs/prisma-postgres/import-from-existing-database-postgresql#3-stop-source-writes-and-export-the-final-snapshot). The [Neon](/docs/guides/switch-to-prisma-postgres/from-neon) and [Supabase](/docs/guides/switch-to-prisma-postgres/from-supabase) guides cover each source's connection strings and schemas.
+- **Keep your client.** The app connects through the pooled host `pooled.db.prisma.io` with `pg`, Drizzle, Kysely, Prisma ORM or any other Postgres client. Prisma ORM is optional.
+- **Check usage.** Run [`npx prisma postgres usage <database>`](/docs/cli/postgres) or open the Console, as the [tutorial](/docs/full-stack-tutorial#check-your-usage-and-upgrade) describes.
+- **Upgrade in place.** Starter is $10 a month and includes 10 GB of storage, then $2 per GB. Pro is $49 a month with 50 GB, then $1.50 per GB. Paid plans add daily backups, kept 7 days on Starter and Pro, and a spend limit ([pricing](/pricing)).
+- **Files.** A Prisma project can also hold S3-compatible [Object Store buckets](/docs/storage) next to its databases. Bucket pricing and plan limits are not published yet.
+
+Know the limits before you rely on them:
+
+- **The Free limits are per workspace.** The 2 GB and the 200k operations are shared by every database in the workspace, not granted to each one ([tutorial](/docs/full-stack-tutorial)).
+- **Operations run out too.** When a Free workspace uses its 200k operations, its databases stop accepting reads and writes until the next calendar month or an upgrade, with a one-time 24-hour grace period ([FAQ](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier)). A busy app can reach that before it reaches 2 GB.
+- **No backups on Free.** Your own `pg_dump` is the backup. The docs describe the Free plan as meant for evaluation, not production workloads.
+- **Extensions.** PostGIS and TimescaleDB are not on the [supported extensions list](/docs/postgres/database/postgres-extensions). A database that uses them belongs on a host that supports them.
+- **Large databases.** Past 10 GB, Starter charges $2 per GB. Neon ($0.35 per GB-month), Railway ($0.15, on Pro once a volume outgrows Hobby's 5 GB), Render ($0.30) and Supabase Pro ($0.125 past the included 8 GB) charge less per GB of storage and price compute separately, so for a large database that sees little traffic, they can cost less.

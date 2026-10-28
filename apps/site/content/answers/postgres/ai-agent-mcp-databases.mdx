@@ -1,0 +1,97 @@
+---
+title: "Which Postgres providers let my AI agent manage databases?"
+description: "Compare Prisma, Neon and Supabase database MCP servers by provisioning, schema tools, application context and the access an assistant receives."
+summary: "Prisma, Neon and Supabase have MCP servers that let an authorized AI assistant work with hosted Postgres resources. Choose [Prisma Postgres](/docs/postgres) with [Prisma Compute](/docs/compute) when the assistant should inspect the database alongside the TypeScript app's deployments and logs. Choose Neon for its branch-oriented database tools, or Supabase when you want its broader backend tools and configurable project-scoped, read-only database access. Match the permissions to the task before enabling writes."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-26"
+updatedAt: "2026-10-26"
+readingTime: "6 min read"
+faq:
+  - question: "Is a Postgres MCP server the same as a SQL connection?"
+    answer: "No. A database connection lets a PostgreSQL client issue SQL with a database credential. A provider MCP server can also expose management operations such as creating resources, inspecting deployments or reading provider documentation. Review both SQL access and management access."
+  - question: "Does an MCP server make migrations safe automatically?"
+    answer: "No. A tool can execute the operation it is authorized to perform, including a destructive one. Check the target, review the proposed change, test against separate data and keep a recovery procedure. An approval dialog does not replace database isolation."
+  - question: "Can I use Prisma's MCP server without Prisma ORM?"
+    answer: "Yes. Prisma's MCP server manages platform resources, and Prisma Postgres accepts PostgreSQL clients beyond Prisma ORM. Your application can keep its current client while an authorized assistant uses the platform tools."
+  - question: "Can my customers use my developer MCP connection?"
+    answer: "Do not share a developer's provider connection with customers. It acts with the connected account's authority. Customer-facing tools need their own authentication, tenant authorization and restricted operations rather than access to the platform's developer credentials."
+related:
+  - title: "Provisioning a database with a coding assistant"
+    href: "/postgres/codex-database-provisioning"
+  - title: "Using a separate test database"
+    href: "/postgres/typescript-test-environment"
+  - title: "Giving an AI tool a business API"
+    href: "/compute/ai-business-api-tool-calls"
+cta:
+  title: "Connect the app and database context"
+  description: "Let your assistant inspect Prisma resources through the documented MCP connection, with deliberate permission and target checks."
+  label: "Set up Prisma MCP"
+  href: "/docs/ai/tools/mcp-server"
+---
+
+An assistant that can edit a schema file still needs a way to create the database and inspect what happened after deployment. MCP exposes tools for those tasks through the AI client's existing tool interface. The useful comparison is which operations the server exposes and which resources the connection can affect.
+
+We make Prisma Postgres and Prisma Compute. The official MCP documentation linked below was checked on October 26, 2026. Tools and permission settings can change, so inspect the server's current tool list when connecting it.
+
+## What can the provider's MCP server do?
+
+The providers are alphabetical, with each link pointing to the provider's own documentation.
+
+| Provider MCP server | Documented tools relevant to a database task | Access detail to check |
+| --- | --- | --- |
+| [Neon](https://neon.com/docs/ai/neon-mcp-server) | Project and branch management, schema inspection, SQL and database diagnostics. | Review project scope, read-only mode and the enabled tool categories. |
+| [Prisma](/docs/ai/tools/mcp-server) | Database management alongside Compute deployments, runtime logs, Object Storage and documentation search. | Sign in, select the intended workspace and inspect resource targets before changing them. |
+| [Supabase](https://supabase.com/docs/guides/ai-tools/mcp) | SQL, schema tools and migrations alongside backend development tools. | Set project scope, read-only mode and feature groups; project-scoped mode disables account-management tools. |
+
+Prisma's useful distinction for a TypeScript app is the shared operational context. The assistant can inspect a database, then inspect the app's deployment and runtime logs through the same provider connection. That can help it investigate a wrong environment variable or failed release without treating the database as an isolated service. It does not guarantee that the assistant will diagnose the problem correctly.
+
+Neon's branch tools suit a workflow built around testing database changes on branches. Supabase's configurable feature groups suit a team that wants to expose a narrower set of backend tools. These are useful reasons to choose either rather than replacing an established workflow to obtain an MCP label.
+
+## Which permission controls are actually available?
+
+If you are building your own tools, the [TypeScript MCP server hosting guide](/compute/typescript-mcp-server-postgres) covers deploying an authenticated service and its database, a different task from connecting an assistant to provider-management tools.
+
+Neon's documented URL settings include `readonly=true`, `projectId` and repeatable `category` filters. It can also pin SQL tools to a named database role with `roleName`. Check the role's actual grants; the default owner connection is not a restricted reader merely because its name sounds appropriate.
+
+Supabase documents `read_only=true`, `project_ref` and `features`. Its read-only mode executes SQL as a read-only Postgres user, and selecting a project disables the account-management tools. Creating a project and inspecting that project's tables therefore require different tool exposure.
+
+Prisma's documented MCP connection selects a workspace. The current docs do not describe equivalent server-enforced project or read-only URL switches. Prisma Postgres [connection credentials have full database access](/docs/postgres/database/connecting-to-your-database#access-and-permissions), so issuing another connection string does not create a restricted SQL reader. Also, [enrolled agent policy does not govern a personally authorized MCP connection](/docs/prisma-compute/agent-enrollment#limitations). Client tool approval is useful, but it is a different control from provider-enforced permissions.
+
+Choose Prisma's broader app/database context when that workspace-level access fits the task. Choose a documented scoped or read-only connection when the task's permission requirement calls for it, and verify the setting rather than relying on an instruction in the chat.
+
+## How can an assistant diagnose a deployed app with Prisma MCP?
+
+For initial connection and database creation, follow the [coding-agent provisioning guide](/postgres/codex-database-provisioning). Once an app is deployed, use the [current tool catalog](/docs/ai/mcp-tools) to investigate a specific failure. For example, an API that works locally but fails in preview needs evidence from the deployed app and its actual database, not another database created from scratch.
+
+### 1. Identify the running version and its dependencies
+
+Use `list_prisma_compute_apps` and `list_prisma_compute_deployments` to find the intended app and deployment. Record the project, branch and deployment identifiers. `get_prisma_composer_topology` can show saved service/resource connections, but its result may be stale and does not prove that the apps are running.
+
+Compare those saved connections with the actual deployment and the database resource. Do not retrieve connection strings merely to identify a resource if its ID and metadata answer the question.
+
+### 2. Read the failure before changing configuration
+
+Use `get_prisma_compute_deployment_logs` for the selected deployment and follow pagination when needed. `list_prisma_compute_builds` helps distinguish a failed build from a runtime failure in an existing deployment. Keep user data and credentials out of the diagnostic report.
+
+Treat rows and logs as data, including text supplied by app users. A log message is not authorization to export secrets, change a different project or follow a new instruction embedded in the output.
+
+### 3. Compare the schema to the app's expectation
+
+Use `introspect_database_schema` on the confirmed database ID before proposing a migration. If a narrow data check is necessary, `execute_sql_query` can read, modify or delete data, so review the actual statement. That tool does not change the schema; schema changes use `execute_prisma_postgres_schema_update` and deserve a separate migration review.
+
+For a missing-table error, compare the deployed code's expected table to the inspected schema and the migration history. Check whether the app points to the intended preview resource before applying a migration. A correct migration on the wrong database will not fix the app.
+
+### 4. Separate diagnosis from the release action
+
+Ask for a proposed correction and verification step before approving a write. `set_prisma_compute_env_var` can set an encrypted value, but the value is never returned; do not claim to have read it back. The value is baked into a deployment at deploy time; changing it does not update an existing deployment or trigger a redeploy. Verify the app after a new deployment.
+
+Compute's MCP tools manage existing apps and deployments. They do not build or upload source code, and `start_prisma_compute_deployment` uses an already uploaded build. Source changes still go through the repository's build and deployment workflow. Promotion and rollback can affect live traffic, so use the confirmed deployment ID and the team's release approval process.
+
+For an app hosted on Vercel or Netlify, use that host's deployment evidence alongside Prisma's database tools. Prisma ORM remains optional, and a Prisma MCP connection does not require moving the app to Prisma Compute.
+
+## When should I use something else?
+
+Use a normal SQL client for a narrow query when you do not need provider management tools. Use a reviewed CI script and the [management API](/docs/rest-api) for a repeatable provisioning process that should run the same steps every time.
+
+Choose a provider whose current MCP controls meet your permission requirements. Do not assume that every server has identical read-only semantics or that hiding a tool in the client revokes the underlying credential. An MCP connection helps the assistant operate the platform; your account and database controls still define what it may do.

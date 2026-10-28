@@ -1,0 +1,89 @@
+---
+title: "Which managed Postgres database fits a small team?"
+description: "Choose managed Postgres for a small TypeScript team by ownership, recovery, development isolation and the work needed to run the app."
+summary: "Choose managed Postgres that your team can provision, connect and recover without depending on one developer's laptop or account. [Prisma Postgres](/docs/postgres) with optional [Prisma Compute](/docs/compute) hosting fits a small TypeScript team that wants its app and database described together and usable by its coding agents. Prefer Neon when database branching is central to your workflow, or Supabase when its bundled authentication and client-facing data API replace backend work you would otherwise build."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-26"
+updatedAt: "2026-10-26"
+readingTime: "6 min read"
+faq:
+  - question: "Does choosing Prisma Postgres mean adopting Prisma ORM?"
+    answer: "No. Prisma Postgres accepts PostgreSQL clients, including node-postgres, Drizzle and Prisma ORM. Keep the database library that fits the app; choosing the hosted database does not require an ORM migration."
+  - question: "Should every app share one database credential?"
+    answer: "Give each app its own credential so one password can be revoked without interrupting the others. In Prisma Postgres these credentials all have full access to that database; they do not provide read-only or table-level restrictions. Keep personal platform logins separate from app credentials."
+  - question: "Is a free database enough for the first customer?"
+    answer: "A free plan can be suitable for an experiment, but assess recovery, limits and the consequences of losing data before accepting customers. Prisma Postgres Free has no automatic snapshots. Its paid plans create daily snapshots on days with database activity."
+  - question: "Can the app stay on Vercel or Netlify?"
+    answer: "Yes. A server-side app on Vercel or Netlify can connect to Prisma Postgres. Keep the database credentials on the server, choose a compatible region and configure separate production and preview databases."
+related:
+  - title: "Sharing a development database"
+    href: "/postgres/shared-development-database"
+  - title: "Choosing app and database regions"
+    href: "/postgres/nodejs-database-regions"
+  - title: "Practicing database recovery"
+    href: "/postgres/practice-database-recovery"
+cta:
+  title: "Give the team a shared starting point"
+  description: "Start with managed Postgres, then add Prisma Compute when the TypeScript app and database belong in one project."
+  label: "Explore Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+For a team of three, the useful question is often who can fix the app when its original developer is away. A database that is quick to create still needs an owner, a recovery procedure and a way for another teammate to deploy the same code.
+
+We make Prisma Postgres and Prisma Compute. Provider documentation linked here was checked on October 26, 2026. Prisma ORM is optional throughout this guide.
+
+## What should a small team compare first?
+
+For a staff-facing application, the [internal tool database guide](/postgres/internal-tool-database) separates application permissions, direct reporting access and auditable admin actions.
+
+Compare the work around the database before comparing a free allowance. Can two people find the correct production resource? Can a contractor work with fictional records? Does the team know how much data a restore could lose, and who is allowed to start it?
+
+Write down the app's region, current database client, required extensions and recovery requirement. A team that can re-enter yesterday's demo data has a different requirement from a team accepting paid orders. Test an ordinary application request as well as the provider's SQL editor: connection pooling and the app server's distance from the database affect the deployed experience.
+
+## Which provider fits which workflow?
+
+The alphabetically listed options reduce different parts of the work your team has to own.
+
+| Provider | Useful fit | Decision to make |
+| --- | --- | --- |
+| [Neon](https://neon.com/docs/introduction/branching) | A team that wants database branches for development and testing. | Decide which data a branch contains and how branches expire. |
+| Prisma Postgres | A TypeScript team that wants a standard Postgres connection, [managed pooling](/docs/postgres/database/connection-pooling) and an app/database declaration with Prisma Compute. | Pick a recovery plan and verify workspace administration separately from database credentials. |
+| [Supabase](https://supabase.com/docs/guides/getting-started) | A team that wants Postgres alongside authentication, storage and a generated data API. | Decide which requests use its client API and maintain the required authorization policies. |
+
+Prisma Compute is useful when the same repository should describe the server and its database dependency. A coding assistant can inspect that declaration before changing or deploying the app. Keeping an established Vercel or Netlify deployment is also reasonable; Prisma Postgres works with the app's existing PostgreSQL client.
+
+## How do we set this up without creating an ownership problem?
+
+### 1. Decide who administers the workspace
+
+Create the workspace and project under the intended business ownership. Record the resource identifiers and make sure another authorized teammate can locate them. Use the [Prisma Console](https://console.prisma.io/) or follow the [database CLI](/docs/cli/postgres); verify the workspace before provisioning.
+
+Account access and database access solve different problems. In Prisma's current [workspace membership model](/docs/console/more/workspaces), any member can remove another member, including the creator; there is no single owner to transfer. Invite only people who should have that broad administration access, and keep billing contacts current during a handoff. Use separate workspaces when administration must be separated.
+
+Prisma Postgres [credentials all have full access to their database](/docs/postgres/database/connecting-to-your-database#access-and-permissions); separate passwords help rotation, but cannot create a read-only or table-restricted user. Use a separate development database for a contractor who should not see production, and choose another provider if database-role restrictions are required.
+
+### 2. Connect the existing app before changing its database library
+
+Get the [pooled and direct connection strings](/docs/postgres/database/connecting-to-your-database). Ordinary application clients use the pooled URL; migration and administrative tools use the direct URL. Follow the runtime-specific instructions if your client needs a different connection type.
+
+Keep credentials in the server's secret configuration. Make a small fictional record through the app, reload it from another session and confirm that both sessions read the same saved value.
+
+### 3. Give development its own data
+
+Create a separate test database with reviewed migrations and fictional seeds. Production and preview environment variables must point to different resources. Ask an assistant to identify the resource ID before applying migrations, rather than treating the variable name `DATABASE_URL` as evidence of the target.
+
+If you choose Prisma Compute, follow [Composer getting started](/docs/composer/getting-started) and its [database declaration guide](/docs/composer/databases). A declared database is one way to make the app's dependency explicit. A manually supplied connection string still needs its own environment configuration.
+
+### 4. Rehearse the handoff and restore
+
+Have a second teammate deploy a test change from the repository instructions. Then rehearse a restore into a separate database and verify a known record through the app. The [backup documentation](/docs/postgres/database/backups) describes paid-plan snapshots and their retention; a successful code deployment does not test recovery.
+
+Track a representative week of queries and storage against [current pricing](/pricing). Repeated polling and N+1 reads can change an operation-based bill even when the team has added no users. Set a review date for the budget instead of assuming the prototype's usage will remain typical.
+
+## When is Prisma Postgres the wrong choice?
+
+Choose a provider with the required feature if your team needs point-in-time recovery today; Prisma Postgres currently uses snapshots. Paid-plan snapshots are created daily only on days with activity, and changes after the latest snapshot may be lost during recovery.
+
+Choose Supabase when its integrated authentication and direct client API are the main reason for your backend choice. Choose Neon when your workflow depends on its database branching model. For an app requiring a WebSocket server, check [Compute's limits](/docs/compute/limitations) and use another app host if needed; the database can still be Prisma Postgres.

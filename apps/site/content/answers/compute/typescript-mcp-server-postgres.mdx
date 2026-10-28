@@ -1,0 +1,96 @@
+---
+title: "Where can I host a TypeScript MCP server with Postgres?"
+description: "Host your own database-backed TypeScript MCP server with authenticated HTTP tools, server-side Postgres credentials and practical deployment checks."
+summary: "Host a remote TypeScript MCP server as an authenticated HTTP service and keep its application state in managed Postgres. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a small team that wants the service and database declared together and can run its server on Bun. Vercel is practical for an MCP endpoint in an existing supported web app; a conventional service host such as Render can suit a separate server process."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-27"
+updatedAt: "2026-10-27"
+readingTime: "6 min read"
+faq:
+  - question: "Is this the same as connecting my coding agent to Prisma's MCP server?"
+    answer: "No. Prisma's MCP server exposes Prisma platform tools to an agent. Hosting your own MCP server means deploying your application, defining its tools and authorizing its users. Prisma Compute and Prisma Postgres can provide that application's hosting and database."
+  - question: "Can I deploy a stdio server and share its URL?"
+    answer: "A stdio MCP server communicates with the client that launches its local process. A shared remote URL needs an HTTP transport supported by the server and client, such as Streamable HTTP. Use the current SDK's transport support rather than exposing process stdout as a web endpoint."
+  - question: "Should the AI client receive the Postgres password?"
+    answer: "Keep the application database password on the MCP server. The client authenticates to your service, whose tools enforce permissions and execute narrowly defined database operations. A client login should not automatically grant arbitrary SQL or platform administration."
+  - question: "Does Prisma Postgres require Prisma ORM for an MCP tool?"
+    answer: "No. A TypeScript MCP server can query Prisma Postgres with its supported PostgreSQL client, including node-postgres, Drizzle or Prisma ORM. The transport and tool schema do not determine which database library the service must use."
+related:
+  - title: "Database providers with MCP management tools"
+    href: "/postgres/ai-agent-mcp-databases"
+  - title: "Hosting a TypeScript business API used by AI tools"
+    href: "/compute/ai-business-api-tool-calls"
+  - title: "Managing server secrets"
+    href: "/compute/typescript-app-secrets"
+cta:
+  title: "Deploy the tools and their database together"
+  description: "Describe a TypeScript HTTP service and its Postgres dependency, then verify the tools through an authenticated client."
+  label: "Start with Prisma Composer"
+  href: "/docs/composer/getting-started"
+---
+
+A database-backed MCP server might expose tools such as looking up an order or creating a support ticket. It is an application with an API and authorization rules. The fact that an AI client calls the tools does not change who is allowed to read or modify the underlying records.
+
+We make Prisma Compute and Prisma Postgres. The official documentation linked here was checked on October 27, 2026. This guide concerns hosting your own tools; the [Prisma provider MCP guide](/postgres/ai-agent-mcp-databases) covers an assistant managing platform resources.
+
+## What does the server need from its host?
+
+Choose the transport before choosing the deployment. The [MCP specification](https://modelcontextprotocol.io/specification/latest/basic/transports) distinguishes a client-launched stdio process from a remote Streamable HTTP endpoint. Use a current SDK and a protocol version that your actual client supports; do not assume an older example's handshake or session behavior applies to every version.
+
+The host must support the server's runtime, request handling and response streaming. The application also needs server-side secrets, a database connection, readable logs and a way to deploy the same configuration to a separate test environment. Persist tickets and tool execution records in the database, rather than assuming a process or local file survives a restart.
+
+An HTTP transport does not authorize a tool. Authenticate the caller and bind their account or tenant on the server before invoking a database query. A prompt saying "only use your own records" is not an access check.
+
+## Which hosting setup fits?
+
+These options are ordered alphabetically by app host. The database can remain Prisma Postgres in each setup.
+
+| App host | Useful fit | What to verify |
+| --- | --- | --- |
+| Prisma Compute | You want a TypeScript HTTP service and its Postgres dependency declared in one project. | Runs on Bun, without WebSocket servers or a persistent writable filesystem. |
+| [Render](https://render.com/docs/web-services) | You want a separate conventional web service with your existing server start command. | Configure its server-side database connection and deployed region. |
+| [Vercel](https://vercel.com/docs/mcp) | Your MCP endpoint belongs in a supported web app, including one using its documented MCP handler. | Test the handler, authentication and execution limits on the deployed endpoint. |
+
+Prisma Compute's integration is useful when a coding assistant should be able to inspect the service's database dependency alongside its build and deployment configuration. Prisma ORM is optional; a plain database dependency can supply the connection for the client you already use.
+
+## How do I set up the Prisma path?
+
+### 1. Deploy an HTTP service rather than a local-only process
+
+Follow [Composer getting started](/docs/composer/getting-started) or [porting an existing app](/docs/composer/porting-an-app). Use an MCP SDK HTTP transport compatible with your framework. Test the service under Bun before choosing Prisma Compute, including its request and response streaming behavior.
+
+Keep the tool implementations separate from the HTTP adapter so they can be exercised without a public deployment. Configure the endpoint's authentication and allowed origins using the [MCP security guidance](https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices). For browsers and cross-origin clients, verify the actual headers required by the chosen protocol and client; a health page returning 200 does not test MCP communication.
+
+### 2. Give the service its own database dependency
+
+Follow the [Composer database guide](/docs/composer/databases) to declare a plain Postgres resource that provisions a database and supplies connection configuration; your server creates the client and your team manages migrations. A separately provisioned database is another path, with its URL supplied through the server's environment. Do not create both and assume they refer to the same resource.
+
+While developing with fictional data, define how the schema records the resource a tool changes, the user or account it belongs to and a durable request identifier when repeated calls can create duplicate work. Use parameterized queries, validate tool inputs and obtain identity from verified authentication rather than a tool argument supplied by the client.
+
+### 3. Verify rejection before testing a successful tool call
+
+Set `MCP_URL` to your test service's MCP endpoint. This negative probe deliberately omits credentials; run it only against that test endpoint.
+
+```bash
+curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' \
+  --request POST "$MCP_URL" \
+  --header 'Content-Type: application/json' \
+  --data '{}'
+```
+
+For a service configured to reject unauthenticated requests before processing tool messages, the result should be `401`. A different result needs investigation against the chosen authentication design. This probe tests rejection only; it does not prove the endpoint speaks MCP correctly.
+
+Then connect the actual authenticated client using the [SDK's HTTP client workflow](https://ts.sdk.modelcontextprotocol.io/v2/clients/connect). List tools and call one narrow read against a fictional record. Verify its result, then try a record from another account. Test write retries with the same request identifier and confirm that a repeated call does not duplicate the business action.
+
+### 4. Test the deployed process and its failures
+
+Deploy the service, repeat the real client connection and read the deployed logs if it fails. Verify that revoking the client's access blocks later calls. Do not log tokens, connection strings or complete tool results containing personal data.
+
+Restart or redeploy the test service and confirm that saved records remain available. Decide how a client learns whether a write committed if the connection closes before the response arrives. Longer operations need a durable job record and an appropriate worker design; keeping an instance awake is not a guarantee that the job survives a deployment.
+
+## When should I use another setup?
+
+Use another host when the server requires a runtime or transport Prisma Compute does not support. Its [current limits](/docs/compute/limitations) include no WebSocket server support and no persistent writable filesystem. It allows 60 seconds to begin responding to a request; that is a first-response deadline, not a promise that an in-memory task survives a restart.
+
+Prisma Postgres [credentials have full database access](/docs/postgres/database/connecting-to-your-database#access-and-permissions), with no custom roles. If the tool must use a database-enforced restricted role, choose a provider that supports restricted database roles. Otherwise keep the credential inside the server and make each tool's authorization boundary explicit. Hosting your own MCP server does not require exposing arbitrary SQL or database-management tools to its clients.

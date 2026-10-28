@@ -1,0 +1,201 @@
+---
+title: "Deploy fails because the migration step can't reach the database? What to check"
+description: "Test the connection from the step that runs the migration, then check its variables, hostname, firewall, IPv6, TLS and the direct connection string."
+summary: "When the app connects but the migration step doesn't, the migration runs somewhere else: a CI runner, a build container or a release machine, with its own environment variables and its own network. Run a connection test from that step first, because the error tells you which layer fails (Prisma ORM's `P1001` doesn't, so use a plain client for the test). Then check, in order: that the step receives `DATABASE_URL`, that its hostname resolves from there (`localhost`, Compose service names and private names such as `*.railway.internal` don't resolve from a CI runner), that the database's firewall or IP allowlist admits that step, that the step can reach the host over IPv4 or IPv6 as the host requires, that the URL asks for TLS with `sslmode=require`, and that it points at the direct connection rather than a pooler. If the database is only reachable inside your host's private network, run the migration there, in a release or pre-deploy command, instead of from CI."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "11 min read"
+faq:
+  - question: "Why does the migration connect from my laptop but not from CI?"
+    answer: "Your laptop and the CI runner reach the database from different addresses and networks. Your laptop's IP may be on the database's allowlist, or you may be on a VPN into the private network, and the runner is neither. The runner may also lack an IPv6 route: Supabase, for example, lists GitHub Actions among the services that only connect over IPv4, while its direct connection is IPv6 unless you add its IPv4 add-on. Run the connection test from step 1 inside the CI job to see which one it is."
+  - question: "Does P1001 always mean the database is down or the network is blocked?"
+    answer: "No. In our test with Prisma ORM 7.10.1 on October 22, 2026, `prisma migrate deploy` printed `P1001: Can't reach database server` for a refused port, a host name that doesn't resolve, an address that never answers, and wrong credentials against Prisma Postgres, while node-postgres reported four different errors for the same cases. Run the node-postgres or `psql` test from step 1 against the same host and credentials to see the real cause."
+  - question: "Should I run migrations in the build step?"
+    answer: "Usually not. The build often runs without the private network or the runtime secrets: Railway's private network is available at runtime and not during the build, and Fly.io passes app secrets to running Machines, with a separate build-secrets feature for building the image. A release or pre-deploy command (Fly.io `release_command`, Heroku's release phase, Railway's and Render's pre-deploy command) runs after the build, on Fly.io and Railway with the app's variables and inside the private network, and a failure stops the deploy."
+  - question: "Should I allowlist GitHub Actions IP addresses on my database?"
+    answer: "GitHub recommends against it. Its docs say GitHub-hosted runners use so many IP address ranges that you shouldn't use them as allowlists, and suggest larger runners with a static IP range or self-hosted runners instead. The other options are to run the migration inside your host's network, in a release or pre-deploy command, or to use a database whose connection string is meant to be reached from the public internet with TLS."
+related:
+  - title: "Running database migrations safely in production"
+    href: "/postgres/production-database-migrations"
+  - title: "A deployed app says DATABASE_URL is missing"
+    href: "/postgres/database-url-missing"
+  - title: "Prepared statement errors behind a Postgres pooler"
+    href: "/postgres/prepared-statement-already-exists"
+  - title: "Connecting to your Prisma Postgres database"
+    href: "/docs/postgres/database/connecting-to-your-database"
+cta:
+  title: "Get a direct connection string for your migrations"
+  description: "Every Prisma Postgres database has a pooled string for the app and a direct one on db.prisma.io for migrations, both on port 5432 with sslmode=require. Any Postgres client and migration tool works; Prisma ORM is optional."
+  label: "Get your connection strings"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+A migration step that can't reach the database is almost always a difference between where the migration runs and where the app runs. The app connects from inside its host's network with its runtime variables. The migration often runs in a CI job, a build container or a one-off release machine, which may not have the variable, may not resolve the host name, or may not be allowed through the database's firewall. Find out which by testing the connection from the step that fails, then fix that one layer.
+
+We make Prisma Postgres and Prisma Compute. The checks below work with any host, Postgres provider and migration tool. Host and provider behavior links to each vendor's documentation, checked on October 22, 2026, and the error messages below come from a test run that day with Prisma ORM 7.10.1 and node-postgres (`pg`) 8 on Node.js 22.
+
+## Which error do you have?
+
+Read the top error line in the migration step's log. A database client usually tells you which layer failed:
+
+| Error | What it means | Go to |
+| --- | --- | --- |
+| `ENOTFOUND`, `getaddrinfo ENOTFOUND`, `could not translate host name` | The host name doesn't resolve from this step | Step 3 |
+| `ECONNREFUSED`, `Connection refused` | The address answered, but nothing accepts connections on that port: wrong host or port, or the database isn't running there | Steps 3 and 7 |
+| `ETIMEDOUT`, `timeout expired`, `Connection timed out` | Packets get no answer: a firewall, security group, allowlist or missing route drops them | Steps 4 and 5 |
+| `ENETUNREACH` with an IPv6 address | The host resolves only to IPv6 and this step has no IPv6 route | Step 5 |
+| `ECONNRESET`, `no pg_hba.conf entry ... no encryption`, `SSL off`, `The server does not support SSL connections` | TLS mismatch: the client didn't ask for TLS and the server requires it, or the reverse | Step 6 |
+| `password authentication failed`, `P1000`, `Failed to identify your database: Your Postgres credentials are incorrect.` | The network works; the user or password is wrong for this database | Step 2 |
+| `sorry, too many clients already`, `remaining connection slots are reserved` | The network and login work; the database has no free connection slot for the migration | [Too many connections](/postgres/too-many-connections) |
+| `Environment variable not found`, `Cannot resolve environment variable: DATABASE_URL` | The step never received the variable | Step 2 |
+
+Prisma ORM's migration commands are the exception. `prisma migrate deploy` reported `Error: P1001: Can't reach database server at <host>:5432` for a refused port, a host that doesn't resolve, an address that never answers, and wrong credentials against Prisma Postgres. The [error reference](/docs/orm/v7/reference/error-reference) describes `P1001` as an unreachable server, but in our test it covered all four cases. If you see it, run the test in step 1 with a plain client to get the underlying error.
+
+## Why does the app connect when the migration step can't?
+
+The migration runs in a different place from the app, and each place has its own variables and network:
+
+- **A CI job**, such as GitHub Actions, runs on a machine outside your host's network, on IP addresses that change.
+- **The build** of many hosts runs before the app's network and runtime secrets are attached. Railway, for example, says its [private network is available only at runtime](https://docs.railway.com/networking/private-networking/how-it-works), not during the build.
+- **A release or pre-deploy command** runs after the build, in a temporary container or machine that the host sets up with the app's variables.
+
+So a connection string that works in the app can fail in the migration step for reasons that have nothing to do with the database: the variable isn't set there, the host name only resolves inside the private network, or the database's firewall admits the app's network and not the runner.
+
+## How do I fix it?
+
+### 1. Test the connection from the step that fails
+
+A test from your laptop tells you little about the runner. Add a temporary step right before the migration, in the same job or container. Test the URL the migration itself reads: `DATABASE_URL`, or another variable such as `DIRECT_URL` if your migration config names one ([step 2](#2-make-sure-the-step-gets-the-right-variable)). The app's URL can work while the migration's points at a different host. Then print the parts of the URL that aren't secret:
+
+```bash
+export MIGRATION_URL="${DIRECT_URL:-$DATABASE_URL}"  # the URL your migration reads
+DB_HOST=$(node -e 'console.log(new URL(process.env.MIGRATION_URL).hostname)')
+DB_PORT=$(node -e 'console.log(new URL(process.env.MIGRATION_URL).port || 5432)')
+node -e 'const u = new URL(process.env.MIGRATION_URL); console.log(u.hostname, u.port || "5432", u.searchParams.get("sslmode"))'
+```
+
+Then, in the same step, check name resolution, the TCP port and a real login, in that order:
+
+```bash
+getent --no-addrconfig ahosts "$DB_HOST"  # Linux: lists IPv4 and IPv6 addresses, or nothing
+nc -vz -w 5 "$DB_HOST" "$DB_PORT"         # is the port reachable from here?
+psql "$MIGRATION_URL" -c 'select 1'      # login and TLS, if psql is installed
+```
+
+Without `--no-addrconfig`, `getent` leaves out IPv6 addresses on a runner that has no IPv6 address of its own, which hides the IPv6-only case in step 5. The option needs [glibc 2.37](https://sourceware.org/git/?p=glibc.git;a=blob_plain;f=NEWS;hb=HEAD) or later, as on Ubuntu 24.04; on an older system, `dig +short AAAA "$DB_HOST"` shows the IPv6 records instead.
+
+`psql` accepts only libpq's own [connection parameters](https://www.postgresql.org/docs/current/libpq-connect.html) in a URL and stops with `invalid URI query parameter` on any other. Prisma's own parameters, such as `schema`, `connection_limit` or `pgbouncer`, trigger it, so remove them from the copy you test and keep `sslmode`.
+
+If `psql` isn't available, the same login check with node-postgres from your project's dependencies:
+
+```bash
+node -e '
+const { Client } = require("pg");
+const c = new Client({ connectionString: process.env.MIGRATION_URL, connectionTimeoutMillis: 10000 });
+c.connect()
+  .then(() => { console.log("connected"); return c.end(); })
+  .catch((e) => { console.error(e.code ?? "", e.message); process.exit(1); });
+'
+```
+
+node-postgres 8 treats `sslmode=require` as `verify-full` and prints a `SECURITY WARNING` saying so, so it checks the server's certificate where `psql` doesn't. If this test fails only with a certificate error, add `uselibpqcompat=true` to the query string of the URL you test, or use `psql`, before you conclude that TLS is the problem.
+
+In our test, this printed `ENOTFOUND`, `ECONNREFUSED` or `timeout expired` for the network cases, and for wrong credentials against Prisma Postgres, `Failed to identify your database: Your Postgres credentials are incorrect.` If `nc` fails, the problem is the name, the route or a firewall. If `nc` works and the login fails, it is the credentials, TLS or the database name. If both work and the migration still fails, your migration tool reads a different URL than the one you tested.
+
+### 2. Make sure the step gets the right variable
+
+Print whether the variable is set, never its value: `test -n "$DATABASE_URL" && echo set || echo missing`. Then check where the step gets it from:
+
+- **CI secrets.** In GitHub Actions, a secret reaches a step only when the workflow passes it in through `env:` or `with:`. [Environment secrets](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments) are only available to jobs that reference the environment. Secrets are [not passed](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets) to workflows triggered from forks or by Dependabot, and not automatically to reusable workflows.
+- **Host variables.** Some hosts scope variables to the build, the runtime or a deploy context. Check that the migration's phase has the variable, and see [DATABASE_URL missing after a deploy](/postgres/database-url-missing) for each host.
+- **The tool's config.** Prisma ORM 7 reads the URL for migrations from `datasource.url` in `prisma.config.ts`, which may name a different variable, such as `DIRECT_URL`, than the app uses ([config reference](/docs/orm/v7/reference/prisma-config-reference)). Prisma ORM 8, a release candidate that npm now installs by default, replaces `prisma migrate deploy` with [`prisma db migrate`](/docs/orm/migrations/applying-a-migration), which reads `db.connection` in `prisma.config.ts` or a `--db` connection string. Drizzle Kit reads `drizzle.config.ts`. Set the variable that file names.
+- **Special characters.** A password with `@`, `:`, `/` or `#` must be [percent-encoded](/docs/orm/v7/reference/connection-urls#special-characters) in the URL, or the host part is parsed wrong.
+
+### 3. Use a host name the step can resolve
+
+A host name that works inside your app's network may not exist outside it:
+
+- **`localhost` and `127.0.0.1`** point at the runner itself, not at your database.
+- **Docker Compose service names** resolve only on that Compose network. In GitHub Actions, a Postgres [service container](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers) is reached by its label, such as `postgres`, when the job runs in a container, and through `localhost` and a mapped port when the job runs on the runner directly.
+- **Private names on your host.** Railway services resolve as `<service>.railway.internal` on its [private network](https://docs.railway.com/networking/private-networking), which a CI runner can't reach and the build can't either. A Render Postgres database's [internal URL](https://render.com/docs/postgresql-creating-connecting) works only from Render services in the same account and region; everything else uses its external URL. Fly.io's `.internal` names resolve to [IPv6 addresses on its private network](https://docs.fly.io/networking/private-networking), which machines outside Fly.io reach through a WireGuard connection.
+- **Kubernetes Service names**, such as `<service>.<namespace>.svc.cluster.local`, come from the [cluster's DNS](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/), so a CI runner can't resolve them. Inside the cluster, a name without a namespace resolves only in the Pod's own namespace, so a migration Job in another namespace needs the full name.
+
+If the migration has to run outside the private network, use the database's public or external connection string there, or move the migration inside the network (step 8).
+
+### 4. Open the network path to the database
+
+A timeout means something drops the packets. Check the database side first:
+
+- **AWS RDS.** [By default, DB instances don't allow access](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Troubleshooting.html); the security group's inbound rules decide who connects, and an instance reached from outside its VPC needs public accessibility and an internet gateway on its subnets.
+- **Render Postgres.** The external URL accepts any IP address by default (`0.0.0.0/0`), unless someone set an [IP allow list](https://render.com/docs/postgresql-creating-connecting) or disabled external access.
+- **Google Cloud SQL.** A client that connects directly to the instance's public IP must be in its [authorized networks](https://docs.cloud.google.com/sql/docs/postgres/authorize-networks). The [Cloud SQL Auth Proxy](https://docs.cloud.google.com/sql/docs/postgres/sql-proxy) connects without an authorized network, so you can run it in the migration step and point the migration at it. A [private IP](https://docs.cloud.google.com/sql/docs/postgres/private-ip) is reached through a VPC network connected to the instance, not from a hosted CI runner.
+- **Azure Database for PostgreSQL.** With public access, the [firewall blocks all access by default](https://learn.microsoft.com/en-us/azure/postgresql/security/security-firewall-rules) until you add rules for the client IP addresses.
+- **Kubernetes.** A [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/) that selects the migration Job's Pods and lists `Egress` in its `policyTypes` blocks every outbound connection it doesn't allow, including the one to the database port.
+- **Other providers.** Look for "network restrictions", "trusted sources" or "allowed IPs" in the database's settings.
+
+Adding the CI runner's address isn't a stable fix on hosted runners. GitHub [doesn't recommend](https://docs.github.com/en/actions/reference/runners/github-hosted-runners) its runners' IP ranges as allowlists, because there are so many, and suggests larger runners with a static IP range or self-hosted runners instead. A self-hosted runner inside the database's network, an SSH tunnel through a bastion host in that network, or a migration that runs on the host (step 8) avoids the allowlist altogether.
+
+On your side, a corporate firewall or VPN can block outbound connections to port 5432. That shows up when you run migrations from an office network but not from CI.
+
+### 5. Check IPv4 versus IPv6
+
+If `getent ahosts` lists only IPv6 addresses and the step has no IPv6 route, the connection fails with `ENETUNREACH` or times out. Supabase's [direct connection](https://supabase.com/docs/guides/database/connecting-to-postgres) (`db.<project-ref>.supabase.co:5432`) is IPv6-only unless the project has the IPv4 add-on, and Supabase [lists GitHub Actions, Vercel and Render](https://supabase.com/kb/troubleshooting/supabase--your-network-ipv4-and-ipv6-compatibility-cHe3BP) among the services that only connect over IPv4. Its shared pooler is IPv4-only on every plan, so from an IPv4-only runner use the shared pooler in session mode, which Supabase offers for IPv4-only networks, or add the IPv4 add-on. To check a runner, `curl -6 https://ifconfig.co/ip` prints an IPv6 address only if it has IPv6.
+
+Railway environments created on or before October 16, 2025 resolve private names [to IPv6 only](https://docs.railway.com/networking/private-networking/how-it-works); newer ones resolve to IPv4 and IPv6.
+
+### 6. Use the direct connection, with TLS
+
+Migrations need a stable session. Through a pooler in transaction mode, such as PgBouncer, they fail with lock or prepared-statement errors rather than a connection error, so point the migration step at the provider's direct, unpooled string: Neon's host [without `-pooler`](https://neon.com/docs/guides/prisma), Supabase's direct connection (or its shared pooler in session mode, from an IPv4-only runner), or Prisma Postgres's `db.prisma.io`. [Prepared statement errors behind a pooler](/postgres/prepared-statement-already-exists) covers the symptoms.
+
+With Prisma ORM 7, point `datasource.url` in `prisma.config.ts` at the direct string; the separate `directUrl` property was [removed in Prisma ORM 7](/docs/orm/v7/reference/prisma-config-reference). Prisma ORM 6 kept the direct string in `directUrl` in `schema.prisma`.
+
+Hosted Postgres usually requires TLS. Keep `sslmode=require` if the provider's string has it, and add it if the provider requires TLS; without it, Prisma Postgres reset the connection in our test (`read ECONNRESET` in node-postgres). Certificate errors such as `self-signed certificate in certificate chain` mean the client can't verify the server's certificate; the [PostgreSQL SSL docs](https://www.postgresql.org/docs/current/libpq-ssl.html) describe each `sslmode`, and your provider documents its CA file.
+
+### 7. Wait for a database that is starting or waking
+
+- **Serverless databases that scale to zero.** Neon suspends a compute after [5 minutes of inactivity](https://neon.com/docs/introduction/scale-to-zero) by default, and its [Prisma guide](https://neon.com/docs/guides/prisma) traces `P1001` to a connection that timed out while the compute woke up. It suggests `connect_timeout=15` in the connection string.
+- **A database created in the same pipeline.** If the deploy provisions the database and migrates it right away, retry the connection for a short while before the migration.
+- **CI service containers.** Give the Postgres service a health check (`--health-cmd pg_isready`), as GitHub's [service container example](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers) does, so steps start only once it accepts connections.
+
+### 8. Run the migration where the database is reachable
+
+If the database is private to your host, run the migration on the host, after the build and before the new version takes traffic:
+
+| Host | Command | Where it runs | If it fails |
+| --- | --- | --- | --- |
+| [Fly.io](https://docs.fly.io/reference/configuration) | `release_command` in `[deploy]` | A temporary Machine from the new image, with the app's environment, secrets and network | The deploy stops; 5-minute default timeout |
+| [Heroku](https://devcenter.heroku.com/articles/release-phase) | `release:` in the `Procfile` | A one-off dyno | The release isn't deployed; 1-hour timeout |
+| [Railway](https://docs.railway.com/deployments/pre-deploy-command) | Pre-deploy command | A separate container inside the private network, with the app's variables | Not retried, and the deployment doesn't proceed; no time limit by default |
+| [Render](https://render.com/docs/deploys) | Pre-deploy command (paid web services, private services and background workers) | A separate instance, after the build | The deploy fails and the previous one keeps running; 30-minute timeout |
+
+Hosts are listed alphabetically. On Kubernetes, run the migration inside the cluster as a Job, for example from a Helm [`pre-install` and `pre-upgrade` hook](https://helm.sh/docs/topics/charts_hooks/): Helm waits for the Job to complete and fails the release if it fails. Keep the migration CLI in `dependencies` if your host prunes development dependencies before this phase. If you migrate from CI instead, use a job that the deploy depends on, so a failed migration stops the release; [running migrations safely in production](/postgres/production-database-migrations) has a GitHub Actions example.
+
+## How to prevent it
+
+- Keep the migration's connection string in its own secret, such as `DIRECT_URL`, set in every environment and CI job that migrates.
+- Keep a connectivity check (step 1) as the opening command of the migration step, so the log names the failing layer the next time.
+- When you change providers, regions or plans, check the new database's network rules, IP version and TLS settings before your next deploy that migrates it.
+
+## When this isn't a connection problem
+
+- **The step connects, and the migration itself fails.** Errors such as `P3009` (a failed migration recorded in the database) or `relation does not exist` mean the network works. [Running migrations safely in production](/postgres/production-database-migrations) covers failed and missing migrations.
+- **The app can't connect either.** Then the database, its credentials or the provider is the problem, not the migration step. Check the provider's status page and the database's connection settings.
+
+## Where do Prisma Postgres and Prisma Compute fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17, and any Postgres client or migration tool connects to it; Prisma ORM is optional. Prisma Postgres fits when your migration runs outside your host's network, such as in a GitHub Actions job: its direct host, `db.prisma.io`, is reached over the internet on port 5432 with `sslmode=require`, so there is no private network or VPN for the runner to join.
+
+Each database has two [connection strings](/docs/postgres/database/connecting-to-your-database) with the same credentials: the pooled one on `pooled.db.prisma.io` for the app, and the direct one on `db.prisma.io` for migrations, `pg_dump` and admin tools. With Prisma ORM 7, the docs set `datasource.url` in `prisma.config.ts` to the direct string. On October 22, 2026, both hosts resolved to IPv4 addresses only and accepted TCP connections on port 5432 from a laptop, so an IPv4-only runner can reach them; that is an observation, not a documented guarantee. If a corporate firewall or VPN blocks outbound PostgreSQL traffic, allow both `db.prisma.io` and `pooled.db.prisma.io` on port 5432. A wildcard rule for `*.db.prisma.io` usually doesn't match `db.prisma.io` itself, which is the host migrations use.
+
+If you also host the app on [Prisma Compute](/docs/compute), how migrations run depends on how the app gets its database. A database declared with Composer's `postgres()` gets its `migrations/` folder [applied by the deploy before the service starts](/docs/composer/databases), and the deploy fails before touching the database if the emitted contract is missing or doesn't match. A `rawPostgres()` database, or one the app reaches through a `DATABASE_URL` you set with `npx prisma@latest project env add`, [is yours to migrate](/docs/compute/faq#does-prisma-clone-my-production-database-for-previews): run the migration from CI or your machine over the direct host before you deploy.
+
+Know the limits before you rely on it:
+
+- If your database already runs in a private network and only the migration step can't reach it, a release or pre-deploy command (step 8) fixes that without moving the database. Moving it is a migration project of its own.
+- The connection docs describe two public hosts, with no private endpoint and no IP allowlist on the database side, so the credentials and TLS control access. If your policy requires a private endpoint or source-IP restrictions, use a database inside your own network.
+- [Direct connections](/docs/postgres/database/connection-pooling) are capped at 10 on Free and Starter, 50 on Pro and 100 on Business, and 5 of them are reserved for platform operations. A migration, a database GUI and `pg_dump` all count against that limit.
+- [Backups](/docs/postgres/database/backups) are daily snapshots on Starter, Pro and Business, taken only on days the database has activity, kept for 7 days on Starter and Pro and 30 days on Business. The Free plan has no backups, and there is no point-in-time recovery yet (it is coming in November 2026), so take a `pg_dump` over the direct connection before a destructive migration.
+
+The Free plan includes 2 GB of storage and 200,000 operations a month, with no credit card. See [pricing](/pricing) for the paid plans.

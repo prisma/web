@@ -15,9 +15,9 @@ const SPECTRUM =
 // Feature ray photos cycled across the cards — same backdrops (and crops) as
 // the homepage illustrations, saturation boosted on their own layer.
 const PHOTOS = [
-  "bg-[url('/brand/feature-orm.jpg')] bg-[position:0%_65%]",
-  "bg-[url('/brand/feature-postgres.jpg')] bg-[position:50%_55%]",
-  "bg-[url('/brand/feature-compute.jpg')] bg-[position:20%_90%]",
+  "brand-orm bg-[position:0%_65%]",
+  "brand-postgres bg-[position:50%_55%]",
+  "brand-compute bg-[position:20%_90%]",
 ];
 
 // Column count per feature count. V4 ships an uneven number per product, and a

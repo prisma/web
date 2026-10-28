@@ -62,7 +62,7 @@ const additionalPages: LlmsPage[] = [
 export const crossAppKeyPages: LlmsPage[] = [
   {
     path: "/blog/host-a-test-version-without-replacing-production",
-    title: "How to host a test version of your app without replacing production (2026)",
+    title: "Host a test version without replacing production: previews and staging (2026)",
     description:
       "Deploy the new version from a Git branch to a preview or staging environment with its own URL and test database; only the main branch deploys production. Covers Fly.io, Netlify, Prisma Compute, Railway, Render and Vercel.",
   },

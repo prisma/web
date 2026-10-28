@@ -121,13 +121,14 @@ export function createUnifiedSearch(getClient: () => Mixedbread) {
     if (!sources.has(source))
       return Response.json({ error: "Invalid search source." }, { status: 400 });
     const local = ["localhost", "127.0.0.1"].includes(url.hostname);
+    const site =
+      process.env.NEXT_SITE_ORIGIN || (local ? "http://localhost:3000" : "https://www.prisma.io");
+    // NEXT_DOCS_ORIGIN and NEXT_BLOG_ORIGIN are the site's rewrite targets, not public URLs.
+    // Outside local development, docs and blog pages are linked under the site origin.
     const origins = {
-      website:
-        process.env.NEXT_SITE_ORIGIN || (local ? "http://localhost:3000" : "https://www.prisma.io"),
-      docs:
-        process.env.NEXT_DOCS_ORIGIN || (local ? "http://localhost:3001" : "https://www.prisma.io"),
-      blog:
-        process.env.NEXT_BLOG_ORIGIN || (local ? "http://localhost:3002" : "https://www.prisma.io"),
+      website: site,
+      docs: local ? process.env.NEXT_DOCS_ORIGIN || "http://localhost:3001" : site,
+      blog: local ? process.env.NEXT_BLOG_ORIGIN || "http://localhost:3002" : site,
     };
     try {
       const results = await searchPages(url.searchParams.get("query") || "", source as Source);
