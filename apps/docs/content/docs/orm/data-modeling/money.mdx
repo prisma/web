@@ -8,7 +8,7 @@ metaDescription: 'How to store money in Prisma ORM 8 on PostgreSQL: integer cent
 
 An amount of money must come out of the database exactly as it went in, and adding a thousand of them must not drift by a cent. A JavaScript `number` cannot promise either: `0.1 + 0.2` is `0.30000000000000004`. This page shows the three PostgreSQL types that can, which one to pick, and how to read, write, add, and multiply their values in Prisma ORM 8.
 
-Prisma ORM 8 calls the schema file the contract. It is `src/prisma/contract.prisma`, and it replaces `schema.prisma`. The examples on this page use the model below. After you add it, run `npx prisma contract emit` to update the files your code imports, then `npx prisma migration plan --name add-order` and `npx prisma db migrate` to create the table; [Generating a migration](/orm/migrations/generating-a-migration) explains both. In the code, `db` is the client that `src/prisma/db.ts` exports, a file `npm create prisma` and `npx prisma orm init` write for you.
+Prisma ORM 8 calls the schema file the contract. It is `src/prisma/contract.prisma`, and it replaces `schema.prisma`. The examples on this page use the model below. After you add it, run `npx prisma contract emit` to update the files your code imports, then `npx prisma migration plan --name add-order` and `npx prisma db migrate --advance-ref db` to create the table in your development database; [Generating a migration](/orm/migrations/generating-a-migration) explains both. In the code, `db` is the client that `src/prisma/db.ts` exports, a file `npm create prisma` and `npx prisma orm init` write for you.
 
 ```prisma title="src/prisma/contract.prisma"
 model Order {
@@ -49,7 +49,7 @@ const order = await db.orm.public.Order.create({
 order.total; // "19.99"
 ```
 
-You can use the value anywhere a string goes. An optional field, such as `total Numeric(10, 2)?`, reads as `null` when it has no value. TypeScript refuses a JavaScript number for a decimal field. If the number came straight from JSON or a parsed form field and your code did no arithmetic on it, `String(value)` is safe to pass. If your code calculated it, calculate in cents or with a decimal library first, as [Multiply and round](#multiply-and-round) shows, because the calculation may have left digits you did not mean.
+You can use the value anywhere a string goes. An optional field, such as `total Numeric(10, 2)?`, reads as `null` when it has no value. TypeScript refuses a JavaScript number for a decimal field. Keep an amount as a string from the moment it enters your app: read form fields as strings, and ask API clients to send amounts as strings, because parsing `"0.123456789012345678"` as a JSON number already drops digits before your code sees it. If your code calculated an amount, calculate in cents or with a decimal library, as [Multiply and round](#multiply-and-round) shows, and pass the library's string.
 
 TypeScript accepts any string for a decimal field, including one that is not a number, so validate input before you write it. PostgreSQL refuses a value such as `"abc"` with `invalid input syntax for type numeric`.
 
@@ -69,7 +69,7 @@ usd.format(Number(order.total)); // "$19.99"
 usd.format(order.totalCents / 100); // "$19.99"
 ```
 
-A `BigInt` field of cents is a `bigint`, which cannot be divided into a fraction; format it with `usd.format(Number(cents) / 100)`.
+A `BigInt` field of cents is a `bigint`, which cannot be divided into a fraction. Below `Number.MAX_SAFE_INTEGER` cents, about 90 trillion dollars, `usd.format(Number(cents) / 100)` is exact; above it, `Number` drops digits, so format with a decimal library instead.
 
 ## How the column rounds
 
