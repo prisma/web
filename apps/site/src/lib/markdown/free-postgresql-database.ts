@@ -31,6 +31,7 @@ import {
   FREE_POSTGRES_PRICING_CTA,
   FREE_POSTGRES_PRIMARY_CTA,
   FREE_POSTGRES_PROBLEM_HEADLINE,
+  FREE_POSTGRES_USE_HEADLINE,
   CREATE_DB_COMMAND,
   FREE_POSTGRES_TERMINAL_TABS,
 } from "@/app/free-postgresql-database/_content";
@@ -146,9 +147,12 @@ export function renderFreePostgresqlDatabaseMarkdown(): string {
       heading(3, item.name),
       paragraphs(item.body),
       paragraphs(
-        item.href ? `${item.count}. [${item.plan}](${item.href}).` : `${item.count}. ${item.plan}.`,
+        item.href
+          ? `${item.count}. [${item.plan}](${item.href}).${item.linkLabel ? ` [${item.linkLabel}](${item.href}).` : ""}`
+          : `${item.count}. ${item.plan}.`,
       ),
     ]),
+    heading(2, FREE_POSTGRES_USE_HEADLINE),
     bulletList(FREE_POSTGRES_FEATURE_ITEMS.map((item) => `**${item.name}:** ${item.description}`)),
 
     heading(2, PRODUCT_PLATFORM_HEADING),

@@ -77,6 +77,7 @@ test("title, meta and H1 match the brief", () => {
       "Connections",
       "Data transfer",
       "Postgres",
+      "Backups",
       "Extensions",
       "Regions",
       "Query Insights",
@@ -88,10 +89,7 @@ test("title, meta and H1 match the brief", () => {
   );
   assert.deepEqual(
     FREE_POSTGRES_INCLUDED_NOTES.map((note) => note.text),
-    [
-      "Operations reset on the 1st of every month.",
-      "No backups. Daily backups start on Starter and are kept for 7 days.",
-    ],
+    ["Operations reset on the 1st of every month."],
   );
   const includedCopy = [
     ...FREE_POSTGRES_INCLUDED_CARDS.flatMap((card) => [card.title, card.detail]),
@@ -122,7 +120,10 @@ test("title, meta and H1 match the brief", () => {
     label: "Get started",
     href: CONSOLE_SIGN_UP_URL,
   });
-  assert.equal(FREE_POSTGRES_PRIMARY_CTA.label, "Create a free database");
+  assert.deepEqual(FREE_POSTGRES_PRIMARY_CTA, {
+    label: "Create an instant database",
+    href: CREATE_DB_WEB_URL,
+  });
 });
 
 test("FAQ answers strip cleanly and match FAQPage JSON-LD", () => {
@@ -172,7 +173,7 @@ test("user-visible content and FAQ schema have no em or en dashes", () => {
   for (const line of Object.values(FREE_POSTGRES_COPILOT)) assert.ok(!DASHES.test(line));
   for (const line of Object.values(FREE_POSTGRES_LIMIT)) assert.ok(!DASHES.test(line));
   for (const item of FREE_POSTGRES_CASES) {
-    const text = `${item.name} ${item.body} ${item.count} ${item.plan}`;
+    const text = `${item.name} ${item.body} ${item.count} ${item.plan} ${item.linkLabel}`;
     assert.ok(!DASHES.test(text));
     assert.ok(!/\bapp\b/i.test(text));
     assert.ok(item.count.startsWith("about "), `${item.name} is marked approximate`);
@@ -314,15 +315,16 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   const includedCards = markdown.indexOf("**2 GB.** of [storage](/pricing)");
   const includedTable = markdown.indexOf("| Connections |");
   const resetNote = markdown.indexOf("1. Operations reset on the 1st of every month.");
-  const backupNote = markdown.indexOf(
-    "2. No backups. Daily backups start on Starter and are kept for 7 days.",
+  const backupRow = markdown.indexOf(
+    "| Backups | No backups. Daily backups start on Starter and are kept for 7 days. |",
   );
   assert.ok(
     includedCards > secondCheck &&
       includedTable > includedCards &&
-      resetNote > includedTable &&
-      backupNote > resetNote,
+      backupRow > includedTable &&
+      resetNote > backupRow,
   );
+  assert.ok(!markdown.includes("2. No backups."));
   assert.ok(!markdown.includes("### What you get"));
   assert.ok(!markdown.includes("**No backups.**"));
   assert.ok(markdown.includes("[operations](/pricing)"));
@@ -344,9 +346,13 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   );
   const limitHeading = markdown.indexOf(`## ${FREE_POSTGRES_PROBLEM_HEADLINE}`);
   const blogCase = markdown.indexOf("### A personal blog");
+  const useHeading = markdown.indexOf("## Build on it, then upgrade");
   const buildCard = markdown.indexOf("**What developers build on it:**");
   assert.ok(
-    backupNote < limitHeading && limitHeading < blogCase && blogCase < buildCard,
+    resetNote < limitHeading &&
+      limitHeading < blogCase &&
+      blogCase < useHeading &&
+      useHeading < buildCard,
     "the three cards follow the limit, before the two feature cards",
   );
   assert.ok(!markdown.includes("Roughly, in a day"));
@@ -373,6 +379,7 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.ok(markdown.includes("about 400 a day. Stays on Free."));
   assert.ok(markdown.includes("### A team chat"));
   assert.ok(markdown.includes("[Needs Starter at $10 a month](/pricing)"));
+  assert.ok(markdown.includes("[See pricing](/pricing)"));
   assert.ok(markdown.includes("about 20,000 a day."));
   assert.ok(markdown.includes("Free includes [Prisma Compute](/compute)."));
   assert.ok(

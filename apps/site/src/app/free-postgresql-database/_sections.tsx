@@ -1,4 +1,5 @@
 import { Texture } from "@/components/brand/texture";
+import { ArrowRightBold } from "@/components/icons/forma";
 import { ProductCta } from "@/components/product/product-cta";
 import { ProductFeatures } from "@/components/product/product-features";
 import { ProductHero } from "@/components/product/product-hero";
@@ -43,6 +44,7 @@ import {
   FREE_POSTGRES_PRIMARY_CTA,
   FREE_POSTGRES_PROBLEM_HEADLINE,
   FREE_POSTGRES_SUBHEADLINE,
+  FREE_POSTGRES_USE_HEADLINE,
 } from "./_content";
 import { FreePostgresTerminal } from "./_terminal";
 
@@ -120,9 +122,8 @@ function FreePostgresSubtitle() {
     <>
       <strong className="font-semibold text-foreground">2 GB</strong> of storage,{" "}
       <strong className="font-semibold text-foreground">200,000 operations</strong> a month (one
-      query each), and{" "}
-      <strong className="font-semibold text-foreground">50 databases</strong>. Prisma Postgres
-      works with any Postgres client.
+      query each), and <strong className="font-semibold text-foreground">50 databases</strong>.
+      Prisma Postgres works with any Postgres client.
     </>
   );
 }
@@ -147,9 +148,11 @@ function FreeLimit() {
       className="scroll-mt-28 bg-white px-4 pt-24 pb-8 sm:px-8 sm:pt-32 sm:pb-10"
     >
       <div className="mx-auto max-w-site">
-        <h2 className="max-w-[14ch] text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-          {FREE_POSTGRES_PROBLEM_HEADLINE}
-        </h2>
+        <div className="mx-auto max-w-3xl text-center max-md:text-left">
+          <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+            {FREE_POSTGRES_PROBLEM_HEADLINE}
+          </h2>
+        </div>
 
         <div className="relative mt-8 overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
           <Texture opacity={0.05} blend="multiply" />
@@ -195,18 +198,16 @@ function FreeLimit() {
                 </div>
               </div>
 
-              <div className="mt-3 border-t border-black/[0.06] pt-3">
-                <div className="flex items-start gap-3">
-                  <span
-                    aria-hidden
-                    className="mt-2 size-2 shrink-0 rounded-full bg-prism-yellow-400"
-                  />
-                  <div>
-                    <h3 className="text-lg leading-snug">{FREE_POSTGRES_LIMIT.restoreTitle}</h3>
-                    <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
-                      {FREE_POSTGRES_LIMIT.restoreBody}
-                    </p>
-                  </div>
+              <div className="mt-6 flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className="mt-2 size-2 shrink-0 rounded-full bg-prism-yellow-400"
+                />
+                <div>
+                  <h3 className="text-xl leading-snug">{FREE_POSTGRES_LIMIT.restoreTitle}</h3>
+                  <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                    {FREE_POSTGRES_LIMIT.restoreBody}
+                  </p>
                 </div>
               </div>
             </div>
@@ -236,6 +237,12 @@ function FreeLimitCases() {
                   {item.count}
                 </p>
                 <p className="mt-0.5 text-sm text-foreground">{item.plan}</p>
+                {item.linkLabel ? (
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-black/25 underline-offset-4 group-hover:decoration-foreground">
+                    {item.linkLabel}
+                    <ArrowRightBold className="size-3.5 shrink-0" aria-hidden />
+                  </p>
+                ) : null}
               </div>
             </>
           );
@@ -244,7 +251,7 @@ function FreeLimitCases() {
               {item.href ? (
                 <a
                   href={item.href}
-                  className="block overflow-hidden rounded-xl border border-black/[0.06] bg-white text-inherit no-underline outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="group block overflow-hidden rounded-xl border border-black/[0.06] bg-white text-inherit no-underline outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                   {card}
                 </a>
@@ -294,7 +301,7 @@ export function FreePostgresPage() {
       <FreeLimitCases />
       <ProductFeatures
         features={{
-          headline: "",
+          headline: FREE_POSTGRES_USE_HEADLINE,
           bridge: "",
           items: FREE_POSTGRES_FEATURE_ITEMS.map((item) => ({
             ...item,

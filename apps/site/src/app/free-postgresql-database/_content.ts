@@ -209,7 +209,8 @@ export const UPGRADE_POINTS = [
 ] as const;
 
 // The filled hero button is the action the window types. Get started stays
-// the account path, as the outline button. The closer keeps its own label.
+// the account path, as the outline button. The closer uses the same instant
+// action: its checks already say npx create-db, no account, claim in 24 hours.
 export const FREE_POSTGRES_HERO_PRIMARY_CTA = {
   label: "Create an instant database",
   href: CREATE_DB_WEB_URL,
@@ -221,8 +222,8 @@ export const FREE_POSTGRES_HERO_SECONDARY_CTA = {
 } as const;
 
 export const FREE_POSTGRES_PRIMARY_CTA = {
-  label: "Create a free database",
-  href: CONSOLE_SIGN_UP_URL,
+  label: "Create an instant database",
+  href: CREATE_DB_WEB_URL,
 } as const;
 
 export const FREE_POSTGRES_PRICING_CTA = {
@@ -333,6 +334,7 @@ export const FREE_POSTGRES_CASES = [
     count: "about 40 a day",
     plan: "Stays on Free",
     href: "",
+    linkLabel: "",
     image: "/free-postgresql-database/personal-blog.svg",
     imageAlt: "A simple drawing of an open notebook",
   },
@@ -342,6 +344,7 @@ export const FREE_POSTGRES_CASES = [
     count: "about 400 a day",
     plan: "Stays on Free",
     href: "",
+    linkLabel: "",
     image: "/free-postgresql-database/feedback-board.svg",
     imageAlt: "A simple drawing of a board with two cards",
   },
@@ -351,6 +354,7 @@ export const FREE_POSTGRES_CASES = [
     count: "about 20,000 a day",
     plan: "Needs Starter at $10 a month",
     href: "/pricing",
+    linkLabel: "See pricing",
     image: "/free-postgresql-database/team-chat.svg",
     imageAlt: "A simple drawing of a chat window",
   },
@@ -400,6 +404,10 @@ export const FREE_POSTGRES_INCLUDED_ROWS: readonly FreePostgresIncludedRow[] = [
     value: `Version 17, encrypted in transit, with a pooler and a [connection string](${DOCS_CONNECT}).`,
   },
   {
+    label: "Backups",
+    value: "No backups. Daily backups start on Starter and are kept for 7 days.",
+  },
+  {
     label: "Extensions",
     value: `[pgvector](${DOCS_EXTENSIONS}) for similarity search, plus pg_search, pg_trgm, and pgcrypto.`,
   },
@@ -423,8 +431,11 @@ export const FREE_POSTGRES_INCLUDED_ROWS: readonly FreePostgresIncludedRow[] = [
 
 export const FREE_POSTGRES_INCLUDED_NOTES = [
   { n: 1, text: "Operations reset on the 1st of every month." },
-  { n: 2, text: "No backups. Daily backups start on Starter and are kept for 7 days." },
 ] as const;
+
+// The two cards under the examples. The heading names both: what people build,
+// then the reasons to leave Free. The card copy stays short.
+export const FREE_POSTGRES_USE_HEADLINE = "Build on it, then upgrade";
 
 export const FREE_POSTGRES_FEATURE_ITEMS = [
   {
