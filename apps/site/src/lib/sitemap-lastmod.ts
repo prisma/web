@@ -13,6 +13,11 @@ import path from "node:path";
  * listed content file gets no `<lastmod>`, since its page file alone would
  * miss most edits to its copy.
  *
+ * Commits listed in `sitemap-lastmod-ignore-revs.txt` (next to `package.json`)
+ * are skipped: they touched many pages without changing their copy (metadata
+ * sweeps, copy moved unchanged into a content file), so a file they touched
+ * keeps the date of its previous commit.
+ *
  * When the date is not known, the route gets no `<lastmod>`. In particular a
  * file's modification time is never used: on a fresh checkout it is the build
  * time, which would stamp every route with the deploy date.
@@ -40,16 +45,19 @@ const COMMIT_PREFIX = "commit:";
  * quote, backslash or control character comes through as it is on disk.
  * Dates are UTC calendar days, so days from commits made in different time
  * zones compare in commit order. Files whose last commit is a shallow-clone
- * boundary get no date.
+ * boundary get no date. Commits in `ignoredCommits` are skipped, so the files
+ * they touched take the date of their previous commit.
  */
 export function parseGitLog(
   stdout: string,
   topLevel: string,
   boundaryCommits: ReadonlySet<string> = new Set(),
+  ignoredCommits: ReadonlySet<string> = new Set(),
 ): Map<string, string> {
   const dates = new Map<string, string>();
   const seen = new Set<string>();
   let date: string | undefined;
+  let ignored = false;
 
   for (const record of stdout.split("\0")) {
     // git writes a newline between a commit's header and its first path.
@@ -59,11 +67,12 @@ export function parseGitLog(
       const [sha = "", committedAt = ""] = entry.slice(COMMIT_PREFIX.length).trim().split(" ");
       const instant = new Date(committedAt);
       const day = Number.isNaN(instant.getTime()) ? "" : instant.toISOString().slice(0, 10);
+      ignored = ignoredCommits.has(sha);
       date = boundaryCommits.has(sha) || !/^\d{4}-\d{2}-\d{2}$/.test(day) ? undefined : day;
       continue;
     }
 
-    if (!entry) continue;
+    if (!entry || ignored) continue;
     const file = path.join(topLevel, entry);
     if (seen.has(file)) continue;
     seen.add(file);
@@ -71,6 +80,32 @@ export function parseGitLog(
   }
 
   return dates;
+}
+
+/** The checked-in list of commits {@link getGitFileDates} skips, read from the app directory. */
+export const IGNORE_REVS_FILE = path.join(process.cwd(), "sitemap-lastmod-ignore-revs.txt");
+
+/**
+ * Full commit SHAs from an ignore-revs file: one per line, `#` starts a
+ * comment. Anything else on a line (an abbreviated SHA, a branch name) is not
+ * a commit `git log` prints, so it is left out.
+ */
+export function parseIgnoreRevs(text: string): Set<string> {
+  const revs = new Set<string>();
+  for (const line of text.split("\n")) {
+    const rev = line.replace(/#.*/, "").trim();
+    if (/^[0-9a-f]{40}$/.test(rev)) revs.add(rev);
+  }
+  return revs;
+}
+
+/** {@link parseIgnoreRevs} of `file`, or an empty set when it cannot be read. */
+export function readIgnoreRevs(file: string = IGNORE_REVS_FILE): Set<string> {
+  try {
+    return parseIgnoreRevs(readFileSync(file, "utf8"));
+  } catch {
+    return new Set();
+  }
 }
 
 /** Environment variables, as `process.env` or a plain object in tests. */
@@ -86,7 +121,23 @@ const ISOLATED_GIT_ENV: Env = {
   GIT_ALTERNATE_OBJECT_DIRECTORIES: undefined,
 };
 
+/**
+ * `next build` gives up on a page whose static generation takes more than 60
+ * seconds, and the sitemap is generated there. All git commands for one
+ * sitemap share this budget, so a slow fetch costs the dates, not the build.
+ */
+const GIT_BUDGET_MS = 50_000;
+
+/** Longest single runs: init and log are local, the fetch is the network. */
+const GIT_TIMEOUT_MS = { local: 10_000, init: 5_000, fetch: 35_000 } as const;
+
+/** Milliseconds a command may run: its own limit, cut to what is left before `deadline`. */
+function timeLeft(deadline: number, limit: number): number {
+  return Math.min(limit, deadline - Date.now());
+}
+
 interface GitOptions {
+  /** Milliseconds; at or below 0 the command is not run. */
   timeout?: number;
   /** Merged over `process.env`; an `undefined` value removes that variable. */
   env?: Env;
@@ -95,13 +146,18 @@ interface GitOptions {
 }
 
 function git(cwd: string, args: string[], options: GitOptions = {}): string | undefined {
+  const timeout = options.timeout ?? GIT_TIMEOUT_MS.local;
+  if (timeout <= 0) {
+    options.onError?.("out of time (sitemap git budget spent)");
+    return undefined;
+  }
   try {
     return execFileSync("git", args, {
       cwd,
       encoding: "utf8",
       maxBuffer: 256 * 1024 * 1024,
       stdio: ["ignore", "pipe", options.onError ? "pipe" : "ignore"],
-      timeout: options.timeout ?? 30_000,
+      timeout,
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0", ...options.env },
     });
   } catch (error) {
@@ -143,16 +199,19 @@ export function gitLogArgs(revision: string, pathspec: string): string[] {
  * Commits a shallow clone cut its history at; `undefined` for a full clone and
  * `null` for a shallow one whose boundary cannot be read (no date is trusted).
  */
-function getShallowBoundary(cwd: string): ReadonlySet<string> | null | undefined {
-  if (git(cwd, ["rev-parse", "--is-shallow-repository"])?.trim() !== "true") return undefined;
+function getShallowBoundary(cwd: string, deadline: number): ReadonlySet<string> | null | undefined {
+  const timeout = () => timeLeft(deadline, GIT_TIMEOUT_MS.local);
+  const shallow = git(cwd, ["rev-parse", "--is-shallow-repository"], { timeout: timeout() });
+  if (shallow?.trim() !== "true") return undefined;
 
-  const shallowFile = git(cwd, ["rev-parse", "--path-format=absolute", "--git-path", "shallow"]);
+  const shallowFile = git(cwd, ["rev-parse", "--path-format=absolute", "--git-path", "shallow"], {
+    timeout: timeout(),
+  });
+  // Keep the path a plain variable: an expression with a literal fallback
+  // makes Turbopack trace the whole project into the sitemap route.
+  if (!shallowFile) return null;
   try {
-    return new Set(
-      readFileSync(shallowFile?.trim() ?? "", "utf8")
-        .split("\n")
-        .filter(Boolean),
-    );
+    return new Set(readFileSync(shallowFile.trim(), "utf8").split("\n").filter(Boolean));
   } catch {
     return null;
   }
@@ -207,36 +266,46 @@ function findRepositoryRoot(directory: string, topLevel?: string): string | unde
 }
 
 /** `git log` output for `commit`'s full history, fetched from `remote` into a temporary repository. */
-function readFetchedLog(
+export function readFetchedLog(
   remote: string,
   commit: string,
   pathspec: string,
+  deadline: number,
+  tempRoot: string = tmpdir(),
 ): { log: string } | { error: string } {
-  const dir = mkdtempSync(path.join(tmpdir(), "site-sitemap-lastmod-"));
+  let dir: string | undefined;
   let reason = "unknown error";
   const onError = (message: string) => {
     reason = message;
   };
   try {
-    if (git(dir, ["init", "--quiet", "--bare"], { env: ISOLATED_GIT_ENV, onError }) === undefined) {
-      return { error: `git init: ${reason}` };
+    try {
+      dir = mkdtempSync(path.join(tempRoot, "site-sitemap-lastmod-"));
+    } catch (error) {
+      const { code, message } = error as { code?: unknown; message?: unknown };
+      return { error: `mkdtemp: ${String(code ?? message ?? error)}` };
     }
-    // The sitemap is generated during `next build`; stay well inside its
-    // 60-second static generation limit and go without dates instead.
+    const init = git(dir, ["init", "--quiet", "--bare"], {
+      timeout: timeLeft(deadline, GIT_TIMEOUT_MS.init),
+      env: ISOLATED_GIT_ENV,
+      onError,
+    });
+    if (init === undefined) return { error: `git init: ${reason}` };
     const fetched = git(
       dir,
       ["fetch", "--quiet", "--no-tags", "--filter=blob:none", remote, commit],
-      { timeout: 40_000, env: ISOLATED_GIT_ENV, onError },
+      { timeout: timeLeft(deadline, GIT_TIMEOUT_MS.fetch), env: ISOLATED_GIT_ENV, onError },
     );
     if (fetched === undefined) return { error: `git fetch: ${reason}` };
     // The log reads commits and trees only; never fetch file contents lazily.
     const log = git(dir, gitLogArgs(commit, pathspec), {
+      timeout: timeLeft(deadline, GIT_TIMEOUT_MS.local),
       env: { ...ISOLATED_GIT_ENV, GIT_NO_LAZY_FETCH: "1" },
       onError,
     });
     return log === undefined ? { error: `git log: ${reason}` } : { log };
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    if (dir) rmSync(dir, { recursive: true, force: true });
   }
 }
 
@@ -248,31 +317,43 @@ export interface GitFileDatesOptions {
   remote?: string;
   /** Called once when a fetch was needed, with where the dates came from, for the build log. */
   report?: (message: string) => void;
+  /** Commits to skip; defaults to {@link readIgnoreRevs} of {@link IGNORE_REVS_FILE}. */
+  ignoreRevs?: ReadonlySet<string>;
 }
 
 /** Last-commit dates for every file under `directory`, or an empty map without git history. */
 export function getGitFileDates(
   directory: string,
-  { fetchHistory = false, env = process.env, remote, report }: GitFileDatesOptions = {},
+  {
+    fetchHistory = false,
+    env = process.env,
+    remote,
+    report,
+    ignoreRevs = readIgnoreRevs(),
+  }: GitFileDatesOptions = {},
 ): Map<string, string> {
-  const topLevel = git(directory, ["rev-parse", "--show-toplevel"])?.trim() || undefined;
-  const boundary = topLevel ? getShallowBoundary(topLevel) : undefined;
+  const deadline = Date.now() + GIT_BUDGET_MS;
+  const local = (cwd: string, args: string[]) =>
+    git(cwd, args, { timeout: timeLeft(deadline, GIT_TIMEOUT_MS.local) });
+
+  const topLevel = local(directory, ["rev-parse", "--show-toplevel"])?.trim() || undefined;
+  const boundary = topLevel ? getShallowBoundary(topLevel, deadline) : undefined;
 
   if (topLevel && boundary === undefined) {
-    const log = git(topLevel, gitLogArgs("HEAD", directory));
-    return log ? parseGitLog(log, topLevel) : new Map();
+    const log = local(topLevel, gitLogArgs("HEAD", directory));
+    return log ? parseGitLog(log, topLevel, undefined, ignoreRevs) : new Map();
   }
   if (!fetchHistory) {
     if (!topLevel || !boundary) return new Map();
-    const log = git(topLevel, gitLogArgs("HEAD", directory));
-    return log ? parseGitLog(log, topLevel, boundary) : new Map();
+    const log = local(topLevel, gitLogArgs("HEAD", directory));
+    return log ? parseGitLog(log, topLevel, boundary, ignoreRevs) : new Map();
   }
 
   const root = findRepositoryRoot(directory, topLevel);
-  const commit = resolveCommit(env, topLevel ? git(topLevel, ["rev-parse", "HEAD"]) : undefined);
+  const commit = resolveCommit(env, topLevel ? local(topLevel, ["rev-parse", "HEAD"]) : undefined);
   const url =
     remote ??
-    resolveRemote(env, topLevel ? git(topLevel, ["remote", "get-url", "origin"]) : undefined);
+    resolveRemote(env, topLevel ? local(topLevel, ["remote", "get-url", "origin"]) : undefined);
 
   let error: string;
   if (!root) error = "no repository root (no .git or pnpm-workspace.yaml)";
@@ -282,9 +363,9 @@ export function getGitFileDates(
     error = "no repository to fetch from (no VERCEL_GIT_* or GITHUB_* variables, no https origin)";
   } else {
     const pathspec = path.relative(root, directory).split(path.sep).join("/");
-    const fetched = readFetchedLog(url, commit, pathspec);
+    const fetched = readFetchedLog(url, commit, pathspec, deadline);
     if ("log" in fetched) {
-      const dates = parseGitLog(fetched.log, root);
+      const dates = parseGitLog(fetched.log, root, undefined, ignoreRevs);
       report?.(`${dates.size} file dates from git history fetched for ${commit.slice(0, 12)}`);
       return dates;
     }
@@ -292,8 +373,10 @@ export function getGitFileDates(
   }
 
   if (topLevel && boundary) {
-    const log = git(topLevel, gitLogArgs("HEAD", directory));
-    const dates = log ? parseGitLog(log, topLevel, boundary) : new Map<string, string>();
+    const log = local(topLevel, gitLogArgs("HEAD", directory));
+    const dates = log
+      ? parseGitLog(log, topLevel, boundary, ignoreRevs)
+      : new Map<string, string>();
     report?.(
       `${dates.size} file dates from a shallow git history (history fetch failed: ${error})`,
     );
@@ -305,18 +388,20 @@ export function getGitFileDates(
 
 /**
  * The files besides `page.tsx` that hold each TSX route's copy, relative to
- * `src/`. For `/` and `/pricing`, whose copy is literal JSX spread over shared
- * section components, it is the Markdown rendition, which is kept in step with
- * the page (see `lib/markdown/markdown-parity.test.ts`). A route that is not
- * listed gets no `<lastmod>`.
+ * `src/`. `/` and `/pricing` keep their copy as literal JSX spread over
+ * section components shared with other pages, so they are dated by their
+ * Markdown rendition, plus `/pricing`'s own FAQ section. Only the rendition's
+ * headings are checked against the page (`lib/markdown/markdown-parity.test.ts`),
+ * so a body-text edit that skips the rendition does not move the date. A
+ * route that is not listed gets no `<lastmod>`.
  */
 export const ROUTE_CONTENT_FILES: Readonly<Record<string, readonly string[]>> = {
   "/": ["lib/markdown/home.ts"],
-  "/pricing": ["lib/markdown/pricing.ts"],
+  "/pricing": ["lib/markdown/pricing.ts", "components/sections/pricing-faq.tsx"],
   "/postgres": ["components/product/content/postgres.ts"],
   "/compute": ["components/product/content/compute.ts"],
   "/orm": ["components/product/content/orm.ts"],
-  "/postgres/hipaa": ["app/postgres/hipaa/_content.ts"],
+  "/postgres/hipaa": ["app/postgres/hipaa/_content.ts", "app/postgres/hipaa/_sections.tsx"],
   "/stack": ["app/stack/content.ts"],
   "/studio": ["app/studio/studio-content.ts"],
   "/mcp": ["app/mcp/mcp-content.ts"],
@@ -327,7 +412,10 @@ export const ROUTE_CONTENT_FILES: Readonly<Record<string, readonly string[]>> = 
   "/compare": ["app/compare/comparisons.ts"],
   ...Object.fromEntries(
     ["convex", "kysely", "mongoose", "neon", "planetscale", "supabase", "vercel-neon-drizzle"].map(
-      (name) => [`/compare/${name}`, [`app/compare/${name}/_content.ts`]],
+      (name) => [
+        `/compare/${name}`,
+        [`app/compare/${name}/_content.ts`, `app/compare/${name}/_sections.tsx`],
+      ],
     ),
   ),
   "/legal/privacy": ["lib/legal/privacy.tsx"],

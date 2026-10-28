@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -17,9 +18,13 @@ import test, { after, before, describe } from "node:test";
 import {
   getGitFileDates,
   getRouteLastModified,
+  IGNORE_REVS_FILE,
   ROUTE_CONTENT_FILES,
   gitLogArgs,
   parseGitLog,
+  parseIgnoreRevs,
+  readFetchedLog,
+  readIgnoreRevs,
   resolveCommit,
   resolveRemote,
 } from "./sitemap-lastmod";
@@ -90,12 +95,100 @@ test("parseGitLog stores UTC days, so commits from different time zones compare 
   assert.equal(dates.get("/repo/apps/site/src/components/b.tsx"), "2026-10-04");
 });
 
-test("getGitFileDates reads real git output into UTC days", () => {
-  const src = path.join(process.cwd(), "src");
-  for (const [file, day] of getGitFileDates(src)) {
-    assert.ok(path.isAbsolute(file), file);
-    assert.match(day, /^\d{4}-\d{2}-\d{2}$/, file);
+/** Whether this checkout has its full history: false when shallow (CI) or not a git work tree. */
+function hasFullHistory(): boolean {
+  try {
+    const shallow = execFileSync("git", ["rev-parse", "--is-shallow-repository"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return shallow.trim() === "false";
+  } catch {
+    return false;
   }
+}
+
+test(
+  "getGitFileDates reads real git output into UTC days",
+  // A shallow checkout (GitHub Actions fetches one commit) dates nothing
+  // without a fetch, so there would be nothing to check.
+  { skip: hasFullHistory() ? false : "shallow checkout or no git history" },
+  () => {
+    const src = path.join(process.cwd(), "src");
+    const dates = getGitFileDates(src);
+    assert.ok(dates.size > 0, "no file dates from a full git history");
+    assert.ok(dates.has(path.join(src, "app", "page.tsx")), "src/app/page.tsx has no date");
+    for (const [file, day] of dates) {
+      assert.ok(path.isAbsolute(file), file);
+      assert.match(day, /^\d{4}-\d{2}-\d{2}$/, file);
+    }
+  },
+);
+
+test("parseGitLog skips ignored commits, so their files keep the previous commit's date", () => {
+  const log = gitLog([
+    ["sweep 2026-10-24T09:00:00+00:00", ["apps/site/src/app/pricing/page.tsx", "apps/site/a.tsx"]],
+    ["copy 2026-10-05T09:00:00+00:00", ["apps/site/src/app/pricing/page.tsx"]],
+  ]);
+  const dates = parseGitLog(log, TOP, new Set(), new Set(["sweep"]));
+  assert.equal(dates.get("/repo/apps/site/src/app/pricing/page.tsx"), "2026-10-05");
+  // A file only an ignored commit touched has no date.
+  assert.equal(dates.has("/repo/apps/site/a.tsx"), false);
+});
+
+test("parseIgnoreRevs keeps full SHAs and drops comments and anything else", () => {
+  const sha = "a".repeat(40);
+  const other = "b".repeat(40);
+  assert.deepEqual(
+    [...parseIgnoreRevs(`# header\n\n${sha}\n  ${other}  # #1234: sweep\nabc1234\nmain\n`)],
+    [sha, other],
+  );
+  assert.equal(readIgnoreRevs(path.join(tmpdir(), "no-such-ignore-revs.txt")).size, 0);
+});
+
+test("the checked-in ignore-revs list skips the sweeps that changed no page copy", () => {
+  const text = readFileSync(IGNORE_REVS_FILE, "utf8");
+  const revs = readIgnoreRevs();
+  // Every non-comment line is a full SHA under a comment that names its PR.
+  const lines = text.split("\n");
+  lines.forEach((line, index) => {
+    if (!line.trim() || line.startsWith("#")) return;
+    assert.match(line, /^[0-9a-f]{40}$/, `line ${index + 1}`);
+    let start = index;
+    while (start > 0 && lines[start - 1]!.startsWith("#")) start--;
+    assert.match(lines[start] ?? "", /^# #\d+: /, `line ${index + 1} has no PR comment`);
+  });
+  for (const sha of [
+    "2f89ccb173273f8e19a62b443d935254895fda19", // #8144 canonical sweep
+    "9e353dc313ebe7a38f7c1e1755f2b71b6b6bcd97", // #8192 OG-card metadata sweep
+    "27f821121d5abe87c4570f2df147b2502fcf80a3", // #8269 /studio, /enterprise copy moved
+    "1dcc09bf7dcd5786408f9f007cfa24a752613ffc", // #8595 homepage Markdown alternate
+  ]) {
+    assert.ok(revs.has(sha), sha);
+  }
+});
+
+test("readFetchedLog reports an unusable temporary directory instead of throwing", () => {
+  const missing = path.join(tmpdir(), `no-such-dir-${process.pid}`, "nested");
+  const result = readFetchedLog(
+    "https://example.invalid/repo.git",
+    "a".repeat(40),
+    "apps/site/src",
+    Date.now() + 1_000,
+    missing,
+  );
+  assert.ok("error" in result);
+  assert.match(result.error, /^mkdtemp: ENOENT/);
+});
+
+test("readFetchedLog runs no git command once the time budget is spent", () => {
+  const result = readFetchedLog(
+    "https://example.invalid/repo.git",
+    "a".repeat(40),
+    "apps/site/src",
+    Date.now() - 1,
+  );
+  assert.deepEqual(result, { error: "git init: out of time (sitemap git budget spent)" });
 });
 
 test("a route's date is the newest among its page and its content files, not shared modules", () => {
@@ -128,10 +221,43 @@ test("a route with no content file gets no date, even when its page has one", ()
 
 test("home, pricing, postgres and compute are dated by their content files", () => {
   assert.deepEqual(ROUTE_CONTENT_FILES["/"], ["lib/markdown/home.ts"]);
-  assert.deepEqual(ROUTE_CONTENT_FILES["/pricing"], ["lib/markdown/pricing.ts"]);
+  assert.deepEqual(ROUTE_CONTENT_FILES["/pricing"], [
+    "lib/markdown/pricing.ts",
+    "components/sections/pricing-faq.tsx",
+  ]);
   assert.deepEqual(ROUTE_CONTENT_FILES["/postgres"], ["components/product/content/postgres.ts"]);
   assert.deepEqual(ROUTE_CONTENT_FILES["/compute"], ["components/product/content/compute.ts"]);
-  assert.deepEqual(ROUTE_CONTENT_FILES["/compare/neon"], ["app/compare/neon/_content.ts"]);
+});
+
+test("a comparison page is dated by its content and its own sections", () => {
+  // Each /compare/<x> page keeps literal copy in its _sections.tsx.
+  const compare = Object.keys(ROUTE_CONTENT_FILES).filter((p) => p.startsWith("/compare/"));
+  assert.ok(compare.length >= 7, compare.join());
+  for (const pathname of compare) {
+    const name = pathname.slice("/compare/".length);
+    assert.deepEqual(ROUTE_CONTENT_FILES[pathname], [
+      `app/compare/${name}/_content.ts`,
+      `app/compare/${name}/_sections.tsx`,
+    ]);
+  }
+  assert.deepEqual(ROUTE_CONTENT_FILES["/postgres/hipaa"], [
+    "app/postgres/hipaa/_content.ts",
+    "app/postgres/hipaa/_sections.tsx",
+  ]);
+});
+
+test("every comparison page with its own _sections.tsx lists it", () => {
+  const compareDirectory = path.join(process.cwd(), "src", "app", "compare");
+  for (const entry of readdirSync(compareDirectory, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (!existsSync(path.join(compareDirectory, entry.name, "_sections.tsx"))) continue;
+    assert.ok(
+      ROUTE_CONTENT_FILES[`/compare/${entry.name}`]?.includes(
+        `app/compare/${entry.name}/_sections.tsx`,
+      ),
+      `/compare/${entry.name}`,
+    );
+  }
 });
 
 test("every route in ROUTE_CONTENT_FILES has a page and every content file exists", () => {
@@ -232,6 +358,7 @@ describe("git history on each kind of build host", () => {
   let root: string;
   let origin: string;
   let originHead: string;
+  let february: string;
 
   const isolated = {
     GIT_DIR: undefined,
@@ -305,6 +432,7 @@ describe("git history on each kind of build host", () => {
       "apps/docs/content/docs/a.mdx": "a",
     });
     commit(origin, "2026-02-01T10:00:00+00:00");
+    february = git(origin, ["rev-parse", "HEAD"]).trim();
     write(origin, { "apps/site/src/components/hero.tsx": "h" });
     commit(origin, "2026-03-01T23:30:00-02:00");
     originHead = git(origin, ["rev-parse", "HEAD"]).trim();
@@ -328,6 +456,26 @@ describe("git history on each kind of build host", () => {
     });
     assert.deepEqual(relative(origin, dates), fullHistory);
     assert.deepEqual(messages, []);
+  });
+
+  test("ignored commits are skipped in local and fetched history", () => {
+    const expected = {
+      "app/compute/page.tsx": "2026-01-01",
+      "app/pricing/page.tsx": "2026-01-01",
+      "components/hero.tsx": "2026-03-02",
+    };
+    const ignoreRevs = new Set([february]);
+    assert.deepEqual(relative(origin, getGitFileDates(src(origin), { ignoreRevs })), expected);
+
+    const shallow = path.join(root, "shallow-ignore");
+    git(root, ["clone", "-q", "--depth", "1", `file://${origin}`, shallow]);
+    const fetched = getGitFileDates(src(shallow), {
+      fetchHistory: true,
+      env: {},
+      remote: `file://${origin}`,
+      ignoreRevs,
+    });
+    assert.deepEqual(relative(shallow, fetched), expected);
   });
 
   test("a shallow clone keeps no boundary dates unless it may fetch", () => {
