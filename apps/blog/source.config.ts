@@ -18,8 +18,11 @@ export const blogPosts = defineCollections({
   schema: frontmatterSchema.extend({
     authors: z.array(z.string()),
     authorSrc: z.string().optional(),
-    date: z.coerce.date(),
-    updatedAt: z.coerce.date().optional(),
+    // `date: 2026-07-24`, quoted or not, parses as a string and becomes a Date
+    // here. An empty, numeric or unparseable value fails the build (without
+    // `z.string()` first, an empty or numeric one would become a 1970 date).
+    date: z.string().pipe(z.coerce.date()),
+    updatedAt: z.string().pipe(z.coerce.date()).optional(),
     heroImagePath: z.string().optional(),
     metaImagePath: z.string().optional(),
     series: z.string().optional(),
