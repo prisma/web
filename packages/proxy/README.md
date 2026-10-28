@@ -19,6 +19,7 @@ Point each website at its own `vercel.json`:
 ```ts
 import { createProxy, bunFetch } from "@prisma/proxy";
 import { vercel } from "@prisma/proxy/vercel";
+import { createHttpServer } from "@prisma/proxy/node";
 
 const sites = [
   { name: "site", mount: "/", routing: vercel(new URL("./site/vercel.json", import.meta.url)) },
@@ -31,13 +32,11 @@ const sites = [
   },
 ];
 
-Bun.serve({
-  port: 3000,
-  fetch: createProxy(sites, {
-    origins: { site: "http://127.0.0.1:3001", docs: "http://127.0.0.1:3002" },
-    fetch: bunFetch,
-  }),
+const proxy = createProxy(sites, {
+  origins: { site: "http://127.0.0.1:3001", docs: "http://127.0.0.1:3002" },
+  fetch: bunFetch,
 });
+createHttpServer(proxy).listen(3000, "0.0.0.0");
 ```
 
 `createProxy(sites, options)` reads the files, compiles the rules, and validates
@@ -61,6 +60,19 @@ Origins must be HTTP(S) origins without credentials, path, query, or fragment. `
 automatic decompression so forwarded compression headers describe the actual
 bytes. On Node.js, use `rawFetch` from `@prisma/proxy/node` instead; native Node
 `fetch` automatically decompresses responses.
+
+`createHttpServer(handler, { onError? })` adapts the standard fetch handler to
+Node's HTTP server. It works on both Node and Bun, preserving known
+`Content-Length` on streamed responses, raw compressed bytes, separate
+`Set-Cookie` headers, HEAD semantics, backpressure and client cancellation.
+It also streams request bodies into the handler. The returned server uses the
+standard `.listen()` / `.close()` API. HTTP upgrades/WebSockets are not supported.
+
+Use this adapter rather than `Bun.serve({ fetch: handler })` when acting as a
+streaming proxy: Bun 1.4.3 discards explicit `Content-Length` on a streamed fetch
+response. A CDN can then download the full file for a range request. The Node
+HTTP adapter preserves the header without buffering the response or changing
+the Bun runtime.
 
 ## Multiple sites and precedence
 
@@ -190,7 +202,7 @@ when their provider's semantics require it. No Netlify adapter is included yet.
 Site/docs point at copies of their existing `vercel.json` files; the remaining
 websites have no Vercel JSON rules and continue using their Next configs. The
 build copies those original files and the site Next manifest under
-`dist/composer/gateway/sites/`. The 22-line `composer/gateway/server.ts` binds
+`dist/composer/gateway/sites/`. The small `composer/gateway/server.ts` binds
 upstreams from Composer input and calls `createProxy` to compile everything
 in memory at boot. No generated routing-plan JSON is shipped.
 
@@ -206,6 +218,8 @@ Validation: `pnpm --filter @prisma/proxy build`,
 all reachable Vercel JSON redirects with Next's destination compiler and checks
 all five site/asset mounts. Library tests cover routing phases, middleware,
 streaming, real gzip/cookie transport, and independent provider adapters.
+Run `bun test packages/proxy/src/server.test.ts` from the repository root to
+verify the HTTP adapter on Bun as well as the default Node test suite.
 
 ## License
 

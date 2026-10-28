@@ -1,0 +1,254 @@
+---
+title: "My WebSocket connections keep dropping on my serverless host. Where can I run a realtime Node.js server?"
+description: "Serverless functions hit a maximum duration and proxies close idle sockets. Add heartbeats and reconnects, or run the WebSocket server on a long-running host."
+summary: "A WebSocket is one connection that has to stay open, and a serverless function is built to finish. Serverless platforms that accept WebSockets close them at a fixed limit (the function's maximum duration on Vercel, 300 seconds on Hobby, or 2 hours for an AWS API Gateway WebSocket API), and proxies and load balancers on the way close a connection that sends nothing for about a minute. Send a ping every 25 to 30 seconds and make the client reconnect with backoff on any host. For connections that have to last, run the Node.js server as a long-running process on a host that documents WebSocket support, such as Railway, Render, Fly.io or a VM, or hand the connections to a managed realtime service such as Ably, Pusher or Supabase Realtime. If the browser only needs updates from the server, server-sent events over plain HTTP avoid the WebSocket server entirely."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-24"
+readingTime: "10 min read"
+faq:
+  - question: "Does Vercel support WebSockets now?"
+    answer: "Yes. WebSocket support in Vercel Functions became generally available on October 20, 2026, after a public beta that began on June 22, 2026. It is available on all plans and requires Fluid compute. A connection stays on the function instance that accepted it and closes when the function reaches its maximum duration: 300 seconds on Hobby, and 300 seconds by default with an 800-second maximum on Pro and Enterprise (1,800 seconds in beta). Vercel's guide says every connection eventually closes, so clients need reconnect logic, and shared state such as presence belongs in an external store like Redis."
+  - question: "How often should a WebSocket server send pings?"
+    answer: "More often than the shortest idle timeout between the client and your server. nginx and AWS Application Load Balancers close a connection after 60 seconds without data from the server by default, and the Heroku router after 55 seconds, so an interval of 25 to 30 seconds clears all three. The `ws` library's own example pings every 30 seconds and terminates a client that didn't answer the previous ping."
+  - question: "Do I need sticky sessions for WebSockets?"
+    answer: "Not for the WebSocket connection itself, because it stays on the server that accepted it. Socket.IO needs sticky sessions when HTTP long-polling is enabled, which it is by default, because long-polling sends many separate requests per session. What you do need with more than one instance is a way to broadcast across them, such as Socket.IO's Redis adapter or Redis pub/sub, because a message sent on one instance doesn't reach clients connected to another."
+  - question: "Can I run a WebSocket server on Prisma Compute?"
+    answer: "No. WebSocket servers are not supported on Prisma Compute. It runs HTTP services, and streaming responses such as server-sent events work, because its 60-second deadline covers only the wait for a response's first bytes. For a bidirectional WebSocket server, use a host from the table on this page. Prisma Postgres works as the database behind that server from any host, and Prisma ORM is optional."
+related:
+  - title: "Prisma Compute known limitations"
+    href: "/docs/compute/limitations"
+  - title: "Prisma Compute request timeout and streaming responses"
+    href: "/docs/compute/request-timeout"
+  - title: "Prisma Postgres pooled and direct connections"
+    href: "/docs/postgres/database/connecting-to-your-database"
+  - title: "Hosting Postgres without replacing your pg code"
+    href: "/postgres/node-postgres-hosting"
+cta:
+  title: "Stream updates over HTTP from Prisma Compute"
+  description: "Read how Prisma Compute handles streaming responses and the 60-second deadline for a response's first bytes, then deploy a TypeScript app next to Prisma Postgres."
+  label: "Read the streaming rules"
+  href: "/docs/compute/request-timeout#streaming-responses"
+---
+
+If the connection drops at the same point every time, such as five minutes after it opens or a minute after the last message, a timeout on the host is closing it. Serverless functions have a maximum duration, and proxies and load balancers between the browser and your code close connections that go quiet. Heartbeats and client reconnects fix idle drops on any host. For two-way connections that have to stay open, run the Node.js server as a long-running process on a host such as Railway, Render, Fly.io or a VM, or let a managed service such as Ably, Pusher or Supabase Realtime hold the connections. If the browser only needs updates from the server, server-sent events over plain HTTP work on hosts that don't run WebSocket servers.
+
+We make Prisma Compute and Prisma Postgres. Every host and library behavior on this page links to its documentation where one exists, checked on October 22, 2026; Vercel's WebSockets status was checked again on October 24, 2026.
+
+## Which limit is closing the connection?
+
+Note when the connection closes and what happened just before. The pattern points to the limit.
+
+| What you see | Likely cause | Check |
+| --- | --- | --- |
+| The connection closes at the same time after it opens, for example after 5 minutes | The function's maximum duration, or the platform's connection duration limit | The host's function limits, such as `maxDuration` on Vercel |
+| The connection closes after about a minute with no messages | An idle timeout in a proxy or load balancer | Whether the server sends pings, and the proxy's timeout setting |
+| Every connection closes during a deploy | The instance holding it was replaced | The host's deploy and shutdown behavior |
+| The connection never upgrades, or Socket.IO stays on long-polling | A proxy doesn't forward the `Upgrade` header, or the host doesn't accept WebSockets | The upgrade response in the browser's network tab, and the proxy config |
+| Works with one instance, but some clients miss messages with two or more | Each instance only knows its own connections | Whether broadcasts go through a shared pub/sub |
+
+## Why it happens
+
+A serverless function handles an invocation and is expected to end. A WebSocket is one connection that stays open, so on a serverless platform it lasts only as long as the platform keeps that function or connection alive.
+
+- **Vercel** [accepts WebSockets in Vercel Functions](https://vercel.com/docs/functions/websockets) with Fluid compute, [generally available since October 20, 2026](https://vercel.com/changelog/websocket-support-is-now-generally-available). A connection closes when the function reaches its [maximum duration](https://vercel.com/docs/functions/limitations#max-duration): 300 seconds on Hobby, and 300 seconds by default and 800 seconds at most on Pro and Enterprise, with an extended maximum of 1,800 seconds in beta.
+- **AWS API Gateway** WebSocket APIs, which can pass each message to a Lambda function, have a [connection duration of 2 hours and an idle connection timeout of 10 minutes](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-execution-service-websocket-limits-table.html), and neither can be increased.
+
+Idle timeouts close quiet connections on any host, serverless or not. [nginx](https://nginx.org/en/docs/http/websocket.html) closes a proxied WebSocket after 60 seconds without data from the server, and an [AWS Application Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-load-balancer-attributes.html#connection-idle-timeout) uses a 60-second idle timeout by default. The [Heroku router](https://devcenter.heroku.com/articles/http-routing#timeouts) ends a connection after 55 seconds without data, and [Heroku's WebSocket article](https://devcenter.heroku.com/articles/websockets) says those routing rules apply to WebSockets. [Cloudflare](https://developers.cloudflare.com/network/websockets/) closes a proxied WebSocket when no data moves in either direction for a while, and it can restart servers when it releases new code, which ends open connections.
+
+Deploys also end connections: on Render, WebSocket connections [close when the instance is replaced](https://render.com/docs/websocket), for example during a deploy, and a reconnecting client isn't guaranteed to reach the same instance.
+
+## How to fix it
+
+These steps work on any host. The server code uses the [`ws`](https://github.com/websockets/ws) library. [Socket.IO](https://socket.io/docs/v4/how-it-works/) has its own ping and pong heartbeat and automatic reconnection built in.
+
+### 1. Send heartbeats from the server
+
+A ping every 25 to 30 seconds keeps the connection under the 55- and 60-second idle timeouts above, and it detects clients whose connection broke without a close. The `ws` README [shows this pattern](https://github.com/websockets/ws#how-to-detect-and-close-broken-connections): mark each client as alive when it answers with a pong, and terminate any client that didn't answer the previous ping.
+
+```js title="server.mjs"
+import { WebSocketServer } from "ws";
+
+const wss = new WebSocketServer({ port: Number(process.env.PORT ?? 8080) });
+
+wss.on("connection", (socket) => {
+  socket.isAlive = true;
+  // Without an error listener, one malformed frame from a client crashes the process.
+  socket.on("error", console.error);
+  socket.on("pong", () => {
+    socket.isAlive = true;
+  });
+  socket.on("message", (data) => {
+    // Handle the client's message.
+  });
+});
+
+const heartbeat = setInterval(() => {
+  for (const socket of wss.clients) {
+    if (!socket.isAlive) {
+      socket.terminate();
+      continue;
+    }
+    socket.isAlive = false;
+    socket.ping();
+  }
+}, 25_000);
+
+wss.on("close", () => clearInterval(heartbeat));
+```
+
+Browsers answer pings automatically, as the [WebSocket protocol](https://www.rfc-editor.org/rfc/rfc6455#section-5.5.2) requires, so the client needs no code for this. If you run nginx in front, it also has to forward the upgrade: set `proxy_http_version 1.1;` (needed before nginx 1.29.7), `proxy_set_header Upgrade $http_upgrade;` and `proxy_set_header Connection "upgrade";`, as its [WebSocket proxying docs](https://nginx.org/en/docs/http/websocket.html) show. Its 60-second idle limit is `proxy_read_timeout`.
+
+### 2. Reconnect from the client with backoff
+
+Treat a closed connection as normal. Vercel's guide says every connection eventually closes, and Render's docs say connections close when an instance is replaced, for example during a deploy. Reconnect with exponential backoff and some randomness, so a deploy doesn't bring every client back in the same second, and resubscribe and reload state once the new connection opens.
+
+```js title="realtime.js"
+export function connect(url, { onOpen, onMessage }) {
+  let attempt = 0;
+
+  const open = () => {
+    const socket = new WebSocket(url);
+    let stable;
+    socket.addEventListener("open", () => {
+      // Reset the backoff only once the connection has stayed up for 5 seconds.
+      stable = setTimeout(() => (attempt = 0), 5_000);
+      onOpen(socket); // Resubscribe and fetch anything missed while offline.
+    });
+    socket.addEventListener("message", (event) => onMessage(event.data));
+    socket.addEventListener("close", () => {
+      clearTimeout(stable);
+      const ceiling = Math.min(30_000, 1_000 * 2 ** attempt);
+      attempt += 1;
+      setTimeout(open, ceiling / 2 + Math.random() * (ceiling / 2));
+    });
+  };
+
+  open();
+}
+```
+
+The delay doubles from about one second up to a ceiling of 30 seconds and resets once a connection has stayed open for 5 seconds, so a server that accepts and then closes right away doesn't cause a tight reconnect loop. Messages sent while a client was offline are lost unless your server can replay them, so keep the source of truth in a database and let `onOpen` load what changed.
+
+### 3. Move the WebSocket server to a long-running host
+
+On Vercel, if a reconnect every few minutes is acceptable, you can stay: raise `maxDuration` (up to 800 seconds on Pro and Enterprise, 1,800 in beta), keep the reconnect from step 2, and keep presence and pub/sub in Redis, as [Vercel's guide](https://vercel.com/kb/guide/do-vercel-serverless-functions-support-websocket-connections) and [WebSockets docs](https://vercel.com/docs/functions/websockets) describe. Move when connections have to outlive that.
+
+If connections must stay open longer than your platform's limit, run the Node.js server as a process that keeps running. These hosts document WebSocket support. They are listed alphabetically.
+
+| Host | WebSocket behavior from its docs |
+| --- | --- |
+| Fly.io | Its [Node.js demo app](https://docs.fly.io/deep-dive/nodejs) serves WebSockets with `express-ws` and forwards updates from a Redis queue to every open connection. |
+| Google Cloud Run | WebSocket requests are [subject to the request timeout](https://docs.cloud.google.com/run/docs/triggering/websockets), 5 minutes by default and up to 60 minutes, so clients still reconnect. Session affinity is best effort, and an instance with an open WebSocket counts as active and is billed. |
+| Heroku | [Supported for all applications](https://devcenter.heroku.com/articles/http-routing#websockets), with the router's 55-second idle window, so the server must send pings. |
+| Railway | WebSocket connections are [exempt from the duration and inactivity limits](https://docs.railway.com/networking/public-networking/specs-and-limits) and can stay open while idle. Railway's network limits list 10,000 concurrent connections. |
+| Render | Web services accept WebSockets with [no maximum connection duration](https://render.com/docs/websocket). Connections close when an instance is replaced, for example during a deploy, and Render sends `SIGTERM` with a 30-second window to shut down. |
+
+On a VM you manage, no platform limits connection length. You run the process manager, TLS and a proxy such as nginx with the upgrade headers and timeouts from step 1.
+
+A deploy or restart still ends the connections a process holds, so steps 1 and 2 apply on these hosts too. On `SIGTERM`, close each socket with a close code so clients reconnect right away instead of waiting for a heartbeat to fail.
+
+### 4. Or let a managed realtime service hold the connections
+
+A managed service keeps the WebSocket connections open for you. Your server code publishes messages through its SDK or API, and browsers subscribe through its client library. These services are listed alphabetically:
+
+- [Ably](https://ably.com/docs/platform) describes itself as a "serverless WebSocket platform" with publish/subscribe channels.
+- [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) can act as WebSocket servers with the Hibernation API: while an object hibernates between messages, it accrues no duration charges. The server code is written for Cloudflare's runtime rather than a Node.js process.
+- [Liveblocks](https://liveblocks.io/docs) provides presence and shared state for collaborative editing, such as live cursors.
+- [Pusher Channels](https://pusher.com/docs/channels/) is publish/subscribe over WebSockets and HTTP, with presence channels for who is online.
+- [Supabase Realtime](https://supabase.com/docs/guides/realtime) offers Broadcast, Presence and Postgres Changes, and [clients connect over WebSockets](https://supabase.com/docs/guides/realtime/architecture).
+
+This is usually less code than running your own server, and the trade-off is a separate service, its pricing and its message limits.
+
+### 5. Use server-sent events when updates only flow to the browser
+
+Notifications, live dashboards, job progress and streamed AI responses often only send data from the server to the browser. [Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) (SSE) do that over an ordinary HTTP response with the `text/event-stream` content type, and the client sends its own messages with normal `POST` requests. The browser's `EventSource` reconnects by itself, and when the last event had an `id`, it sends that ID back in a [`Last-Event-ID` header](https://html.spec.whatwg.org/multipage/server-sent-events.html) so the server can resume. The same spec suggests a comment line (one starting with `:`) about every 15 seconds so proxies don't drop the idle stream.
+
+SSE still runs into maximum durations and idle timeouts, so the reconnect is part of the design. Over HTTP/1.1, browsers allow only 6 SSE connections per domain across all tabs; HTTP/2 raises that.
+
+### 6. Share messages across instances
+
+Each instance knows only the sockets connected to it. With two or more instances, publish every broadcast to a shared channel and have each instance deliver it to its own clients. Socket.IO calls this component the [adapter](https://socket.io/docs/v4/using-multiple-nodes/) and has a Redis adapter; with `ws`, subscribe each instance to Redis pub/sub.
+
+If the messages come from database writes, PostgreSQL's [`LISTEN` and `NOTIFY`](https://www.postgresql.org/docs/current/sql-notify.html) can carry them without another service. A notification is delivered only after the transaction that sent it commits, and its payload must be shorter than 8,000 bytes by default, so send an ID and read the row. `LISTEN` needs a session that stays open: PgBouncer's [feature map](https://www.pgbouncer.org/features.html) lists it as never working in transaction pooling, so the listening client connects directly to the database, not through a transaction-mode pooler. Treat the listening connection like a WebSocket: reconnect when it errors or closes, run `LISTEN` again, and query for rows newer than the last ID you handled, because notifications sent while it was disconnected are not delivered.
+
+## Where does Prisma Compute fit?
+
+[Prisma Compute](/docs/compute) fits when the browser only needs updates from the server and you can send them as server-sent events: a service has 60 seconds to start responding, and a response that has started streaming isn't cut off ([Request timeout](/docs/compute/request-timeout#streaming-responses)). WebSocket servers are not supported on Compute, so it isn't a place to move a `ws` or Socket.IO server ([Known limitations](/docs/compute/limitations)).
+
+An SSE endpoint on Compute is an HTTP handler that returns a stream. This one reads new updates every 2 seconds, sends each with an `id`, and sends a comment line when it has been quiet for 5 seconds. Compute runs TypeScript services on Bun ([FAQ](/docs/compute/faq)), and Bun's HTTP server [closes a stream that sends nothing for 10 seconds](https://bun.com/docs/runtime/http/server#idletimeout) by default, so the keep-alive has to come more often than that. `getUpdatesAfter` stands for your own query, for example rows with an ID greater than the last one sent.
+
+```ts title="src/index.ts"
+import { getUpdatesAfter } from "./updates"; // Your query: updates newer than lastId.
+
+const encoder = new TextEncoder();
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export default {
+  async fetch(req: Request) {
+    if (new URL(req.url).pathname !== "/events") {
+      return new Response("Not found", { status: 404 });
+    }
+
+    let lastId = req.headers.get("Last-Event-ID") ?? "0";
+    let closed = false;
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (text: string) => controller.enqueue(encoder.encode(text));
+        send("retry: 3000\n\n");
+        let lastSent = Date.now();
+
+        // Simplest form: one poll per open stream. See below for sharing one poll per instance.
+        while (!closed && !req.signal.aborted) {
+          const updates = await getUpdatesAfter(lastId);
+          if (closed) break;
+          for (const update of updates) {
+            lastId = update.id;
+            send(`id: ${update.id}\ndata: ${JSON.stringify(update.data)}\n\n`);
+            lastSent = Date.now();
+          }
+          if (Date.now() - lastSent >= 5_000) {
+            send(": keep-alive\n\n");
+            lastSent = Date.now();
+          }
+          await sleep(2_000);
+        }
+      },
+      cancel() {
+        closed = true;
+      },
+    });
+
+    return new Response(stream, {
+      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+    });
+  },
+};
+```
+
+In the browser, `new EventSource("/events")` connects, and its `message` event receives each update. The `retry` line asks the browser to wait 3 seconds before it reconnects.
+
+Every poll is a query, so a 2-second interval is about 1.3 million queries per open stream in a 30-day month, and Prisma Postgres counts each query as one operation (Free includes 200,000 a month, [pricing](/pricing)). Poll less often, run one poll per instance and share its results with every stream on that instance, or use `LISTEN` over a direct connection that reconnects and runs `LISTEN` again whenever it drops, for example after the instance restarts, as in step 6.
+
+[Prisma Postgres](/docs/postgres) works as the database behind a WebSocket server on any host in the tables above, with any PostgreSQL client, and Prisma ORM is optional. Use the pooled connection string (`pooled.db.prisma.io`) for application queries. The pooler runs in transaction mode and doesn't keep session state, so a `LISTEN` client uses the direct connection string (`db.prisma.io`), as the [connection docs](/docs/postgres/database/connecting-to-your-database) say.
+
+Know the limits before you rely on it:
+
+- WebSocket servers are not supported on Prisma Compute. If clients send frequent messages to the server, as in chat with typing indicators, multiplayer cursors or games, run the WebSocket server on one of the hosts in step 3 or use a managed service from step 4.
+- The 60-second deadline covers the wait for a response's first bytes. Send something right away, keep data flowing, and let the client reconnect: the [request timeout docs](/docs/compute/request-timeout#streaming-responses) recommend reconnecting over holding one connection open indefinitely.
+- `waitUntil` and `KeepAwakeGuard` only stop an instance from scaling to zero. They don't change connection-lifetime limits or keep work running through restarts or deployments ([Known limitations](/docs/compute/limitations#runtime)).
+- While any stream is open, a request is in flight, so the instance keeps running and doesn't scale to zero. Compute bills provisioned memory for that time ([Compute pricing](/docs/compute/pricing)). One stream open all month at 1 GB is about 720 GB-hours, and Free includes 360 GB-hours a month, about 15 days of one instance at 1 GB.
+- Each service runs in one region, chosen from six, with no multi-region deployments.
+- Direct connections to Prisma Postgres are limited per plan: 10 on Free and Starter, 50 on Pro and 100 on Business, with 5 reserved for platform operations ([connection pooling](/docs/postgres/database/connection-pooling)). Hold one `LISTEN` connection per server instance, not one per browser.
+
+Prisma Compute doesn't require Prisma ORM or Prisma Postgres, so the SSE pattern above applies to any TypeScript app you deploy there.
+
+## How to prevent it
+
+Decide early which direction your realtime traffic flows. One-way updates can use SSE over ordinary HTTP responses, and two-way traffic needs a WebSocket server on a long-running host or a managed service. Build the heartbeat and the client reconnect in from the start, keep the state a reconnecting client needs in a database rather than in server memory, and test a deploy while clients are connected, so you see the reconnect before your users do.
+
+## When this fix doesn't apply
+
+If connections fail on your laptop too, the cause is in the code or the proxy, not the host. Check that the server answers the upgrade with `101 Switching Protocols` and that nothing in front of it strips the `Upgrade` header. If only some users are affected, a corporate proxy or firewall that blocks WebSockets may be the cause. Socket.IO can [run over HTTP long-polling](https://socket.io/docs/v4/how-it-works/) for that reason, and Pusher Channels uses WebSockets and HTTP. If connections close with code `1009`, a message was larger than the limit: AWS API Gateway, for example, closes connections that send frames over 32 KB.

@@ -35,7 +35,9 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     return (
       <div ref={ref} role="alert" className={cn(alertVariants({ variant }), className)} {...props}>
         {IconComponent}
-        <div className="[&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">{children}</div>
+        <div className="min-w-0 [&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">
+          {children}
+        </div>
       </div>
     );
   },

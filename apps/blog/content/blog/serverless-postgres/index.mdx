@@ -2,7 +2,7 @@
 title: "Serverless Postgres compared (2026): Neon, Supabase, Amazon RDS/Aurora and Prisma Postgres"
 slug: "serverless-postgres"
 date: "2026-07-09"
-updatedAt: "2026-10-21"
+updatedAt: "2026-10-27"
 authors:
   - "Martin Janse van Rensburg"
 tags:
@@ -32,6 +32,8 @@ Rows in alphabetical order; checked 2026-10-12; we make Prisma Postgres.
 | **Prisma Postgres** | Operations (queries) | Not documented | Not documented | 200k operations, 2 GB, 50 databases | $10/month (1M operations, 10 GB) |
 | **Supabase** | Plan + compute billed hourly per project | Free projects pause after 1 week idle; paid never pause | None on paid; a paused Free project must be restored from the dashboard | 2 active projects, 500 MB | $25/month Pro, with $10 compute credits |
 
+For the operational side of this choice, see [choosing managed Postgres for a small team](https://www.prisma.io/postgres/postgres-for-small-teams), including ownership, development access and recovery handoff.
+
 ## By stage: prototype, first paying users, growth
 
 What each provider documents as an app moves from a free prototype to its first paid plan and then grows. Each cell comes from the vendor's own pricing page or docs; nothing is inferred.
@@ -44,7 +46,7 @@ Rows in alphabetical order; checked 2026-10-12; we make Prisma Postgres.
 | **Amazon RDS for PostgreSQL** | Free plan credits for new AWS accounts on db.t3.micro or db.t4g.micro; no idle pause, the instance bills while it runs | db.t4g.micro $0.016/hour, Single-AZ; automated backups kept up to 35 days (7 by default in the console); pooling through RDS Proxy ($0.015 per vCPU-hour, 2-vCPU minimum) | Restore to any point in retention (logs every 5 min); asynchronous read replicas; Multi-AZ with one or two standbys |
 | **Neon** | Free: 100 CU-hours and 1 GB per project; scales to zero after 5 min, fixed on Free | Launch: pay as you go, no monthly minimum, $0.106/CU-hour; restore window up to 7 days; pooling on every plan | Scale: restore window up to 30 days; read replicas on every plan, billed as CU-hours; multi-AZ storage on every plan, uptime SLA on Scale |
 | **PlanetScale Postgres** | No free plan; its docs don't describe scale-to-zero, and a cluster bills for the time it runs | Single node from $5/month (1/16 vCPU, 512 MiB, 10 GB storage included); backups every 12 hours, kept 2 days, with backup storage of 2x disk size included; local PgBouncer on every database, dedicated PgBouncer billed separately | Point-in-time recovery within backup retention (2 days by default; longer with custom backups, which can cost extra); high availability from $15/month: 1 primary + 2 replicas across 3 AZs with automatic failover; extra and dedicated read replicas billed separately |
-| **Prisma Postgres** | Free: 200k operations, 2 GB, 50 databases, no backups | Starter $10: 1M operations, 10 GB, PgBouncer pooling, daily snapshots kept 7 days; Pro $49: 10M operations, 50 GB, snapshots kept 7 days | Business: snapshots kept 30 days. Point-in-time recovery is not available yet. Prisma Postgres docs list neither read replicas nor high availability (checked 2026-10-12) |
+| **Prisma Postgres** | Free: 200k operations, 2 GB, 50 databases, no backups | Starter $10: 1M operations, 10 GB, PgBouncer pooling, daily snapshots kept 7 days; Pro $49: 10M operations, 50 GB, snapshots kept 7 days | Business: snapshots kept 30 days. Point-in-time recovery is not available yet; it is coming in November 2026. Prisma Postgres docs list neither read replicas nor high availability (checked 2026-10-12) |
 | **Supabase** | Free: 2 active projects, 500 MB; paused after 1 week of inactivity | Pro from $25 (8 GB disk, $10 compute credits); daily backups kept 7 days; shared pooler on every plan, dedicated pooler on paid plans | PITR add-on, $100/month per 7 days (needs Small compute or larger); asynchronous read replicas; high availability not listed on the pricing page, uptime SLAs on Enterprise only |
 
 ## Choose by workload
@@ -107,7 +109,7 @@ Managed Postgres on unikernels in microVMs. (Disclosure: Prisma publishes this g
 - **Bills for:** operations. The [pricing page](https://www.prisma.io/pricing) counts one operation per create, read, update or delete, whether it is a simple write or a query with several joins. The [Prisma Postgres FAQ](https://www.prisma.io/docs/postgres/faq#what-is-an-operation) adds that query duration does not change the price, and that with Prisma ORM each Prisma Client query is one operation, while with another client each SQL query over the direct connection is one (checked 2026-10-21).
 - **Idle behaviour:** Prisma Postgres docs don't describe scale-to-zero or a wake time (checked 2026-10-20).
 - **Free / entry:** 200,000 operations, 2 GB, and 50 databases, no card; paid from $10/mo (1M operations, 10 GB, then $0.008 per 1,000) to $129/mo (50M operations). Allowances are account-wide, not per database.
-- **Watch out for:** no copy-on-write database copies yet (separate databases are the substitute: on Prisma Compute, every pushed branch gets a preview with its own services and, for databases declared in the Prisma Composer module, its own new database; production data is not copied); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).
+- **Watch out for:** no copy-on-write database copies yet (separate databases are the substitute: on Prisma Compute, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Prisma Composer module, its own new database; production data is not copied); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).
 
 ### Neon
 
@@ -181,6 +183,8 @@ The five above cover the main shapes. Most of the rest of the managed-Postgres m
 **Hyperscalers:** Aurora Serverless v2 (above) is the only hyperscaler Postgres that auto-suspends. Amazon RDS for PostgreSQL is provisioned managed Postgres: you pick an instance class and pay by the hour it runs, with automated backups and point-in-time restore inside a 1–35 day retention period (0 days turns automated backups off), read replicas and Multi-AZ standbys (checked 2026-10-12). Google Cloud SQL and AlloyDB, and Azure Database for PostgreSQL Flexible Server (from ~$12/mo), all use fixed compute with manual stop at most, and none is branded serverless by its own vendor.
 
 The test that sorts the field: if you pick an instance size and the vendor never suspends it for you, that's managed Postgres, which may be exactly what you need.
+
+Moving a local SQLite app is a separate decision from choosing a PostgreSQL plan. The [SQLite-to-Postgres hosting guide](https://www.prisma.io/postgres/sqlite-to-postgres-hosting) covers type conversion, a small import rehearsal and checks before inviting customers.
 
 ## Frequently asked questions
 

@@ -3,7 +3,7 @@ import { formatTag, formatDate } from "@/lib/format";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { blog } from "@/lib/source";
+import { blog, isDraft } from "@/lib/source";
 import { InlineTOC, Separator } from "@prisma/eclipse";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
@@ -332,8 +332,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             larger gap and neither needed a style change. */}
         <KeepReading posts={relatedPosts} />
 
-        {/* Conversion CTA */}
-        <BlogCTA />
+        {/* Conversion CTA. A post can relabel it and point it at a tracked
+            Console URL through the `cta` frontmatter field instead of adding
+            a second button inside the article. */}
+        <BlogCTA {...(page.data.cta ?? {})} />
 
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />
@@ -382,6 +384,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // A draft renders at its URL for review but stays out of search results
+    // until it is published; its links are still followed.
+    ...(isDraft(page) && { robots: { index: false, follow: true } }),
     alternates: {
       canonical,
       // The post's Markdown rendition, for agents that look for one before

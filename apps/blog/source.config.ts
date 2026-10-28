@@ -18,15 +18,39 @@ export const blogPosts = defineCollections({
   schema: frontmatterSchema.extend({
     authors: z.array(z.string()),
     authorSrc: z.string().optional(),
-    date: z.coerce.date(),
-    updatedAt: z.coerce.date().optional(),
+    // `date: 2026-07-24`, quoted or not, parses as a string and becomes a Date
+    // here. Anything but a real YYYY-MM-DD date fails the build: coercing the
+    // raw value would turn an empty or numeric one into a 1970 date and roll
+    // 2026-02-30 over to March 2.
+    date: z.iso.date().pipe(z.coerce.date()),
+    updatedAt: z.iso.date().pipe(z.coerce.date()).optional(),
     heroImagePath: z.string().optional(),
     metaImagePath: z.string().optional(),
     series: z.string().optional(),
     seriesIndex: z.number().int().positive().optional(),
     pinned: z.boolean().optional(),
+    /**
+     * A post that is not published yet. Its page and `.md` URL still render,
+     * marked `noindex`, but the listings, tag and author pages, series, related
+     * posts, RSS feed, sitemap and agent-facing text files leave it out.
+     */
+    draft: z.boolean().optional(),
     prev: z.string().optional(),
     next: z.string().optional(),
+    /**
+     * Per-post override for the end-of-post conversion panel. The panel is
+     * rendered for every post; a post that wants a campaign-specific label or
+     * a tracked Console URL (UTMs) sets these instead of adding a second CTA
+     * inside the article.
+     */
+    cta: z
+      .object({
+        title: z.string().trim().min(1).optional(),
+        description: z.string().trim().min(1).optional(),
+        text: z.string().trim().min(1).optional(),
+        href: z.string().url().optional(),
+      })
+      .optional(),
     tags: z
       .array(
         z.enum([

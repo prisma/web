@@ -20,6 +20,11 @@ const config = {
   async redirects() {
     return [
       {
+        source: "/part-two/stub-chapter",
+        destination: "/part-two/first-version",
+        permanent: true,
+      },
+      {
         source: "/",
         destination: "/handbook",
         permanent: false,

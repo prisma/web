@@ -1,5 +1,6 @@
 import { composerBuild, composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
+import { fileURLToPath } from "node:url";
 
 const withMDX = createMDX();
 
@@ -352,11 +353,15 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 /** @type {import('next').NextConfig} */
 const config = {
   ...composerNextConfig,
+  ...(composerBuild
+    ? { cacheHandler: fileURLToPath(new URL("../../composer/next-cache.cjs", import.meta.url)) }
+    : {}),
   reactCompiler: true,
   assetPrefix: "/site-static",
   allowedDevOrigins,
   reactStrictMode: true,
   images: {
+    ...(composerBuild ? { customCacheHandler: true } : {}),
     unoptimized: false,
     remotePatterns: imageRemoteHostnames.map((hostname) => ({
       protocol: "https",
@@ -1082,6 +1087,11 @@ const config = {
   },
   async headers() {
     return [
+      {
+        // Keep social cards fetchable without indexing the generated images.
+        source: "/og/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
       {
         source: "/:path*",
         headers: securityHeaders,

@@ -273,6 +273,15 @@ export function transform(target, markdown) {
     return `](${url.href})`;
   });
 
+  // Docs and blog pages are published under www.prisma.io; docs.prisma.io and
+  // blog.prisma.io only serve the site's rewrites. Only Markdown link targets
+  // are rewritten; code spans and fences stay as the source wrote them.
+  body = replaceInProse(
+    body,
+    /\]\(https:\/\/(?:docs|blog)\.prisma\.io\//g,
+    "](https://www.prisma.io/",
+  );
+
   const codes = [];
   body = body.replace(/^### .+$/gm, (heading) => {
     const match = heading.match(CODE_HEADING);

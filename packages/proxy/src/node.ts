@@ -2,6 +2,7 @@ import http from "node:http";
 import https from "node:https";
 import { Readable } from "node:stream";
 import type { ProxyFetch } from "./types.ts";
+export { createHttpServer } from "./server.ts";
 
 /** Node's native fetch decompresses bodies while retaining compression headers. */
 export const rawFetch: ProxyFetch = (input, init) =>

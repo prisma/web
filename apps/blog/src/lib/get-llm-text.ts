@@ -1,13 +1,19 @@
 import { pageContent } from "@prisma-docs/ui/lib/page-content";
-import { blog as source } from "@/lib/source";
 import { formatPostMarkdown, getPostSlugs } from "@/lib/llms";
 import { toLlmsPost } from "@/lib/llms-source";
+import { blog as source, type BlogPage } from "@/lib/source";
 import { getBaseUrl } from "@/lib/url";
-import type { InferPageType } from "fumadocs-core/source";
 
-export async function getLLMText(page: InferPageType<typeof source>) {
+/**
+ * One post's Markdown for its `.md` URL. Every post, drafts included, resolves
+ * here because its HTML page resolves too; only the index and full file skip
+ * drafts.
+ */
+export async function getLLMText(page: BlogPage) {
   const processed = await (await pageContent(page.data)).getText("processed");
   const postSlugs = getPostSlugs(source.getPages().map((candidate) => ({ path: candidate.url })));
 
-  return formatPostMarkdown(toLlmsPost(page), processed, getBaseUrl(), postSlugs);
+  return formatPostMarkdown(toLlmsPost(page), processed, getBaseUrl(), postSlugs, {
+    standalone: true,
+  });
 }

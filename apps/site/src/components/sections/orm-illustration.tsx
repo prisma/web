@@ -1,5 +1,7 @@
 "use client";
 
+import cards3DImage from "@prisma-docs/ui/assets/brand/cards-3d.webp";
+
 import { useRef } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -48,7 +50,7 @@ export function OrmIllustration() {
           filter doesn't touch the card content */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[url('/brand/feature-orm.jpg')] bg-cover bg-[position:0%_65%] [filter:saturate(1.45)_contrast(1.04)]"
+        className="absolute inset-0 brand-orm bg-cover bg-[position:0%_65%] [filter:saturate(1.45)_contrast(1.04)]"
       />
       <div className="relative flex h-full w-full flex-col rounded-xl border border-border bg-card shadow-[0_12px_32px_-14px_rgba(21,21,21,0.18)]">
         <div className="flex items-center gap-2 border-b border-border/70 px-4 py-3">
@@ -154,7 +156,9 @@ export function OrmIllustration() {
         </div>
         {/* the schema stack — floats gently over the editor's right half */}
         <motion.img
-          src="/brand/cards-3d.png"
+          src={cards3DImage.src}
+          loading="lazy"
+          decoding="async"
           alt=""
           className="absolute right-4 top-[46%] w-52 -translate-y-1/2 drop-shadow-[0_18px_26px_rgba(21,21,21,0.24)] max-md:hidden"
           initial={false}

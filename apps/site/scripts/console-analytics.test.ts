@@ -55,6 +55,75 @@ const googleScripts = (app: ReturnType<typeof setup>) =>
 const oaiqCalls = (app: ReturnType<typeof setup>) =>
   ((app.window.oaiq?.q ?? []) as ArrayLike<unknown>[]).map((entry) => Array.from(entry));
 
+test("measures completed project creation once with attribution and no project details", () => {
+  const app = setup();
+  const project = {
+    ...grant,
+    attribution: {
+      ...grant.attribution,
+      utm_source: "google",
+      utm_medium: "cpc",
+      utm_content: "ad-1",
+    },
+    conversion: {
+      id: "project-handoff-1",
+      event: "project_created",
+      projectId: "private-project-id",
+      projectName: "private-project-name",
+      method: "private-method",
+      openaiEventId: "unused-project-id",
+    },
+  };
+  app.send(project);
+  app.send(project);
+  const events = app.commands().filter(([command]) => command === "event");
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.[1], "project_created");
+  assert.deepEqual(JSON.parse(JSON.stringify(events[0]?.[2])), {
+    send_to: "G-4B72WBX9ET",
+    page_location: "https://console.prisma.io/?gclid=CurrentClick",
+    page_referrer: "",
+    page_title: "Prisma Console",
+    campaign_source: "google",
+    campaign_medium: "cpc",
+    campaign_name: "launch",
+    campaign_content: "ad-1",
+  });
+  assert.doesNotMatch(JSON.stringify(app.commands()), /private-|project-handoff|unused-project/);
+  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 0);
+  assert.equal(app.messages.length, 3);
+});
+
+test("does not measure or acknowledge project creation without analytics consent", () => {
+  for (const consent of [
+    undefined,
+    {},
+    { analytics: true },
+    { decided: true, analytics: false, advertisement: true },
+  ]) {
+    const app = setup();
+    app.send({ ...grant, consent, conversion: { id: "project-1", event: "project_created" } });
+    assert.equal(googleScripts(app).length, 0);
+    assert.equal(app.commands().filter(([command]) => command === "event").length, 0);
+    assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 0);
+    assert.equal(app.messages.length, 1);
+  }
+});
+
+test("rejects unsupported events and authentication events without an allowed method", () => {
+  for (const conversion of [
+    { id: "event-1", event: "project_clicked" },
+    { id: "event-2", event: "sign_up" },
+    { id: "event-3", event: "login", method: "unknown" },
+    { id: "", event: "project_created" },
+  ]) {
+    const app = setup();
+    app.send({ ...grant, conversion });
+    assert.equal(app.commands().filter(([command]) => command === "event").length, 0);
+    assert.equal(app.messages.length, 1);
+  }
+});
+
 test("ignores untrusted origins and message sources", () => {
   const app = setup();
   app.send(grant, "https://evil.example");

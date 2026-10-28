@@ -66,7 +66,8 @@ function getBreadcrumbName(page: DocsPage, slugs: string[], index: number) {
   return getSectionTitle(page, slugs.slice(0, index + 1)) ?? formatSlugDisplayName(slugs[index]);
 }
 
-export function TechArticleSchema({ page }: StructuredDataProps) {
+/** The page's TechArticle JSON-LD; `undefined` fields are left out when serialized. */
+export function getTechArticleSchema(page: DocsPage) {
   const baseUrl = getBaseUrl();
   const lastModified = (page.data as { lastModified?: Date | string }).lastModified;
   const datePublished = (page.data as { datePublished?: Date | string }).datePublished;
@@ -76,7 +77,7 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
   const pageVersion = getPageVersion(page.url);
   const canonical = resolveCanonicalUrl(page.url, (page.data as { canonical?: string }).canonical);
 
-  const schema = {
+  return {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     headline: withVersionTitle(
@@ -88,7 +89,9 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
       pageVersion,
     ),
     url: `${baseUrl}${withDocsBasePath(page.url)}`,
-    datePublished: toIsoDate(datePublished) ?? toIsoDate(lastModified),
+    // Only a page's own publish date: its last-change date is not when it was
+    // first published, so the field is omitted when the page sets none.
+    datePublished: toIsoDate(datePublished),
     dateModified: toIsoDate(lastModified),
     author: {
       "@type": "Organization",
@@ -109,8 +112,10 @@ export function TechArticleSchema({ page }: StructuredDataProps) {
       "@id": absoluteCanonicalUrl(canonical, baseUrl),
     },
   };
+}
 
-  return <JsonLd id="tech-article-structured-data" data={schema} />;
+export function TechArticleSchema({ page }: StructuredDataProps) {
+  return <JsonLd id="tech-article-structured-data" data={getTechArticleSchema(page)} />;
 }
 
 export function BreadcrumbSchema({ page }: StructuredDataProps) {

@@ -104,7 +104,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Point-in-time restore",
     neon: "Instant restore within the project's history window on paid plans: up to 7 days on Launch, up to 30 days on Scale, billed at $0.20 per GB-month. Free lists a 6-hour history window with a 1 GB limit, and does not list instant restore as a plan feature.",
     prisma:
-      "No point-in-time recovery. Paid Prisma Postgres plans include daily backups (7 days on Starter and Pro, 30 days on Business). Free has no backups.",
+      "No point-in-time recovery yet; it is coming in November 2026. Paid Prisma Postgres plans include daily backups (7 days on Starter and Pro, 30 days on Business). Free has no backups.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -198,7 +198,7 @@ export const PRICING: readonly {
 export const WRONG_CHOICE = [
   "You want Neon Functions, Managed Better Auth, Object Storage, or AI Gateway as first-party primitives next to Postgres. Prisma Postgres does not include those. See [How a Neon backend fits together](https://neon.com/docs/get-started/backend-overview).",
   "You want a preview that starts from a copy-on-write clone of production data. A Prisma preview branch gets its own database; production data is not copied. See [Compute branching](/docs/compute/branching).",
-  "You need instant restore to a moment inside a history window today. Prisma Postgres has no point-in-time recovery. Paid plans include daily backups. Neon documents instant restore on paid plans at [Neon pricing](https://neon.com/pricing).",
+  "You need instant restore to a moment inside a history window today. Prisma Postgres has no point-in-time recovery yet (it is coming in November 2026). Paid plans include daily backups. Neon documents instant restore on paid plans at [Neon pricing](https://neon.com/pricing).",
   "You want database compute that bills $0 while the instance is suspended, rather than operation-based pricing. Neon CU-hours stop while scale-to-zero has suspended compute; storage still bills.",
 ];
 
@@ -226,7 +226,7 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "Does Prisma Postgres have point-in-time recovery?",
     answer:
-      "No. Prisma Postgres has no point-in-time recovery. Paid plans include daily backups (7 days on Starter and Pro, 30 days on Business). Neon paid plans list instant restore within a history window of up to 7 days on Launch and 30 days on Scale. Source: [Prisma pricing](/pricing) and [Neon pricing](https://neon.com/pricing), October 2026.",
+      "Not yet: point-in-time recovery is coming to Prisma Postgres in November 2026. Until then, paid plans include daily backups (7 days on Starter and Pro, 30 days on Business). Neon paid plans list instant restore within a history window of up to 7 days on Launch and 30 days on Scale. Source: [Prisma pricing](/pricing) and [Neon pricing](https://neon.com/pricing), October 2026.",
   },
 ];
 

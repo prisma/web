@@ -1,0 +1,237 @@
+---
+title: "My Postgres app is slowing down as it grows. Do I need a read replica?"
+description: "A read replica helps with heavy reads, reports and distant readers, not slow queries or writes. What to check first, and how to use one from TypeScript."
+summary: "Usually not yet. A read replica is a read-only copy of your database that takes read queries off the primary. It helps when reads keep the primary busy after you have tuned your queries, when reports and exports slow the app down, or when you serve reads to users far from the primary and can run app servers near them. It doesn't make a slow query faster, because the query reads the same rows on the replica, and it doesn't help writes, which all still go to the primary. It also adds replication lag that your code has to handle. Check for missing indexes, N+1 queries, connection limits and the distance between your app and its database first, because a replica fixes none of them."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-27"
+updatedAt: "2026-10-27"
+readingTime: "9 min read"
+faq:
+  - question: "Will a read replica make my slow query faster?"
+    answer: "No. The replica holds the same data and plans the query the same way, so a query that scans 2 million rows to return 20 scans them on the replica too. It can look faster only when the primary was overloaded by other reads. Read the plan with `EXPLAIN (ANALYZE, BUFFERS)` and fix it first, as the [slow queries guide](/postgres/slow-queries-with-real-data) shows."
+  - question: "Should I upgrade to a bigger database instead of adding a read replica?"
+    answer: "Usually first, if your host offers a larger size. A bigger instance adds capacity for reads and writes at once, needs nothing new in your code and has no lag to handle. Move to a replica when reads are most of the load and a larger size isn't enough, when reports need their own server, or when you need reads in another region. Supabase's [read replica guide](https://supabase.com/docs/guides/platform/read-replicas) recommends the same order for its plans."
+  - question: "How many read replicas do I need?"
+    answer: "Start with one and measure. A second one helps when the first replica's CPU stays high, or when you want reads in another region. Hosts cap the count: Render allows up to five per database, an Aurora cluster up to 15 Aurora Replicas, and Neon's Free plan 3 per project. Each replica adds cost: Amazon RDS bills it as a DB instance, Neon in CU-hours, and Render and Supabase at the primary's compute size."
+  - question: "Should background jobs read from a replica?"
+    answer: "Jobs that only read, such as exports, report builders and search indexers, are good candidates if they can work on data a few seconds old. A job that reads a row and then updates it based on what it read should do both on the primary, in one transaction, or it can act on a stale value. Queue tables that workers poll with `SELECT ... FOR UPDATE SKIP LOCKED` stay on the primary, because a replica [can't take row locks](https://www.postgresql.org/docs/current/hot-standby.html#HOT-STANDBY-USERS)."
+related:
+  - title: "Checking whether Postgres is why your app got slow"
+    href: "/postgres/slow-queries-with-real-data"
+  - title: "Fixing \"too many connections\" from hosted Postgres"
+    href: "/postgres/too-many-connections"
+  - title: "Recovering deleted records and setting up backups"
+    href: "/postgres/recover-deleted-records"
+  - title: "Choosing regions for your Node app and Postgres"
+    href: "/postgres/nodejs-database-regions"
+  - title: "Read replicas with Prisma ORM 7"
+    href: "/docs/orm/v7/prisma-client/setup-and-configuration/read-replicas"
+cta:
+  title: "Find the queries to fix first"
+  description: "Prisma Postgres includes Query Insights at no extra cost, with latency, executions and reads for each query shape. Any Postgres client works; Prisma ORM is optional."
+  label: "Read the Query Insights docs"
+  href: "/docs/query-insights"
+---
+
+Add a read replica when reads keep the primary's CPU high after you have fixed the expensive queries, when long reports need to run away from the queries your users wait on, or when you need reads served from another region. Before that point, a missing index, a query loop or a full connection pool is the cheaper fix, and a larger instance is the simpler one. The sections below show how to tell which case you're in, how replicas behave once you have one, and how to send queries to one from Prisma ORM 7, Prisma ORM 8, Drizzle and node-postgres.
+
+We make Prisma Postgres and Prisma Compute. PostgreSQL, ORM and provider behavior on this page links to each project's or provider's documentation, checked on October 27, 2026.
+
+## What does a read replica do?
+
+A read replica is a second PostgreSQL server that serves reads of the primary's data and accepts no writes. In PostgreSQL's built-in [streaming replication](https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION), the replica keeps its own copy: the primary sends its write-ahead log to the replica, which replays it and answers read-only queries while it does, a mode PostgreSQL calls [hot standby](https://www.postgresql.org/docs/current/hot-standby.html). Managed hosts build them in different ways (Neon and Aurora replicas read shared storage instead of keeping a copy), but the contract with your app is the same: the replica has its own connection string, your code sends some reads there, and every write still goes to the primary.
+
+So a replica adds read capacity. It doesn't make any single query faster, and it adds no write capacity.
+
+## When do you need one?
+
+### Reads keep the primary busy after you've tuned the queries
+
+Look at the database's CPU in your host's metrics during the slow periods. If it stays high after you have fixed the expensive statements, and the statements that use the most time in `pg_stat_statements` are `SELECT`s, reads are the load a replica can take. The [slow queries guide](/postgres/slow-queries-with-real-data) shows how to list those statements.
+
+Supabase's read replica guide gives a rule of thumb for this decision. It [recommends not scaling](https://supabase.com/docs/guides/platform/read-replicas) until CPU is sustained above 70%, checking queries and indexes with `EXPLAIN ANALYZE` first, and upgrading compute instead of adding replicas when the workload is less than roughly 80% reads, because replicas only serve reads. The thresholds are Supabase's, written for its plans; the order of the checks applies to any host.
+
+### Reports and exports slow down the app
+
+Long analytical queries, CSV exports and dashboards compete with user requests for CPU, memory and disk. Running them on a replica keeps that load off the primary. AWS lists [business reporting against a read replica](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html) as a use case, and PlanetScale lists [analytics jobs and aggregate queries](https://planetscale.com/docs/postgres/scaling/replicas).
+
+Before you move reports, know that a long query on a streaming replica can be canceled when replay needs the rows it is reading (see [how replicas behave](#how-do-read-replicas-behave)). If a report can use yesterday's data, a copy restored from a backup or a nightly `pg_dump` loaded into a separate database also keeps it off production, with no lag to handle.
+
+### Users read from far away
+
+A replica in another region shortens reads for users near it, but only if the code that runs those reads is there too. Browsers don't query Postgres; your app server does. So this needs app servers in that region, reads sent to the nearby replica, and writes that still travel to the primary's region. Hosts differ on where replicas can run (see [the table below](#which-hosts-offer-read-replicas)). If your users and your database are in the same part of the world, put the app next to the database first; the [regions guide](/postgres/nodejs-database-regions) covers how to measure that.
+
+## What doesn't a read replica fix?
+
+Work down this table before you add one. Most of these fixes cost less than a replica and help reads and writes alike.
+
+| What you see | Usual cause | Fix first | Does a replica help? |
+| --- | --- | --- | --- |
+| One page or endpoint is slow even when traffic is low | A missing index, a query in a loop (N+1) or a deep `OFFSET` | [Find and fix the slow SQL](/postgres/slow-queries-with-real-data) | No. The query reads the same rows on a replica |
+| `too many connections`, or requests waiting for a connection | A pool per request, or more instances than the limit allows for | [Reuse one pool per process and use a pooler](/postgres/too-many-connections) | No. A replica has its own connection limit, and your app opens pools to it too |
+| Writes are slow or wait on each other | Write volume, long transactions or lock waits | Shorten transactions, batch writes and [check what blocks what](/postgres/slow-queries-with-real-data) | No. Every write still goes to the primary |
+| Slow for users far from the database | Distance between the app and the database | [Put the app next to the database](/postgres/nodejs-database-regions) | Only with app servers next to a replica in their region |
+| Rows deleted or overwritten by mistake | A bad statement, script or deploy | [Restore from a backup](/postgres/recover-deleted-records) | No. The replica applies the same change |
+| Primary CPU stays high, mostly from reads, after the fixes above | Read volume | A larger instance, or a replica | Yes |
+| Reports and exports slow the app | Long reads competing with user requests | Run them on a copy or a replica | Yes |
+
+## How do read replicas behave?
+
+**They lag behind the primary.** PostgreSQL's streaming replication is [asynchronous by default](https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION): the primary confirms a commit without waiting for the replica, and the docs describe a small delay before the change is visible there, typically under one second when the replica keeps up with the load. Data on a standby is [eventually consistent](https://www.postgresql.org/docs/current/hot-standby.html#HOT-STANDBY-USERS) with the primary. AWS says Aurora's [replica lag](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Replication.html) is usually much less than 100 milliseconds. Lag grows when the primary takes a burst of writes or the replica is short of resources, so design for seconds, not zero.
+
+**Read your own writes from the primary.** A user who saves a form and lands on a page that reads from a replica can see the old value. Send these reads to the primary: reads in the same request after a write, reads in the few seconds after a user's own write, and any read that decides a write, such as checking a balance, stock or a unique name. List pages, search, dashboards and reports usually tolerate a few seconds of staleness, and those are the reads to move.
+
+**Writes and locks go to the primary.** A replica rejects writes with `ERROR: cannot execute INSERT in a read-only transaction`, and it [can't take row locks](https://www.postgresql.org/docs/current/hot-standby.html#HOT-STANDBY-USERS), so `SELECT ... FOR UPDATE` runs on the primary too. Run a transaction that reads and then writes entirely on the primary, so it sees the data it is about to change.
+
+**Long queries can be canceled.** On a streaming replica, a query that is still reading rows the primary has since removed holds up replay. PostgreSQL waits up to the delay set by `max_standby_streaming_delay` and then [cancels the query](https://www.postgresql.org/docs/current/hot-standby.html#HOT-STANDBY-CONFLICT), which your app sees as `canceling statement due to conflict with recovery`. Where your host lets you change it, `hot_standby_feedback` avoids most of these cancellations at the cost of dead rows kept longer on the primary. Check your host's settings before you move long reports to a replica.
+
+**A replica is not a backup.** It applies every change the primary makes, including a mistaken `DELETE` or `DROP TABLE`, usually within seconds. To get deleted rows back you need a copy from before the delete; the [recovery guide](/postgres/recover-deleted-records) walks through it.
+
+**Measure the lag where your reads go.** On a streaming replica, this query shows how long ago the last replayed transaction was committed on the primary:
+
+```sql
+SELECT now() - pg_last_xact_replay_timestamp() AS replay_delay;
+```
+
+[`pg_last_xact_replay_timestamp()`](https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-RECOVERY-INFO-TABLE) only moves when a transaction is replayed, so the number also grows while the primary is idle. Read it under load. Render shows replication lag on the primary's Metrics page, and PlanetScale on the database's Dashboard page.
+
+## Which hosts offer read replicas?
+
+Providers are listed alphabetically, and each row links to the provider's documentation, checked on October 27, 2026.
+
+| Host | Read replicas | How changes reach them | Where they can run |
+| --- | --- | --- | --- |
+| Amazon Aurora PostgreSQL | [Up to 15 Aurora Replicas](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Replication.html) in a cluster | Replicas read the cluster's shared storage volume; AWS says lag is usually much less than 100 ms | The cluster's Region; other Regions through an Aurora global database, with up to 10 read-only secondary clusters |
+| Amazon RDS for PostgreSQL | [Read-only copies of a DB instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html), billed as standard DB instances at the replica's instance class rate | Asynchronous | The same or a different AWS Region |
+| Neon | [On every plan](https://neon.com/pricing), up to 3 per project on Free; separate computes billed in CU-hours | [Asynchronous](https://neon.com/docs/introduction/read-replicas); replicas read the same storage as the primary, so no data is copied | The same region as the database |
+| PlanetScale Postgres | Production clusters include [2 replicas you can read from](https://planetscale.com/docs/postgres/scaling/replicas) (Single Node databases have none); extra replicas and [dedicated read replicas](https://planetscale.com/docs/postgres/scaling/dedicated-read-replicas) cost extra | Dedicated read replicas are asynchronous; reads from cluster replicas can also lag | Cluster replicas in the primary's location; dedicated read replicas in a location you pick, with the same cloud provider |
+| Prisma Postgres | [Prisma Postgres docs](/docs/postgres) list no read replicas (checked 2026-10-27) | Not documented | Not documented |
+| Render | [Up to five per database](https://render.com/docs/postgresql-read-replicas) with at least 10 GB of storage and a plan with at least 0.5 CPU; same compute plan and storage as the primary, billed accordingly | Asynchronous | Not stated on Render's read replica page |
+| Supabase | [Read Replicas](https://supabase.com/docs/guides/platform/read-replicas) on the primary's compute size, [billed by the hour](https://supabase.com/docs/guides/platform/manage-your-usage/read-replicas) | Asynchronous | Other regions, to serve users closer to them |
+
+How you connect to a replica differs by host: each Supabase Read Replica has its own database endpoint, while on PlanetScale reads reach a replica through a `|replica` suffix on the username over a direct connection on port 5432. PlanetScale's local PgBouncer [sends every connection to the primary](https://planetscale.com/docs/postgres/scaling/replicas), so to pool connections to replicas you add a [dedicated replica PgBouncer](https://planetscale.com/docs/postgres/connecting/pgbouncer#dedicated-replica-pgbouncers).
+
+## How do I use a read replica from TypeScript?
+
+Your host gives the replica its own connection string. Keep it in a second environment variable, such as `REPLICA_URL` next to `DATABASE_URL`, and choose per query which one to use. Each replica has its own connection limit, so size the pools on both as the [connection guide](/postgres/too-many-connections) describes.
+
+### Prisma ORM 7: the read replicas extension
+
+[`@prisma/extension-read-replicas`](/docs/orm/v7/prisma-client/setup-and-configuration/read-replicas) picks the database for each query. Its version 0.5.0, released in December 2025, requires Prisma ORM 7, and version 0.4.1 is the one for Prisma ORM 6. You give it a full `PrismaClient` for each replica:
+
+```ts title="src/db.ts"
+import { readReplicas } from "@prisma/extension-read-replicas";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "./generated/prisma/client";
+
+const primary = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+});
+
+const replica = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.REPLICA_URL! }),
+});
+
+export const prisma = primary.$extends(readReplicas({ replicas: [replica] }));
+```
+
+All read operations such as `findMany` then run on a replica, picked at random when you configure several, and all writes and `$transaction` queries run on the primary. `$queryRaw` and `$executeRaw` also go to the primary unless you call `$replica()`, because the extension can't tell whether raw SQL writes. If you use other client extensions, the [extension's README](https://github.com/prisma/extension-read-replicas) says to apply this one last.
+
+```ts
+import { prisma } from "./db";
+
+// Runs on the replica
+const posts = await prisma.post.findMany({ where: { published: true } });
+
+// Runs on the primary
+await prisma.post.update({ where: { id: 1 }, data: { title: "Updated" } });
+
+// Read your own write: force the primary
+const post = await prisma.$primary().post.findUnique({ where: { id: 1 } });
+```
+
+### Prisma ORM 8: one client per database
+
+Prisma ORM 8, a [release candidate](/docs/orm/release-status) when this page was checked (October 27, 2026), has no read replica routing built in. Its [Coming from Prisma ORM 7](/docs/orm/coming-from-prisma-orm-7#not-available-yet) page says: "For read replicas, create one client per database." Create a second client from the same contract in `src/prisma/db.ts`, the file `prisma orm init` writes:
+
+```ts title="src/prisma/db.ts"
+import "dotenv/config";
+import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
+import type { Contract } from "./contract.d";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const contract = contractFromJson<Contract>(contractJson);
+
+// Writes, transactions and reads that must see the latest data
+export const db = postgres({ contract, url: process.env.DATABASE_URL! });
+
+// Reads that can be a few seconds behind
+export const replica = postgres({ contract, url: process.env.REPLICA_URL! });
+```
+
+Then import the client each query should use:
+
+```ts
+import { db, replica } from "./prisma/db";
+
+// A list page that can be a few seconds behind
+const posts = await replica.orm.public.Post
+  .where({ published: true })
+  .orderBy((p) => p.createdAt.desc())
+  .limit(20)
+  .all();
+
+// A write, then a read of the same row: both on the primary
+const post = await db.orm.public.Post.create({ title: "Hello", published: false });
+const saved = await db.orm.public.Post.first({ id: post.id });
+```
+
+Nothing chooses the database for you, so every query runs where you send it. Keep `db.transaction(...)` on `db`.
+
+### Drizzle: withReplicas
+
+Drizzle's [`withReplicas()`](https://orm.drizzle.team/docs/read-replicas) wraps a primary connection and one or more replica connections. Selects go to a replica and writes go to the primary, and `db.$primary` sends a read to the primary.
+
+### node-postgres: two pools
+
+With `pg`, create one pool per database and name the functions so each call site says which one it uses:
+
+```ts title="src/db.ts"
+import { Pool } from "pg";
+
+const primary = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
+const replica = new Pool({ connectionString: process.env.REPLICA_URL, max: 10 });
+
+// Reads that can be a few seconds behind
+export function readFromReplica(text: string, params?: unknown[]) {
+  return replica.query(text, params);
+}
+
+// Writes, and reads that must see the latest data
+export function query(text: string, params?: unknown[]) {
+  return primary.query(text, params);
+}
+
+// Transactions need one client for every statement
+export function connectPrimary() {
+  return primary.connect();
+}
+```
+
+`pool.query` can run each statement on a different client, and node-postgres says you [must use the same client](https://node-postgres.com/features/transactions) for all statements in a transaction, so run `BEGIN` and `COMMIT` on a client from `connectPrimary()` and release it afterwards.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL 17 with PgBouncer pooling on every plan. Prisma Postgres fits when the checks above point at queries, connections or distance rather than at read volume:
+
+- **Slow queries.** [Query Insights](/docs/query-insights) is included at no extra cost. It groups queries by statement shape and shows each one's latency, execution count and reads, so you can find the statements to fix before you add capacity.
+- **Connections.** App traffic goes through the pooled connection on `pooled.db.prisma.io`, with 10 pooled connections on Free, 100 on Starter, 500 on Pro and 1,000 on Business ([pooling docs](/docs/postgres/database/connection-pooling)).
+- **Distance.** [Prisma Compute](/docs/compute) runs TypeScript apps in the same Prisma project and the same six regions as the database, so the app can sit next to it. Each Compute service runs in one region.
+
+Your app keeps its Postgres client, whether that is `pg`, Drizzle, Kysely or Prisma ORM; Prisma ORM is optional. Queries through the pooled connection are stopped after 10 minutes, so run long reports over the direct connection.
+
+## Where is Prisma Postgres the wrong choice?
+
+For an app that already needs read replicas. Prisma Postgres docs list no read replicas (checked 2026-10-27). If reads keep your primary busy after the fixes above, your reports have to run on current data away from the primary, or you serve reads from another region, choose a host from [the table above](#which-hosts-offer-read-replicas) that offers them. The code above takes the replica as a second connection string, whichever host it comes from.
