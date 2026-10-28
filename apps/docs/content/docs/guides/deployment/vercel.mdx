@@ -22,7 +22,7 @@ The [Vercel Marketplace integration](/guides/postgres/vercel) creates a [Prisma 
 
 ## Prerequisites
 
-- A Next.js app that uses Prisma ORM 8, in a Git repository. To start one, follow [Next.js](/guides/frameworks/nextjs) up to its deploy step. That guide's template, from `npm create prisma@latest -- my-app --template next --provider postgres --no-deploy`, is the app this guide refers to as the template; `--no-deploy` skips its offer to deploy to Prisma's own hosting. To move a Prisma ORM 7 app first, follow [Upgrade to Prisma ORM 8](/guides/upgrade-prisma-orm/postgresql).
+- A Next.js app that uses the App Router and Prisma ORM 8, in a Git repository, with the contract written in `contract.prisma`. With a TypeScript contract, `contract.ts`, the files `contract emit` writes are in `src/prisma/generated/` instead, so use that path wherever this guide names `src/prisma/contract.json` or `contract.d.ts`. To start one, follow [Next.js](/guides/frameworks/nextjs) up to its deploy step. That guide's template, from `npm create prisma@latest -- my-app --template next --provider postgres --no-deploy`, is the app this guide refers to as the template; `--no-deploy` skips its offer to deploy to Prisma's own hosting. To move a Prisma ORM 7 app first, follow [Upgrade to Prisma ORM 8](/guides/upgrade-prisma-orm/postgresql).
 - A [Vercel account](https://vercel.com/signup).
 - A PostgreSQL database for production that Vercel can reach over the internet, such as [Prisma Postgres](/postgres).
 
@@ -56,7 +56,7 @@ import "temporal-polyfill/global";
 export const dynamic = "force-dynamic";
 ```
 
-Add the same line to every page and route handler that runs a query while it renders, directly or through a helper it calls. Do not set `export const runtime = "edge"` on them either: Prisma ORM runs in Vercel's Node.js functions, which is what Next.js uses by default, and Next.js 16 deprecates the Edge runtime.
+Add the same line to every page and route handler that runs a query while it renders, directly or through a helper it calls. If your `next.config.ts` turns on `cacheComponents`, Next.js refuses this line with `Route segment config "dynamic" is not compatible with nextConfig.cacheComponents`; mark those pages as request-time the way [Cache Components](https://nextjs.org/docs/app/getting-started/cache-components) describes instead. Do not set `export const runtime = "edge"` on them either: Prisma ORM runs in Vercel's Node.js functions, which is what Next.js uses by default, and Next.js 16 deprecates the Edge runtime.
 
 ## 2. Create the tables in your production database
 
@@ -77,7 +77,9 @@ When you change `contract.prisma` later:
 4. Commit the contract files and the new migration, including `migrations/app/refs/db.json`.
 5. Run the `db migrate` command above, before the deploy that needs the change.
 
-Do not run `db migrate` in Vercel's build command. If the build applied a migration and `next build` then failed, the database would have the new tables while the live site still ran the old code. The build also runs for every preview deployment. In a pipeline, apply migrations in a CI step before the deploy instead; [Applying a migration](/orm/migrations/applying-a-migration#development-vs-production) shows the commands for that, and [GitHub Actions](/guides/integrations/github-actions) shows a workflow.
+Because the migration runs before the new code is live, the code that is still live must keep working against the new tables. Adding a column or a table is safe. To rename or remove a column the live code reads, add the new column first and remove the old one in a later deploy, as [Data migration](/guides/database/data-migration) shows.
+
+Do not run `db migrate` in Vercel's build command. If the build applied a migration and `next build` then failed, the database would have the new tables while the live site still ran the old code. The build also runs for every preview deployment. In a pipeline, apply migrations in a CI step instead; [Applying a migration](/orm/migrations/applying-a-migration#development-vs-production) shows the commands for that, and [GitHub Actions](/guides/integrations/github-actions) shows a workflow. When Vercel deploys on every push, a CI step on the same push runs at the same time as Vercel's build, so nothing stops Vercel from making the new code live before the migration finishes. Add the CI job as a [Deployment Check](https://vercel.com/docs/deployment-checks) in the Vercel project: Vercel then builds the deployment but makes it live only after the job succeeds.
 
 ## 3. Create the Vercel project and set the connection string
 
@@ -91,7 +93,7 @@ To set it from the command line instead, after the project exists, run `npx verc
 npx vercel env add DATABASE_URL --environment production
 ```
 
-The command prompts for the value. If your preview deployments should reach a database, run it again with `--environment preview`, and give previews a separate database from production, because previews run code from branches that nobody has reviewed yet.
+The command prompts for the value. If your preview deployments should reach a database, run it again with `--environment preview`, and give previews a separate database from production, because previews run code from branches that nobody has reviewed yet. Apply the migrations to that database too, with the `db migrate` command from step 2 and its connection string, before you deploy a preview that needs them.
 
 ## 4. Deploy and check
 
