@@ -1,0 +1,158 @@
+---
+title: PostGIS
+description: Store points, lines, and polygons in PostgreSQL with Prisma ORM 8, and find rows by distance or by area with the PostGIS extension.
+url: /orm/extensions/postgis
+metaTitle: PostGIS geometry columns and queries | Prisma ORM
+metaDescription: 'Add the PostGIS extension to a Prisma ORM 8 project: declare a Geometry(4326) column, write points and polygons as GeoJSON, index them, and filter or sort rows by distance, containment, and overlap.'
+---
+
+The PostGIS extension adds a geometry column to Prisma ORM 8: a point, a line, or a polygon stored in PostgreSQL by [PostGIS](https://postgis.net). You write and read the values as GeoJSON-shaped objects, and you query them with conditions such as "within 5 km of this point" or "inside this area".
+
+This page assumes a Prisma ORM 8 project on PostgreSQL, such as one from [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql): `src/prisma/contract.prisma` is your contract, the Prisma ORM 8 name for the schema file, and `src/prisma/db.ts` creates the client your code queries with.
+
+PostGIS has to be installable on your PostgreSQL server. Most managed providers include it. To run it on your machine, use the `postgis/postgis` Docker image: [A database on your machine](/prisma-orm/local-database#postgresql-in-docker) shows the Compose file, and you change its `image:` to `postgis/postgis:17-3.5`.
+
+## Set it up
+
+Install the package next to `@prisma/orm-postgres`:
+
+```npm
+npm install @prisma/orm-extension-postgis
+```
+
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in two files: in `prisma.config.ts`, import it from `/control` and add it to `extensions`; in `src/prisma/db.ts`, import it from `/runtime` and add it to `extensions`. Keep the rest of each file as it is; the full files look like this:
+
+```ts title="prisma.config.ts"
+import 'dotenv/config';
+import { definePrismaConfig } from 'prisma/config';
+import postgis from '@prisma/orm-extension-postgis/control';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.prisma',
+    extensions: [postgis],
+    db: { connection: process.env['DATABASE_URL']! },
+  }),
+});
+```
+
+```ts title="src/prisma/db.ts"
+import 'dotenv/config';
+import postgis from '@prisma/orm-extension-postgis/runtime';
+import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
+  url: process.env['DATABASE_URL']!,
+  extensions: [postgis],
+});
+```
+
+## Declare a geometry column
+
+A geometry column stores shapes in one coordinate system, named by a number called the SRID. SRID 4326 is longitude and latitude in degrees, the system GPS and most maps use. `postgis.Geometry(4326)` is a column in that system; name it once in a `types` block and use the name on each field:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
+types {
+  Location = postgis.Geometry(4326)
+}
+
+model Place {
+  id       Int      @id @default(autoincrement())
+  name     String
+  location Location
+
+  @@index([location], type: "gist", name: "place_location")
+}
+```
+
+The column can hold any shape: a point, a line, or a polygon. The `gist` index is the kind PostGIS searches shapes with; without one, PostgreSQL checks every row. In a TypeScript contract, the column is `field.column(type.postgis.Geometry(4326))`, and the contract also passes the extension's `/pack` to `defineContract` as `{ extensions: { postgis } }`, as [TypeScript schema builder](/orm/contract-authoring/typescript-schema-builder) shows for pgvector.
+
+Then update the generated files, write the migration, and apply it to your development database:
+
+```bash
+npx prisma contract emit
+npx prisma migration plan --name add-places
+npx prisma db migrate --advance-ref db
+```
+
+`migration plan` writes two migrations: yours under `migrations/app/`, and the extension's under `migrations/postgis/`, which installs PostGIS in the database. Commit both. [Generating a migration](/orm/migrations/generating-a-migration) explains `--advance-ref db`.
+
+## Write and read shapes
+
+A geometry value is a GeoJSON-shaped object. The package's `/geojson` entry point has functions that build one: `point(longitude, latitude)`, `polygon(ring)`, and `bboxPolygon([minLongitude, minLatitude, maxLongitude, maxLatitude])`. Longitude comes first, as in GeoJSON.
+
+```ts
+import { point } from '@prisma/orm-extension-postgis/geojson';
+
+const gate = await db.orm.public.Place.create({
+  name: 'Brandenburg Gate',
+  location: point(13.3777, 52.5163),
+});
+
+gate.location; // { type: 'Point', coordinates: [13.3777, 52.5163], srid: 4326 }
+```
+
+Each function takes the SRID as its last argument. When you write a shape without one, it takes the column's, and a read returns the shape in the form the comment shows. When you write a shape with a different SRID, PostgreSQL refuses it with `Geometry SRID (3857) does not match column SRID (4326)`.
+
+In a query, always pass the SRID: a shape you compare the column with has no SRID unless you give one, and then every operation below except `distanceSphere` and `intersectsBbox` fails with `Operation on mixed SRID geometries`.
+
+## Find rows by distance or area
+
+Each geometry field has these operations, which you use in `where()`:
+
+| Operation | Is true, or returns |
+| --- | --- |
+| `location.distanceSphere(other)` | the distance in meters, measured on the earth's surface |
+| `location.distance(other)` | the distance in the column's units, which are degrees for 4326 |
+| `location.dwithin(other, distance)` | true when the two are within `distance`, in the column's units |
+| `location.within(area)` | true when the shape is inside `area` |
+| `location.contains(other)` | true when the shape contains `other` |
+| `location.intersects(other)` | true when the two shapes touch or overlap |
+| `location.intersectsBbox(other)` | true when the rectangles around the two shapes overlap, which is a faster, rougher test than `intersects` |
+
+For "within 5 km" on a 4326 column, compare `distanceSphere` with a number of meters, using `lt`, `lte`, `gt`, or `gte`. `distanceSphere` cannot use the `gist` index, so PostgreSQL checks every row; put `dwithin` with a radius in degrees in front of it, which uses the index to narrow the rows first. A tenth of a degree is more than 5 km in every direction between 60 degrees south and 60 degrees north:
+
+```ts
+import { and } from '@prisma/orm-postgres/orm-client';
+
+const here = point(13.3777, 52.5163, 4326);
+
+const nearby = await db.orm.public.Place.where((p) =>
+  and(p.location.dwithin(here, 0.1), p.location.distanceSphere(here).lt(5000)),
+).all();
+```
+
+To find the places inside an area, pass a polygon. A ring is the list of `[longitude, latitude]` corners, and `polygon()` closes it for you:
+
+```ts
+import { polygon } from '@prisma/orm-extension-postgis/geojson';
+
+const centralBerlin = polygon([[13.3, 52.4], [13.5, 52.4], [13.5, 52.6], [13.3, 52.6]], 4326);
+
+const inside = await db.orm.public.Place.where((p) => p.location.within(centralBerlin)).all();
+```
+
+To return the distance with each row and sort by it, write the query with the [SQL query builder](/orm/fundamentals/advanced-queries). There, you address the table by its name in the database, which is the model's name unless the model sets `@@map`. `f` holds the table's columns, and `fns` holds the same operations, which take the column as their first argument:
+
+```ts
+const plan = db.sql.public.Place.select('name')
+  .select('meters', (f, fns) => fns.distanceSphere(f.location, here))
+  .orderBy((f, fns) => fns.distanceSphere(f.location, here), { direction: 'asc' })
+  .limit(10)
+  .build();
+
+const closest = await db.query(plan).toArray();
+// [{ name: 'Brandenburg Gate', meters: 0 }, { name: 'Alexanderplatz', meters: 2481.397 }, ...]
+```
+
+## Next steps
+
+- [Using extensions](/orm/extensions/using-extensions) walks through the same setup for pgvector, step by step.
+- [PostGIS's own documentation](https://postgis.net/documentation/) covers coordinate systems and which queries use an index.
