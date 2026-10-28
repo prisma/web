@@ -164,7 +164,7 @@ function buildNeonPage(minutes: number) {
           prismaItems: CHOOSE_PRISMA,
         })}
         <p className="max-w-[68ch]">
-          Want the app hosted next to the database too? See{" "}
+          Want the whole app, frontend included, hosted next to the database? See{" "}
           <a href="/blog/neon-vs-prisma-postgres-app-hosting-in-one-place" className={INLINE}>
             Neon alternatives with app hosting and Postgres in one place (2026)
           </a>{" "}
