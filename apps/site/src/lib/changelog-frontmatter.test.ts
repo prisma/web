@@ -4,7 +4,8 @@ import { releaseNotes } from "../../source.config";
 
 /**
  * A changelog entry's `date` is shown on /changelog and in /changelog.md. An
- * empty or numeric value must fail the build instead of becoming a 1970 date.
+ * empty or numeric value must fail the build instead of becoming a 1970 date,
+ * and an impossible day must fail instead of rolling over into the next month.
  */
 
 /** Validates frontmatter with the changelog schema, as fumadocs-mdx does for each entry. */
@@ -27,8 +28,9 @@ test("changelog frontmatter keeps date as a Date", async () => {
 });
 
 test("changelog frontmatter rejects a date that is empty, a number or not a date", async () => {
-  // As YAML parses `date:`, `date: 2024` and `date: nope`.
-  for (const date of [null, 2024, "nope"]) {
+  // As YAML parses `date:`, `date: 2024` and `date: nope`, then days that
+  // `new Date()` would roll over into March.
+  for (const date of [null, 2024, "nope", "2024-02-30", "2023-02-29"]) {
     const result = await validateFrontmatter({ date });
     assert.ok(result.issues?.length, `accepted ${JSON.stringify(date)}`);
   }
