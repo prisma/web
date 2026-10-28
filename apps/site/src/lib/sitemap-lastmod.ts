@@ -15,7 +15,7 @@ import path from "node:path";
  *
  * Commits listed in `sitemap-lastmod-ignore-revs.txt` (next to `package.json`)
  * are skipped: they touched many pages without changing their copy (metadata
- * sweeps, copy moved unchanged into a content file), so a file they touched
+ * sweeps, copy moved word for word into a content file), so a file they touched
  * keeps the date of its previous commit.
  *
  * When the date is not known, the route gets no `<lastmod>`. In particular a
