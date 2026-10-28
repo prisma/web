@@ -389,9 +389,9 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.ok(markdown.includes("4 hours of one CPU while the app is working"));
   assert.ok(!markdown.includes("Built to work with the rest of Prisma"));
   assert.ok(!markdown.includes("Best together. Swappable when needed."));
-  assert.ok(!markdown.includes("## FAQ"));
-  assert.ok(!markdown.includes("Trusted by 500K+ TypeScript developers"));
-  assert.ok(!markdown.includes("Create your free database"));
+  assert.ok(markdown.includes("## FAQ"));
+  assert.ok(markdown.includes("Trusted by 500K+ TypeScript developers"));
+  assert.ok(markdown.includes("## Create your free database"));
   assert.ok(!markdown.includes("Host your app for free, too"));
   assert.ok(markdown.includes("Free tiers differ in storage, databases, and the limit."));
   assert.ok(!markdown.includes("Comparing free Postgres options?"));
@@ -432,9 +432,9 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.match(sections, /TableHeader/);
   assert.ok(!sections.includes("Alert"));
   assert.ok(!sections.includes("ProductPlatform"));
-  assert.ok(!sections.includes("TestimonialsReveal"));
-  assert.ok(!sections.includes("<Faq"));
-  assert.ok(!sections.includes("ProductCta"));
+  assert.ok(sections.includes("TestimonialsReveal"));
+  assert.ok(sections.includes("<Faq"));
+  assert.ok(sections.includes("ProductCta"));
   assert.ok(!sections.includes("lead={<FreePostgresIncluded />}"));
   assert.match(sections, /<strong className="font-semibold text-foreground">2 GB<\/strong>/);
   assert.ok(!sections.includes("FREE_POSTGRES_RELATED"));

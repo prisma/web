@@ -96,7 +96,8 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/app/mcp/_components/mcp-cta-section.tsx",
   ],
   // Headings moved into the product sections (expressions), same as /postgres.
-  // The two literals left are the platform h2 and the Compare Prisma h2.
+  // The literal left in these files is the Compare Prisma h2. The Prisma
+  // diagram stays off this page, so the platform heading is not rendered.
   "/free-postgresql-hosting": [
     "src/app/free-postgresql-hosting/_sections.tsx",
     "src/components/sections/compare-links.tsx",

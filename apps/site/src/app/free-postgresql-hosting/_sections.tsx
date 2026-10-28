@@ -1,9 +1,12 @@
 import { Texture } from "@/components/brand/texture";
 import { ArrowRightBold } from "@/components/icons/forma";
+import { ProductCta } from "@/components/product/product-cta";
 import { ProductFeatures } from "@/components/product/product-features";
 import { ProductHero } from "@/components/product/product-hero";
 import type { ProductIllustrationName } from "@/components/product/illustrations";
 import { CompareLinks } from "@/components/sections/compare-links";
+import { Faq } from "@/components/sections/faq";
+import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,10 +18,15 @@ import {
 } from "@/components/ui/table";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
+import { PRODUCT_TESTIMONIALS_HEADING } from "@/lib/markdown/product";
 import {
   FREE_POSTGRES_HERO_SECONDARY_CTA,
+  FREE_POSTGRES_CLOSER_BENEFITS,
+  FREE_POSTGRES_CLOSER_BODY,
+  FREE_POSTGRES_CLOSER_HEADLINE,
   FREE_POSTGRES_COMPARE_INTRO,
   FREE_POSTGRES_COMPARE_LINKS,
+  FREE_POSTGRES_FAQ,
   FREE_POSTGRES_FEATURE_ITEMS,
   FREE_POSTGRES_FEATURES_HEADLINE,
   FREE_POSTGRES_H1,
@@ -29,6 +37,8 @@ import {
   FREE_POSTGRES_INCLUDED_ROWS,
   FREE_POSTGRES_CASES,
   FREE_POSTGRES_LIMIT,
+  FREE_POSTGRES_PRIMARY_CTA,
+  FREE_POSTGRES_PRICING_CTA,
   FREE_POSTGRES_PROBLEM_HEADLINE,
   FREE_POSTGRES_SUBHEADLINE,
   FREE_POSTGRES_USE_HEADLINE,
@@ -302,6 +312,17 @@ export function FreePostgresPage() {
         }}
       />
       <CompareLinks intro={FREE_POSTGRES_COMPARE_INTRO} links={FREE_POSTGRES_COMPARE_LINKS} />
+      <Faq items={FREE_POSTGRES_FAQ} id="faq" />
+      <TestimonialsReveal heading={PRODUCT_TESTIMONIALS_HEADING} />
+      <ProductCta
+        cta={{
+          headline: FREE_POSTGRES_CLOSER_HEADLINE,
+          body: FREE_POSTGRES_CLOSER_BODY,
+          benefits: [...FREE_POSTGRES_CLOSER_BENEFITS],
+          primaryCta: FREE_POSTGRES_PRIMARY_CTA,
+          secondaryCta: FREE_POSTGRES_PRICING_CTA,
+        }}
+      />
     </>
   );
 }
