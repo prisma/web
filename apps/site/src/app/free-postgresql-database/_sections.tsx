@@ -174,47 +174,38 @@ function FreeLimit() {
               </p>
             </div>
 
-            <div className="flex flex-col">
-              <div className="p-6 sm:p-8">
-                <div className="flex items-start gap-3">
-                  <span
-                    aria-hidden
-                    className="mt-2 size-2 shrink-0 rounded-full bg-prism-cyan-500"
-                  />
-                  <div>
-                    <h3 className="text-xl leading-snug">{FREE_POSTGRES_LIMIT.idleTitle}</h3>
-                    <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
-                      {FREE_POSTGRES_LIMIT.idleBody}
-                    </p>
-                  </div>
+            <div className="flex flex-col p-6 sm:p-8">
+              <div className="flex items-start gap-3">
+                <span aria-hidden className="mt-2 size-2 shrink-0 rounded-full bg-prism-cyan-500" />
+                <div>
+                  <h3 className="text-xl leading-snug">{FREE_POSTGRES_LIMIT.idleTitle}</h3>
+                  <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                    {FREE_POSTGRES_LIMIT.idleBody}
+                  </p>
                 </div>
               </div>
 
-              <div className="p-6 sm:p-8">
+              <div className="mt-6 flex items-start gap-3">
+                <span aria-hidden className="mt-2 size-2 shrink-0 rounded-full bg-prism-red-500" />
+                <div>
+                  <h3 className="text-xl leading-snug">{FREE_POSTGRES_LIMIT.capTitle}</h3>
+                  <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-foreground">
+                    {FREE_POSTGRES_LIMIT.capBody}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 border-t border-black/[0.06] pt-3">
                 <div className="flex items-start gap-3">
                   <span
                     aria-hidden
-                    className="mt-2 size-2 shrink-0 rounded-full bg-prism-red-500"
+                    className="mt-2 size-2 shrink-0 rounded-full bg-prism-yellow-400"
                   />
                   <div>
-                    <h3 className="text-xl leading-snug">{FREE_POSTGRES_LIMIT.capTitle}</h3>
-                    <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-foreground">
-                      {FREE_POSTGRES_LIMIT.capBody}
+                    <h3 className="text-lg leading-snug">{FREE_POSTGRES_LIMIT.restoreTitle}</h3>
+                    <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                      {FREE_POSTGRES_LIMIT.restoreBody}
                     </p>
-                  </div>
-                </div>
-                <div className="mt-5 border-t border-black/[0.06] pt-5">
-                  <div className="flex items-start gap-3">
-                    <span
-                      aria-hidden
-                      className="mt-2 size-2 shrink-0 rounded-full bg-prism-yellow-400"
-                    />
-                    <div>
-                      <h3 className="text-lg leading-snug">{FREE_POSTGRES_LIMIT.restoreTitle}</h3>
-                      <p className="mt-1.5 max-w-[46ch] text-pretty text-sm leading-relaxed text-muted-foreground">
-                        {FREE_POSTGRES_LIMIT.restoreBody}
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
