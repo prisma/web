@@ -108,7 +108,10 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
  * /stack is the same: StackBento's own h2 is its only literal heading.
  */
 const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
-  "/": 6,
+  // Comparison and AgentLoop take their heading as a prop (with the homepage
+  // copy as the default) since the /use-cases pages reuse them, so those two
+  // are expressions here and covered by the hard-coded home.ts rendition.
+  "/": 4,
   "/orm": 1,
   "/postgres": 1,
   "/compute": 1,
@@ -269,7 +272,9 @@ test("the product pages inherit their copy from the page's own content object", 
     const document = renderMarkdownDocument(markdownPages[path], baseUrl);
 
     assert.ok(document.includes(content.hero.headline), `${path}: hero headline missing`);
-    assert.ok(document.includes(content.hero.subheadline), `${path}: subheadline missing`);
+    for (const paragraph of [content.hero.subheadline].flat()) {
+      assert.ok(document.includes(paragraph), `${path}: subheadline missing`);
+    }
     assert.ok(document.includes(content.problem.headline), `${path}: problem headline missing`);
     assert.ok(document.includes(content.features.headline), `${path}: features headline missing`);
     assert.ok(document.includes(content.cta.headline), `${path}: cta headline missing`);
@@ -308,7 +313,7 @@ test("/stack inherits its copy from the page's own content module", async () => 
     assert.ok(document.includes(text), `/stack: ${what} missing: ${text}`);
 
   expect(hero.headline, "hero headline");
-  expect(hero.subheadline, "hero subheadline");
+  for (const paragraph of [hero.subheadline].flat()) expect(paragraph, "hero subheadline");
   for (const benefit of hero.benefits) expect(benefit, "hero benefit");
   for (const link of [hero.primaryCta, hero.secondaryCta]) {
     expect(`[${link.label}](${link.href})`, "hero CTA");

@@ -21,7 +21,7 @@ import { bulletList, ctaList, heading, joinBlocks, paragraphs, table } from "./b
 export const STACK_H1 = hero.headline;
 
 /** The paragraph directly under the <h1>. */
-export const STACK_SUBHEADLINE = hero.subheadline;
+export const STACK_SUBHEADLINE = [hero.subheadline].flat().join("\n\n");
 
 /** StackBento's three product rows: the literal JSX around the page's copy. */
 const PRODUCT_ROWS = [

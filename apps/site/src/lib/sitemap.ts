@@ -3,6 +3,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
+import { CUSTOMER_STORY_DETAILS } from "@/data/customer-stories";
 import { isLandingPath } from "@/lib/landing-routes";
 import { extensions } from "@prisma-docs/ui/data/extensions";
 import { getAnswerEntries } from "./answer-page-content";
@@ -168,6 +169,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       ...pageRoutes.map((route) => route.pathname).filter((pathname) => !isLandingPath(pathname)),
       ...changelogPages.map((page) => page.url),
       ...extensions.map((entry) => `/extensions/${entry.slug}`),
+      ...CUSTOMER_STORY_DETAILS.map((story) => `/customers/${story.slug}`),
       ...answers.map((entry) => entry.url),
     ]),
   ];
