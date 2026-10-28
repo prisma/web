@@ -145,6 +145,34 @@ npx prisma@latest orm init --skip-install
 
 Without `--json`, standard output gets one line per file the command wrote: its path, relative to the working directory. The progress and the summary go to standard error. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
 
+## Exit codes
+
+In a script, pass `--yes` with `--target` and `--authoring` (see [Options](#options)) so that `orm init` asks no questions:
+
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+```
+
+Its exit code says how far it got. After code `4` or `5`, finish with the steps in the table instead of running `orm init` again, because a second run needs `--confirm`:
+
+| Code | What happened | What to do |
+| --- | --- | --- |
+| `0` | It set up the project and emitted the contract. | Nothing. |
+| `2` | It wrote nothing, because of one of the problems in the next table. | Fix the problem and run it again. |
+| `4` | It wrote the files, but installing the dependencies failed ([`CLI.INIT_INSTALL_FAILED`](/orm/reference/error-reference#CLI.INIT_INSTALL_FAILED)). | Run the install command it prints, then `npx prisma contract emit`. |
+| `5` | It wrote the files and installed the dependencies, but emitting the contract failed ([`CLI.INIT_EMIT_FAILED`](/orm/reference/error-reference#CLI.INIT_EMIT_FAILED)). | Fix the error it reports in `src/prisma/contract.prisma` or `src/prisma/contract.ts`, then run `npx prisma contract emit`. |
+
+The error code is printed in square brackets on standard error, such as `[CLI.INIT_MISSING_FLAGS]`. With `--json`, it is in `envelope.error.code` on the line whose `kind` is `result`. Exit code `2` has these causes:
+
+| Error code | Cause |
+| --- | --- |
+| [`CLI.INIT_MISSING_FLAGS`](/orm/reference/error-reference#CLI.INIT_MISSING_FLAGS) | `--yes` or `--no-interactive` was passed without `--target` or `--authoring`. |
+| [`CLI.INIT_INVALID_FLAG_VALUE`](/orm/reference/error-reference#CLI.INIT_INVALID_FLAG_VALUE) | A flag has a value it does not accept, such as `--target mysql`. |
+| [`CLI.INIT_INVALID_MANIFEST`](/orm/reference/error-reference#CLI.INIT_INVALID_MANIFEST) | `package.json` is not valid JSON. |
+| [`CLI.INIT_INVALID_TSCONFIG`](/orm/reference/error-reference#CLI.INIT_INVALID_TSCONFIG) | `tsconfig.json` cannot be parsed, even allowing comments and trailing commas. |
+| [`CLI.CONSENT_REQUIRED`](/orm/reference/error-reference#CLI.CONSENT_REQUIRED) | The project is already set up. Running `orm init` again replaces `src/prisma/contract.prisma`, `prisma.config.ts`, `src/prisma/db.ts`, and `prisma-8.md`, so it needs `--confirm` with the name of the directory you run it in, such as `--confirm my-app`, not its full path. |
+| [`CLI.UNEXPECTED`](/orm/reference/error-reference#CLI.UNEXPECTED) | `package.json` or `tsconfig.json` cannot be read, for example because of its file permissions. |
+
 ## After initialization
 
 Review the generated files, set `DATABASE_URL`, and emit the contract when you change the schema:
