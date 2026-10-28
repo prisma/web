@@ -126,10 +126,10 @@ const ISOLATED_GIT_ENV: Env = {
  * seconds, and the sitemap is generated there. All git commands for one
  * sitemap share this budget, so a slow fetch costs the dates, not the build.
  */
-const GIT_BUDGET_MS = 50_000;
+export const GIT_BUDGET_MS = 50_000;
 
 /** Longest single runs: init and log are local, the fetch is the network. */
-const GIT_TIMEOUT_MS = { local: 10_000, init: 5_000, fetch: 35_000 } as const;
+export const GIT_TIMEOUT_MS = { local: 10_000, init: 5_000, fetch: 35_000 } as const;
 
 /** Milliseconds a command may run: its own limit, cut to what is left before `deadline`. */
 function timeLeft(deadline: number, limit: number): number {
@@ -305,7 +305,10 @@ export function readFetchedLog(
     });
     return log === undefined ? { error: `git log: ${reason}` } : { log };
   } finally {
-    if (dir) rmSync(dir, { recursive: true, force: true });
+    // A leftover temporary directory must not fail the build.
+    try {
+      if (dir) rmSync(dir, { recursive: true, force: true, maxRetries: 2 });
+    } catch {}
   }
 }
 
@@ -388,12 +391,19 @@ export function getGitFileDates(
 
 /**
  * The files besides `page.tsx` that hold each TSX route's copy, relative to
- * `src/`. `/` and `/pricing` keep their copy as literal JSX spread over
- * section components shared with other pages, so they are dated by their
- * Markdown rendition, plus `/pricing`'s own FAQ section. Only the rendition's
- * headings are checked against the page (`lib/markdown/markdown-parity.test.ts`),
- * so a body-text edit that skips the rendition does not move the date. A
- * route that is not listed gets no `<lastmod>`.
+ * `src/`. `/` and `/pricing` keep their copy as literal JSX in section
+ * components, so they are dated by their Markdown rendition, plus `/pricing`'s
+ * FAQ section. Only the rendition's headings are checked against the page
+ * (`lib/markdown/markdown-parity.test.ts`), so a body-text edit that skips the
+ * rendition does not move the date.
+ *
+ * Section components used by one page only, which also take performance and
+ * markup commits, are not listed: `/pricing`'s pricing-hero, pricing-plans,
+ * pricing-spec-table, pricing-how-it-works and pricing-calculator, `/mcp`'s
+ * `_components`, `/stack`'s stack-hero-visual and best-for, and `/brand-kit`'s
+ * `components/brand-kit/*.tsx`. A copy edit there moves the route's date only
+ * through its `page.tsx`, rendition or content file. A route that is not
+ * listed gets no `<lastmod>`.
  */
 export const ROUTE_CONTENT_FILES: Readonly<Record<string, readonly string[]>> = {
   "/": ["lib/markdown/home.ts"],

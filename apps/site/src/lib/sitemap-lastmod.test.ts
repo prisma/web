@@ -18,6 +18,8 @@ import test, { after, before, describe } from "node:test";
 import {
   getGitFileDates,
   getRouteLastModified,
+  GIT_BUDGET_MS,
+  GIT_TIMEOUT_MS,
   IGNORE_REVS_FILE,
   ROUTE_CONTENT_FILES,
   gitLogArgs,
@@ -181,6 +183,15 @@ test("readFetchedLog reports an unusable temporary directory instead of throwing
   assert.match(result.error, /^mkdtemp: ENOENT/);
 });
 
+test("the sitemap's git commands fit in one budget inside next build's 60 s page limit", () => {
+  // A fetch from a repository without .git runs init, fetch and one local log.
+  assert.ok(
+    GIT_TIMEOUT_MS.init + GIT_TIMEOUT_MS.fetch + GIT_TIMEOUT_MS.local <= GIT_BUDGET_MS,
+    `${JSON.stringify(GIT_TIMEOUT_MS)} exceeds ${GIT_BUDGET_MS} ms`,
+  );
+  assert.ok(GIT_BUDGET_MS < 60_000, `${GIT_BUDGET_MS} ms`);
+});
+
 test("readFetchedLog runs no git command once the time budget is spent", () => {
   const result = readFetchedLog(
     "https://example.invalid/repo.git",
@@ -286,7 +297,9 @@ test("outside a git work tree there are no dates", () => {
   try {
     assert.equal(getGitFileDates(directory).size, 0);
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    try {
+      rmSync(directory, { recursive: true, force: true, maxRetries: 2 });
+    } catch {}
   }
 });
 
@@ -438,7 +451,11 @@ describe("git history on each kind of build host", () => {
     originHead = git(origin, ["rev-parse", "HEAD"]).trim();
   });
 
-  after(() => rmSync(root, { recursive: true, force: true }));
+  after(() => {
+    try {
+      rmSync(root, { recursive: true, force: true, maxRetries: 2 });
+    } catch {}
+  });
 
   const fullHistory = {
     "app/compute/page.tsx": "2026-01-01",
@@ -476,6 +493,33 @@ describe("git history on each kind of build host", () => {
       ignoreRevs,
     });
     assert.deepEqual(relative(shallow, fetched), expected);
+  });
+
+  test("by default the ignore-revs file in the working directory is applied", () => {
+    // IGNORE_REVS_FILE is read from the working directory when the module
+    // loads (apps/site in next build), so this runs getGitFileDates with no
+    // options in a child process started in a directory holding such a file.
+    const app = path.join(root, "app-with-ignore-revs");
+    mkdirSync(app);
+    writeFileSync(
+      path.join(app, "sitemap-lastmod-ignore-revs.txt"),
+      `# #1: the 2026-02-01 commit\n${february}\n`,
+    );
+    const script = [
+      `import { getGitFileDates } from ${JSON.stringify(new URL("./sitemap-lastmod.ts", import.meta.url).href)};`,
+      "console.log(JSON.stringify([...getGitFileDates(process.argv[1])]));",
+    ].join("\n");
+    const stdout = execFileSync(
+      process.execPath,
+      ["--import", import.meta.resolve("tsx"), "--input-type=module", "-e", script, src(origin)],
+      { cwd: app, encoding: "utf8", env: { ...process.env, ...isolated } },
+    );
+    const dates = new Map<string, string>(JSON.parse(stdout));
+    assert.deepEqual(relative(origin, dates), {
+      "app/compute/page.tsx": "2026-01-01",
+      "app/pricing/page.tsx": "2026-01-01",
+      "components/hero.tsx": "2026-03-02",
+    });
   });
 
   test("a shallow clone keeps no boundary dates unless it may fetch", () => {
@@ -539,6 +583,23 @@ describe("git history on each kind of build host", () => {
     assert.match(
       messages[0]!,
       /^1 file dates from a shallow git history \(history fetch failed: git fetch: /,
+    );
+
+    // Ignored commits are skipped on this fallback too: with the 2026-03-01
+    // commit ignored, hero.tsx's previous commit is past the boundary.
+    const ignored: string[] = [];
+    const withIgnored = getGitFileDates(src(shallow), {
+      fetchHistory: true,
+      env: {},
+      remote: `file://${path.join(root, "missing")}`,
+      report: (message) => ignored.push(message),
+      ignoreRevs: new Set([originHead]),
+    });
+    assert.equal(withIgnored.size, 0);
+    assert.equal(ignored.length, 1);
+    assert.match(
+      ignored[0]!,
+      /^0 file dates from a shallow git history \(history fetch failed: git fetch: /,
     );
   });
 });
