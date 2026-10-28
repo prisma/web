@@ -114,7 +114,13 @@ article.meta?.tags; // string[]
 
 Prisma ORM checks a value against the schema when it reads it, not when it writes it. A row whose stored value breaks the schema, written by SQL or by another app, fails to read with an error whose `code` is `RUNTIME.JSON_SCHEMA_VALIDATION_FAILED`, and the message names the problem, such as `tags must be an array (was number)`. In a query that returns many rows, one such row fails the whole query.
 
-Because writes are not checked, a value typed `any` or `unknown`, such as a parsed request body, is saved as it is. The `create()` call then throws when it reads the new row back, but the row stays in the database. Check such a value with the arktype type before you write it:
+Because writes are not checked, a value typed `any` or `unknown`, such as a parsed request body, reaches the database unchecked. What happens next depends on the method:
+
+- `create()` saves the row, then throws `RUNTIME.JSON_SCHEMA_VALIDATION_FAILED` when it reads the row back. The row stays in the database.
+- `update()` throws the same error and does not save the change.
+- `createAndCount()` and `updateAndCount()` do not read rows back, so they save the value and throw nothing.
+
+Check such a value with the arktype type before you write it:
 
 ```ts
 import { type } from 'arktype';
