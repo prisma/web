@@ -14,11 +14,10 @@ export const metadata = createPageMetadata({
   // that the first sentence defines Compute as a platform-as-a-service (PaaS)
   // and leaves out "in one project". It dropped "on one plan" on 2026-10-07,
   // which read as one flat price: Starter is a $10 base and Compute usage is
-  // metered on top. Since 2026-10-28 it adds the per-branch preview sentence
-  // after the Free line, in the deploy-on-push docs' wording.
-  // lib/markdown-pages.ts repeats it verbatim for the .md rendition.
+  // metered on top. lib/markdown-pages.ts repeats it verbatim for the .md
+  // rendition.
   description:
-    "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Once deploy on push is set up, every pushed branch other than the default one gets a preview with its own URL and, for databases the Composer module declares, its own new databases; production data is not copied. Any Postgres client works; Prisma ORM is optional.",
+    "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
   path: "/compute",
   ogKicker: "Prisma Compute",
   ogAccent: "red",
