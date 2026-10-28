@@ -477,9 +477,10 @@ export const FREE_POSTGRES_COMPARE_LINKS = [
     description: "Postgres with Prisma, or Supabase with Auth and Storage.",
   },
   {
-    label: "Free Postgres hosting compared",
+    label:
+      "Serverless Postgres compared (2026): Neon, Supabase, Amazon RDS/Aurora and Prisma Postgres",
     href: COMPARE_SERVERLESS,
-    description: "How free tiers differ when you are idle or hit the cap.",
+    description: "Idle, the cap, and what each free tier includes.",
   },
 ] as const;
 

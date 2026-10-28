@@ -391,7 +391,11 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.ok(!markdown.includes("App hosting platforms with managed Postgres"));
   assert.ok(markdown.includes("[Prisma Postgres vs Neon](/compare/neon):"));
   assert.ok(markdown.includes("[Prisma Postgres vs Supabase](/compare/supabase):"));
-  assert.ok(markdown.includes("[Free Postgres hosting compared](/blog/serverless-postgres):"));
+  assert.ok(
+    markdown.includes(
+      "[Serverless Postgres compared (2026): Neon, Supabase, Amazon RDS/Aurora and Prisma Postgres](/blog/serverless-postgres):",
+    ),
+  );
   assert.ok(!markdown.includes("hair salon"));
   assert.ok(!markdown.includes("Restaurant orders"));
   assert.ok(!markdown.includes("visits times a few queries"));
