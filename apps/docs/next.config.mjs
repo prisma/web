@@ -427,6 +427,15 @@ const config = {
       { source: "/guides/next", destination: "/guides", permanent: true },
       { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
+      // Support knowledge base (PR #8439): the single Billing and Members pages
+      // under console/more were folded into the console/billing and
+      // console/workspaces sections.
+      { source: "/console/more/billing", destination: "/console/billing", permanent: true },
+      {
+        source: "/console/more/workspaces",
+        destination: "/console/workspaces/members",
+        permanent: true,
+      },
       { source: "/prisma-orm/release-status", destination: "/orm/release-status", permanent: true },
       {
         source: "/prisma-orm/supported-databases",

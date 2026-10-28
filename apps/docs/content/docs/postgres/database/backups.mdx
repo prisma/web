@@ -10,15 +10,11 @@ metaDescription: Learn about backups in Prisma Postgres
 
 On [Starter, Pro, and Business plans](https://www.prisma.io/pricing), Prisma Postgres automatically creates snapshots of your database to support recovery and backup workflows. Navigate to the **Backups** tab of your Prisma Postgres instance in the [Prisma Console](https://console.prisma.io) to view your available backups and [restore them](#restoring-a-backup).
 
-Snapshots are created _daily_, but only on days when the database has activity. Depending on your plan, you will see a different number of available snapshots:
-
-| Plan     | Snapshot retention |
-| -------- | ------------------ |
-| Starter  | Last 7 days        |
-| Pro      | Last 7 days        |
-| Business | Last 30 days       |
+Snapshots are created only on days when the database has activity. How long snapshots are kept depends on your plan; for each plan's retention period, see the [pricing page](https://www.prisma.io/pricing).
 
 Database changes or events that occurred after the most recent snapshot may not be restored.
+
+On the current Starter, Pro, and Business plans, you can restore any listed snapshot yourself from the **Backups** tab. Workspaces still on an earlier version of the Starter plan have no snapshots, and the tab says **Upgrade to Starter, Pro, or Business to enable backups.** Contact [support](/console/more/support) if you see that message on a paid plan.
 
 To recover rows that were deleted by mistake without overwriting newer data, [restore a snapshot to a new database](#restoring-a-backup) and copy the missing rows back. [Recover deleted records from a hosted Postgres database](https://www.prisma.io/postgres/recover-deleted-records) walks through the steps.
 
@@ -28,6 +24,24 @@ For more details about backup availability and plan-specific features, visit our
 Point-in-time recovery is coming to Prisma Postgres in November 2026. It will restore a database to a moment you choose, rather than to a retained daily snapshot.
 :::
 
+## What triggers a snapshot
+
+A daily snapshot is taken only when the data in the database changed since the previous one. Reads don't count: a database that only served `SELECT` queries for a week gets no new snapshots that week, and its latest snapshot stays at the last day it had a write.
+
+If you need a fresh snapshot after a quiet period, make a small write, such as updating one row. The next daily run then takes a snapshot.
+
+You can't trigger a backup on demand from Console. To get a recovery point right now, create one yourself with [`pg_dump`](#manually-creating-a-backup-file-via-pg_dump).
+
+### Snapshots while a workspace is blocked
+
+While a workspace is blocked (for the Free plan limit, a spending limit, or an unpaid invoice), its databases accept no queries, so no data changes and no new snapshots are taken. Snapshots for the days of the block are not created later. Backups resume on their own after the block is lifted and the database is written to again; you don't need to turn anything back on. See [Usage limits and blocks](/console/billing/usage-limits-and-blocks).
+
+Snapshots older than your plan's retention period expire during a block like any other time, so a long block can leave you with fewer snapshots than usual.
+
+## Free plan
+
+The Free plan has no backups. Snapshots are only taken on Starter, Pro, and Business. On the Free plan, keep your own copy with [`pg_dump`](#manually-creating-a-backup-file-via-pg_dump).
+
 ## Restoring a backup
 
 In the **Backups** tab, select **Restore backup** next to a completed backup and choose where the backup goes:
@@ -36,6 +50,8 @@ In the **Backups** tab, select **Restore backup** next to a completed backup and
 - **Restore to an existing database**, with the database you are restoring selected as the target, rolls that database back to the backup in place. All of its data is overwritten with the backup, and anything written after the backup was taken is lost. Open connections are closed while the restore runs. The database keeps its connection strings, so your app can use the same `DATABASE_URL` once the restore completes.
 
 Restoring a backup into a different database that already exists is not supported. Restore it to a new database instead.
+
+Only backups with the status **Completed** can be restored. A database restored as a new database counts toward your plan's database limit. While a restore runs, Console shows **Database is being restored to the selected backup**, the target database is unavailable, and you can't start a second restore. How long a restore takes depends on the size of the database.
 
 If the database is connected to Vercel through the integration, restore it in place so the connection strings in your Vercel project keep working.
 
@@ -61,6 +77,21 @@ The CLI and the REST API refuse to delete a Prisma project's default database, w
 - [`POST /v1/databases/{targetDatabaseId}/restore`](/rest-api/endpoints/databases/post-databases-by-target-database-id-restore) and [`prisma postgres backup restore <database>`](/cli/postgres) restore in place, like **Restore to an existing database**.
 - [`POST /v1/projects/{projectId}/databases`](/rest-api/endpoints/databases/post-projects-by-project-id-databases) with a `source` of type `backup` creates a new database from a backup. The response includes the new database's connection string.
 - The `create_prisma_postgres_recovery` [MCP tool](/ai/mcp-tools) restores a backup into a new database.
+
+A restore in place can't be undone. Before you restore in place, take a `pg_dump` of the current data if there is anything in it you might want to keep. List the backups of a database with [Get list of backups](/rest-api/endpoints/database-backups/get-databases-by-database-id-backups).
+
+## Restore a deleted database
+
+A deleted database can't be restored, by you or by Prisma support. Its backups are deleted with it. To keep a copy, [export your data](/postgres/database/export-data) before you delete a database, project, or workspace.
+
+## Recovery point and recovery time
+
+| Objective                      | Value          |
+| ------------------------------ | -------------- |
+| Recovery point objective (RPO) | Up to 24 hours |
+| Recovery time objective (RTO)  | 4 hours        |
+
+If a platform failure affects your database, Prisma restores it from the most recent snapshot, so changes made after that snapshot can be lost. See [Limits](/postgres/database/limits#recovery-point-and-recovery-time).
 
 ## Manually creating a backup file via `pg_dump`
 

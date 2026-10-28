@@ -10,7 +10,7 @@ This guide is for existing Prisma Postgres applications that connect through a h
 
 The hosted Accelerate connection will be retired on December 1, 2026. This guide does not apply to [Local Postgres](/local-development/postgres) URLs such as `prisma+postgres://localhost:51213`.
 
-If your application gets `P6000` errors with the message "Worker exceeded resource limits" (Cloudflare error 1102), the limit was hit inside Accelerate, not in your own code, so switching to one of the connection methods in this guide fixes them. Larger queries and results make the error more likely. Until you switch, fetch fewer rows per query with a lower `take`, and remove relations you don't need from `include`.
+If your application gets `P6000` errors with the message "Worker exceeded resource limits" (Cloudflare error 1102), the limit was hit inside Accelerate, not in your own code, so switching to one of the connection methods in this guide fixes them. Larger queries and results make the error more likely. Until you switch, fetch fewer rows per query with a lower `take`, and remove relations you don't need from `include`. See [Accelerate troubleshooting](/accelerate/more/troubleshoot#p6000-and-cloudflare-error-1102).
 
 :::warning[Query caching is not replaced]
 
@@ -258,3 +258,36 @@ Typed projects should report removed Accelerate APIs during type checking. Untyp
 8. Deploy the replacement connection to production and confirm that the runtime no longer receives `prisma+postgres://accelerate.prisma-data.net`.
 
 Keep the old Accelerate credential available temporarily as a rollback path. After the replacement connection is stable in production, revoke the old credential and remove the remaining Accelerate configuration.
+
+## After switching: slower queries
+
+Some applications get slower after they move off Accelerate. Accelerate ran each Prisma Client query close to the database, so one query cost your application one round trip. With a pooled TCP connection or the serverless driver, each SQL statement travels from your application to the database region and back. An application far from its database, or one that runs many queries in sequence per request, notices the difference most.
+
+### Run the application near the database
+
+Moving the application into or next to the database's region helps more than any driver setting. For example, if your database is in `ap-southeast-1` (Singapore), deploy your serverless functions to a Singapore region. See [Regions](/postgres/database/regions#choose-a-region).
+
+### Enable `relationJoins`
+
+The `relationJoins` preview feature makes Prisma Client load relations (`include` and nested `select`) with database joins in one SQL statement, instead of one statement per relation. That removes round trips. See [relation load strategies](/orm/v7/prisma-client/queries/relation-queries#relation-load-strategies-preview) for details.
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["relationJoins"]
+}
+```
+
+Run `npx prisma generate` after the change, then measure again.
+
+### Measure the right thing
+
+When you compare timings before and after the switch, record:
+
+- whether the request was warm or cold
+- whether the time covers the whole request or the database calls alone
+- how many queries run in sequence per request
+- where the application runs and which region the database is in
+
+If your application runs near the database with `relationJoins` enabled and is still much slower than on Accelerate, contact [support](/console/more/support) with these numbers and the versions of `prisma`, `@prisma/client`, and the driver adapter you use.
