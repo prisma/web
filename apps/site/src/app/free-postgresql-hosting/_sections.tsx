@@ -1,13 +1,9 @@
 import { Texture } from "@/components/brand/texture";
 import { ArrowRightBold } from "@/components/icons/forma";
-import { ProductCta } from "@/components/product/product-cta";
 import { ProductFeatures } from "@/components/product/product-features";
 import { ProductHero } from "@/components/product/product-hero";
-import { ProductPlatform } from "@/components/product/product-platform";
 import type { ProductIllustrationName } from "@/components/product/illustrations";
 import { CompareLinks } from "@/components/sections/compare-links";
-import { Faq } from "@/components/sections/faq";
-import { TestimonialsReveal } from "@/components/sections/testimonials-reveal";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -19,15 +15,10 @@ import {
 } from "@/components/ui/table";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
-import { PRODUCT_TESTIMONIALS_HEADING } from "@/lib/markdown/product";
 import {
   FREE_POSTGRES_HERO_SECONDARY_CTA,
-  FREE_POSTGRES_CLOSER_BENEFITS,
-  FREE_POSTGRES_CLOSER_BODY,
-  FREE_POSTGRES_CLOSER_HEADLINE,
   FREE_POSTGRES_COMPARE_INTRO,
   FREE_POSTGRES_COMPARE_LINKS,
-  FREE_POSTGRES_FAQ,
   FREE_POSTGRES_FEATURE_ITEMS,
   FREE_POSTGRES_FEATURES_HEADLINE,
   FREE_POSTGRES_H1,
@@ -38,10 +29,6 @@ import {
   FREE_POSTGRES_INCLUDED_ROWS,
   FREE_POSTGRES_CASES,
   FREE_POSTGRES_LIMIT,
-  FREE_POSTGRES_PLATFORM_BODY,
-  FREE_POSTGRES_PLATFORM_POINTS,
-  FREE_POSTGRES_PRICING_CTA,
-  FREE_POSTGRES_PRIMARY_CTA,
   FREE_POSTGRES_PROBLEM_HEADLINE,
   FREE_POSTGRES_SUBHEADLINE,
   FREE_POSTGRES_USE_HEADLINE,
@@ -120,6 +107,7 @@ function FreePostgresIncluded() {
 function FreePostgresSubtitle() {
   return (
     <>
+      A free PostgreSQL database with{" "}
       <strong className="font-semibold text-foreground">2 GB</strong> of storage,{" "}
       <strong className="font-semibold text-foreground">200,000 operations</strong> a month (one
       query each), and <strong className="font-semibold text-foreground">50 databases</strong>.
@@ -229,7 +217,9 @@ function FreeLimitCases() {
         {FREE_POSTGRES_CASES.map((item) => {
           const card = (
             <>
-              <img src={item.image} alt={item.imageAlt} className="h-24 w-full object-cover" />
+              <div className="flex h-32 items-center justify-center bg-[#f3f3f3]">
+                <img src={item.image} alt={item.imageAlt} className="h-full w-auto" />
+              </div>
               <div className="px-4 py-3">
                 <h3 className="text-base leading-snug">{item.name}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
@@ -287,16 +277,18 @@ export function FreePostgresPage() {
         subheadline={<FreePostgresSubtitle />}
         checks={FREE_POSTGRES_HERO_CHECKS}
       />
-      <ProductFeatures
-        features={{
-          headline: FREE_POSTGRES_FEATURES_HEADLINE,
-          // The pricing, create-db, and connection-string links sit on the panel.
-          bridge: "",
-          items: [],
-        }}
-        lead={<FreePostgresIncluded />}
-        leadLayout="wide"
-      />
+      <section className="bg-white px-4 pt-16 pb-4 sm:px-8 sm:pt-24">
+        <div className="mx-auto max-w-site">
+          <div className="mx-auto max-w-3xl text-center max-md:text-left">
+            <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+              {FREE_POSTGRES_FEATURES_HEADLINE}
+            </h2>
+          </div>
+          <div className="mt-8">
+            <FreePostgresIncluded />
+          </div>
+        </div>
+      </section>
       <FreeLimit />
       <FreeLimitCases />
       <ProductFeatures
@@ -309,22 +301,7 @@ export function FreePostgresPage() {
           })),
         }}
       />
-      <ProductPlatform
-        platform={{ body: FREE_POSTGRES_PLATFORM_BODY }}
-        points={FREE_POSTGRES_PLATFORM_POINTS}
-      />
       <CompareLinks intro={FREE_POSTGRES_COMPARE_INTRO} links={FREE_POSTGRES_COMPARE_LINKS} />
-      <Faq items={FREE_POSTGRES_FAQ} id="faq" />
-      <TestimonialsReveal heading={PRODUCT_TESTIMONIALS_HEADING} />
-      <ProductCta
-        cta={{
-          headline: FREE_POSTGRES_CLOSER_HEADLINE,
-          body: FREE_POSTGRES_CLOSER_BODY,
-          benefits: [...FREE_POSTGRES_CLOSER_BENEFITS],
-          primaryCta: FREE_POSTGRES_PRIMARY_CTA,
-          secondaryCta: FREE_POSTGRES_PRICING_CTA,
-        }}
-      />
     </>
   );
 }

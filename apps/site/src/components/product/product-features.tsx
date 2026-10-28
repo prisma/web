@@ -51,7 +51,7 @@ export function ProductFeatures({
   lead,
   leadLayout = "prose",
 }: Pick<ProductPageContent, "features"> & {
-  /** Callout under the card grid. /free-postgresql-database uses it for an open engineering question. */
+  /** Callout under the card grid. /free-postgresql-hosting uses it for an open engineering question. */
   footer?: ReactNode;
   /** Sits under the heading, before the bridge. Unused on /postgres. */
   lead?: ReactNode;

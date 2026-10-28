@@ -1,4 +1,4 @@
-// Content for /free-postgresql-database.
+// Content for /free-postgresql-hosting.
 //
 // Rules for this page's copy (SEO brief, 18 Oct 2026; slug override 21 Oct):
 //   - Price never appears in the title, meta description, H1 or closing CTA.
@@ -14,21 +14,21 @@
 // components/sections/pricing-spec-table.tsx. When the brief and those files
 // disagree, the repo wins.
 
-export const FREE_POSTGRES_PATH = "/free-postgresql-database";
+export const FREE_POSTGRES_PATH = "/free-postgresql-hosting";
 
-export const FREE_POSTGRES_TITLE = "Free PostgreSQL database with 2 GB storage | Prisma Postgres";
+export const FREE_POSTGRES_TITLE = "Free PostgreSQL Hosting | Prisma Postgres";
 
 export const FREE_POSTGRES_DESCRIPTION =
-  "Create a free PostgreSQL database on Prisma Postgres. Managed PostgreSQL 17 with 2 GB of storage, 200,000 operations a month and up to 50 databases. No credit card and no time limit.";
+  "Free PostgreSQL hosting on Prisma Postgres. Managed PostgreSQL 17 with 2 GB of storage, 200,000 operations a month and up to 50 databases. No credit card and no time limit.";
 
-export const FREE_POSTGRES_H1 = "Create a free PostgreSQL database";
+export const FREE_POSTGRES_H1 = "Free PostgreSQL hosting";
 
 export const FREE_POSTGRES_SUBHEADLINE =
-  "2 GB of storage, 200,000 operations a month (one query each), and 50 databases. Prisma Postgres works with any Postgres client.";
+  "A free PostgreSQL database with 2 GB of storage, 200,000 operations a month (one query each), and 50 databases. Prisma Postgres works with any Postgres client.";
 
 /** Same copy as the hero subtitle, with the three allowances in bold. */
 export const FREE_POSTGRES_MARKDOWN_SUBHEADLINE =
-  "**2 GB** of storage, **200,000 operations** a month (one query each), and **50 databases**. Prisma Postgres works with any Postgres client.";
+  "A **free PostgreSQL database** with **2 GB** of storage, **200,000 operations** a month (one query each), and **50 databases**. Prisma Postgres works with any Postgres client.";
 
 /** Check lines under the buttons. Cyan, then yellow. */
 export const FREE_POSTGRES_HERO_CHECKS = [
@@ -242,6 +242,10 @@ export const FREE_POSTGRES_TERMINAL_TABS = [
   "Copilot",
 ] as const;
 export const FREE_POSTGRES_TERMINAL_STATUS = "Setting up a database";
+export const FREE_POSTGRES_STEP_CREATING = "Creating";
+export const FREE_POSTGRES_STEP_CONNECTION = "Connection string";
+export const FREE_POSTGRES_STEP_CLAIM = "Claim";
+export const FREE_POSTGRES_CONNECTION_EXAMPLE = "Example. Not a live database.";
 export const FREE_POSTGRES_TERMINAL_CLAIM =
   "The database is deleted after 24 hours unless you claim it.";
 export const FREE_POSTGRES_CLI_CONNECTION =
@@ -317,8 +321,8 @@ export const FREE_POSTGRES_LIMIT = {
   idleBody: "The next query wakes them. You do not wake one by hand.",
   capTitle: "Queries stop at the monthly limit",
   capBody: "Until the 1st of the next month, or until you upgrade.",
-  restoreTitle: "A one-time 24 hour restore",
-  restoreBody: "In the Console, it lets you export first.",
+  restoreTitle: "A 24 hour restore, once",
+  restoreBody: "Once per workspace, in the Console. It lets you export first.",
   paid: `On paid plans this never happens: extra operations are billed, with a spend limit you set. Read the [docs FAQ on the free limit](${DOCS_FREE_LIMIT}).`,
 } as const;
 
@@ -331,7 +335,7 @@ export const FREE_POSTGRES_CASES = [
   {
     name: "A personal blog",
     body: "One person writes a few posts a week. A visit loads the list of posts, then the post.",
-    count: "about 40 a day",
+    count: "about 40 queries a day",
     plan: "Stays on Free",
     href: "",
     linkLabel: "",
@@ -341,7 +345,7 @@ export const FREE_POSTGRES_CASES = [
   {
     name: "A feedback board",
     body: "One product collects ideas. A visit reads the list, opens one idea, and sometimes leaves a vote.",
-    count: "about 400 a day",
+    count: "about 400 queries a day",
     plan: "Stays on Free",
     href: "",
     linkLabel: "",
@@ -351,7 +355,7 @@ export const FREE_POSTGRES_CASES = [
   {
     name: "A team chat",
     body: "About 200 people keep a channel open through the workday. Each check loads the channel list and the latest messages.",
-    count: "about 20,000 a day",
+    count: "about 20,000 queries a day",
     plan: "Needs Starter at $10 a month",
     href: "/pricing",
     linkLabel: "See pricing",
@@ -420,7 +424,7 @@ export const FREE_POSTGRES_INCLUDED_ROWS: readonly FreePostgresIncludedRow[] = [
   {
     label: "Prisma Compute",
     value:
-      "Host a Node.js, Bun, or Next.js app next to this database: 1 million requests, 360 GB-hours of memory, and 4 active vCPU-hours a month.",
+      "Host a Node.js, Bun, or Next.js app next to this database: 1 million requests, 360 GB-hours of memory (1 GB for 15 days), and 4 active vCPU-hours (4 hours of one CPU while the app is working) a month.",
   },
   { label: "App outbound", value: "10 GB a month. Separate from the database." },
   {

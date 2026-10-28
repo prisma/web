@@ -42,20 +42,20 @@ import {
 const DASHES = /[\u2013\u2014]/;
 
 test("title, meta and H1 match the brief", () => {
-  assert.equal(FREE_POSTGRES_TITLE, "Free PostgreSQL database with 2 GB storage | Prisma Postgres");
+  assert.equal(FREE_POSTGRES_TITLE, "Free PostgreSQL Hosting | Prisma Postgres");
   assert.equal(
     FREE_POSTGRES_DESCRIPTION,
-    "Create a free PostgreSQL database on Prisma Postgres. Managed PostgreSQL 17 with 2 GB of storage, 200,000 operations a month and up to 50 databases. No credit card and no time limit.",
+    "Free PostgreSQL hosting on Prisma Postgres. Managed PostgreSQL 17 with 2 GB of storage, 200,000 operations a month and up to 50 databases. No credit card and no time limit.",
   );
-  assert.equal(FREE_POSTGRES_H1, "Create a free PostgreSQL database");
-  assert.equal(FREE_POSTGRES_PATH, "/free-postgresql-database");
+  assert.equal(FREE_POSTGRES_H1, "Free PostgreSQL hosting");
+  assert.equal(FREE_POSTGRES_PATH, "/free-postgresql-hosting");
   assert.equal(
     FREE_POSTGRES_SUBHEADLINE,
-    "2 GB of storage, 200,000 operations a month (one query each), and 50 databases. Prisma Postgres works with any Postgres client.",
+    "A free PostgreSQL database with 2 GB of storage, 200,000 operations a month (one query each), and 50 databases. Prisma Postgres works with any Postgres client.",
   );
   assert.equal(
     FREE_POSTGRES_MARKDOWN_SUBHEADLINE,
-    "**2 GB** of storage, **200,000 operations** a month (one query each), and **50 databases**. Prisma Postgres works with any Postgres client.",
+    "A **free PostgreSQL database** with **2 GB** of storage, **200,000 operations** a month (one query each), and **50 databases**. Prisma Postgres works with any Postgres client.",
   );
   assert.deepEqual(
     [...FREE_POSTGRES_HERO_CHECKS],
@@ -249,13 +249,17 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
     markdown.includes(
       [
         `$ ${CREATE_DB_COMMAND}`,
+        "Creating",
         FREE_POSTGRES_TERMINAL_STATUS,
+        "Connection string",
         FREE_POSTGRES_CLI_CONNECTION,
+        "Example. Not a live database.",
+        "Claim",
         FREE_POSTGRES_TERMINAL_CLAIM,
         FREE_POSTGRES_CLI_CLAIM_URL,
       ].join("\n"),
     ),
-    "terminal transcript includes the claim URL after the warning",
+    "terminal transcript names creating, the connection string, and the claim",
   );
   for (const line of [
     ...FREE_POSTGRES_TERMINAL_TABS,
@@ -369,29 +373,25 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.ok(markdown.includes("The next query wakes them. You do not wake one by hand."));
   assert.ok(markdown.includes("### Queries stop at the monthly limit"));
   assert.ok(markdown.includes("Until the 1st of the next month, or until you upgrade."));
-  assert.ok(markdown.includes("### A one-time 24 hour restore"));
-  assert.ok(markdown.includes("In the Console, it lets you export first."));
+  assert.ok(markdown.includes("### A 24 hour restore, once"));
+  assert.ok(markdown.includes("Once per workspace, in the Console. It lets you export first."));
   assert.ok(markdown.includes("On paid plans this never happens"));
   assert.ok(markdown.includes("### A personal blog"));
   assert.ok(markdown.includes("A visit loads the list of posts, then the post."));
-  assert.ok(markdown.includes("about 40 a day. Stays on Free."));
+  assert.ok(markdown.includes("about 40 queries a day. Stays on Free."));
   assert.ok(markdown.includes("### A feedback board"));
-  assert.ok(markdown.includes("about 400 a day. Stays on Free."));
+  assert.ok(markdown.includes("about 400 queries a day. Stays on Free."));
   assert.ok(markdown.includes("### A team chat"));
   assert.ok(markdown.includes("[Needs Starter at $10 a month](/pricing)"));
   assert.ok(markdown.includes("[See pricing](/pricing)"));
-  assert.ok(markdown.includes("about 20,000 a day."));
-  assert.ok(markdown.includes("Free includes [Prisma Compute](/compute)."));
-  assert.ok(
-    markdown.includes(
-      "**Included.** 1 million requests, 360 GB-hours, 4 active vCPU-hours, and 10 GB outbound.",
-    ),
-  );
-  assert.ok(markdown.includes("**One project.** The app and the database live together."));
-  assert.ok(
-    markdown.includes("**Idle scales to zero.** A quiet app waits until the next request."),
-  );
-  assert.ok(markdown.includes("**Best together. Swappable when needed.**"));
+  assert.ok(markdown.includes("about 20,000 queries a day."));
+  assert.ok(markdown.includes("1 GB for 15 days"));
+  assert.ok(markdown.includes("4 hours of one CPU while the app is working"));
+  assert.ok(!markdown.includes("Built to work with the rest of Prisma"));
+  assert.ok(!markdown.includes("Best together. Swappable when needed."));
+  assert.ok(!markdown.includes("## FAQ"));
+  assert.ok(!markdown.includes("Trusted by 500K+ TypeScript developers"));
+  assert.ok(!markdown.includes("Create your free database"));
   assert.ok(!markdown.includes("Host your app for free, too"));
   assert.ok(markdown.includes("Free tiers differ in storage, databases, and the limit."));
   assert.ok(!markdown.includes("Comparing free Postgres options?"));
@@ -431,7 +431,11 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.match(sections, /CardTitle/);
   assert.match(sections, /TableHeader/);
   assert.ok(!sections.includes("Alert"));
-  assert.match(sections, /leadLayout="wide"/);
+  assert.ok(!sections.includes("ProductPlatform"));
+  assert.ok(!sections.includes("TestimonialsReveal"));
+  assert.ok(!sections.includes("<Faq"));
+  assert.ok(!sections.includes("ProductCta"));
+  assert.ok(!sections.includes("lead={<FreePostgresIncluded />}"));
   assert.match(sections, /<strong className="font-semibold text-foreground">2 GB<\/strong>/);
   assert.ok(!sections.includes("FREE_POSTGRES_RELATED"));
   assert.ok(!sections.includes("related:"));

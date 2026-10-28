@@ -10,6 +10,10 @@ import {
   FREE_POSTGRES_CODEX,
   FREE_POSTGRES_COPILOT,
   FREE_POSTGRES_CURSOR,
+  FREE_POSTGRES_CONNECTION_EXAMPLE,
+  FREE_POSTGRES_STEP_CLAIM,
+  FREE_POSTGRES_STEP_CONNECTION,
+  FREE_POSTGRES_STEP_CREATING,
   FREE_POSTGRES_TERMINAL_CLAIM,
   FREE_POSTGRES_TERMINAL_STATUS,
   FREE_POSTGRES_TERMINAL_TABS,
@@ -26,14 +30,21 @@ type Tab = (typeof FREE_POSTGRES_TERMINAL_TABS)[number];
 export function FreePostgresTerminal() {
   const [tab, setTab] = useState<Tab>(FREE_POSTGRES_TERMINAL_TABS[0]);
   const [run, setRun] = useState(0);
+  const [skipped, setSkipped] = useState(false);
 
   const select = (next: Tab) => {
     if (next === tab) return;
     setTab(next);
+    setSkipped(false);
     setRun((value) => value + 1);
   };
 
   const onTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setSkipped(true);
+      return;
+    }
     const index = FREE_POSTGRES_TERMINAL_TABS.indexOf(tab);
     const delta =
       event.key === "ArrowRight"
@@ -59,40 +70,56 @@ export function FreePostgresTerminal() {
 
   return (
     <figure className={FRAME}>
-      <div
-        role="tablist"
-        aria-label="Run npx create-db"
-        onKeyDown={onTabKeyDown}
-        className="flex items-center gap-1 overflow-x-auto border-b border-border/70 bg-muted/40 px-2 py-2"
-      >
-        {FREE_POSTGRES_TERMINAL_TABS.map((name) => {
-          const selected = name === tab;
-          return (
-            <button
-              key={name}
-              type="button"
-              role="tab"
-              id={`free-pg-tab-${name}`}
-              aria-selected={selected}
-              aria-controls="free-pg-terminal-panel"
-              tabIndex={selected ? 0 : -1}
-              onClick={() => select(name)}
-              className={
-                selected
-                  ? "shrink-0 whitespace-nowrap rounded-md bg-card px-2.5 py-1 text-sm font-medium text-foreground shadow-sm"
-                  : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-sm font-medium text-muted-foreground"
-              }
-            >
-              {name}
-            </button>
-          );
-        })}
+      <div className="flex items-center border-b border-border/70 bg-muted/40">
+        <div
+          role="tablist"
+          aria-label="Run npx create-db"
+          onKeyDown={onTabKeyDown}
+          className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 py-2"
+        >
+          {FREE_POSTGRES_TERMINAL_TABS.map((name) => {
+            const selected = name === tab;
+            return (
+              <button
+                key={name}
+                type="button"
+                role="tab"
+                id={`free-pg-tab-${name}`}
+                aria-selected={selected}
+                aria-controls="free-pg-terminal-panel"
+                tabIndex={selected ? 0 : -1}
+                onClick={() => select(name)}
+                className={
+                  selected
+                    ? "shrink-0 whitespace-nowrap rounded-md bg-card px-2.5 py-1 text-sm font-medium text-foreground shadow-sm"
+                    : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-sm font-medium text-muted-foreground"
+                }
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (skipped) {
+              setSkipped(false);
+              setRun((value) => value + 1);
+              return;
+            }
+            setSkipped(true);
+          }}
+          className="mr-2 shrink-0 rounded-md px-2.5 py-1 text-sm font-medium text-muted-foreground"
+        >
+          {skipped ? "Replay" : "Skip"}
+        </button>
       </div>
       <div
         role="tabpanel"
         id="free-pg-terminal-panel"
         aria-labelledby={`free-pg-tab-${tab}`}
-        className={`${styles.log} px-4 py-4 text-foreground sm:px-5 sm:py-5`}
+        className={`${styles.log} ${skipped ? styles.skipped : ""} px-4 py-4 text-foreground sm:px-5 sm:py-5`}
       >
         <div key={`${tab}-${run}`}>
           {tab === "Claude" ? (
@@ -121,19 +148,23 @@ function PlainTerminal() {
         <span className={styles.caret} aria-hidden="true" />
       </p>
       <div className={`${styles.reveal} ${styles.beat1}`}>
-        <p className={`${styles.inner} ${styles.follow} text-muted-foreground`}>
-          {FREE_POSTGRES_TERMINAL_STATUS}
-        </p>
+        <div className={`${styles.inner} ${styles.follow}`}>
+          <p className={styles.label}>{FREE_POSTGRES_STEP_CREATING}</p>
+          <p className="text-muted-foreground">{FREE_POSTGRES_TERMINAL_STATUS}</p>
+        </div>
       </div>
       <div className={`${styles.reveal} ${styles.beat2}`}>
-        <p className={`${styles.inner} ${styles.follow} ${styles.wrap}`}>
-          {FREE_POSTGRES_CLI_CONNECTION}
-        </p>
+        <div className={`${styles.inner} ${styles.follow}`}>
+          <p className={styles.label}>{FREE_POSTGRES_STEP_CONNECTION}</p>
+          <p className={styles.wrap}>{FREE_POSTGRES_CLI_CONNECTION}</p>
+          <p className="text-muted-foreground">{FREE_POSTGRES_CONNECTION_EXAMPLE}</p>
+        </div>
       </div>
       <div className={`${styles.reveal} ${styles.beat3}`}>
-        <p className={`${styles.inner} ${styles.follow} text-muted-foreground`}>
-          {FREE_POSTGRES_TERMINAL_CLAIM}
-        </p>
+        <div className={`${styles.inner} ${styles.follow}`}>
+          <p className={styles.label}>{FREE_POSTGRES_STEP_CLAIM}</p>
+          <p className="text-muted-foreground">{FREE_POSTGRES_TERMINAL_CLAIM}</p>
+        </div>
       </div>
       <div className={`${styles.reveal} ${styles.beat4}`}>
         <p className={`${styles.inner} ${styles.follow} ${styles.wrap}`}>
@@ -173,18 +204,12 @@ function ClaudeSession() {
         </p>
       </div>
       <div className={`${styles.reveal} ${styles.replyBeat}`}>
-        <div className={`${styles.reply} ${styles.inner}`}>
-          <p>{FREE_POSTGRES_CLAUDE.created}</p>
-          <p>
-            <span className={`${styles.label} text-muted-foreground`}>
-              {FREE_POSTGRES_CLAUDE.connectionLabel}
-            </span>
-            <span className={styles.wrap}>{FREE_POSTGRES_CLI_CONNECTION}</span>
-          </p>
-          <p>Region: {FREE_POSTGRES_CLAUDE.region}</p>
-          <p>{FREE_POSTGRES_CLAUDE.claim}</p>
-          <p className={styles.wrap}>{FREE_POSTGRES_CLI_CLAIM_URL}</p>
-        </div>
+        <CreatedReply
+          created={FREE_POSTGRES_CLAUDE.created}
+          connectionLabel={FREE_POSTGRES_CLAUDE.connectionLabel}
+          region={FREE_POSTGRES_CLAUDE.region}
+          claim={FREE_POSTGRES_CLAUDE.claim}
+        />
       </div>
     </div>
   );
@@ -328,13 +353,20 @@ function CreatedReply({
 }) {
   return (
     <div className={`${styles.reply} ${styles.inner}`}>
-      <p>{created}</p>
       <p>
-        <span className={`${styles.label} text-muted-foreground`}>{connectionLabel}</span>
+        <span className={styles.label}>{FREE_POSTGRES_STEP_CREATING}</span>
+        {created}
+      </p>
+      <p>
+        <span className={styles.label}>{connectionLabel}</span>
         <span className={styles.wrap}>{FREE_POSTGRES_CLI_CONNECTION}</span>
       </p>
+      <p className="text-muted-foreground">{FREE_POSTGRES_CONNECTION_EXAMPLE}</p>
       <p>Region: {region}</p>
-      <p>{claim}</p>
+      <p>
+        <span className={styles.label}>{FREE_POSTGRES_STEP_CLAIM}</span>
+        {claim}
+      </p>
       <p className={styles.wrap}>{FREE_POSTGRES_CLI_CLAIM_URL}</p>
     </div>
   );

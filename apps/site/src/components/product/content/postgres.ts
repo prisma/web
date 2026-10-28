@@ -52,7 +52,7 @@ export const postgresContent: ProductPageContent = {
     microline: "Free tier with a hard cap. No credit card.",
     related: {
       label: "See everything the Free plan includes",
-      href: "/free-postgresql-database",
+      href: "/free-postgresql-hosting",
     },
     tour: [
       {
@@ -162,7 +162,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Is Prisma Postgres free to use?",
       answer:
-        "Yes. The [Free plan](/pricing) costs $0, needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the Free plan, idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month. The [free Postgres hosting page](/free-postgresql-database) lists everything the Free plan includes.",
+        "Yes. The [Free plan](/pricing) costs $0, needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the Free plan, idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month. The [free Postgres hosting page](/free-postgresql-hosting) lists everything the Free plan includes.",
     },
     {
       question: "What happens when I reach the Free plan limit?",

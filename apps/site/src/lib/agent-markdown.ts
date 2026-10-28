@@ -64,7 +64,7 @@ export const AGENT_MARKDOWN_PATHS = [
   "/stack",
   "/enterprise",
   "/mcp",
-  "/free-postgresql-database",
+  "/free-postgresql-hosting",
   ...COMPARISON_PATHS,
 ] as const;
 
