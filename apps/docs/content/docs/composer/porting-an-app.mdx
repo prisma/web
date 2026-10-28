@@ -22,7 +22,7 @@ Port this app to Prisma Composer.
 3. Declare each server as a service with `compute()`, using the `node` or `nextjs` build adapter as appropriate, and compose them in a single `module.ts`.
 4. Replace the `process.env` reads: the listen port becomes `service.port()` bound to `0.0.0.0`, config and credentials become fields of the service input schema, and anything another service provides becomes a typed dependency. Replace the URLs services use to reach each other with contracts.
 5. If the app talks to Postgres, declare `rawPostgres()` (from `@prisma/composer-prisma-cloud`) as a dependency and build the existing client from the injected `db.url` instead of a connection-string variable.
-6. Verify with `npx tsc --noEmit`, then build and run `npx prisma dev module.ts --detach`, confirm every service boots with a local URL, and run `npx prisma dev stop`. Do not deploy; show me the diff first.
+6. Verify with `npx tsc --noEmit`, then build and run `npx prisma dev --detach`, confirm every service boots with a local URL, and run `npx prisma dev stop`. Do not deploy; show me the diff first.
 ```
 
 </AgentPrompt>
@@ -81,6 +81,7 @@ import { definePrismaConfig } from 'prisma/config';
 
 export default definePrismaConfig({
   composer: composer({
+    entry: './module.ts',
     extensions: [prismaCloud(), nodeBuild(), nextjsBuild()],
     state: prismaState(),
   }),
@@ -101,7 +102,7 @@ Build, then run the app locally before you deploy:
 
 ```npm
 npm run build
-npx prisma dev module.ts
+npx prisma dev
 ```
 
 Every service should appear in the startup output with a local URL. If a service fails at boot with a module-resolution error, its build left something un-inlined. Check that the entry file is self-contained.

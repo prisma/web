@@ -197,7 +197,7 @@ export default module('my-app', ({ provision }) => {
 });
 ```
 
-Next to it goes `prisma.config.ts`, the one config file the Prisma CLI reads. The deploy config is its `composer` section: the extensions that deploy your app and the store that keeps deploy state. Only the CLI reads this file; your app code never imports it.
+Next to it goes `prisma.config.ts`, the one config file the Prisma CLI reads. The deploy config is its `composer` section: the entry module whose default export is the app, the extensions that deploy your app, and the store that keeps deploy state. Only the CLI reads this file; your app code never imports it.
 
 If you ran `prisma init` for the agent skill, `prisma.config.ts` already exists with a `skills` section. Add the `composer` key to its `definePrismaConfig` call and keep `skills`; the `postinstall` hook `init` added reads it. The file then looks like this, with your own agents in `skills`:
 
@@ -212,6 +212,7 @@ export default definePrismaConfig({
     agents: ['claude'],
   },
   composer: composer({
+    entry: './module.ts',
     extensions: [prismaCloud(), nodeBuild()],
     state: prismaState(),
   }),
@@ -228,6 +229,7 @@ import { definePrismaConfig } from 'prisma/config';
 
 export default definePrismaConfig({
   composer: composer({
+    entry: './module.ts',
     extensions: [prismaCloud(), nodeBuild()],
     state: prismaState(),
   }),
@@ -263,7 +265,7 @@ npx tsc --noEmit
 With the build from step 5 in place, one command brings the whole app up on your machine, both services wired together, with no cloud credentials:
 
 ```npm
-npx prisma dev module.ts
+npx prisma dev
 ```
 
 It runs the same pipeline a deploy runs, against local stand-ins for Prisma Compute and Prisma Postgres, and prints each service's local URL once every service accepts connections:
@@ -314,7 +316,7 @@ Local dev needed no account. Deploying the same app to [Prisma Compute](/compute
 
 ```npm
 npx prisma auth login
-npx prisma deploy module.ts
+npx prisma deploy
 ```
 
 (In CI, where the browser sign-in is not an option, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` from the [Prisma Console](https://console.prisma.io) instead; see [Deploying](/composer/deploying#credentials).)
@@ -326,7 +328,7 @@ The CLI creates a project named `my-app` in your workspace (a project this modul
 Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage:
 
 ```npm
-npx prisma deploy module.ts --stage demo
+npx prisma deploy --stage demo
 ```
 
 Tearing a stage down is the `destroy` operation of the [control API](/cli/deploy#the-control-api). That operation does not read your `auth login` session: it needs `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` in the environment, the same service-token credentials CI uses. Without them, delete the stage's branch in the [Console](https://console.prisma.io) instead. See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
