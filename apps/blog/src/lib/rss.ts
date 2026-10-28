@@ -1,5 +1,5 @@
 import { generateRSS } from "@prisma-docs/ui/lib/rss";
-import { blog, sortPagesNewestFirst } from "@/lib/source";
+import { getPublishedPages, sortPagesNewestFirst } from "@/lib/source";
 import {
   getBaseUrl,
   toAbsoluteUrl,
@@ -9,7 +9,7 @@ import {
 
 export function getRSS() {
   const baseUrl = getBaseUrl();
-  const pages = sortPagesNewestFirst(blog.getPages());
+  const pages = sortPagesNewestFirst(getPublishedPages());
 
   return generateRSS(
     {

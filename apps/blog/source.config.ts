@@ -25,7 +25,11 @@ export const blogPosts = defineCollections({
     series: z.string().optional(),
     seriesIndex: z.number().int().positive().optional(),
     pinned: z.boolean().optional(),
-    /** Kept out of the agent-facing text files. The HTML page still renders. */
+    /**
+     * A post that is not published yet. Its page and `.md` URL still render,
+     * marked `noindex`, but the listings, tag and author pages, series, related
+     * posts, RSS feed, sitemap and agent-facing text files leave it out.
+     */
     draft: z.boolean().optional(),
     prev: z.string().optional(),
     next: z.string().optional(),
