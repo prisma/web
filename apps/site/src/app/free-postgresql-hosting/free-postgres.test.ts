@@ -316,7 +316,9 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
     "instant database is the first hero button",
   );
   assert.ok(accountLink > instantLink && firstCheck > accountLink && secondCheck > firstCheck);
-  const includedCards = markdown.indexOf("**2 GB.** of [storage](/pricing)");
+  const includedCards = markdown.indexOf(
+    "**2 GB.** of [storage](/docs/full-stack-tutorial#prisma-postgres)",
+  );
   const includedTable = markdown.indexOf("| Connections |");
   const resetNote = markdown.indexOf("1. Operations reset on the 1st of every month.");
   const backupRow = markdown.indexOf(
@@ -331,7 +333,9 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.ok(!markdown.includes("2. No backups."));
   assert.ok(!markdown.includes("### What you get"));
   assert.ok(!markdown.includes("**No backups.**"));
-  assert.ok(markdown.includes("[operations](/pricing)"));
+  assert.ok(markdown.includes("[operations](/docs/postgres/faq#what-is-an-operation)"));
+  assert.ok(!markdown.includes("[storage](/pricing)"));
+  assert.ok(!markdown.includes("[operations](/pricing)"));
   assert.ok(markdown.includes("[databases](/pricing)"));
   assert.ok(markdown.includes(`[npx create-db](${DOCS_CREATE_DB})`));
   assert.ok(markdown.includes(`[connection string](${DOCS_CONNECT})`));

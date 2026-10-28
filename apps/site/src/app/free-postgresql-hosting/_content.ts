@@ -42,6 +42,8 @@ export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CREATE_DB_WEB_URL = "https://create-db.prisma.io";
 export const CREATE_DB_COMMAND = "npx create-db";
 
+export const DOCS_STORAGE = "/docs/full-stack-tutorial#prisma-postgres";
+export const DOCS_OPERATION = "/docs/postgres/faq#what-is-an-operation";
 export const DOCS_CREATE_DB = "/docs/postgres/npx-create-db";
 export const DOCS_FREE_LIMIT =
   "/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier";
@@ -379,10 +381,13 @@ export type FreePostgresIncludedCard = {
 
 // The three headline allowances. Rules sit in FREE_POSTGRES_INCLUDED_NOTES.
 export const FREE_POSTGRES_INCLUDED_CARDS: readonly FreePostgresIncludedCard[] = [
-  { title: "2 GB", detail: "of [storage](/pricing), enough for a real schema and sample rows." },
+  {
+    title: "2 GB",
+    detail: `of [storage](${DOCS_STORAGE}), enough for a real schema and sample rows.`,
+  },
   {
     title: "200,000",
-    detail: "[operations](/pricing) a month. One query is one operation.",
+    detail: `[operations](${DOCS_OPERATION}) a month. One query is one operation.`,
     note: 1,
   },
   {
