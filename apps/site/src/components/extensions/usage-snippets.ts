@@ -117,7 +117,7 @@ export const db = sqlite<Contract>({
 }
 
 model Post {
-  id        String         @id @default(uuid())
+  id        String         @id @onCreate(uuid())
   title     String
   embedding Embedding1536?
 }`,
@@ -144,7 +144,7 @@ const similar = await db.runtime().query(plan);`,
 }
 
 model Place {
-  id       String    @id @default(uuid())
+  id       String    @id @onCreate(uuid())
   name     String
   location Point4326
 }`,
