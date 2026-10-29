@@ -27,6 +27,13 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
  * www.prisma.io, and it is also why the second job needs a boundary.
  */
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  // Prisma owns /mcp: protocol requests must reach the mcp.prisma.io rewrite,
+  // and browser requests keep the existing marketing-page behavior. Ora's
+  // policy must not take over this path, including during a policy outage.
+  if (request.nextUrl.pathname === "/mcp" || request.nextUrl.pathname === "/mcp/") {
+    return agentMarkdown(request);
+  }
+
   const answered = await handleAgentFront(request, event);
   if (answered) return answered;
 
