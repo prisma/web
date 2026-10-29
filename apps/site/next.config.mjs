@@ -272,6 +272,7 @@ const agentMarkdownPaths = [
   "/stack",
   "/enterprise",
   "/mcp",
+  "/free-postgresql-hosting",
   "/compare",
   "/compare/convex",
   "/compare/kysely",
@@ -387,6 +388,11 @@ const config = {
       })),
       // Search Console 404s: published docs URLs missing the /docs base path.
       // Exact mappings preserve the /orm marketing page and unknown-path 404s.
+      {
+        source: "/free-postgresql-database",
+        destination: "/free-postgresql-hosting",
+        permanent: true,
+      },
       { source: "/ai/mcp-tools", destination: "/docs/ai/mcp-tools", permanent: true },
       {
         source: "/orm/v6/prisma-client/queries/pagination",

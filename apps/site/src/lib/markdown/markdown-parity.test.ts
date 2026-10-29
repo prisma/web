@@ -95,6 +95,13 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
     "src/app/mcp/_components/mcp-capabilities-section.tsx",
     "src/app/mcp/_components/mcp-cta-section.tsx",
   ],
+  // Headings moved into the product sections (expressions), same as /postgres.
+  // The literal left in these files is the Compare Prisma h2. The Prisma
+  // diagram stays off this page, so the platform heading is not rendered.
+  "/free-postgresql-hosting": [
+    "src/app/free-postgresql-hosting/_sections.tsx",
+    "src/components/sections/compare-links.tsx",
+  ],
 };
 
 /**
@@ -117,6 +124,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/stack": 1,
   "/enterprise": 3,
   "/mcp": 4,
+  "/free-postgresql-hosting": 1,
   "/compare": 1,
   "/compare/convex": 10,
   "/compare/kysely": 10,
@@ -275,7 +283,7 @@ test("the product pages inherit their copy from the page's own content object", 
     assert.ok(document.includes(content.cta.headline), `${path}: cta headline missing`);
     assert.ok(document.includes(content.platform.body), `${path}: platform body missing`);
 
-    for (const benefit of content.hero.benefits) {
+    for (const benefit of content.hero.benefits ?? []) {
       assert.ok(document.includes(benefit), `${path}: hero benefit missing: ${benefit}`);
     }
     for (const item of content.features.items) {
@@ -309,7 +317,7 @@ test("/stack inherits its copy from the page's own content module", async () => 
 
   expect(hero.headline, "hero headline");
   expect(hero.subheadline, "hero subheadline");
-  for (const benefit of hero.benefits) expect(benefit, "hero benefit");
+  for (const benefit of hero.benefits ?? []) expect(benefit, "hero benefit");
   for (const link of [hero.primaryCta, hero.secondaryCta]) {
     expect(`[${link.label}](${link.href})`, "hero CTA");
   }
