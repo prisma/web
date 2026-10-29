@@ -114,7 +114,7 @@ Route (app)
 ƒ  (Dynamic)  server-rendered on demand
 ```
 
-Open the URL Vercel prints and go to a page that queries the database. In the template, the home page lists the users in your production database, and the first time it loads it adds three sample users, Alice, Bob, and Carol, if they are not there yet. If a page shows an error or no data instead, the reason is in the deployment's **Logs** tab in the Vercel dashboard: a missing `DATABASE_URL` shows as `DRIVER.NOT_CONNECTED`, and `relation "public.User" does not exist` means step 2 has not run against this database.
+Open the URL Vercel prints and go to a page that queries the database. In the template, the home page lists the users in your production database, and the first time it loads it adds three sample users, Alice, Bob, and Carol, if they are not there yet. If a page shows an error or no data instead, the reason is in the deployment's **Logs** tab in the Vercel dashboard: a missing `DATABASE_URL` shows as `DRIVER.NOT_CONNECTED` (or `ECONNREFUSED 127.0.0.1:5432` if you create the `pg` pool yourself as in step 5), and `relation "public.User" does not exist` means step 2 has not run against this database.
 
 ## 5. Optional: release idle connections when Vercel pauses a function
 
@@ -153,7 +153,7 @@ The rest of your code imports `db` as before, and your app never closes it on Ve
 
 - **The page shows no data, or data that never changes.** The page was rendered during the build. Add `export const dynamic = "force-dynamic"` as in [step 1](#1-check-the-app-before-you-deploy) and deploy again.
 - **`RUNTIME.TEMPORAL_UNAVAILABLE` in the logs.** The function runs on a Node.js version without `Temporal`, and `db.ts` does not import the polyfill. Add the import from [step 1](#1-check-the-app-before-you-deploy).
-- **`DRIVER.NOT_CONNECTED` in the logs.** `DATABASE_URL` is not set for the environment this deployment belongs to. Add it under **Settings** > **Environment Variables** and redeploy, because a changed variable applies only to deployments made after the change.
+- **`DRIVER.NOT_CONNECTED` in the logs, or `ECONNREFUSED 127.0.0.1:5432` with the pool from step 5.** `DATABASE_URL` is not set for the environment this deployment belongs to. Add it under **Settings** > **Environment Variables** and redeploy, because a changed variable applies only to deployments made after the change.
 - **The build fails with `Module not found: Can't resolve './contract.json'`.** The contract files are not committed. See [step 1](#1-check-the-app-before-you-deploy).
 
 ## Use with your agent
