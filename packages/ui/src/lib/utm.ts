@@ -225,49 +225,68 @@ export function syncUtmAttribution(
 }
 
 /**
- * The `ref` stamped on Console links for visitors who carry no campaign
- * attribution: the prisma.io page that handed them off, e.g. `prisma.io/postgres`.
- * The homepage is `prisma.io`. Shaped like the referrer domains partners already
- * send in `ref` (`producthunt`, `laconsole.dev`), so it reads naturally next to
- * them in the console's `signup_first_ref` / `signup_last_ref`.
+ * The `ref` stamped on Console links: the prisma.io page that handed the
+ * visitor off, e.g. `prisma.io/postgres`. The homepage is `prisma.io`. Shaped
+ * like the referrer domains partners already send in `ref` (`producthunt`,
+ * `laconsole.dev`), so it reads naturally next to them in the console's
+ * `signup_first_ref` / `signup_last_ref`.
  */
 export function buildSiteRef(pathname: string) {
   return `prisma.io${pathname === "/" ? "" : pathname}`;
 }
 
 /**
- * Stamps `ref` on a Console link that carries no attribution at all.
+ * Prepares a Console link for the hand-off: forwards the visitor's own
+ * attribution, then names the linking page in `ref`. Returns whether the link
+ * changed.
  *
- * This is the fallback for organic and direct visitors. It deliberately uses
- * `ref` and not `utm_source`: PostHog treats `utm_*` and ad click IDs as
- * campaign parameters and freezes the first value it sees into the person's
- * `$initial_utm_source`, which is what the removed `utm_source=website` default
- * used to pollute. `ref` is not a campaign parameter, so the console still
- * records it on the signup while the person's first-touch channel stays whatever
- * it really was.
+ * Attribution goes through `syncUtmAttribution` exactly as before. A visitor
+ * who arrived tagged reaches the Console with their own `utm_*`, ad click IDs
+ * and `first_*` keys, and `utm_*` written into the link give way to them.
  *
- * `utm_*` tags written into the link itself, such as the `utm_source=docs`
- * that docs adds to its Console links at build time, describe the link, not
- * the visitor. They stay as they are and `ref` is added next to them, so the
- * signup still names the page.
+ * `pageRef` is added for every visitor, tagged or not. The link is the only
+ * thing that can carry the page: the site sends
+ * `Referrer-Policy: strict-origin-when-cross-origin`, so the Console sees the
+ * origin at most, and a visitor's `utm_*` say where they came from, not where
+ * they converted. It uses `ref` and not `utm_source`: PostHog treats `utm_*`
+ * and ad click IDs as campaign parameters and freezes the first value it sees
+ * into the person's `$initial_utm_source`, which is what the removed
+ * `utm_source=website` default used to pollute. `ref` is not a campaign
+ * parameter, so the console records it on the signup while the person's
+ * channel stays whatever it really was. Only `ref` is set: `utm_*`, `first_*`
+ * and ad click IDs on the link stay as they are.
  *
- * A link that already carries `ref`, an ad click ID or a first-touch key is
- * left alone: real attribution always wins over the fallback. The exception
- * is `stamped`, the ref this fallback put on the same link on an earlier page:
- * a link that outlives a client-side navigation (a header link that opens the
- * Console in a new tab) gets the current page instead of keeping the old one.
+ * The page never takes the place of a `ref` that is already there: one the
+ * visitor arrived with (a partner's `ref=producthunt`, forwarded as their last
+ * touch) or one written into the link. For a tagged visitor
+ * `syncUtmAttribution` still drops a written `ref` as before, and the page is
+ * not put in its place. The exception is `stampedRef`, the page ref put on the
+ * same link on an earlier page: a link that outlives a client-side navigation
+ * (a header link that opens the Console in a new tab) gets the current page
+ * instead of keeping the old one.
  */
-export function syncFallbackRef(url: URL, ref: string, stamped?: string) {
-  for (const key of url.searchParams.keys()) {
-    const blocks =
-      key === "ref"
-        ? url.searchParams.get(key) !== stamped
-        : isClickIdKey(key) || key.startsWith("first_");
-    if (blocks) return false;
+export function syncConsoleHandoff(
+  url: URL,
+  {
+    attribution,
+    pageRef,
+    stampedRef,
+  }: { attribution?: UtmAttribution; pageRef?: string; stampedRef?: string },
+) {
+  const linkRef = url.searchParams.get("ref");
+  const keepsRef =
+    attribution?.last.ref !== undefined || (linkRef !== null && linkRef !== stampedRef);
+
+  let updated = attribution
+    ? syncUtmAttribution(url, attribution, { includeFirstTouch: true })
+    : false;
+
+  if (pageRef && !keepsRef && url.searchParams.get("ref") !== pageRef) {
+    url.searchParams.set("ref", pageRef);
+    updated = true;
   }
 
-  url.searchParams.set("ref", ref);
-  return true;
+  return updated;
 }
 
 export function readStoredUtmAttribution(storageKey: string) {

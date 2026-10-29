@@ -9,8 +9,7 @@ import {
   hasUtmParams,
   mergeUtmAttribution,
   readStoredUtmAttribution,
-  syncFallbackRef,
-  syncUtmAttribution,
+  syncConsoleHandoff,
   writeStoredUtmAttribution,
   type UtmAttribution,
   type UtmParams,
@@ -34,13 +33,13 @@ interface UtmPersistenceProps {
   /** Local storage key for persisting first- and last-touch UTM params. */
   storageKey: string;
   /**
-   * Builds the `ref` stamped on Console links when the visitor has no stored
-   * or current campaign attribution, i.e. organic and direct traffic. Receives
-   * the current pathname. Omit it and untagged visitors reach the console with
-   * no attribution at all. See `syncFallbackRef` for why this is `ref` and not
-   * a `utm_source` default.
+   * Builds the `ref` put on every Console link at click time: the page that
+   * sent the visitor, from the current pathname. It goes next to the visitor's
+   * own attribution, if any, and never replaces a `ref` that is already there.
+   * Omit it and Console links carry only the visitor's own attribution. See
+   * `syncConsoleHandoff` for why this is `ref` and not a `utm_source` default.
    */
-  fallbackConsoleRef?: (pathname: string) => string;
+  consolePageRef?: (pathname: string) => string;
 }
 
 /**
@@ -149,14 +148,14 @@ function getStoredAttribution(storageKey: string, searchParams: URLSearchParams)
  * Captures campaign parameters in storage and forwards them only at the Console
  * handoff. Ordinary links retain their authored URLs so copied docs links do not
  * replay another visitor's campaign.
- * With `fallbackConsoleRef`, Console links clicked by a visitor with no
- * attribution at all get a `ref` naming the page that sent them.
+ * With `consolePageRef`, every Console link also names the page that sent the
+ * visitor in `ref`.
  */
 export function UtmPersistence({
   basePath,
   proxiedPaths = [],
   storageKey,
-  fallbackConsoleRef,
+  consolePageRef,
 }: UtmPersistenceProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -211,22 +210,19 @@ export function UtmPersistence({
       const isConsoleBound = isConsoleLink || isConsoleRedirect;
       if (!isConsoleBound) return;
 
-      let updated: boolean;
-      if (attribution) {
-        updated = syncUtmAttribution(targetUrl, attribution, {
-          includeFirstTouch: isConsoleBound,
-        });
-      } else if (fallbackConsoleRef && isConsoleBound) {
-        // No campaign ever touched this visitor, so the only thing the console
-        // would learn is nothing. Tell it which page sent them instead.
-        // `data-fallback-ref` remembers the ref stamped on this anchor, so a
-        // link that survives client-side navigation (a `target="_blank"`
-        // header link) names the current page, not the first one clicked.
-        const ref = fallbackConsoleRef(window.location.pathname);
-        updated = syncFallbackRef(targetUrl, ref, anchor.dataset.fallbackRef);
-        if (updated) anchor.dataset.fallbackRef = ref;
-      } else {
-        return;
+      // The visitor's own touches, if any, then the page that sent them as
+      // `ref`. `data-console-ref` remembers the page ref stamped on this
+      // anchor, so a link that survives client-side navigation (a
+      // `target="_blank"` header link) names the current page, not the first
+      // one clicked.
+      const pageRef = consolePageRef?.(window.location.pathname);
+      const updated = syncConsoleHandoff(targetUrl, {
+        attribution,
+        pageRef,
+        stampedRef: anchor.dataset.consoleRef,
+      });
+      if (pageRef && targetUrl.searchParams.get("ref") === pageRef) {
+        anchor.dataset.consoleRef = pageRef;
       }
 
       if (!updated) {
@@ -263,7 +259,7 @@ export function UtmPersistence({
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [router, basePath, proxiedPaths, storageKey, fallbackConsoleRef]);
+  }, [router, basePath, proxiedPaths, storageKey, consolePageRef]);
 
   return null;
 }

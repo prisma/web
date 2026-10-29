@@ -9,9 +9,9 @@ test("docs opts in to the page ref on Console links", () => {
   const { props } = UtmPersistence();
 
   assert.equal(props.basePath, "/docs");
-  assert.equal(props.fallbackConsoleRef, buildSiteRef);
+  assert.equal(props.consolePageRef, buildSiteRef);
   assert.equal(
-    props.fallbackConsoleRef("/docs/postgres/import-from-existing-database"),
+    props.consolePageRef("/docs/postgres/import-from-existing-database"),
     "prisma.io/docs/postgres/import-from-existing-database",
   );
 });

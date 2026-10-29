@@ -5,15 +5,16 @@ import { UTM_ATTRIBUTION_STORAGE_KEY, buildSiteRef } from "@prisma-docs/ui/lib/u
 
 /**
  * Docs attribution carrier. Client-routes only under `/docs`, and stamps
- * `ref=prisma.io/docs/<page>` on Console links for untagged visitors, next to
- * the `utm_*` tags that `remark-console-utm` writes into those links.
+ * `ref=prisma.io/docs/<page>` on every Console link, next to the visitor's own
+ * attribution or, for an untagged visitor, the `utm_*` tags that
+ * `remark-console-utm` writes into those links.
  */
 export function UtmPersistence() {
   return (
     <SharedUtmPersistence
       storageKey={UTM_ATTRIBUTION_STORAGE_KEY}
       basePath="/docs"
-      fallbackConsoleRef={buildSiteRef}
+      consolePageRef={buildSiteRef}
     />
   );
 }
