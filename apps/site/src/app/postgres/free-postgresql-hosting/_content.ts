@@ -1,4 +1,4 @@
-// Content for /free-postgresql-hosting.
+// Content for /postgres/free-postgresql-hosting.
 //
 // Rules for this page's copy (SEO brief, 18 Oct 2026; slug override 21 Oct):
 //   - Price never appears in the title, meta description, H1 or closing CTA.
@@ -14,7 +14,7 @@
 // components/sections/pricing-spec-table.tsx. When the brief and those files
 // disagree, the repo wins.
 
-export const FREE_POSTGRES_PATH = "/free-postgresql-hosting";
+export const FREE_POSTGRES_PATH = "/postgres/free-postgresql-hosting";
 
 export const FREE_POSTGRES_TITLE = "Free PostgreSQL Hosting | Prisma Postgres";
 

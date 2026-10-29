@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type KeyboardEvent } from "react";
-import { OpenAILogo } from "../stack/agent-logos";
+import { OpenAILogo } from "../../stack/agent-logos";
 import {
   CREATE_DB_COMMAND,
   FREE_POSTGRES_CLAUDE,

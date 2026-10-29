@@ -36,7 +36,7 @@ import {
   FREE_POSTGRES_USE_HEADLINE,
   CREATE_DB_COMMAND,
   FREE_POSTGRES_TERMINAL_TABS,
-} from "@/app/free-postgresql-hosting/_content";
+} from "@/app/postgres/free-postgresql-hosting/_content";
 import { bulletList, ctaList, heading, joinBlocks, paragraphs } from "./blocks";
 import { COMPARE_PRISMA_HEADING } from "./compare-links";
 import { PRODUCT_FAQ_HEADING, PRODUCT_TESTIMONIALS_HEADING } from "./product";
@@ -45,7 +45,7 @@ export const FREE_POSTGRES_MARKDOWN_H1 = FREE_POSTGRES_H1;
 export { FREE_POSTGRES_MARKDOWN_SUBHEADLINE };
 
 /**
- * Markdown rendition of /free-postgresql-hosting.
+ * Markdown rendition of /postgres/free-postgresql-hosting.
  *
  * Mirrors the product-page section order. Bullets use a colon, not an em dash:
  * this page's copy must not contain em or en dashes, and definitionList emits one.

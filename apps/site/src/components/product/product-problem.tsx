@@ -11,7 +11,7 @@ export function ProductProblem({
   id,
   afterBody,
 }: Pick<ProductPageContent, "problem"> & {
-  /** Deep link target. /free-postgresql-hosting uses "limits". */
+  /** Deep link target. /postgres/free-postgresql-hosting uses "limits". */
   id?: string;
   /** Callout under the narrative, before the outcome tiles. */
   afterBody?: React.ReactNode;
