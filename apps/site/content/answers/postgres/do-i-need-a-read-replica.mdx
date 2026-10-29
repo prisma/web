@@ -5,13 +5,13 @@ summary: "Usually not yet. A read replica is a read-only copy of your database t
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-27"
-updatedAt: "2026-10-27"
+updatedAt: "2026-10-29"
 readingTime: "9 min read"
 faq:
   - question: "Will a read replica make my slow query faster?"
     answer: "No. The replica holds the same data and plans the query the same way, so a query that scans 2 million rows to return 20 scans them on the replica too. It can look faster only when the primary was overloaded by other reads. Read the plan with `EXPLAIN (ANALYZE, BUFFERS)` and fix it first, as the [slow queries guide](/postgres/slow-queries-with-real-data) shows."
   - question: "Should I upgrade to a bigger database instead of adding a read replica?"
-    answer: "Usually first, if your host offers a larger size. A bigger instance adds capacity for reads and writes at once, needs nothing new in your code and has no lag to handle. Move to a replica when reads are most of the load and a larger size isn't enough, when reports need their own server, or when you need reads in another region. Supabase's [read replica guide](https://supabase.com/docs/guides/platform/read-replicas) recommends the same order for its plans."
+    answer: "Usually first, if your host offers a larger size. A bigger instance adds capacity for reads and writes at once, needs nothing new in your code and has no lag to handle. Move to a replica when reads are most of the load and a larger size isn't enough, when reports need their own server, or when you need reads in another region. Supabase's [read replica guide](https://supabase.com/docs/guides/platform/read-replicas) recommends the same order for its plans. On Prisma Postgres there is no instance to size or upgrade: Prisma scales the database for you."
   - question: "How many read replicas do I need?"
     answer: "Start with one and measure. A second one helps when the first replica's CPU stays high, or when you want reads in another region. Hosts cap the count: Render allows up to five per database, an Aurora cluster up to 15 Aurora Replicas, and Neon's Free plan 3 per project. Each replica adds cost: Amazon RDS bills it as a DB instance, Neon in CU-hours, and Render and Supabase at the primary's compute size."
   - question: "Should background jobs read from a replica?"
@@ -106,7 +106,7 @@ Providers are listed alphabetically, and each row links to the provider's docume
 | Amazon RDS for PostgreSQL | [Read-only copies of a DB instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html), billed as standard DB instances at the replica's instance class rate | Asynchronous | The same or a different AWS Region |
 | Neon | [On every plan](https://neon.com/pricing), up to 3 per project on Free; separate computes billed in CU-hours | [Asynchronous](https://neon.com/docs/introduction/read-replicas); replicas read the same storage as the primary, so no data is copied | The same region as the database |
 | PlanetScale Postgres | Production clusters include [2 replicas you can read from](https://planetscale.com/docs/postgres/scaling/replicas) (Single Node databases have none); extra replicas and [dedicated read replicas](https://planetscale.com/docs/postgres/scaling/dedicated-read-replicas) cost extra | Dedicated read replicas are asynchronous; reads from cluster replicas can also lag | Cluster replicas in the primary's location; dedicated read replicas in a location you pick, with the same cloud provider |
-| Prisma Postgres | [Prisma Postgres docs](/docs/postgres) list no read replicas (checked 2026-10-27) | Not documented | Not documented |
+| Prisma Postgres | None today; read replicas are planned for early 2027 (the [Prisma Postgres docs](/docs/postgres) list none, checked 2026-10-29) | Not documented | Not documented |
 | Render | [Up to five per database](https://render.com/docs/postgresql-read-replicas) with at least 10 GB of storage and a plan with at least 0.5 CPU; same compute plan and storage as the primary, billed accordingly | Asynchronous | Not stated on Render's read replica page |
 | Supabase | [Read Replicas](https://supabase.com/docs/guides/platform/read-replicas) on the primary's compute size, [billed by the hour](https://supabase.com/docs/guides/platform/manage-your-usage/read-replicas) | Asynchronous | Other regions, to serve users closer to them |
 
@@ -234,4 +234,4 @@ Your app keeps its Postgres client, whether that is `pg`, Drizzle, Kysely or Pri
 
 ## Where is Prisma Postgres the wrong choice?
 
-For an app that already needs read replicas. Prisma Postgres docs list no read replicas (checked 2026-10-27). If reads keep your primary busy after the fixes above, your reports have to run on current data away from the primary, or you serve reads from another region, choose a host from [the table above](#which-hosts-offer-read-replicas) that offers them. The code above takes the replica as a second connection string, whichever host it comes from.
+For an app that already needs read replicas today. Prisma Postgres has no read replicas yet (its [docs](/docs/postgres) list none, checked 2026-10-29); they are planned for early 2027. If reads keep your primary busy after the fixes above, your reports have to run on current data away from the primary, or you serve reads from another region, choose a host from [the table above](#which-hosts-offer-read-replicas) that offers them. The code above takes the replica as a second connection string, whichever host it comes from.
