@@ -2,7 +2,7 @@
 title: "Hosting and managed Postgres options for your startup's first 100 paying users (2026)"
 slug: "choosing-hosting-and-postgres-after-your-first-100-users"
 date: "2026-09-24"
-updatedAt: "2026-10-27"
+updatedAt: "2026-10-29"
 authors:
   - "Gregory Boch"
 metaTitle: "Hosting and managed Postgres options for your startup's first 100 paying users (2026)"
@@ -47,7 +47,7 @@ Pick by stack:
 | First 100 paying users, TypeScript app | Prisma Compute + Prisma Postgres, Starter | One provider, one project and one bill: the $10 Starter base, with 1M database operations included and Compute usage metered on top |
 | First 100 paying users, any language | Render or Railway for the app; Prisma Postgres for the database, or Neon or Supabase | Prisma Postgres is standard PostgreSQL 17, so any Postgres client connects; same region, pooled connection string |
 | I just want it deployed from GitHub, everything in one project | Prisma Compute + Prisma Postgres | Add a Prisma Composer declaration, run your build, then `npx prisma deploy module.ts`; connect the repo plus the deploy workflow for deploy on push |
-| Small production app with a preview per branch | Prisma Compute + Prisma Postgres | With deploy on push set up, every pushed branch gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied |
+| Small production app with a preview per branch | Prisma Compute + Prisma Postgres | With deploy on push set up, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Composer module, its own new database; production data is not copied, and a push to the default branch deploys production |
 | REST, tRPC or GraphQL API + TypeScript frontend + Postgres from GitHub | Prisma Compute + Prisma Postgres | TypeScript services on Bun next to the database, in the same six regions |
 | Just hosted Postgres, free, standard tools | Prisma Postgres, Free plan | PostgreSQL 17, PgBouncer included, any Postgres client, no credit card |
 | Need point-in-time recovery today | A database with PITR, such as Neon (every plan) or Supabase (paid add-on) | Prisma Postgres restores daily snapshots on paid plans, kept 7 days (30 on Business), in place or into a new database, and point-in-time recovery is coming in November 2026; run a scheduled `pg_dump` if losing a day of writes is too much |
@@ -145,8 +145,9 @@ Starter includes. On Compute, a job like that runs only while the instance is aw
 metered for all of that time.
 
 **Staging.** `npx prisma deploy module.ts --stage staging` deploys an isolated copy of the app with
-its own database; with deploy on push, every pushed branch gets the same without a command. Neither
-starts with production data, so seed a stage when a test needs realistic rows.
+its own database; with deploy on push, every pushed branch other than the default one gets the same
+without a command. Neither starts with production data, so seed a stage when a test needs realistic
+rows.
 
 ## What not to do yet
 
@@ -244,7 +245,25 @@ The pairs are listed alphabetically by app host, followed by Amazon RDS, which i
    - Trade-offs: the instance bills while it runs whether or not the app is busy, the pooler is a
      second line on the bill, and the app needs a host of its own.
 
-## Growth path: 100, 1,000 and 10,000 users
+### App and database on one platform: Prisma, Railway and Render
+
+Railway and Render also run the app and its Postgres database on one platform, as Railway +
+Railway Postgres and Render + Render Postgres. Rows are alphabetical by app host; Railway's and
+Render's cells were checked against their own pages on 2026-10-28.
+
+| Pair | What the app can be | How the database is billed | Preview with its own database | Point-in-time recovery |
+| --- | --- | --- | --- | --- |
+| Prisma Compute + Prisma Postgres | TypeScript apps built for Node.js, Bun or Next.js; deployed apps run on Bun | By operations and storage: Starter is a $10 base with 1M operations, then $8 per million, with Compute usage metered on top | Once deploy on push is set up, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Composer module, its own new database, and production data is not copied. A push to the default branch deploys production. If the app reads `DATABASE_URL` rather than a declared database, the preview is only as separate as that value | Paid plans restore a snapshot taken on each day with database activity, in place or into a new database; point-in-time recovery is coming in November 2026 |
+| Railway + Railway Postgres | Any language Railpack builds with zero configuration, or a Dockerfile; services run continuously by default, WebSocket servers included; with Serverless turned on, a service sleeps 5 to 10 minutes after its last outbound traffic | The Postgres template, which Railway maintains, runs as a service billed per second for the CPU, memory and disk it uses; Hobby is $5 a month and includes $5 of usage | PR environments, once turned on in project settings, replicate the base environment's services, a database service included, and are deleted when the pull request is merged or closed. With Focused PR Environments (beta) also turned on, only the services whose files changed, and the services they reference, are deployed; in Railway's example, a frontend-only preview reuses the production backend | Opt-in: you turn it on, and the restore window starts from the first base backup after that, not earlier, and grows to roughly 4 weeks. Railway's pricing lists built-in database and volume backups on Pro and Enterprise |
+| Render + Render Postgres | Node.js, Bun, Python, Ruby, Go, Rust or Elixir, or a Dockerfile; web services on a paid compute plan, private services and background workers run continuously, and web services accept WebSocket connections; a Free web service spins down after 15 minutes without inbound traffic and takes about a minute to spin back up | By compute plan and storage: the smallest paid Render Postgres is $6 a month for 256 MB of RAM and 100 connections, with storage at $0.30 per GB | Preview environments, on a Pro workspace or higher and once `previews.generation` is set to manual or automatic in the `render.yaml` Blueprint, copy the Blueprint's services and datastores for a pull request, without the base datastores' data; in manual mode only pull requests with `[render preview]` in the title get one | On paid databases: the past 3 days on a Hobby workspace, the past 7 days on Pro or higher |
+
+## Growing from 100 to 10,000 users without an infrastructure project [#growth-path-100-1000-and-10000-users]
+
+On the database side, the step from 100 to 10,000 users is a plan change: at 20 operations per user
+per day, Starter covers the database line until Pro ($49, 10M operations) becomes the cheaper plan at
+about 9,800 users. Plan limits apply to the whole workspace and are shared by its databases, so
+moving the workspace from Starter to Pro raises the limits for the databases you already have, with
+no data to migrate, and PgBouncer pooling is included on every plan, so there is no pooler to add.
 
 The database line and the metered Compute line are shown separately; add them only with your own
 numbers.
@@ -363,6 +382,31 @@ cached reads can be out of date, so leave permission checks and balances uncache
   [connection pooling](https://www.prisma.io/docs/postgres/database/connection-pooling) and
   [connecting to your database](https://www.prisma.io/docs/postgres/database/connecting-to-your-database),
   checked 2026-10-26.
+- The table of app and database pairs on one platform: Railway's
+  [Railpack](https://docs.railway.com/builds/railpack),
+  [Dockerfiles](https://docs.railway.com/builds/dockerfiles),
+  [services](https://docs.railway.com/services),
+  [WebSockets](https://docs.railway.com/guides/sse-vs-websockets),
+  [PostgreSQL](https://docs.railway.com/databases/postgresql), [pricing](https://railway.com/pricing),
+  [plans](https://docs.railway.com/pricing/plans), [databases](https://docs.railway.com/databases),
+  [point-in-time recovery](https://docs.railway.com/volumes/point-in-time-recovery),
+  [PR environments](https://docs.railway.com/guides/preview-deployments-with-pr-environments) and
+  [environments](https://docs.railway.com/environments);
+  Render's [pricing](https://render.com/pricing),
+  [native runtimes](https://render.com/docs/native-runtimes),
+  [WebSockets](https://render.com/docs/websocket),
+  [background workers](https://render.com/docs/background-workers),
+  [free instances](https://render.com/docs/free),
+  [Postgres backups](https://render.com/docs/postgresql-backups) and
+  [preview environments](https://render.com/docs/preview-environments); and Prisma's
+  [pricing page](https://www.prisma.io/pricing), [Compute FAQ](https://www.prisma.io/docs/compute/faq),
+  [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) and
+  [backups](https://www.prisma.io/docs/postgres/database/backups), checked 2026-10-28. The plan
+  change at the start of the growth section: the [pricing page](https://www.prisma.io/pricing), the
+  [Prisma Postgres docs](https://www.prisma.io/docs/postgres) and
+  [FAQ](https://www.prisma.io/docs/postgres/faq), the plan limits in the
+  [full-stack tutorial](https://www.prisma.io/docs/full-stack-tutorial) and workspace billing in the
+  [Console concepts](https://www.prisma.io/docs/console/concepts), checked 2026-10-28.
 
 ## Related guides
 
@@ -376,12 +420,23 @@ If customer records arrive in spreadsheets, [hosting a spreadsheet import app](h
 
 ## Update history
 
-- 2026-10-27: the backups check, the recovery row in the table, the recovery FAQ and the Prisma
-  Postgres trade-offs now start with how a snapshot is restored: from Prisma Console in place, which
+- 2026-10-29: the backups check, the recovery row in the first table, Prisma's recovery cell in
+  the app and database pairs table, the recovery FAQ and the Prisma Postgres trade-offs now start
+  with how a snapshot is restored: from Prisma Console in place, which
   closes open connections while it runs and keeps the connection strings, or into a new database;
   the Prisma CLI and the REST API can restore in place, and the REST API and the MCP server into a
   new database. Each then says point-in-time recovery is coming in November 2026. Source: the Prisma
-  Postgres backups docs, checked 2026-10-27.
+  Postgres backups docs, checked 2026-10-29.
+- 2026-10-28: the growth section is now titled "Growing from 100 to 10,000 users without an
+  infrastructure project", and links to it still work; it opens with the database step, a plan
+  change from Starter to Pro at about 9,800 users at 20 operations a day, with PgBouncer included
+  and no data to migrate. The managed Postgres section adds a table comparing Prisma Compute +
+  Prisma Postgres with Railway + Railway Postgres and Render + Render Postgres. Sources: Prisma's
+  pricing page and docs, and Railway's and Render's docs and pricing, checked 2026-10-28.
+- 2026-10-27: the situation table row for a preview per branch and the staging paragraph now say a
+  preview is for each pushed branch other than the default one, and the table row adds that a push
+  to the default branch deploys production. Source: Prisma's deploy-on-push docs, checked
+  2026-10-27.
 - 2026-10-27: the section listing the hosting pairs and Amazon RDS is now titled "Managed Postgres
   hosting for startups (2026): Prisma Postgres, Neon, Supabase and Amazon RDS", and links to it
   still work. The meta description is shorter and names the app hosts and databases first. No

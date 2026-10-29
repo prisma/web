@@ -10,15 +10,15 @@ One command brings your whole app up on your machine, every service, its databas
 
 | You want to... | Run |
 | --- | --- |
-| Bring the app up locally | `npx prisma dev module.ts` |
+| Bring the app up locally | `npx prisma dev` |
 | Find where a service answers | `npx prisma dev url <address>` |
-| Run the app in the background | `npx prisma dev module.ts --detach` |
+| Run the app in the background | `npx prisma dev --detach` |
 | Stop the app | `Ctrl-C`, or `npx prisma dev stop` |
-| Start clean (wipe local data first) | `npx prisma dev module.ts --fresh` |
+| Start clean (wipe local data first) | `npx prisma dev --fresh` |
 | See everything running on this machine | `npx prisma emulator list` |
 | Watch the app's logs | the `log` operation (see [Logs](#logs)) |
 
-`module.ts` is your entry file, the one whose default export is the root module, the same file you pass to `deploy`. No `PRISMA_*` variables are needed. Local dev never talks to the platform.
+`dev` loads your entry file, the one whose default export is the root module, named by `entry` in the `composer` section of `prisma.config.ts`. `deploy` loads the same file. No `PRISMA_*` variables are needed. Local dev never talks to the platform.
 
 `prisma dev url`, `prisma dev stop`, `--detach`, and `prisma emulator list` are in `prisma` since `8.0.0-rc.24`. Check your version with `npx prisma --version`.
 
@@ -28,15 +28,15 @@ Like deploy, `dev` runs your *built* output, so build first:
 
 ```npm
 npm run build
-npx prisma dev module.ts
+npx prisma dev
 ```
 
 It stands the app up and prints each service's local URL:
 
 ```text no-copy
 dev: ready
-gateway: http://localhost:3001
-quotes: http://localhost:3000
+my-app.gateway: http://localhost:3001
+my-app.quotes: http://localhost:3000
 ```
 
 `dev` prints `ready` only once every service accepts connections on its port, so a request to a printed URL right away connects. If a service exits before it listens, or does not listen within 30 seconds, `dev` fails instead, stops the app's other services, and names the service, its port, and its log file.
@@ -62,19 +62,19 @@ Because ports differ from one machine and one directory to the next, do not hard
 From another terminal in the same directory, ask where a service of the running app answers, by its address:
 
 ```npm
-npx prisma dev url gateway
+npx prisma dev url my-app.gateway
 ```
 
 ```text no-copy
-✔ The service gateway is running at http://localhost:3001
+✔ The service my-app.gateway is running at http://localhost:3001
 ```
 
-The address is the name `dev` printed next to the URL at startup. `dev url` also works for the app's databases and buckets: a database or bucket inside a module has a dotted address, such as `catalog.database`. For a database, `dev url` prints its connection string with the local credentials, and for a bucket, its S3 endpoint followed by `/<bucket>`.
+The address is the name `dev` printed next to the URL at startup. `dev url` also works for the app's databases and buckets: a database or bucket inside a module adds the module's name, such as `my-app.catalog.database`. For a database, `dev url` prints its connection string with the local credentials, and for a bucket, its S3 endpoint followed by `/<bucket>`.
 
 When its output is captured by `$(...)` or piped, `dev url` writes the URL alone, so a script can use it directly. Check the exit status first, so a failure does not run `curl` with an empty URL:
 
 ```bash
-url=$(npx prisma dev url gateway) && curl "$url"
+url=$(npx prisma dev url my-app.gateway) && curl "$url"
 ```
 
 `dev url` prints a URL only for a node that is running. When the app is stopped, or `prisma dev` never ran in this directory, it fails with an error code a script can check; the [`dev url` reference](/cli/dev#dev-url) lists them.
@@ -85,14 +85,14 @@ url=$(npx prisma dev url gateway) && curl "$url"
 
 ```npm
 npm run build
-npx prisma dev module.ts --detach
-curl "$(npx prisma dev url gateway)"
+npx prisma dev --detach
+curl "$(npx prisma dev url my-app.gateway)"
 npx prisma dev stop
 ```
 
-A detached app does not pick up rebuilds. To apply a new build, run `prisma dev module.ts --detach` again, or run `prisma dev module.ts` in the foreground: it applies the current build to the running app, then watches for rebuilds as usual, and `Ctrl-C` stops the app.
+A detached app does not pick up rebuilds. To apply a new build, run `prisma dev --detach` again, or run `prisma dev` in the foreground: it applies the current build to the running app, then watches for rebuilds as usual, and `Ctrl-C` stops the app.
 
-If a detached start fails before every service answers, `dev` stops the whole app and exits non-zero. That includes an app an earlier `--detach` left running, because the failed start has already replaced some of its services. Fix the build and run `prisma dev module.ts --detach` again.
+If a detached start fails before every service answers, `dev` stops the whole app and exits non-zero. That includes an app an earlier `--detach` left running, because the failed start has already replaced some of its services. Fix the build and run `prisma dev --detach` again.
 
 ## Stop the app
 
@@ -125,7 +125,7 @@ A stopped service or database keeps its port reserved, and a database keeps its 
 `--fresh` deletes this app's local services, databases, and buckets, with their data, before starting. The next start creates them again, empty, and gives the services the lowest free ports. Other apps run from the same directory keep theirs. Use it when your local data is disposable, which during development it usually is:
 
 ```npm
-npx prisma dev module.ts --fresh
+npx prisma dev --fresh
 ```
 
 Run with `--fresh` too if `dev` fails after you upgrade Composer with an error such as `No provider is registered for resource type 'PrismaComposer.Database'`. Local state from an older Composer version is not converted for the new one.

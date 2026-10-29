@@ -6,20 +6,31 @@ metaTitle: Preview and staging environments per Git branch | Prisma Compute
 metaDescription: Test a new version, such as a feature a coding assistant is building, without replacing production. Every non-default branch you push gets a preview with its own URL, services and, optionally, its own database; a branch you keep works as staging.
 ---
 
-To test a new version of your app without replacing the one your users have, push it to a Git branch other than the default one. Once deploy on push is set up, Prisma Compute deploys that branch as a preview environment with its own URL, its own services and its own databases, and the workflow deploys production only when you push to the default branch. A branch you keep, such as `staging`, works as a long-lived staging environment, and deleting a branch removes its preview. The same works when a coding assistant does the pushing; see [If a coding assistant is building the feature](#if-a-coding-assistant-is-building-the-feature).
+To test a new version of your app without replacing the one your users have, push it to a Git branch other than the default one. Once deploy on push is set up, Prisma Compute deploys that branch as a preview environment with its own URL, its own services and, for databases declared in the Composer module, its own new databases, and the workflow deploys production only when you push to the default branch. A branch you keep, such as `staging`, works as a long-lived staging environment, and deleting a branch removes its preview. The same works when a coding assistant does the pushing; see [If a coding assistant is building the feature](#if-a-coding-assistant-is-building-the-feature).
 
-This guide sets that up for a [Prisma Composer](/composer) app that you deploy today by running `deploy module.ts` in a terminal. You connect the app's GitHub repository and add a deploy workflow, and from then on a push replaces that manual step.
+This guide sets that up for a [Prisma Composer](/composer) app that you deploy today by running `deploy` in a terminal. You connect the app's GitHub repository and add a deploy workflow, and from then on a push replaces that manual step.
 
 ## Host a test version without replacing production
 
 When the workflow from this guide runs, each Git branch you push, other than the default one, becomes its own environment next to production. The preview gets the following, separate from production:
 
 - **Its own deployment and URL.** The deploy action deploys the branch as a preview named after it, and the workflow run prints the preview's URL in its deploy report. Custom domains attach to production only, so a preview is reached at its generated URL.
-- **The whole app, not only the frontend.** Every service your module declares, such as a frontend and an API, runs in the preview as its own service. The code is the only thing a preview shares with production.
+- **The whole app, not only the frontend.** Every service your module declares, such as a frontend and an API, runs in the preview as its own service. The services, databases and buckets your module declares are separate from production; anything the app reaches through an environment variable, such as a database at `DATABASE_URL` or an API at `API_BASE_URL`, is only as separate as that variable's preview-scoped value, so check those values too.
 - **Preview environment variables.** Every preview reads the preview-scoped values, and a branch override changes a value for one branch; production values are used only by production. See [Environment variables](/compute/environment-variables).
-- **Its own databases.** Each Prisma Postgres database your module declares is created for the branch, so what you write in the preview stays out of the production database. Don't assume production data is copied into it. If the app reads its connection string from a variable such as `DATABASE_URL` instead, the preview is only as separate as that value, so set a preview-scoped `DATABASE_URL` that points at a non-production database.
+- **Its own databases.** Each Prisma Postgres database your module declares is created for the branch, so what you write in the preview stays out of the production database. Production data is not copied into it; [What a preview database starts with](#what-a-preview-database-starts-with) lists what is in it. If the app reads its connection string from a variable such as `DATABASE_URL` instead, the preview is only as separate as that value, so set a preview-scoped `DATABASE_URL` that points at a non-production database.
 - **Production stays on the default branch.** The workflow deploys production only from the default branch, so a push to any other branch never touches production. If a production deploy goes wrong, `npx prisma service version rollback <service>` puts the previous version back without a rebuild; see [Deployments](/compute/deployments#promote-and-roll-back).
 - **Teardown with the branch.** Deleting the Git branch removes the preview's services, databases and buckets. Automated cleanup never touches production or the default branch.
+
+### What a preview database starts with
+
+No production data is copied into a preview. What each database and bucket starts with depends on how the app gets it:
+
+- **A `postgres()` database your Composer module declares** is created new for the branch, and the deploy applies your committed `migrations/` to it before the service starts. The preview starts with your schema and no production data. See [Databases](/composer/databases#postgres-a-prisma-orm-typed-database).
+- **A `rawPostgres()` database** is created new for the branch and starts empty, with no tables. The deploy applies no migrations to it.
+- **A bucket your module declares** is created new for the branch and starts empty.
+- **A database the app reaches through `DATABASE_URL`** or another variable is not created by the deploy, and no migrations run against it. The preview uses whatever database the preview-scoped value points at, so it is only as separate as that value.
+
+Seed each preview with your own test data.
 
 ### A long-lived staging environment
 
@@ -29,7 +40,7 @@ A Git branch you keep, such as `staging`, works as a staging environment. Every 
 npx prisma project env add API_BASE_URL=https://staging-api.example.com --branch staging
 ```
 
-When a release is ready, merge `staging` into the default branch, and that push updates production. On Compute, the staging services cost money only while they do work, such as serving traffic, because creating a preview branch is free and an idle app scales to zero; see [Compute pricing](/compute/pricing#what-is-not-billed-separately). Without GitHub, `npx prisma deploy module.ts --stage staging` deploys the same kind of persistent staging environment from your terminal or another CI system, as [Deploying](/composer/deploying#production-and-stages) shows.
+When a release is ready, merge `staging` into the default branch, and that push updates production. On Compute, the staging services cost money only while they do work, such as serving traffic, because creating a preview branch is free and an idle app scales to zero; see [Compute pricing](/compute/pricing#what-is-not-billed-separately). Without GitHub, `npx prisma deploy --stage staging` deploys the same kind of persistent staging environment from your terminal or another CI system, as [Deploying](/composer/deploying#production-and-stages) shows.
 
 ### Coming from Vercel or Netlify previews
 
@@ -139,7 +150,7 @@ my-app
          https://xyz.ewr.prisma.build
 ```
 
-Every later push to the default branch updates production the same way, as if you had run `deploy module.ts` yourself.
+Every later push to the default branch updates production the same way, as if you had run `deploy` yourself.
 
 If the deploy step fails with `CLI.UNKNOWN_COMMAND`, the action release predates the unified CLI: releases up to v1.5.0 call the removed `prisma composer` commands. Use a release that runs the top-level `deploy` command; the action's [releases page](https://github.com/prisma/cloud-deploy-action/releases) lists what changed in each. If the run is green but its log shows `skipped-no-credential`, the repository is not connected; repeat step 3. Runs triggered from forks skip the same way, because GitHub does not issue OIDC tokens to them, so contributors' pushes keep a green CI without reaching your workspace.
 
@@ -152,7 +163,7 @@ git switch -c feature/search
 git push -u origin feature/search
 ```
 
-The action deploys the branch as a [stage](/composer/deploying#production-and-stages) named after it, which is a [preview branch](/compute/branching) of the same project. The preview has its own services, its own databases assigned to that branch, its own buckets, and its own URL. The only thing it shares with production is the code. Confirm it from your terminal:
+The action deploys the branch as a [stage](/composer/deploying#production-and-stages) named after it, which is a [preview branch](/compute/branching) of the same project. The preview has its own services, a new database for each database your module declares, its own buckets, and its own URL. A database, API or other service the app reaches through an environment variable such as `DATABASE_URL` is only as separate as that variable's preview-scoped value. Confirm it from your terminal:
 
 ```npm
 npx prisma service list --branch feature/search

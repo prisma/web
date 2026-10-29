@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { blog } from "@/lib/source";
+import { getPublishedPages } from "@/lib/source";
 import { getBaseUrl, withBlogBasePath } from "@/lib/url";
 import { getItemsForTag, getListingItems, getListingTags } from "@/lib/blog-listing-data";
 import { buildListingHref, getTotalPages } from "@/lib/blog-listing";
@@ -33,7 +33,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl();
   const url = (path: string): string => new URL(withBlogBasePath(path), baseUrl).toString();
 
-  const items = blog.getPages().map((page) => {
+  // Drafts render at their URL but are left out, as on the listing pages.
+  const items = getPublishedPages().map((page) => {
     // Same precedence as the post page's dateModified: the frontmatter
     // `updatedAt` a rewrite sets, then the git-derived `lastModified`, then
     // the publish date, so the visible "Updated" line, BlogPosting

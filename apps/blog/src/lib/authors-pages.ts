@@ -1,4 +1,4 @@
-import { blog } from "./source";
+import { blog, getPublishedPages } from "./source";
 import { getAuthorImageSrc, normalizeAuthorName, toAuthorSlug } from "./authors";
 
 type BlogPage = ReturnType<typeof blog.getPages>[number];
@@ -17,7 +17,8 @@ function readAuthors(page: BlogPage): string[] {
 }
 
 /**
- * Resolves all unique author slugs across the blog corpus. Each slug maps to
+ * Resolves all unique author slugs across the blog corpus, drafts included, so
+ * the author link in a draft's byline has a page to open. Each slug maps to
  * a display name (the first non-normalized form encountered) and the count
  * of posts in which the author appears.
  */
@@ -52,12 +53,12 @@ export function findAuthorProfile(slug: string): AuthorProfile | null {
 }
 
 /**
- * Returns all posts (newest first) that list the author whose slug matches.
+ * Returns all published posts (newest first) that list the author whose slug
+ * matches. Drafts are left out, as on the listing pages.
  */
 export function getPostsByAuthorSlug(slug: string): BlogPage[] {
   const normalized = slug.toLowerCase();
-  return blog
-    .getPages()
+  return getPublishedPages()
     .filter((page) => readAuthors(page).some((name) => toAuthorSlug(name) === normalized))
     .sort((a, b) => {
       const ad = new Date((a.data as { date?: Date }).date ?? 0).getTime();

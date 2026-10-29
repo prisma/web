@@ -224,9 +224,24 @@ Close the client and release its pool.
 
 #### Remarks
 
-- Returns a `Promise<void>`. `close()` is safe to call at any time.
-- After `close()`, `connect()` rejects and `runtime()` throws an error whose `code` is `DRIVER.NOT_CONNECTED` (`Postgres client is closed`).
-- A query that starts after `close()` fails once with `DRIVER.NOT_CONNECTED` (`Runtime is closed`). Queries already running when you call `close()` finish first.
+- Returns a `Promise<void>`. `close()` replaces `$disconnect()` from Prisma ORM 7. You can call it more than once; calls after the first do nothing.
+- A closed client cannot be used again: every query after `close()` fails with an error whose `code` is `DRIVER.NOT_CONNECTED`, and `connect()` rejects. Create a new client with [`postgres(options)`](#postgresoptions) if you need one. Queries already running when you call `close()` finish first.
+- When you created the client from your own `pg` pool, `close()` leaves the pool open; call `await pool.end()` after it.
+- In a server, call `close()` when the process receives `SIGTERM` or `SIGINT`, and never in a request handler, because every request shares the pool. Stop the server first, so that no new query starts, then close the client. `app` is your Express app and `db` is the client from `src/prisma/db.ts`. Once both are closed, Node.js exits by itself; if it does not, something else, such as another database client or a timer, is still open:
+
+```ts
+const server = app.listen(3000);
+
+function shutdown() {
+  server.close(async () => {
+    await db.close();
+  });
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+```
+
+- A script that runs once, such as a seed, calls `await db.close()` at the end. Without it, the open pool keeps the process running until its idle connections time out, 30 seconds by default (`poolOptions.idleTimeoutMillis`).
 
 #### Return type
 

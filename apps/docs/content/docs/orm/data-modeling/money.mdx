@@ -1,0 +1,155 @@
+---
+title: Money and decimals
+description: Store prices and other exact amounts with Prisma ORM 8, as integer cents or as a decimal column, and read, write, round, and add them without losing a cent.
+url: /orm/data-modeling/money
+metaTitle: Money and decimal values | Prisma ORM
+metaDescription: 'How to store money in Prisma ORM 8 on PostgreSQL: integer cents, Numeric(10, 2), or Decimal. What your code reads and writes, how the column rounds, defaults, totals and tax, and what replaced Prisma.Decimal.'
+---
+
+An amount of money must come out of the database exactly as it went in, and adding a thousand of them must not drift by a cent. A JavaScript `number` cannot promise either: `0.1 + 0.2` is `0.30000000000000004`. This page shows the three PostgreSQL types that can, which one to pick, and how to read, write, add, and multiply their values in Prisma ORM 8.
+
+Prisma ORM 8 calls the schema file the contract. It is `src/prisma/contract.prisma`, and it replaces `schema.prisma`. The examples on this page use the model below. After you add it, run `npx prisma contract emit` to update the files your code imports, then `npx prisma migration plan --name add-order` and `npx prisma db migrate --advance-ref db` to create the table in your development database; [Generating a migration](/orm/migrations/generating-a-migration) explains both. In the code, `db` is the client that `src/prisma/db.ts` exports, a file `npm create prisma` and `npx prisma orm init` write for you.
+
+```prisma title="src/prisma/contract.prisma"
+model Order {
+  id         Int            @id @default(autoincrement())
+  totalCents Int
+  total      Numeric(10, 2)
+  taxRate    Decimal
+}
+```
+
+The model shows the three types side by side. A real model stores each amount in only one of them.
+
+## Pick a type
+
+| Type in the contract | PostgreSQL column | Use it for |
+| --- | --- | --- |
+| `Int`, holding cents | `integer` | Prices and totals, as long as the largest amount in cents fits in 2,147,483,647, about 21 million dollars. Use `BigInt` above that. |
+| `Numeric(10, 2)` | `numeric(10,2)` | Amounts that arrive with a decimal point and must keep a fixed number of decimal places, such as figures from an accounting system |
+| `Decimal` | `numeric` | Values that need more decimal places than money does, such as a tax rate or an exchange rate |
+
+For ordinary product prices, use integer cents unless you have a reason not to. Your code then works with whole numbers, which JavaScript adds exactly. Store an amount in the currency's smallest unit, such as cents for US dollars. A currency with no smaller unit, such as the Japanese yen, is stored as is. If you sell in several currencies, store the currency code in a field beside the amount, because the same number of cents means a different amount in each currency.
+
+In `Numeric(10, 2)`, the 2 is the number of decimal places every value keeps, and the 10 is how many digits a value has in total, so the largest value is 99,999,999.99. Pick both numbers to fit your own amounts.
+
+Do not store money in a `Float`. It is a floating-point column, so it rounds in the same way JavaScript numbers do.
+
+## Read and write amounts
+
+An `Int` field is a JavaScript `number`, and a `BigInt` field a JavaScript `bigint`. A `Numeric` or `Decimal` field is a string, both when you read it and when you write it:
+
+```ts
+const order = await db.orm.public.Order.create({
+  totalCents: 1999,
+  total: "19.99",
+  taxRate: "0.0725",
+});
+
+order.total; // "19.99"
+```
+
+You can use the value anywhere a string goes. An optional field, such as `total Numeric(10, 2)?`, reads as `null` when it has no value. TypeScript refuses a JavaScript number for a decimal field. Keep an amount as a string from the moment it enters your app: read form fields as strings, and ask API clients to send amounts as strings, because parsing `"0.123456789012345678"` as a JSON number already drops digits before your code sees it. If your code calculated an amount, calculate in cents or with a decimal library, as [Multiply and round](#multiply-and-round) shows, and pass the library's string.
+
+TypeScript accepts any string for a decimal field, including one that is not a number, so validate input before you write it. PostgreSQL refuses a value such as `"abc"` with `invalid input syntax for type numeric`.
+
+Filters and sorting compare decimal values as numbers, not as text, so `"9.50"` sorts before `"10.00"`. Pass the value to compare as a string:
+
+```ts
+const large = await db.orm.public.Order.where((o) => o.total.gt("10.00"))
+  .orderBy((o) => o.total.asc())
+  .all();
+```
+
+To show an amount to a user, format it with `Intl.NumberFormat`. Converting to a JavaScript number for this step only is safe for any price up to 15 digits long:
+
+```ts
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+usd.format(Number(order.total)); // "$19.99"
+usd.format(order.totalCents / 100); // "$19.99"
+```
+
+A `BigInt` field of cents is a `bigint`, which cannot be divided into a fraction, and `Number(cents) / 100` can be off by a cent for very large amounts. Convert a non-negative amount to a decimal string with `bigint` arithmetic instead, which is exact at any size: ``${cents / 100n}.${String(cents % 100n).padStart(2, "0")}``.
+
+## How the column rounds
+
+A string keeps JavaScript from changing your value, but the database still rounds it to the column's number of decimal places when it stores it. A `Numeric(10, 2)` column keeps two decimal places. When a value is exactly halfway, such as `1.005`, it rounds away from zero, to `1.01`. A `Decimal` column keeps what you wrote.
+
+| You write | `Numeric(10, 2)` stores | `Decimal` stores |
+| --- | --- | --- |
+| `"19.99"` | `19.99` | `19.99` |
+| `"1.005"` | `1.01` | `1.005` |
+| `"2.675"` | `2.68` | `2.675` |
+| `String(0.1 + 0.2)` | `0.30` | `0.30000000000000004` |
+
+The last row shows why the string must hold the amount you mean. A `Decimal` column stores whatever the string says, including the noise a JavaScript calculation left in it.
+
+A value with more digits before the decimal point than the column allows is refused, not rounded. Writing `"123456789.00"` to a `Numeric(10, 2)` column throws an error whose message is `numeric field overflow`. To handle it, check the error's `sqlState`, PostgreSQL's code for the error:
+
+```ts
+try {
+  await db.orm.public.Order.create({ totalCents: 0, total: amount, taxRate: "0" });
+} catch (error) {
+  if (error instanceof Error && "sqlState" in error && error.sqlState === "22003") {
+    // the amount is too large for the column
+  } else {
+    throw error;
+  }
+}
+```
+
+## Defaults
+
+A default must have no more decimal places than its column. In the contract, it is a bare number:
+
+```prisma
+fee Numeric(10, 2) @default(1.50)
+```
+
+`@default(1.505)` on the same field is an error, which `npx prisma contract emit` reports as `PSL_INVALID_DEFAULT_LITERAL`. [Default values](/orm/contract-authoring/psl-syntax#default-values) lists what each type accepts.
+
+## Totals and averages
+
+Let the database add amounts up, because it does so exactly. `aggregate` runs a sum or an average over a model's rows:
+
+```ts
+const totals = await db.orm.public.Order.aggregate((a) => ({
+  total: a.sum("total"), // "43.97"
+  totalCents: a.sum("totalCents"), // 4397
+  averageCents: a.avgDecimal("totalCents"), // "879.4000000000000000"
+}));
+```
+
+To total only some rows, put a filter first, as in `db.orm.public.Order.where((o) => o.total.gt("10.00")).aggregate(...)`. `sum` returns a string for a decimal column and a `number` for an `Int` column. When no rows match, every sum and average is `null`. If an `Int` total can pass `Number.MAX_SAFE_INTEGER`, about 9 quadrillion, use `sumBigInt`, which returns a `bigint`.
+
+For an average of integer cents, use `avgDecimal`. `avg("totalCents")` returns a JavaScript `number`, and an average such as a third of a cent has no exact JavaScript number. `avgDecimal` returns the average as a string instead, which PostgreSQL rounds to at least 16 significant digits, far more than money needs. On a decimal column, `avg` and `avgDecimal` return the same string. An average usually has more decimal places than you want to show; round it with a decimal library, as the next section shows. [`aggregate()`](/orm/reference/orm-client#aggregate) lists every function and its result type.
+
+## Multiply and round
+
+A line total or a tax amount is a multiplication, and its result can have more decimal places than money has, so you must decide where to round. Do that with a decimal library, such as [Decimal.js](https://mikemcl.github.io/decimal.js/):
+
+```npm
+npm install decimal.js
+```
+
+```ts
+import Decimal from "decimal.js";
+
+const netCents = 1999 * 3; // 5997, exact
+const taxCents = new Decimal(netCents)
+  .mul(order.taxRate) // 434.7825
+  .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+  .toNumber(); // 435
+```
+
+Multiplying whole cents by a whole quantity is exact in JavaScript while the result is no larger than `Number.MAX_SAFE_INTEGER`, about 90 trillion dollars in cents. Only the step with a rate needs the library. To get a decimal string back for a decimal field, use `toFixed`, as in `new Decimal(order.total).plus("0.01").toFixed(2)`.
+
+## Coming from Prisma ORM 7
+
+- `Decimal @db.Decimal(10, 2)` is now `Numeric(10, 2)`. Change the line in your contract by hand and run `npx prisma contract emit`. The column stays `numeric(10,2)`, so you need no migration for it. `Decimal` on its own is still a `numeric` column with no fixed number of decimal places.
+- `Prisma.Decimal` is gone. A decimal field reads as a string, not a Decimal.js object, and you write it as a string. `Prisma.Decimal` was Decimal.js, so install it yourself with `npm install decimal.js`, and wrap a field value before calling `.plus()` or `.toFixed()` on it, as in `new Decimal(order.total).plus("1.00")`.
+- [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) lists the other type changes.
+
+## MongoDB
+
+On MongoDB, an exact decimal is a field of type `Decimal128`, and it also reaches your code as a string, so no digit is lost. Integer cents in an `Int32` or `Int64` field work as they do on PostgreSQL. [MongoDB data modeling](/orm/data-modeling/mongodb#field-types) lists the field types.

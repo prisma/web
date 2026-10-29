@@ -1,4 +1,4 @@
-import { blog } from "./source";
+import { blog, getPublishedPages, isDraft } from "./source";
 import { getSeriesMetadata } from "./series-registry";
 import { toBlogCardItem } from "./post-card-item";
 import type { BlogCardItem } from "@/components/BlogGrid";
@@ -38,16 +38,21 @@ function toRef(page: BlogPage): SeriesPostRef {
 }
 
 function findBySlug(slug: string): BlogPage | undefined {
-  return blog.getPages().find((p) => getSlug(p) === slug);
+  return getPublishedPages().find((p) => getSlug(p) === slug);
 }
 
 /**
- * Returns all posts that belong to a given series key, ordered by
+ * Returns the published posts that belong to a given series key, ordered by
  * `seriesIndex` (asc). Posts without an index sort after indexed ones, by date.
+ *
+ * Drafts are left out unless one is `current`: a draft's own page still shows
+ * its place in the series, but no published post links to it.
  */
-export function getSeriesPosts(seriesKey: string): BlogPage[] {
+export function getSeriesPosts(seriesKey: string, current?: BlogPage): BlogPage[] {
+  const currentSlug = current ? getSlug(current) : undefined;
   return blog
     .getPages()
+    .filter((p) => !isDraft(p) || getSlug(p) === currentSlug)
     .filter((p) => (p.data as { series?: string }).series === seriesKey)
     .sort((a, b) => {
       const ai = (a.data as { seriesIndex?: number }).seriesIndex;
@@ -77,7 +82,7 @@ export function getSeriesContext(page: BlogPage): SeriesContext | null {
   const key = data.series;
   if (!key) return null;
 
-  const posts = getSeriesPosts(key);
+  const posts = getSeriesPosts(key, page);
   if (posts.length === 0) return null;
 
   const meta = getSeriesMetadata(key);

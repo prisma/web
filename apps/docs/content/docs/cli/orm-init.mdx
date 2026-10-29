@@ -145,6 +145,41 @@ npx prisma@latest orm init --skip-install
 
 Without `--json`, standard output gets one line per file the command wrote: its path, relative to the working directory. The progress and the summary go to standard error. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
 
+## Exit codes
+
+In a script, pass `--yes` with `--target` and `--authoring` (see [Options](#options)) so that `orm init` asks no questions:
+
+```npm
+npx prisma@latest orm init --yes --target postgres --authoring psl
+```
+
+Its exit code says how far it got:
+
+| Code | What happened | What to do |
+| --- | --- | --- |
+| `0` | It set up the project and emitted the contract. With `--skip-install`, it exits `0` without installing or emitting. | Nothing. After `--skip-install`, install the dependencies, then run `npx prisma contract emit`. |
+| `2` | It stopped because of one of the problems in the next table. Most of them stop it before it writes anything. | Fix the problem and run it again. |
+| `3` | You cancelled a prompt, for example with Ctrl-C ([`CLI.PROMPT_CANCELLED`](/cli/error-reference#CLI.PROMPT_CANCELLED)). | Run `orm init` again. In a script, pass the flags from the example above so that it asks nothing. |
+| `4` | Installing the dependencies failed ([`CLI.INIT_INSTALL_FAILED`](/orm/reference/error-reference#CLI.INIT_INSTALL_FAILED)). Usually the files are already written. On a [Prisma ORM 7 project](#on-a-prisma-orm-7-project), the install runs first, so nothing is written yet. | If files were written, run the install command it prints, then `npx prisma contract emit`. If none were, run `orm init` again once the dependencies install. |
+| `5` | It wrote the files and installed the dependencies, but emitting the contract failed ([`CLI.INIT_EMIT_FAILED`](/orm/reference/error-reference#CLI.INIT_EMIT_FAILED)). | Fix the contract source that the message names, then run `npx prisma contract emit`. |
+
+Do not run `orm init` again over files it has written, because a second run replaces them and needs `--confirm`.
+
+The error code is printed in square brackets on standard error, such as `[CLI.INIT_MISSING_FLAGS]`. With `--json`, the line whose `kind` is `result` holds it. For code `2`, it is in `envelope.error.code`. For codes `4` and `5`, `envelope.ok` is still `true` and the code is in `envelope.diagnostics`, because the run finished with a problem to fix instead of stopping.
+
+These are the common causes of exit code `2`. The [error reference](/orm/reference/error-reference) lists every `CLI.INIT_` code.
+
+| Error code | Cause | Files written |
+| --- | --- | --- |
+| [`CLI.INIT_MISSING_FLAGS`](/orm/reference/error-reference#CLI.INIT_MISSING_FLAGS) | It ran without questions, because of `--yes`, `--no-interactive`, or standard input that is not a terminal, and a required flag such as `--target` or `--authoring` is missing. The error lists each missing flag. | None |
+| [`CLI.INIT_INVALID_FLAG_VALUE`](/orm/reference/error-reference#CLI.INIT_INVALID_FLAG_VALUE) | A flag has a value it does not accept, such as `--target mysql`. | None |
+| [`CLI.INIT_INVALID_MANIFEST`](/orm/reference/error-reference#CLI.INIT_INVALID_MANIFEST) | `package.json` is not valid JSON. | None |
+| [`CLI.INIT_INVALID_TSCONFIG`](/orm/reference/error-reference#CLI.INIT_INVALID_TSCONFIG) | `tsconfig.json` cannot be parsed, even allowing comments and trailing commas. | None |
+| [`CLI.CONSENT_REQUIRED`](/cli/error-reference#CLI.CONSENT_REQUIRED) | The run would replace files, so it needs `--confirm` with the name of the directory you run it in, such as `--confirm my-app`, not its full path. This happens on a project that is already set up, where a second run replaces `src/prisma/contract.prisma`, `prisma.config.ts`, `src/prisma/db.ts`, and `prisma-8.md`, and on every [Prisma ORM 7 project](#on-a-prisma-orm-7-project). | None on a project that is already set up. On a Prisma ORM 7 project, the dependencies may already be installed, which changes `package.json`. |
+| [`CLI.UNEXPECTED`](/orm/reference/error-reference#CLI.UNEXPECTED) | `package.json` or `tsconfig.json` cannot be read, for example because of its file permissions. | None |
+| [`CLI.INIT_WRITE_FAILED`](/orm/reference/error-reference#CLI.INIT_WRITE_FAILED) | A file could not be written, for example because a directory is in its place or the disk is full. | The ones written before it, which the error lists in `filesWritten`. On a Prisma ORM 7 project, the old `prisma.config.ts` may also be renamed, which the error lists in `filesRenamed`. |
+| [`CLI.INIT_PROBE_FAILED`](/orm/reference/error-reference#CLI.INIT_PROBE_FAILED) | With `--probe-db --strict-probe`, the database check failed. | All of them |
+
 ## After initialization
 
 Review the generated files, set `DATABASE_URL`, and emit the contract when you change the schema:
