@@ -118,7 +118,7 @@ Once you have the output, take the connection string and add it to your `.env` f
 DATABASE_URL="postgres://<username>:<password>@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
-If you don't have a `.env` file yet, you can skip the copy step by creating the database with `npx create-db@latest --env .env` instead. This creates the file with `DATABASE_URL` and `CLAIM_URL` and prints only a confirmation, so the claim URL is in `CLAIM_URL` rather than in the terminal. On a file that already exists, `--env` appends both lines without removing an existing `DATABASE_URL`, so delete the old line yourself.
+If you don't have a `.env` file yet, you can skip the copy step by creating the database with `npx create-db@latest --env .env` instead. This creates the file with `DATABASE_URL` and `CLAIM_URL`, then prints a confirmation and the claim URL with its deletion time. On a file that already exists, `--env` appends both lines without removing an existing `DATABASE_URL`, so delete the old line yourself.
 
 You can now follow the [Prisma Postgres quickstart guide](/v7/prisma-orm/quickstart/prisma-postgres) to connect your Prisma project to this database.
 
@@ -140,7 +140,8 @@ npx create-db@latest --json
   "deletionDate": "2026-10-13T08:44:59.650Z",
   "region": "eu-west-3",
   "name": "2026-10-12T08:44:55.985Z",
-  "projectId": "proj_..."
+  "projectId": "proj_...",
+  "nextStep": "The database is deleted at 2026-10-13T08:44:59.650Z unless the user claims it, which keeps it for free. Give the user this claim URL: https://create-db.prisma.io/claim?projectID=proj_...&utm_source=create-db&utm_medium=cli"
 }
 ```
 
@@ -161,7 +162,7 @@ npx create-db@latest --json --ttl 1h
 When an agent creates databases:
 
 - Create one database per task, not one per test run. Database creation is rate-limited per IP address.
-- Show the human the `claimUrl` and the `deletionDate` every time. The database is deleted unless someone claims it, and claiming needs a Prisma account, so a person has to do it.
+- Show the human the claim URL and the deletion time every time. The database is deleted unless someone claims it, and claiming needs a Prisma account, so a person has to do it. `--json` returns them as `claimUrl` and `deletionDate`, with a `nextStep` that says the same; `--env` and `--quiet` print them in a claim line (`--quiet` on stderr).
 - Treat the database as disposable until it is claimed: it is deleted when its time to live runs out.
 
 To make this the agent's default, add a short block to your project's `AGENTS.md`:
@@ -218,10 +219,10 @@ Here are the CLI flags for the `npx create-db` command:
 | `--region <region>` | `-r`      | AWS region for the database. <br /> **Available regions:** `ap-southeast-1`, `ap-northeast-1`, `eu-central-1`, `eu-west-3`, `us-east-1`, `us-west-1`. Without it, `create-db` picks the region closest to you (fallback `us-east-1`). |
 | `--interactive`     | `-i`      | Run in interactive mode to select a region.                                                                                                                                                                                           |
 | `--json`            | `-j`      | Output machine-readable JSON.                                                                                                                                                                                                         |
-| `--env <file>`      | `-e`      | Write `DATABASE_URL` and `CLAIM_URL` to the specified `.env` file. If the file exists, the two lines are appended.                                                                                                                    |
+| `--env <file>`      | `-e`      | Write `DATABASE_URL` and `CLAIM_URL` to the specified `.env` file and print the claim URL. If the file exists, the two lines are appended.                                                                                            |
 | `--ttl <duration>`  | `-t`      | Auto-delete after `30m`, or `1h` to `24h`. The default and maximum is `24h`.                                                                                                                                                          |
 | `--copy`            | `-c`      | Copy the connection string to your clipboard.                                                                                                                                                                                         |
-| `--quiet`           | `-q`      | Only output the connection string.                                                                                                                                                                                                    |
+| `--quiet`           | `-q`      | Only output the connection string on stdout. The claim URL and deletion time go to stderr.                                                                                                                                            |
 | `--open`            | `-o`      | Open the claim URL in your browser.                                                                                                                                                                                                   |
 | `--help`            | `-h`      | Display help for the command.                                                                                                                                                                                                         |
 
