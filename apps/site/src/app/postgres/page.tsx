@@ -5,9 +5,9 @@ import { ProductPage } from "@/components/product/product-page";
 import { createFaqStructuredData } from "@/lib/structured-data";
 
 export const metadata = createPageMetadata({
-  title: "Prisma Postgres | Free Postgres database for TypeScript and AI",
+  title: "Prisma Postgres | Serverless PostgreSQL database for TypeScript apps",
   description:
-    "Managed Postgres, part of Prisma's infrastructure for TypeScript and AI apps. Create a free database in seconds with npx create-db. No credit card.",
+    "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
   path: "/postgres",
   ogKicker: "Prisma Postgres",
   ogAccent: "yellow",
