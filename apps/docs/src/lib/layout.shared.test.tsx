@@ -136,4 +136,13 @@ test("the navbar offers Login and then Sign up, each on its own Console page", (
     );
     assert.equal(new URL(item.url).searchParams.get("utm_source"), "docs");
   }
+  // Login shows at every desktop width; Sign up only from `lg`, where the bar
+  // has room for a second pill without clipping the section crumb.
+  assert.deepEqual(
+    buttons.map((item) => [item.text, item.navbarClassName]),
+    [
+      ["Login", undefined],
+      ["Sign up", "max-lg:hidden"],
+    ],
+  );
 });
