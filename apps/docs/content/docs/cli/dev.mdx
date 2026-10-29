@@ -6,17 +6,17 @@ metaTitle: dev | Prisma CLI
 metaDescription: Complete reference for the prisma dev command and its url and stop subcommands, which run a Prisma Composer application locally against local emulators for Prisma Compute and Prisma Postgres.
 ---
 
-`dev` brings a [Prisma Composer](/composer) application up entirely on this machine. It takes an `<entry>` argument: the module whose default export is the application root, typically `module.ts`. The command runs credential-free against local emulators, programs on your machine that stand in for Prisma Compute, Prisma Postgres, and buckets. It watches the built output and restarts a service when its build changes. See [Local development](/composer/local-development).
+`dev` brings a [Prisma Composer](/composer) application up entirely on this machine. It loads the module whose default export is the application root, named by `entry` in the `composer` section of `prisma.config.ts`, typically `./module.ts`. The command runs credential-free against local emulators, programs on your machine that stand in for Prisma Compute, Prisma Postgres, and buckets. It watches the built output and restarts a service when its build changes. See [Local development](/composer/local-development).
 
 Like [`deploy`](/cli/deploy), `dev` runs your *built* output, so build first.
 
 ## Usage
 
 ```npm
-npx prisma dev module.ts
-npx prisma dev module.ts --fresh
-npx prisma dev module.ts --detach
-npx prisma dev url gateway
+npx prisma dev
+npx prisma dev --fresh
+npx prisma dev --detach
+npx prisma dev url my-app.gateway
 npx prisma dev stop
 ```
 
@@ -24,7 +24,7 @@ npx prisma dev stop
 
 | Command | Description |
 | --- | --- |
-| `dev <entry>` | Run the app on this machine and watch it for changes until you press `Ctrl-C` |
+| `dev` | Run the app on this machine and watch it for changes until you press `Ctrl-C` |
 | `dev url <address>` | Print where a service, database, or bucket of the app answers locally |
 | `dev stop` | Stop the app that `prisma dev` last ran from this directory |
 
@@ -34,6 +34,7 @@ npx prisma dev stop
 
 | Flag | Description |
 | --- | --- |
+| `--entry <path>` | Load the app from this module instead of the `entry` in `prisma.config.ts` |
 | `--name <name>` | Run the app under this name instead of the name its root module declares. A different name gets its own local services, databases, and buckets |
 | `--fresh` | Before starting, delete this app's local services, databases, and buckets, with their data. Other apps run from the same directory keep theirs |
 | `--detach` | Return once every service answers, and leave the app running without watching for changes. `prisma dev stop` stops it. Use it in scripts, agents, and CI |
@@ -42,18 +43,18 @@ npx prisma dev stop
 
 When `dev` ends, by `Ctrl-C` or a failure, it stops the app's service processes and local Postgres servers. The emulators themselves keep running. Their data and ports are kept, so the next `dev` in this directory starts with the same ports and data.
 
-With `--detach`, `dev` prints the same `ready` line and service URLs as a foreground run, then exits with code `0` and leaves the app running. It does not pick up rebuilds: run `prisma dev module.ts --detach` again after a build, or run `prisma dev module.ts` in the foreground, which takes over the running app and watches it. If a detached start fails before every service answers, `dev` stops the whole app and exits non-zero. `--detach` combines with `--fresh` and `--name`.
+With `--detach`, `dev` prints the same `ready` line and service URLs as a foreground run, then exits with code `0` and leaves the app running. It does not pick up rebuilds: run `prisma dev --detach` again after a build, or run `prisma dev` in the foreground, which takes over the running app and watches it. If a detached start fails before every service answers, `dev` stops the whole app and exits non-zero. `--detach` combines with `--fresh` and `--name`.
 
 ## dev url
 
-`dev url <address>` prints the local URL of one node of the app that `prisma dev` runs from the current directory. A node is a service, database, or bucket in the app, and its address is its name in the app, with dots for a nested node, such as `catalog.database`.
+`dev url <address>` prints the local URL of one node of the app that `prisma dev` runs from the current directory. A node is a service, database, or bucket in the app, and its address is its path from the app's name, with dots between the names, such as `my-app.gateway` or, for a database inside a `catalog` module, `my-app.catalog.database`.
 
 ```npm
-npx prisma dev url gateway
+npx prisma dev url my-app.gateway
 ```
 
 ```text no-copy
-✔ The service gateway is running at http://localhost:3001
+✔ The service my-app.gateway is running at http://localhost:3001
 ```
 
 | Node | What `dev url` prints |
@@ -65,7 +66,7 @@ npx prisma dev url gateway
 That line is for you to read. When standard output is a pipe or a file, or `$(...)` captures it, `dev url` writes the URL alone, so a script can use it directly. Check the exit status before using it, so a failure does not run the next command with an empty URL:
 
 ```bash
-url=$(npx prisma dev url gateway) && curl "$url"
+url=$(npx prisma dev url my-app.gateway) && curl "$url"
 ```
 
 Run it from the directory you ran `prisma dev` in, while the app runs. It starts nothing: it reads what the last `prisma dev` in this directory recorded. With `--json`, it prints `{ address, kind, url, state }` instead.
