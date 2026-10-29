@@ -5,7 +5,7 @@ summary: "node-postgres throws `Connection terminated unexpectedly` when the soc
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-22"
-updatedAt: "2026-10-22"
+updatedAt: "2026-10-29"
 readingTime: "9 min read"
 faq:
   - question: "Should the pool's max be 1 on Vercel?"
@@ -27,7 +27,7 @@ related:
     href: "/docs/postgres/database/connecting-to-your-database"
 cta:
   title: "Use Prisma Postgres from Vercel"
-  description: "Create a Prisma Postgres database from the Vercel Marketplace, add its pooled connection string for your functions and keep the direct one for migrations. Any Postgres client works; Prisma ORM is optional."
+  description: "Create a Prisma Postgres database from the Vercel Marketplace, point your functions at its pooled connection string and keep the direct one for migrations. Any Postgres client works; Prisma ORM is optional."
   label: "Set up Prisma Postgres on Vercel"
   href: "/docs/guides/postgres/vercel"
 ---
@@ -91,7 +91,7 @@ pool.on("error", (err) => {
 attachDatabasePool(pool);
 ```
 
-Use whichever variable holds your provider's pooled string. Neon's Vercel integration puts it in `DATABASE_URL`. Prisma Postgres's integration puts the direct string there, so add the pooled one as `DATABASE_URL_POOLED` and read that instead, as step 4 describes.
+Use whichever variable holds your provider's pooled string. Neon's Vercel integration puts it in `DATABASE_URL`. Prisma Postgres's integration puts the direct string there and the pooled one in `DATABASE_URL_POOLED`, so read that instead. On a database created before October 29, 2026, the integration doesn't set `DATABASE_URL_POOLED`, so add it yourself, as step 4 describes.
 
 The listener only logs: the pool has already removed the broken client, and the next query opens a new connection. `pool.query()` checks a client out and returns it for you. If you check one out with `pool.connect()`, for a transaction for example, release it in a `finally` block. The node-postgres pool keeps idle clients for 10 seconds by default, and Vercel's guide suggests a short idle timeout of about 5 seconds. For the `max` value, the [too many connections guide](/postgres/too-many-connections#3-size-the-pool-for-the-number-of-instances) shows how to size the pool against your plan's limit.
 
@@ -109,7 +109,7 @@ A pooler such as PgBouncer in transaction mode lends a database connection to a 
 | --- | --- | --- |
 | AWS Aurora PostgreSQL | [RDS Proxy](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-proxy.html) runs inside your AWS VPC and can't be publicly accessible, so Vercel functions can reach it only through [Secure Compute](https://vercel.com/docs/connectivity/secure-compute), which Vercel offers on Enterprise plans. Without it, rely on steps 2, 3 and 5 | [Listed](https://vercel.com/docs/marketplace-storage) |
 | Neon | [PgBouncer in transaction mode](https://neon.com/docs/connect/connection-pooling): add `-pooler` to the endpoint ID in the host name | The [Vercel-managed integration](https://neon.com/docs/guides/vercel-managed-integration) sets `DATABASE_URL` to the pooled string and `DATABASE_URL_UNPOOLED` to the direct one |
-| Prisma Postgres | [PgBouncer in transaction mode](/docs/postgres/database/connection-pooling) on `pooled.db.prisma.io` | The [integration](/docs/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic) sets the direct string; add the pooled one as a separate variable |
+| Prisma Postgres | [PgBouncer in transaction mode](/docs/postgres/database/connection-pooling) on `pooled.db.prisma.io` | The [integration](/docs/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic) sets `DATABASE_URL` to the direct string and `DATABASE_URL_POOLED` to the pooled one; on a database created before October 29, 2026, add `DATABASE_URL_POOLED` yourself |
 | Supabase | [Shared pooler in transaction mode](https://supabase.com/docs/guides/database/connecting-to-postgres) on port 6543, plus a dedicated pooler on paid plans | [Listed](https://vercel.com/docs/marketplace-storage) |
 
 Vercel Postgres itself is [no longer available](https://vercel.com/docs/postgres): Vercel moved existing databases to Neon in December 2024. Keep the direct connection string for migrations, `pg_dump` and anything that relies on session state, such as `SET` or `LISTEN`, because transaction mode doesn't carry it from one transaction to the next. If a pooled connection then fails with `prepared statement "..." already exists`, the [prepared statements guide](/postgres/prepared-statement-already-exists) covers it.
@@ -189,11 +189,11 @@ Vercel's [Edge runtime](https://vercel.com/docs/functions/runtimes/edge) support
 
 [Prisma Postgres](/docs/postgres) is managed PostgreSQL 17 that any Postgres client can use, whether that is `pg`, Drizzle, Kysely or Prisma ORM, which is optional. Prisma Postgres fits when you're creating a new database for Vercel functions and want a PgBouncer pooled connection string on every plan, including Free, created and billed through the Vercel Marketplace. It doesn't change why the error happens: the pool settings and `attachDatabasePool` above apply to it the same way.
 
-The [Vercel Marketplace integration](/docs/guides/postgres/vercel) creates the database from your Vercel project's **Storage** tab, sets `DATABASE_URL`, `POSTGRES_URL` and `PRISMA_DATABASE_URL` on the environments you connect, and bills Prisma Postgres usage through your Vercel account. Each database has a pooled host, `pooled.db.prisma.io`, for application queries, and a direct host, `db.prisma.io`, for migrations, `pg_dump` and admin tools, with the same credentials. The pooler closes idle pooled connections after 60 minutes, so a pool with a 5-second idle timeout closes its own connections long before that. For Edge functions, the [serverless driver](/docs/postgres/database/serverless-driver) (`@prisma/ppg`) runs without a TCP connection, and its HTTP transport sends each query as a separate HTTP request.
+The [Vercel Marketplace integration](/docs/guides/postgres/vercel) creates the database from your Vercel project's **Storage** tab, sets `DATABASE_URL`, `POSTGRES_URL`, `PRISMA_DATABASE_URL` and `DATABASE_URL_POOLED` on the environments you connect, and bills Prisma Postgres usage through your Vercel account. Each database has a pooled host, `pooled.db.prisma.io`, for application queries, and a direct host, `db.prisma.io`, for migrations, `pg_dump` and admin tools, with the same credentials. The pooler closes idle pooled connections after 60 minutes, so a pool with a 5-second idle timeout closes its own connections long before that. For Edge functions, the [serverless driver](/docs/postgres/database/serverless-driver) (`@prisma/ppg`) runs without a TCP connection, and its HTTP transport sends each query as a separate HTTP request.
 
 Know the limits before you rely on them:
 
-- You add the pooled string yourself: the integration's variables hold the direct connection string. Direct connections are capped at 10 on Free and Starter, and 5 of them are reserved for platform operations, so [add the pooled string](/docs/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic) as a separate variable, for example `DATABASE_URL_POOLED`, and point your functions at it. Neon's integration sets the pooled string in `DATABASE_URL` from the start.
+- `DATABASE_URL`, `POSTGRES_URL` and `PRISMA_DATABASE_URL` hold the direct connection string, and only `DATABASE_URL_POOLED` holds the pooled one. Direct connections are capped at 10 on Free and Starter, and 5 of them are reserved for platform operations, so [point your functions at the pooled string](/docs/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic). The integration sets `DATABASE_URL_POOLED` for databases created since October 29, 2026; for a database created earlier, add the pooled string yourself as `DATABASE_URL_POOLED`. Neon's integration sets the pooled string in `DATABASE_URL` from the start.
 - Pooled connections are capped at 10 on Free, 100 on Starter, 500 on Pro and 1,000 on Business, per the [pooling docs](/docs/postgres/database/connection-pooling) and [pricing](/pricing). On Free, two instances with a pool of 5 use all 10.
 - The pooler runs in transaction mode, so session features go over the direct host, and queries through the pooler stop after 10 minutes.
 - If your database already runs on Neon, Supabase or AWS, fix the pool where it is. The steps above are the same, and moving a database is a migration.
