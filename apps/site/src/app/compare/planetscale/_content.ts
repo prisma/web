@@ -46,7 +46,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     planetscale:
       "Managed PostgreSQL with branching and connection pooling. Single-node instances start at $5 a month. HA is one primary and two replicas. Metal uses local NVMe.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       planetscale: "https://planetscale.com/pricing",
       prisma: "https://www.prisma.io/docs/postgres",

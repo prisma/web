@@ -45,7 +45,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Database",
     neon: "Managed PostgreSQL (Lakebase Postgres) with autoscaling, connection pooling, and scale-to-zero. Works with any language, framework, or ORM that supports Postgres.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/docs/postgres",
