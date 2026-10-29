@@ -29,7 +29,7 @@ const faqStructuredData = createFaqStructuredData(
 export default function FreePostgresqlDatabasePage() {
   return (
     <>
-      <JsonLd id="free-postgresql-hosting-faq-structured-data" data={faqStructuredData} />
+      <JsonLd id="postgres-free-postgresql-hosting-faq-structured-data" data={faqStructuredData} />
       <FreePostgresPage />
     </>
   );

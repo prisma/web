@@ -30,7 +30,7 @@ import {
 import {
   FREE_POSTGRES_DESCRIPTION,
   FREE_POSTGRES_TITLE,
-} from "@/app/free-postgresql-hosting/_content";
+} from "@/app/postgres/free-postgresql-hosting/_content";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { getBaseUrl } from "@/lib/url";
 
@@ -163,8 +163,8 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
     subheadline: MCP_SUBHEADLINE,
     renderBody: renderMcpMarkdown,
   },
-  "/free-postgresql-hosting": {
-    path: "/free-postgresql-hosting",
+  "/postgres/free-postgresql-hosting": {
+    path: "/postgres/free-postgresql-hosting",
     title: FREE_POSTGRES_TITLE,
     description: FREE_POSTGRES_DESCRIPTION,
     h1: FREE_POSTGRES_MARKDOWN_H1,

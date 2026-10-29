@@ -272,7 +272,7 @@ const agentMarkdownPaths = [
   "/stack",
   "/enterprise",
   "/mcp",
-  "/free-postgresql-hosting",
+  "/postgres/free-postgresql-hosting",
   "/compare",
   "/compare/convex",
   "/compare/kysely",
@@ -328,7 +328,8 @@ function agentMarkdownHeaders(path) {
  * that the two agree.
  */
 export const ANSWER_PAGE_HEADER_SOURCES = {
-  postgres: "/postgres/:slug((?!(?:guides|hipaa)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
+  postgres:
+    "/postgres/:slug((?!(?:guides|hipaa|free-postgresql-hosting)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
   compute: "/compute/:slug((?!(?:guides)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
 };
 
@@ -386,13 +387,20 @@ const config = {
         destination: `/lp/${slug}?utm_term=lp-${slug}`,
         permanent: false,
       })),
-      // Search Console 404s: published docs URLs missing the /docs base path.
-      // Exact mappings preserve the /orm marketing page and unknown-path 404s.
+      // The free Postgres page lives at /postgres/free-postgresql-hosting.
+      // Earlier URLs keep a permanent redirect onto that page.
       {
         source: "/free-postgresql-database",
-        destination: "/free-postgresql-hosting",
+        destination: "/postgres/free-postgresql-hosting",
         permanent: true,
       },
+      {
+        source: "/free-postgresql-hosting",
+        destination: "/postgres/free-postgresql-hosting",
+        permanent: true,
+      },
+      // Search Console 404s: published docs URLs missing the /docs base path.
+      // Exact mappings preserve the /orm marketing page and unknown-path 404s.
       { source: "/ai/mcp-tools", destination: "/docs/ai/mcp-tools", permanent: true },
       {
         source: "/orm/v6/prisma-client/queries/pagination",
