@@ -121,7 +121,13 @@ export function renderFreePostgresqlDatabaseMarkdown(): string {
     ].join("\n"),
 
     heading(2, FREE_POSTGRES_FEATURES_HEADLINE),
-    bulletList(FREE_POSTGRES_INCLUDED_CARDS.map((card) => `**${card.title}.** ${card.detail}`)),
+    bulletList(
+      FREE_POSTGRES_INCLUDED_CARDS.map((card) =>
+        card.note
+          ? `**${card.title}**<sup>${card.note}</sup>. ${card.detail}`
+          : `**${card.title}.** ${card.detail}`,
+      ),
+    ),
     [
       "| Feature | Included |",
       "| --- | --- |",

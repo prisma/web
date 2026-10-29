@@ -366,7 +366,8 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.ok(!markdown.includes("Roughly, in a day"));
   assert.ok(!markdown.includes("The catch is stated here"));
   assert.ok(!markdown.includes("Queries stop at 200,000"));
-  assert.equal(markdown.split("Queries stop").length - 1, 1);
+  assert.equal(markdown.split("Queries stop").length - 1, 3);
+  assert.ok(markdown.includes("**200,000**<sup>1</sup>."));
   assert.ok(markdown.includes("### What counts"));
   assert.ok(markdown.includes("One query is one operation: a simple read, a write, or a join."));
   assert.ok(markdown.includes("200,000 operations a month"));
@@ -379,7 +380,8 @@ test("the hero window is a plain terminal plus light agent sessions", () => {
   assert.ok(markdown.includes("Until the 1st of the next month, or until you upgrade."));
   assert.ok(markdown.includes("### A 24 hour restore, once"));
   assert.ok(markdown.includes("Once per workspace, in the Console. It lets you export first."));
-  assert.ok(markdown.includes("On paid plans this never happens"));
+  assert.ok(markdown.includes("Queries stop when the spend limit is reached."));
+  assert.ok(!markdown.includes("never stop"));
   assert.ok(markdown.includes("### A personal blog"));
   assert.ok(markdown.includes("A visit loads the list of posts, then the post."));
   assert.ok(markdown.includes("about 40 queries a day. Stays on Free."));

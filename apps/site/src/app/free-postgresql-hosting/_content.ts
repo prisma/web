@@ -76,7 +76,7 @@ export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
   {
     question: "What does the free Postgres plan include?",
     answer:
-      "Each Free workspace gets managed [PostgreSQL 17](/docs/postgres) with 200,000 operations a month, 2 GB of storage, up to 50 databases, 10 pooled and 10 direct connections, unlimited data transfer, [pgvector](/docs/postgres/database/postgres-extensions) and the other supported extensions, and a choice of [six regions](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in). Backups and spend limits start on the Starter plan at $10 a month.",
+      "Each Free workspace gets managed [PostgreSQL 17](/docs/postgres) with 200,000 operations a month, 2 GB of storage, up to 50 databases, 10 pooled and 10 direct connections (5 direct reserved for platform operations), unlimited data transfer, [pgvector](/docs/postgres/database/postgres-extensions) and the other supported extensions, and a choice of [six regions](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in). Backups and spend limits start on the Starter plan at $10 a month.",
   },
   {
     question: "What counts as an operation?",
@@ -86,7 +86,7 @@ export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
   {
     question: "What happens when I reach the free limit?",
     answer:
-      "When a Free workspace uses its 200,000 monthly operations, its databases stop accepting queries until the allowance resets on the 1st of the next month, or until you upgrade. If you need time to export your data first, you can [restore access for 24 hours](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) from the Console, once per workspace. Paid plans never stop: extra operations are billed at your plan's rate, with a spend limit you control.",
+      "When a Free workspace uses its 200,000 monthly operations, its databases stop accepting queries until the allowance resets on the 1st of the next month, or until you upgrade. If you need time to export your data first, you can [restore access for 24 hours](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) from the Console, once per workspace. Paid plans bill operations past the allowance. Queries stop when the spend limit is reached.",
   },
   {
     question: "Does a free Postgres database pause when it is idle?",
@@ -101,7 +101,7 @@ export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
   {
     question: "Can I use the Free plan in production?",
     answer:
-      "For a small app, yes, with two things to know. The Free plan has no backups, and your databases stop accepting queries if you use all 200,000 monthly operations. For an app with paying users, Starter at $10 a month adds daily backups kept for 7 days and 1 million operations, and it never stops at the limit.",
+      "For a small app, yes, with two things to know. The Free plan has no backups, and your databases stop accepting queries if you use all 200,000 monthly operations. For an app with paying users, Starter at $10 a month adds daily backups kept for 7 days and 1 million operations. Extra operations are billed, and queries stop at the spend limit.",
   },
   {
     question: "Do I need a credit card for a free Postgres database?",
@@ -140,7 +140,7 @@ export const FREE_PLAN_FACTS = [
   },
   {
     label: "Connections",
-    value: "10 pooled and 10 direct per database",
+    value: "10 pooled and 10 direct per database, 5 direct reserved for the platform",
   },
   {
     label: "Data transfer",
@@ -198,7 +198,7 @@ export const BUILD_CARDS = [
 export const UPGRADE_POINTS = [
   {
     plan: "Starter, $10 a month",
-    body: "1 million operations, 10 GB of storage, daily backups kept 7 days, a spend limit, and no stop at the limit.",
+    body: "1 million operations, 10 GB of storage, daily backups kept 7 days, and a spend limit. Extra operations are billed until queries stop at that limit.",
   },
   {
     plan: "Pro, $49 a month",
@@ -325,7 +325,7 @@ export const FREE_POSTGRES_LIMIT = {
   capBody: "Until the 1st of the next month, or until you upgrade.",
   restoreTitle: "A 24 hour restore, once",
   restoreBody: "Once per workspace, in the Console. It lets you export first.",
-  paid: `On paid plans this never happens: extra operations are billed, with a spend limit you set. Read the [docs FAQ on the free limit](${DOCS_FREE_LIMIT}).`,
+  paid: `On paid plans, extra operations are billed. Queries stop when the spend limit is reached. Read the [docs FAQ on the free limit](${DOCS_FREE_LIMIT}).`,
 } as const;
 
 // Three setups under the limit panel. Counts are approximate. The blog is the
@@ -405,7 +405,7 @@ export const FREE_POSTGRES_INCLUDED_ROWS: readonly FreePostgresIncludedRow[] = [
   {
     label: "Connections",
     value:
-      "10 pooled for the app, and 10 direct for migrations, Studio, and pg_dump, per database.",
+      "10 pooled for the app, and 10 direct for migrations, Studio, and pg_dump, per database. 5 of those direct connections are reserved for the platform.",
   },
   { label: "Data transfer", value: "No meter on what the database sends or receives." },
   {
