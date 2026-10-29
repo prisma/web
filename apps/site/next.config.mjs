@@ -388,7 +388,9 @@ const config = {
         permanent: false,
       })),
       // The free Postgres page lives at /postgres/free-postgresql-hosting.
-      // Earlier URLs keep a permanent redirect onto that page.
+      // Earlier URLs keep a permanent redirect onto that page. The HTML
+      // sources do not match the .md rendition, which is rewritten to
+      // /llms.mdx separately, so the old Markdown URL is redirected too.
       {
         source: "/free-postgresql-database",
         destination: "/postgres/free-postgresql-hosting",
@@ -397,6 +399,11 @@ const config = {
       {
         source: "/free-postgresql-hosting",
         destination: "/postgres/free-postgresql-hosting",
+        permanent: true,
+      },
+      {
+        source: "/free-postgresql-hosting.md",
+        destination: "/postgres/free-postgresql-hosting.md",
         permanent: true,
       },
       // Search Console 404s: published docs URLs missing the /docs base path.
