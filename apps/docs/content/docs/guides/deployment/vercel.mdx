@@ -1,0 +1,181 @@
+---
+title: Vercel
+description: 'Deploy a Next.js app that uses Prisma ORM to Vercel: commit the contract files, apply migrations before you deploy, set the connection string, and make pages that query render on each request.'
+url: /guides/deployment/vercel
+metaTitle: How to deploy a Prisma ORM app to Vercel
+metaDescription: 'Deploy a Next.js app with Prisma ORM 8 to Vercel. Commit the contract files, apply migrations from your machine or CI, set DATABASE_URL in the project, keep querying pages dynamic, and release idle connections on Fluid compute.'
+---
+
+## Introduction
+
+This guide deploys a Next.js app that uses Prisma ORM 8 to [Vercel](https://vercel.com).
+
+The contract is Prisma ORM 8's name for the schema file, `src/prisma/contract.prisma`. `npx prisma contract emit` turns it into `contract.json` and `contract.d.ts`, which take the place of the client that `prisma generate` produced in Prisma ORM 7. Prisma ORM needs four things from a Vercel deployment: those contract files in your repository, a database whose tables already match the contract, the connection string as a Vercel environment variable, and pages that query the database when a request arrives rather than during the build. The steps below go through them in that order.
+
+Your client file, `src/prisma/db.ts` in a project set up by `npm create prisma` or `npx prisma orm init`, works on Vercel as it is. Vercel reuses a function instance for many requests, so the connection pool the client opens on the first query serves the requests after it.
+
+:::note[Using Prisma Postgres?]
+
+The [Vercel Marketplace integration](/guides/postgres/vercel) creates a [Prisma Postgres](/postgres) database from your Vercel dashboard and sets `DATABASE_URL` on your project for you, so you can skip adding it in step 3. The value it sets is the direct connection string, which allows only a few connections at a time, and the integration manages that variable, so leave it as it is. Before production traffic, add the pooled string as a second variable, `DATABASE_URL_POOLED`, and wherever `src/prisma/db.ts` reads `process.env.DATABASE_URL`, read `process.env.DATABASE_URL_POOLED` instead, in step 5's version too. [Use the pooled connection string](/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic) shows where to get it.
+
+:::
+
+## Prerequisites
+
+- A Next.js app that uses the App Router and Prisma ORM 8, in a Git repository. This guide shows a contract written in `src/prisma/contract.prisma`, the default. If yours is a TypeScript contract, `contract.ts`, `contract emit` writes its files to `src/prisma/generated/`: use that folder in the `git ls-files` command in step 1 and in the imports in step 5. To start one, follow [Next.js](/guides/frameworks/nextjs) up to its deploy step. That guide's template, from `npm create prisma@latest -- my-app --template next --provider postgres --no-deploy`, is the app this guide refers to as the template; `--no-deploy` skips its offer to deploy to Prisma's own hosting. To move a Prisma ORM 7 app first, follow [Upgrade to Prisma ORM 8](/guides/upgrade-prisma-orm/postgresql).
+- A [Vercel account](https://vercel.com/signup).
+- A PostgreSQL database for production that Vercel can reach over the internet, such as [Prisma Postgres](/postgres).
+
+## 1. Check the app before you deploy
+
+Vercel installs your dependencies and runs `next build`, and Prisma ORM adds nothing to that. Prisma ORM 8 has no `prisma generate` command: if your `package.json` still runs it in `postinstall` or `build` from Prisma ORM 7, remove it, because the command now fails with `CLI.UNKNOWN_COMMAND` and stops the build. The build needs three things from your repository.
+
+**The contract files are committed.** `npx prisma contract emit` writes `src/prisma/contract.json` and `src/prisma/contract.d.ts`, and `src/prisma/db.ts` imports them, so they must be in Git. Commit the `migrations/` folder in the project root too, because step 2 applies the migrations in it. List what Git tracks:
+
+```bash
+git ls-files src/prisma/contract.json src/prisma/contract.d.ts migrations
+```
+
+The output must include both contract files and the files under `migrations/`. If a contract file is missing, check that `.gitignore` does not list it, run `npx prisma contract emit`, and commit the result. If `migrations/` is missing, run `npx prisma migration plan --name init` and commit the folder it writes.
+
+**`Temporal` is available.** Vercel runs Node.js 24 unless you choose 22, and neither has the `Temporal` API that Prisma ORM uses for `DateTime` fields. Without it, reading a `DateTime` field fails with `RUNTIME.TEMPORAL_UNAVAILABLE`. The template's `src/prisma/db.ts` imports the polyfill already. If yours does not, install it and add the import at the top of the file:
+
+```npm
+npm install temporal-polyfill
+```
+
+```ts title="src/prisma/db.ts"
+import "temporal-polyfill/global";
+```
+
+[Supported versions](/orm/supported-versions#runtimes) explains which runtimes need it.
+
+**Pages that query are dynamic.** By default, Next.js renders a page at build time when it can, and Vercel then serves that same HTML to every visitor. A page that queries Prisma ORM must render on each request instead, or every visitor sees the rows from the moment of the build. If the build has no `DATABASE_URL`, the query fails during the build: the build stops with the error, or, when the page catches it as the template's does, the build succeeds and every visitor sees the error message. The template's page opts out of build-time rendering at the top of the file:
+
+```tsx title="src/app/page.tsx"
+export const dynamic = "force-dynamic";
+```
+
+Add the same line to every page and route handler that runs a query while it renders, directly or through a helper it calls. If your `next.config.ts` turns on `cacheComponents`, Next.js refuses this line with `Route segment config "dynamic" is not compatible with nextConfig.cacheComponents`; mark those pages as request-time the way [Cache Components](https://nextjs.org/docs/app/getting-started/cache-components) describes instead. Do not set `export const runtime = "edge"` on them either: Prisma ORM runs in Vercel's Node.js functions, which is what Next.js uses by default, and Next.js 16 deprecates the Edge runtime.
+
+## 2. Create the tables in your production database
+
+Your deployment expects the tables to exist already, so apply your migrations to the production database before you deploy, from your machine or from CI. Use the database's direct connection string, the one that does not go through a connection pooler, because migrations can fail with lock and prepared-statement errors through a pooler. For Prisma Postgres, that is the string whose host is `db.prisma.io`; for another provider, it is the one the provider recommends for migrations. Put it in a shell variable and pass it with `--db`:
+
+```bash
+export PRODUCTION_DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+npx prisma db migrate --db "$PRODUCTION_DIRECT_URL"
+```
+
+`db migrate` is the Prisma ORM 8 version of `prisma migrate deploy`: it applies the migration files in your repository that the database has not run yet. The output starts with `✔ Applied 1 migration(s)`, with your own count, or says `Already up to date` when there was nothing to apply.
+
+When you change your contract later:
+
+1. Run `npx prisma contract emit` to update the contract files.
+2. Run `npx prisma migration plan --name <what-changed>`, which writes a new migration under `migrations/`.
+3. Run `npx prisma db migrate --advance-ref db` to apply it to your development database. Without `--advance-ref db`, the next `migration plan` plans this change a second time.
+4. Commit the contract files and the new migration, including `migrations/app/refs/db.json`.
+5. Run the `db migrate` command above, before the deploy that needs the change.
+
+Because the migration runs before the new code is live, the code that is still live must keep working against the new tables. Adding a column or a table is safe. To rename or remove a column the live code reads, add the new column first and remove the old one in a later deploy, as [Data migration](/guides/database/data-migration) shows.
+
+Do not run `db migrate` in Vercel's build command. If the build applied a migration and `next build` then failed, the database would have the new tables while the live site still ran the old code. The build also runs for every preview deployment. In a pipeline, apply migrations in a CI step instead; [Applying a migration](/orm/migrations/applying-a-migration#development-vs-production) shows the commands for that, and [GitHub Actions](/guides/integrations/github-actions) shows a workflow. When Vercel deploys on every push, a CI step on the same push runs at the same time as Vercel's build, so nothing stops Vercel from making the new code live before the migration finishes. Add the CI job as a [Deployment Check](https://vercel.com/docs/deployment-checks) in the Vercel project: Vercel then builds the deployment but makes it live only after the job succeeds.
+
+## 3. Create the Vercel project and set the connection string
+
+Push your repository to GitHub, GitLab, or Bitbucket, then in the Vercel dashboard select **Add New** > **Project** and import it. Vercel detects Next.js and fills in the build settings, so you need not change them.
+
+Before the first deploy, open **Environment Variables** on the import screen and add `DATABASE_URL` with the connection string your app should use. Use a pooled connection string here if your database has one, because Vercel starts more instances as traffic grows and a pooler shares a small number of database connections between them. For Prisma Postgres, that is the string whose host is `pooled.db.prisma.io`; [Connecting to your database](/postgres/database/connecting-to-your-database) explains the two strings.
+
+To set it from the command line instead, after the project exists, run `npx vercel link` in your project folder to connect it to the Vercel project, and then:
+
+```bash
+npx vercel env add DATABASE_URL --environment production
+```
+
+The command prompts for the value. If your preview deployments should reach a database, run it again with `--environment preview`, and give previews a separate database from production, because previews run code from branches that nobody has reviewed yet. Apply the migrations to that database too, with the `db migrate` command from step 2 and its connection string, before you deploy a preview that needs them.
+
+## 4. Deploy and check
+
+Select **Deploy**, or push a commit to the branch Vercel deploys. From the command line:
+
+```bash
+npx vercel deploy --prod
+```
+
+The build log shows `next build` and lists the page as dynamic:
+
+```text no-copy
+Route (app)
+┌ ƒ /
+└ ○ /_not-found
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+```
+
+Open the URL Vercel prints and go to a page that queries the database. In the template, the home page lists the users in your production database, and the first time it loads it adds three sample users, Alice, Bob, and Carol, if they are not there yet. If a page shows an error or no data instead, the reason is in the deployment's **Logs** tab in the Vercel dashboard: a missing `DATABASE_URL` shows as `DRIVER.NOT_CONNECTED` (or `ECONNREFUSED 127.0.0.1:5432` if you create the `pg` pool yourself as in step 5), and `relation "public.User" does not exist` means step 2 has not run against this database.
+
+## 5. Optional: release idle connections when Vercel pauses a function
+
+Vercel runs functions on [Fluid compute](https://vercel.com/docs/fluid-compute), where an instance can be paused between requests while the connections in its pool stay open. Vercel's `attachDatabasePool` closes idle connections before an instance is paused. Add it if your database reports too many connections, or holds many open connections while your traffic is low. To use it, create the `pg` pool yourself, attach it, and pass it to the Prisma ORM client.
+
+Install `@vercel/functions` and `pg`, and `@types/pg` for TypeScript. Use the same `pg` and `@types/pg` versions that your `@prisma/orm-postgres` depends on: with a different `@types/pg`, TypeScript refuses the pool with `Type 'Pool' is not assignable`. `npm ls @prisma/orm-postgres` shows your version, and `npm view @prisma/orm-postgres@<version> dependencies` lists the two. For 8.0.0-rc.21 they are:
+
+```npm
+npm install @vercel/functions pg@8.22.0
+npm install --save-dev @types/pg@8.20.4
+```
+
+Then replace the contents of `src/prisma/db.ts` with the version below, which creates the client from the pool. If you changed your `db.ts`, carry those changes over; the template's version also had code for running on Prisma Compute, Prisma's own hosting, which a Vercel deployment does not use.
+
+```ts title="src/prisma/db.ts"
+import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
+import { attachDatabasePool } from "@vercel/functions";
+import { Pool } from "pg";
+import "temporal-polyfill/global";
+
+import type { Contract } from "./contract.d.ts";
+import contractJson from "./contract.json" with { type: "json" };
+
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+attachDatabasePool(pool);
+
+export const db = postgres({ contract, pg: pool });
+```
+
+The rest of your code imports `db` as before, and your app never closes it on Vercel. In a one-off script that imports `db`, such as a seed, call `await db.close()` and then `await pool.end()` at the end, because the client leaves a pool you created open. [Bind to an existing `pg` pool](/orm/reference/transactions-and-runtime#bind-to-an-existing-pg-pool) covers the options.
+
+## Common problems
+
+- **The page shows no data, or data that never changes.** The page was rendered during the build. Add `export const dynamic = "force-dynamic"` as in [step 1](#1-check-the-app-before-you-deploy) and deploy again.
+- **`RUNTIME.TEMPORAL_UNAVAILABLE` in the logs.** The function runs on a Node.js version without `Temporal`, and `db.ts` does not import the polyfill. Add the import from [step 1](#1-check-the-app-before-you-deploy).
+- **`DRIVER.NOT_CONNECTED` in the logs, or `ECONNREFUSED 127.0.0.1:5432` with the pool from step 5.** `DATABASE_URL` is not set for the environment this deployment belongs to. Add it under **Settings** > **Environment Variables** and redeploy, because a changed variable applies only to deployments made after the change.
+- **The build fails with `Module not found: Can't resolve './contract.json'`.** The contract files are not committed. See [step 1](#1-check-the-app-before-you-deploy).
+
+## Use with your agent
+
+To hand this guide to your coding agent, copy the prompt below:
+
+<AgentPrompt>
+
+```text
+Prepare my Next.js app that uses Prisma ORM 8 for deployment to Vercel.
+
+1. Check that the files `npx prisma contract emit` writes (`src/prisma/contract.json` and `contract.d.ts`, or `src/prisma/generated/` with a TypeScript contract) and the `migrations/` folder are tracked by Git; if not, remove them from `.gitignore`, run `npx prisma contract emit`, and commit them.
+2. Check that `src/prisma/db.ts` imports `temporal-polyfill/global`; if not, install `temporal-polyfill` and add the import at the top.
+3. Find every page and route handler that queries `db` and make sure it does not set `runtime = "edge"`. If `next.config.ts` does not turn on `cacheComponents`, make sure each one exports `dynamic = "force-dynamic"`. If it does, do not export `dynamic`; mark those pages as request-time as the Next.js Cache Components guide describes.
+4. Do not add `prisma db migrate` to the build. Tell me to apply migrations to production with `npx prisma db migrate --db "$PRODUCTION_DIRECT_URL"` before the deploy, and to set `DATABASE_URL` (the pooled connection string) in the Vercel project.
+5. Run `npm run build` with no `DATABASE_URL` set and confirm the querying pages are listed as dynamic (ƒ).
+```
+
+</AgentPrompt>
+
+## Next steps
+
+- [Prisma Postgres on Vercel](/guides/postgres/vercel) creates the database from the Vercel Marketplace.
+- [Applying a migration](/orm/migrations/applying-a-migration) shows how to preview what a migration will do, and how to apply only the migrations you have approved for production.
+- [Next.js](/guides/frameworks/nextjs) builds the app this guide deploys, and deploys it to Prisma Compute instead.

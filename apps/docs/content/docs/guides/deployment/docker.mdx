@@ -79,7 +79,7 @@ Installing Express first also creates `package-lock.json`, which is how the next
 
 ### 1.2. Add Prisma ORM
 
-Run `orm init` in the project. It preselects PostgreSQL and the PSL authoring style, installs the runtime and the CLI, and emits the contract artifacts:
+Run `orm init` in the project to add Prisma ORM. With these flags it picks PostgreSQL and the PSL authoring style, installs the library and the command-line tool, and writes the contract files:
 
 ```npm
 npx prisma@latest orm init --yes --target postgres --authoring psl
@@ -197,12 +197,22 @@ app.get("/", async (req, res) => {
 
 const PORT = Number(process.env.PORT) || 3000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+function shutdown() {
+  server.close(async () => {
+    await db.close();
+  });
+}
+process.on("SIGTERM", shutdown); // docker stop
+process.on("SIGINT", shutdown); // Ctrl+C
 ```
 
-Model access is namespace-qualified on PostgreSQL (`db.orm.public.User`), and [counting](/orm/fundamentals/reading-data#count-records) goes through `.aggregate(...)`. There is no `PrismaClient`, no driver adapter, and nothing to instantiate: `db.ts` already exports the client.
+On PostgreSQL, models are grouped by the database schema their table is in. Your table is in the default `public` schema, so you write `db.orm.public.User`, and [counting](/orm/fundamentals/reading-data#count-records) goes through `.aggregate(...)`. There is no `PrismaClient`, no driver adapter, and nothing to instantiate: `db.ts` already exports the client.
+
+`shutdown` runs in two cases: when you press Ctrl+C, and when `docker stop` stops the container from [step 3.5](#35-build-and-run-the-application). `server.close()` stops accepting new requests and waits for the running ones to finish, and then its callback calls `db.close()`, the Prisma ORM 8 replacement for `$disconnect()`. You need no `process.exit()`: once the server and the client are closed, Node.js exits by itself. If it does not, something else in your app is still open, such as another database client or a timer, and `shutdown` should close that too. Without the handler, Node.js stops at once, and a request that is still running gets no response. Docker waits 10 seconds after `SIGTERM` and then stops the container by force, so a request that takes longer is cut off either way; to wait longer, set `stop_grace_period`, such as `stop_grace_period: 30s`, on the service in `docker-compose.yml`.
 
 With the application in place, the next step is a PostgreSQL database to migrate against.
 
@@ -536,11 +546,11 @@ Running Studio as a Compose service, as the Prisma ORM 7 guide did, does not wor
 
 :::warning
 
-Do not call `db.close()` in a route handler. The client's connection pool is shared across requests; close it only on process shutdown.
+Do not call `db.close()` in a route handler. The client's connection pool is shared across requests; close it only on process shutdown, as the `SIGTERM` handler in [step 1.4](#14-create-an-express-server) does.
 
 :::
 
-- **`npm ci` fails in the image with `Missing: @emnapi/runtime ... from lock file`.** The lockfile `orm init` leaves behind on macOS or Windows lacks Linux-only optional packages. Regenerate it as in [step 3.1](#31-regenerate-the-lockfile).
+- **`npm ci` fails in the image with `Missing: @emnapi/runtime ... from lock file`.** If you ran `orm init` on macOS or Windows, the lockfile is missing optional packages that Linux needs. Regenerate it as in [step 3.1](#31-regenerate-the-lockfile).
 - **`db.ts` will not load.** If `orm init` warned about `"type": "commonjs"`, set `"type": "module"` in `package.json`. The scaffolded `db.ts` imports `contract.json` with an ES module import attribute.
 - **The image is large.** The built image measured 2.12 GB on disk on `node:24-alpine` and 2.23 GB on `node:24-slim` (the `DISK USAGE` column of `docker image ls`), almost all of it the `prisma` dev dependency, which bundles the Composer and deploy toolchain. The image needs the CLI because it runs `db migrate` at start.
 - **`docker run --env-file` keeps the quotes.** Compose strips the quotes around `DATABASE_URL` in `.env.prod`; plain `docker run --env-file` does not, and the Prisma CLI then rejects the URL. Pass `-e DATABASE_URL=...` without quotes when you run the image by hand.

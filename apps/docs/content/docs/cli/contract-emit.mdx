@@ -8,7 +8,7 @@ metaDescription: Learn how to emit contract.json and contract.d.ts for Prisma OR
 
 `contract emit` reads your contract source (TypeScript or Prisma schema) and writes the generated artifacts used by the runtime, verification, and migration tooling.
 
-The command is offline. It does not need a database connection.
+The command is offline: it does not need a database connection.
 
 A Prisma schema source can be one `.prisma` file or a glob that matches several files; see [Split the schema across several files](/cli/configuration#split-the-schema-across-several-files). `contract emit` reads only the `.prisma` files whose first line is `// use prisma-8`, and skips any other file without a warning. When no file starts with that line, it fails with `CONTRACT.SOURCE_LOAD_FAILED` and reports the problem with the code `PSL_NO_OPTED_IN_SCHEMA_FILES`.
 
@@ -96,6 +96,45 @@ An emit that fails shows in Vite's error overlay. The plugin does nothing in a p
 npx prisma contract emit
 npx prisma contract emit --output-path ./generated
 npx prisma contract emit --json
+```
+
+## JSON output
+
+With `--json`, standard output gets one JSON object per line. The command first prints a line for each step as it starts and finishes, with `kind` set to `step-started` or `step-finished`. The last line has `kind` set to `result`. When the command succeeds, `envelope.ok` is `true` and `envelope.result` holds what it wrote. Here the line is formatted for reading:
+
+```json
+{
+  "kind": "result",
+  "envelope": {
+    "ok": true,
+    "commandId": "contract.emit",
+    "result": {
+      "ok": true,
+      "storageHash": "1054ff66dd2721cf119b17845c6da6043491cc100c62e59d5fd50f134bfea938",
+      "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
+      "outDir": "/path/to/project/src/prisma",
+      "files": {
+        "json": "/path/to/project/src/prisma/contract.json",
+        "dts": "/path/to/project/src/prisma/contract.d.ts"
+      },
+      "timings": { "total": 187 }
+    },
+    "exitCode": 0,
+    "diagnostics": [],
+    "nextActions": []
+  },
+  "commandId": "contract.emit",
+  "timestamp": "2026-10-28T15:50:45.533Z"
+}
+```
+
+When the command fails, `envelope.ok` is `false`, `envelope.error.code` holds the error code, and there is no `envelope.result`.
+
+`storageHash` is the contract's hash: the value that [`migration ref set`](/cli/migration-ref) and the `--to` flags accept. To read it in a script, keep only the result line, and use `jq -e` with `pipefail` so that the script stops when emitting fails:
+
+```bash
+set -eo pipefail
+hash=$(npx prisma contract emit --json | jq -er 'select(.kind == "result") | .envelope.result.storageHash')
 ```
 
 ## Data lines
