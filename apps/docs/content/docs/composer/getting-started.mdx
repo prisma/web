@@ -197,7 +197,7 @@ export default module('my-app', ({ provision }) => {
 });
 ```
 
-Next to it goes `prisma.config.ts`, the one config file the Prisma CLI reads. The deploy config is its `composer` section: the extensions that deploy your app and the store that keeps deploy state. Only the CLI reads this file; your app code never imports it.
+Next to it goes `prisma.config.ts`, the one config file the Prisma CLI reads. The deploy config is its `composer` section: the entry module whose default export is the app, the extensions that deploy your app, and the store that keeps deploy state. Only the CLI reads this file; your app code never imports it.
 
 If you ran `prisma init` for the agent skill, `prisma.config.ts` already exists with a `skills` section. Add the `composer` key to its `definePrismaConfig` call and keep `skills`; the `postinstall` hook `init` added reads it. The file then looks like this, with your own agents in `skills`:
 
@@ -212,6 +212,7 @@ export default definePrismaConfig({
     agents: ['claude'],
   },
   composer: composer({
+    entry: './module.ts',
     extensions: [prismaCloud(), nodeBuild()],
     state: prismaState(),
   }),
@@ -228,6 +229,7 @@ import { definePrismaConfig } from 'prisma/config';
 
 export default definePrismaConfig({
   composer: composer({
+    entry: './module.ts',
     extensions: [prismaCloud(), nodeBuild()],
     state: prismaState(),
   }),
@@ -263,15 +265,15 @@ npx tsc --noEmit
 With the build from step 5 in place, one command brings the whole app up on your machine, both services wired together, with no cloud credentials:
 
 ```npm
-npx prisma dev module.ts
+npx prisma dev
 ```
 
 It runs the same pipeline a deploy runs, against local stand-ins for Prisma Compute and Prisma Postgres, and prints each service's local URL once every service accepts connections:
 
 ```text no-copy
 dev: ready
-gateway: http://localhost:3001
-quotes: http://localhost:3000
+my-app.gateway: http://localhost:3001
+my-app.quotes: http://localhost:3000
 ```
 
 Each service gets the lowest free port from 3000 up, so your ports can differ if another program already uses 3000 or 3001. `dev` keeps running in this terminal.
@@ -279,26 +281,26 @@ Each service gets the lowest free port from 3000 up, so your ports can differ if
 Verify it works by calling the gateway. Open a second terminal in the same directory and ask `dev url` where the gateway answers, then call it:
 
 ```bash
-curl "$(npx prisma dev url gateway)"
+curl "$(npx prisma dev url my-app.gateway)"
 ```
 
 ```text no-copy
-✔ The service gateway is running at http://localhost:3001
+✔ The service my-app.gateway is running at http://localhost:3001
 Make it work, make it right, make it fast.
 ```
 
 The first line comes from `dev url`, which says what it found; only the bare URL is passed to `curl`. The second line is the gateway's response, one of the two quotes at random. That response traveled over one typed RPC hop: the gateway received your request, called `quotes.random({})` through its injected client, and returned the result.
 
-`npx prisma dev url gateway` prints only the gateway's URL, so the command works whichever port the gateway got. If it fails with `DEV.NOT_RUNNING`, the first terminal's `dev` is no longer running; start it again. `dev url` is in `prisma` since `8.0.0-rc.24`. On an older version, call the URL that `dev` printed, for example `curl http://localhost:3001`.
+`npx prisma dev url my-app.gateway` prints only the gateway's URL, so the command works whichever port the gateway got. If it fails with `DEV.NOT_RUNNING`, the first terminal's `dev` is no longer running; start it again. `dev url` is in `prisma` since `8.0.0-rc.24`. On an older version, call the URL that `dev` printed, for example `curl http://localhost:3001`.
 
 Now try the quotes service directly, from the same second terminal:
 
 ```bash
-curl -i -X POST "$(npx prisma dev url quotes)/rpc/random" -H 'content-type: application/json' -d '{}'
+curl -i -X POST "$(npx prisma dev url my-app.quotes)/rpc/random" -H 'content-type: application/json' -d '{}'
 ```
 
 ```text no-copy
-✔ The service quotes is running at http://localhost:3000
+✔ The service my-app.quotes is running at http://localhost:3000
 HTTP/1.1 401 Unauthorized
 ...
 {"error":"Unauthorized: missing or invalid service key"}
@@ -314,7 +316,7 @@ Local dev needed no account. Deploying the same app to [Prisma Compute](/compute
 
 ```npm
 npx prisma auth login
-npx prisma deploy module.ts
+npx prisma deploy
 ```
 
 (In CI, where the browser sign-in is not an option, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` from the [Prisma Console](https://console.prisma.io) instead; see [Deploying](/composer/deploying#credentials).)
@@ -326,7 +328,7 @@ The CLI creates a project named `my-app` in your workspace (a project this modul
 Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage:
 
 ```npm
-npx prisma deploy module.ts --stage demo
+npx prisma deploy --stage demo
 ```
 
 Tearing a stage down is the `destroy` operation of the [control API](/cli/deploy#the-control-api). That operation does not read your `auth login` session: it needs `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` in the environment, the same service-token credentials CI uses. Without them, delete the stage's branch in the [Console](https://console.prisma.io) instead. See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
