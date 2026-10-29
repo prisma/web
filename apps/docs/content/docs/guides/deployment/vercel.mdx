@@ -36,7 +36,7 @@ Vercel installs your dependencies and runs `next build`, and Prisma ORM adds not
 git ls-files src/prisma/contract.json src/prisma/contract.d.ts migrations
 ```
 
-The output must include both contract files and the files under `migrations/`. If one is missing, check that `.gitignore` does not list it, run `npx prisma contract emit`, and commit the result.
+The output must include both contract files and the files under `migrations/`. If a contract file is missing, check that `.gitignore` does not list it, run `npx prisma contract emit`, and commit the result. If `migrations/` is missing, run `npx prisma migration plan --name init` and commit the folder it writes.
 
 **`Temporal` is available.** Vercel runs Node.js 24 unless you choose 22, and neither has the `Temporal` API that Prisma ORM uses for `DateTime` fields. Without it, reading a `DateTime` field fails with `RUNTIME.TEMPORAL_UNAVAILABLE`. The template's `src/prisma/db.ts` imports the polyfill already. If yours does not, install it and add the import at the top of the file:
 
@@ -167,7 +167,7 @@ Prepare my Next.js app that uses Prisma ORM 8 for deployment to Vercel.
 
 1. Check that the files `npx prisma contract emit` writes (`src/prisma/contract.json` and `contract.d.ts`, or `src/prisma/generated/` with a TypeScript contract) and the `migrations/` folder are tracked by Git; if not, remove them from `.gitignore`, run `npx prisma contract emit`, and commit them.
 2. Check that `src/prisma/db.ts` imports `temporal-polyfill/global`; if not, install `temporal-polyfill` and add the import at the top.
-3. Find every page and route handler that queries `db` and make sure it exports `dynamic = "force-dynamic"` and does not set `runtime = "edge"`.
+3. Find every page and route handler that queries `db` and make sure it does not set `runtime = "edge"`. If `next.config.ts` does not turn on `cacheComponents`, make sure each one exports `dynamic = "force-dynamic"`. If it does, do not export `dynamic`; mark those pages as request-time as the Next.js Cache Components guide describes.
 4. Do not add `prisma db migrate` to the build. Tell me to apply migrations to production with `npx prisma db migrate --db "$PRODUCTION_DIRECT_URL"` before the deploy, and to set `DATABASE_URL` (the pooled connection string) in the Vercel project.
 5. Run `npm run build` with no `DATABASE_URL` set and confirm the querying pages are listed as dynamic (ƒ).
 ```
