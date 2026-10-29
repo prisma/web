@@ -55,6 +55,19 @@ export const authLinks: LinkItemType[] = [
     on: "nav",
     secondary: true,
   },
+  // Below `lg` the desktop bar has no room for a second pill: it would squeeze
+  // the section crumb ("Query Insights", "Local Development") into an ellipsis.
+  // There the bar keeps Login only; the mobile drawer lists both buttons. From
+  // `lg` up only the longest crumbs clip, in the first ~30px past 1024px.
+  {
+    type: "button",
+    text: "Sign up",
+    url: "https://console.prisma.io/sign-up?utm_source=docs&utm_medium=navbar&utm_content=signup",
+    active: "none",
+    on: "nav",
+    secondary: true,
+    navbarClassName: "max-lg:hidden",
+  },
 ];
 
 export function baseOptions(): BaseLayoutProps {
@@ -66,17 +79,19 @@ export function baseOptions(): BaseLayoutProps {
               below `lg` the lockup swaps for the square mark, which costs ~28px
               instead of ~110px, so the crumb keeps `docs / <section>` at every
               width instead of truncating the section name. `lg:contents` so the
-              two lockup files still lay out as direct children of the link.
-              An image-only anchor reads as an empty link to crawlers, so the
-              link carries both an aria-label (for assistive tech) and a
-              visually hidden text node (for text-only crawlers). */}
+              two lockup files still lay out as direct children of the link,
+              and `shrink-0` so a full bar clips the crumb instead of squashing
+              the logo out of proportion. An image-only anchor reads as an
+              empty link to crawlers, so the link carries both an aria-label
+              (for assistive tech) and a visually hidden text node (for
+              text-only crawlers). */}
           {/* Right-clicking the logo opens the shared brand menu (the same one
               the site and blog headers use). */}
           <PrismaLogoMenu section="docs">
             <Link
               href="https://www.prisma.io"
               aria-label="Prisma home"
-              className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
+              className="mb-0 shrink-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
             >
               <span className="max-lg:hidden lg:contents">{logo}</span>
               <Image
