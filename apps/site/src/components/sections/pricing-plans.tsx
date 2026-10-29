@@ -64,7 +64,7 @@ const PLANS = [
     ],
     platform: ["Spend limits"],
     blurb:
-      "Ship your first production app without worrying about the bill. Backups included, spend limits on by default.",
+      "Ship your first production app without worrying about the bill. Backups included, and a spend limit you set.",
     cta: "Get started",
     href: "https://console.prisma.io/sign-up",
     popular: true,

@@ -115,7 +115,7 @@ const SCENARIOS: Scenario[] = [
     prisma: [
       "One bill, one platform",
       "Database data transfer included",
-      "Spend limits on by default",
+      "Hard spend limits you set",
     ],
   },
 ];

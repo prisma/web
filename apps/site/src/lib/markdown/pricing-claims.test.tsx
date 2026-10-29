@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { providersLanding } from "@/components/landing/content";
+import { providersLanding, starterDatabasesLanding } from "@/components/landing/content";
 import {
   ALTERNATIVES,
   PRISMA,
@@ -110,4 +110,23 @@ test("the plan table shows the pool mode, pooled query limit and Free spend limi
     /\| Operation duration \(db queries\) \| 10 min pooled, unlimited direct \| 10 min pooled, unlimited direct \| 10 min pooled, unlimited direct \| 10 min pooled, unlimited direct \|/,
   );
   assert.match(markdown, /\| Spend limits \| Fixed at \$0, no card required \| Included \|/);
+});
+
+test("Prisma's spend limit is one you set, never described as on by default", () => {
+  // A paid workspace has no spend limit until someone sets one in the Console
+  // (docs: /console/more/billing), so no pricing surface may say it is on by
+  // default. Supabase's Spend Cap is on by default and keeps its wording.
+  const onByDefault = /spend limits?,? (that is |which is )?on by default/i;
+  const spendRow = PRISMA.rows.find((row) => row.label === "Spend limits");
+  assert.ok(spendRow);
+  assert.doesNotMatch(spendRow.value, /default/i);
+  for (const text of [
+    renderPricingMarkdown(),
+    renderHomeMarkdown(),
+    pricingScaleSource,
+    JSON.stringify(providersLanding),
+    JSON.stringify(starterDatabasesLanding),
+  ]) {
+    assert.doesNotMatch(text, onByDefault);
+  }
 });

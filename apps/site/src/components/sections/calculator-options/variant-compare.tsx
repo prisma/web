@@ -129,7 +129,7 @@ export function VariantCompare() {
 
         <p className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
           <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
-          Every paid plan includes a hard spend limit, on by default.
+          Every paid plan includes a hard spend limit you set in the Console.
           {rec.custom && (
             <span className="font-semibold text-foreground">
               Usage beyond Business? Custom pricing is available — talk to us.

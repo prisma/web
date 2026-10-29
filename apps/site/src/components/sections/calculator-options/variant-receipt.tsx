@@ -132,7 +132,7 @@ export function VariantReceipt() {
             <div className="mt-5 flex items-center gap-2.5 border-t border-dashed border-black/20 pt-5">
               <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
               <p className="font-mono text-xs leading-relaxed text-foreground">
-                Spend limit on by default — the bill can&apos;t pass it.
+                Spend limit you set — the bill can&apos;t pass it.
               </p>
             </div>
 
