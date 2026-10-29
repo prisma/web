@@ -219,7 +219,12 @@ export function UtmPersistence({
       } else if (fallbackConsoleRef && isConsoleBound) {
         // No campaign ever touched this visitor, so the only thing the console
         // would learn is nothing. Tell it which page sent them instead.
-        updated = syncFallbackRef(targetUrl, fallbackConsoleRef(window.location.pathname));
+        // `data-fallback-ref` remembers the ref stamped on this anchor, so a
+        // link that survives client-side navigation (a `target="_blank"`
+        // header link) names the current page, not the first one clicked.
+        const ref = fallbackConsoleRef(window.location.pathname);
+        updated = syncFallbackRef(targetUrl, ref, anchor.dataset.fallbackRef);
+        if (updated) anchor.dataset.fallbackRef = ref;
       } else {
         return;
       }

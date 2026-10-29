@@ -184,6 +184,21 @@ test("never overrides a Console link that already carries attribution", () => {
   }
 });
 
+// The docs header opens the Console in a new tab and stays mounted across
+// client-side navigation, so its href still carries the ref from the page where
+// it was first clicked.
+test("replaces the ref it stamped on an earlier page but never an authored one", () => {
+  const header = "https://console.prisma.io/login?utm_source=docs&utm_medium=login";
+  const url = new URL(`${header}&ref=prisma.io%2Fdocs%2Fa`);
+
+  assert.equal(syncFallbackRef(url, "prisma.io/docs/b", "prisma.io/docs/a"), true);
+  assert.equal(url.toString(), `${header}&ref=prisma.io%2Fdocs%2Fb`);
+
+  const authored = new URL(`${header}&ref=producthunt`);
+  assert.equal(syncFallbackRef(authored, "prisma.io/docs/b", "prisma.io/docs/a"), false);
+  assert.equal(authored.searchParams.get("ref"), "producthunt");
+});
+
 // A visitor who arrived with a campaign takes the first/last-touch path, never
 // the fallback: the docs link's own tags give way to the visitor's touches and
 // no page `ref` is added.

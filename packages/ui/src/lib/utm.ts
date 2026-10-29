@@ -252,13 +252,18 @@ export function buildSiteRef(pathname: string) {
  * signup still names the page.
  *
  * A link that already carries `ref`, an ad click ID or a first-touch key is
- * left alone: real attribution always wins over the fallback.
+ * left alone: real attribution always wins over the fallback. The exception
+ * is `stamped`, the ref this fallback put on the same link on an earlier page:
+ * a link that outlives a client-side navigation (a header link that opens the
+ * Console in a new tab) gets the current page instead of keeping the old one.
  */
-export function syncFallbackRef(url: URL, ref: string) {
+export function syncFallbackRef(url: URL, ref: string, stamped?: string) {
   for (const key of url.searchParams.keys()) {
-    if (key === "ref" || isClickIdKey(key) || key.startsWith("first_")) {
-      return false;
-    }
+    const blocks =
+      key === "ref"
+        ? url.searchParams.get(key) !== stamped
+        : isClickIdKey(key) || key.startsWith("first_");
+    if (blocks) return false;
   }
 
   url.searchParams.set("ref", ref);
