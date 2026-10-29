@@ -246,12 +246,17 @@ export function buildSiteRef(pathname: string) {
  * records it on the signup while the person's first-touch channel stays whatever
  * it really was.
  *
- * A link that already carries any captured key or first-touch key is left
- * alone: real attribution always wins over the fallback.
+ * `utm_*` tags written into the link itself, such as the `utm_source=docs`
+ * that docs adds to its Console links at build time, describe the link, not
+ * the visitor. They stay as they are and `ref` is added next to them, so the
+ * signup still names the page.
+ *
+ * A link that already carries `ref`, an ad click ID or a first-touch key is
+ * left alone: real attribution always wins over the fallback.
  */
 export function syncFallbackRef(url: URL, ref: string) {
   for (const key of url.searchParams.keys()) {
-    if (isCapturedKey(key) || key.startsWith("first_")) {
+    if (key === "ref" || isClickIdKey(key) || key.startsWith("first_")) {
       return false;
     }
   }

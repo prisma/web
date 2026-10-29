@@ -144,10 +144,35 @@ test("stamps the fallback ref on an untagged Console link", () => {
   assert.equal(url.searchParams.has("utm_source"), false);
 });
 
+// Docs writes `utm_source=docs&utm_medium=content&utm_content=<section>` into
+// its Console links at build time (remark-console-utm), and a few blog posts
+// hard-code a campaign. Those tags describe the link, so an untagged visitor
+// still gets the page as `ref`, and the tags stay exactly as written.
+test("adds the page ref next to utm tags written into the Console link", () => {
+  for (const [authored, page] of [
+    [
+      "https://console.prisma.io/sign-up?utm_source=docs&utm_medium=content&utm_content=postgres",
+      "/docs/postgres/import-from-existing-database",
+    ],
+    [
+      "https://console.prisma.io/sign-up?utm_source=prisma_blog&utm_medium=organic&utm_campaign=launch",
+      "/blog/some-post",
+    ],
+  ] as const) {
+    const url = new URL(authored);
+    const authoredParams = [...new URL(authored).searchParams];
+
+    assert.equal(syncFallbackRef(url, buildSiteRef(page)), true, authored);
+    assert.equal(url.searchParams.get("ref"), `prisma.io${page}`, authored);
+    url.searchParams.delete("ref");
+    assert.deepEqual([...url.searchParams], authoredParams, authored);
+  }
+});
+
 test("never overrides a Console link that already carries attribution", () => {
   for (const tagged of [
-    "https://console.prisma.io/sign-up?utm_source=docs&utm_medium=login",
     "https://console.prisma.io/sign-up?ref=producthunt",
+    "https://console.prisma.io/sign-up?utm_source=docs&utm_medium=content&ref=partner",
     "https://console.prisma.io/sign-up?first_utm_source=x",
     "https://console.prisma.io/sign-up?gclid=abc",
   ]) {
@@ -157,6 +182,26 @@ test("never overrides a Console link that already carries attribution", () => {
     assert.equal(syncFallbackRef(url, "prisma.io"), false, tagged);
     assert.equal(url.toString(), before, tagged);
   }
+});
+
+// A visitor who arrived with a campaign takes the first/last-touch path, never
+// the fallback: the docs link's own tags give way to the visitor's touches and
+// no page `ref` is added.
+test("forwards a tagged visitor's touches on a docs Console link without a page ref", () => {
+  const url = new URL(
+    "https://console.prisma.io/sign-up?utm_source=docs&utm_medium=content&utm_content=postgres",
+  );
+
+  syncUtmAttribution(
+    url,
+    { first: { utm_source: "newsletter" }, last: { utm_source: "newsletter" } },
+    { includeFirstTouch: true },
+  );
+
+  assert.equal(
+    url.toString(),
+    "https://console.prisma.io/sign-up?utm_source=newsletter&first_utm_source=newsletter",
+  );
 });
 
 test("captures the ChatGPT ads click id like other ad click ids and forwards it to the console", () => {
