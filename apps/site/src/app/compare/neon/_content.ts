@@ -94,10 +94,11 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "Auth, object storage, and AI gateway",
     neon: "Managed Better Auth, S3-compatible Object Storage, and an AI Gateway ship as Neon backend primitives, declared in `neon.ts`.",
-    prisma: "Not included. Use integrations with other tools.",
+    prisma:
+      "S3-compatible Object Store buckets live in the project, next to its databases and Compute apps; pricing and plan limits are not published yet. Use integrations with other tools for auth and an AI gateway.",
     sources: {
       neon: "https://neon.com/docs/get-started/backend-overview",
-      prisma: "https://www.prisma.io/docs/postgres",
+      prisma: "https://www.prisma.io/docs/storage",
     },
   },
   {
