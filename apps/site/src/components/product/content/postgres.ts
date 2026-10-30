@@ -42,10 +42,13 @@ export const postgresContent: ProductPageContent = {
     // Check the CTA still clears the fold at 1440x800 when the copy changes.
     subheadline:
       "Managed Postgres for TypeScript and AI apps, with Prisma Compute to host your app (Node.js, Bun or Next.js) next to it in one project. Any Postgres client works; Prisma ORM is optional. Start on the free plan, no credit card.",
+    // Rewritten 2026-10-29 on the three product values (free to start,
+    // autoscaling, built for agents). Previews stay in the hero tour; spend
+    // limits stay in the microline, the outcomes and the pricing card.
     benefits: [
-      "Free preview databases per feature branch, for the ones you declare",
-      "Billed per operation, with a hard spend limit on paid plans",
-      "Predictable pricing with spend limits, no surprise bills",
+      "Free to start: 200,000 operations a month and 2 GB of storage",
+      "Autoscaling: no instance to size or upgrade",
+      "Built for agents: create databases and run SQL through the Prisma MCP server",
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },
     secondaryCta: { label: "See pricing", href: PRICING },
