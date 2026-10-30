@@ -100,7 +100,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "Organization plan plus compute billed separately per project. Pro is from $25 a month. Pro and Team include $10 a month in compute credits, enough for one Micro instance. Additional compute is billed hourly.",
     prisma:
-      "Operations plus storage, with spend limits on paid plans. Prisma Postgres Free includes 200,000 operations a month and 2 GB of storage.",
+      "Operations plus storage, with spend limits on paid plans. Prisma Postgres [Free includes 200,000 operations a month and 2 GB of storage](/postgres/free-postgresql-hosting).",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -111,7 +111,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "SOC 2 and ISO 27001 are included on Team at $599 a month. HIPAA is a paid add-on on Team and Enterprise. Not listed on Free or Pro.",
     prisma:
-      "HIPAA, SOC 2 Type II, and ISO 27001 are on the Business plan at $129 a month, with a signed BAA for HIPAA. Not available on Free, Starter, or Pro. GDPR is on every plan.",
+      "[HIPAA, SOC 2 Type II, and ISO 27001 are on the Business plan at $129 a month, with a signed BAA for HIPAA](/postgres/hipaa). Not available on Free, Starter, or Pro. GDPR is on every plan.",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/postgres/hipaa",
@@ -155,6 +155,9 @@ export const APART = [
     body: "Prisma Postgres HIPAA, SOC 2 Type II, and ISO 27001 are on Business at $129 a month. HIPAA needs a signed BAA and is not on Free, Starter, or Pro. Supabase lists SOC 2 and ISO 27001 on Team at $599 a month, with HIPAA as a paid add-on. See [HIPAA on the Business plan](/postgres/hipaa).",
   },
 ];
+
+export const PRICING_NOTE =
+  "Prisma Postgres Free includes 200,000 operations, 2 GB of storage and 50 databases with no credit card, while Supabase Free gives 500 MB per project and pauses after a week of inactivity (see [Prisma pricing](/pricing) and [Supabase pricing](https://supabase.com/pricing)).";
 
 export const PRICING: readonly {
   label: string;

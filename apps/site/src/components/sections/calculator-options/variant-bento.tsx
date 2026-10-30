@@ -164,7 +164,7 @@ export function VariantBento() {
             <div className="mt-auto flex items-center gap-2.5 border-t border-black/[0.06] pt-5">
               <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Hard spend limit, on by default — never a surprise bill.
+                Hard spend limit you set — never a surprise bill.
               </p>
             </div>
           </div>

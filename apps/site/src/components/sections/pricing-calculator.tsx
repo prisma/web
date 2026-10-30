@@ -183,7 +183,7 @@ export function PricingCalculator() {
         <Reveal delay={0.45}>
           <p className="mt-4 flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
             <XCircle className="mt-0.5 size-4 shrink-0 text-prism-red-500" aria-hidden />
-            Hard spend limit, on by default — never a surprise bill.
+            Hard spend limit on every paid plan, set in the Console — never a surprise bill.
           </p>
         </Reveal>
       </div>

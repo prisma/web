@@ -64,7 +64,7 @@ export function VariantDial() {
           {best.storageOverage > 0 && ` + ${fmtUSD(best.storageOverage)} storage`}
           {" · "}
           <Shield className="inline size-3.5 -translate-y-px text-prism-red-500" aria-hidden />{" "}
-          spend limit on
+          spend limit you set
         </p>
 
         {/* the dial */}
