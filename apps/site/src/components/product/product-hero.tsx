@@ -9,6 +9,7 @@ import { Texture } from "@/components/brand/texture";
 import { cn } from "@/lib/utils";
 import { PLATFORM_PRODUCT_ACCENTS } from "./icons";
 import { PRODUCT_ILLUSTRATIONS } from "./illustrations";
+import { splitMicroline } from "./microline";
 import { ProductTour } from "./product-tour";
 import type { ProductPageContent } from "./types";
 
@@ -40,6 +41,30 @@ function Headline({ headline, emphasis }: { headline: string; emphasis?: string 
       {headline.slice(0, at)}
       <GlassGlide>{emphasis}</GlassGlide>
       {headline.slice(at + emphasis.length)}
+    </>
+  );
+}
+
+function HeroMicroline({
+  microline,
+  href,
+  linkText,
+}: {
+  microline: string;
+  href: string;
+  linkText?: string;
+}) {
+  const { before, link, after } = splitMicroline(microline, linkText);
+  return (
+    <>
+      {before}
+      <Link
+        href={href}
+        className="underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
+      >
+        {link}
+      </Link>
+      {after}
     </>
   );
 }
@@ -176,15 +201,11 @@ export function ProductHero({
               {hero.microline ? (
                 <p className="mt-3.5 text-sm text-muted-foreground">
                   {hero.microlineHref ? (
-                    <>
-                      <Link
-                        href={hero.microlineHref}
-                        className="underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
-                      >
-                        {hero.microlineLink ?? hero.microline}
-                      </Link>
-                      {hero.microlineLink ? hero.microline.slice(hero.microlineLink.length) : null}
-                    </>
+                    <HeroMicroline
+                      microline={hero.microline}
+                      href={hero.microlineHref}
+                      linkText={hero.microlineLink}
+                    />
                   ) : (
                     hero.microline
                   )}
