@@ -16,6 +16,7 @@ Like [`deploy`](/cli/deploy), `dev` runs your *built* output, so build first.
 npx prisma dev
 npx prisma dev --fresh
 npx prisma dev --detach
+npx prisma dev --environment test --fresh
 npx prisma dev url my-app.gateway
 npx prisma dev stop
 ```
@@ -26,7 +27,7 @@ npx prisma dev stop
 | --- | --- |
 | `dev` | Run the app on this machine and watch it for changes until you press `Ctrl-C` |
 | `dev url <address>` | Print where a service, database, or bucket of the app answers locally |
-| `dev stop` | Stop the app that `prisma dev` last ran from this directory |
+| `dev stop` | Stop the app's local copy in one environment |
 
 `dev url`, `dev stop`, and `--detach` are in `prisma` since `8.0.0-rc.24`. Check your version with `npx prisma --version`.
 
@@ -36,21 +37,23 @@ npx prisma dev stop
 | --- | --- |
 | `--entry <path>` | Load the app from this module instead of the `entry` in `prisma.config.ts` |
 | `--name <name>` | Run the app under this name instead of the name its root module declares. A different name gets its own local services, databases, and buckets |
-| `--fresh` | Before starting, delete this app's local services, databases, and buckets, with their data. Other apps run from the same directory keep theirs |
+| `--environment <name>` | The environment to run as. Defaults to `dev`. Each environment is a separate local copy of the app, with its own services, databases, buckets, and ports, so a second one, such as `test`, runs alongside `dev` and leaves its data alone |
+| `--fresh` | Before starting, delete this app's local services, databases, and buckets in the environment, with their data. Other apps and environments run from the same directory keep theirs |
 | `--detach` | Return once every service answers, and leave the app running without watching for changes. `prisma dev stop` stops it. Use it in scripts, agents, and CI |
 
-`dev` needs no credentials or environment variables; local runs never talk to the platform.
+`dev` needs no credentials; local runs never talk to the platform. It reads the secrets your services bind with `envSecret` from its environment variables: your shell, or a `.env` file that `prisma.config.ts` loads. A required secret that is unset or empty stops `dev` with an error naming it. See [Secrets](/composer/local-development#secrets).
 
-When `dev` ends, by `Ctrl-C` or a failure, it stops the app's service processes and local Postgres servers. The emulators themselves keep running. Their data and ports are kept, so the next `dev` in this directory starts with the same ports and data.
+When `dev` ends, by `Ctrl-C` or a failure, it stops the app's service processes and local Postgres servers. The emulators themselves keep running. Their data and ports are kept, so the next `dev` in this directory and environment starts with the same ports and data. Local state lives in `.prisma-composer/dev/<environment>/`.
 
-With `--detach`, `dev` prints the same `ready` line and service URLs as a foreground run, then exits with code `0` and leaves the app running. It does not pick up rebuilds: run `prisma dev --detach` again after a build, or run `prisma dev` in the foreground, which takes over the running app and watches it. If a detached start fails before every service answers, `dev` stops the whole app and exits non-zero. `--detach` combines with `--fresh` and `--name`.
+With `--detach`, `dev` prints the same `ready` line and service URLs as a foreground run, then exits with code `0` and leaves the app running. It does not pick up rebuilds: run `prisma dev --detach` again after a build, or run `prisma dev` in the foreground, which takes over the running app and watches it. If a detached start fails before every service answers, `dev` stops the whole app and exits non-zero. `--detach` combines with `--fresh`, `--name`, and `--environment`.
 
 ## dev url
 
-`dev url <address>` prints the local URL of one node of the app that `prisma dev` runs from the current directory. A node is a service, database, or bucket in the app, and its address is its path from the app's name, with dots between the names, such as `my-app.gateway` or, for a database inside a `catalog` module, `my-app.catalog.database`.
+`dev url <address>` prints the local URL of one node of an app that `prisma dev` runs from the current directory. A node is a service, database, or bucket in the app, and its address is its path from the app's name, with dots between the names, such as `my-app.gateway` or, for a database inside a `catalog` module, `my-app.catalog.database`.
 
 ```npm
 npx prisma dev url my-app.gateway
+npx prisma dev url my-app.gateway --environment test
 ```
 
 ```text no-copy
@@ -69,26 +72,28 @@ That line is for you to read. When standard output is a pipe or a file, or `$(..
 url=$(npx prisma dev url my-app.gateway) && curl "$url"
 ```
 
-Run it from the directory you ran `prisma dev` in, while the app runs. It starts nothing: it reads what the last `prisma dev` in this directory recorded. With `--json`, it prints `{ address, kind, url, state }` instead.
+Run it from the directory you ran `prisma dev` in, while the app runs. The first name of the address is the app, so `dev url` does not load your entry file. It reads the environment `dev` unless `--environment` names another, and it starts nothing: it reads what `prisma dev` recorded for that app and environment in this directory. With `--json`, it prints `{ address, kind, url, state }` instead.
 
 `dev url` prints a URL only for a node that is running, so something is listening at the URL it prints. Otherwise it fails with one of these codes:
 
 | Code | Meaning |
 | --- | --- |
-| `DEV.NOT_STARTED_HERE` | `prisma dev` never ran in this directory |
+| `DEV.NOT_STARTED_HERE` | `prisma dev` never ran that app in that environment in this directory |
+| `DEV.ENVIRONMENT_NAME_MISMATCH` | The environment's folder belongs to an environment whose name differs only in case, such as `dev` for `--environment Dev` on macOS. Use the recorded name |
 | `DEV.ADDRESS_UNKNOWN` | The app has no node at that address. The message lists the addresses it has |
 | `DEV.EMULATOR_UNREACHABLE` | The emulator that runs the node is not running. Run `prisma dev` again, which starts it |
-| `DEV.NOT_RUNNING` | The node exists but is not running. Usually it was stopped, by `prisma dev stop`, by `prisma dev` ending, or by running another app in this directory. A service that keeps crashing is reported this way too, with the path of its log |
+| `DEV.NOT_RUNNING` | The node exists but is not running. Usually it was stopped, by `prisma dev stop` or by `prisma dev` ending. A service that keeps crashing is reported this way too, with the path of its log |
 
 ## dev stop
 
-`dev stop` stops the app that `prisma dev` last ran from the current directory: its service processes and local database servers, as `Ctrl-C` does in a foreground `prisma dev`.
+`dev stop` stops the app's local copy in one environment: its service processes and local database servers, as `Ctrl-C` does in a foreground `prisma dev`. It finds the app as `prisma dev` does, from your entry file or `--name`, and stops the environment `dev` unless `--environment` names another. Other apps and environments keep running.
 
 ```npm
 npx prisma dev stop
+npx prisma dev stop --environment test
 ```
 
-Use it to stop an app started with `--detach`, or when `prisma dev` was killed without a chance to stop the app. It lists the services and databases it stopped. When nothing of the app was running, it prints `Nothing of <app> was running.` and still exits with code `0`. Data and ports are kept, so the next `prisma dev` starts with the same ports and data. The emulators themselves keep running, because apps in other directories may use them.
+Use it to stop an app started with `--detach`, or when `prisma dev` was killed without a chance to stop the app. If that app never ran in that environment here, it fails with `DEV.NOT_STARTED_HERE`. It lists the services and databases it stopped. When nothing of the app was running, it prints `Nothing of <app> was running.` and still exits with code `0`. Data and ports are kept, so the next `prisma dev` starts with the same ports and data. The emulators themselves keep running, because apps in other directories may use them.
 
 ## Global flags
 
