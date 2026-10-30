@@ -1,9 +1,9 @@
 ---
 title: deploy
-description: Deploy a Composer application to Prisma Compute, to production or an isolated stage.
+description: Deploy a Composer application to Prisma Compute, to production or another environment.
 url: /cli/deploy
 metaTitle: deploy | Prisma CLI
-metaDescription: Complete reference for the prisma deploy command, including stages, credentials, CI reports, and the in-process control API.
+metaDescription: Complete reference for the prisma deploy command, including environments, credentials, CI reports, and the in-process control API.
 ---
 
 `deploy` deploys a [Prisma Composer](/composer) application to [Prisma Compute](/compute). It loads the module whose default export is the application root, named by `entry` in the `composer` section of `prisma.config.ts`, typically `./module.ts`. The command streams the deploy pipeline's own output to the terminal.
@@ -20,7 +20,8 @@ The `deploy` command does not build your application. Run your build command bef
 
 ```npm
 npx prisma deploy
-npx prisma deploy --stage feat-auth
+npx prisma deploy --environment feat-auth
+npx prisma deploy list --environment feat-auth
 ```
 
 ## Flags
@@ -29,9 +30,21 @@ npx prisma deploy --stage feat-auth
 | --- | --- |
 | `--entry <path>` | Deploy the app from this module instead of the `entry` in `prisma.config.ts` |
 | `--name <name>` | Override the application name for this deploy. It defaults to the name of the exported application, and that name selects the project in your workspace: a project this module deployed before is reused, and a same-name project whose hosted state cannot be verified stops the deploy with `HostedStateBootstrapError`, so pass `--name` when the default would land in a project you did not mean to deploy into |
-| `--stage <stage>` | Deploy scope to target; omit for production |
-| `--report <path>` | Write the deploy's outcome as JSON to this path: resources, preview URLs, and the failure cause. Also settable as `PRISMA_COMPOSER_REPORT_FILE` |
+| `--environment <name>` | The environment to deploy to. Defaults to `production`. Any other name is a complete, isolated copy of the app, such as `staging` or one per pull request. On Prisma Cloud, `production` is the project's default branch and any other name is a preview branch with that name |
+| `--report <path>` | Write the deploy's outcome as JSON to this path: resources, preview URLs, and the failure cause. The report's `environment` field names the environment it deployed. Also settable as `PRISMA_COMPOSER_REPORT_FILE` |
 | `--build-id <id>` | Join the deploy record your CI already created rather than letting the target create one |
+
+Upgrading from `--stage`: since `8.0.0-rc.30` the flag is `--environment`, and `--stage` fails with `CLI.COMMAND_MOVED`, naming the new flag. The `--report` file's `stage` field is now `environment`, and its `version` is `2`. Keep `@prisma/composer-prisma-cloud` on the same Composer version as the `prisma` CLI: an older one would read every environment as production, so the deploy refuses it with `DEPS.EXTENSION_INCOMPATIBLE` before it changes anything.
+
+## deploy list
+
+`deploy list` shows every node the app has deployed in an environment, the platform ID each one became and, for a service, its URL. It reads the environment on Prisma Cloud, so it works from any machine. Without `--environment` it lists `production`. It finds the app as `deploy` does, so run it where you run `deploy`, or pass the same `--name` and `--entry`.
+
+```npm
+npx prisma deploy list --environment pr-42
+```
+
+It fails with `DEPLOY.TARGET_NOT_FOUND` when the environment has nothing deployed.
 
 ## Global flags
 
@@ -48,16 +61,24 @@ The Prisma CLI's global flags also apply: `--format`, `--json`, `--log-level`, `
 
 ## Tearing down and log tailing
 
-The unified CLI has no `destroy` or `log` command. Both operations are available in-process through the control API below: `destroy` takes an explicit target (`{ kind: 'production' }` or `{ kind: 'stage', stage }`), and `log` tails a locally running application.
+The unified CLI has no `destroy` or `log` command. Both operations are available in-process through the control API below. `destroy` takes the name of the environment to remove, and has no default: production is `environment: 'production'`, and a call without `environment` fails with `DEPLOY.ENVIRONMENT_REQUIRED`. `log` tails a locally running application.
 
 ## The control API
 
 Everything the CLI does is also callable in-process, from `@prisma/composer/control`: typed `deploy`, `destroy`, `dev`, and `log` operations that return structured results instead of printing and exiting:
 
 ```ts
+import { fileURLToPath } from 'node:url';
 import { deploy } from '@prisma/composer/control';
+import prismaConfig from './prisma.config.ts';
 
-const result = await deploy({ entry: 'module.ts', stage: 'pr-42' });
+const result = await deploy({
+  environment: 'pr-42', // omit for production
+  config: {
+    value: prismaConfig.composer,
+    file: fileURLToPath(new URL('./prisma.config.ts', import.meta.url)),
+  },
+});
 if (!result.ok) console.error(result.failure.message);
 ```
 
@@ -69,4 +90,4 @@ The operations authenticate with `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID
 
 - [`dev`](/cli/dev): run the same application locally, with no credentials.
 - [Getting started](/composer/getting-started): the commands in a working flow.
-- [Deploying](/composer/deploying): stages, CI, and what a deploy prints.
+- [Deploying](/composer/deploying): environments, CI, and what a deploy prints.

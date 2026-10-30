@@ -40,7 +40,7 @@ A Git branch you keep, such as `staging`, works as a staging environment. Every 
 npx prisma project env add API_BASE_URL=https://staging-api.example.com --branch staging
 ```
 
-When a release is ready, merge `staging` into the default branch, and that push updates production. On Compute, the staging services cost money only while they do work, such as serving traffic, because creating a preview branch is free and an idle app scales to zero; see [Compute pricing](/compute/pricing#what-is-not-billed-separately). Without GitHub, `npx prisma deploy --stage staging` deploys the same kind of persistent staging environment from your terminal or another CI system, as [Deploying](/composer/deploying#production-and-stages) shows.
+When a release is ready, merge `staging` into the default branch, and that push updates production. On Compute, the staging services cost money only while they do work, such as serving traffic, because creating a preview branch is free and an idle app scales to zero; see [Compute pricing](/compute/pricing#what-is-not-billed-separately). Without GitHub, `npx prisma deploy --environment staging` deploys the same kind of persistent staging environment from your terminal or another CI system, as [Deploying](/composer/deploying#environments) shows.
 
 ### Coming from Vercel or Netlify previews
 
@@ -59,7 +59,7 @@ Have the assistant (Claude Code, Codex, Cursor or another coding agent) work on 
 Push-to-deploy needs a repository connection and a deploy workflow, and you set up both:
 
 1. **The repository connection.** [`git connect`](/cli/git) installs the Prisma GitHub App and registers the repository with your project. This lets workflow runs authenticate: a job exchanges its GitHub OIDC token for a Prisma workspace token that expires after 30 minutes, so the workflow needs no repository secrets. The connection also subscribes the project to branch events, which is what tears a preview down when its Git branch is deleted.
-2. **The deploy workflow.** [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) runs in your repository's GitHub Actions. On each push it installs dependencies, runs your build, and runs the [`deploy` command](/cli/deploy) against production or a stage named after the branch.
+2. **The deploy workflow.** [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) runs in your repository's GitHub Actions. On each push it installs dependencies, runs your build, and runs the [`deploy` command](/cli/deploy) to `production`, or to an environment named after the branch.
 
 Connecting a repository does not deploy it; deploys come from the workflow. Without the connection, the workflow has no credential: the action prints a notice, sets its `outcome` output to `skipped-no-credential`, and exits successfully, so the run stays green.
 
@@ -163,7 +163,7 @@ git switch -c feature/search
 git push -u origin feature/search
 ```
 
-The action deploys the branch as a [stage](/composer/deploying#production-and-stages) named after it, which is a [preview branch](/compute/branching) of the same project. The preview has its own services, a new database for each database your module declares, its own buckets, and its own URL. A database, API or other service the app reaches through an environment variable such as `DATABASE_URL` is only as separate as that variable's preview-scoped value. Confirm it from your terminal:
+The action deploys the branch as an [environment](/composer/deploying#environments) named after it, which is a [preview branch](/compute/branching) of the same project. The preview has its own services, a new database for each database your module declares, its own buckets, and its own URL. A database, API or other service the app reaches through an environment variable such as `DATABASE_URL` is only as separate as that variable's preview-scoped value. Confirm it from your terminal:
 
 ```npm
 npx prisma service list --branch feature/search
@@ -185,4 +185,4 @@ The platform tears down the matching preview: its services, databases, and bucke
 
 - [GitHub integration](/compute/github): what the repository connection is and does.
 - [Environments: production, staging and preview branches](/compute/branching): how preview branches relate to Git branches.
-- [Deploying](/composer/deploying): stages, deploy state, and per-stage secrets, which apply to CI deploys too.
+- [Deploying](/composer/deploying): environments, deploy state, and secrets per environment, which apply to CI deploys too.

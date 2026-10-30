@@ -1,17 +1,18 @@
 ---
 title: Deploying
-description: Deploy a Prisma App to production or an isolated stage, run it in CI, and tear environments down safely.
+description: Deploy a Prisma App to production or another isolated environment, run it in CI, and tear environments down safely.
 url: /composer/deploying
 metaTitle: Deploying | Prisma Composer
-metaDescription: Deploy Prisma Composer apps to Prisma Compute with prisma deploy, use stages for isolated environments and per-PR previews, wire CI, and tear environments down safely.
+metaDescription: Deploy Prisma Composer apps to Prisma Compute with prisma deploy, use environments for staging and per-PR previews, wire CI, and tear environments down safely.
 ---
 
-`deploy` loads your entry file (the one whose default export is the root module, named by `entry` in the `composer` section of `prisma.config.ts`) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). You choose the target environment, production or an isolated **stage**, on the command line rather than in your code. Tearing an environment down is the `destroy` operation of the [control API](#driving-deploys-from-code).
+`deploy` loads your entry file (the one whose default export is the root module, named by `entry` in the `composer` section of `prisma.config.ts`) and stands the whole app up on [Prisma Compute](/compute) and [Prisma Postgres](/postgres). You choose the **environment**, such as `production`, `staging`, or a preview such as `pr-42`, on the command line rather than in your code. Tearing an environment down is the `destroy` operation of the [control API](#driving-deploys-from-code).
 
 | You want to... | Run |
 | --- | --- |
 | Deploy to production | `npx prisma deploy` |
-| Deploy an isolated environment | `npx prisma deploy --stage <name>` |
+| Deploy another environment | `npx prisma deploy --environment <name>` |
+| See what is deployed in an environment | `npx prisma deploy list --environment <name>` |
 | Deploy under a different app name | `npx prisma deploy --name demo-42` |
 
 ## Credentials
@@ -27,7 +28,7 @@ In CI or any headless environment, use a service token instead. Set two environm
 - `PRISMA_SERVICE_TOKEN`: create a service token for your workspace in the [Prisma Console](https://console.prisma.io).
 - `PRISMA_WORKSPACE_ID`: in the workspace's settings.
 
-A fresh checkout with those two variables set deploys successfully once the app's project exists. The very first deploy creates that project, and a new project needs a region: set it in the deploy config or in the environment, as described in the [`deploy` reference](/cli/deploy). Once the project exists it keeps its region, and later deploys, stages included, inherit it. The CLI finds or creates everything else. Keep the values out of the repo (an `.env` you source at deploy time, or CI secrets). When `PRISMA_SERVICE_TOKEN` is set it takes priority over any stored session.
+A fresh checkout with those two variables set deploys successfully once the app's project exists. The very first deploy creates that project, and a new project needs a region: set it in the deploy config or in the environment, as described in the [`deploy` reference](/cli/deploy). Once the project exists it keeps its region, and later deploys, in every environment, inherit it. The CLI finds or creates everything else. Keep the values out of the repo (an `.env` you source at deploy time, or CI secrets). When `PRISMA_SERVICE_TOKEN` is set it takes priority over any stored session.
 
 ## Build first
 
@@ -40,19 +41,33 @@ npx prisma deploy
 
 Deploy state records what is already provisioned, so a re-deploy applies the difference instead of recreating everything. The platform stores this state with the environment it describes, scoped to that environment's branch inside the app's project. It is not stored on your machine, so your laptop and CI see the same state. Concurrent deploys of the same environment take turns through a lease on that state. While one deploy holds the lease, a second deploy fails immediately with a message naming the holder. If a deploy crashes, its lease expires after about a minute, and the next deploy takes over.
 
-## Production and stages
+<a id="production-and-stages"></a>
 
-Deploying with no `--stage` targets **production**. In platform terms, the app is a project (named after your root module), and production lives at the project level. The name is looked up in your workspace: a project this module deployed before is reused, and redeploying converges it. A project with the same name whose hosted state the CLI cannot identify or verify (one created outside this module's deploys, for example) stops the command with `HostedStateBootstrapError`. Use `--name` to deploy under a different name, or rename the module.
+## Environments
 
-`--stage <name>` deploys a complete, isolated copy of the app as a [preview branch](/compute/branching) of that same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code. Composer's *stage* and Compute's *preview branch* are the same object seen from two tools, which is why the stage's variables are the branch's [environment variables](/compute/environment-variables):
+An environment is a place the app runs, and every environment has a name. You choose it with `--environment` when you deploy. Without the flag, `deploy` deploys the environment `production`, exactly as `--environment production` does. In platform terms, the app is a project (named after your root module), and `production` is the project's default branch. The project name is looked up in your workspace: a project this module deployed before is reused, and redeploying converges it. A project with the same name whose hosted state the CLI cannot identify or verify (one created outside this module's deploys, for example) stops the command with `HostedStateBootstrapError`. Use `--name` to deploy under a different name, or rename the module.
+
+Any other name deploys a complete, isolated copy of the app as a [preview branch](/compute/branching) of that same project, with that name: its own services, its own databases, its own configuration. The deploy creates the branch if it does not exist. The only thing two environments share is the code. A Composer environment and a Compute branch are the same object seen from two tools, which is why an environment's variables are its branch's [environment variables](/compute/environment-variables):
 
 ```npm
-npx prisma deploy                  # production
-npx prisma deploy --stage staging  # a persistent staging environment
-npx prisma deploy --stage pr-42    # one environment per PR
+npx prisma deploy                        # production
+npx prisma deploy --environment staging  # a persistent staging environment
+npx prisma deploy --environment pr-42    # one environment per PR
 ```
 
-Re-deploying any environment is idempotent: it updates the resources in place. A stage name must be a valid git ref name. An invalid name fails the deploy rather than being renamed.
+Re-deploying any environment is idempotent: it updates the resources in place. An environment name must be a valid git ref name; an invalid name fails with `DEPLOY.ENVIRONMENT_INVALID` rather than being renamed. The default branch's own name, such as `main`, is refused too, because it would be production under a second name. Deploy production as `production`, or with no flag.
+
+The services, databases, and wiring are the same in every environment; only configuration may differ. To compute a value from the environment's name, see [Values that differ per environment](/composer/service-input#values-that-differ-per-environment).
+
+### See what is deployed
+
+`deploy list` shows every node the app has deployed in an environment, the platform ID each one became and, for a service, its URL. It reads the environment on Prisma Cloud, so it works from any machine:
+
+```npm
+npx prisma deploy list --environment pr-42
+```
+
+Without `--environment` it lists `production`. See the [`deploy list` reference](/cli/deploy#deploy-list).
 
 ## What a deploy prints
 
@@ -93,32 +108,42 @@ Two things a deploy never removes:
 
 ## Destroying
 
-The unified CLI has no `destroy` command. Tear an environment down with the `destroy` operation from `@prisma/composer/control` (see [Driving deploys from code](#driving-deploys-from-code)). It requires an explicit target, `{ kind: 'stage', stage }` or `{ kind: 'production' }`, and there is no default, so a teardown always names what it destroys. Unlike the CLI, the control API does not read the session stored by `auth login`. Export `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` (see [Credentials](#credentials)) before running the script, or it stops with `environment variable PRISMA_WORKSPACE_ID is required`:
+The unified CLI has no `destroy` command. Tear an environment down with the `destroy` operation from `@prisma/composer/control` (see [Driving deploys from code](#driving-deploys-from-code)). It requires the name of the environment to remove, even for production, which is `environment: 'production'`. There is no default, so a teardown always names what it destroys, and a call without `environment` fails with `DEPLOY.ENVIRONMENT_REQUIRED`. Unlike the CLI, the control API does not read the session stored by `auth login`. Export `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` (see [Credentials](#credentials)) before running the script, or it stops with `environment variable PRISMA_WORKSPACE_ID is required`:
 
 ```ts title="destroy-staging.ts"
+import { fileURLToPath } from 'node:url';
 import { destroy } from '@prisma/composer/control';
+import prismaConfig from './prisma.config.ts';
 
-const result = await destroy({ entry: 'module.ts', target: { kind: 'stage', stage: 'staging' } });
+const result = await destroy({
+  environment: 'staging', // or 'production'
+  config: {
+    value: prismaConfig.composer,
+    file: fileURLToPath(new URL('./prisma.config.ts', import.meta.url)),
+  },
+});
 if (!result.ok) throw new Error(`${result.failure.code}: ${result.failure.message}`);
 ```
 
+Like the [`log` script](/composer/local-development#logs), it reads the `composer` section of your `prisma.config.ts`, so it imports it and passes it as `config`. Run it from the directory you deploy from, for example with `node destroy-staging.ts`.
+
 If you deployed under a different name with `--name`, pass the same `name` here so the operation finds the right project.
 
-Destroying a stage removes its resources, then deletes its branch along with the stage's deploy state. Destroying production removes the resources and, if the project is empty afterwards, deletes the project too, so empty projects do not pile up in your workspace. A project still holding another stage's resources stays in place. Tearing down a stage that was never deployed fails with "nothing deployed". It does not provision one first.
+Destroying any environment other than production removes its resources, then deletes its branch along with the environment's deploy state. Destroying production removes the resources and, if the project is empty afterwards, deletes the project too, so empty projects do not pile up in your workspace. A project still holding another environment's resources stays in place. Tearing down an environment that was never deployed fails with "nothing deployed". It does not provision one first.
 
 ## CI
 
-On GitHub, connect the repository and add [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) to a workflow instead of scripting the deploy yourself. The action derives the target from the branch: the default branch deploys production, and every other branch deploys a stage named after it. Connected repositories authenticate through GitHub's OIDC tokens, without a stored secret. [Deploy on push](/compute/deploy-on-push) walks through the setup.
+On GitHub, connect the repository and add [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) to a workflow instead of scripting the deploy yourself. The action derives the environment from the branch: the default branch deploys `production`, and every other branch deploys an environment named after it. Connected repositories authenticate through GitHub's OIDC tokens, without a stored secret. [Deploy on push](/compute/deploy-on-push) walks through the setup.
 
 Any other CI runs the same commands as your machine: set the two credential variables as CI secrets, build, and deploy. The per-PR environment pattern:
 
 ```npm
-npx prisma deploy --stage "pr-$PR_NUMBER"    # on push
+npx prisma deploy --environment "pr-$PR_NUMBER"    # on push
 ```
 
-When the PR closes, tear the stage down with the `destroy` operation, targeting `{ kind: 'stage', stage: 'pr-<number>' }` from a small script.
+When the PR closes, tear the environment down with the `destroy` operation from a small script that passes its name, `environment: 'pr-42'` for PR 42.
 
-One extra step applies if your app binds input fields with `envSecret` or `envParam` (see [Service input](/composer/service-input)). Each stage stores its own copy of those platform variables. The deploying shell only seeds them. A fresh stage, such as a new `pr-42`, starts with none of them, so CI must export the values alongside the two credential variables. The first deploy then copies any missing values from the shell up to the stage. If a name is absent from both the platform and the shell, the deploy fails early and names the missing variable.
+One extra step applies if your app binds input fields with `envSecret` or `envParam` (see [Service input](/composer/service-input)). Each environment stores its own copy of those platform variables. The deploying shell only seeds them. A fresh environment, such as a new `pr-42`, starts with none of them, so CI must export the values alongside the two credential variables. The first deploy then copies any missing values from the shell up to the environment. If a name is absent from both the platform and the shell, the deploy fails early and names the missing variable.
 
 ## When prisma.config.ts fails on an effect version conflict
 
@@ -206,5 +231,5 @@ Everything the CLI does is also callable in-process, from `@prisma/composer/cont
 ## Next steps
 
 - [Local development](/composer/local-development): the same pipeline, no credentials.
-- [Service input](/composer/service-input): how per-stage configuration and secrets travel.
+- [Service input](/composer/service-input): how per-environment configuration and secrets travel.
 - [`deploy` command reference](/cli/deploy): every flag, plus the control API for destroy and log.
