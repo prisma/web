@@ -48,7 +48,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
       "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Prisma Postgres has no cold starts. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       neon: "https://neon.com/pricing",
-      prisma: "https://www.prisma.io/docs/postgres",
+      prisma: "https://www.prisma.io/blog/prisma-postgres-the-future-of-serverless-databases",
     },
   },
   {
