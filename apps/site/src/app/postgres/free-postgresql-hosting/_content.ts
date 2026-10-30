@@ -36,7 +36,7 @@ export const FREE_POSTGRES_HERO_CHECKS = [
   "A claimed database, and a database created in the Prisma Console, has no time limit.",
 ] as const;
 
-export const FREE_POSTGRES_LAST_MODIFIED = "2026-10-21";
+export const FREE_POSTGRES_LAST_MODIFIED = "2026-10-29";
 
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CREATE_DB_WEB_URL = "https://create-db.prisma.io";
