@@ -179,7 +179,7 @@ model User {
   email     VarChar           @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22")
   name      VarChar?
   active    Boolean           @default(true)
-  createdAt TimestamptzString @default(now())
+  createdAt DateTime(precision: 6) @default(now())
   posts     Post[]
 
   @@map("user")
@@ -190,7 +190,7 @@ model Post {
   title     VarChar
   content   String?
   published Boolean           @default(false)
-  createdAt TimestamptzString @default(now())
+  createdAt DateTime(precision: 6) @default(now())
   authorId  Int
   author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "FK_c6fb082a3114f35d0cc27c518e0", index: false)
 
@@ -198,7 +198,7 @@ model Post {
 }
 ```
 
-Review the file before you go on. The `timestamptz` columns come back as `TimestamptzString`, which reads the value as an ISO 8601 string in UTC, such as `"2026-09-10T15:32:51.298482Z"`, so your code needs no `Temporal`. TypeORM and Sequelize gave you a `Date` there, so convert with `new Date(value)` where your code needs one.
+Review the file before you go on. The `timestamptz` columns come back as `DateTime(precision: 6)`, which reads the value as a JavaScript `Date`, as TypeORM and Sequelize did, so your code needs no `Temporal`. A `Date` holds milliseconds; to keep the microseconds PostgreSQL stores, change a field to `DateTime(as: string, precision: 6)`.
 
 This is also the moment to delete from `contract.prisma` the models you do not want Prisma ORM to use yet, or to rename a model while keeping its `@@map`. The [PSL syntax](/orm/contract-authoring/psl-syntax) page lists the attributes.
 
@@ -408,7 +408,7 @@ Turn off schema synchronization in the ORM you are leaving once the database is 
 :::
 
 - `.update()` and `.delete()` change exactly one row, even when the filter matches several. Use `updateAll()` or `deleteAll()` for bulk changes; this is the opposite default from TypeORM's `repo.update(criteria, ...)`, which updates every match.
-- `contract infer` writes `TimestamptzString` for `timestamptz` columns, so their values are strings, not `Date` objects. Convert with `new Date(value)` where your code needs a `Date`.
+- `contract infer` writes `DateTime(precision: 6)` for `timestamptz` columns, so their values are `Date` objects with milliseconds.
 - If `package.json` declares `"type": "commonjs"`, `orm init` keeps it and prints a warning. If it has no `"type"` field, `orm init` adds `"type": "module"`. Either way, a CommonJS app needs the changes in [In a CommonJS project](/cli/orm-init#in-a-commonjs-project).
 - Do not run `db init` or `db update` on the existing database. `db sign` is the step for a database that already has the tables; `db update` and `migration plan` come later, when you change the contract yourself.
 - Do not call `db.close()` in a request handler. The pool is shared across requests; close it only when a script or the process ends.

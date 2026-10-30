@@ -111,7 +111,7 @@ namespace public {
     name      String?
     role      String            @default("member")
     age       Int?
-    createdAt TimestamptzString @default(now()) @map("created_at")
+    createdAt DateTime(precision: 6) @default(now()) @map("created_at")
     posts     Post[]
 
     @@check(expression: sql`(age >= 0)`, map: "user_age_check")
@@ -141,7 +141,7 @@ namespace public {
 }
 ```
 
-Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `namespace public` holds the models of the tables in the PostgreSQL schema `public`. Where Prisma ORM 7 wrote `DateTime @db.Timestamptz`, the contract writes `TimestamptzString`, and `String @db.VarChar(200)` becomes `VarChar(200)`. In the policy block, `roles = [public]` is the PostgreSQL role `PUBLIC`, not the schema.
+Keep the first line, because `contract emit` reads only `.prisma` files that start with it. `namespace public` holds the models of the tables in the PostgreSQL schema `public`. Where Prisma ORM 7 wrote `DateTime @db.Timestamptz`, the contract writes `DateTime(precision: 6)`, and `String @db.VarChar(200)` becomes `VarChar(200)`. In the policy block, `roles = [public]` is the PostgreSQL role `PUBLIC`, not the schema.
 
 `contract infer` reads these parts of the database and writes each one into the contract:
 
@@ -160,9 +160,9 @@ A table without a model stays in your database, and later migrations leave it al
 
 ### Date and time columns
 
-`contract infer` gives a `timestamptz` column the type `TimestamptzString`, a `timestamp` column `TimestampString`, a `date` column `DateString`, and a `time` column `TimeString`. Prisma ORM returns the values of these columns as ISO 8601 strings, the same on every server, so a `timestamptz` value is the instant in UTC, such as `2026-09-30T05:36:38.60182Z`. Your app needs no `Temporal`.
+`contract infer` gives a `timestamptz` column the type `DateTime(precision: 6)`, a `timestamp` column `DateTime(storage: timestamp, precision: 6)`, a `date` column `Date`, and a `time` column `Time`. Prisma ORM returns a `DateTime` as a JavaScript `Date`, and a `Date` or `Time` as an ISO 8601 string, such as `2026-09-30`. Your app needs no `Temporal`. A `Date` holds milliseconds, so a `timestamptz` value with microseconds, such as `05:36:38.60182`, reads as `05:36:38.601`.
 
-To get `Temporal` objects instead, the new date and time API of JavaScript, change the type of each such field in the contract: `TimestamptzString` becomes `TimestamptzTemporal`, `TimestampString` becomes `TimestampTemporal`, `DateString` becomes `Date`, and `TimeString` becomes `Time`. The column in the database stays as it is. Node.js 26 has `Temporal` built in. Node.js 24 and older do not, and there the first query that reads such a column fails with `RUNTIME.TEMPORAL_UNAVAILABLE`. On Node.js 24 or older, install the `temporal-polyfill` package:
+To keep every digit, add `as: string` to a `DateTime` field, as in `DateTime(as: string, precision: 6)`, which reads an ISO 8601 string. To get `Temporal` objects instead, the new date and time API of JavaScript, add `as: temporal` to a `DateTime`, `Date` or `Time` field. The column in the database stays as it is either way. Node.js 26 has `Temporal` built in. Node.js 24 and older do not, and there the first query that reads such a column fails with `RUNTIME.TEMPORAL_UNAVAILABLE`. On Node.js 24 or older, install the `temporal-polyfill` package:
 
 ```npm
 npm install temporal-polyfill
