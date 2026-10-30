@@ -42,7 +42,7 @@ const chatInput = type({ stripeEnabled: 'false' }).or(
 
 ## Bind values at provision
 
-The service declares what shapes are legal; the place that provisions it decides where each value comes from. The binding is a plain object mirroring the schema's shape, whose leaves are literals, `envParam(...)`, or `envSecret(...)`:
+The service declares what shapes are legal; the place that provisions it decides where each value comes from. The binding is a plain object mirroring the schema's shape, whose leaves are literals, `envParam(...)`, `envSecret(...)`, or values from `resolve()` ([below](#values-that-differ-per-environment)):
 
 ```ts title="module.ts"
 import { envParam, envSecret } from '@prisma/composer-prisma-cloud';
@@ -50,7 +50,7 @@ import { envParam, envSecret } from '@prisma/composer-prisma-cloud';
 provision(scheduler, {
   input: {
     jobs: [{ jobId: 'tick', every: '60s' }],  // a literal
-    region: envParam('REGION'),               // a per-stage platform variable
+    region: envParam('REGION'),               // a platform variable per environment
     apiKey: envSecret('SCHEDULER_API_KEY'),   // a credential: name only, never the value
   },
 });
@@ -60,9 +60,9 @@ Secretness is enforced by validation, not annotation: binding a plain literal wh
 
 ### `envParam`: plain values the code cannot know
 
-An app origin is the canonical case: it differs between production and every preview stage, and a stage's public URL does not exist until that stage first deploys. Each stage keeps its own copy of the variable, so one topology serves them all.
+An app origin is the canonical case: it differs between production and every preview environment, and an environment's public URL does not exist until that environment first deploys. Each environment keeps its own copy of the variable, so one topology serves them all.
 
-How the value travels: **the stage's platform variable is the store; the deploying shell only seeds it.** At deploy, preflight checks the name exists for the target stage, and a name the stage is missing is copied up from the deploying shell's environment. Once the stage has it, your shell no longer matters. To change the value later, set it on the platform and redeploy; a running instance's environment is frozen when the instance is created.
+How the value travels: **the environment's platform variable is the store; the deploying shell only seeds it.** At deploy, preflight checks the name exists for the target environment, and a name the environment is missing is copied up from the deploying shell's environment. Once the environment has it, your shell no longer matters. To change the value later, set it on the platform and redeploy; a running instance's environment is frozen when the instance is created.
 
 `envParam` values arrive as raw strings, so bind them to string fields.
 
@@ -76,6 +76,37 @@ if (input.stripeEnabled) stripe(input.stripeSecretKey.expose());
 ```
 
 A reusable Module forwards a secret need to its parent without ever learning the platform name (see [Apps and Modules](/composer/apps-and-modules#reusable-modules)), which is what lets a Module require credentials without dictating your naming.
+
+## Values that differ per environment
+
+The graph is the same in every environment: the same services, the same databases, the same wiring. What may differ is configuration. A module body computes it with `resolve()`, from the name of the environment being deployed:
+
+```ts title="module.ts"
+import { module, resolve } from '@prisma/composer';
+import echoService from './echo.ts';
+
+export default module('shop', ({ environment, provision }) => {
+  const greeting = resolve([environment.name], ([name]) => `hello from ${name}`);
+  provision(echoService, { input: { greeting } });
+});
+```
+
+```npm
+npx prisma deploy                        # greeting is "hello from production"
+npx prisma deploy --environment staging  # "hello from staging"
+npx prisma dev                           # "hello from dev"
+```
+
+`environment.name` and the result of `resolve()` are **values**: stand-ins for data that is known only once the command knows which environment it runs. The module body cannot read a value, compare it, or branch on it. It can only pass it on: as a dependency of another `resolve()`, as a leaf of a service's input binding at any depth, or as a service param. A value cannot be a provision id or a `deps` entry, and a Module's `secrets` and `params` bindings take `envSecret` and `envParam` sources, not values.
+
+`resolve(dependencies, fn)` lists the values it depends on, and `fn` receives their real values as one tuple, in the same order. After every module body has run, the deploy runs each `fn` once, dependencies first, and puts the result where the value was bound. `fn` runs synchronously and returns plain data: strings, finite numbers, booleans, `null`, arrays, and plain objects.
+
+Two rules follow from running `fn` after the module bodies:
+
+- **`fn` cannot add to the graph.** Calling `provision()` inside `fn` fails the deploy. Provision the node in the module body and pass the value into it.
+- **`fn` must depend only on its dependencies.** `deploy`, `dev`, and the `destroy` operation all run it, sometimes in more than one process, and each run must compute the same graph. A `fn` that reads the clock, a random number, a file, or an environment variable deploys a graph nobody checked. To retire an environment, keep its case in every `fn` until the `destroy` operation for it has finished.
+
+`deploy` and `dev` stop before anything changes when `fn` throws, returns `undefined` anywhere in its result, returns a value, `envParam()`, `envSecret()`, a Promise, a function, or a class instance, or when a value depends on itself. The message names the binding the value sits in, such as `input key "greeting" of service "shop.echo"`. Return a result for every environment: Composer never picks a default.
 
 ## Absence is the schema's call
 
@@ -103,5 +134,5 @@ At boot the framework swaps each pointer for a redacting box over the named vari
 
 ## Next steps
 
-- [Deploying](/composer/deploying): how a fresh stage gets its variables in CI.
+- [Deploying](/composer/deploying): how a fresh environment gets its variables in CI.
 - [Testing](/composer/testing): supply an input double under the reserved `input` key.

@@ -1,6 +1,6 @@
 ---
 title: Core concepts
-description: "The ideas every Composer declaration and command builds on: services, resources, Modules, ports, contracts, stages, and the deploy model."
+description: "The ideas every Composer declaration and command builds on: services, resources, Modules, ports, contracts, environments, and the deploy model."
 url: /composer/core-concepts
 metaTitle: Prisma Composer core concepts
 metaDescription: Learn the core concepts behind Prisma Composer in one page. What services, resources, and Modules are, how ports and contracts wire them, and how deploys converge.
@@ -88,7 +88,7 @@ const { products } = await catalog.listProducts({});
 2. **`envParam(NAME)`**: the value is read from a named platform variable per environment, so the same app reads different values in production and in a staging copy.
 3. **`envSecret(NAME)`**: like `envParam`, but the value is a credential: redacted in output and never stored in deploy state. This is the only thing Composer calls a secret.
 
-The split is what makes environments cheap: production, a staging stage, a local run, and a test all execute the same code with different injected values. See [Service input](/composer/service-input).
+The split is what makes environments cheap: production, a staging environment, a local run, and a test all execute the same code with different injected values. See [Service input](/composer/service-input).
 
 ## Contracts
 
@@ -106,17 +106,19 @@ npx prisma deploy
 
 Two consequences of convergence are worth naming. Removing a node from your module removes the deployed thing on the next deploy, because the topology is the source of truth. And tearing a whole environment down works through the same mechanism, via the `destroy` operation in `@prisma/composer/control`. See [Deploying](/composer/deploying) and the [`deploy` reference](/cli/deploy).
 
-## Stages
+## Environments
 
-A **stage** is an environment name chosen at deploy time, never written in the topology. The same graph deploys anywhere:
+An **environment** is a named place the app runs, chosen with `--environment` when you run a command, never written in the topology. The same graph deploys anywhere:
 
 ```npm
-npx prisma deploy                  # production
-npx prisma deploy --stage staging  # a persistent staging environment
-npx prisma deploy --stage pr-42    # one environment per PR
+npx prisma deploy                        # production
+npx prisma deploy --environment staging  # a persistent staging environment
+npx prisma deploy --environment pr-42    # one environment per PR
 ```
 
-Deploying with no `--stage` targets production, which lives at the project level. A named stage is a complete, isolated copy of the app, deployed as a [preview branch](/compute/branching) of the same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code, which is exactly what the two-channel design promises: same topology, different injected values.
+`deploy` without the flag deploys `production`, which is the project's default branch. Any other name is a complete, isolated copy of the app, deployed as a [preview branch](/compute/branching) of the same project with that name: its own services, its own databases, its own configuration. The only thing two environments share is the code, which is exactly what the two-channel design promises: same topology, different injected values. A module can still compute a value from the environment's name with `resolve()`; see [Values that differ per environment](/composer/service-input#values-that-differ-per-environment).
+
+`dev` runs as the environment `dev`, and `prisma dev --environment <name>` runs another, separate local copy of the app.
 
 ## Local development
 
