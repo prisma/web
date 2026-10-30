@@ -58,7 +58,8 @@ export const authLinks: LinkItemType[] = [
   // Below `lg` the desktop bar has no room for a second pill: it would squeeze
   // the section crumb ("Query Insights", "Local Development") into an ellipsis.
   // There the bar keeps Login only; the mobile drawer lists both buttons. From
-  // `lg` up only the longest crumbs clip, in the first ~30px past 1024px.
+  // `lg` up the longest crumbs still clip: below 1054px with the bar docked and
+  // below 1094px once it floats on scroll, because floating makes it 40px narrower.
   {
     type: "button",
     text: "Sign up",
