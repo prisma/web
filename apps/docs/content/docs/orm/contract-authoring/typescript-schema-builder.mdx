@@ -60,24 +60,24 @@ const pgText = { codecId: "pg/text@1" } as const;
 
 const Priority = enumType("Priority", pgText, member("Low", "low"), member("High", "high"));
 
-export const contract = defineContract({}, ({ field, model, rel }) => {
+export const contract = defineContract({}, ({ field, model, rel, gen, type }) => {
   const User = model("User", {
     fields: {
-      id: field.id.uuidv4String(),
-      email: field.text(),
-      createdAt: field.temporal.createdAt(),
-      address: field.json().optional(),
+      id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)),
+      email: field.column(type.String()),
+      createdAt: field.column(type.temporal.CreatedAt()),
+      address: field.column(type.Jsonb()).optional(),
     },
   });
 
   const Post = model("Post", {
     fields: {
-      id: field.id.uuidv4String(),
-      title: field.text(),
-      userId: field.uuidString(),
+      id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)),
+      title: field.column(type.String()),
+      userId: field.column(type.Uuid()),
       priority: field.namedType(Priority).default(Priority.members.Low),
-      createdAt: field.temporal.createdAt(),
-      updatedAt: field.temporal.updatedAt(),
+      createdAt: field.column(type.temporal.CreatedAt()),
+      updatedAt: field.column(type.temporal.UpdatedAt()),
     },
   });
 
@@ -138,7 +138,7 @@ The options object takes four more keys, all optional:
 
 Take `field`, `model`, `rel`, `type`, and `gen` from the function's one argument, because those include the helpers your extension packs add, and import `defineContract`, `enumType`, and `member` from the package. The package also exports `model`, `rel`, `field`, and `gen`. Use those only in code outside the function, and expect them to lack the extension packs' helpers.
 
-On MongoDB, `defineContract` also accepts a single object holding `models`, as above, and you import `field`, `model`, and `rel` from the package instead. The MongoDB builder differs from the PostgreSQL one in how it handles the primary key, field helpers, collection names, relations, indexes, and validators:
+On MongoDB, `defineContract` also accepts a single object holding `models`, as above, and you import `field`, `model`, and `rel` from the package instead. The type of that object is `ContractInput`, which you import from `@prisma/orm-mongo/contract-builder`, as on SQL. A model of the built contract is a `ContractModel<MongoModelStorage>`, with `ContractModel` from `@prisma/orm-mongo/contract/types` and `MongoModelStorage` from `@prisma/orm-mongo/family-contract`. The MongoDB builder differs from the PostgreSQL one in how it handles the primary key, field helpers, collection names, relations, indexes, and validators:
 
 - The field stored as `_id` is always the primary key, so you never mark it with `.id()` and there is no `.attributes(...)` on MongoDB. Declare it as `id: field.objectId().mongo({ field: "_id" })` to name it `id` in your code, as `id ObjectId @id @map("_id")` does in PSL, or as `_id: field.objectId()` to keep the name `_id`. `.mongo({ field })` sets the name a field is stored under in its documents, for any field of a model. A model without an `_id` field gets one from MongoDB, an ObjectId, on every insert.
 - The scalar helpers are `field.objectId()`, `field.string()`, `field.int32()`, `field.double()`, `field.bool()`, and `field.date()`.
@@ -147,13 +147,15 @@ On MongoDB, `defineContract` also accepts a single object holding `models`, as a
 - Indexes are an `indexes` option on the model, built with the `index` helper the same package exports, as in `indexes: [index({ email: 1 }, { unique: true })]`. The `1` is ascending, MongoDB's own index syntax.
 - Each collection gets a `$jsonSchema` validator built from its model, as with a PSL contract, so MongoDB refuses a document with a field the model does not declare, a missing required field, or a value of the wrong type. `defineContract` refuses what a validator cannot describe, such as an `_id` field that is optional or a list. To keep a collection without a validator, give its model `controlPolicy: "observed"`.
 
-Enums and extension packs work on MongoDB too: `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`. Pass the enums in the same object as the models, as `defineContract({ models, enums })`, and extension packs go in the same `extensions` option.
+Enums and extension packs work on MongoDB too: `enumType` and `member` come from `@prisma/orm-mongo/contract-builder`. Pass the enums in the same object as the models, as `defineContract({ models, enums })`, and extension packs go in the same `extensions` option. Every enum a field uses must be in `enums`, including an enum that types a field of a value object; an enum that is missing fails with `CONTRACT.ENUM_UNKNOWN`.
+
+`defineContract`, a PSL contract and a Prisma ORM 6 schema read with `prisma6Schema` all build a MongoDB contract the same way, so the rules below apply to each of them.
 
 The MongoDB builder also has, on the model object:
 
-- `indexes`, a list of `index(keys, options?)` calls. `keys` maps each field to `1`, `-1`, `"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`, and `options` takes MongoDB's own index options: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, and `wildcardProjection`. For example, `index({ expiresAt: 1 }, { expireAfterSeconds: 3600, sparse: true })`.
+- `indexes`, a list of `index(keys, options?)` calls. `keys` maps each field to `1`, `-1`, `"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`, and `options` takes MongoDB's own index options: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, and `wildcardProjection`. For example, `index({ expiresAt: 1 }, { expireAfterSeconds: 3600, sparse: true })`. An index MongoDB would refuse fails with `CONTRACT.INDEX_INVALID`: a unique wildcard index, a wildcard with a hashed, `2d` or `2dsphere` key, a hashed index on several fields, a wildcard index with `expireAfterSeconds`, a `wildcardProjection` without a wildcard key, a `collation` without a `locale`, and a second text index in one collection. Two `index(...)` calls with the same keys and options give one index, counting an option set to `false` as left out, and a plain index beside a unique one with the same keys and otherwise the same options gives the unique index alone.
 - `collectionOptions`, for options on the collection itself, such as `{ collation: { locale: "en", strength: 2 } }`.
-- `discriminator` and `base`, for one collection that holds more than one kind of document. The base model declares `discriminator: { field: "kind", variants: { Article: { value: "article" } } }`, and each variant model declares `base: Post` and the same `collection` as its base, plus its own fields. [MongoDB data modeling](/orm/data-modeling/mongodb#polymorphic-collections) covers when to use it.
+- `discriminator` and `base`, for one collection that holds more than one kind of document. The base model declares `discriminator: { field: "kind", variants: { Article: { value: "article" } } }`, and each variant model declares `base: Post` plus its own fields. A variant is stored in its base's collection, so leave its `collection` out or set it to the base's; another collection fails with `CONTRACT.COLLECTION_INVALID`. The discriminator must be a required `field.string()` or a string enum, every variant it lists must be a model declared with that base, and each variant's `value` must be a value the discriminator can hold. A variant field must not be stored under a name a different base field uses (`CONTRACT.NAME_DUPLICATE`). A variant may restate a base field under the same name only if it declares it exactly as the base does. [MongoDB data modeling](/orm/data-modeling/mongodb#polymorphic-collections) covers when to use it.
 
 And two more field helpers: `field.vector()` for a vector, which takes no dimension count, and `field.valueObject(Address)` for an embedded document, where `Address` is declared with `valueObject("Address", { fields: { ... } })` from the package and returned in `defineContract`'s `valueObjects` map:
 
@@ -182,65 +184,62 @@ The examples below use the PostgreSQL builder.
 
 ## Fields
 
-`field` has a helper for each column type. On PostgreSQL:
+A field is `field.column(...)` with a type from `type`, the function's other argument. `type` has a helper for every type PSL can write. On PostgreSQL:
 
-| Column | Helper |
+| Column | Field |
 | --- | --- |
-| text | `field.text()` |
-| integer | `field.int()` |
-| big integer | `field.bigint()` |
-| float | `field.float()` |
-| decimal | `field.decimal()` |
-| boolean | `field.boolean()` |
-| date and time | `field.dateTime()` |
-| bytes | `field.bytes()` |
-| JSON | `field.json()` |
-| UUID stored in a `character(36)` column | `field.uuidString()` |
-| UUID stored in a `uuid` column | `field.uuidNative()` |
+| text | `field.column(type.String())` |
+| integer | `field.column(type.Int())` |
+| big integer | `field.column(type.BigInt())` |
+| float | `field.column(type.Float())` |
+| decimal | `field.column(type.Decimal())` |
+| boolean | `field.column(type.Boolean())` |
+| date and time | `field.column(type.DateTime())` |
+| date | `field.column(type.Date())` |
+| bytes | `field.column(type.Bytes())` |
+| JSON, stored as `jsonb` | `field.column(type.Jsonb())` |
+| UUID stored in a `uuid` column | `field.column(type.Uuid())` |
+| UUID stored in a `character(36)` column | `field.column(type.UuidString())` |
 
-There is no helper for a date without a time, or a time without a date. For a date-only column, name the type yourself: `field.column({ codecId: "pg/date-temporal@1" } as const)`. `field.column(...)` and the chained `.column(...)` below are different calls: `field.column(descriptor)` builds a field from a type description, and `.column(name)` on an existing field sets its column name. Extension packs add more helpers of their own.
+On PostgreSQL, `type.DateTime()`, `type.Date()`, `type.Time()` and `type.Duration()` are the [convenience date and time types](/orm/contract-authoring/psl-syntax#models-and-fields). Each takes one optional object with the keys its PSL type takes: `as`, `storage` and `precision` for `type.DateTime()`, `type.Time()` and `type.Duration()`, and `as` for `type.Date()`, such as `type.DateTime({ as: 'string' })` or `type.Time({ precision: 3 })`. The other helpers take the arguments their PSL types take, such as `type.VarChar(64)`, `type.Numeric(10, 2)` and `type.TimeTemporal(3)`. `field.column(type)` and the chained `.column(...)` below are different calls: `field.column(type)` builds a field from a type, and `.column(name)` on an existing field sets its column name. Extension packs add helpers of their own, such as `type.pgvector.Vector(1536)`.
 
-For a column of a database type no helper covers, use ``type.Raw(sql`...`)`` from the function's argument, with the type written the way the database reports it, as in ``path: field.column(type.Raw(sql`ltree`))``, with `sql` imported from the package. It works as [``Raw(sql`...`)`` in PSL](/orm/contract-authoring/psl-syntax#columns-of-any-database-type) does: your code reads and writes the value as `unknown`, and a default is a `sql` expression.
-
-For a primary key your app generates, use a `field.id.*` helper. Each one marks the field as the primary key and generates the ID in your app when you create a row. `field.id.uuidv4String()` is the common choice, and the others are `field.id.uuidv7String()`, `field.id.ulid()`, `field.id.nanoid()`, `field.id.cuid2()`, and `field.id.ksuid()`. To store a UUID in a `uuid` column instead of a `character(36)` column, use `field.id.uuidv4Native()` or `field.id.uuidv7Native()`.
+For a column of a database type no helper covers, use ``type.Raw(sql`...`)``, with the type written the way the database reports it, as in ``path: field.column(type.Raw(sql`ltree`))``, with `sql` imported from the package. It works as [``Raw(sql`...`)`` in PSL](/orm/contract-authoring/psl-syntax#columns-of-any-database-type) does: your code reads and writes the value as `unknown`, and a default is a `sql` expression.
 
 To generate a value in your app on any field, chain `.onCreate(...)` with a call from `gen`, and `.onUpdate(...)` to generate one on every update. `gen` has `gen.uuid()`, `gen.uuid(7)`, `gen.cuid(2)`, `gen.ulid()`, `gen.nanoid()`, `gen.nanoid(16)`, `gen.ksuid()`, and `gen.now()`, the same functions as [`@onCreate` and `@onUpdate` in PSL](/orm/contract-authoring/psl-syntax#generated-values), and each makes a value for the field's column type:
 
 ```typescript title="src/prisma/contract.ts (excerpt)"
 const Post = model("Post", {
   fields: {
-    id: field.uuidNative().id().onCreate(gen.uuid(7)),
-    slug: field.text().onCreate(gen.nanoid(12)),
-    updatedAt: field.dateTime().onCreate(gen.now()).onUpdate(gen.now()),
+    id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)),
+    slug: field.column(type.String()).onCreate(gen.nanoid(12)),
+    updatedAt: field.column(type.DateTime()).onCreate(gen.now()).onUpdate(gen.now()),
   },
 });
 ```
 
-A field may have both: `field.dateTime().default(now()).onCreate(gen.now())` takes its time from your app when Prisma ORM creates the row, and from the database for other inserts.
+For a primary key your app generates, chain `.id()` and `.onCreate(...)`, as `id` does above. On PostgreSQL the native `uuid` column is the best choice for a new contract. For an identifier stored as text, `type` has an alias for the column of each format: `type.UuidString()`, `type.Ulid()`, `type.Nanoid()`, `type.Cuid2()` and `type.Ksuid()` are `type.Char(36)`, `type.Char(26)`, `type.Char(21)`, `type.Char(24)` and `type.Char(27)`. The alias sets only the column, so write the generator yourself, as in `field.column(type.Ulid()).id().onCreate(gen.ulid())`, and give a foreign key that holds the identifier the alias alone, `field.column(type.Ulid())`. On SQLite the aliases are in the `sql` namespace, such as `type.sql.Ulid()`, and a fixed-length text column is `type.sql.Char(n)`.
 
-`.onUpdate(...)` alone generates nothing on create. If a field that is not `.optional()` has `.onUpdate(...)` and no `.onCreate(...)` or `.default(...)`, you must pass a value for it in ORM `create` and `upsert`. The same holds for a temporal helper that sets only its update time, such as:
+A field may have both: `field.column(type.DateTime()).default(now()).onCreate(gen.now())` takes its time from your app when Prisma ORM creates the row, and from the database for other inserts.
 
-```typescript
-field.temporal.timestamptz(
-  undefined, // precision
-  undefined, // on create: nothing
-  "now", // on update: the current time
-);
-```
+`.onUpdate(...)` alone generates nothing on create. If a field that is not `.optional()` has `.onUpdate(...)` and no `.onCreate(...)` or `.default(...)`, you must pass a value for it in ORM `create` and `upsert`, as for `field.column(type.TimestamptzTemporal()).onUpdate(gen.now())`. To have the field generated on create too, add `.onCreate(...)`.
 
-To have the field generated on create too, add `.onCreate(...)`.
+For a key the database generates, chain `.default(...)` and `.id()` on a field. An integer that counts up is `field.column(type.Int()).default(autoincrement()).id()`, and a UUID is ``field.column(type.Uuid()).default(sql`gen_random_uuid()`).id()``. Import `autoincrement` and `sql` from `@prisma/orm-postgres/contract-builder`.
 
-For a key the database generates, chain `.default(...)` and `.id()` on a field. An integer that counts up is `field.int().default(autoincrement()).id()`, and a UUID is ``field.uuidNative().default(sql`gen_random_uuid()`).id()``. Import `autoincrement` and `sql` from `@prisma/orm-postgres/contract-builder`.
+`field.column(type.temporal.CreatedAt())` sets the column to the current time when the row is created, and `field.column(type.temporal.UpdatedAt())` sets it on every create and every update. Prisma ORM sets both in the client, from your application's clock, so the column has no database default. If you insert a row with raw SQL, you must supply the value yourself. For a time the database sets instead, use `field.column(type.DateTime()).default(now())`, with `now` imported from `@prisma/orm-postgres/contract-builder`.
 
-`field.temporal.createdAt()` sets the column to the current time when the row is created, and `field.temporal.updatedAt()` sets it on every create and every update. Prisma ORM sets both in the client, from your application's clock, so the column has no database default. If you insert a row with raw SQL, you must supply the value yourself. For a time the database sets instead, use `field.dateTime().default(now())`, with `now` imported from `@prisma/orm-postgres/contract-builder`.
-
-`field.dateTime()`, `field.temporal.createdAt()`, and `field.temporal.updatedAt()` give your code a `Temporal.Instant`, so your app needs a global `Temporal` to read and write them; [Scalar fields](/orm/data-modeling#scalar-fields) says how to check for it and which polyfill to load when it is missing. To get a JavaScript `Date` instead, and need no `Temporal`, use `field.temporal.timestamptzJsDate()` for a `timestamptz` column, and `field.temporal.createdAtJsDate()` and `field.temporal.updatedAtJsDate()` for creation and update times.
+On PostgreSQL, `type.DateTime()`, `type.temporal.CreatedAt()`, and `type.temporal.UpdatedAt()` are `timestamptz(3)` columns that give your code a JavaScript `Date`, and need no `Temporal`. For a string or a `Temporal.Instant`, write the type and the generators yourself, such as `field.column(type.DateTime({ as: 'temporal' })).onCreate(gen.now()).onUpdate(gen.now())`. A type read as a `Temporal` value needs a global `Temporal`; [Scalar fields](/orm/data-modeling#scalar-fields) says how to check for it and which polyfill to load when it is missing.
 
 `field.namedType(x)` takes only an enum, as [Enums](#enums) shows.
 
+:::note[Upgrading from before `8.0.0-rc.21`]
+
+The field presets are removed: `field.text()`, `field.uuidString()`, `field.json()` and the other scalar presets, every `field.id.*`, every `field.temporal.*`, and `field.generated(...)`. TypeScript reports a missing property, and `prisma contract emit` on a contract that was not type-checked fails with `CONTRACT.FIELD_HELPER_UNKNOWN`, which names the rewrite. Write each one as `field.column(type.X(...))` with `.id()`, `.onCreate(gen.fn())` and `.onUpdate(gen.fn())`: `field.id.ulid()` is `field.column(type.Ulid()).id().onCreate(gen.ulid())`, and `field.temporal.updatedAt()` is `field.column(type.temporal.UpdatedAt())`. Each replacement stores the same contract as the preset did before `8.0.0-rc.22`. Since `8.0.0-rc.22`, `type.temporal.UpdatedAt()` is a `timestamptz(3)` column read as a `Date`, where `field.temporal.updatedAt()` read a `Temporal.Instant`, so follow the `8.0.0-rc.22` upgrade instructions for those fields. On MongoDB, `field.temporal.createdAt()` is `field.date().onCreate(gen.now())`, and `field.date()`, `field.string()` and the other MongoDB helpers stay.
+
+:::
+
 ### Type aliases
 
-`type` from the function's argument has a helper for every type PSL can write, such as `type.VarChar(64)`, `type.TimestampString(3)` and `type.String()`, plus `type.temporal.CreatedAt()` and `type.temporal.UpdatedAt()`, which work as [`temporal.CreatedAt` and `temporal.UpdatedAt` in PSL](/orm/contract-authoring/psl-syntax#named-types) do. PSL writes these without parentheses, while TypeScript calls them. Pass the result to `field.column(...)`.
+`type` has a helper for every type PSL can write, such as `type.VarChar(64)`, `type.TimestampString(3)` and `type.String()`, plus `type.temporal.CreatedAt()` and `type.temporal.UpdatedAt()`, which work as [`temporal.CreatedAt` and `temporal.UpdatedAt` in PSL](/orm/contract-authoring/psl-syntax#named-types) do. PSL writes these without parentheses, while TypeScript calls them. Pass the result to `field.column(...)`.
 
 A type alias, the `types { ... }` block of PSL, is a constant in TypeScript. Field builders never change once built, so one constant serves every field and model that uses it, and a field can chain more onto it:
 
@@ -253,7 +252,7 @@ export const contract = defineContract({}, ({ field, model, type, gen }) => {
 
   const Post = model("Post", {
     fields: {
-      id: field.id.uuidv4String(),
+      id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)),
       slug: Slug.unique(),
       createdAt: field.column(type.temporal.CreatedAt()),
       updatedAt: UpdatedAt.default(now()),
@@ -293,10 +292,10 @@ A fixed default passed to `.default(value)` has the type your code writes to the
 
 - A decimal default is a string: `.default("1.50")`.
 - A JSON default is the object or array itself: `.default({ plan: "free" })`.
-- A `field.dateTime()` default is a `Temporal.Instant`: `.default(Temporal.Instant.from("2024-01-01T00:00:00Z"))`. To write the time as a string instead, use `field.temporal.timestamptzString().default("2024-01-01T00:00:00Z")`.
-- A `field.bigint()` default is a `bigint`: `.default(1n)`.
+- A `type.DateTime()` default is a `Date`: `.default(new Date("2024-01-01T00:00:00Z"))`. A `type.DateTime({ as: 'temporal' })` default is a `Temporal.Instant`. To write the time as a string instead, use `field.column(type.TimestamptzString()).default("2024-01-01T00:00:00Z")`.
+- A `type.BigInt()` default is a `bigint`: `.default(1n)`.
 
-A value of the wrong type is a type error in your editor. A value the column's type cannot hold makes `contract emit` fail with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID), and a `Temporal` default with digits below one microsecond is refused too.
+A value of the wrong type is a type error in your editor. A value the column's type cannot hold makes `contract emit` fail with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID), and a `Temporal` default with digits below one microsecond is refused too, as is a default with digits below a millisecond on a field read as a `Date`.
 
 Do not write `.default(null)`, because when you leave out an `.optional()` field that has no default, the database already stores `NULL`.
 
@@ -421,17 +420,17 @@ PostTag.attributes(({ fields, constraints }) => ({
 }));
 ```
 
-That object accepts exactly two keys, `id` and `uniques`. `id` takes one constraint, and `uniques` takes a list, so `uniques: [constraints.unique([fields.postId, fields.tagId])]` makes a unique constraint across two fields. For a key made of one field, `.id()` on the field is enough, and the `field.id.*` helpers already do it.
+That object accepts exactly two keys, `id` and `uniques`. `id` takes one constraint, and `uniques` takes a list, so `uniques: [constraints.unique([fields.postId, fields.tagId])]` makes a unique constraint across two fields. For a key made of one field, `.id()` on the field is enough.
 
 ## Namespaces
 
 A model can go in a PostgreSQL schema other than `public`: declare the schema in `defineContract`'s `namespaces` option, then name it on the model. Without the declaration, `npx prisma contract emit` fails and names the missing entry.
 
 ```typescript
-export const contract = defineContract({ namespaces: ["audit"] }, ({ field, model }) => {
+export const contract = defineContract({ namespaces: ["audit"] }, ({ field, model, gen, type }) => {
   const AuditLog = model("AuditLog", {
     namespace: "audit",
-    fields: { id: field.id.uuidv4String(), message: field.text() },
+    fields: { id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)), message: field.column(type.String()) },
   });
   return { models: { AuditLog: AuditLog.sql({ table: "audit_log" }) } };
 });
@@ -463,8 +462,8 @@ The package exports the pieces of PostgreSQL row-level security, and [`migration
 ```typescript
 import { defineContract, policySelect, policyUpdate, rlsEnabled, role, sql } from "@prisma/orm-postgres/contract-builder";
 
-export const contract = defineContract({}, ({ field, model }) => {
-  const User = model("User", { fields: { id: field.id.uuidv4String() } });
+export const contract = defineContract({}, ({ field, model, gen, type }) => {
+  const User = model("User", { fields: { id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)) } });
   const authenticated = role("authenticated");
 
   return {
@@ -489,16 +488,18 @@ An extension pack is an npm package that adds column types to the builder. List 
 import pgvector from "@prisma/orm-extension-pgvector/pack";
 import { defineContract } from "@prisma/orm-postgres/contract-builder";
 
-export const contract = defineContract({ extensions: { pgvector } }, ({ field, model, type }) => {
+export const contract = defineContract({ extensions: { pgvector } }, ({ field, model, type, gen }) => {
   const Embedding1536 = field.column(type.pgvector.Vector(1536));
   const Post = model("Post", {
-    fields: { id: field.id.uuidv4String(), embedding: Embedding1536.optional() },
+    fields: { id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)), embedding: Embedding1536.optional() },
   });
   return { models: { Post: Post.sql({ table: "post" }) } };
 });
 ```
 
 List every pack whose column types the contract uses, also when you pass one of its types to `field.column(...)`. A pack's column types come with the code that stores and reads their values, and `defineContract` needs that code to know each column's database type. A type from a pack you did not list fails with [`CONTRACT.CODEC_DESCRIPTOR_MISSING`](/orm/reference/error-reference#CONTRACT.CODEC_DESCRIPTOR_MISSING). An argument out of range, such as a vector length or an SRID below 1, fails `defineContract` with [`CONTRACT.TYPE_PARAMS_INVALID`](/orm/reference/error-reference#CONTRACT.TYPE_PARAMS_INVALID).
+
+A PostgreSQL extension the contract needs, such as `pg_trgm`, goes in the `entities` list as `extension('pg_trgm')`, with `extension` imported from `@prisma/orm-postgres/contract-builder`, as [PostgreSQL extensions](/orm/contract-authoring/psl-syntax#postgresql-extensions) describes. A pack such as pgvector declares its own.
 
 The key on `type.pgvector` is the pack's own name, not the name you gave the import. The name is in the pack's documentation, and pgvector's is `pgvector`. `Embedding1536` is a [type alias](#type-aliases), a constant you name yourself: each column typed by it stores `vector(1536)`, and the name does not reach `contract.json` or `contract.d.ts`.
 

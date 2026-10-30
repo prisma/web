@@ -27,7 +27,7 @@ Create a PostgreSQL client.
 - Pass the contract as a value with the `contract` option. Turn `contract.json` into that value once with `contractFromJson<Contract>(contractJson)` from `@prisma/orm-postgres/static`, as every example below does. `Contract` is the type that `contract.d.ts` exports; you name it here because TypeScript cannot read a type out of a JSON file. The client takes its types for `db.orm` and `db.sql` from the value, so `postgres(...)` takes no type argument. If you write your contract in TypeScript with [`defineContract`](/orm/contract-authoring/typescript-schema-builder) instead of in `contract.prisma`, what `defineContract` returns is already a contract value, so pass it as `contract` directly.
 - `contractFromJson` checks the contract once. Build every client from the same value, and export it from the module that creates the client so that tests and other modules can import it.
 - Tell the client which database to use in one of three ways: `url`, `pg`, or `binding`. A `binding` wraps any of the three choices in one object, with a `kind` field saying which it is: `{ kind: 'url', url }`, `{ kind: 'pgPool', pool }`, or `{ kind: 'pgClient', client }`. Use it when your code picks the source at run time. Pass exactly one of `url`, `pg`, and `binding`, or leave all three out and pass one to [`connect()`](#connect).
-- When you pass a `pg` pool or client, you own it: call `db.close()` first, then close it yourself with `pool.end()`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself.
+- When you pass a `pg` pool or client, directly or as a `binding` with `kind: 'pgPool'` or `kind: 'pgClient'`, you own it: call `db.close()` first, then close it yourself with `pool.end()` for a pool or `client.end()` for a client. `db.close()` closes the client's runtime but leaves your pool or client open. The driver sets `DateStyle` to `ISO` on each connection of a pool or client you pass, before first use, so do not change `DateStyle` on those connections: a date or time read under another style fails with `RUNTIME.DATE_STYLE_NOT_ISO`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself.
 - Some types come from a PostgreSQL extension, such as a `pgvector.Vector(1536)` type in your `contract.prisma`. Run `npm install @prisma/orm-extension-pgvector` first. Then `import pgvector from '@prisma/orm-extension-pgvector/runtime'` and pass `extensions: [pgvector]`.
 - A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeEncode: (plan) => { if (plan.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the statement. Prisma ORM runs every statement and transaction as an activity: the lifecycle hooks are `activityStarted`, `activityEnded`, and `activityFinalized`, and the hooks that change or stop a statement are `beforeCompile`, `beforeEncode`, `intercept.onQuery`, `intercept.onExecute`, and `onRow`. See [How middleware works](/orm/middleware/how-middleware-works).
 - Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record and logs a warning on a mismatch, then runs anyway. If you see the warning, run `npx prisma db update`. `verifyMarker: false` skips the check.
@@ -111,7 +111,7 @@ Open a connection and return a runtime.
   - `runtime.telemetry()` reports how the most recent query went. See [`runtime.telemetry()`](#runtimetelemetry).
 - `connect()` takes the same database options as `postgres(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.DATABASE_URL! })`, or `await db.connect({ binding: { kind: 'url', url } })`.
 - Every error has a `code` property, and the [error reference](/orm/reference/error-reference) lists them all. Catch the error and compare `error.code` with the value shown here, for example `if (error.code === 'DRIVER.NOT_CONNECTED')`.
-- Call `connect()` before any query, or not at all. Running a query connects the client, so a `connect()` after that rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED`. So does a second `connect()`.
+- You rarely need `connect()`: running a query connects the client. `connect()` without options is safe to call at any time, also after a query or a second time: it waits for a connection in progress, or resolves with the runtime the client's queries already use. `connect(options)` on a client that is already connected rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED` and whose message is `Postgres client is already bound`. A `connect()` still waiting when you call `close()` rejects with `DRIVER.NOT_CONNECTED`.
 
 #### Return type
 
@@ -225,8 +225,8 @@ Close the client and release its pool.
 #### Remarks
 
 - Returns a `Promise<void>`. `close()` replaces `$disconnect()` from Prisma ORM 7. You can call it more than once; calls after the first do nothing.
-- A closed client cannot be used again: every query after `close()` fails with an error whose `code` is `DRIVER.NOT_CONNECTED`, and `connect()` rejects. Create a new client with [`postgres(options)`](#postgresoptions) if you need one. Queries already running when you call `close()` finish first.
-- When you created the client from your own `pg` pool, `close()` leaves the pool open; call `await pool.end()` after it.
+- A closed client cannot be used again. After `close()`, `connect()` rejects and `runtime()` throws an error whose `code` is `DRIVER.NOT_CONNECTED` (`Postgres client is closed`). `db.query(...)`, `db.execute(...)`, `db.transaction(...)`, `db.prepare(...)`, and ORM calls such as `db.orm.public.User.all()` report the same error through what they return: the promise rejects, or the result rejects when you await or read it. They do not throw at the call, so a `try`/`catch` catches the error only when you `await` the call. Create a new client with [`postgres(options)`](#postgresoptions) if you need one. Queries already running when you call `close()` finish first.
+- `close()` also closes the client's runtime, so a runtime you got from `db.runtime()` before `close()` refuses new work with `DRIVER.NOT_CONNECTED` (`Runtime is closed`). When you created the client from your own `pg` pool or client, `close()` leaves that pool or client open; call `await pool.end()` after it.
 - In a server, call `close()` when the process receives `SIGTERM` or `SIGINT`, and never in a request handler, because every request shares the pool. Stop the server first, so that no new query starts, then close the client. `app` is your Express app and `db` is the client from `src/prisma/db.ts`. Once both are closed, Node.js exits by itself; if it does not, something else, such as another database client or a timer, is still open:
 
 ```ts
@@ -401,7 +401,7 @@ Open a connection and return a runtime.
 
 #### Remarks
 
-- Returns a `Promise<MongoRuntime>`. Call `connect()` before any query, or not at all. Running a query connects the client, so a `connect()` after that rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED`. So does a second `connect()`.
+- Returns a `Promise<MongoRuntime>`. You rarely need `connect()`: running a query connects the client. `connect()` without options is safe to call at any time, also after a query or a second time: it waits for a connection in progress, or resolves with the runtime the client's queries already use. `connect(options)` on a client that is already connected rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED` and whose message is `Mongo client is already bound`. A `connect()` still waiting when you call `close()` rejects with `DRIVER.NOT_CONNECTED`.
 - `connect()` takes the same database options as `mongo(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.MONGODB_URL!, dbName: 'app' })`.
 
 #### Return type
@@ -512,7 +512,7 @@ Run a callback inside a transaction. The transaction commits when the callback r
 - Reads inside the transaction see the transaction's own uncommitted writes.
 - `tx.enums` and `tx.nativeEnums` are the same enum accessors the client has, and `.values` is the list of an enum's members.
 - The callback's return value passes through as the result of `db.transaction(...)`.
-- `tx.query(...)` returns an [`AsyncIterableResult`](#asynciterableresult) that works only while the transaction is open. Read it inside the callback. A result you return and then read after the transaction has ended rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`. To act on a code, catch the error and compare `error.code` with the string. Every code is listed in the [error reference](/orm/reference/error-reference).
+- `tx.query(...)` returns an [`AsyncIterableResult`](#asynciterableresult) that works only while the transaction is open. Read it inside the callback. A result you return and then read after the transaction has ended rejects with an error whose `code` is `RUNTIME.TRANSACTION_CLOSED`. Calling a member of `tx` after the transaction has ended, such as `tx.query(...)`, `tx.execute(...)`, or an ORM call on `tx.orm`, rejects with the same error instead of throwing at the call. To act on a code, catch the error and compare `error.code` with the string. Every code is listed in the [error reference](/orm/reference/error-reference).
 
 #### Options
 
@@ -783,7 +783,7 @@ Prepare a statement on the client itself.
   - `first()` returns a promise of one row, or of `null` when no row matches.
   - `aggregate(...)` returns a promise of the aggregate object.
   - `groupBy(...)` followed by `aggregate(...)` returns a promise of an array with one object per group.
-- `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` would throw an error whose `code` is `DRIVER.ALREADY_CONNECTED`, because `prepare()` already connected.
+- `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` resolves with the same runtime.
 
 #### Options
 
