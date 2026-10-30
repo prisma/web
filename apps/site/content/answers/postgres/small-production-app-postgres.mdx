@@ -15,7 +15,7 @@ faq:
   - question: "How often should I test a restore?"
     answer: "Before the first paying customer, then after any large change to the schema, permissions or storage, because a restore that worked for the old setup proves little about the new one. A fixed rhythm, such as once a quarter, keeps the steps current and gives a second person the chance to run them."
   - question: "How hard is it to move to another host later?"
-    answer: "The data moves with `pg_dump` and `pg_restore`, so the work is the cutover: stop writes, dump, restore and repoint the app. A dump is a snapshot of one moment, so writes stay stopped until the app points at the new database. Host-specific features, such as a built-in auth service or data API, take longer to replace. Prisma Postgres is managed PostgreSQL 17 and Prisma ORM is optional, so your Postgres client keeps working after a move in either direction."
+    answer: "The data moves with `pg_dump` and `pg_restore`, so the work is the cutover: stop writes, dump, restore and repoint the app. A dump is a snapshot of one moment, so writes stay stopped until the app points at the new database. Check two things first: `pg_dump` 17 can't dump a PostgreSQL 18 server, and a restore into Prisma Postgres uses `--no-owner --no-privileges`, so adapt any policies that name roles from the old host. The [import guide](/docs/postgres/import-from-existing-database) has the steps. Host-specific features, such as a built-in auth service or data API, take longer to replace. Prisma Postgres is managed PostgreSQL 17 and Prisma ORM is optional, so your Postgres client keeps working after a move in either direction."
 related:
   - title: "When a growing Postgres app needs a read replica"
     href: "/postgres/do-i-need-a-read-replica"
@@ -145,7 +145,11 @@ DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 Use [PostgreSQL 17 client tools](/docs/postgres/database/backups) and the direct string, on a schedule, from CI or a machine you control:
 
 ```sh
-pg_dump --dbname="$DIRECT_URL" --format=custom --file="backup-$(date +%F).dump"
+set -a; . ./.env; set +a
+: "${DIRECT_URL:?Set DIRECT_URL first}"
+umask 077
+mkdir -p backups
+pg_dump --dbname="$DIRECT_URL" --format=custom --file="backups/backup-$(date +%F).dump"
 ```
 
 The file holds your customers' data, so store it with its own access control and an expiry.
