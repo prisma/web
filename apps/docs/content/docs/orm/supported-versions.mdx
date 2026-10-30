@@ -3,7 +3,7 @@ title: Supported versions
 description: 'The versions of Node.js, Bun, Deno, PostgreSQL, MongoDB, and TypeScript that Prisma ORM 8 needs, and the tsconfig settings it expects.'
 url: /orm/supported-versions
 metaTitle: Versions supported by Prisma ORM 8
-metaDescription: 'Prisma ORM 8 needs Node.js 22.18, 24.11, or 26, PostgreSQL 15, MongoDB 8.0, and TypeScript 5.9. It ships ES modules only. The tsconfig settings it expects, the Temporal polyfill for PostgreSQL on Node.js 22 and 24, and how to check your versions.'
+metaDescription: 'Prisma ORM 8 needs Node.js 22.18, 24.11, or 26, PostgreSQL 15, MongoDB 8.0, and TypeScript 5.9. It ships ES modules only. The tsconfig settings it expects, the Temporal polyfill for PostgreSQL Temporal types on Node.js 22 and 24, and how to check your versions.'
 ---
 
 Prisma ORM 8 is a [release candidate](/orm/release-status). This page lists the oldest version of each runtime, database, and tool it runs on. Older versions are not supported.
@@ -18,7 +18,7 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). This page lists the 
 
 Node.js is the main runtime and gets the most testing. Bun and Deno work, and Deno support is experimental. Any package manager works: the npm that comes with these Node.js releases, pnpm, Bun, or Yarn 4.10 or newer.
 
-On PostgreSQL, Prisma ORM 8 reads and writes a `DateTime` field as a `Temporal.Instant`, not a `Date`. On MongoDB, a `DateTime` field is still a `Date`. `Temporal` is built into Node.js 26, Bun 1.4, and Deno 2.7 and later; Node.js 22 and 24, Bun 1.3, and Deno 2.6 do not have it. Check in the runtime that runs your app, because Homebrew's build of Node.js 26 leaves it out: `node -p "typeof Temporal"`, `bun -p "typeof Temporal"`, or `deno eval "console.log(typeof Temporal)"`. Wherever that prints `undefined`, install the polyfill with your package manager:
+On PostgreSQL, Prisma ORM 8 reads and writes a `DateTime` field as a JavaScript `Date`, as on MongoDB, and needs no polyfill for it. A field you type to read a `Temporal` value, such as `DateTime(as: temporal)` or `TimestamptzTemporal`, needs a global `Temporal`. `Temporal` is built into Node.js 26, Bun 1.4, and Deno 2.7 and later; Node.js 22 and 24, Bun 1.3, and Deno 2.6 do not have it. Check in the runtime that runs your app, because Homebrew's build of Node.js 26 leaves it out: `node -p "typeof Temporal"`, `bun -p "typeof Temporal"`, or `deno eval "console.log(typeof Temporal)"`. Wherever that prints `undefined`, install the polyfill with your package manager:
 
 ```npm
 npm install temporal-polyfill
@@ -30,7 +30,7 @@ Then add this line at the top of the file that creates your client, which is `sr
 import "temporal-polyfill/full/global";
 ```
 
-Without it, reading a `DateTime` field, or writing a row whose `DateTime` default generates the current time, throws an error whose `code` is `RUNTIME.TEMPORAL_UNAVAILABLE`. A TypeScript contract that writes a `Temporal` value as a default, such as `.default(Temporal.Instant.from(...))`, runs that code when `npx prisma contract emit` loads the file, so put the same import at the top of `src/prisma/contract.ts` as well. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) explains the change from `Date`.
+Without it, reading such a field, or writing a row whose default generates the current time for it, throws an error whose `code` is `RUNTIME.TEMPORAL_UNAVAILABLE`. A TypeScript contract that writes a `Temporal` value as a default, such as `.default(Temporal.Instant.from(...))`, runs that code when `npx prisma contract emit` loads the file, so put the same import at the top of `src/prisma/contract.ts` as well. [Models and fields](/orm/contract-authoring/psl-syntax#models-and-fields) lists which types read `Temporal` values.
 
 ## Databases
 
