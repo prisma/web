@@ -200,7 +200,7 @@ Some parts of the schema the examples rely on:
 - An enum member's stored value is the string after `=`, or the member name when there is no `=`. That string is what you pass to `.eq()`. So `Urgent = "urgent"` is matched by `.eq('urgent')`, and a bare `admin` member is matched by `.eq('admin')`.
 - A variant is a model that reuses another model's fields and rows. `@@base(Task, "bug")` makes `Bug` a variant of `Task`. Its second argument, `"bug"`, is the value stored in the discriminator column for a `Bug` row. `@@discriminator(type)` names that column. `db.orm.public.Task.variant('bug')` returns only the `Bug` rows. Pass the string in `@@base`, `'bug'`, not the model name.
 - `PostTag` is required. To join `Post.tags Tag[]` and `Tag.posts Post[]`, write a third model with one foreign key to each side and an `@@id` of exactly those two columns. Prisma ORM finds it for you, and neither `Post` nor `Tag` names it. A pair of list fields with no such model is rejected. See [Relations and joins](/orm/fundamentals/relations-and-joins#many-to-many).
-- On PostgreSQL, a `DateTime` field comes back as a `Temporal.Instant`, the standard JavaScript object for a point in time. A filter on that field takes the same type, so you can pass a value straight back in.
+- On PostgreSQL, a `DateTime` field comes back as a JavaScript `Date`, and a field written `DateTime(as: temporal)` as a `Temporal.Instant`. A filter on a field takes the same type it returns, so you can pass a value straight back in.
 
 ## Setting up the client
 
@@ -523,7 +523,7 @@ const users = await db.orm.public.User.include('posts', (posts) =>
 ```
 
 :::note[`min()` and `max()` over a date column]
-`min('createdAt')` over a `DateTime` column compiles and returns a `Temporal.Instant`, the standard JavaScript object for a point in time. Not every JavaScript engine has `Temporal` yet. Check with `typeof Temporal === 'undefined'`, and if yours does not, install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
+`min('createdAt')` over a `DateTime` column compiles and returns the field's type, a JavaScript `Date`. Over a field read as a `Temporal` value, it returns that value, which needs a global `Temporal`: check with `typeof Temporal === 'undefined'`, and if your engine has none, install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
 
 `sum('createdAt')` and `avg('createdAt')` do not compile.
 :::
@@ -1933,7 +1933,7 @@ const notAlice = await db.orm.public.User.where((u) => u.email.neq('alice@exampl
 
 ```typescript
 const after = await db.orm.public.Post.where((p) =>
-  p.createdAt.gt(Temporal.Instant.from('2024-01-02T10:00:00.000Z')),
+  p.createdAt.gt(new Date('2024-01-02T10:00:00.000Z')),
 ).all();
 // gte() is the same comparison, including the boundary value.
 ```
