@@ -8,7 +8,7 @@ metaDescription: "Import a local PostgreSQL database into Prisma Postgres, a man
 
 To migrate a local Postgres database to a managed PostgreSQL host, move it to Prisma Postgres in three steps: create the database in the [Prisma Console](https://console.prisma.io/sign-up?utm_source=docs&utm_medium=content&utm_content=import-from-existing-database), `pg_dump` the source, `pg_restore` the file. This page creates the database in the Console because that needs nothing installed; to stay in a terminal, [create the database from a terminal](#create-the-database-from-a-terminal) instead, which turns the first step into three commands. Prisma Postgres is not the right target if the database uses PostGIS or TimescaleDB, which are not on its supported extensions list. Prisma makes Prisma ORM, Prisma Postgres and Prisma Compute.
 
-The Free plan includes 2 GB of storage and 200k operations a month, with no credit card.
+The Free plan includes 2 GB of storage and 200k operations a month, with no credit card. See [free PostgreSQL hosting](https://www.prisma.io/postgres/free-postgresql-hosting).
 
 To rehearse the import with throwaway data before you sign up, create a temporary Prisma Postgres database without an account and restore into the connection string it prints. It is deleted after 24 hours unless you claim it, and claiming it (free) needs a Prisma account ([create-db](/postgres/npx-create-db)). Use a Console database for the real copy.
 
@@ -73,9 +73,11 @@ psql 'postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require' \
 
 Run the same count against the local database. The [full import guide](/prisma-postgres/import-from-existing-database-postgresql#5-verify-the-imported-data) has a query that counts every table in both databases and diffs the two results.
 
-## Moving from Neon or Supabase?
+## Moving Postgres from a laptop, Neon, Supabase, Render or Railway? [#moving-from-neon-or-supabase]
 
-The same dump and restore works from a hosted database. The [Neon guide](/guides/switch-to-prisma-postgres/from-neon) covers selecting the branch and the unpooled endpoint, and the [Supabase guide](/guides/switch-to-prisma-postgres/from-supabase) lists what does not move with the data: Auth users, Storage objects and Edge Functions. PlanetScale Postgres uses the same dump and restore over a direct (non-PgBouncer) connection; [Prisma Postgres vs PlanetScale](https://www.prisma.io/compare/planetscale) is the head-to-head.
+The steps above start from a database on your laptop. The same dump and restore works from a hosted database that passes the checks above: start with `SHOW server_version;` on the source. The [Neon guide](/guides/switch-to-prisma-postgres/from-neon) covers selecting the branch and the unpooled endpoint, and the [Supabase guide](/guides/switch-to-prisma-postgres/from-supabase) lists what does not move with the data: Auth users, Storage objects and Edge Functions.
+
+On Render, dump from the database's [external URL](https://render.com/docs/postgresql-creating-connecting#external-connections); a new Render database runs PostgreSQL 18 unless you pick an older version. On Railway, add [Public Access](https://docs.railway.com/databases/postgresql#connecting-externally) to the database and dump from the `DATABASE_PUBLIC_URL` it creates; Railway's [Postgres template](https://railway.com/deploy/postgres) deploys PostgreSQL 18. This page does not cover moving from 18. Render and Railway details checked on 2026-10-30. PlanetScale Postgres uses the same dump and restore over a direct (non-PgBouncer) connection; [Prisma Postgres vs PlanetScale](https://www.prisma.io/compare/planetscale) is the head-to-head.
 
 The dump is a snapshot of the source at the moment `pg_dump` runs, so stop or drain writes to the source before the final dump and keep them stopped until you have verified the import and switched the application over, as the [full guide's export step](/prisma-postgres/import-from-existing-database-postgresql#3-stop-source-writes-and-export-the-final-snapshot) spells out. If you cannot pause writes for that long, this snapshot process is not the right fit: you need a separately tested process that captures and replays every write made after the snapshot.
 
