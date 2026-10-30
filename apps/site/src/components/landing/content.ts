@@ -499,7 +499,7 @@ export const starterDatabasesLanding: LandingContent = {
     {
       question: "Does $10 cover all 1,000 databases?",
       answer:
-        "Yes. The plan includes up to 1,000 databases. What you pay for is usage across them: 1M operations a month are included, then $8 per million, and 10 GB of storage is included, then $2 per GB. A spend limit, on by default, caps the bill.",
+        "Yes. The plan includes up to 1,000 databases. What you pay for is usage across them: 1M operations a month are included, then $8 per million, and 10 GB of storage is included, then $2 per GB. A spend limit you set in the Console caps the usage charges.",
     },
     {
       question: "How do my agents create databases?",
@@ -509,7 +509,7 @@ export const starterDatabasesLanding: LandingContent = {
     {
       question: "What happens when I reach an allowance?",
       answer:
-        "Usage beyond the included operations or storage is billed at the plan's rates until your spend limit, which is on by default on every paid plan. Nothing is deleted. You can raise the limit, move to Pro for larger allowances and lower overage rates, or stay where you are.",
+        "Usage beyond the included operations or storage is billed at the plan's rates, up to your spend limit if you have set one in the Console. Nothing is deleted. You can set or raise the limit, move to Pro for larger allowances and lower overage rates, or stay where you are.",
     },
   ],
   cta: {
@@ -518,7 +518,7 @@ export const starterDatabasesLanding: LandingContent = {
     checks: [
       "1,000 databases included",
       "10 GB storage and 5M app requests a month",
-      "Spend limit on by default",
+      "Hard spend limit you set",
     ],
   },
 };
@@ -533,7 +533,7 @@ export const providersLanding: LandingContent = {
   meta: {
     title: "See how Prisma compares at scale | Prisma Starter and Pro",
     description:
-      "Prisma Starter ($10 a month) and Pro ($49 a month) put your app and its Postgres database on one bill, with database data transfer included and spend limits on by default. Compared with Neon + Vercel and Supabase on list prices, October 2026.",
+      "Prisma Starter ($10 a month) and Pro ($49 a month) put your app and its Postgres database on one bill, with database data transfer included and a hard spend limit you set. Compared with Neon + Vercel and Supabase on list prices, October 2026.",
     ogKicker: "Prisma Starter and Pro",
     ogAccent: "red",
   },
@@ -568,15 +568,15 @@ export const providersLanding: LandingContent = {
     {
       question: "What do spend limits cover?",
       answer:
-        "On Prisma, the spend limit is a hard cap on usage across the app and the database, on by default on every paid plan. Neon sends spending notifications at 80% and 100% of a threshold. Vercel has a spend budget with an optional pause. Supabase's Spend Cap is on by default on Pro and excludes database compute.",
+        "On Prisma, the spend limit is a hard cap you set on any paid plan: it counts usage charges across the app and the database, and queries to the workspace's databases stop when it is reached. None is set until you enter an amount in the Console. Neon sends spending notifications at 80% and 100% of a threshold. Vercel has a spend budget with an optional pause. Supabase's Spend Cap is on by default on Pro and excludes database compute.",
     },
   ],
   cta: {
     headline: "One platform, one bill, a limit you set",
-    body: "Sign up, pick Starter or Pro in the Console, and run the app next to its database. No seats, no database egress bill, and a spend limit on by default.",
+    body: "Sign up, pick Starter or Pro in the Console, and run the app next to its database. No seats, no database egress bill, and a spend limit you set.",
     checks: [
       "Database data transfer included",
-      "Spend limits on by default",
+      "Hard spend limits you set",
       "Standard Postgres, leave any time",
     ],
   },

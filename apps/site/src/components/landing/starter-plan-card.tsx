@@ -14,7 +14,7 @@ const LINES = [
   "1,000 databases included",
   "1M database operations a month",
   "Daily backups, 7-day retention",
-  "Spend limit on by default",
+  "Hard spend limit you set",
 ] as const;
 
 export function StarterPlanCard({ ctaLabel }: { ctaLabel: string }) {
