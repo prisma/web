@@ -18,7 +18,7 @@ type Standard = {
   name: string;
   description: string;
   href?: string;
-  hrefLabel?: string;
+  linkPhrase?: string;
 };
 
 const STANDARDS: Standard[] = [
@@ -42,7 +42,7 @@ const STANDARDS: Standard[] = [
     description:
       "Support for workloads with protected health information, with a signed Business Associate Agreement. Available on the Business plan at $129 a month.",
     href: "/postgres/hipaa",
-    hrefLabel: "HIPAA on the Business plan",
+    linkPhrase: "signed Business Associate Agreement",
   },
 ];
 
@@ -80,19 +80,15 @@ export default function SecurityCompliancePage() {
               >
                 <h3 className="text-base font-semibold">{standard.name}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {standard.description}
-                  {standard.href ? (
-                    <>
-                      {" "}
-                      <Link
-                        href={standard.href}
-                        className="font-semibold text-prism-cyan-700 hover:underline"
-                      >
-                        {standard.hrefLabel ?? "Learn more"}
-                      </Link>
-                      .
-                    </>
-                  ) : null}
+                  {standard.href && standard.linkPhrase ? (
+                    <LinkedPhrase
+                      text={standard.description}
+                      phrase={standard.linkPhrase}
+                      href={standard.href}
+                    />
+                  ) : (
+                    standard.description
+                  )}
                 </p>
               </div>
             ))}
@@ -126,5 +122,18 @@ export default function SecurityCompliancePage() {
         </section>
       </div>
     </article>
+  );
+}
+
+function LinkedPhrase({ text, phrase, href }: { text: string; phrase: string; href: string }) {
+  const index = text.indexOf(phrase);
+  return (
+    <>
+      {text.slice(0, index)}
+      <Link href={href} className="font-semibold text-prism-cyan-700 hover:underline">
+        {phrase}
+      </Link>
+      {text.slice(index + phrase.length)}
+    </>
   );
 }

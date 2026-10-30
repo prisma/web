@@ -240,7 +240,11 @@ export default function PartnersProgramPage() {
             </p>
             <PrismButton href={CONTACT_URL}>Contact the partner team</PrismButton>
             <p className="text-xs text-muted-foreground">
-              We&apos;re fully GDPR, HIPAA, ISO 27001 and SOC 2 compliant.{" "}
+              We&apos;re fully GDPR,{" "}
+              <a href="/postgres/hipaa" className="underline">
+                HIPAA
+              </a>
+              {", ISO 27001 and SOC 2 compliant. "}
               <a href="https://trust.prisma.io/" className="underline">
                 Find more details here.
               </a>

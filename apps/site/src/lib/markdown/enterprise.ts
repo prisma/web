@@ -15,7 +15,15 @@ export function renderEnterpriseMarkdown(): string {
     heading(2, "What an enterprise engagement includes"),
     // The nine benefit cards are <h3>s inside a grid, so they read as a list.
     definitionList(
-      BENEFITS.map((benefit) => ({ name: benefit.title, description: benefit.description })),
+      BENEFITS.map((benefit) => ({
+        name: benefit.title,
+        description: benefit.descriptionLink
+          ? benefit.description.replace(
+              benefit.descriptionLink.phrase,
+              `[${benefit.descriptionLink.phrase}](${benefit.descriptionLink.href})`,
+            )
+          : benefit.description,
+      })),
     ),
 
     // "Bring your own database" is a <p> label over the logo strip rather than

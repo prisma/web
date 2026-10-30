@@ -35,6 +35,7 @@ export const BENEFITS = [
     title: "Advanced security",
     description:
       "Adopt secure defaults and harden database access patterns for sensitive workloads and regulated environments.",
+    descriptionLink: { phrase: "regulated environments", href: "/postgres/hipaa" },
   },
   {
     title: "Performance optimization",

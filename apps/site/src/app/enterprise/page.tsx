@@ -1,4 +1,5 @@
 import { createPageMetadata } from "@/lib/page-metadata";
+import Link from "next/link";
 import { RoleKicker } from "@/components/brand/role-kicker";
 import { Texture } from "@/components/brand/texture";
 import { PrismButton } from "@/components/brand/prism-button";
@@ -59,7 +60,15 @@ export default function EnterprisePage() {
                 />
                 <h3 className="text-base font-semibold leading-snug">{benefit.title}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  {benefit.description}
+                  {benefit.descriptionLink ? (
+                    <LinkedPhrase
+                      text={benefit.description}
+                      phrase={benefit.descriptionLink.phrase}
+                      href={benefit.descriptionLink.href}
+                    />
+                  ) : (
+                    benefit.description
+                  )}
                 </p>
               </div>
             ))}
@@ -94,6 +103,19 @@ export default function EnterprisePage() {
           <PrismButton href={CONTACT_URL}>Contact enterprise sales</PrismButton>
         </div>
       </section>
+    </>
+  );
+}
+
+function LinkedPhrase({ text, phrase, href }: { text: string; phrase: string; href: string }) {
+  const index = text.indexOf(phrase);
+  return (
+    <>
+      {text.slice(0, index)}
+      <Link href={href} className="underline">
+        {phrase}
+      </Link>
+      {text.slice(index + phrase.length)}
     </>
   );
 }
