@@ -79,7 +79,11 @@ export function renderProductMarkdown({
     // Hero. The h1 and subheadline are emitted by the caller, so this picks up
     // at the CTAs, the reassurance microline and the three benefits.
     ctaList([hero.primaryCta, hero.secondaryCta]),
-    hero.microline,
+    hero.microline
+      ? hero.microlineHref
+        ? `[${hero.microline}](${hero.microlineHref})`
+        : hero.microline
+      : undefined,
     hero.related ? `[${hero.related.label}](${hero.related.href})` : undefined,
     hero.benefits ? bulletList([...hero.benefits]) : undefined,
     // product-tour.tsx shows one stop at a time behind a tab strip. Markdown

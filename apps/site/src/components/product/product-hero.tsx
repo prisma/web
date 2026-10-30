@@ -174,7 +174,18 @@ export function ProductHero({
                 <HeroChecks labels={checks} className="mt-8 flex flex-col gap-2.5" />
               ) : null}
               {hero.microline ? (
-                <p className="mt-3.5 text-sm text-muted-foreground">{hero.microline}</p>
+                <p className="mt-3.5 text-sm text-muted-foreground">
+                  {hero.microlineHref ? (
+                    <Link
+                      href={hero.microlineHref}
+                      className="underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
+                    >
+                      {hero.microline}
+                    </Link>
+                  ) : (
+                    hero.microline
+                  )}
+                </p>
               ) : null}
               {hero.related ? (
                 <p className="mt-2 text-sm text-muted-foreground">
