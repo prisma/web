@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion/reveal";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 import { PRODUCT_ICONS } from "./icons";
 import type { ProductIconName } from "./icons";
 
@@ -29,7 +30,9 @@ export function ProductDetailBlocks({
             </h2>
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="text-pretty leading-relaxed text-muted-foreground md:mt-1.5">{bridge}</p>
+            <p className="text-pretty leading-relaxed text-muted-foreground md:mt-1.5">
+              {renderFaqAnswer(bridge)}
+            </p>
           </Reveal>
         </div>
 
@@ -49,7 +52,7 @@ export function ProductDetailBlocks({
                   {name}
                 </h3>
                 <p className="mt-2.5 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
-                  {description}
+                  {renderFaqAnswer(description)}
                 </p>
               </Reveal>
             );

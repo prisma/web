@@ -1,4 +1,9 @@
-import { composerNextConfig } from "../../composer/next-config.mjs";
+import {
+  composerBuild,
+  composerNextConfig,
+  composerPublicDocumentHeaders,
+} from "../../composer/next-config.mjs";
+import { fileURLToPath } from "node:url";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import { createMDX } from "fumadocs-mdx/next";
 
@@ -762,6 +767,12 @@ const config = {
   },
   basePath: "/docs",
   assetPrefix: "/docs-static",
+  ...(composerBuild
+    ? {
+        cacheHandler: fileURLToPath(new URL("../../composer/next-cache.cjs", import.meta.url)),
+        images: { customCacheHandler: true },
+      }
+    : {}),
   allowedDevOrigins,
   reactStrictMode: true,
 
@@ -788,17 +799,22 @@ const config = {
   async headers() {
     return [
       {
+        // Next adds /docs; social crawlers can fetch cards without indexing them.
+        source: "/og/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
+      {
         source: "/:path*",
         headers: [...securityHeaders, llmsTxtHeader],
       },
       {
         source: "/",
-        headers: docsRootMarkdownHeaders,
+        headers: [...docsRootMarkdownHeaders, ...composerPublicDocumentHeaders],
       },
       {
         source:
           "/:path((?!api(?:/|$)|llms(?:\\.|/|$)|og(?:/|$)|rss\\.xml$|sitemap(?:\\.xml)?$|favicon\\.ico$|.*\\.[^/]+$).+)",
-        headers: docsMarkdownHeaders,
+        headers: [...docsMarkdownHeaders, ...composerPublicDocumentHeaders],
       },
     ];
   },

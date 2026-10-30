@@ -46,7 +46,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "Managed PostgreSQL. A project can be used as a standalone Postgres database with any Postgres client. Auth, Storage, Realtime, and Edge Functions are included and optional.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/docs/postgres",
@@ -209,7 +209,7 @@ export const PRICING: readonly {
 export const WRONG_CHOICE = [
   "You want Auth, Storage, Realtime, auto-generated APIs, or Edge Functions as first-party services next to Postgres. Prisma Postgres does not include those. See [Supabase pricing](https://supabase.com/pricing).",
   "You want the frontend on a host such as Vercel, with Supabase isolating Auth, Storage, Edge Functions, and the database on a preview branch. A Prisma preview branch can own Compute services and databases; it does not include those Supabase backend products. See [Supabase branching](https://supabase.com/docs/guides/deployment/branching).",
-  "You need point-in-time recovery today. Prisma Postgres has no point-in-time recovery. Paid plans include daily backups. Supabase sells PITR as a $100 per month add-on per 7 days of retention on [Supabase pricing](https://supabase.com/pricing).",
+  "You need point-in-time recovery today. Prisma Postgres has no point-in-time recovery yet (it is coming in November 2026). Paid plans include daily backups. Supabase sells PITR as a $100 per month add-on per 7 days of retention on [Supabase pricing](https://supabase.com/pricing).",
   "You want database compute billed by the hour with a $25 Pro base, and you are fine that the Spend Cap excludes compute. Prisma Postgres bills operations and storage instead.",
 ];
 

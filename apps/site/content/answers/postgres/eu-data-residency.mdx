@@ -1,0 +1,87 @@
+---
+title: "Which managed Postgres providers have EU regions for GDPR needs?"
+description: "Compare EU Postgres regions and verify data-residency requirements across contracts, backups, support access, logs and application services."
+summary: "Choose a specific EU database region, then verify the provider's processing agreement and the rest of your app's data flows. [Prisma Postgres](/docs/postgres) has Paris and Frankfurt regions and pairs with [Prisma Compute](/docs/compute) for a TypeScript server in the same region. Neon and Supabase also list EU database locations. Region selection is one part of the decision; the contract and the actual processing paths determine whether the setup meets your requirements."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-28"
+updatedAt: "2026-10-29"
+readingTime: "6 min read"
+faq:
+  - question: "Does GDPR require every database to be hosted inside the EU?"
+    answer: "GDPR has rules for international transfers rather than a blanket rule that every database must be in the EU. The European Commission describes transfer mechanisms and safeguards. Your contracts or sector-specific requirements may impose a narrower location rule, so establish the actual requirement before choosing a region."
+  - question: "Does choosing Frankfurt prove that every copy of my data stays in the EU?"
+    answer: "No. A database region identifies a resource location, not every processing or storage path. Verify the contractual scope for backups, recovery, logs, support, subprocessors and connected services. Prisma's Terms explicitly say region selection alone does not create a data-residency commitment."
+  - question: "Are London and Zurich EU regions?"
+    answer: "No. London is in the United Kingdom and Zurich is in Switzerland; neither is in an EU member state. If the requirement specifically says EU, choose an identified EU location rather than treating any European location as equivalent. Other legal mechanisms may apply to transfers, but they do not change that geographic distinction."
+  - question: "Can I use an EU Prisma Postgres database without Prisma ORM?"
+    answer: "Yes. Prisma Postgres works with PostgreSQL clients, including node-postgres, Drizzle and Prisma ORM. Database location and the application's database library are separate decisions. Keep the app server and its secrets configured for the intended database."
+related:
+  - title: "Choosing app and database regions for latency"
+    href: "/postgres/nodejs-database-regions"
+  - title: "Managing secrets in a TypeScript app"
+    href: "/compute/typescript-app-secrets"
+  - title: "Practicing database recovery"
+    href: "/postgres/practice-database-recovery"
+cta:
+  title: "Review the region and the processing terms together"
+  description: "Use Prisma's published region list, DPA and Trust Center to assess the setup for your application."
+  label: "Read the data processing agreement"
+  href: "/legal/dpa"
+---
+
+An EU database can still send personal data to an application server, an error tracker or an assistant elsewhere. Start by defining what must stay where, including who may access it, rather than treating a region dropdown as the whole compliance decision.
+
+We make Prisma Postgres and Prisma Compute. Region and policy sources linked below were checked on October 27, 2026. This guide provides a technical selection process; have the person responsible for your organization's privacy obligations review the contractual requirements.
+
+## What does "keep data in the EU" mean for this app?
+
+Write the requirement in terms of data and operations. Does it concern the primary database, every backup, support access, or all processing by every connected service? Does it say EU, EEA or a particular country? Those are different scopes.
+
+The [European Commission's transfer guidance](https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/rules-international-data-transfers_en?prefLang=et) explains that transfers outside the EEA require appropriate protection, with mechanisms such as adequacy decisions and standard contractual clauses. GDPR also concerns lawful processing, minimization and retention; an EU resource address does not establish those application practices.
+
+For example, a Frankfurt database queried by a US application server moves query results to that server. If that server then sends rows to an AI service or logs a customer's email, those paths belong in the assessment too. A coding assistant's location and tool permissions matter when it is allowed to inspect real records.
+
+## Which providers list specific EU database locations?
+
+The alphabetically ordered examples below are a starting list, not a statement that every processing path is confined to those locations.
+
+| Provider | Documented EU location examples | What the location alone does not establish |
+| --- | --- | --- |
+| [Neon](https://neon.com/docs/introduction/regions) | Frankfurt, `aws-eu-central-1`. | Coverage of every support, telemetry or other processing path in your agreement. |
+| [Prisma Postgres](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in) | Paris, `eu-west-3`, and Frankfurt, `eu-central-1`. | A contractual data-residency commitment; Prisma's Terms distinguish this from region selection. |
+| [Supabase](https://supabase.com/docs/guides/platform/regions) | Specific EU choices include Frankfurt, Ireland, Paris and Stockholm. | An EU-only guarantee for all services and data categories merely from a region choice. |
+
+Supabase advises choosing a specific region for jurisdiction requirements: its broad Europe grouping can include London and Zurich. Select the actual location rather than relying on the grouping's label. Neon's region documentation says a project's region is fixed; moving to another region requires a new project and migration.
+
+Prisma Postgres and Prisma Compute can be placed together in Paris or Frankfurt. This gives a TypeScript team one place to describe its app and database resources, and places the app server close to its database. Prisma ORM remains optional. The [region guide](/postgres/nodejs-database-regions) explains the performance checks; the contractual assessment still needs the wider data map.
+
+## How do I assess and configure the Prisma path?
+
+### 1. Review the processing terms before importing real records
+
+Read the [DPA](/legal/dpa), [Terms of Service](/legal/terms) and current subprocessor information in the [Trust Center](https://trust.prisma.io/). Prisma's Terms say that selecting a region determines resource provisioning but does not by itself create a data-residency commitment. Do not turn a Console selection into a promise to a customer that the contract does not make.
+
+Ask for the scope that the requirement actually needs: database contents, backups and restores, service logs, support access, deletion and onward processing. Record answers and any agreed commitments with the deployment documentation. If the policy requires every copy and all access to remain in the EU, obtain an explicit commitment covering that scope before moving data.
+
+### 2. Select and verify the actual resources
+
+Create the database in the chosen EU region, such as Frankfurt, and record its project, database identifier and region from the provider's resource metadata. For Prisma Compute, explicitly select the matching service region; the [runtime documentation](/docs/compute/limitations#runtime) lists regional configuration and defaults. Do not assume an omitted region will become Frankfurt.
+
+Choose one provisioning path: a [Composer declaration](/docs/composer/databases) provisions its declared database, while a Console-created database requires its own connection configuration. Inspect the resulting database and service resources rather than inferring location from a display name, a timezone setting or the hostname alone.
+
+### 3. Trace a fictional record through the full app
+
+Before importing customer data, use a fictional record to test the application, exports and recovery procedure. Inspect logging and error-reporting behavior: exclude unnecessary record contents and secrets. Check the locations and terms for uploads, email, analytics and any AI feature that receives that record.
+
+Document the [backup procedure](/docs/postgres/database/backups), restore target and export destination. A developer downloading a dump to a laptop creates another copy; include that workflow in the location and retention rules. Verify the application can honor the retention and deletion rules you establish.
+
+### 4. Make location checks part of a release
+
+Keep the resource identifiers and approved data-flow diagram in the team's operational documentation. Recheck new integrations, new preview environments and migration destinations before deploying them. An assistant can help compare configuration to the recorded requirements, but its instruction text is not a contractual control or a substitute for checking the actual resources.
+
+## When should I choose another provider or contract?
+
+Choose a provider and agreement that explicitly cover your required location and access boundaries when Prisma's standard terms do not establish them. A specific national jurisdiction or a restriction on support access may need a different service or negotiated terms. Do not infer those guarantees for Neon or Supabase from their region lists either.
+
+Keep the rest of the database requirements in the decision. Restricted roles, extensions and backup and restore options can still rule a provider out even when its primary region is suitable. EU placement does not compensate for an access model or recovery procedure that the app cannot use.

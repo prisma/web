@@ -1,0 +1,141 @@
+---
+title: arktype-json
+description: Give a JSON column a TypeScript type and check it when it is read, with an arktype schema and the arktype-json extension for Prisma ORM 8.
+url: /orm/extensions/arktype-json
+metaTitle: Typed JSON columns with arktype | Prisma ORM
+metaDescription: 'Add the arktype-json extension to a Prisma ORM 8 project: describe a JSON column with an arktype schema in a TypeScript contract, get its TypeScript type in your queries, and catch stored values that break the schema.'
+---
+
+A plain `Jsonb` column, Prisma ORM 8's type for a PostgreSQL `jsonb` column, reads as any JSON value, so your code has to check what is in it. The arktype-json extension describes a JSON column with an [arktype](https://arktype.io) schema instead. The column's TypeScript type then comes from the schema, and Prisma ORM checks each value against the schema when it reads it.
+
+The column is still a `jsonb` column, so it needs nothing installed on the server.
+
+This page assumes a Prisma ORM 8 project on PostgreSQL, such as one from [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql), where `src/prisma/db.ts` creates the client your code queries with.
+
+## Your contract must be TypeScript
+
+The schema is a JavaScript value, so the column is declared in a TypeScript contract, `src/prisma/contract.ts`; a `contract.prisma` contract cannot hold it. A project has one contract, so if yours is `contract.prisma`, rewrite it in TypeScript first: [TypeScript schema builder](/orm/contract-authoring/typescript-schema-builder) shows the TypeScript form of each PSL construct. Then set `contract` in `prisma.config.ts` to `./src/prisma/contract.ts`.
+
+## Set it up
+
+Install the package and arktype next to `@prisma/orm-postgres`:
+
+```npm
+npm install @prisma/orm-extension-arktype-json arktype
+```
+
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. Keep the rest of each file as it is; the full files look like this:
+
+```ts title="prisma.config.ts"
+import 'dotenv/config';
+import { definePrismaConfig } from 'prisma/config';
+import arktypeJsonControl from '@prisma/orm-extension-arktype-json/control';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.ts',
+    extensions: [arktypeJsonControl],
+    db: { connection: process.env['DATABASE_URL']! },
+  }),
+});
+```
+
+```ts title="src/prisma/db.ts"
+import 'dotenv/config';
+import arktypeJsonRuntime from '@prisma/orm-extension-arktype-json/runtime';
+import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
+  url: process.env['DATABASE_URL']!,
+  extensions: [arktypeJsonRuntime],
+});
+```
+
+## Declare the column
+
+In the contract, pass the pack to `defineContract` with the key `"arktype-json"`, in quotes because of the hyphen; with any other key, the client fails to start with `RUNTIME.MISSING_EXTENSION_PACK`. Then make the column with `arktypeJson(schema)` from `/column-types`:
+
+```ts title="src/prisma/contract.ts"
+import { defineContract } from '@prisma/orm-postgres/contract-builder';
+import arktypeJsonPack from '@prisma/orm-extension-arktype-json/pack';
+import { arktypeJson } from '@prisma/orm-extension-arktype-json/column-types';
+import { type } from 'arktype';
+
+export const ArticleMeta = type({ tags: 'string[]', 'readingMinutes?': 'number' });
+
+export const contract = defineContract({ extensions: { 'arktype-json': arktypeJsonPack } }, ({ field, model, type: t }) => {
+  const Article = model('Article', {
+    fields: {
+      id: field.column(t.Int()).id(),
+      title: field.column(t.String()),
+      meta: field.column(arktypeJson(ArticleMeta)).optional(),
+    },
+  });
+
+  return { models: { Article: Article.sql({ table: 'article' }) } };
+});
+```
+
+The builder's own `type` helper is renamed to `t` here, because arktype's `type` has the same name. `ArticleMeta` is exported so your app can check values with it too. `.optional()` lets the column be empty, which reads as `null`.
+
+Then update the generated files, write the migration, and apply it to your development database:
+
+```bash
+npx prisma contract emit
+npx prisma migration plan --name add-article-meta
+npx prisma db migrate --advance-ref db
+```
+
+Two changes leave the database as it is, because the column stays `jsonb`: switching an existing `Jsonb` column to `arktypeJson(...)`, and changing the arktype type later. After either one, run `npx prisma contract emit` so the column's TypeScript type follows. `migration plan` then stops with `MIGRATION.PLANNING_FAILED` and prints a command:
+
+1. Run the printed `npx prisma migration new --from <hash>`. It writes a migration with no operations, which records the new contract.
+2. Run `npx prisma db migrate --advance-ref db`.
+
+Rows already in the column are not checked until they are read.
+
+## Read and write the column
+
+`contract emit` writes the schema's TypeScript type into `contract.d.ts`, so `meta` reads as `{ tags: string[]; readingMinutes?: number }`, and TypeScript checks what you write:
+
+```ts
+const article = await db.orm.public.Article.create({
+  id: 1,
+  title: 'Typed JSON',
+  meta: { tags: ['json', 'arktype'], readingMinutes: 4 },
+});
+
+article.meta?.tags; // string[]
+```
+
+Prisma ORM checks a value against the schema when it reads it, not when it writes it. A row whose stored value breaks the schema, written by SQL or by another app, fails to read with an error whose `code` is `RUNTIME.JSON_SCHEMA_VALIDATION_FAILED`, and the message names the problem, such as `tags must be an array (was number)`. In a query that returns many rows, one such row fails the whole query.
+
+Because writes are not checked, a value typed `any` or `unknown`, such as a parsed request body, reaches the database unchecked. What happens next depends on the method:
+
+- `create()` saves the row, then throws `RUNTIME.JSON_SCHEMA_VALIDATION_FAILED` when it reads the row back. The row stays in the database.
+- `update()` throws the same error and does not save the change.
+- `createAndCount()` and `updateAndCount()` do not read rows back, so they save the value and throw nothing.
+
+Check such a value with the arktype type before you write it:
+
+```ts
+import { type } from 'arktype';
+import { ArticleMeta } from './prisma/contract';
+
+const meta = ArticleMeta(input);
+if (meta instanceof type.errors) {
+  throw new Error(meta.summary);
+}
+await db.orm.public.Article.create({ id: 2, title: 'From a form', meta });
+```
+
+To repair a row that fails to read, overwrite its value: `update()` does not read the old value, so `db.orm.public.Article.where({ id }).update({ meta: { tags: [] } })` works on it. Find such rows with SQL, such as `SELECT id FROM article WHERE meta IS NOT NULL AND jsonb_typeof(meta->'tags') IS DISTINCT FROM 'array'`, which also finds values with no `tags` key; the table is `article` because the contract sets `table: 'article'`.
+
+## Next steps
+
+- [Using extensions](/orm/extensions/using-extensions) walks through the setup for pgvector, step by step.
+- [arktype's own documentation](https://arktype.io/docs) covers how to write a schema.

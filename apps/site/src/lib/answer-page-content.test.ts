@@ -14,7 +14,12 @@ test("every answer is discoverable with its Markdown URL and full FAQ content", 
   for (const entry of entries) {
     assert.match(entry.slug, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
     assert.ok(
-      !["/postgres/guides", "/postgres/hipaa", "/compute/guides"].includes(entry.url),
+      ![
+        "/postgres/guides",
+        "/postgres/hipaa",
+        "/postgres/free-postgresql-hosting",
+        "/compute/guides",
+      ].includes(entry.url),
       "answer collides with a static route",
     );
     assert.ok(index.includes(`${entry.url}.md`), `missing Markdown discovery for ${entry.url}`);

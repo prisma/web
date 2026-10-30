@@ -64,6 +64,7 @@ export const AGENT_MARKDOWN_PATHS = [
   "/stack",
   "/enterprise",
   "/mcp",
+  "/postgres/free-postgresql-hosting",
   ...COMPARISON_PATHS,
 ] as const;
 
@@ -100,7 +101,7 @@ export const AGENT_MARKDOWN_VARY = "Accept, User-Agent";
  * `proxy-matcher.test.ts` checks the proxy end to end on every guide.
  */
 export const ANSWER_PAGE_RESERVED_SEGMENTS: Readonly<Record<string, readonly string[]>> = {
-  postgres: ["guides", "hipaa"],
+  postgres: ["guides", "hipaa", "free-postgresql-hosting"],
   compute: ["guides"],
 };
 

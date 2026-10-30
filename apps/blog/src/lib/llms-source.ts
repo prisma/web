@@ -1,10 +1,6 @@
-import type { InferPageType } from "fumadocs-core/source";
-
 import type { LlmsPost, LlmsSeries } from "./llms";
 import { getSeriesMetadata, seriesRegistry } from "./series-registry";
-import { blog } from "./source";
-
-type BlogPage = InferPageType<typeof blog>;
+import { type BlogPage, getPublishedPages } from "./source";
 
 function toDate(value: Date | string | undefined): Date | null {
   if (!value) return null;
@@ -27,13 +23,14 @@ export function toLlmsPost(page: BlogPage): LlmsPost {
   };
 }
 
+/** Every published post. Drafts stay out of all the agent-facing files. */
 export function getLlmsPosts(): LlmsPost[] {
-  return blog.getPages().map(toLlmsPost);
+  return getPublishedPages().map(toLlmsPost);
 }
 
-/** Registered series in registry order, each with its current post count. */
+/** Registered series in registry order, each with its published post count. */
 export function getLlmsSeries(): LlmsSeries[] {
-  const pages = blog.getPages();
+  const pages = getPublishedPages();
   return Object.entries(seriesRegistry).map(([key, entry]) => ({
     key,
     title: entry.title,

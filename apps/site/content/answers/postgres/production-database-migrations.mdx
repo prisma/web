@@ -5,7 +5,7 @@ summary: "When new tables are missing after a deploy, the new code is live but t
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-19"
-updatedAt: "2026-10-19"
+updatedAt: "2026-10-22"
 readingTime: "8 min read"
 faq:
   - question: "What is the difference between prisma migrate dev and prisma migrate deploy?"
@@ -27,6 +27,8 @@ related:
     href: "/docs/postgres/database/backups"
   - title: "DATABASE_URL missing after a deploy"
     href: "/postgres/database-url-missing"
+  - title: "Migration step can't reach the database during a deploy"
+    href: "/postgres/migration-cannot-reach-database"
 cta:
   title: "Put the schema change in the deploy"
   description: "Deploy your TypeScript app on Prisma Compute with a Prisma Postgres database declared in the same project, and have each deploy apply its migrations before the service starts."
@@ -133,7 +135,7 @@ Each phase ships in its own deploy, so you can stop or roll the app back between
 
 Watch the locks as well. In PostgreSQL, [`ALTER TABLE`](https://www.postgresql.org/docs/current/sql-altertable.html) takes an `ACCESS EXCLUSIVE` lock unless the docs note otherwise for a subcommand, and that lock [conflicts with every other lock mode](https://www.postgresql.org/docs/current/explicit-locking.html), including plain reads. Set [`lock_timeout`](https://www.postgresql.org/docs/current/runtime-config-client.html) for the migration session, so a statement that can't get its lock quickly fails instead of waiting, and retry it at a quieter time. Build large indexes with [`CREATE INDEX CONCURRENTLY`](https://www.postgresql.org/docs/current/sql-createindex.html), which does not block writes but cannot run inside a transaction block, so check how your tool wraps migrations in transactions.
 
-Before a destructive step, confirm you have a backup you can restore, and test the migration against a database with realistic data, such as a [separate test database](/postgres/typescript-test-environment). Review the generated SQL for drops and rewrites you didn't intend.
+Before a destructive step, confirm you have a backup you can restore, and know [how you would copy lost rows back](/postgres/recover-deleted-records) from it. Test the migration against a database with realistic data, such as a [separate test database](/postgres/typescript-test-environment). Review the generated SQL for drops and rewrites you didn't intend.
 
 ### When this fix does not apply
 
@@ -150,7 +152,7 @@ Before a destructive step, confirm you have a backup you can restore, and test t
 
 Know the limits before you rely on them:
 
-- Prisma Postgres takes daily snapshots only on Starter, Pro and Business, kept for 7 days on Starter and Pro and 30 days on Business, and only on days with database activity. The Free plan has no backups. There is no point-in-time recovery yet, so changes made after the latest snapshot may not be restored. Take a `pg_dump` over the direct connection before a destructive migration.
+- Prisma Postgres takes daily snapshots only on Starter, Pro and Business, kept for 7 days on Starter and Pro and 30 days on Business, and only on days with database activity. The Free plan has no backups. There is no point-in-time recovery yet (it is coming in November 2026), so changes made after the latest snapshot may not be restored. Take a `pg_dump` over the direct connection before a destructive migration.
 - `prisma service version rollback` puts an [earlier app version](/docs/compute/deployments) back by reusing its build. Plan schema changes so that the previous version can still run against them.
 - Prisma Compute deploys through a Prisma Composer declaration around your app. If you keep your current host, you can still use Prisma Postgres as the database and run migrations from your existing pipeline.
 

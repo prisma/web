@@ -42,14 +42,21 @@ export const postgresContent: ProductPageContent = {
     // Check the CTA still clears the fold at 1440x800 when the copy changes.
     subheadline:
       "Managed Postgres for TypeScript and AI apps, with Prisma Compute to host your app (Node.js, Bun or Next.js) next to it in one project. Any Postgres client works; Prisma ORM is optional. Start on the free plan, no credit card.",
+    // Rewritten 2026-10-29 on the three product values (free to start,
+    // autoscaling, built for agents). Previews stay in the hero tour; spend
+    // limits stay in the microline, the outcomes and the pricing card.
     benefits: [
-      "Free preview databases per feature branch, for the ones you declare",
-      "Billed per operation, with a hard spend limit on paid plans",
-      "Predictable pricing with spend limits, no surprise bills",
+      "Free to start: 200,000 operations a month and 2 GB of storage",
+      "Autoscaling: no instance to size or upgrade",
+      "Built for agents: create databases and run SQL through the Prisma MCP server",
     ],
     primaryCta: { label: "Get started free", href: CONSOLE },
     secondaryCta: { label: "See pricing", href: PRICING },
     microline: "Free tier with a hard cap. No credit card.",
+    related: {
+      label: "See everything the Free plan includes",
+      href: "/postgres/free-postgresql-hosting",
+    },
     tour: [
       {
         label: "Database",
@@ -158,7 +165,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Is Prisma Postgres free to use?",
       answer:
-        "Yes. The [Free plan](/pricing) costs $0, needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the Free plan, idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month.",
+        "Yes. The [Free plan](/pricing) costs $0, needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the Free plan, idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month. The [free Postgres hosting page](/postgres/free-postgresql-hosting) lists everything the Free plan includes.",
     },
     {
       question: "What happens when I reach the Free plan limit?",
@@ -188,7 +195,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Are backups included?",
       answer:
-        "Yes, every paid plan includes daily [automatic backups](/docs/postgres/database/backups). Starter and Pro keep them for 7 days and Business keeps them for 30; the Free plan has none. You restore a backup from the database's Backups tab in the Console, or ask an agent to restore one into a new database through the MCP server. Point-in-time restore is not available yet. To keep your own copy, run `pg_dump` against the direct connection string, on any plan with available usage.",
+        "Yes, every paid plan includes daily [automatic backups](/docs/postgres/database/backups). Starter and Pro keep them for 7 days and Business keeps them for 30; the Free plan has none. You restore a backup from the database's Backups tab in the Console, or ask an agent to restore one into a new database through the MCP server. Point-in-time restore is coming in November 2026. To keep your own copy, run `pg_dump` against the direct connection string, on any plan with available usage.",
     },
     {
       question: "Which regions can I choose?",

@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion/reveal";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 
 // A section that argues one point at length: headline plus a few paragraphs on
@@ -6,19 +7,24 @@ import { cn } from "@/lib/utils";
 // this shape that the standard template has no slot for — the migrations
 // argument uses this one.
 export function ProductNarrative({
+  id,
   headline,
   paragraphs,
   illustration,
   centerText = false,
+  footer,
 }: {
+  id?: string;
   headline: string;
   paragraphs: string[];
   illustration: React.ReactNode;
   /** Centre the copy vertically against the illustration instead of top-aligning it. */
   centerText?: boolean;
+  /** Callout under the paragraphs, in the copy column. */
+  footer?: React.ReactNode;
 }) {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section id={id} className={cn("bg-white px-4 py-24 sm:px-8 sm:py-32", id && "scroll-mt-28")}>
       {/* columns stretch rather than centre, so the graphic reads as a panel
           the height of the argument beside it instead of a card floating in it */}
       <div className="mx-auto grid max-w-site gap-12 lg:grid-cols-2 lg:gap-16">
@@ -38,11 +44,12 @@ export function ProductNarrative({
                     i === 0 && "text-lg",
                   )}
                 >
-                  {copy}
+                  {renderFaqAnswer(copy)}
                 </p>
               </Reveal>
             ))}
           </div>
+          {footer ? <div className="mt-6 w-full max-w-[62ch]">{footer}</div> : null}
         </div>
 
         {/* min-w-0: grid items default to min-width:auto, so without it the

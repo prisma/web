@@ -173,7 +173,7 @@ export function renderHomeMarkdown(): string {
       "Bun runtime on bare metal",
       "Co-located with Prisma Postgres, single-digit ms query latency",
       "Long-running workloads: WebSockets, cron, background jobs (coming soon)",
-      "Versioned deployments with preview URLs, deploy by git push or CLI",
+      "Versioned deployments with preview URLs, [deploy by git push](/docs/compute/deploy-on-push) or CLI",
     ]),
     ctaList([{ label: "Learn more about Prisma Compute", href: "/compute" }]),
     // "Working across the stack" is an <h3> whose two tools are <h4>s; the

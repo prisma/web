@@ -15,7 +15,7 @@ Prisma is a complete TypeScript stack with one workflow: **build** your app and 
     <WorkflowLink href="/local-development" title="Local development" icon={<Laptop />}>
       One command runs your whole app on your machine, with your services on Bun wired to local Postgres and local storage, and no cloud credentials.
     </WorkflowLink>
-    <WorkflowLink href="/composer" title="Composer" badge="Early Access" icon={<Blocks />}>
+    <WorkflowLink href="/composer" title="Composer" icon={<Blocks />}>
       Declare your services and the resources they depend on: databases, jobs, buckets, secrets.
     </WorkflowLink>
     <WorkflowLink href="/orm" title="ORM" icon={<Boxes />}>
@@ -103,7 +103,7 @@ Add Prisma ORM to this existing project.
 This flow is for PostgreSQL. If the project uses MongoDB, follow https://www.prisma.io/docs/prisma-orm/add-to-existing-project/mongodb.md instead; for other databases, stop and tell me.
 
 1. Run `npx prisma@latest orm init --yes --target postgres --authoring psl` (the flags are required when the CLI cannot prompt). It writes `prisma.config.ts`, a starter contract and `db.ts` under `src/prisma/`, and installs dependencies. Then run `npx prisma skills sync` to install the Prisma ORM skills.
-2. Set `DATABASE_URL` in `.env` to my database. If I did not give you one, create a Prisma Postgres database with `npx create-db@latest`, put its connection string in `.env`, and show me the claim URL it prints so I can keep the database.
+2. Set `DATABASE_URL` in `.env` to my database. If I did not give you one, create a Prisma Postgres database with `npx create-db@latest`, put its connection string in `.env`, and show me the claim URL it prints so I can keep the database (claiming needs a free Prisma account).
 3. If the database already has tables, infer the contract from it: `npx prisma contract infer`, then `npx prisma contract emit`, then sign it with `npx prisma db sign`. If the database is empty, keep the starter contract and run `npx prisma db init`.
 4. Write one query with the generated `db` client in an existing code path, run it, and show me the returned rows.
 
@@ -153,7 +153,7 @@ Create a Prisma Postgres database for this project.
 
 1. Run `npx create-db@latest`. It creates a temporary Prisma Postgres database without an account and prints a connection string plus a claim URL.
 2. Put the connection string in `.env` as DATABASE_URL and wire it into whichever of Prisma ORM, Kysely, Drizzle, TypeORM, or node-postgres the project already uses (detect it from package.json; if none, ask me). Verify the connection with one trivial query such as `select 1`.
-3. Remind me to open the claim URL to keep the database in my Prisma workspace.
+3. Remind me to open the claim URL to keep the database in my Prisma workspace (claiming needs a free Prisma account).
 
 Current docs: https://www.prisma.io/docs/postgres.md.
 ```
@@ -168,10 +168,10 @@ Deploy this app to Prisma Compute using `npx prisma@latest`.
 Compute runs apps declared with Prisma Composer: your server code plus a small TypeScript declaration. Port the app following https://www.prisma.io/docs/composer/porting-an-app.md. SvelteKit and Deno are not supported yet; if the app is one of those, stop and tell me.
 
 1. Install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and install `prisma` as a dev dependency. Do not pin `effect`: Composer pins it. Only if another dependency pins a different `effect` and `prisma.config.ts` fails with `CLI.CONFIG_UNREADABLE`, add the override from https://www.prisma.io/docs/composer/deploying#when-prismaconfigts-fails-on-an-effect-version-conflict. Then install the Composer skill with `npx prisma skills sync`, and use it.
-2. Declare the app: a `service.ts` with `compute({ name, deps, build })`, a `module.ts` that provisions it, and a `prisma.config.ts` whose `composer` section lists the extensions and the state store (`definePrismaConfig` from `prisma/config`, `defineConfig as composer` from `@prisma/composer/config`). Read the port from `service.port()` and bind 0.0.0.0. Replace other `process.env` reads with the service input schema, binding credentials like DATABASE_URL with `envSecret`. Composer does not build: produce one self-contained entry file per service (for example `esbuild <server> --bundle --platform=node --format=esm --outfile=dist/server.mjs`), or use the framework build adapter (Next.js needs the `nextjs` adapter and `output: "standalone"`).
-3. Verify locally: run the build, then `npx prisma dev module.ts --detach`, curl each service at the URL `npx prisma dev url <service>` prints, then run `npx prisma dev stop`.
+2. Declare the app: a `service.ts` with `compute({ name, deps, build })`, a `module.ts` that provisions it, and a `prisma.config.ts` whose `composer` section names `module.ts` as the `entry` and lists the extensions and the state store (`definePrismaConfig` from `prisma/config`, `defineConfig as composer` from `@prisma/composer/config`). Read the port from `service.port()` and bind 0.0.0.0. Replace other `process.env` reads with the service input schema, binding credentials like DATABASE_URL with `envSecret`. Composer does not build: produce one self-contained entry file per service (for example `esbuild <server> --bundle --platform=node --format=esm --outfile=dist/server.mjs`), or use the framework build adapter (Next.js needs the `nextjs` adapter and `output: "standalone"`).
+3. Verify locally: run the build, then `npx prisma dev --detach`, curl each service at the URL `npx prisma dev url <app>.<service>` prints, then run `npx prisma dev stop`.
 4. Confirm I am signed in with `npx prisma auth whoami`; if not, stop and ask me to run `npx prisma auth login` (it opens a browser).
-5. Deploy: run the build, then `npx prisma deploy module.ts` with the app's env values (like DATABASE_URL) exported in the shell; the first deploy copies input values up to the deployment. Verify the printed public URL with curl.
+5. Deploy: run the build, then `npx prisma deploy` with the app's env values (like DATABASE_URL) exported in the shell; the first deploy copies input values up to the deployment. Verify the printed public URL with curl.
 
 Current docs: https://www.prisma.io/docs/composer/porting-an-app.md and https://www.prisma.io/docs/prisma-compute/deploy.md.
 ```

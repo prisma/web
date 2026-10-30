@@ -224,10 +224,24 @@ Close the client and release its pool.
 
 #### Remarks
 
-- Returns a `Promise<void>`. `close()` is safe to call at any time.
-- After `close()`, `connect()` rejects and `runtime()` throws an error whose `code` is `DRIVER.NOT_CONNECTED` (`Postgres client is closed`).
-- After `close()`, `db.query(...)`, `db.execute(...)`, `db.transaction(...)`, `db.prepare(...)`, and ORM calls such as `db.orm.public.User.all()` report the same error through what they return: the promise rejects, or the result rejects when you await or read it. They do not throw at the call, so a `try`/`catch` catches the error only when you `await` the call inside it. `.catch(...)` and `Promise.allSettled(...)` see it too. A failed connection is reported the same way.
-- `close()` also closes the client's runtime, including when you passed your own `pg` pool or client. A runtime you got from `db.runtime()` before `close()` then refuses new work with `DRIVER.NOT_CONNECTED` (`Runtime is closed`). Queries already running when you call `close()` finish first.
+- Returns a `Promise<void>`. `close()` replaces `$disconnect()` from Prisma ORM 7. You can call it more than once; calls after the first do nothing.
+- A closed client cannot be used again. After `close()`, `connect()` rejects and `runtime()` throws an error whose `code` is `DRIVER.NOT_CONNECTED` (`Postgres client is closed`). `db.query(...)`, `db.execute(...)`, `db.transaction(...)`, `db.prepare(...)`, and ORM calls such as `db.orm.public.User.all()` report the same error through what they return: the promise rejects, or the result rejects when you await or read it. They do not throw at the call, so a `try`/`catch` catches the error only when you `await` the call. Create a new client with [`postgres(options)`](#postgresoptions) if you need one. Queries already running when you call `close()` finish first.
+- `close()` also closes the client's runtime, so a runtime you got from `db.runtime()` before `close()` refuses new work with `DRIVER.NOT_CONNECTED` (`Runtime is closed`). When you created the client from your own `pg` pool or client, `close()` leaves that pool or client open; call `await pool.end()` after it.
+- In a server, call `close()` when the process receives `SIGTERM` or `SIGINT`, and never in a request handler, because every request shares the pool. Stop the server first, so that no new query starts, then close the client. `app` is your Express app and `db` is the client from `src/prisma/db.ts`. Once both are closed, Node.js exits by itself; if it does not, something else, such as another database client or a timer, is still open:
+
+```ts
+const server = app.listen(3000);
+
+function shutdown() {
+  server.close(async () => {
+    await db.close();
+  });
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+```
+
+- A script that runs once, such as a seed, calls `await db.close()` at the end. Without it, the open pool keeps the process running until its idle connections time out, 30 seconds by default (`poolOptions.idleTimeoutMillis`).
 
 #### Return type
 
