@@ -115,11 +115,22 @@ test("the plan table shows the pool mode, pooled query limit and Free spend limi
 test("Prisma's spend limit is one you set, never described as on by default", () => {
   // A paid workspace has no spend limit until someone sets one in the Console
   // (docs: /console/more/billing), so no pricing surface may say it is on by
-  // default. Supabase's Spend Cap is on by default and keeps its wording.
-  const onByDefault = /spend limits?,? (that is |which is )?on by default/i;
+  // default. Supabase's Spend Cap is on by default and keeps its wording: the
+  // match stays inside one sentence or table cell, so it can't reach that line.
+  const onByDefault = /spend limits?\b[^.;|"\n]*\bon by default/i;
+  assert.match(
+    "the spend limit is a hard cap on usage across the app and the database, on by default on every paid plan",
+    onByDefault,
+  );
+  assert.doesNotMatch(
+    "the spend limit is one you set. Supabase's Spend Cap is on by default on Pro.",
+    onByDefault,
+  );
+
   const spendRow = PRISMA.rows.find((row) => row.label === "Spend limits");
   assert.ok(spendRow);
   assert.doesNotMatch(spendRow.value, /default/i);
+  assert.ok(renderPricingMarkdown().includes(`| ${spendRow.value} |`), spendRow.value);
   for (const text of [
     renderPricingMarkdown(),
     renderHomeMarkdown(),
