@@ -131,10 +131,19 @@ test("Prisma's spend limit is one you set, never described as on by default", ()
   assert.ok(spendRow);
   assert.doesNotMatch(spendRow.value, /default/i);
   assert.ok(renderPricingMarkdown().includes(`| ${spendRow.value} |`), spendRow.value);
+  const componentSources = [
+    "src/components/landing/provider-compare.tsx",
+    "src/components/landing/starter-plan-card.tsx",
+    "src/components/product/content/postgres.ts",
+    "src/components/sections/pricing-calculator.tsx",
+    "src/components/sections/pricing-comparison.tsx",
+    "src/components/sections/pricing-how-it-works.tsx",
+  ].map((path) => readFileSync(join(siteRoot, path), "utf8"));
   for (const text of [
     renderPricingMarkdown(),
     renderHomeMarkdown(),
     pricingScaleSource,
+    ...componentSources,
     JSON.stringify(providersLanding),
     JSON.stringify(starterDatabasesLanding),
   ]) {

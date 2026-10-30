@@ -568,7 +568,7 @@ export const providersLanding: LandingContent = {
     {
       question: "What do spend limits cover?",
       answer:
-        "On Prisma, the spend limit is a hard cap on usage across the app and the database that you set on any paid plan; none is set until you enter an amount in the Console. Neon sends spending notifications at 80% and 100% of a threshold. Vercel has a spend budget with an optional pause. Supabase's Spend Cap is on by default on Pro and excludes database compute.",
+        "On Prisma, the spend limit is a hard cap you set on any paid plan: it counts usage charges across the app and the database, and queries to the workspace's databases stop when it is reached. None is set until you enter an amount in the Console. Neon sends spending notifications at 80% and 100% of a threshold. Vercel has a spend budget with an optional pause. Supabase's Spend Cap is on by default on Pro and excludes database compute.",
     },
   ],
   cta: {
