@@ -90,6 +90,12 @@ const SOURCES = [
     product: "Prisma Postgres, Prisma ORM, and Prisma Compute",
     links: [
       { label: "Prisma Postgres", href: "/docs/postgres" },
+      {
+        label: "No cold starts on Prisma Postgres",
+        href: "/blog/prisma-postgres-the-future-of-serverless-databases",
+      },
+      { label: "Object Store buckets", href: "/docs/storage" },
+      { label: "Object storage on Prisma Compute", href: "/docs/compute/object-storage" },
       { label: "Prisma ORM docs", href: "/docs/orm" },
       { label: "Prisma Compute", href: "/docs/compute" },
       { label: "Compute limitations", href: "/docs/compute/limitations" },
