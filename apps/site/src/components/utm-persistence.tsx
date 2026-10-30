@@ -6,14 +6,15 @@ import { CROSS_ZONE_PATHS } from "@/lib/zones";
 
 /**
  * Site-wide attribution carrier. Hard-navigates into the docs and blog zones,
- * and stamps `ref=prisma.io/<page>` on Console links for untagged visitors.
+ * and stamps `ref=prisma.io/<page>` on every Console link, next to the
+ * visitor's own attribution.
  */
 export function UtmPersistence() {
   return (
     <SharedUtmPersistence
       storageKey={UTM_ATTRIBUTION_STORAGE_KEY}
       proxiedPaths={CROSS_ZONE_PATHS}
-      fallbackConsoleRef={buildSiteRef}
+      consolePageRef={buildSiteRef}
     />
   );
 }
