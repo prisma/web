@@ -322,10 +322,10 @@ The `codecId` depends on the field's type in your contract:
 | `BigInt` | `pg/int8@1` |
 | `Float` | `pg/float8@1` |
 | `Boolean` | `pg/bool@1` |
-| `DateTime` | `pg/timestamptz-temporal@1` |
+| `DateTime` | `pg/timestamptz-date@1` |
 | `Uuid` | `pg/uuid@1` |
 
-The `temporal` in the `DateTime` id means the value reaches your code as a JavaScript `Temporal.Instant` rather than a `Date`.
+The `date` in the `DateTime` id means the value reaches your code as a JavaScript `Date`. A field written `DateTime(as: temporal)` has the id `pg/timestamptz-temporal@1` and reaches your code as a `Temporal.Instant`.
 
 For a field whose type is not in the table, read the `codecId` off your own client: `db.sql.public.User.columns.name.codecId` is the id for the `name` column of the `User` table, so print it from any script that imports `db`. The SQL query builder reference lists every id, in its section on [`fns.raw` and `.returns()`](/orm/reference/sql-query-builder#fnsraw-and-returns).
 
@@ -416,7 +416,7 @@ const user = await db.orm.public.User.first({ id }, (meta) =>
 );
 ```
 
-The value you return is what the method returns, so give it the shape the method returns, with the types your code expects, such as a `Temporal.Instant` for a `DateTime` field. Prisma ORM does not decode it, as it decodes the rows `intercept.onQuery` returns. It checks only the kind of value: `.all()` needs an array, `.first()` an object or `null`, `.firstOrThrow()` an object, and the `...AndCount` methods a number. A value of the wrong kind rejects the call with an error whose `code` is `ORM.INTERCEPTED_RESULT_INVALID`.
+The value you return is what the method returns, so give it the shape the method returns, with the types your code expects, such as a `Date` for a `DateTime` field. Prisma ORM does not decode it, as it decodes the rows `intercept.onQuery` returns. It checks only the kind of value: `.all()` needs an array, `.first()` an object or `null`, `.firstOrThrow()` an object, and the `...AndCount` methods a number. A value of the wrong kind rejects the call with an error whose `code` is `ORM.INTERCEPTED_RESULT_INVALID`.
 
 The first middleware in the array whose `onActivity` returns a result answers the call. `activityEnded` still runs for the call, with `result.source` set to `'middleware'`. `intercept.onActivity` also runs for ORM calls inside a transaction, so check `ctx.scope` or `ctx.inTransaction()` if your middleware should leave those alone, as the cache does.
 
