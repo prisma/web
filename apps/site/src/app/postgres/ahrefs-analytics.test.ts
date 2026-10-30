@@ -17,9 +17,9 @@ test("the Postgres layout carries the Postgres Ahrefs snippet once", () => {
   const layout = read("src/app/postgres/layout.tsx");
 
   assert.equal(layout.split(SNIPPET_SRC).length - 1, 1);
-  assert.match(layout, new RegExp(`src="${SNIPPET_SRC}"`));
-  assert.match(layout, new RegExp(`data-key="${SNIPPET_KEY}"`));
-  assert.match(layout, /async/);
+  assert.ok(layout.includes(`src="${SNIPPET_SRC}"`));
+  assert.ok(layout.includes(`data-key="${SNIPPET_KEY}"`));
+  assert.match(layout, /\basync\b/);
 });
 
 test("the Postgres Ahrefs snippet is not on the shared layout or other products", () => {
