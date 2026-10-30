@@ -278,6 +278,9 @@ test("the product pages inherit their copy from the page's own content object", 
 
     assert.ok(document.includes(content.hero.headline), `${path}: hero headline missing`);
     assert.ok(document.includes(content.hero.subheadline), `${path}: subheadline missing`);
+    if (path === "/postgres") {
+      assert.match(document, /No credit card/);
+    }
     assert.ok(document.includes(content.problem.headline), `${path}: problem headline missing`);
     assert.ok(document.includes(content.features.headline), `${path}: features headline missing`);
     assert.ok(document.includes(content.cta.headline), `${path}: cta headline missing`);
