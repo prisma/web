@@ -62,6 +62,7 @@ export default function PricingPage() {
           {
             label: "Free tier with no time limit",
             color: "text-prism-yellow-400",
+            href: "/postgres/free-postgresql-hosting",
           },
           {
             label: "Upgrade or downgrade anytime",

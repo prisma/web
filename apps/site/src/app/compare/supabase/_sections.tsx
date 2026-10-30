@@ -262,8 +262,12 @@ function buildSupabasePage(minutes: number) {
           }))}
           note={
             <>
-              Prisma Postgres has a Free plan: $0 a month for 200,000 operations, 2 GB of storage,
-              and 50 databases. No credit card required. The{" "}
+              Prisma Postgres has a{" "}
+              <Link href="/postgres/free-postgresql-hosting" className={QUIET_LINK}>
+                Free plan
+              </Link>
+              : $0 a month for 200,000 operations, 2 GB of storage, and 50 databases. No credit card
+              required. The{" "}
               <Link href="/pricing" className={QUIET_LINK}>
                 pricing page
               </Link>{" "}

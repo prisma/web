@@ -273,7 +273,11 @@ function buildPlanetScalePage(minutes: number) {
               <a href="https://planetscale.com/pricing" className={QUIET_LINK}>
                 PlanetScale pricing
               </a>
-              , {CHECKED}).
+              , {CHECKED}). For health data, Business at $129 a month includes{" "}
+              <Link href="/postgres/hipaa" className={QUIET_LINK}>
+                HIPAA compliant Postgres
+              </Link>{" "}
+              with a signed BAA, plus SOC 2 Type II and ISO 27001.
             </>
           }
         />

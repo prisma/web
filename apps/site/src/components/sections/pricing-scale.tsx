@@ -314,7 +314,13 @@ export function PricingScale() {
             </Reveal>
             <Reveal delay={0.08}>
               <p className="mt-5 max-w-[54ch] text-pretty leading-relaxed text-muted-foreground">
-                Start free with the ORM, which will always be free. Prisma Postgres has a free tier
+                Start free with the ORM, which will always be free. Prisma Postgres has a{" "}
+                <Link
+                  href="/postgres/free-postgresql-hosting"
+                  className="font-medium text-foreground underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
+                >
+                  free tier
+                </Link>{" "}
                 with a hard cap, so you can build without a credit card. When you outgrow it,
                 you&apos;re on operation-based pricing with spend limits, and database data transfer
                 is always included.
