@@ -287,7 +287,11 @@ function buildNeonPage(minutes: number) {
               <a href="https://neon.com/pricing" className={QUIET_LINK}>
                 Neon pricing
               </a>
-              , {CHECKED}).
+              , {CHECKED}). Business at $129 a month adds{" "}
+              <Link href="/postgres/hipaa" className={QUIET_LINK}>
+                HIPAA with a signed BAA
+              </Link>
+              , SOC 2 Type II and ISO 27001.
             </>
           }
         />

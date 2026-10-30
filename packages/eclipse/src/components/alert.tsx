@@ -9,6 +9,7 @@ const alertVariants = cva(
     variants: {
       variant: {
         ppg: "bg-background-ppg text-foreground-ppg border-none [&>svg]:text-foreground-ppg",
+        note: "bg-background-neutral-weak text-foreground-neutral border-stroke-neutral [&>svg]:text-foreground-neutral [&>i]:text-foreground-neutral [&_a]:text-foreground-neutral [&_a]:underline [&_a]:underline-offset-4 [&_a]:decoration-black/30",
         error:
           "bg-background-error border-none text-foreground-error [&>svg]:text-foreground-error",
         success:

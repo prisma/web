@@ -85,7 +85,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Database pricing model",
     neon: "Compute in CU-hours plus storage and other usage. Launch is $0.106 per CU-hour. Scale is $0.222 per CU-hour. Storage is $0.35 per GB-month on paid plans. Suspended compute is $0.",
     prisma:
-      "Operations plus storage, with spend limits on paid plans. Prisma Postgres Free includes 200,000 operations a month and 2 GB of storage.",
+      "Operations plus storage, with spend limits on paid plans. [Prisma Postgres Free](/postgres/free-postgresql-hosting) includes 200,000 operations a month and 2 GB of storage.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",

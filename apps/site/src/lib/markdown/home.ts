@@ -216,9 +216,10 @@ export function renderHomeMarkdown(): string {
     // ---- PricingScale (pricing-scale.tsx) ----
     heading(2, "Pricing that scales with you"),
     paragraphs(
-      "Start free with the ORM, which will always be free. Prisma Postgres has a free tier with " +
-        "a hard cap, so you can build without a credit card. When you outgrow it, you're on " +
-        "operation-based pricing with spend limits, and database data transfer is always included.",
+      "Start free with the ORM, which will always be free. Prisma Postgres has a " +
+        "[free tier](/postgres/free-postgresql-hosting) with a hard cap, so you can build without " +
+        "a credit card. When you outgrow it, you're on operation-based pricing with spend limits, " +
+        "and database data transfer is always included.",
     ),
     ctaList([{ label: "See pricing", href: "/pricing" }]),
     bulletList([

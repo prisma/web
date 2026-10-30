@@ -116,7 +116,7 @@ const PLANS = [
       "1,000 databases",
       "30-day backup retention",
     ],
-    platform: ["Spend limits", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
+    platform: ["Spend limits", "GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
     cta: "Get started",
     popular: false,
   },
@@ -468,7 +468,7 @@ export function renderPricingMarkdown(): string {
     ),
     bulletList([
       "No credit card required to start",
-      "Free tier with no time limit",
+      "[Free tier with no time limit](/postgres/free-postgresql-hosting)",
       "Upgrade or downgrade anytime",
     ]),
     ctaList([

@@ -111,7 +111,7 @@ const PLANS = [
     // HIPAA deep-links to /postgres/hipaa (the Business-plan landing page);
     // the card renders feature strings through `renderFaqAnswer`, which turns
     // `[text](/path)` into an inline link.
-    platform: ["Spend limits", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
+    platform: ["Spend limits", "GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
     blurb: "Built for high-growth teams with compliance requirements and sustained high volume.",
     cta: "Get started",
     href: "https://console.prisma.io/sign-up",

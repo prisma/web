@@ -22,7 +22,7 @@ export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
   "You want [Prisma Compute](/docs/compute) to host the TypeScript app as HTTP services next to [Prisma Postgres](/docs/postgres).",
   "You want a [preview branch](/docs/compute/branching) that can own its app services and database.",
-  "You want a $0 free plan with no credit card, then operation-based pricing with spend limits on paid plans.",
+  "You want a [$0 free plan](/postgres/free-postgresql-hosting) with no credit card, then operation-based pricing with spend limits on paid plans.",
 ];
 
 export const CHOOSE_PLANETSCALE = [
