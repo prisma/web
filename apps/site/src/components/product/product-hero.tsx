@@ -176,12 +176,15 @@ export function ProductHero({
               {hero.microline ? (
                 <p className="mt-3.5 text-sm text-muted-foreground">
                   {hero.microlineHref ? (
-                    <Link
-                      href={hero.microlineHref}
-                      className="underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
-                    >
-                      {hero.microline}
-                    </Link>
+                    <>
+                      <Link
+                        href={hero.microlineHref}
+                        className="underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
+                      >
+                        {hero.microlineLink ?? hero.microline}
+                      </Link>
+                      {hero.microlineLink ? hero.microline.slice(hero.microlineLink.length) : null}
+                    </>
                   ) : (
                     hero.microline
                   )}

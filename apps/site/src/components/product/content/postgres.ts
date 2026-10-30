@@ -54,6 +54,7 @@ export const postgresContent: ProductPageContent = {
     secondaryCta: { label: "See pricing", href: PRICING },
     microline: "Free tier with a hard cap. No credit card.",
     microlineHref: "/postgres/free-postgresql-hosting",
+    microlineLink: "Free tier with a hard cap",
     tour: [
       {
         label: "Database",

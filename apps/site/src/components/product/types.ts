@@ -68,6 +68,8 @@ export type ProductPageContent = {
     microline?: string;
     /** When set, the microline is a text link with this href. */
     microlineHref?: string;
+    /** Anchor text inside the microline. Defaults to the full microline. */
+    microlineLink?: string;
     /** Optional in-page link under the microline, for a related comparison. */
     related?: { label: string; href: string };
     /**

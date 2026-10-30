@@ -81,7 +81,9 @@ export function renderProductMarkdown({
     ctaList([hero.primaryCta, hero.secondaryCta]),
     hero.microline
       ? hero.microlineHref
-        ? `[${hero.microline}](${hero.microlineHref})`
+        ? `[${hero.microlineLink ?? hero.microline}](${hero.microlineHref})${
+            hero.microlineLink ? hero.microline.slice(hero.microlineLink.length) : ""
+          }`
         : hero.microline
       : undefined,
     hero.related ? `[${hero.related.label}](${hero.related.href})` : undefined,
