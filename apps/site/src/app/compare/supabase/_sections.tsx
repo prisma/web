@@ -29,6 +29,7 @@ import {
   COMPARE_ROWS,
   FAQ,
   PRICING,
+  PRICING_NOTE,
   PRISMA_FITS,
   SUPABASE_AUTHOR,
   SUPABASE_FITS,
@@ -260,25 +261,7 @@ function buildSupabasePage(minutes: number) {
             label: row.label,
             cells: [renderFaqAnswer(row.supabase), renderFaqAnswer(row.prisma)],
           }))}
-          note={
-            <>
-              Prisma Postgres has a{" "}
-              <Link href="/postgres/free-postgresql-hosting" className={QUIET_LINK}>
-                Free plan
-              </Link>
-              : $0 a month for 200,000 operations, 2 GB of storage, and 50 databases. No credit card
-              required. The{" "}
-              <Link href="/pricing" className={QUIET_LINK}>
-                pricing page
-              </Link>{" "}
-              lists the paid plans. Supabase Free includes 500 MB of database size per project and
-              pauses after 1 week of inactivity (
-              <a href="https://supabase.com/pricing" className={QUIET_LINK}>
-                Supabase pricing
-              </a>
-              , {CHECKED}).
-            </>
-          }
+          note={renderFaqAnswer(PRICING_NOTE)}
         />
       </section>
 
