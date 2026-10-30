@@ -299,7 +299,7 @@ this.createRlsPolicy({
 | `createExtension(name)` | the extension's name | `CREATE EXTENSION IF NOT EXISTS "pgcrypto"` | additive |
 | `this.installExtension` | `extensionName`, `invariantId`, `id`, `label?` | `CREATE EXTENSION IF NOT EXISTS citext` | additive |
 
-`createExtension` is a plain function, not a method, and is the one to use for an extension your migration needs, such as `pgcrypto` or `citext`. It goes in the `operations` list like any other call:
+Usually you declare an extension in the contract instead, with `extension pgcrypto {}`, and `migration plan` writes the `createExtension` call for you; [PostgreSQL extensions](/orm/contract-authoring/psl-syntax#postgresql-extensions) explains it. `createExtension` is a plain function, not a method, for a migration you write by hand. It goes in the `operations` list like any other call:
 
 ```ts
 override get operations() {
@@ -312,7 +312,7 @@ override get operations() {
 
 It has no precheck or postcheck, so if a `db migrate` run stops partway and you run it again, this operation runs again, which is harmless because of `IF NOT EXISTS`.
 
-`installExtension` is only for the first migration of an [extension package](/orm/extensions) that ships its own migrations, and there `extensionName`, `invariantId`, and `id` are all required. `id` names the operation in error messages, `label` is the text the CLI prints, and `invariantId` is a name other migrations in that package can refer to the install by. Only extension packages use `invariantId`; the optional `invariantId` on `dataTransform` and `rawSql` is for them too, so leave it out.
+`installExtension` is for the older migrations of an [extension package](/orm/extensions) that ships its own migrations, and there `extensionName`, `invariantId`, and `id` are all required. A new package declares its PostgreSQL extension in its contract instead, because `db sign` refuses, with `MIGRATION.SIGN_INVARIANTS_MISSING`, a contract space whose head needs an invariant the database has not recorded. `id` names the operation in error messages, `label` is the text the CLI prints, and `invariantId` is a name other migrations in that package can refer to the install by. Only extension packages use `invariantId`; the optional `invariantId` on `dataTransform` and `rawSql` is for them too, so leave it out.
 
 ### Data
 
