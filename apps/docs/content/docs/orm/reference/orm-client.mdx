@@ -200,7 +200,7 @@ Some parts of the schema the examples rely on:
 - An enum member's stored value is the string after `=`, or the member name when there is no `=`. That string is what you pass to `.eq()`. So `Urgent = "urgent"` is matched by `.eq('urgent')`, and a bare `admin` member is matched by `.eq('admin')`.
 - A variant is a model that reuses another model's fields and rows. `@@base(Task, "bug")` makes `Bug` a variant of `Task`. Its second argument, `"bug"`, is the value stored in the discriminator column for a `Bug` row. `@@discriminator(type)` names that column. `db.orm.public.Task.variant('bug')` returns only the `Bug` rows. Pass the string in `@@base`, `'bug'`, not the model name.
 - `PostTag` is required. To join `Post.tags Tag[]` and `Tag.posts Post[]`, write a third model with one foreign key to each side and an `@@id` of exactly those two columns. Prisma ORM finds it for you, and neither `Post` nor `Tag` names it. A pair of list fields with no such model is rejected. See [Relations and joins](/orm/fundamentals/relations-and-joins#many-to-many).
-- On PostgreSQL, a `DateTime` field comes back as a `Temporal.Instant`, the standard JavaScript object for a point in time. A filter on that field takes the same type, so you can pass a value straight back in.
+- On PostgreSQL, a `DateTime` field comes back as a JavaScript `Date`, and a field written `DateTime(as: temporal)` as a `Temporal.Instant`. A filter on a field takes the same type it returns, so you can pass a value straight back in.
 
 ## Setting up the client
 
@@ -523,7 +523,7 @@ const users = await db.orm.public.User.include('posts', (posts) =>
 ```
 
 :::note[`min()` and `max()` over a date column]
-`min('createdAt')` over a `DateTime` column compiles and returns a `Temporal.Instant`, the standard JavaScript object for a point in time. Not every JavaScript engine has `Temporal` yet. Check with `typeof Temporal === 'undefined'`, and if yours does not, install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
+`min('createdAt')` over a `DateTime` column compiles and returns the field's type, a JavaScript `Date`. Over a field read as a `Temporal` value, it returns that value, which needs a global `Temporal`: check with `typeof Temporal === 'undefined'`, and if your engine has none, install `temporal-polyfill` and add `import 'temporal-polyfill/full/global'`.
 
 `sum('createdAt')` and `avg('createdAt')` do not compile.
 :::
@@ -1075,7 +1075,7 @@ A query fragment is a function from a collection to a collection, a piece of a q
 #### Remarks
 
 - PostgreSQL and SQLite. On SQLite, `db.orm` holds the models directly, so a fragment for one model is `db.orm.Post.fragment(body)`.
-- `db.orm.fragment(fields, body)` makes a fragment for every model that has the given fields. Declare each field with the `field` builders from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `with` does not compile.
+- `db.orm.fragment(fields, body)` makes a fragment for every model that has the given fields. Declare each field as `field.column(type.X(...))`, with `field` and `type` from `@prisma/orm-postgres/contract-builder`. The body sees only those fields and may call `where()`, `orderBy()`, `limit()`, and `offset()`. On a model that lacks one of the fields, or has it with another type or nullability, `with` does not compile.
 - `db.orm.public.Post.fragment(body)` makes a fragment for one model. The body receives the plain collection of that model and may call any query-building method, such as `select()` and `include()`. Call it on the model's collection itself: on a collection with chained calls, such as `db.orm.public.Post.where(...).fragment(body)`, it throws an error whose `code` is `ORM.ARGUMENT_INVALID`, and a `where()`, `orderBy()` or `include()` before it is a compile error. Put those calls in the body instead.
 - A fragment made by `db.orm.fragment(fields, body)` that filters returns `Filtered<C>`, the receiver's type with its filter recorded, so `update()` and `delete()` compile after it. One that orders returns `Ordered<C>`, so `cursor()` compiles after it. A fragment made by `collection.fragment(body)` returns the type its body returns. A filter or order on the collection before `with()` is not recorded in that type, so `update()`, `delete()` or `cursor()` after `with()` compiles only when the body itself filters or orders.
 - `CollectionRowOf<C>` is the row type a collection returns, including the relations `include()` adds. `CollectionTypeStateOf<C>` is what the collection's type records, such as `hasWhere` and `hasOrderBy`. The types of fragments are `QueryFragment`, for a fragment run with `collection.with(...)`, `DeclaredFieldsFragment`, for what `db.orm.fragment(fields, body)` returns, and `FragmentFacts`. Import these types, `Filtered`, and `Ordered` from `@prisma/orm-postgres/orm-client`.
@@ -1088,10 +1088,10 @@ A query fragment is a function from a collection to a collection, a piece of a q
 ##### A filter for every model with a `userId` field (PostgreSQL)
 
 ```typescript title="src/scopes.ts"
-import { field } from '@prisma/orm-postgres/contract-builder';
+import { field, type } from '@prisma/orm-postgres/contract-builder';
 
 const ownedBy = (userId: string) =>
-  db.orm.fragment({ userId: field.uuidNative() }, (rows) => rows.where((r) => r.userId.eq(userId)));
+  db.orm.fragment({ userId: field.column(type.Uuid()) }, (rows) => rows.where((r) => r.userId.eq(userId)));
 
 const posts = await db.orm.public.Post.with(ownedBy(userId)).all();
 const tasks = await db.orm.public.Task.with(ownedBy(userId)).all();
@@ -1141,7 +1141,7 @@ Insert a single row and return it.
 
 - Available for PostgreSQL and MongoDB.
 - On PostgreSQL, you may leave out any field your contract gives a default or generates a value for on create, including the id. Passing an explicit id is accepted. Nullable fields can be left out too. Every other field is required, including a field that generates a value only on update, such as one with `@onUpdate(...)` and no `@onCreate(...)`. The same rule applies to the `create` side of `upsert()`.
-- On MongoDB, you may leave out `id`, the field stored as `_id`, any field your contract generates a value for on create, such as `temporal.createdAt()`, and any optional field, which then reads back as `null`. Passing `null` for an optional field, as the example below does, works too. Give every other field a value.
+- On MongoDB, you may leave out `id`, the field stored as `_id`, any field your contract generates a value for on create, such as `temporal.CreatedAt`, and any optional field, which then reads back as `null`. Passing `null` for an optional field, as the example below does, works too. Give every other field a value.
 - On MongoDB, `create()` returns the document as it is stored, with the `id` the server assigned, and converts its values the same way a read does. It does not query the database again to do this. On PostgreSQL the returned row is read from the database already.
 - On MongoDB, `create()` fails with an error whose `code` is `RUNTIME.ENCODE_FAILED`, before anything is written, when a value does not fit its field: a value of the wrong type, a fraction or an out-of-range number for an `Int32` field, a value that is not one of the field's enum values, or `null` for a field that is not optional. The error names the field.
 - On PostgreSQL, `create()` can create or link related rows in the same transaction. Nest `create()` on the side that does not hold the foreign key, and `connect()` on the side that does.
@@ -1576,7 +1576,7 @@ Insert a row if none matches, otherwise update the existing row.
 - For a unique constraint on several columns together, name every one of those columns, as in `conflictOn: { orgId: '', email: '' }`. The set you name has to match one `@@unique` constraint.
 - When a row is inserted on PostgreSQL, the `create` side is used as you wrote it.
 - When a row is inserted on MongoDB, a field that appears in both `create` and `update` takes the `update` value.
-- On MongoDB, a field that has an update default, such as `temporal.updatedAt()`, keeps the value you give it in `create` when a document is inserted, and still gets the current time when a document is updated. An upsert whose `create` sets such a field cannot also `pull()` by a match document in its update. That throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`.
+- On MongoDB, a field that has an update default, such as `temporal.UpdatedAt`, keeps the value you give it in `create` when a document is inserted, and still gets the current time when a document is updated. An upsert whose `create` sets such a field cannot also `pull()` by a match document in its update. That throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`.
 - On MongoDB, the `update` side takes an object of field values or a field-operations callback.
 - On PostgreSQL, `upsert()` does not work on a variant stored in its own table, the same restriction as [`createAndCount()`](#createandcount). It throws an error whose `code` is `ORM.OPERATION_UNSUPPORTED`, with the message `upsert() is not supported for MTI variant "Bug" on model "Task". Use createAll() instead.`
 - There is no upsert for such a variant. Read the row with `first()`, then call `create()` or `update()`.
@@ -1933,7 +1933,7 @@ const notAlice = await db.orm.public.User.where((u) => u.email.neq('alice@exampl
 
 ```typescript
 const after = await db.orm.public.Post.where((p) =>
-  p.createdAt.gt(Temporal.Instant.from('2024-01-02T10:00:00.000Z')),
+  p.createdAt.gt(new Date('2024-01-02T10:00:00.000Z')),
 ).all();
 // gte() is the same comparison, including the boundary value.
 ```
@@ -2336,7 +2336,7 @@ await db.orm.users.where({ id: '6650f1c2a1b2c3d4e5f60001' }).update((u) => [u.ta
 - `Shape<M, Spec>` is a row with the fields and relations you choose. In `Spec`, `"+"` names the scalar fields and relations to keep, `"-"` names scalar fields to drop, and any other key is a relation with its own nested spec. If `"+"` names only relations, every scalar field stays. A relation named in `"+"` comes with all of its scalar fields and none of its own relations.
 - `ResultType<typeof query>` is one row of a query you have already written.
 
-Import `Scalars` and `Shape` from `@prisma/orm-postgres/family-contract/types`, or `@prisma/orm-mongo/family-contract/types` on MongoDB. Import `ResultType` from `@prisma/orm-postgres/components/runtime`. A contract emitted before `8.0.0-rc.10` has no `Models`; run `npx prisma contract emit` again after upgrading.
+Import `Scalars` and `Shape` from `@prisma/orm-postgres/family-contract/types`, or `@prisma/orm-mongo/family-contract` on MongoDB. Import `ResultType` from `@prisma/orm-postgres/components/runtime`. A contract emitted before `8.0.0-rc.10` has no `Models`; run `npx prisma contract emit` again after upgrading.
 
 ```typescript
 import type { Models } from './contract.d';
@@ -2354,7 +2354,7 @@ type UserWithPosts = ResultType<typeof usersWithPosts>;
 // the same type as Shape<Models.public_User, { '+': 'posts' }>
 ```
 
-Use `Shape` to declare a function's return type once, and TypeScript checks the body at the `return`. A wrong field name, a relation under `"-"`, or a scalar field in `"+"` next to a `"-"` is a compile error on that key. For Prisma ORM 7 users, these replace `Prisma.User` and `Prisma.UserGetPayload<...>`.
+Use `Shape` to declare a function's return type once, and TypeScript checks the body at the `return`. A wrong field name, a relation under `"-"`, or a scalar field in `"+"` next to a `"-"` is a compile error that names that key. For Prisma ORM 7 users, these replace `User` and `Prisma.UserGetPayload<...>`. [Types for your code](/orm/fundamentals/types) shows them in functions, with the input and filter types and the Prisma ORM 7 name of each.
 
 ### `AsyncIterableResult`
 

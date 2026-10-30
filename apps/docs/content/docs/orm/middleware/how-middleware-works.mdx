@@ -211,7 +211,7 @@ Every hook also receives a context object, `ctx`, which tells it about the activ
 The hook can also change the values the statement sends to the database, and it does that through a third argument, `params`, which you declare as `beforeEncode(plan, ctx, params)` when you want it. `params.entries()` walks those values one at a time, and each entry has three fields:
 
 - `entry.value` is the value itself.
-- `entry.codecId` is the stored type, an id such as `pg/text@1`, `pg/int4@1`, or `pg/timestamptz-temporal@1`.
+- `entry.codecId` is the stored type, an id such as `pg/text@1`, `pg/int4@1`, or `pg/timestamptz-date@1`.
 - `entry.ref` identifies that one value in the query, and it is what you pass to `replaceValue`.
 
 Call `params.replaceValue(entry.ref, newValue)` and the database receives your value instead of the original. `params` is typed as optional and Prisma ORM always passes it, so the guard on the first line is there to satisfy TypeScript:
@@ -247,7 +247,7 @@ The rows you return are plain objects, keyed by the column aliases in the SQL, h
 { id: '3', email: 'mia+1@prisma.io', createdAt: '2026-09-17 08:00:08.775+00' }
 ```
 
-So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: '1', email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database. So if you return a `createdAt` as a string, a caller on the ORM API gets a `Temporal.Instant`, which is the type of a `DateTime` field.
+So for a query whose SQL is `SELECT "User"."id" AS "id", "User"."email" AS "email" FROM "public"."User" LIMIT 5`, `return { rows: [{ id: '1', email: 'mia@prisma.io' }] }` is a complete answer to it. Prisma ORM converts the rows you return the same way it converts rows from the database. So if you return a `createdAt` as a string, a caller on the ORM API gets a `Date`, which is the type of a `DateTime` field.
 
 `intercept.onActivity(activity, ctx)` answers a whole [ORM call](#orm-calls) instead of one statement. It runs after the call's `activityStarted` hooks and before the call sends anything. Return `{ result }`, where `result` is the value the method returns, and the call sends no statement at all. This is how the cache serves an annotated ORM read. [Answer ORM calls with intercept.onActivity](/orm/middleware/authoring-custom-middleware#answer-orm-calls-with-interceptonactivity) shows an example.
 

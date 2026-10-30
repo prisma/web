@@ -18,9 +18,17 @@ export function getPageImage() {
 
 export type BlogPage = InferPageType<typeof blog>;
 
-/** Posts that are not marked `draft: true` in their frontmatter. */
+/** Whether a post is marked `draft: true` in its frontmatter. */
+export function isDraft(page: BlogPage): boolean {
+  return page.data.draft === true;
+}
+
+/**
+ * Posts that are not drafts. Everything that lists or links posts uses this;
+ * only the post routes themselves (HTML and `.md`) still resolve a draft.
+ */
 export function getPublishedPages(): BlogPage[] {
-  return blog.getPages().filter((page) => page.data.draft !== true);
+  return blog.getPages().filter((page) => !isDraft(page));
 }
 
 /** A post's publication time, or 0 when the date is missing or unparsable. */

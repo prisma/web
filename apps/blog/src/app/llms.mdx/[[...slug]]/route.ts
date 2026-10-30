@@ -2,7 +2,7 @@ import { AGENT_MARKDOWN_VARY } from "@/lib/agent-markdown";
 import { canonicalLinkHeader, getPostCanonicalUrl } from "@/lib/canonical";
 import { getLLMText } from "@/lib/get-llm-text";
 import { findCanonicalSlug } from "@/lib/slug-fallback";
-import { blog as source } from "@/lib/source";
+import { isDraft, blog as source } from "@/lib/source";
 import { withBlogBasePath } from "@/lib/url";
 
 export const revalidate = false;
@@ -75,6 +75,8 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
       // Names the HTML post as the canonical URL, so the `.md` URL is not
       // indexed as a second copy of the post.
       Link: canonicalLinkHeader(getPostCanonicalUrl(page.url, page.data.canonicalUrl)),
+      // A draft's HTML page is `noindex`; its Markdown is too.
+      ...(isDraft(page) && { "X-Robots-Tag": "noindex" }),
     },
   });
 }

@@ -22,6 +22,15 @@ import { PRICING_H1, PRICING_SUBHEADLINE, renderPricingMarkdown } from "./markdo
 import { productH1, productSubheadline, renderProductMarkdown } from "./markdown/product";
 import { STACK_H1, STACK_SUBHEADLINE, renderStackMarkdown } from "./markdown/stack";
 import { STUDIO_H1, STUDIO_SUBHEADLINE, renderStudioMarkdown } from "./markdown/studio";
+import {
+  FREE_POSTGRES_MARKDOWN_H1,
+  FREE_POSTGRES_MARKDOWN_SUBHEADLINE,
+  renderFreePostgresqlDatabaseMarkdown,
+} from "./markdown/free-postgresql-database";
+import {
+  FREE_POSTGRES_DESCRIPTION,
+  FREE_POSTGRES_TITLE,
+} from "@/app/postgres/free-postgresql-hosting/_content";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { getBaseUrl } from "@/lib/url";
 
@@ -91,9 +100,9 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   },
   "/postgres": {
     path: "/postgres",
-    title: "Prisma Postgres | Free Postgres database for TypeScript and AI",
+    title: "Prisma Postgres | Serverless PostgreSQL database for TypeScript apps",
     description:
-      "Managed Postgres, part of Prisma's infrastructure for TypeScript and AI apps. Create a free database in seconds with npx create-db. No credit card.",
+      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
     h1: productH1(postgresContent),
     subheadline: productSubheadline(postgresContent),
     renderBody: () => renderProductMarkdown({ content: postgresContent }),
@@ -153,6 +162,16 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
     h1: MCP_H1,
     subheadline: MCP_SUBHEADLINE,
     renderBody: renderMcpMarkdown,
+  },
+  "/postgres/free-postgresql-hosting": {
+    path: "/postgres/free-postgresql-hosting",
+    title: FREE_POSTGRES_TITLE,
+    description: FREE_POSTGRES_DESCRIPTION,
+    h1: FREE_POSTGRES_MARKDOWN_H1,
+    subheadline: FREE_POSTGRES_MARKDOWN_SUBHEADLINE,
+    renderBody: renderFreePostgresqlDatabaseMarkdown,
+    checked: "October 2026",
+    dateModified: "2026-10-21",
   },
 };
 

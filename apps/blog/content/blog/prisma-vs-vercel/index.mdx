@@ -2,7 +2,7 @@
 title: "Prisma vs Vercel: where should you build your next TypeScript app?"
 slug: "prisma-vs-vercel"
 date: "2026-09-16"
-updatedAt: "2026-10-24"
+updatedAt: "2026-10-27"
 authors:
   - "Shane Neubauer"
 metaTitle: "Prisma vs Vercel for TypeScript apps: which platform?"
@@ -115,19 +115,19 @@ The root module adds a second check. If it binds `storefront` to a service that 
 
 Databases are declared the same way. A service lists a `postgres()` dependency typed by your **data contract**, the `contract.prisma` schema file that replaced `schema.prisma` in ORM 8. The module that owns the database provisions it. The [deploy applies the database's migrations](https://www.prisma.io/docs/composer/databases) before the service starts, and it refuses to connect a service to a database whose schema does not match the contract the service was compiled against.
 
-You do not need any of this to start. A single service deploys to Prisma Compute from a Git push without Composer, and you can add Composer when a second service appears.
+You do not need contracts or several services to start, but a Git push deploys through Composer. A GitHub Actions workflow using [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) runs `prisma deploy` on a Composer module (`module.ts` by default), so even a single service needs a one-service module to deploy on push. The [porting guide](https://www.prisma.io/docs/composer/porting-an-app) shows what that involves: a `service.ts`, a `module.ts` and, for a Node.js or Bun server, three changes to the server, with a separate section for a Next.js app. When a second service appears, add it to the module.
 
 ## Previews and their databases
 
-Both platforms give every branch a running preview. They differ in what sits behind it, and that decides how much setup you do before a preview is useful.
+Both platforms give every branch other than the production branch a running preview. They differ in what sits behind it, and that decides how much setup you do before a preview is useful.
 
-**On Prisma**, a Git branch maps to a [platform branch](https://www.prisma.io/docs/compute/branching) with its own services, environment variables, and any databases created on it. Deleting the Git branch deletes all of that. *The database is not created for you unless you use Composer.* For a single service:
+**On Prisma**, a Git branch maps to a [platform branch](https://www.prisma.io/docs/compute/branching) with its own services, environment variables, and any databases created on it. Deleting the Git branch deletes all of that. *The database is not created for you unless your Composer module declares it.* For a service that reads `DATABASE_URL` instead:
 
 1. Create a database on the branch: `npx prisma@latest postgres create preview-db`.
 2. Point the branch at it: `npx prisma@latest project env add DATABASE_URL=<printed-url> --branch feature/search`.
 3. Seed it if the feature needs realistic rows, because it starts empty.
 
-A Composer stage deploy, `npx prisma@latest deploy module.ts --stage <branch>`, replaces the first two steps. It creates the databases the module declares and runs their migrations, but the databases still start empty.
+Declaring the database in the module replaces the first two steps. The stage deploy that the action runs for each pushed branch other than the default one, the same as `npx prisma@latest deploy module.ts --stage <branch>` from a terminal, creates the databases the module declares and runs their migrations, but the databases still start empty.
 
 A preview uses whatever `DATABASE_URL` it was given, so a preview that inherits the production value *writes to production*. Keep production and preview values in separate scopes, as the [environment variables docs](https://www.prisma.io/docs/compute/environment-variables) describe.
 

@@ -1,6 +1,6 @@
 ---
 title: Advanced PostgreSQL
-description: 'Row-level security, expression and partial indexes, check constraints, tables Prisma ORM should not manage, and extensions a migration needs, each in your contract.'
+description: 'Row-level security, expression and partial indexes, check constraints, tables Prisma ORM should not manage, and the PostgreSQL extensions it needs, each in your contract.'
 url: /orm/contract-authoring/advanced-postgresql
 metaTitle: Advanced PostgreSQL features in a Prisma ORM 8 contract
 metaDescription: 'How to declare row-level security policies, expression and partial indexes, check constraints, control policies for tables Prisma ORM does not own, and PostgreSQL extensions in a Prisma ORM 8 contract, with the limitations that remain.'
@@ -148,33 +148,42 @@ model LegacyCustomer {
 
 ## An extension a migration needs
 
-You want a case-insensitive `email` column. PostgreSQL has the `citext` type for that, but it comes from an extension that must be installed before the column exists. Declare the column in the contract with `Raw`, which takes the database type as written:
+You want a case-insensitive `email` column. PostgreSQL has the `citext` type for that, but it comes from an extension that must be installed before the column exists. The citext pack in `@prisma/orm-postgres-contrib` provides the type and declares the extension, so add it to the config:
+
+```bash
+npm install @prisma/orm-postgres-contrib
+```
+
+```typescript title="prisma.config.ts (excerpt)"
+import citext from "@prisma/orm-postgres-contrib/citext/control";
+
+// inside ormConfig({ ... }), beside contract and db:
+    extensions: [citext],
+```
 
 ```prisma title="src/prisma/contract.prisma (excerpt)"
 model User {
-  id    Uuid            @id @onCreate(uuid())
-  email Raw(sql`citext`)
+  id    Uuid          @id @onCreate(uuid())
+  email citext.Citext
 
   @@map("user")
 }
 ```
 
-`npx prisma migration plan --name email` writes a migration file under `migrations/app/`, the folder for your app's migrations, that adds the column. A migration is a TypeScript class whose `operations` list runs in order, and [Editing a migration](/orm/migrations/editing-a-migration) shows how to change one. Open it, put `createExtension` before the step that needs the type, and recompile the file as that page shows. A later `migration plan` writes a new file and leaves this one as you edited it. In your app the column's value has the type `unknown`, because no field type knows `citext`.
+Pass `citext` from `@prisma/orm-postgres-contrib/citext/runtime` to the client's `extensions` as well. `npx prisma contract emit` writes the pack's files under `migrations/`, and `npx prisma db update`, or `npx prisma db migrate` after `migration plan` writes your migration, then runs the pack's migration, which creates the extension, before your migration adds the column. The ORM compares `email` case-insensitively, as PostgreSQL does.
 
-```ts title="migrations/app/20261022T1200_email/migration.ts (excerpt)"
-import { Migration, MigrationCLI, col, createExtension } from '@prisma/orm-postgres/migration';
+For an extension no pack covers, declare it in the contract and write its types with `Raw`, which takes the database type as written:
 
-// ...
+```prisma title="src/prisma/contract.prisma (excerpt)"
+extension hstore {}
 
-override get operations() {
-  return [
-    createExtension('citext'),
-    this.addColumn({ schema: 'public', table: 'user', column: col('email', 'citext') }),
-  ];
+model Setting {
+  id     Uuid             @id @onCreate(uuid())
+  values Raw(sql`hstore`)
 }
 ```
 
-It runs `CREATE EXTENSION IF NOT EXISTS "citext"`, so running the migration twice is harmless. `citext` is one of PostgreSQL's trusted extensions, so the role `db migrate` connects as needs the `CREATE` privilege on the database, not superuser. This is for a PostgreSQL extension you need directly. A Prisma [extension package](/orm/extensions) such as pgvector is an npm package that installs its PostgreSQL extension through its own first migration, so for those you add nothing to yours. [Extensions](/orm/reference/migration-api#extensions) in the migration API reference has both calls.
+`migration plan` then plans `CREATE EXTENSION IF NOT EXISTS hstore` before the table that uses it, and [PostgreSQL extensions](/orm/contract-authoring/psl-syntax#postgresql-extensions) describes the rest. `citext` and `hstore` are among PostgreSQL's trusted extensions, so the role `db migrate` connects as needs the `CREATE` privilege on the database, not superuser. A Prisma [extension package](/orm/extensions) such as pgvector declares its PostgreSQL extension in its own contract, so for those you declare nothing.
 
 ## Adopting these from an existing database
 
@@ -182,7 +191,7 @@ It runs `CREATE EXTENSION IF NOT EXISTS "citext"`, so running the migration twic
 
 ## Limitations
 
-These are the gaps at `8.0.0-rc.20`, each with what to do instead. Anything the contract cannot say yet goes in a raw SQL step in a migration, which runs the statements you give it. `npx prisma migration new --name <name> --from <hash>` creates a migration with no operations; [`migration new`](/cli/migration-new) explains `--from`, which the command needs when the contract has not changed. The step goes in its `operations` list, with `rawSql` imported from `@prisma/orm-postgres/migration`. Recompile the file afterwards, as [Editing a migration](/orm/migrations/editing-a-migration) shows. `operationClass` is `additive`, `widening`, `destructive`, or `data`, and the `GRANT` below loosens a rule, so it is `widening`. [Raw SQL](/orm/reference/migration-api#raw-sql) in the migration API reference has the full shape:
+These are the gaps at `8.0.0-rc.22`, each with what to do instead. Anything the contract cannot say yet goes in a raw SQL step in a migration, which runs the statements you give it. `npx prisma migration new --name <name> --from <hash>` creates a migration with no operations; [`migration new`](/cli/migration-new) explains `--from`, which the command needs when the contract has not changed. The step goes in its `operations` list, with `rawSql` imported from `@prisma/orm-postgres/migration`. Recompile the file afterwards, as [Editing a migration](/orm/migrations/editing-a-migration) shows. `operationClass` is `additive`, `widening`, `destructive`, or `data`, and the `GRANT` below loosens a rule, so it is `widening`. [Raw SQL](/orm/reference/migration-api#raw-sql) in the migration API reference has the full shape:
 
 ```ts title="migration.ts (excerpt)"
 rawSql({
@@ -203,4 +212,4 @@ rawSql({
 - **A variant that shares its base model's table loses its own constraints.** A variant is a model that extends another with `@@base`, the way `Bug` extends `Task` on the PSL page; one with no `@@map` of its own stores its rows in the base model's table. A foreign key, `@@unique`, or `@@index` declared on it is dropped from the contract without a warning ([prisma/orm#30445](https://github.com/prisma/orm/issues/30445)), and `@@check` on it is refused. Declare them on the base model, or give the variant its own `@@map` so it gets its own table. [Base models and variants](/orm/contract-authoring/psl-syntax#base-models-and-variants) covers the two layouts.
 - **SQL you wrote yourself with `map:` can report drift.** `db verify` compares the SQL in the contract with the text PostgreSQL stores, and PostgreSQL rewrites what it is given. Inferred SQL matches, because `contract infer` writes back PostgreSQL's text; SQL you typed with `map:` may not ([prisma/orm#30294](https://github.com/prisma/orm/issues/30294)). Use `name:` for anything you add.
 - **`contract infer` reads only the `public` schema** ([prisma/orm#30573](https://github.com/prisma/orm/issues/30573)). Policies, indexes, and tables in other schemas are not read back; write them by hand. It also skips a policy whose role name is not a valid PSL name, and any index, check, or policy whose SQL it cannot read back unchanged, and leaves a comment in the file where it did.
-- **A generated check cannot be waived.** Prisma ORM always adds a check on an enum column so it accepts only the enum's values, and on a list column so it rejects `NULL` elements. Declare a list `String?[]` when its elements may be `NULL`. The `@noCheck` attribute that used to waive these was removed in `8.0.0-rc.19`.
+- **A generated check cannot be waived.** Prisma ORM always adds a check on an enum column so it accepts only the enum's values, and on a list column so it rejects `NULL` elements. On a table whose control policy is managed, it also adds one on each value object column, which accepts only the value object's shape, and one on a discriminator column, which accepts only its variants' values. A migration that adds such a check fails on a row the check refuses, and the error gives the query that finds those rows. Declare a list `String?[]` when its elements may be `NULL`. The `@noCheck` attribute that used to waive these was removed in `8.0.0-rc.19`.

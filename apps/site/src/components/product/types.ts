@@ -56,8 +56,12 @@ export type ProductPageContent = {
      * restated by the section under the hero.
      */
     subheadline: string;
-    /** Exactly three specific benefits. Sit under the CTA, not above it. */
-    benefits: [string, string, string];
+    /**
+     * Exactly three specific benefits. Sit under the CTA, not above it.
+     * Omit them when a custom visual already shows those steps. Pages that
+     * pass the three still render the same list.
+     */
+    benefits?: [string, string, string];
     primaryCta: Cta;
     secondaryCta: Cta;
     /** Reassurance directly under the CTA — price, licence or reach. */

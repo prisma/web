@@ -48,14 +48,15 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 | (nothing) | `// use prisma-8` as the first line | required in every Prisma ORM 8 `.prisma` contract file; see the note below the table |
 | `generator client { ... }` | removed | `emit` is the new word for `generate`. `prisma contract emit` writes two files next to your contract, `contract.json` and `contract.d.ts`. Commit both |
 | `datasource db { ... }` | the `orm` section of `prisma.config.ts` | the connection string and file paths live in the config file, not the schema. Example below |
-| `String @db.Text` | `String` | `String` is already stored as `text`. A known bug in one error message suggests `Text`; there is no such type |
-| `String @db.VarChar(255)` | `VarChar(255)` | the same for every other `@db.` type: the attribute name becomes the field type. [PSL syntax](/orm/contract-authoring/psl-syntax#models-and-fields) lists them |
+| `String @db.Text` | `String` | `String` is already stored as `text` |
+| `String @db.VarChar(255)` | `VarChar(255)` | the same for most other `@db.` types, such as `@db.Xml`, `@db.Oid` and `@db.Money`: the attribute name becomes the field type. [PSL syntax](/orm/contract-authoring/psl-syntax#models-and-fields) lists them. `@db.Citext` becomes `citext.Citext`, from the citext pack in `@prisma/orm-postgres-contrib`; see [Using extensions](/orm/extensions/using-extensions) |
 | `Decimal @db.Decimal(10, 2)` | `Numeric(10, 2)` | `Decimal` on its own still exists and is a `numeric` column without a fixed precision |
 | `Int`, `Boolean`, `Float`, `BigInt`, `Bytes` | unchanged | |
 | `String @db.Uuid` | `Uuid` | |
-| `DateTime`, `DateTime @db.Timestamptz` | `DateTime` | same name, and it is already a `timestamptz` column. Values come back as `Temporal.Instant`, not JavaScript `Date`; `new Date(value.epochMilliseconds)` converts one. See the note below the table |
-| `updatedAt DateTime @updatedAt` | `updatedAt temporal.updatedAt()` | `temporal.updatedAt()`, written where the type would go, sets the field from your application's clock on create and on every update. `temporal.` is part of the contract syntax; there is nothing to import. `temporal.UpdatedAt` is the same column written as a named type. The attribute form, `updatedAt DateTime @onCreate(now()) @onUpdate(now())`, also works, and lets you pick another type or a precision |
-| `createdAt DateTime @default(now())` | the same, or `createdAt temporal.createdAt()` | both work. `@default(now())` is a database default. `temporal.createdAt()` is set by Prisma ORM from your application's clock and gives the column no database default |
+| `DateTime` | `DateTime(storage: timestamp)` | Prisma ORM 7 stored a `DateTime` as `timestamp(3)`, which this keeps. Values come back as a JavaScript `Date`, as in Prisma ORM 7. Plain `DateTime` is a `timestamptz(3)` column, so on an existing table it is a different column. See the note below the table |
+| `DateTime @db.Timestamptz(3)` | `DateTime` | the same `timestamptz(3)` column, read as a `Date`. For another precision, write `DateTime(precision: 6)` |
+| `updatedAt DateTime @updatedAt` | `updatedAt temporal.UpdatedAt` | `temporal.UpdatedAt`, a named type written without parentheses, is a `timestamptz(3)` column that Prisma ORM sets from your application's clock on create and on every update. `temporal.` is part of the contract syntax; there is nothing to import. To keep Prisma ORM 7's `timestamp(3)` column, write the attributes yourself: `updatedAt DateTime(storage: timestamp) @onCreate(now()) @onUpdate(now())` |
+| `createdAt DateTime @default(now())` | the same, or `createdAt temporal.CreatedAt` | both work, as `timestamptz(3)` columns; add `(storage: timestamp)` to keep Prisma ORM 7's `timestamp(3)`. `@default(now())` is a database default. `temporal.CreatedAt` is set by Prisma ORM from your application's clock and gives the column no database default |
 | `String @id @default(uuid())` | `String @id @onCreate(uuid())` | `@default` is now only a database default, and a value Prisma ORM generates is written `@onCreate(...)`. The same goes for `uuid(7)`, `ulid()`, and `nanoid()`. `@default(uuid())` is rejected with `PSL_GENERATOR_IN_DEFAULT`. [Generated values](/orm/contract-authoring/psl-syntax#generated-values) lists the functions |
 | `String @default(cuid())` | `String @onCreate(cuid(2))` | `2` is the cuid version. Plain `cuid()` is rejected |
 | `@default(dbgenerated("gen_random_uuid()"))` | ``@default(sql`gen_random_uuid()`)`` | `dbgenerated` is rejected. Write any SQL expression as `` sql`...` `` instead, but keep writing `now()` and `autoincrement()` as plain functions. [Default values](/orm/contract-authoring/psl-syntax#default-values) covers every kind of default |
@@ -98,9 +99,9 @@ A `pg.enum(...)` field supports the `eq` and `in` filters, not `like` or `ilike`
 
 :::note[DateTime values and Node.js versions]
 
-The `DateTime` type reads and writes its values as `Temporal.Instant` objects. If you would rather work with the timestamp as a string, write `TimestamptzString` in place of `DateTime`.
+The `DateTime` type reads and writes its values as JavaScript `Date` objects, as Prisma ORM 7 did, and needs no polyfill. A `Date` holds milliseconds. To keep the microseconds a `timestamptz` column can store, write `DateTime(as: temporal)`, which reads a `Temporal.Instant`, or `DateTime(as: string)`, which reads an ISO 8601 string.
 
-`Temporal` is built into Node.js 26 and later, but not in Node.js 22 or 24. On those versions, install `temporal-polyfill` and add this line at the top of `src/prisma/db.ts`:
+`Temporal` is built into Node.js 26 and later, but not in Node.js 22 or 24. If you use a type that reads a `Temporal` value on those versions, install `temporal-polyfill` and add this line at the top of `src/prisma/db.ts`:
 
 ```ts
 import "temporal-polyfill/full/global";
@@ -108,7 +109,7 @@ import "temporal-polyfill/full/global";
 
 Homebrew's build of Node.js 26 leaves `Temporal` out, so check with `node -p "typeof Temporal"`; if it prints `undefined`, add the polyfill.
 
-This applies to a contract you write yourself. When Prisma ORM 8 reads your `schema.prisma` through `prisma7Schema(...)`, as `orm init --from-prisma7-schema` sets it up, a `DateTime` field reads and writes as the text PostgreSQL returns, such as `2026-09-14 10:00:00.123`, and needs no `Temporal`.
+When Prisma ORM 8 reads your `schema.prisma` through `prisma7Schema(...)`, as `orm init --from-prisma7-schema` sets it up, a `DateTime` field, with or without `@db.Timestamp` or `@db.Timestamptz`, also reads and writes as a `Date`. A `@db.Date` or `@db.Time` field reads as an ISO 8601 string, such as `2026-09-14` or `10:00:00.5`. None of them needs `Temporal`. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists each type.
 
 :::
 
@@ -183,7 +184,7 @@ The Prisma ORM 8 command-line tool groups commands by what they act on: `contrac
 | `prisma migrate diff` | `prisma db update --dry-run` to see what would change in the database, or `prisma migration show <migration name>` to print what a migration file does | `<migration name>` is a folder name under `migrations/app/`, for example `20260911T1030_add_bio`. To diff two migrations into a new migration file, `prisma migration plan --from <migration name> --to <migration name>` |
 | `prisma migrate resolve --applied` | see [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) | for a migration that failed half way |
 | `prisma migrate resolve` for a database that already matches your schema | [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) | the guide records which contract the database matches, both in the database and in your repository. Follow it rather than running the commands by hand |
-| `prisma migrate reset` | none | drop and recreate the database with your database tools, then `prisma db migrate` to apply every migration |
+| `prisma migrate reset` | `prisma db update` | Prisma ORM 8 never resets a database. `db update` moves a database whose migration history does not need to be kept to your contract, and asks before it loses data. A database that changes only through migrations, such as production, is moved with `prisma db migrate` |
 | `prisma db seed` | none | there is no seed command. Write a script that imports `db` from `src/prisma/db.ts` and calls `.create(...)`, and run it the way you run any TypeScript file, for example `npx tsx src/prisma/seed.ts` |
 | `prisma studio` | none in the Prisma ORM 8 tool | run Studio from the Prisma ORM 7 tool, from a directory outside your project, with the connection string spelled out: `cd /tmp && npx prisma@7 studio --url "postgresql://user:password@localhost:5432/mydb"`. See [Studio with Prisma ORM](/studio/prisma-next) |
 | `prisma format` | `prisma contract format` | |
@@ -380,7 +381,7 @@ Prisma ORM 7 features that have no direct form in Prisma ORM 8, with what to do 
 | `contains` / `startsWith` / `endsWith` | available in a different form | `.like("%alice%")`, `.like("alice%")`, `.like("%alice")`; you write the `%` wildcards yourself |
 | filtering inside JSON (`path`, `string_contains`, `array_contains`) | not available | a `Jsonb` field can only be compared as a whole (`eq`, `neq`, `in`, `notIn`) or checked for null. Write the query as raw SQL (see the example above) |
 | `$transaction([...])` with an array of queries | available in a different form | `db.transaction(async (tx) => ...)`; the queries inside run one after another |
-| `Prisma.User` and `Prisma.UserGetPayload<...>` | available in a different form | `contract.d.ts` exports a `Models` namespace with one type per model. `Scalars<Models.public_User>` is the row a plain query returns, `Shape<Models.public_User, { posts: { "+": "id" \| "title" } }>` is a row with chosen relations, and `ResultType<typeof query>` is what a query you already wrote returns. See [Model and result types](/orm/reference/orm-client#model-and-result-types) |
+| `User` and `Prisma.UserGetPayload<...>` | available in a different form | `contract.d.ts` exports a `Models` namespace with one type per model. `Scalars<Models.public_User>` is the row a plain query returns, `Shape<Models.public_User, { posts: { "+": "id" \| "title" } }>` is a row with chosen relations, and `ResultType<typeof query>` is what a query you already wrote returns. See [Model and result types](/orm/reference/orm-client#model-and-result-types). [Types for your code](/orm/fundamentals/types) maps every type. |
 | implicit many-to-many relations | available in a different form | write the join table as a model; see the example under [Schema](#schema) |
 | `@@map` on an `enum` | not available | `contract emit` rejects it with `Unknown attribute "@@map" in "enum" block`. A plain `enum` is stored as text, so there is nothing to name. If you need a PostgreSQL enum type with a specific name, declare it with `native_enum`, which does accept `@@map` |
 | `$use` middleware | available in a different form | pass `middleware: [...]` when you create the client in `db.ts` (example in the `db.ts` section above). [How middleware works](/orm/middleware/how-middleware-works) lists the hooks |

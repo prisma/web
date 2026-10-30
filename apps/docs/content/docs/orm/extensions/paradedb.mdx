@@ -1,0 +1,148 @@
+---
+title: ParadeDB
+description: Add full-text search ranked by relevance to a Prisma ORM 8 app with the ParadeDB extension, a BM25 index, and its match, phrase, and score operations.
+url: /orm/extensions/paradedb
+metaTitle: ParadeDB full-text search | Prisma ORM
+metaDescription: 'Add the ParadeDB extension to a Prisma ORM 8 project: declare a BM25 index in a TypeScript contract, then search with paradeDbMatch, paradeDbPhrase, and paradeDbTerm and rank results with paradeDbScore.'
+---
+
+The ParadeDB extension adds full-text search to Prisma ORM 8, with results ranked by how well they match. It uses `pg_search`, a PostgreSQL extension from [ParadeDB](https://paradedb.com). `pg_search` adds a BM25 index, which ranks results the way most search engines do. You declare one index over the text columns to search, and then filter and rank rows by a search query.
+
+`@prisma/orm-extension-paradedb` is experimental: what it offers may change in a later Prisma ORM release, so check its release notes before you upgrade.
+
+This page assumes a Prisma ORM 8 project on PostgreSQL, such as one from [Create a new app with PostgreSQL](/prisma-orm/quickstart/postgresql), where `src/prisma/db.ts` creates the client your code queries with.
+
+`pg_search` has to be installed on your PostgreSQL server. Check that your provider offers it; [ParadeDB's documentation](https://docs.paradedb.com) lists where it runs. To run it on your machine, use the `paradedb/paradedb` Docker image: [A database on your machine](/prisma-orm/local-database#postgresql-in-docker) shows the Compose file, and you change its `image:` to `paradedb/paradedb`.
+
+## Your contract must be TypeScript
+
+The search index can only be declared in a TypeScript contract, `src/prisma/contract.ts`; a `contract.prisma` contract cannot declare it yet. A project has one contract, so if yours is `contract.prisma`, rewrite it in TypeScript and delete `contract.prisma`: [TypeScript schema builder](/orm/contract-authoring/typescript-schema-builder) shows the TypeScript form of everything you can write in `contract.prisma`. Then change `contract` in `prisma.config.ts` to `./src/prisma/contract.ts`. When the rewrite describes the same tables, `migration plan` finds nothing to change.
+
+## Set it up
+
+Install the package next to `@prisma/orm-postgres`:
+
+```npm
+npm install @prisma/orm-extension-paradedb
+```
+
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. Keep the rest of each file as it is; the full files look like this:
+
+```ts title="prisma.config.ts"
+import 'dotenv/config';
+import { definePrismaConfig } from 'prisma/config';
+import paradedb from '@prisma/orm-extension-paradedb/control';
+import { defineConfig as ormConfig } from '@prisma/orm-postgres/config';
+
+export default definePrismaConfig({
+  orm: ormConfig({
+    contract: './src/prisma/contract.ts',
+    extensions: [paradedb],
+    db: { connection: process.env['DATABASE_URL']! },
+  }),
+});
+```
+
+```ts title="src/prisma/db.ts"
+import 'dotenv/config';
+import paradedb from '@prisma/orm-extension-paradedb/runtime';
+import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
+import type { Contract } from './contract.d';
+import contractJson from './contract.json' with { type: 'json' };
+
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
+  url: process.env['DATABASE_URL']!,
+  extensions: [paradedb],
+});
+```
+
+## Declare the search index
+
+In the contract, pass the pack to `defineContract` with the key `paradedb`, and add the index with `constraints.index`:
+
+```ts title="src/prisma/contract.ts"
+import { defineContract } from '@prisma/orm-postgres/contract-builder';
+import paradedb from '@prisma/orm-extension-paradedb/pack';
+
+export const contract = defineContract({ extensions: { paradedb } }, ({ field, model, type }) => {
+  const Article = model('Article', {
+    fields: {
+      id: field.column(type.Int()).id(),
+      title: field.column(type.String()),
+      body: field.column(type.String()),
+    },
+  });
+
+  return {
+    models: {
+      Article: Article.sql(({ cols, constraints }) => ({
+        indexes: [
+          constraints.index([cols.id, cols.title, cols.body], {
+            type: 'bm25',
+            options: { key_field: 'id' },
+            name: 'article_search',
+          }),
+        ],
+      })),
+    },
+  };
+});
+```
+
+List the key column and every column you want to search. `key_field` names the column that identifies each row, usually the primary key. The package requires it, although `pg_search` 0.26 and newer ignore it. The table is named after the model, `Article`, as it would be from `contract.prisma`.
+
+Then update the generated files, write the migration, and apply it to your development database:
+
+```bash
+npx prisma contract emit
+npx prisma migration plan --name add-search
+npx prisma db migrate --advance-ref db
+```
+
+`migration plan` writes your migration under `migrations/app/`, and `contract emit` has already written the extension's files under `migrations/paradedb/`, whose migration installs `pg_search` in the database. Commit both. [Generating a migration](/orm/migrations/generating-a-migration) explains `--advance-ref db`.
+
+## Search
+
+Each text column in the index has search operations, which you use in `where()`. A search splits the column's text and your query into words, ignoring case:
+
+| Operation | Matches rows whose field |
+| --- | --- |
+| `body.paradeDbMatch(query)` or `body.paradeDbMatchAny(query)` | contains any word of `query` |
+| `body.paradeDbMatchAll(query)` | contains every word of `query` |
+| `body.paradeDbPhrase(query)` | contains the words of `query` next to each other, in order |
+| `body.paradeDbTerm(word)` | contains the one word `word`, compared as written, so give it in lowercase |
+
+```ts
+const articles = await db.orm.public.Article.where((a) => a.body.paradeDbMatch('migration graph')).all();
+```
+
+To search the title and the body with one query, combine two matches with `or`:
+
+```ts
+import { or } from '@prisma/orm-postgres/orm-client';
+
+const query = 'migration graph';
+const articles = await db.orm.public.Article.where((a) =>
+  or(a.title.paradeDbMatch(query), a.body.paradeDbMatch(query)),
+).all();
+```
+
+To rank results, write the query with the [SQL query builder](/orm/fundamentals/advanced-queries). There, `f` holds the table's columns, and `fns` holds the same operations, which take the column as their first argument. `paradeDbScore` takes the key column and returns each row's relevance, higher for a better match. It needs a ParadeDB filter in the same query, as this one has; without one, PostgreSQL refuses the query with `pdb.score must be evaluated by a ParadeDB scan`:
+
+```ts
+const plan = db.sql.public.Article.select('id', 'title')
+  .select('score', (f, fns) => fns.paradeDbScore(f.id))
+  .where((f, fns) => fns.paradeDbMatch(f.body, 'migration graph'))
+  .orderBy((f, fns) => fns.paradeDbScore(f.id), { direction: 'desc' })
+  .build();
+
+const ranked = await db.query(plan).toArray();
+// [{ id: 3, title: 'Migrations explained', score: 1.478 }, { id: 1, title: 'Prisma ORM 8 is here', score: 0.43 }]
+```
+
+## Next steps
+
+- [Using extensions](/orm/extensions/using-extensions) walks through the setup for pgvector, step by step.
+- [ParadeDB's own documentation](https://docs.paradedb.com) covers how text is split into words and its query syntax.

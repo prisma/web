@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
 import { LearnMore } from "@/components/brand/learn-more";
 import { Texture } from "@/components/brand/texture";
@@ -44,7 +45,22 @@ function centreLastPair(count: number, i: number) {
 // (~2:3): the prism-tinted illustration block fills the card above the
 // content, the feature's abstraction filling the block, inside the homepage
 // stack's wrapped panel.
-export function ProductFeatures({ features }: Pick<ProductPageContent, "features">) {
+export function ProductFeatures({
+  features,
+  footer,
+  lead,
+  leadLayout = "prose",
+}: Pick<ProductPageContent, "features"> & {
+  /** Callout under the card grid. /postgres/free-postgresql-hosting uses it for an open engineering question. */
+  footer?: ReactNode;
+  /** Sits under the heading, before the bridge. Unused on /postgres. */
+  lead?: ReactNode;
+  /**
+   * `prose` keeps the lead in the heading column. `wide` lets one page span
+   * the section for a table. Other pages omit it.
+   */
+  leadLayout?: "prose" | "wide";
+}) {
   return (
     <section className="bg-white px-3 py-3 sm:px-4">
       <div className="relative mx-auto max-w-[96rem] overflow-hidden rounded-[1.5rem] border border-black/[0.06] bg-white">
@@ -84,73 +100,104 @@ export function ProductFeatures({ features }: Pick<ProductPageContent, "features
         <Texture opacity={0.06} blend="multiply" />
 
         <div className="relative mx-auto max-w-site px-4 py-20 sm:px-8 sm:py-24">
-          <div className="mx-auto max-w-3xl text-center max-md:text-left">
-            <Reveal>
-              <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-                {features.headline}
-              </h2>
-            </Reveal>
-            <Reveal delay={0.1}>
-              <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-                {features.bridge}
-              </p>
-            </Reveal>
-          </div>
-          <div
-            className={cn("mt-14 grid gap-5", COLUMNS[features.items.length] ?? "md:grid-cols-2")}
-          >
-            {features.items.map(({ name, description, href, illustration }, i) => {
-              const Illustration = illustration ? PRODUCT_ILLUSTRATIONS[illustration] : null;
-              return (
-                <Reveal
-                  key={i}
-                  delay={(i % 3) * 0.1}
-                  className={cn("h-full", centreLastPair(features.items.length, i))}
-                >
-                  <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
-                    {/* illustration and content split the card roughly in half */}
-                    <div className="relative flex h-64 select-none items-center justify-center overflow-hidden p-5">
-                      <div
-                        aria-hidden
-                        className={cn(
-                          "absolute inset-0 bg-cover [filter:saturate(1.45)_contrast(1.04)]",
-                          PHOTOS[i % PHOTOS.length],
-                        )}
-                      />
-                      {Illustration ? (
-                        <div className="relative size-full">
-                          <Illustration />
-                        </div>
-                      ) : (
+          {features.headline || (lead && leadLayout !== "wide") || features.bridge ? (
+            <div className="mx-auto max-w-3xl text-center max-md:text-left">
+              {features.headline ? (
+                <Reveal>
+                  <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
+                    {features.headline}
+                  </h2>
+                </Reveal>
+              ) : null}
+              {lead && leadLayout !== "wide" ? <div className="mt-8 text-left">{lead}</div> : null}
+              {leadLayout === "wide" || !features.bridge ? null : (
+                <Reveal delay={0.1}>
+                  <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
+                    {/* Same no-op as card descriptions: plain bridges (the
+                        /postgres page) render verbatim, and a bridge that names
+                        a page with `[label](/path)` becomes a link. */}
+                    {renderFaqAnswer(features.bridge)}
+                  </p>
+                </Reveal>
+              )}
+            </div>
+          ) : null}
+          {leadLayout === "wide" ? (
+            <>
+              {lead ? <div className="mt-8 text-left">{lead}</div> : null}
+              {features.bridge ? (
+                <div className="mx-auto max-w-3xl text-center max-md:text-left">
+                  <Reveal delay={0.1}>
+                    <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
+                      {renderFaqAnswer(features.bridge)}
+                    </p>
+                  </Reveal>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          {features.items.length > 0 ? (
+            <div
+              className={cn(
+                (features.headline || features.bridge || lead) && "mt-14",
+                "grid gap-5",
+                COLUMNS[features.items.length] ?? "md:grid-cols-2",
+              )}
+            >
+              {features.items.map(({ name, description, href, illustration }, i) => {
+                const Illustration = illustration ? PRODUCT_ILLUSTRATIONS[illustration] : null;
+                return (
+                  <Reveal
+                    key={i}
+                    delay={(i % 3) * 0.1}
+                    className={cn("h-full", centreLastPair(features.items.length, i))}
+                  >
+                    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
+                      {/* illustration and content split the card roughly in half */}
+                      <div className="relative flex h-64 select-none items-center justify-center overflow-hidden p-5">
                         <div
                           aria-hidden
-                          className="relative flex h-full w-full items-center justify-center rounded-xl border border-dashed border-black/20 bg-white/70 backdrop-blur-sm"
-                        >
-                          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                            [Feature abstraction]
-                          </p>
-                        </div>
-                      )}
+                          className={cn(
+                            "absolute inset-0 bg-cover [filter:saturate(1.45)_contrast(1.04)]",
+                            PHOTOS[i % PHOTOS.length],
+                          )}
+                        />
+                        {Illustration ? (
+                          <div className="relative size-full">
+                            <Illustration />
+                          </div>
+                        ) : (
+                          <div
+                            aria-hidden
+                            className="relative flex h-full w-full items-center justify-center rounded-xl border border-dashed border-black/20 bg-white/70 backdrop-blur-sm"
+                          >
+                            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                              [Feature abstraction]
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex grow flex-col p-7">
+                        <h3 className="text-xl">{name}</h3>
+                        <p className="mt-3 grow text-pretty leading-relaxed text-muted-foreground">
+                          {/* The inline markup parser is a no-op for strings
+                              without `[` or `` ` ``, so plain descriptions still
+                              render verbatim; the /postgres compliance card is
+                              the one card that uses a `[HIPAA](/postgres/hipaa)`
+                              link today. */}
+                          {renderFaqAnswer(description)}
+                        </p>
+                        {href ? (
+                          <LearnMore href={href} product={name} className="mt-auto pt-4" />
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex grow flex-col p-7">
-                      <h3 className="text-xl">{name}</h3>
-                      <p className="mt-3 grow text-pretty leading-relaxed text-muted-foreground">
-                        {/* The inline markup parser is a no-op for strings
-                            without `[` or `` ` ``, so plain descriptions still
-                            render verbatim; the /postgres compliance card is
-                            the one card that uses a `[HIPAA](/postgres/hipaa)`
-                            link today. */}
-                        {renderFaqAnswer(description)}
-                      </p>
-                      {href ? (
-                        <LearnMore href={href} product={name} className="mt-auto pt-4" />
-                      ) : null}
-                    </div>
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
+                  </Reveal>
+                );
+              })}
+            </div>
+          ) : null}
+          {footer ? <div className="mx-auto mt-10 max-w-3xl text-left">{footer}</div> : null}
         </div>
       </div>
     </section>
