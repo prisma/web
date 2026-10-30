@@ -147,7 +147,7 @@ Now recompile the file with `node migrations/app/20260707T1008_add_display_name/
 }
 ```
 
-There is one case where a correct-looking backfill still leaves you stuck, and it involves timestamps that Prisma ORM fills in for you. A column declared as `temporal.UpdatedAtString` gets the current time whenever a row is created or updated, the way `@updatedAt` did in Prisma ORM 7. The `User` in this example has no such column, but the starter contract from `npx prisma orm init` does have one, called `updatedAt`. On a model like that, your backfill's `update` also sets `updatedAt`, and that is enough to make `npx prisma migration check` fail right after every recompile with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, so `npx prisma db migrate` refuses to run.
+There is one case where a correct-looking backfill still leaves you stuck, and it involves timestamps that Prisma ORM fills in for you. A column declared with `@onUpdate(now())`, such as `temporal.UpdatedAt`, gets the current time whenever a row is created or updated, the way `@updatedAt` did in Prisma ORM 7. The `User` in this example has no such column, but the starter contract from `npx prisma orm init` does have one, called `updatedAt`. On a model like that, your backfill's `update` also sets `updatedAt`, and that is enough to make `npx prisma migration check` fail right after every recompile with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, so `npx prisma db migrate` refuses to run.
 
 The way out is to write the backfill against a contract of your own rather than the real one. Build `db` from an intermediate contract and pass that same contract to `dataTransform`, which the next section works through in full. In that contract, make `displayName` optional and declare `updatedAt` as `TimestamptzString`, a type Prisma ORM does not set for you, so the backfill leaves that column alone.
 
@@ -249,7 +249,7 @@ export default class M extends Migration<Start, End> {
 MigrationCLI.run(import.meta.url, M);
 ```
 
-If you would rather not keep an intermediate contract around, you can reach the same result by splitting the change into two migrations. First add `role` to your contract as optional and plan, and in that migration add a `dataTransform` that sets `role` from `isAdmin`, with `db` built from its end contract, which still describes both columns. Then remove `isAdmin`, make `role` required, and plan again. That second plan writes a `handle-nulls-user-role` placeholder, which you fill in with what should happen to rows where `role` is still empty. Splitting the change needs no `intermediate.*` files at all, unless `User` has a `temporal.UpdatedAtString` column.
+If you would rather not keep an intermediate contract around, you can reach the same result by splitting the change into two migrations. First add `role` to your contract as optional and plan, and in that migration add a `dataTransform` that sets `role` from `isAdmin`, with `db` built from its end contract, which still describes both columns. Then remove `isAdmin`, make `role` required, and plan again. That second plan writes a `handle-nulls-user-role` placeholder, which you fill in with what should happen to rows where `role` is still empty. Splitting the change needs no `intermediate.*` files at all, unless `User` has an `@onUpdate(now())` column, such as `temporal.UpdatedAt`.
 
 ## Raw SQL [#escape-hatch-raw-sql]
 

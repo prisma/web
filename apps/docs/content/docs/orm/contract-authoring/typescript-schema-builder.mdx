@@ -153,7 +153,7 @@ Enums and extension packs work on MongoDB too: `enumType` and `member` come from
 
 The MongoDB builder also has, on the model object:
 
-- `indexes`, a list of `index(keys, options?)` calls. `keys` maps each field to `1`, `-1`, `"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`, and `options` takes MongoDB's own index options: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, and `wildcardProjection`. For example, `index({ expiresAt: 1 }, { expireAfterSeconds: 3600, sparse: true })`. An index MongoDB would refuse fails with `CONTRACT.INDEX_INVALID`: a unique wildcard index, a wildcard with a hashed, `2d` or `2dsphere` key, a hashed index on several fields, a wildcard index with `expireAfterSeconds`, a `wildcardProjection` without a wildcard key, a `collation` without a `locale`, and a second text index in one collection.
+- `indexes`, a list of `index(keys, options?)` calls. `keys` maps each field to `1`, `-1`, `"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`, and `options` takes MongoDB's own index options: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, and `wildcardProjection`. For example, `index({ expiresAt: 1 }, { expireAfterSeconds: 3600, sparse: true })`. An index MongoDB would refuse fails with `CONTRACT.INDEX_INVALID`: a unique wildcard index, a wildcard with a hashed, `2d` or `2dsphere` key, a hashed index on several fields, a wildcard index with `expireAfterSeconds`, a `wildcardProjection` without a wildcard key, a `collation` without a `locale`, and a second text index in one collection. Two `index(...)` calls with the same keys and options give one index, counting an option set to `false` as left out, and a plain index beside a unique one with the same keys and otherwise the same options gives the unique index alone.
 - `collectionOptions`, for options on the collection itself, such as `{ collation: { locale: "en", strength: 2 } }`.
 - `discriminator` and `base`, for one collection that holds more than one kind of document. The base model declares `discriminator: { field: "kind", variants: { Article: { value: "article" } } }`, and each variant model declares `base: Post` plus its own fields. A variant is stored in its base's collection, so leave its `collection` out or set it to the base's; another collection fails with `CONTRACT.COLLECTION_INVALID`. The discriminator must be a required `field.string()` or a string enum, every variant it lists must be a model declared with that base, and each variant's `value` must be a value the discriminator can hold. A variant field must not be stored under a name a different base field uses (`CONTRACT.NAME_DUPLICATE`). A variant may restate a base field under the same name only if it declares it exactly as the base does. [MongoDB data modeling](/orm/data-modeling/mongodb#polymorphic-collections) covers when to use it.
 
@@ -201,7 +201,7 @@ A field is `field.column(...)` with a type from `type`, the function's other arg
 | UUID stored in a `uuid` column | `field.column(type.Uuid())` |
 | UUID stored in a `character(36)` column | `field.column(type.UuidString())` |
 
-The other helpers take the arguments their PSL types take, such as `type.VarChar(64)`, `type.Numeric(10, 2)` and `type.Time(3)`. `field.column(type)` and the chained `.column(...)` below are different calls: `field.column(type)` builds a field from a type, and `.column(name)` on an existing field sets its column name. Extension packs add helpers of their own, such as `type.pgvector.Vector(1536)`.
+On PostgreSQL, `type.DateTime()`, `type.Date()`, `type.Time()` and `type.Duration()` are the [convenience date and time types](/orm/contract-authoring/psl-syntax#models-and-fields). Each takes one optional object with the keys `as`, `storage` and `precision`, such as `type.DateTime({ as: 'string' })` or `type.Time({ precision: 3 })`. The other helpers take the arguments their PSL types take, such as `type.VarChar(64)`, `type.Numeric(10, 2)` and `type.TimeTemporal(3)`. `field.column(type)` and the chained `.column(...)` below are different calls: `field.column(type)` builds a field from a type, and `.column(name)` on an existing field sets its column name. Extension packs add helpers of their own, such as `type.pgvector.Vector(1536)`.
 
 For a column of a database type no helper covers, use ``type.Raw(sql`...`)``, with the type written the way the database reports it, as in ``path: field.column(type.Raw(sql`ltree`))``, with `sql` imported from the package. It works as [``Raw(sql`...`)`` in PSL](/orm/contract-authoring/psl-syntax#columns-of-any-database-type) does: your code reads and writes the value as `unknown`, and a default is a `sql` expression.
 
@@ -227,7 +227,7 @@ For a key the database generates, chain `.default(...)` and `.id()` on a field. 
 
 `field.column(type.temporal.CreatedAt())` sets the column to the current time when the row is created, and `field.column(type.temporal.UpdatedAt())` sets it on every create and every update. Prisma ORM sets both in the client, from your application's clock, so the column has no database default. If you insert a row with raw SQL, you must supply the value yourself. For a time the database sets instead, use `field.column(type.DateTime()).default(now())`, with `now` imported from `@prisma/orm-postgres/contract-builder`.
 
-`type.DateTime()`, `type.temporal.CreatedAt()`, and `type.temporal.UpdatedAt()` give your code a `Temporal.Instant`, so your app needs a global `Temporal` to read and write them; [Scalar fields](/orm/data-modeling#scalar-fields) says how to check for it and which polyfill to load when it is missing. To get a JavaScript `Date` instead, and need no `Temporal`, use `type.TimestamptzJsDate()` for a `timestamptz` column, and `type.temporal.CreatedAtJsDate()` and `type.temporal.UpdatedAtJsDate()` for creation and update times.
+On PostgreSQL, `type.DateTime()`, `type.temporal.CreatedAt()`, and `type.temporal.UpdatedAt()` are `timestamptz(3)` columns that give your code a JavaScript `Date`, and need no `Temporal`. For a string or a `Temporal.Instant`, write the type and the generators yourself, such as `field.column(type.DateTime({ as: 'temporal' })).onCreate(gen.now()).onUpdate(gen.now())`. A type read as a `Temporal` value needs a global `Temporal`; [Scalar fields](/orm/data-modeling#scalar-fields) says how to check for it and which polyfill to load when it is missing.
 
 `field.namedType(x)` takes only an enum, as [Enums](#enums) shows.
 
@@ -292,10 +292,10 @@ A fixed default passed to `.default(value)` has the type your code writes to the
 
 - A decimal default is a string: `.default("1.50")`.
 - A JSON default is the object or array itself: `.default({ plan: "free" })`.
-- A `type.DateTime()` default is a `Temporal.Instant`: `.default(Temporal.Instant.from("2024-01-01T00:00:00Z"))`. To write the time as a string instead, use `field.column(type.TimestamptzString()).default("2024-01-01T00:00:00Z")`.
+- A `type.DateTime()` default is a `Date`: `.default(new Date("2024-01-01T00:00:00Z"))`. A `type.DateTime({ as: 'temporal' })` default is a `Temporal.Instant`. To write the time as a string instead, use `field.column(type.TimestamptzString()).default("2024-01-01T00:00:00Z")`.
 - A `type.BigInt()` default is a `bigint`: `.default(1n)`.
 
-A value of the wrong type is a type error in your editor. A value the column's type cannot hold makes `contract emit` fail with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID), and a `Temporal` default with digits below one microsecond is refused too.
+A value of the wrong type is a type error in your editor. A value the column's type cannot hold makes `contract emit` fail with [`CONTRACT.DEFAULT_INVALID`](/orm/reference/error-reference#CONTRACT.DEFAULT_INVALID), and a `Temporal` default with digits below one microsecond is refused too, as is a default with digits below a millisecond on a field read as a `Date`.
 
 Do not write `.default(null)`, because when you leave out an `.optional()` field that has no default, the database already stores `NULL`.
 
@@ -498,6 +498,8 @@ export const contract = defineContract({ extensions: { pgvector } }, ({ field, m
 ```
 
 List every pack whose column types the contract uses, also when you pass one of its types to `field.column(...)`. A pack's column types come with the code that stores and reads their values, and `defineContract` needs that code to know each column's database type. A type from a pack you did not list fails with [`CONTRACT.CODEC_DESCRIPTOR_MISSING`](/orm/reference/error-reference#CONTRACT.CODEC_DESCRIPTOR_MISSING). An argument out of range, such as a vector length or an SRID below 1, fails `defineContract` with [`CONTRACT.TYPE_PARAMS_INVALID`](/orm/reference/error-reference#CONTRACT.TYPE_PARAMS_INVALID).
+
+A PostgreSQL extension the contract needs, such as `pg_trgm`, goes in the `entities` list as `extension('pg_trgm')`, with `extension` imported from `@prisma/orm-postgres/contract-builder`, as [PostgreSQL extensions](/orm/contract-authoring/psl-syntax#postgresql-extensions) describes. A pack such as pgvector declares its own.
 
 The key on `type.pgvector` is the pack's own name, not the name you gave the import. The name is in the pack's documentation, and pgvector's is `pgvector`. `Embedding1536` is a [type alias](#type-aliases), a constant you name yourself: each column typed by it stores `vector(1536)`, and the name does not reach `contract.json` or `contract.d.ts`.
 
