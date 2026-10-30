@@ -90,11 +90,16 @@ model Post {
 
 Getting the new column from your contract into your database takes these commands, in this order:
 
-1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. Run it again after every later change to `contract.prisma`.
-2. `npx prisma migration plan`, which writes the extension's own migration into `migrations/`, so commit it along with your other migrations. Skip this and the next command stops with an error whose `code` is `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION`.
-3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and makes the database match your contract: it creates the `Post` table, or adds the `embedding` column when the `Post` table already exists.
+1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. It also writes the extension's own files under `migrations/pgvector/`: its contract, its head ref and its migrations. Commit them along with your other migrations. Run it again after every later change to `contract.prisma`, and after you upgrade the extension package.
+2. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and makes the database match your contract: it creates the `Post` table, or adds the `embedding` column when the `Post` table already exists.
 
-The extension's migration is the `CREATE EXTENSION IF NOT EXISTS vector` statement, so you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
+The extension's contract declares the PostgreSQL extension `vector`, so its migration runs `CREATE EXTENSION IF NOT EXISTS vector` and you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
+
+:::note[Upgrading pgvector, PostGIS or ParadeDB from before `8.0.0-rc.22`]
+
+Since `8.0.0-rc.22`, each of these extensions declares its PostgreSQL extension in its contract, instead of installing it in a migration that records an invariant, an id the database keeps to show that migration ran. After you upgrade, run `npx prisma contract emit` and commit the files it writes under the extension's directory in `migrations/`: a new head ref and two new migrations. Then run `npx prisma db migrate` against each database. On a database where the old migration already installed the extension, the new migration only moves the extension's marker. On a database that has the extension but was never signed, `npx prisma db sign` works now. `db sign` refuses a contract space whose head ref needs an invariant the database has not recorded, with `MIGRATION.SIGN_INVARIANTS_MISSING`, because only `db migrate` can run the migration that records it.
+
+:::
 
 With the column in your database, write an embedding into it. A vector value is a plain `number[]` with as many entries as the column's dimension, so a column typed `Embedding1536` takes an array of 1536 numbers, which is what an embedding model gives you. Prisma ORM does not produce the numbers, and `embed` in this example stands for whichever model you call:
 
@@ -159,6 +164,7 @@ Every extension, whether Prisma wrote it or someone in the community did, is lis
 | Name | What it adds | Package | Databases | By |
 | --- | --- | --- | --- | --- |
 | [arktype-json](https://www.prisma.io/extensions/arktype-json) | JSON columns validated by an arktype schema and typed end to end. | `@prisma/orm-extension-arktype-json` | PostgreSQL | Prisma |
+| citext | Case-insensitive text columns, typed `citext.Citext`. Import it from `@prisma/orm-postgres-contrib/citext/control` and `/citext/runtime`. | `@prisma/orm-postgres-contrib` | PostgreSQL | Prisma |
 | [MongoDB](https://www.prisma.io/extensions/mongodb) | MongoDB support for Prisma ORM: config, runtime, contract authoring, BSON values, and migrations in one package. | `@prisma/orm-mongo` | MongoDB | Prisma |
 | [ParadeDB](https://www.prisma.io/extensions/paradedb) (experimental) | BM25 full-text search indexes. | `@prisma/orm-extension-paradedb` | PostgreSQL | Prisma |
 | [pgvector](https://www.prisma.io/extensions/pgvector) | Vector columns and similarity search for embeddings. | `@prisma/orm-extension-pgvector` | PostgreSQL | Prisma |
