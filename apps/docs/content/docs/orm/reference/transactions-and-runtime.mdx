@@ -111,7 +111,7 @@ Open a connection and return a runtime.
   - `runtime.telemetry()` reports how the most recent query went. See [`runtime.telemetry()`](#runtimetelemetry).
 - `connect()` takes the same database options as `postgres(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.DATABASE_URL! })`, or `await db.connect({ binding: { kind: 'url', url } })`.
 - Every error has a `code` property, and the [error reference](/orm/reference/error-reference) lists them all. Catch the error and compare `error.code` with the value shown here, for example `if (error.code === 'DRIVER.NOT_CONNECTED')`.
-- Call `connect()` before any query, or not at all. Running a query connects the client, so a `connect()` after that rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED`. So does a second `connect()`.
+- You rarely need `connect()`: running a query connects the client. `connect()` without options is safe to call at any time, also after a query or a second time: it waits for a connection in progress, or resolves with the runtime the client's queries already use. `connect(options)` on a client that is already connected rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED` and whose message is `Postgres client is already bound`. A `connect()` still waiting when you call `close()` rejects with `DRIVER.NOT_CONNECTED`.
 
 #### Return type
 
@@ -401,7 +401,7 @@ Open a connection and return a runtime.
 
 #### Remarks
 
-- Returns a `Promise<MongoRuntime>`. Call `connect()` before any query, or not at all. Running a query connects the client, so a `connect()` after that rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED`. So does a second `connect()`.
+- Returns a `Promise<MongoRuntime>`. You rarely need `connect()`: running a query connects the client. `connect()` without options is safe to call at any time, also after a query or a second time: it waits for a connection in progress, or resolves with the runtime the client's queries already use. `connect(options)` on a client that is already connected rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED` and whose message is `Mongo client is already bound`. A `connect()` still waiting when you call `close()` rejects with `DRIVER.NOT_CONNECTED`.
 - `connect()` takes the same database options as `mongo(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.MONGODB_URL!, dbName: 'app' })`.
 
 #### Return type
@@ -783,7 +783,7 @@ Prepare a statement on the client itself.
   - `first()` returns a promise of one row, or of `null` when no row matches.
   - `aggregate(...)` returns a promise of the aggregate object.
   - `groupBy(...)` followed by `aggregate(...)` returns a promise of an array with one object per group.
-- `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` would throw an error whose `code` is `DRIVER.ALREADY_CONNECTED`, because `prepare()` already connected.
+- `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` resolves with the same runtime.
 
 #### Options
 
