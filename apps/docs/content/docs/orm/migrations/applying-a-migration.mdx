@@ -121,8 +121,11 @@ MongoDB does not give you that clean slate, because a run there is not one trans
 
 `db migrate` also refuses to start when the marker records a contract state that none of your migrations starts or ends at, because it cannot then work out which migrations to run. It fails with an error whose `code` is `MIGRATION.MARKER_MISMATCH`, and no operation runs. You see this when the database's contract state was set by something other than the migrations you have on disk, which happens in the following situations:
 
-- **`npx prisma db update`**, which replaces `prisma db push` for local development and preview environments. Plan your next migration with `--from` so that it starts at the migration you last applied, as [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) shows.
+- **`npx prisma db update`**, which replaces `prisma db push` and moves a database without a migration.
+- **A migration that was deleted or planned again after the database applied it**, for example a branch deployed to staging and then rebased.
 - **A migration from a Git branch you have not merged**, which a shared database such as staging already applied. Merge that branch so that you have the migration too, and if your branch also added migrations, plan one migration from the state that database matches, as [A worked example](/orm/migrations/the-migration-graph#a-worked-example) shows.
+
+The error's `why` says which of these happened, and its next actions give two ways back that do not reset the database: `db update` for a database whose migration history does not need to be kept, and new migrations for a database that changes only through migrations, such as production. Never reset the database. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) walks through both.
 
 A database that already had tables gets its marker from `npx prisma db sign`, so `db migrate` refuses to run against it until a migration in your history ends at the signed state, as [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) shows. For a database Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) in the upgrade guide.
 
@@ -153,7 +156,7 @@ When you deploy by hand, run the three commands in [Check before, preview, then 
 
 Each migration's `migration.json` records a hash, `migrationHash`, computed from the rest of `migration.json` and from `ops.json`. If either file changes after the hash was recorded, for example because you edited it by hand, `migration check` fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, as [Editing a migration](/orm/migrations/editing-a-migration) explains. To fix it, either restore the migration's files from Git, or move the hand edit into `migration.ts` and recompile with `node migrations/app/<dir>/migration.ts`.
 
-One case needs a different fix. If the error comes back right after you recompile, and the migration's backfill updates a model with a `temporal.updatedAtString()` column, recompiling cannot fix it. [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows how to write that backfill instead.
+One case needs a different fix. If the error comes back right after you recompile, and the migration's backfill updates a model with an `@onUpdate(now())` column, such as `temporal.UpdatedAt`, recompiling cannot fix it. [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows how to write that backfill instead.
 
 When a contract snapshot under `migrations/snapshots/` no longer matches the hash in its directory name, `migration check` fails with an error whose `code` is `MIGRATION.CHECK_SNAPSHOT_CONTENT_MISMATCH`. Other commands that read that snapshot, such as `migration plan --from <that state>` or `migration ref set prod <that state>`, fail with a different code, `MIGRATION.CONTRACT_SNAPSHOT_CONTENT_MISMATCH`. Recompiling `migration.ts` fixes neither error, so restore the edited snapshot from Git. MongoDB snapshots are not checked yet.
 

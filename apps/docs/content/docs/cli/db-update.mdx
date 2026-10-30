@@ -23,8 +23,8 @@ npx prisma db update --db "$DATABASE_URL"
 | `--db <url>` | Connects to the database. |
 | `--dry-run` | Shows planned operations without applying them. |
 | `--to <contract>` | Updates to a specific contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, or [`<dir>^`](#contract-references). It refuses `@contract`, `@db`, and `@empty` with the error code `MIGRATION.REF_WRONG_GRAMMAR`. To update to the contract in `contract.json`, leave out `--to`. |
-| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
-| `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, or every model of a namespace the contract removed. Repeatable. |
+| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed. Repeatable. |
 | `--allow <Model>` | Lets one operation change who can read or write the model's data. Repeatable. |
 | `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-command contract hash. Without it, `db update` advances `db` when `--db` is omitted, and advances nothing when `--db` is passed. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
@@ -71,6 +71,15 @@ The schema can also hold objects that no contract declares. A table created by h
 
 The command leaves alone a schema that no contract declared, such as Supabase's `auth`, and a namespace that only another contract space declares. Before `8.0.0-rc.20`, the command did not ask about a removed namespace and left its tables in place.
 
+On PostgreSQL and SQLite, removing a member from an `enum` block, or changing the value a member stores, is asked about too, because rows may hold the old value. The update asks once for each value, however many columns hold it:
+
+- If you renamed the member, answer with `--rename Status.ARCHIVED:Status.RETIRED`. The update changes the stored value in every column and list that holds it.
+- To let the value go, answer with `--delete Status.ARCHIVED`. Optional columns that hold it are set to `NULL`, and lists lose it. A required column cannot take `NULL`, so while any of its rows hold the value, the apply fails with `MIGRATION.PRECHECK_FAILED` before it changes anything. The error counts those rows and says how to keep them.
+
+A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value, and two members that swap their stored values, can only be answered with `--delete`. `db update` cannot keep those rows in one run. Its question says to plan the change with [`migration plan --from <hash>`](/cli/migration-plan#renames-and-data-loss) instead, or, for a member that keeps its name, to rename it to a new member and back in two runs of `db update`. For a swap, only the migration works.
+
+Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
+
 On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. Removing a field from a model removes it from every document that holds it, so the update asks about it: answer with `--delete <Model>.<field>`, or with `--rename`. Without a stored contract, the field is named by its collection, as in `--delete profiles.nickname`.
 
 On PostgreSQL and SQLite, a type change that can lose values is answered with `--delete <Model.field>`, which lets the database's own cast run; it may cut or round values, and a value it cannot cast fails the update. To write the conversion yourself, use [`migration plan --convert`](/cli/migration-plan#type-changes-and-required-fields) instead.
@@ -100,4 +109,4 @@ npx prisma db update --db "$DATABASE_URL" --dry-run --json | jq 'select(.kind ==
 
 For reviewable database changes in version control, use [`migration plan`](/cli/migration-plan) and [`db migrate`](/cli/db-migrate).
 
-Use `db update` for local development, preview environments, and workflows where direct reconciliation is acceptable.
+Use `db update` on any database whose migration history does not need to be kept, such as a local, development, preview, or staging database, shared or not. A database that changes only through migrations, such as production, must not use it, because it leaves no migration behind.
