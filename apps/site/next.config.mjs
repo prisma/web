@@ -280,6 +280,7 @@ const agentMarkdownPaths = [
   "/compare/neon",
   "/compare/planetscale",
   "/compare/supabase",
+  "/compare/vercel",
   "/compare/vercel-neon-drizzle",
 ];
 
