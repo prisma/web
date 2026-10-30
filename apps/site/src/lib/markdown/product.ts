@@ -1,3 +1,4 @@
+import { splitMicroline } from "@/components/product/microline";
 import type { ProductPageContent } from "@/components/product/types";
 import { bulletList, ctaList, definitionList, heading, joinBlocks, paragraphs } from "./blocks";
 import { renderCompareLinksMarkdown } from "./compare-links";
@@ -68,6 +69,12 @@ export function productSubheadline(content: ProductPageContent): string {
   return content.hero.subheadline;
 }
 
+function productMicrolineMarkdown(microline: string, href?: string, linkText?: string): string {
+  if (!href) return microline;
+  const { before, link, after } = splitMicroline(microline, linkText);
+  return `${before}[${link}](${href})${after}`;
+}
+
 export function renderProductMarkdown({
   content,
   afterFeatures = [],
@@ -79,7 +86,9 @@ export function renderProductMarkdown({
     // Hero. The h1 and subheadline are emitted by the caller, so this picks up
     // at the CTAs, the reassurance microline and the three benefits.
     ctaList([hero.primaryCta, hero.secondaryCta]),
-    hero.microline,
+    hero.microline
+      ? productMicrolineMarkdown(hero.microline, hero.microlineHref, hero.microlineLink)
+      : undefined,
     hero.related ? `[${hero.related.label}](${hero.related.href})` : undefined,
     hero.benefits ? bulletList([...hero.benefits]) : undefined,
     // product-tour.tsx shows one stop at a time behind a tab strip. Markdown

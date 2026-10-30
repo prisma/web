@@ -53,10 +53,8 @@ export const postgresContent: ProductPageContent = {
     primaryCta: { label: "Get started free", href: CONSOLE },
     secondaryCta: { label: "See pricing", href: PRICING },
     microline: "Free tier with a hard cap. No credit card.",
-    related: {
-      label: "See everything the Free plan includes",
-      href: "/postgres/free-postgresql-hosting",
-    },
+    microlineHref: "/postgres/free-postgresql-hosting",
+    microlineLink: "Free tier with a hard cap",
     tour: [
       {
         label: "Database",
@@ -165,12 +163,12 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Is Prisma Postgres free to use?",
       answer:
-        "Yes. The [Free plan](/pricing) costs $0, needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the Free plan, idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month. The [free Postgres hosting page](/postgres/free-postgresql-hosting) lists everything the Free plan includes.",
+        "Yes, Prisma Postgres provides [free PostgreSQL hosting](/postgres/free-postgresql-hosting), needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the [Free plan](/pricing), idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month.",
     },
     {
       question: "What happens when I reach the Free plan limit?",
       answer:
-        "Your workspace's databases stop accepting queries until the allowance resets at the start of the next month, or until you upgrade, which usually restores access within a minute. If you need time to export your data first, you can [lift the limit for 24 hours](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) from the Console, once per workspace. Paid plans bill operations beyond the included amount at your plan's rate, with a spend limit that is on by default.",
+        "Your workspace's databases stop accepting queries until the allowance resets at the start of the next month, or until you upgrade, which usually restores access within a minute. If you need time to export your data first, you can [lift the limit for 24 hours](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) from the Console, once per workspace. Paid plans bill operations beyond the included amount at your plan's rate, up to a spend limit if you set one in the Console.",
     },
     {
       question: "Can I create a database without signing up?",

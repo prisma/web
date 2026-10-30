@@ -9,7 +9,7 @@ export type CalloutType = "note" | "tip" | "warning" | "example";
 // the brand's triple-band ray down the left edge.
 const STYLES: Record<CalloutType, { box: string; label: string; icon: string }> = {
   note: {
-    box: "bg-background-ppg text-foreground-neutral border-l-prism-cyan-500",
+    box: "bg-background-neutral-weak text-foreground-neutral border-l-stroke-neutral",
     label: "Note",
     icon: "fa-regular fa-circle-info",
   },
