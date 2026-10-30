@@ -144,12 +144,20 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
   ]);
 
   // TSX routes have no frontmatter date: use the last commit that changed the
-  // page or a module it imports (see `@/lib/sitemap-lastmod`). Without git
-  // history the route gets no lastmod, never the build date.
-  const fileDates = getGitFileDates(SRC_DIRECTORY);
+  // page or its content files (see `@/lib/sitemap-lastmod`). The production
+  // build fetches the commit's history when the build host has none (Vercel)
+  // or a shallow one. Without git history the route gets no lastmod, never
+  // the build date.
+  const fileDates = getGitFileDates(SRC_DIRECTORY, {
+    fetchHistory: process.env.NODE_ENV === "production",
+    report: (message) => console.log(`sitemap-site.xml: ${message}`),
+  });
   const pageLastModMap = new Map<string, string | undefined>();
   for (const { pathname, filePath } of pageRoutes) {
-    pageLastModMap.set(pathname, getRouteLastModified(filePath, SRC_DIRECTORY, fileDates));
+    pageLastModMap.set(
+      pathname,
+      getRouteLastModified(pathname, filePath, SRC_DIRECTORY, fileDates),
+    );
   }
 
   // Changelog entries use their frontmatter date as lastmod
