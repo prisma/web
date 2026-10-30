@@ -16,7 +16,7 @@ export const NEON_AUTHOR = {
 } as const;
 
 export const NEON_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const NEON_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
+export const NEON_UPDATED = { iso: "2026-10-30", label: "October 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -45,7 +45,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Database",
     neon: "Managed PostgreSQL (Lakebase Postgres) with autoscaling, connection pooling, and scale-to-zero. Works with any language, framework, or ORM that supports Postgres.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Prisma Postgres has no cold starts. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/docs/postgres",
@@ -65,7 +65,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "App hosting",
     neon: "Neon Functions run backend logic next to the database. Neon recommends hosting the UI on a separate platform such as Vercel or Netlify.",
     prisma:
-      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. WebSocket servers are not supported.",
+      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler today; native cron is planned for early 2027. WebSocket servers are not supported today; support is planned for early 2027.",
     sources: {
       neon: "https://neon.com/docs/get-started/full-backend-quickstart",
       prisma: "https://www.prisma.io/docs/compute/limitations",
@@ -135,7 +135,7 @@ export const APART = [
   {
     id: "http-hosting",
     title: "Full TypeScript app hosting",
-    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported. Compute has no built-in cron scheduler.",
+    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported today; support is planned for early 2027. Compute has no built-in cron scheduler today; native cron is planned for early 2027.",
   },
   {
     id: "preview-app-and-db",
