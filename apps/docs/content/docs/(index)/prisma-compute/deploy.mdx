@@ -13,7 +13,7 @@ Start from wherever you are:
 - **You're starting from scratch.** [Declare a new app](#start-from-scratch) and run it locally, then deploy it.
 - **You already have an app.** [Add a declaration around your server code](#bring-an-app-you-already-have), then deploy it.
 
-Both paths meet in the same [deploy step](#2-deploy), because Composer treats every app the same way. A deployed app becomes a **project**, deploying with no flags targets **production**, and `--stage <name>` deploys an isolated copy of the whole app as a [preview branch](/compute/branching) of the same project. Local runs never talk to the platform, so you need credentials only when you deploy. For the platform's resource model, see [Compute](/compute#the-model).
+Both paths meet in the same [deploy step](#2-deploy), because Composer treats every app the same way. A deployed app becomes a **project**, deploying with no flags targets the **production** environment, and `--environment <name>` deploys an isolated copy of the whole app as a [preview branch](/compute/branching) of the same project. Local runs never talk to the platform, so you need credentials only when you deploy. For the platform's resource model, see [Compute](/compute#the-model).
 
 ## Prerequisites
 
@@ -235,15 +235,15 @@ You can also inspect everything in the [Console](https://pris.ly/pdp): projects,
 
 ## 4. Ship changes and environments
 
-Re-deploying is idempotent: build again, deploy again, and the platform applies the difference instead of recreating everything. That includes removals: delete a provision from your module and the next deploy deletes the resource; see [Removing resources](/composer/deploying#removing-resources). Production and previews are separated by stages:
+Re-deploying is idempotent: build again, deploy again, and the platform applies the difference instead of recreating everything. That includes removals: delete a provision from your module and the next deploy deletes the resource; see [Removing resources](/composer/deploying#removing-resources). Production and previews are separate environments:
 
 ```npm
-npx prisma deploy                  # production
-npx prisma deploy --stage staging  # a persistent staging environment
-npx prisma deploy --stage pr-42    # one environment per PR
+npx prisma deploy                        # production
+npx prisma deploy --environment staging  # a persistent staging environment
+npx prisma deploy --environment pr-42    # one environment per PR
 ```
 
-A stage is a complete, isolated copy of the app: its own services, databases, and configuration, sharing only the code with production. In platform terms it is a [preview branch](/compute/branching) of the same project. Tearing a stage down needs the control API with service-token credentials, or a branch deletion in the Console; see [Destroying](/composer/deploying#destroying). [Deploying](/composer/deploying) covers CI, deploy state, and teardown in full.
+Each environment is a complete, isolated copy of the app: its own services, databases, and configuration, sharing only the code with the others. In platform terms, `production` is the project's default branch, and any other environment is a [preview branch](/compute/branching) of the same project with that name. Tearing an environment down needs the control API with service-token credentials, or a branch deletion in the Console; see [Destroying](/composer/deploying#destroying). [Deploying](/composer/deploying) covers CI, deploy state, and teardown in full.
 
 ## Hand it to your agent
 
@@ -273,5 +273,5 @@ Build a Bun API with a /todos endpoint backed by an in-memory list as a Prisma C
 
 - [Composer getting started](/composer/getting-started): the two-service version, with a typed contract between services.
 - [Databases](/composer/databases): give a service a Prisma Postgres database, plain or typed by a Prisma ORM contract.
-- [Deploying](/composer/deploying): stages, CI, deploy state, and teardown.
+- [Deploying](/composer/deploying): environments, CI, deploy state, and teardown.
 - [Local development](/local-development): run the app, database, and storage on your machine with the runtime you deploy.
