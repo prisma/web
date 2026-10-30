@@ -1,0 +1,175 @@
+---
+title: "What does a small production app need from Postgres?"
+description: "For your first 100 to 1,000 users: tested backups, pooling, a spend limit and monitoring. Read replicas and high availability can wait for a clear signal."
+summary: "A small production app, one with its first 100 to 1,000 users, needs four things from Postgres: backups you have restored at least once, connection pooling, a spending limit or alert you have set, and monitoring that shows slow queries and connection counts. Read replicas, a second region and high availability can wait until a signal you can name says otherwise, such as reads that keep the primary busy after you have tuned them, or an uptime figure in a customer contract. Managed hosts such as Fly.io, Neon, [Prisma Postgres](/docs/postgres), Railway, Render and Supabase handle these differently, so compare how far back each one restores and what you have to turn on yourself. Prisma Postgres fits when you want pooling and query monitoring included, with no instance to size or upgrade."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-30"
+updatedAt: "2026-10-30"
+readingTime: "8 min read"
+faq:
+  - question: "Is one Postgres server enough for a production app?"
+    answer: "For most apps with their first 1,000 users, yes, if you can restore from a tested backup and the app reconnects after a dropped connection. Add servers when a specific signal appears, such as reads that keep the primary busy after tuning, or a contract that names an uptime figure. More servers don't help with a mistaken `DELETE`, a slow query or a full connection pool."
+  - question: "Is a free Postgres plan enough for a production app?"
+    answer: "Check backups and limits first. Prisma Postgres Free and [Supabase Free](https://supabase.com/pricing) have no automatic backups, and Supabase pauses Free projects after a week of inactivity. A [free Render database](https://render.com/docs/free) has no backups and expires 30 days after creation, and Render says not to use free instances for production. A free plan suits a prototype. For paying customers, use a paid plan, or at least run your own `pg_dump` on a schedule and store it away from the host."
+  - question: "How often should I test a restore?"
+    answer: "Before the first paying customer, then after any large change to the schema, permissions or storage, because a restore that worked for the old setup proves little about the new one. A fixed rhythm, such as once a quarter, keeps the steps current and gives a second person the chance to run them."
+  - question: "How hard is it to move to another host later?"
+    answer: "The data moves with `pg_dump` and `pg_restore`, so the work is the cutover: stop writes, dump, restore and repoint the app. A dump is a snapshot of one moment, so writes stay stopped until the app points at the new database. Check two things first: `pg_dump` 17 can't dump a PostgreSQL 18 server, and a restore into Prisma Postgres uses `--no-owner --no-privileges`, so adapt any policies that name roles from the old host. The [import guide](/docs/postgres/import-from-existing-database) has the steps. Host-specific features, such as a built-in auth service or data API, take longer to replace. Prisma Postgres is managed PostgreSQL 17 and Prisma ORM is optional, so your Postgres client keeps working after a move in either direction."
+related:
+  - title: "When a growing Postgres app needs a read replica"
+    href: "/postgres/do-i-need-a-read-replica"
+  - title: "Practicing a Postgres restore"
+    href: "/postgres/practice-database-recovery"
+  - title: "Recovering deleted records and setting up backups"
+    href: "/postgres/recover-deleted-records"
+  - title: "Fixing \"too many connections\" from hosted Postgres"
+    href: "/postgres/too-many-connections"
+  - title: "Inspecting slow queries and indexes on managed Postgres"
+    href: "/postgres/managed-postgres-query-monitoring"
+  - title: "Hosting and Postgres for your first 100 paying users"
+    href: "/blog/choosing-hosting-and-postgres-after-your-first-100-users"
+cta:
+  title: "Start with backups you have restored"
+  description: "Prisma Postgres paid plans take daily snapshots, on days with database activity, that you can restore from the Console, with PgBouncer pooling and Query Insights included. Any Postgres client works; Prisma ORM is optional."
+  label: "Read the backups guide"
+  href: "/docs/postgres/database/backups"
+---
+
+Start with the failures a small app is likely to meet: a mistaken `DELETE`, a migration that goes wrong, a connection limit reached during a launch, or a background job stuck in a loop. A second database server fixes none of those. The sections below cover what to set up first, what can wait and the signals that mean it's time, then how hosts compare and how to set this up on Prisma Postgres.
+
+We make Prisma Postgres and Prisma Compute. Prisma ORM is optional: Prisma Postgres is managed PostgreSQL 17, and any Postgres client works. PostgreSQL and provider behavior on this page links to each project's or provider's documentation, checked on October 30, 2026.
+
+## What does a small production app need first?
+
+Work through this list before the first paying customer. Each item is done when the last column is true.
+
+| Need | What it protects against | Done when |
+| --- | --- | --- |
+| Backups | Data lost to a bad statement, script or migration | Automated backups run, and you know how far back they reach |
+| A restore drill | A backup nobody can use under pressure | You have restored into a separate database, checked a known record and timed it |
+| Connection pooling | `too many connections` errors as traffic and instances grow | App traffic uses the pooled connection, and migrations use the direct one |
+| A spending limit or alert | A bug that runs up usage overnight | A limit or alert is set, and you know what stops when it's reached |
+| Monitoring | Slow pages and full connection pools that nobody notices | You can list the slowest queries and see connections against your limit |
+
+### Backups and a restore drill
+
+A backup sets how much work you can lose. With daily backups, anything written since the last one is at risk. Point-in-time recovery lets you restore to a moment you choose, so it matters when a day of writes is too much to lose. Keep backups for at least as long as it can take someone to notice missing data.
+
+Add a second copy you control: a `pg_dump` on a schedule, stored outside your host's account. The [PostgreSQL docs](https://www.postgresql.org/docs/current/app-pgdump.html) say that, except in simple cases, `pg_dump` is generally not the right choice for regular production backups, so treat it as the extra copy and the host's backups as the main one.
+
+Then restore one, as the [restore guide](/postgres/practice-database-recovery) shows: restore into a separate database, never over production, check a record you know should be there and write down how long it took. A read replica doesn't replace any of this, because it [applies a mistaken `DELETE` too](/postgres/do-i-need-a-read-replica#how-do-read-replicas-behave).
+
+### Connection pooling
+
+Postgres accepts a fixed number of connections, and every running copy of your app holds its own. More instances, or a new client on every request, use them up, and then new connections fail. Create one client per process, send app traffic through your host's pooler and keep migrations and `pg_dump` on the direct connection, because a pooler in transaction mode doesn't keep session state between transactions. The [connection guide](/postgres/too-many-connections) covers pool sizes and how to count what's open.
+
+### A spending limit or alert
+
+A database billed on usage can grow with a bug as well as with customers: a job that polls once a second makes about 2.6M queries a month. Decide before launch what should happen when the budget runs out. An alert keeps the app up and needs someone to act on it. A hard limit stops usage, and that can stop the app too.
+
+Hosts differ here: Neon's [spending notifications](https://neon.com/docs/introduction/spending-notifications) only send alerts, and consumption quotas set through its API suspend computes. Railway's [usage limits](https://docs.railway.com/pricing/cost-control) shut down your workloads when usage exceeds the limit. Supabase's [Spend Cap](https://supabase.com/docs/guides/platform/cost-control) is [on by default on the Pro Plan](https://supabase.com/pricing) and doesn't cover compute. On Prisma Postgres, every paid plan includes a hard spend limit you set in the Console, and none applies until you do.
+
+### Monitoring
+
+You need three views: the slowest and most frequent queries, connections against your limit, and storage against your plan. Add an outside check on a health endpoint, so that a monitor tells you about an outage before a customer does. The [query monitoring guide](/postgres/managed-postgres-query-monitoring) compares what hosts show, the [slow queries guide](/postgres/slow-queries-with-real-data) shows how to read it, and the [health check guide](/compute/app-database-health-checks) covers the endpoint.
+
+## What can wait, and what says it's time?
+
+Each of these adds cost and something new to run. Add one when you can name the signal, not because a checklist lists it.
+
+| Feature | What it helps with | Signal that it's time | Fix first |
+| --- | --- | --- | --- |
+| Read replicas | Reads that keep the primary busy, reports that slow the app | Primary CPU stays high, mostly from reads, after you've fixed the expensive queries | [Slow queries](/postgres/slow-queries-with-real-data), then a larger instance |
+| A second region | Reads for users far from the database | Distant users are measurably slow with the app next to the database, and you can run app servers near them | [Put the app next to the database](/postgres/nodejs-database-regions) |
+| High availability | The primary failing | A few minutes of downtime would cost more than the extra servers, a contract names an uptime figure, or customers rely on the app at hours when nobody can respond | A tested restore, a health check and retries on dropped connections |
+
+### Read replicas
+
+A replica adds read capacity, but it doesn't make a single query faster, it adds no write capacity and it copies a mistaken delete within seconds. A slow page at this size is usually a missing index or a query in a loop. Moving to a larger instance comes before a replica, because it needs nothing new in your code. On Prisma Postgres there is no instance to size or upgrade: Prisma scales the database for you. The [read replica guide](/postgres/do-i-need-a-read-replica) has the full decision table, a comparison of hosts and how to use a replica from TypeScript.
+
+### A second region
+
+A second region shortens reads only when the code running them is there too, and writes still travel to the primary's region. Put the app and the database in the same region first, and measure from there with the [regions guide](/postgres/nodejs-database-regions). Data residency is a separate question, covered in the [EU regions guide](/postgres/eu-data-residency).
+
+### High availability
+
+[High availability](https://www.postgresql.org/docs/current/high-availability.html) means a second server can take over quickly when the primary fails. It shortens one kind of outage. It doesn't recover a mistaken `DELETE`, because the standby applies it too, and it doesn't help with a bad deploy or a full connection pool. At this size, a rehearsed restore and an app that reconnects cover more of the likely failures, so it can usually wait.
+
+Hosts package it differently:
+
+- **Fly.io Managed Postgres** [includes high availability on every plan](https://docs.fly.io/postgres), and plans start at $38 a month.
+- **Neon** [keeps no idle standby computes](https://neon.com/docs/introduction/high-availability). Its storage spans availability zones on every plan, and it restarts or reschedules computes, typically within a few seconds to a few minutes, so your app has to handle brief disconnections.
+- **Railway** [converts a Postgres service into a cluster](https://docs.railway.com/databases/postgresql-ha) with a primary and streaming replicas when you turn it on, and failover is then automatic.
+- **Render** [keeps a standby in another zone](https://render.com/docs/postgresql-high-availability) once you enable high availability, on compute plans with at least 1 CPU, which [start at $40 a month](https://render.com/pricing). The standby has the primary's compute plan and storage and is billed accordingly.
+- **Supabase** [announced Multigres](https://supabase.com/blog/multigres-private-alpha) on October 29, 2026, in private alpha and not for production during the alpha.
+
+Whichever host you use, ask what happens when a node fails, how long recovery takes and whether your app has to reconnect. Then test that your app retries a dropped connection, which helps on any host.
+
+## How do managed Postgres hosts compare?
+
+Hosts are listed alphabetically, and each row comes from the provider's documentation, checked on October 30, 2026. Railway maintains its Postgres template; backups, point-in-time recovery, high availability and PgBouncer pooling are opt-in in its docs (checked 2026-10-30).
+
+| Host | Backups | Point-in-time recovery | Connection pooling | Read replicas |
+| --- | --- | --- | --- | --- |
+| Fly.io Managed Postgres | [Automated, on every plan](https://fly.io/pricing) | [`fly mpg restore --pitr-time`](https://docs.fly.io/flyctl/cmd/fly_mpg_restore) restores into a new cluster, within the cluster's recovery window | [Included on every plan](https://fly.io/pricing) | None listed in its docs; the [replica on each plan](https://docs.fly.io/postgres/cluster-configuration) is there for high availability |
+| Neon | [History window](https://neon.com/pricing) of up to 7 days on Launch and up to 30 days on Scale | [Instant restore](https://neon.com/docs/postgres/backup-restore/branch-restore) to a point in that window, at $0.20 per GB-month | [On every plan](https://neon.com/pricing) | [On every plan](https://neon.com/pricing), in the [same region](https://neon.com/docs/introduction/read-replicas) as the database |
+| Prisma Postgres | [Daily snapshots](/docs/postgres/database/backups) on days with database activity, kept 7 days on Starter and Pro and 30 on Business; none on Free | No point-in-time recovery yet (it is coming in November 2026) | [PgBouncer on every plan](/docs/postgres/database/connection-pooling) | None today; read replicas are planned for early 2027 |
+| Railway | [Daily, weekly or monthly schedules](https://docs.railway.com/volumes/backups), kept 6, 27 or 89 days; its [pricing](https://railway.com/pricing) lists built-in database and volume backups on Pro and Enterprise | [Restore window of roughly 4 weeks](https://docs.railway.com/volumes/point-in-time-recovery) that starts once you turn it on | [PgBouncer](https://docs.railway.com/databases/postgresql-pgbouncer) you add to the database | None listed in its docs; [high availability](https://docs.railway.com/databases/postgresql-ha) replicas take over on failover |
+| Render | [Continuous on paid databases](https://render.com/docs/postgresql-backups); none on Free | [Past 3 days on a Hobby workspace, past 7 days on Pro or higher](https://render.com/docs/postgresql-backups), restored into a new database | [PgBouncer you turn on](https://render.com/docs/postgresql-connection-pooling), on paid databases | [Up to five](https://render.com/docs/postgresql-read-replicas) with at least 10 GB of storage and a plan with at least 0.5 CPU |
+| Supabase | [Daily on paid plans](https://supabase.com/docs/guides/platform/backups): 7 days on Pro, 14 on Team; none on Free | [Paid add-on](https://supabase.com/pricing) at $100 a month per 7 days of retention, on Pro and above, with at least the Small compute add-on | Shared pooler on every plan; [dedicated PgBouncer](https://supabase.com/docs/guides/database/connecting-to-postgres) on Pro and above | [Read Replicas](https://supabase.com/docs/guides/platform/read-replicas) on the primary's compute size, [billed by the hour](https://supabase.com/docs/guides/platform/manage-your-usage/read-replicas) |
+
+Check [Prisma pricing](/pricing) and each provider's pricing page for current plan costs before you choose.
+
+## How do I set this up on Prisma Postgres?
+
+Nothing below needs Prisma ORM, because any Postgres client works, and these steps apply whichever host runs the app.
+
+### 1. Move to a paid plan before customer data arrives
+
+The Free plan has no backups. [Starter](/pricing) is a $10 base and keeps daily snapshots, taken on days with database activity, for 7 days. If the app also runs on [Prisma Compute](/docs/compute), Compute usage is metered on top.
+
+### 2. Use the pooled string for the app and the direct string for the rest
+
+[Generate a connection string](/docs/postgres/database/connecting-to-your-database#get-your-connection-strings) in the Console. Both strings share the same credentials, and only the host differs:
+
+```bash title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+`DATABASE_URL` carries app traffic through PgBouncer, and `DIRECT_URL` is for migrations, `pg_dump` and `pg_restore`. Pooled limits are 10 connections on Free, 100 on Starter, 500 on Pro and 1,000 on Business, and direct limits are far lower, with 10 on Starter ([pooling docs](/docs/postgres/database/connection-pooling)). Queries through the pooled connection are stopped after 10 minutes, so run longer jobs over the direct one.
+
+### 3. Keep a dump outside your Prisma account
+
+Use [PostgreSQL 17 client tools](/docs/postgres/database/backups) and the direct string, on a schedule, from CI or a machine you control:
+
+```sh
+set -a; . ./.env; set +a
+: "${DIRECT_URL:?Set DIRECT_URL first}"
+umask 077
+mkdir -p backups
+pg_dump --dbname="$DIRECT_URL" --format=custom --file="backups/backup-$(date +%F).dump"
+```
+
+The file holds your customers' data, so store it with its own access control and an expiry.
+
+### 4. Rehearse a restore
+
+On a paid plan, open the database's **Backups** tab in the [Console](https://console.prisma.io), select **Restore backup** next to a completed backup and choose **Restore to a new database**. The original database isn't touched, and the new one needs its own connection string. Check a record you know should be there, note how long it took and list what the snapshot doesn't contain. The [restore guide](/postgres/practice-database-recovery) has the full exercise.
+
+### 5. Set a spend limit
+
+Open **Workspace Settings** > **Billing**, find the **Spending Limit** card, enter an amount, click **Set Limit** and type the workspace name to confirm. Every paid plan includes a hard spend limit you set in the Console, and none applies until you do. The limit counts usage charges, not the plan fee. Workspace members get an email at 75%. At 100%, queries to the workspace's databases stop until you raise or remove the limit, so leave room above a normal month ([billing docs](/docs/console/more/billing#cap-usage-charges-with-a-spending-limit)).
+
+### 6. Watch queries and connections
+
+[Query Insights](/docs/query-insights) is included at no extra cost. It groups queries by statement shape and shows each one's latency, execution count and reads, so you can find what to fix before you add capacity. Run the `pg_stat_activity` checks from the [connection guide](/postgres/too-many-connections) after a launch or a large import.
+
+## Where is Prisma Postgres the wrong choice?
+
+For an app that has to restore to a particular moment today. Prisma Postgres restores from daily snapshots taken on days with database activity, so changes after the latest snapshot may not be restored, and it has no point-in-time recovery yet (it is coming in November 2026). If a day of writes is too much to lose, choose a host from [the table above](#how-do-managed-postgres-hosts-compare) that offers it today.
+
+For an app that already needs read replicas. Prisma Postgres has no read replicas today; they are planned for early 2027. If reads keep your primary busy after the fixes above, your reports have to run on current data away from the primary, or you serve reads from another region, choose a host that offers them. The [read replica guide](/postgres/do-i-need-a-read-replica#which-hosts-offer-read-replicas) compares them.
+
+For customer data on the Free plan. It has no backups, so use a paid plan, or a host and plan that fit your budget and include them.
