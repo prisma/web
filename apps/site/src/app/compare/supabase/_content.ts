@@ -46,7 +46,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "Managed PostgreSQL. A project can be used as a standalone Postgres database with any Postgres client. Auth, Storage, Realtime, and Edge Functions are included and optional.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/docs/postgres",
