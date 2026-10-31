@@ -8,7 +8,7 @@ metaDescription: 'Import a local or hosted PostgreSQL database into Prisma Postg
 
 :::tip
 
-Moving a database from your laptop? Follow the three-step guide: [Migrate a local Postgres database to the cloud](/postgres/import-from-existing-database). The Free plan includes 2 GB of storage for the whole workspace, shared by its databases, so check the size first with `SELECT pg_size_pretty(pg_database_size(current_database()));` ([how big a database fits on the Free plan](/postgres/import-from-existing-database#how-big-a-database-fits-on-the-free-plan)).
+Moving a database from your laptop? Follow the three-step guide: [Migrate a local Postgres database to the cloud](/postgres/import-from-existing-database). The Free plan includes 2 GB of storage for the whole workspace, shared by its databases, so check the size first with `SELECT pg_size_pretty(pg_database_size(current_database()));` ([how big a database fits on the Free plan](/postgres/import-from-existing-database#how-big-a-database-fits-on-the-free-plan)). See [free PostgreSQL hosting](https://www.prisma.io/postgres/free-postgresql-hosting) for what the Free plan includes.
 
 :::
 
@@ -28,7 +28,7 @@ The final dump contains the database state from when `pg_dump` runs. For a produ
 
 You need:
 
-- a direct, non-pooled connection URL for the PostgreSQL database you are moving
+- a direct, non-pooled connection URL for the PostgreSQL database you are moving ([where to find it on Neon, Supabase, Render and Railway](#provider-specific-guides)). Moving from Supabase? Use the [Supabase guide](/guides/switch-to-prisma-postgres/from-supabase) instead of these steps
 - a new, empty [Prisma Postgres database](https://console.prisma.io/sign-up?utm_source=docs&utm_medium=content&utm_content=import-from-existing-database-postgresql)
 - the [direct and pooled Prisma Postgres connection strings](/postgres/database/connecting-to-your-database)
 - enough local disk space for the compressed database dump
@@ -316,7 +316,14 @@ Your database migration is complete, and upgrading Prisma ORM is a separate appl
 
 If you want to complete both changes on the same day, deploy and verify the Prisma Postgres connection first. Upgrade Prisma ORM in a separate commit or deployment so failures have one clear cause.
 
-## Provider-specific guides
+## Moving Postgres from a laptop, Neon, Supabase, Render or Railway? [#provider-specific-guides]
 
-- [Migrate from Supabase to Prisma Postgres](/guides/switch-to-prisma-postgres/from-supabase)
-- [Migrate from Neon to Prisma Postgres](/guides/switch-to-prisma-postgres/from-neon)
+All five sources move with `pg_dump` and `pg_restore`, up to PostgreSQL 17 (the version check is in [step 1](#1-inspect-the-source-database)). The connection URL differs for each, and Neon and Supabase each have their own guide. On Supabase, use that guide rather than this one: its dump leaves out the schemas Supabase manages, such as `auth` and `storage`.
+
+- **A laptop:** for a move without a production cutover, follow the [three-step guide](/postgres/import-from-existing-database).
+- **Neon:** [Migrate from Neon to Prisma Postgres](/guides/switch-to-prisma-postgres/from-neon)
+- **Supabase:** [Migrate from Supabase to Prisma Postgres](/guides/switch-to-prisma-postgres/from-supabase)
+- **Render:** there is no separate guide, so follow this one with the [external URL](https://render.com/docs/postgresql-creating-connecting#external-connections) from the database's **Info** page in the Render Dashboard, not a [connection pool URL](https://render.com/docs/postgresql-connection-pooling) on port `6432`.
+- **Railway:** there is no separate guide, so follow this one with [`DATABASE_PUBLIC_URL`](https://docs.railway.com/databases/postgresql#connecting-externally), which appears after you add **Public Access** under the service's **Settings** → **Networking**. If [PgBouncer](https://docs.railway.com/databases/postgresql-pgbouncer) runs in front of the database, `DATABASE_PUBLIC_URL` goes through it, so use `DATABASE_PUBLIC_UNPOOLED_URL`, which needs the database itself publicly exposed. If you added public access only for this move, remove it once the source is no longer needed.
+
+A new Render database runs PostgreSQL 18 unless you pick an older version, and Railway's [Postgres template](https://railway.com/deploy/postgres) deploys PostgreSQL 18. This guide does not cover moving from 18. Render, Railway and Supabase details checked on 2026-10-30.
