@@ -10,8 +10,8 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 /**
  * Two jobs, in this order.
  *
- * 1. Agent Front (`src/agent-front.ts`, ora's file, with one change marked
- *    PRISMA LOCAL CHANGE that strips the query string from the referer)
+ * 1. Agent Front (`src/agent-front.ts`, ora's generated file, which strips
+ *    query strings and fragments from reported referers)
  *    reports each page request to ora after the response has been sent, so the
  *    Agent traffic page can tell agents from people. It answers a request
  *    itself only for `/__ora/status`, or once Autopilot is switched on in the
@@ -27,6 +27,13 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
  * www.prisma.io, and it is also why the second job needs a boundary.
  */
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  // Prisma owns /mcp: protocol requests must reach the mcp.prisma.io rewrite,
+  // and browser requests keep the existing marketing-page behavior. Ora's
+  // policy must not take over this path, including during a policy outage.
+  if (request.nextUrl.pathname === "/mcp" || request.nextUrl.pathname === "/mcp/") {
+    return agentMarkdown(request);
+  }
+
   const answered = await handleAgentFront(request, event);
   if (answered) return answered;
 
@@ -150,3 +157,4 @@ export const config = {
     },
   ],
 };
+

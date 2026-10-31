@@ -91,7 +91,7 @@ test("the excluded extensions are exactly the ones Agent Front never reports", (
   // The matcher may only skip what `shouldRecord` in agent-front.ts would drop
   // anyway. If ora changes that list in a newer file, this says so.
   const agentFrontSource = readFileSync(join(siteRoot, "src/agent-front.ts"), "utf8");
-  const block = agentFrontSource.match(/const ASSET_EXTENSIONS = new Set\(\[([\s\S]*?)\]\)/)?.[1];
+  const block = agentFrontSource.match(/const ASSET_EXTENSIONS = (?:\/\* @__PURE__ \*\/ )?new Set\(\[([\s\S]*?)\]\)/)?.[1];
   assert.ok(block, "expected ASSET_EXTENSIONS in src/agent-front.ts");
   const reported = [...block.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
 
@@ -328,3 +328,4 @@ test("a non-GET request to a guide is never rewritten", async () => {
   const response = await proxy(request(url, { accept: "text/markdown" }, "POST"), event);
   assert.equal(response.headers.get("x-middleware-rewrite"), null);
 });
+
