@@ -367,6 +367,7 @@ function DocsNavbar({
                       item.secondary
                         ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse"
                         : "bg-fd-primary text-fd-primary-foreground",
+                      item.navbarClassName,
                     )}
                   >
                     {item.text}
