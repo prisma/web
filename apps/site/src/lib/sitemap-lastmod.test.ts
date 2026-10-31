@@ -165,6 +165,7 @@ test("the checked-in ignore-revs list skips the sweeps that changed no page copy
     "9e353dc313ebe7a38f7c1e1755f2b71b6b6bcd97", // #8192 OG-card metadata sweep
     "27f821121d5abe87c4570f2df147b2502fcf80a3", // #8269 /studio, /enterprise copy moved
     "1dcc09bf7dcd5786408f9f007cfa24a752613ffc", // #8595 homepage Markdown alternate
+    "7ba5ba08680670b930d3076d37825e867954f4fd", // #8680 free PostgreSQL hosting date constant
   ]) {
     assert.ok(revs.has(sha), sha);
   }

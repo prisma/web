@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { stripFaqAnswerMarkup } from "@/lib/faq-answer";
+import { renderMarkdownForPath } from "@/lib/markdown-pages";
 import { renderFreePostgresqlDatabaseMarkdown } from "@/lib/markdown/free-postgresql-database";
 import {
   CONSOLE_SIGN_UP_URL,
@@ -19,6 +20,7 @@ import {
   FREE_POSTGRES_INCLUDED_CARDS,
   FREE_POSTGRES_INCLUDED_NOTES,
   FREE_POSTGRES_INCLUDED_ROWS,
+  FREE_POSTGRES_LAST_MODIFIED,
   FREE_POSTGRES_CASES,
   FREE_POSTGRES_LIMIT,
   FREE_POSTGRES_HERO_PRIMARY_CTA,
@@ -40,6 +42,11 @@ import {
 } from "./_content";
 
 const DASHES = /[\u2013\u2014]/;
+
+test("the Markdown rendition prints the page's last-modified date", () => {
+  const markdown = renderMarkdownForPath(FREE_POSTGRES_PATH);
+  assert.ok(markdown?.includes(`dateModified: ${FREE_POSTGRES_LAST_MODIFIED}`));
+});
 
 test("title, meta and H1 match the brief", () => {
   assert.equal(FREE_POSTGRES_TITLE, "Free PostgreSQL Hosting | Prisma Postgres");

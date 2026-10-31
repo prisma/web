@@ -29,6 +29,7 @@ import {
 } from "./markdown/free-postgresql-database";
 import {
   FREE_POSTGRES_DESCRIPTION,
+  FREE_POSTGRES_LAST_MODIFIED,
   FREE_POSTGRES_TITLE,
 } from "@/app/postgres/free-postgresql-hosting/_content";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
@@ -171,7 +172,7 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
     subheadline: FREE_POSTGRES_MARKDOWN_SUBHEADLINE,
     renderBody: renderFreePostgresqlDatabaseMarkdown,
     checked: "October 2026",
-    dateModified: "2026-10-21",
+    dateModified: FREE_POSTGRES_LAST_MODIFIED,
   },
 };
 
