@@ -412,6 +412,10 @@ export const ROUTE_CONTENT_FILES: Readonly<Record<string, readonly string[]>> = 
   "/compute": ["components/product/content/compute.ts"],
   "/orm": ["components/product/content/orm.ts"],
   "/postgres/hipaa": ["app/postgres/hipaa/_content.ts", "app/postgres/hipaa/_sections.tsx"],
+  "/postgres/free-postgresql-hosting": [
+    "app/postgres/free-postgresql-hosting/_content.ts",
+    "app/postgres/free-postgresql-hosting/_sections.tsx",
+  ],
   "/stack": ["app/stack/content.ts"],
   "/studio": ["app/studio/studio-content.ts"],
   "/mcp": ["app/mcp/mcp-content.ts"],
