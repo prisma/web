@@ -380,8 +380,8 @@ const config = {
       // campaign. The redirect is a no-op when the ad URL is complete (see the
       // campaign URL in each page.tsx) and keeps the ad's own params and
       // `oppref`. A visit with no `utm_source` at all is left alone: it is not
-      // evidence of a paid click, so the Console link falls back to
-      // `ref=prisma.io/lp/<slug>` like any other direct visit.
+      // evidence of a paid click. Either way the Console link names the page
+      // in `ref=prisma.io/lp/<slug>`, as on every other page.
       ...["compute", "postgres", "free", "1000-databases", "providers"].map((slug) => ({
         source: `/lp/${slug}`,
         has: [{ type: "query", key: "utm_source" }],
