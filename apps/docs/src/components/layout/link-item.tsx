@@ -87,6 +87,12 @@ export interface ButtonItemType extends WithHref, Filterable {
    * @defaultValue false
    */
   secondary?: boolean;
+  /**
+   * Extra classes for the pill in the desktop navbar only, e.g. a breakpoint
+   * that hides it where the bar runs out of room. The mobile drawer stacks
+   * every button full width and ignores this.
+   */
+  navbarClassName?: string;
 }
 
 export interface MenuItemType extends Partial<WithHref>, Filterable {
