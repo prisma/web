@@ -1,0 +1,299 @@
+---
+title: Back up Supabase before migrate deploy
+description: Dump a Supabase database before prisma migrate deploy, restore the dump into a throwaway container, and check the copy before the migration runs
+url: /guides/integrations/supabase-backup-before-migrate
+metaTitle: Back up and test-restore a Supabase database before prisma migrate deploy
+metaDescription: Learn how to take a pg_dump of a Supabase database before prisma migrate deploy, test-restore it into a throwaway Supabase Postgres container, and run both steps in GitHub Actions.
+---
+
+:::note[This guide uses Prisma ORM 7]
+
+The migration commands on this page are Prisma ORM 7 commands. Prisma ORM 8 replaces `migrate deploy` with `npx prisma db migrate`, as described in [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery). The `pg_dump` and `pg_restore` steps work the same with either version, but step 4 uses `prisma migrate status`, which is a Prisma ORM 7 command.
+
+:::
+
+## Introduction
+
+Undoing a deployed migration means writing and deploying another migration, and that second migration can't bring back data the first one dropped or rewrote. The way back from that is a copy of the database taken right before `prisma migrate deploy` ran.
+
+In this guide you take that copy of a Supabase database with `pg_dump`, restore it into a throwaway container that runs Supabase's own Postgres image, and check what came back before you deploy. A dump can be cut short and still upload without an error, and a restore that fails partway still leaves tables behind, so this guide restores the dump and then compares the copy with production. You run the steps by hand first, then add them to a GitHub Actions workflow.
+
+## Prerequisites
+
+- A Prisma ORM 7 project that uses a Supabase database, with migrations in `prisma/migrations`
+- [Node.js](https://nodejs.org/) 20.19 or later
+- PostgreSQL 17 client tools: `pg_dump`, `pg_restore` and `psql`. `pg_dump` refuses to dump a server with a newer major version than its own, and Supabase projects run Postgres 15 or 17, so version 17 covers both
+- [Docker](https://docs.docker.com/get-docker/), to run the throwaway database
+
+## 1. Point Prisma Migrate and pg_dump at the same connection
+
+Prisma Migrate connects with the URL set in `prisma.config.ts`. On Supabase, use the session pooler connection string (port 5432) for it. The transaction pooler on port 6543 doesn't support everything `pg_dump` and Prisma Migrate need, so keep that one for your application. This guide calls the session pooler string `DIRECT_URL`:
+
+```ts title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: {
+    path: "prisma/migrations",
+  },
+  datasource: {
+    url: env("DIRECT_URL"),
+  },
+});
+```
+
+Copy the session pooler string from the **Connect** button in the Supabase dashboard, fill in your database password, and export it in your shell:
+
+```bash
+export DIRECT_URL="postgresql://postgres.[PROJECT-REF]:[PASSWORD]@[POOLER-HOST]:5432/postgres"
+```
+
+Use the session pooler rather than the direct connection (`db.[PROJECT-REF].supabase.co`). The direct connection only has an IPv6 address unless your project has the IPv4 add-on, and GitHub-hosted runners can't reach IPv6 addresses.
+
+## 2. Dump the database
+
+Run `pg_dump` against the same database Prisma Migrate is about to change. `--format=custom` writes a compressed archive that `pg_restore` reads, and `--schema=public` leaves out the schemas Supabase manages, such as `auth` and `storage`, which already exist in any Supabase database you restore into:
+
+```bash
+pg_dump "$DIRECT_URL" --format=custom --schema=public --file=pre-migrate.dump
+```
+
+The command prints nothing when it succeeds. List the tables whose rows are in the archive to see what it holds:
+
+```bash
+pg_restore --list pre-migrate.dump | grep "TABLE DATA"
+```
+
+```text no-copy
+3586; 0 16684 TABLE DATA public Post postgres
+3587; 0 16819 TABLE DATA public Profile postgres
+3584; 0 16674 TABLE DATA public User postgres
+3582; 0 16664 TABLE DATA public _prisma_migrations postgres
+```
+
+If your Prisma schema puts models in more than one schema, add a `--schema` flag for each one.
+
+If you see `pg_dump: error: aborting because of server version mismatch`, your `pg_dump` is older than your Supabase Postgres. Install the version 17 client tools and run the command again.
+
+## 3. Restore the dump into a throwaway database
+
+Start a container from `supabase/postgres`, the Postgres image Supabase runs. A new container has the `auth` schema and the Supabase roles, and it creates the same extensions a new Supabase project starts with, such as `pgcrypto` and `uuid-ossp`. Pick a tag with the same major version as your project from the [list of tags](https://hub.docker.com/r/supabase/postgres/tags):
+
+```bash
+docker run -d --rm --name restore-check \
+  -e POSTGRES_PASSWORD=check \
+  -p 127.0.0.1:55432:5432 \
+  supabase/postgres:17.6.1.084
+
+export RESTORE_URL="postgresql://postgres:check@127.0.0.1:55432/postgres"
+until psql "$RESTORE_URL" -c "select 1" > /dev/null 2>&1; do sleep 1; done
+```
+
+A dump of the `public` schema doesn't include the `CREATE EXTENSION` statements for extensions that live in the `extensions` schema, which is where Supabase installs them. If you enabled an extension in your project yourself, create it in the container before the restore. For `vector`:
+
+```bash
+psql "$RESTORE_URL" -c "create extension if not exists vector with schema extensions"
+```
+
+Run `select extname from pg_extension;` in your project's SQL editor to see which extensions it has.
+
+`pg_restore` doesn't stop at the first error. It carries on, prints each failed statement, and exits with status 1 at the end, so a restore with a missing table and a restore with harmless errors look the same from the exit code. Two errors come from the setup rather than from your data. The dump tries to create the `public` schema, which already exists in the container. If any of your tables has a foreign key into `auth.users`, adding that key fails too, because the copy's `auth.users` table is empty. The script below runs the restore and fails on any error block that contains neither `schema "public" already exists` nor `REFERENCES auth.`:
+
+```bash title="scripts/check-restore.sh"
+#!/usr/bin/env bash
+# Restore pre-migrate.dump into the database at $RESTORE_URL and fail on
+# any error other than the public schema and foreign keys into auth.
+set -euo pipefail
+
+LC_ALL=C pg_restore --no-owner --no-privileges \
+  --dbname="$RESTORE_URL" pre-migrate.dump 2> restore.log || true
+
+# pg_restore writes one block per failed statement, separated by blank lines.
+unexpected=$(awk -v RS= '/pg_restore: error:/ && !/schema "public" already exists/ && !/REFERENCES auth\./' restore.log)
+
+if [ -n "$unexpected" ]; then
+  echo "Unexpected restore errors:"
+  echo "$unexpected"
+  exit 1
+fi
+
+echo "Restore finished with only the expected Supabase errors."
+```
+
+`--no-owner --no-privileges` skips the `ALTER OWNER` and `GRANT` statements in the dump. The copy is only there to be checked, so ownership and grants don't matter in it. Make the script executable and run it:
+
+```bash
+chmod +x scripts/check-restore.sh
+./scripts/check-restore.sh
+```
+
+```text no-copy
+Restore finished with only the expected Supabase errors.
+```
+
+The errors the script lets through are still in `restore.log`. Read them once, the first time you run the script, to confirm they are the two described above.
+
+If the script prints `could not read from input file: end of file`, the dump is truncated. Take it again before you deploy.
+
+## 4. Check what came back
+
+A restore can finish and still leave a table empty or missing, so check the copy against production. First, ask Prisma Migrate which migrations the copy is missing. The answer should be the migrations you are about to deploy and nothing else:
+
+```bash
+DIRECT_URL="$RESTORE_URL" npx prisma migrate status
+```
+
+```text no-copy
+3 migrations found in prisma/migrations
+Following migration have not yet been applied:
+20261101150000_post_views
+```
+
+`migrate status` exits with status 1 when migrations are pending, which is the expected result here.
+
+Next, check that every table came back, with rows where production has rows. This query lists each table in `public` and whether it has at least one row. It reads a single row per table, so it's cheap to run against production:
+
+```sql title="scripts/tables-with-rows.sql"
+select table_name,
+       (xpath('/row/has_rows/text()',
+              query_to_xml(format('select exists (select 1 from %I.%I) as has_rows',
+                                  table_schema, table_name),
+                           false, true, '')))[1]::text as has_rows
+from information_schema.tables
+where table_schema = 'public' and table_type = 'BASE TABLE'
+order by table_name;
+```
+
+Run it against both databases and compare the results:
+
+```bash
+psql "$DIRECT_URL" -X -A -t -f scripts/tables-with-rows.sql > tables-production.txt
+psql "$RESTORE_URL" -X -A -t -f scripts/tables-with-rows.sql > tables-copy.txt
+diff tables-production.txt tables-copy.txt && echo "Same tables, same empty and non-empty tables"
+```
+
+```text no-copy
+Same tables, same empty and non-empty tables
+```
+
+This compares table names and whether each table has rows, not row counts or contents. If `diff` prints a line, that table is missing from the copy or came back empty. Look for its name in `restore.log`.
+
+When both checks pass, remove the container:
+
+```bash
+docker rm -f restore-check
+```
+
+Keep `pre-migrate.dump` until you know the migration went well. It holds your production data, so store it where you store other copies of that data, not in the repository.
+
+## 5. Deploy the migration
+
+With a dump you know restores, apply the pending migrations:
+
+```npm
+npx prisma migrate deploy
+```
+
+```text no-copy
+All migrations have been successfully applied.
+```
+
+## 6. Run the steps in GitHub Actions
+
+The workflow below runs the same steps on every push to `main` that changes `prisma/migrations`. The throwaway database runs as a service container, and the dump goes to an S3 bucket under the commit SHA before the migration runs. If the restore check fails, the job stops and `migrate deploy` doesn't run.
+
+Add these repository secrets under **Settings > Secrets and variables > Actions**:
+
+- `DIRECT_URL`: the session pooler string from step 1
+- `BACKUP_BUCKET`: the name of an S3 bucket for the dumps
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_REGION`: credentials that can write to that bucket
+
+Commit `scripts/check-restore.sh` with its executable bit and `scripts/tables-with-rows.sql` from steps 3 and 4, then add the workflow:
+
+```yaml title=".github/workflows/deploy-migrations.yml"
+name: Deploy migrations
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - prisma/migrations/**
+
+concurrency:
+  group: deploy-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    services:
+      restore-check:
+        image: supabase/postgres:17.6.1.084
+        env:
+          POSTGRES_PASSWORD: check
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      RESTORE_URL: postgresql://postgres:check@localhost:55432/postgres
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install PostgreSQL 17 client tools
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Dump the database
+        run: pg_dump "$DIRECT_URL" --format=custom --schema=public --file=pre-migrate.dump
+
+      - name: Check the dump restores
+        run: |
+          ./scripts/check-restore.sh
+          psql "$DIRECT_URL" -X -A -t -f scripts/tables-with-rows.sql > tables-production.txt
+          psql "$RESTORE_URL" -X -A -t -f scripts/tables-with-rows.sql > tables-copy.txt
+          diff tables-production.txt tables-copy.txt
+
+      - name: Upload the dump
+        run: aws s3 cp pre-migrate.dump "s3://${{ secrets.BACKUP_BUCKET }}/prisma-migrate/${{ github.sha }}.dump"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+      - name: Apply pending migrations
+        run: npx prisma migrate deploy
+```
+
+The PostgreSQL install step is there because the client that ships on the runner can be older than your Supabase Postgres. For Cloudflare R2 or another S3-compatible store, add `--endpoint-url` with your provider's endpoint to the `aws s3 cp` command.
+
+To verify the workflow, push a commit that adds a migration. In the run log, the **Check the dump restores** step ends with `Restore finished with only the expected Supabase errors.`, the **Apply pending migrations** step ends with `All migrations have been successfully applied.`, and the bucket has a new object:
+
+```bash
+aws s3 ls "s3://$BACKUP_BUCKET/prisma-migrate/"
+```
+
+The dump covers the `public` schema only. Supabase Auth users, Storage files and project settings aren't in it, so it gets back data your migrations change but doesn't replace a backup of the whole project. For backups on a schedule that can include Storage files, see [Automatic Supabase backups with GitHub Actions](https://backupdrill.com/guides/supabase-backup-github-actions).
+
+## Next steps
+
+- [Deploying database changes with Prisma Migrate](/orm/v7/prisma-client/deployment/deploy-database-changes-with-prisma-migrate)
+- [pgfence](/guides/integrations/pgfence), to check migration SQL for heavy locks before you deploy it
