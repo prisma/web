@@ -82,6 +82,12 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
       "Yes. Prisma signs a BAA with customers on the Business plan. Read or download the BAA, sign up for Prisma and upgrade your workspace to Business, then email compliance@prisma.io from your account email with your company name, address, workspace and signatory name and email. Prisma sends the agreement for e-signature.",
   },
   {
+    question:
+      "Will Prisma sign a BAA directly with a covered entity, such as a medical practice or clinic?",
+    answer:
+      "Yes. Prisma signs BAAs directly with covered entities as well as business associates. Covered entities usually have their own requirements or a custom BAA, so Prisma works through those terms with you rather than using our sample BAA, which is written for business associates. [Contact us](/contact) to get started.",
+  },
+  {
     question: "Which products does the BAA cover?",
     answer:
       "The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health information in services covered by your signed BAA. Embeddable [Prisma Studio](/studio) is not designed for regulated industries under Prisma's [Terms of Service](/legal/terms).",
@@ -100,6 +106,11 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
     question: "How are backups and encryption handled?",
     answer:
       "Every Prisma Postgres database is encrypted at rest and in transit. Paid plans include daily automatic backups: Starter and Pro keep them for 7 days, Business for 30. The Free plan has no backups. You restore a backup from the database's Backups tab in the Console; see the [backups docs](/docs/postgres/database/backups).",
+  },
+  {
+    question: "Does Prisma Postgres provide audit logs?",
+    answer:
+      "Prisma can provide Prisma Postgres logs in cooperation with you when needed and on request. Logs are not available self-serve.",
   },
   {
     question: "Can I use Prisma ORM with PHI?",
