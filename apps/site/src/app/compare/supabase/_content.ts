@@ -4,9 +4,9 @@ export const SUPABASE_TITLE =
   "Prisma Postgres vs Supabase: what's the difference and which should I pick?";
 
 export const SUPABASE_DESCRIPTION =
-  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Supabase for Auth, Storage, Realtime, and Edge Functions. Checked October 2026.";
+  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Supabase for Auth, Storage, Realtime, and Edge Functions. Checked November 2026.";
 
-export const CHECKED = "October 2026";
+export const CHECKED = "November 2026";
 
 /** The blog's author page and photo; `/blog` is rewritten to the blog app. */
 export const SUPABASE_AUTHOR = {
@@ -16,7 +16,7 @@ export const SUPABASE_AUTHOR = {
 } as const;
 
 export const SUPABASE_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const SUPABASE_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
+export const SUPABASE_UPDATED = { iso: "2026-11-03", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -66,11 +66,11 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "App hosting",
     supabase:
-      "Edge Functions run server-side logic next to the database. Full app and frontend hosting remains on a separate platform.",
+      "Edge Functions suit short-lived work such as webhooks and lightweight APIs. Supabase does not host frontends, and its Compute private alpha, which runs backend services, is us-west-2 only and not for production, so the frontend and a production app server need another host.",
     prisma:
       "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. WebSocket servers are not supported.",
     sources: {
-      supabase: "https://supabase.com/pricing",
+      supabase: "https://supabase.com/compute",
       prisma: "https://www.prisma.io/docs/compute/limitations",
     },
   },
@@ -225,7 +225,7 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "Does Supabase host the frontend?",
     answer:
-      "Supabase Edge Functions run server-side logic next to the database. Full app and frontend hosting remains on a separate platform. Source: [Supabase pricing](https://supabase.com/pricing), October 2026.",
+      "Supabase Edge Functions suit short-lived work such as webhooks and lightweight APIs. Supabase does not host frontends, and its Compute private alpha, which runs backend services, is us-west-2 only and not for production, so the frontend and a production app server need another host. Source: [Supabase custom domains](https://supabase.com/docs/guides/platform/custom-domains) and [Supabase Compute](https://supabase.com/compute), November 2026.",
   },
   {
     question: "Does Prisma Postgres include Auth, Storage, or Realtime?",
