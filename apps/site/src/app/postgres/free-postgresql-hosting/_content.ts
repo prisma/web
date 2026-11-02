@@ -36,7 +36,7 @@ export const FREE_POSTGRES_HERO_CHECKS = [
   "A claimed database, and a database created in the Prisma Console, has no time limit.",
 ] as const;
 
-export const FREE_POSTGRES_LAST_MODIFIED = "2026-10-29";
+export const FREE_POSTGRES_LAST_MODIFIED = "2026-11-03";
 
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
 export const CREATE_DB_WEB_URL = "https://create-db.prisma.io";
@@ -116,7 +116,12 @@ export const FREE_POSTGRES_FAQ: FreeFaqItem[] = [
   {
     question: "How does it compare with other free Postgres tiers?",
     answer:
-      "Free tiers differ in storage, how many databases you get and what happens when you go idle or reach a limit. Prisma Postgres gives 2 GB of storage, up to 50 databases, unlimited data transfer and free app hosting on the same plan. For a side by side look at Neon, Supabase, Aiven and others, see our [comparison of free Postgres hosting](/blog/serverless-postgres).",
+      "Free tiers differ in storage, how many databases you get and what happens when you go idle or reach a limit. Largest free storage for one database first, as checked on 2026-11-02: Prisma Postgres has 2 GB per workspace, shared by up to 50 databases, with no time limit. Neon has 1 GB per project and 20 GB across projects, with no time limit. Render has 1 GB, and the database expires 30 days after it is created. Supabase has a 500 MB database size per project (a billing quota; the Free disk is 2 GB), and a project pauses after a week without activity. The Prisma Free plan also includes app hosting on [Prisma Compute](/compute). For a side by side look at more providers, see our [comparison of free Postgres hosting](/blog/serverless-postgres).",
+  },
+  {
+    question: "Where can I host a Postgres database for free, then upgrade when I have paying customers?",
+    answer:
+      "On Prisma Postgres, start on the Free plan with no credit card and no time limit, and change plans at any time. Free has no backups, so move to [Starter](/pricing) at $10 a month before customers depend on the data: it adds daily backups kept for 7 days and 1 million operations.",
   },
   {
     question: "Is PostgreSQL itself free?",
