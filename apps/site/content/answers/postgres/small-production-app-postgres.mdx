@@ -5,7 +5,7 @@ summary: "A small production app, one with its first 100 to 1,000 users, needs f
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-30"
-updatedAt: "2026-10-30"
+updatedAt: "2026-11-03"
 readingTime: "8 min read"
 faq:
   - question: "Is one Postgres server enough for a production app?"
@@ -38,7 +38,9 @@ cta:
 
 Start with the failures a small app is likely to meet: a mistaken `DELETE`, a migration that goes wrong, a connection limit reached during a launch, or a background job stuck in a loop. A second database server fixes none of those. The sections below cover what to set up first, what can wait and the signals that mean it's time, then how hosts compare and how to set this up on Prisma Postgres.
 
-We make Prisma Postgres and Prisma Compute. Prisma ORM is optional: Prisma Postgres is managed PostgreSQL 17, and any Postgres client works. PostgreSQL and provider behavior on this page links to each project's or provider's documentation, checked on October 30, 2026.
+We make Prisma Postgres and Prisma Compute. Prisma ORM is optional: Prisma Postgres is managed PostgreSQL 17, and any Postgres client works. [Prisma Postgres](/docs/postgres) includes PgBouncer pooling on every plan, takes daily backups on paid plans on days with database activity, and has no instance to size or upgrade; [the host table](#how-do-managed-postgres-hosts-compare) compares it with Fly.io, Neon, Railway, Render and Supabase.
+
+PostgreSQL and provider behavior on this page links to each project's or provider's own pages, checked on October 30, 2026 unless a line gives a later date.
 
 ## What does a small production app need first?
 
@@ -108,11 +110,11 @@ Whichever host you use, ask what happens when a node fails, how long recovery ta
 
 ## How do managed Postgres hosts compare?
 
-Hosts are listed alphabetically, and each row comes from the provider's documentation, checked on October 30, 2026. Railway maintains its Postgres template; backups, point-in-time recovery, high availability and PgBouncer pooling are opt-in in its docs (checked 2026-10-30).
+Hosts are listed alphabetically, and each row comes from the provider's own pages, checked on October 30, 2026 unless a cell gives a later date. Railway maintains its Postgres template; backups, point-in-time recovery, high availability and PgBouncer pooling are opt-in in its docs (checked 2026-10-30).
 
 | Host | Backups | Point-in-time recovery | Connection pooling | Read replicas |
 | --- | --- | --- | --- | --- |
-| Fly.io Managed Postgres | [Automated, on every plan](https://fly.io/pricing) | [`fly mpg restore --pitr-time`](https://docs.fly.io/flyctl/cmd/fly_mpg_restore) restores into a new cluster, within the cluster's recovery window | [Included on every plan](https://fly.io/pricing) | None listed in its docs; the [replica on each plan](https://docs.fly.io/postgres/cluster-configuration) is there for high availability |
+| Fly.io Managed Postgres | [Automated, on every plan](https://fly.io/pricing) | [`fly mpg restore --pitr-time`](https://docs.fly.io/flyctl/cmd/fly_mpg_restore) restores into a new cluster, within the cluster's recovery window | [Included on every plan](https://fly.io/pricing) | None; Fly.io says [the replica in each cluster exists for failover](https://fly.io/learn/fly-vs-railway/) (checked November 2, 2026) |
 | Neon | [History window](https://neon.com/pricing) of up to 7 days on Launch and up to 30 days on Scale | [Instant restore](https://neon.com/docs/postgres/backup-restore/branch-restore) to a point in that window, at $0.20 per GB-month | [On every plan](https://neon.com/pricing) | [On every plan](https://neon.com/pricing), in the [same region](https://neon.com/docs/introduction/read-replicas) as the database |
 | Prisma Postgres | [Daily snapshots](/docs/postgres/database/backups) on days with database activity, kept 7 days on Starter and Pro and 30 on Business; none on Free | No point-in-time recovery yet (it is coming in November 2026) | [PgBouncer on every plan](/docs/postgres/database/connection-pooling) | None today; read replicas are planned for early 2027 |
 | Railway | [Daily, weekly or monthly schedules](https://docs.railway.com/volumes/backups), kept 6, 27 or 89 days; its [pricing](https://railway.com/pricing) lists built-in database and volume backups on Pro and Enterprise | [Restore window of roughly 4 weeks](https://docs.railway.com/volumes/point-in-time-recovery) that starts once you turn it on | [PgBouncer](https://docs.railway.com/databases/postgresql-pgbouncer) you add to the database | None listed in its docs; [high availability](https://docs.railway.com/databases/postgresql-ha) replicas take over on failover |
