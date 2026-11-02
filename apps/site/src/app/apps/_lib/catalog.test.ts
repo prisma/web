@@ -187,6 +187,30 @@ test("Prisma keeps its mark, and a missing photo never falls back to it", () => 
   });
 });
 
+test("room booking uses its scheduler screenshot instead of the framework fallback", () => {
+  const [room] = enrichTemplates(
+    [
+      {
+        id: "room-booking-prisma-template",
+        name: "Room Booking",
+        description: "Next.js meeting room booking on a Resource Scheduler timeline.",
+        path: "compute/room-booking-prisma-template",
+        framework: "nextjs",
+        author: { name: "Mohammed Obaid", url: "https://github.com/mdobaid311" },
+      },
+    ],
+    NOW,
+  );
+  assert.equal(room.preview, "/apps/previews/room-booking-prisma-template.png");
+  assert.equal(room.useCase, null, "the byline stays the author name");
+  assert.equal(room.publishedAt, null);
+  assert.equal(room.isNew, false);
+  const png = readFileSync(
+    new URL("../../../../public/apps/previews/room-booking-prisma-template.png", import.meta.url),
+  );
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+});
+
 test("the site image policy allows GitHub profile photos to load", () => {
   const config = readFileSync(new URL("../../../../next.config.mjs", import.meta.url), "utf8");
   const policy = config.match(/const ContentSecurityPolicy = `([\s\S]*?)`;/)?.[1] ?? "";

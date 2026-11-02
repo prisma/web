@@ -262,12 +262,12 @@ type TemplateMeta = {
   /** Who maintains the template. Defaults to Prisma. */
   author?: AuthorMeta;
   /** Short use-case label shown beside the framework ("REST API", "Full-stack app"). */
-  useCase: string;
+  useCase?: string;
   /** Framework id, used when the manifest entry predates the `framework` field. */
   framework?: string;
   stack: readonly StackId[];
   /** ISO date the template landed in prisma-examples (first commit on its folder). */
-  publishedAt: string;
+  publishedAt?: string;
   /** 1 = first. Hand-ordered: the default view leads with the broadest full-stack starter. */
   featuredRank: number;
   /**
@@ -320,6 +320,15 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     featuredRank: 4,
     popularRank: 4,
     preview: "/apps/previews/personal-site.png",
+  },
+  // Screenshot only. The manifest already supplies the author, and the card
+  // keeps the same fallbacks for use case, date, and sort as an uncurated app.
+  "room-booking-prisma-template": {
+    category: "app",
+    framework: "nextjs",
+    stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
+    featuredRank: 5,
+    preview: "/apps/previews/room-booking-prisma-template.png",
   },
 };
 
