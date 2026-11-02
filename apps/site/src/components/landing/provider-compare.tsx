@@ -27,7 +27,10 @@ import { cn } from "@/lib/utils";
 //    not covering compute.
 // The 50K MAU figures in the hero are the pricing page's own and are not
 // repeated here; this table is the list prices a visitor can check.
+// The Neon quotas and the Supabase Compute status are not list prices. They
+// were read on NOTES_CHECKED_ON, from neon.com/pricing and supabase.com/compute.
 const CHECKED_ON = "October 21, 2026";
+const NOTES_CHECKED_ON = "November 2, 2026";
 
 type Row = {
   label: string;
@@ -58,7 +61,8 @@ const ROWS: Row[] = [
       "Included on the same plan: 5M or 20M requests a month, then $1 per million, with memory, CPU and bandwidth metered",
     neonVercel:
       "Vercel: invocations from $0.60 per million, active CPU from $0.128 an hour, memory from $0.0106 per GB-hour",
-    supabase: "Edge Functions for backend logic. The frontend is hosted elsewhere",
+    supabase:
+      "Edge Functions for backend logic. The frontend is hosted elsewhere; Supabase Compute, which runs backend services, is in private alpha behind a waitlist",
   },
   {
     label: "Database data transfer",
@@ -77,7 +81,7 @@ const ROWS: Row[] = [
     label: "Spend limits",
     prisma: "A hard spend limit you set, on every paid plan",
     neonVercel:
-      "Neon: spending notifications at 80% and 100%. Vercel: a spend budget with an optional pause",
+      "Neon: spending notifications at 80% and 100%, and per-project quotas through its API that suspend compute. Vercel: a spend budget with an optional pause",
     supabase: "Spend Cap on by default on Pro; database compute is not covered",
   },
 ];
@@ -148,7 +152,9 @@ export function ProviderCompare({
           Rates as listed on prisma.io/pricing, neon.com/pricing, vercel.com/pricing and
           supabase.com/pricing on {CHECKED_ON}. Neon and Vercel rates are their Launch and Pro
           plans&rsquo; &ldquo;starting at&rdquo; prices. The 50K MAU figures above are
-          Prisma&rsquo;s published scenario on prisma.io/pricing.
+          Prisma&rsquo;s published scenario on prisma.io/pricing. Neon&rsquo;s quotas and the status
+          of Supabase Compute are as listed on neon.com/pricing and supabase.com/compute on{" "}
+          {NOTES_CHECKED_ON}.
         </p>
       </div>
     </section>
