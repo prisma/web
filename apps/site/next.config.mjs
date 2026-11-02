@@ -127,6 +127,8 @@ const ContentSecurityPolicy = `
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
     https://raw.githubusercontent.com
+    https://github.com
+    https://avatars.githubusercontent.com
     https://*.meetupstatic.com
     https://www.prisma.io
     https://*.google-analytics.com
