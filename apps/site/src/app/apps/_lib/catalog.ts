@@ -220,7 +220,10 @@ function githubLogin(href: string): string | null {
   if (url.protocol !== "https:") return null;
   const host = url.hostname.toLowerCase();
   if (host !== "github.com" && host !== "www.github.com") return null;
-  const login = url.pathname.split("/").filter(Boolean)[0];
+  const segments = url.pathname.split("/").filter(Boolean);
+  // /orgs/{login}/… is an organization page. The first segment is the route,
+  // not the account, so the avatar login is the one after it.
+  const login = segments[0]?.toLowerCase() === "orgs" ? segments[1] : segments[0];
   if (!login || !GITHUB_LOGIN.test(login)) return null;
   return login;
 }

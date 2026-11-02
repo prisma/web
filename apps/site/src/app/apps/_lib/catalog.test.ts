@@ -157,12 +157,41 @@ test("a community author with no logo gets their GitHub profile photo", () => {
   });
 });
 
+test("a GitHub avatar uses the profile login, or the login after /orgs/", () => {
+  const photo = (href: string) => authorBadge({ name: "Acme", href, logo: null });
+
+  assert.deepEqual(photo("https://github.com/acme"), {
+    kind: "photo",
+    src: "https://github.com/acme.png",
+  });
+  assert.deepEqual(photo("https://github.com/acme/room-booking"), {
+    kind: "photo",
+    src: "https://github.com/acme.png",
+  });
+  assert.deepEqual(photo("https://github.com/orgs/acme"), {
+    kind: "photo",
+    src: "https://github.com/acme.png",
+  });
+  assert.deepEqual(photo("https://github.com/orgs/acme/people"), {
+    kind: "photo",
+    src: "https://github.com/acme.png",
+  });
+  assert.deepEqual(photo("https://www.github.com/orgs/acme/repositories"), {
+    kind: "photo",
+    src: "https://github.com/acme.png",
+  });
+  assert.deepEqual(photo("https://github.com/orgs"), { kind: "github" });
+  assert.deepEqual(photo("https://github.com/orgs/-acme"), { kind: "github" });
+});
+
 test("Prisma keeps its mark, and a missing photo never falls back to it", () => {
   for (const href of [
     "https://github.com/prisma",
     "https://github.com/prisma/",
     "https://github.com/Prisma",
     "https://www.github.com/prisma",
+    "https://github.com/orgs/prisma",
+    "https://github.com/orgs/prisma/people",
   ]) {
     assert.deepEqual(authorBadge({ name: "Prisma", href, logo: null }), { kind: "prisma" });
   }
