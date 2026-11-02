@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   CATEGORY_ORDER,
+  authorBadge,
   enrichTemplates,
   filterTemplates,
   frameworkMeta,
@@ -99,7 +101,8 @@ test("unknown templates still render with fallbacks", () => {
 test("every template is by Prisma unless the manifest or registry says otherwise", () => {
   for (const template of catalog) {
     assert.equal(template.author.name, "Prisma", `${template.id} should default to Prisma`);
-    assert.equal(template.author.logo, null, "the Prisma mark renders inline");
+    assert.equal(template.author.logo, null);
+    assert.deepEqual(authorBadge(template.author), { kind: "prisma" });
   }
 });
 
@@ -114,6 +117,14 @@ test("a manifest author is credited as written, with or without a logo", () => {
   );
   assert.deepEqual(plain.author, { name: "Acme", href: "https://github.com/acme", logo: null });
   assert.equal(withLogo.author.logo, "https://example.com/acme.svg");
+  assert.deepEqual(authorBadge(plain.author), {
+    kind: "photo",
+    src: "https://github.com/acme.png",
+  });
+  assert.deepEqual(authorBadge(withLogo.author), {
+    kind: "photo",
+    src: "https://example.com/acme.svg",
+  });
 
   const parsed = templateManifestSchema.safeParse({
     version: 1,
@@ -122,13 +133,78 @@ test("a manifest author is credited as written, with or without a logo", () => {
   assert.equal(parsed.success, false, "an author needs a real link");
 });
 
+test("a community author with no logo gets their GitHub profile photo", () => {
+  const author = {
+    name: "Mohammed Obaid",
+    href: "https://github.com/mdobaid311",
+    logo: null,
+  };
+  assert.deepEqual(authorBadge(author), {
+    kind: "photo",
+    src: "https://github.com/mdobaid311.png",
+  });
+  assert.deepEqual(authorBadge({ ...author, href: "https://github.com/mdobaid311/" }), {
+    kind: "photo",
+    src: "https://github.com/mdobaid311.png",
+  });
+  assert.deepEqual(
+    authorBadge({ ...author, href: "https://www.github.com/mdobaid311?tab=repositories" }),
+    { kind: "photo", src: "https://github.com/mdobaid311.png" },
+  );
+  assert.deepEqual(authorBadge({ ...author, href: "https://github.com/mdobaid311/room-booking" }), {
+    kind: "photo",
+    src: "https://github.com/mdobaid311.png",
+  });
+});
+
+test("Prisma keeps its mark, and a missing photo never falls back to it", () => {
+  for (const href of [
+    "https://github.com/prisma",
+    "https://github.com/prisma/",
+    "https://github.com/Prisma",
+    "https://www.github.com/prisma",
+  ]) {
+    assert.deepEqual(authorBadge({ name: "Prisma", href, logo: null }), { kind: "prisma" });
+  }
+
+  assert.deepEqual(
+    authorBadge({
+      name: "Prisma",
+      href: "https://github.com/prisma",
+      logo: "https://example.com/x.svg",
+    }),
+    { kind: "prisma" },
+    "an explicit logo does not replace the Prisma mark",
+  );
+  assert.deepEqual(authorBadge({ name: "Acme", href: "https://acme.example", logo: null }), {
+    kind: "github",
+  });
+  assert.deepEqual(authorBadge({ name: "Acme", href: "not a url", logo: null }), {
+    kind: "github",
+  });
+  assert.deepEqual(authorBadge({ name: "Acme", href: "http://github.com/acme", logo: null }), {
+    kind: "github",
+  });
+});
+
+test("the site image policy allows GitHub profile photos to load", () => {
+  const config = readFileSync(new URL("../../../../next.config.mjs", import.meta.url), "utf8");
+  const policy = config.match(/const ContentSecurityPolicy = `([\s\S]*?)`;/)?.[1] ?? "";
+  const imgSrc = policy.match(/img-src[\s\S]*?;/)?.[0] ?? "";
+  assert.match(imgSrc, /https:\/\/github\.com(?:\s|\/)/);
+  assert.match(imgSrc, /https:\/\/avatars\.githubusercontent\.com/);
+});
+
 test("deploy and source URLs point at the console and the examples repo", () => {
   const hono = byId("hono");
   assert.equal(
     hono.deployUrl,
     "https://console.prisma.io/apps/hono?utm_source=website&utm_medium=templates",
   );
-  assert.equal(hono.sourceUrl, "https://github.com/prisma/prisma-examples/tree/latest/compute/hono");
+  assert.equal(
+    hono.sourceUrl,
+    "https://github.com/prisma/prisma-examples/tree/latest/compute/hono",
+  );
 });
 
 test("a template is new for sixty days after it lands", () => {

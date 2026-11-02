@@ -27,7 +27,9 @@ export const templateManifestSchema = z.object({
       framework: z.string().trim().min(1).optional(),
       // Who built it. Prisma's own templates omit it; a community template
       // names its author here and the gallery credits them without a site
-      // change. The logo is an absolute URL, or omitted for a plain name.
+      // change. `logo` is an optional absolute URL. When it is omitted, the
+      // card paints the Prisma mark for Prisma and the GitHub profile photo
+      // for everyone else.
       author: z
         .object({
           name: z.string().trim().min(1),
@@ -111,7 +113,12 @@ export const FRAMEWORKS: Record<string, FrameworkMeta> = {
     logo: "/logos/astro.svg",
     href: "/docs/guides/next/frameworks/astro",
   },
-  nestjs: { id: "nestjs", label: "NestJS", logo: "/icons/technologies/nestjs.svg", href: "/nestjs" },
+  nestjs: {
+    id: "nestjs",
+    label: "NestJS",
+    logo: "/icons/technologies/nestjs.svg",
+    href: "/nestjs",
+  },
   react: { id: "react", label: "React", logo: "/icons/technologies/react.svg", href: "/react" },
   nuxt: {
     id: "nuxt",
@@ -184,7 +191,11 @@ const DEFAULT_STACK: readonly StackId[] = ["prisma-orm", "prisma-postgres", "bun
 export type AuthorMeta = {
   name: string;
   href: string;
-  /** Path under /public or an absolute URL, or `null` for the Prisma mark. */
+  /**
+   * Explicit mark: a path under /public or an absolute URL.
+   * `null` is not "the Prisma mark". The card resolves that itself: Prisma
+   * keeps its mark, and a community author gets the GitHub profile photo.
+   */
   logo: string | null;
 };
 
@@ -193,6 +204,44 @@ export const PRISMA_AUTHOR: AuthorMeta = {
   href: "https://github.com/prisma",
   logo: null,
 };
+
+// GitHub usernames are 1–39 characters, alphanumeric or hyphens, and cannot
+// start or end with a hyphen. The avatar URL is the profile plus `.png`,
+// which redirects to avatars.githubusercontent.com.
+const GITHUB_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
+
+function githubLogin(href: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  const host = url.hostname.toLowerCase();
+  if (host !== "github.com" && host !== "www.github.com") return null;
+  const login = url.pathname.split("/").filter(Boolean)[0];
+  if (!login || !GITHUB_LOGIN.test(login)) return null;
+  return login;
+}
+
+function isPrismaAuthor(author: Pick<AuthorMeta, "name" | "href">): boolean {
+  return author.name === "Prisma" && githubLogin(author.href)?.toLowerCase() === "prisma";
+}
+
+// What the byline paints. `logo: null` only means "no explicit mark": Prisma
+// still gets its own logo, and a community profile becomes
+// https://github.com/{login}.png. A photo that fails to load is the card's
+// concern; it falls back to the GitHub mark, never to Prisma.
+export type AuthorBadge = { kind: "prisma" } | { kind: "photo"; src: string } | { kind: "github" };
+
+export function authorBadge(author: AuthorMeta): AuthorBadge {
+  if (isPrismaAuthor(author)) return { kind: "prisma" };
+  if (author.logo) return { kind: "photo", src: author.logo };
+  const login = githubLogin(author.href);
+  if (login) return { kind: "photo", src: `https://github.com/${login}.png` };
+  return { kind: "github" };
+}
 
 // Where community templates come from: a folder under compute/ and an entry in
 // the manifest naming the author, sent as a pull request to prisma-examples.
