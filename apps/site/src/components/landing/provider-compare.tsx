@@ -27,8 +27,10 @@ import { cn } from "@/lib/utils";
 //    not covering compute.
 // The 50K MAU figures in the hero are the pricing page's own and are not
 // repeated here; this table is the list prices a visitor can check.
-// The Neon quotas and the Supabase Compute status are not list prices. They
-// were read on NOTES_CHECKED_ON, from neon.com/pricing and supabase.com/compute.
+// The Neon quotas and the Supabase hosting notes are not list prices. They were
+// read on NOTES_CHECKED_ON: Neon from neon.com/pricing, the Supabase Compute
+// status from supabase.com/compute, and the Edge Functions frontend limit from
+// supabase.com/docs/guides/platform/custom-domains.
 const CHECKED_ON = "October 21, 2026";
 const NOTES_CHECKED_ON = "November 2, 2026";
 
