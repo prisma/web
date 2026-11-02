@@ -66,7 +66,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "App hosting",
     supabase:
-      "Edge Functions suit short-lived work such as webhooks and lightweight APIs. Supabase does not host frontends, and its Compute private alpha, which runs backend services, is us-west-2 only and not for production, so the frontend and a production app server need another host.",
+      "Edge Functions suit short-lived work such as webhooks and lightweight APIs, and Supabase says its [custom domains](https://supabase.com/docs/guides/platform/custom-domains) are not intended for hosting a frontend through them. Its Compute private alpha, which runs backend services, is us-west-2 only and not for production, so the frontend and a production app server need another host.",
     prisma:
       "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. WebSocket servers are not supported.",
     sources: {
