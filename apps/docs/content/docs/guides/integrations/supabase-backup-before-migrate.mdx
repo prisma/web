@@ -88,7 +88,13 @@ docker run -d --rm --name restore-check \
   supabase/postgres:17.6.1.084
 
 export RESTORE_URL="postgresql://postgres:check@127.0.0.1:55432/postgres"
-until psql "$RESTORE_URL" -c "select 1" > /dev/null 2>&1; do sleep 1; done
+# Wait up to two minutes for the container to accept connections. If it never
+# does, the last psql call prints the connection error.
+for attempt in $(seq 120); do
+  psql "$RESTORE_URL" -c "select 1" > /dev/null 2>&1 && break
+  sleep 1
+done
+psql "$RESTORE_URL" -c "select 1" > /dev/null
 ```
 
 A dump of the `public` schema doesn't include the `CREATE EXTENSION` statements for extensions that live in the `extensions` schema, which is where Supabase installs them. If you enabled an extension in your project yourself, create it in the container before the restore. For `vector`:
@@ -99,7 +105,7 @@ psql "$RESTORE_URL" -c "create extension if not exists vector with schema extens
 
 Run `select extname from pg_extension;` in your project's SQL editor to see which extensions it has.
 
-`pg_restore` doesn't stop at the first error. It carries on, prints each failed statement, and exits with status 1 at the end, so a restore with a missing table and a restore with harmless errors look the same from the exit code. Two errors come from the setup rather than from your data. The dump tries to create the `public` schema, which already exists in the container. If any of your tables has a foreign key into `auth.users`, adding that key fails too, because the copy's `auth.users` table is empty. The script below runs the restore and fails on any error block that contains neither `schema "public" already exists` nor `REFERENCES auth.`:
+`pg_restore` doesn't stop at the first error. It carries on, prints each failed statement, and exits with status 1 at the end, so a restore with a missing table and a restore with harmless errors look the same from the exit code. Two errors come from the setup rather than from your data. The dump tries to create the `public` schema, which already exists in the container. If any of your tables has a foreign key into `auth.users`, adding that key fails too, because the copy's `auth.users` table is empty, and the error says the key `violates foreign key constraint`. The script below runs the restore and fails on any other error. It also fails if `pg_restore` exits with a status above 1, which means it didn't finish:
 
 ```bash title="scripts/check-restore.sh"
 #!/usr/bin/env bash
@@ -107,11 +113,24 @@ Run `select extname from pg_extension;` in your project's SQL editor to see whic
 # any error other than the public schema and foreign keys into auth.
 set -euo pipefail
 
+status=0
 LC_ALL=C pg_restore --no-owner --no-privileges \
-  --dbname="$RESTORE_URL" pre-migrate.dump 2> restore.log || true
+  --dbname="$RESTORE_URL" pre-migrate.dump 2> restore.log || status=$?
+
+# Status 1 means pg_restore finished and logged errors, which the filter
+# below checks. A higher status means it didn't finish.
+if [ "$status" -gt 1 ]; then
+  echo "pg_restore didn't finish (exit status $status):"
+  cat restore.log
+  exit 1
+fi
 
 # pg_restore writes one block per failed statement, separated by blank lines.
-unexpected=$(awk -v RS= '/pg_restore: error:/ && !/schema "public" already exists/ && !/REFERENCES auth\./' restore.log)
+# A block is let through only when its error is one of the two expected ones;
+# a foreign key into auth that fails for another reason is still reported.
+unexpected=$(awk -v RS= '/pg_restore: error:/ &&
+  !/ERROR:  schema "public" already exists/ &&
+  !(/ERROR:  insert or update on table .* violates foreign key constraint/ && /REFERENCES auth\./)' restore.log)
 
 if [ -n "$unexpected" ]; then
   echo "Unexpected restore errors:"
@@ -153,17 +172,18 @@ Following migration have not yet been applied:
 
 `migrate status` exits with status 1 when migrations are pending, which is the expected result here.
 
-Next, check that every table came back, with rows where production has rows. This query lists each table in `public` and whether it has at least one row. It reads a single row per table, so it's cheap to run against production:
+Next, check that every table came back, with rows where production has rows. This query lists each table in the schemas you dumped and whether it has at least one row. It reads a single row per table, so it's cheap to run against production. If you added `--schema` flags in step 2, add the same schemas to the `in (...)` list, because the check doesn't look at schemas outside it:
 
 ```sql title="scripts/tables-with-rows.sql"
-select table_name,
+select table_schema || '.' || table_name as table_name,
        (xpath('/row/has_rows/text()',
               query_to_xml(format('select exists (select 1 from %I.%I) as has_rows',
                                   table_schema, table_name),
                            false, true, '')))[1]::text as has_rows
 from information_schema.tables
-where table_schema = 'public' and table_type = 'BASE TABLE'
-order by table_name;
+-- List every schema you pass to pg_dump with --schema.
+where table_schema in ('public') and table_type = 'BASE TABLE'
+order by table_schema, table_name;
 ```
 
 Run it against both databases and compare the results:
@@ -202,7 +222,7 @@ All migrations have been successfully applied.
 
 ## 6. Run the steps in GitHub Actions
 
-The workflow below runs the same steps on every push to `main` that changes `prisma/migrations`. The throwaway database runs as a service container, and the dump goes to an S3 bucket under the commit SHA before the migration runs. If the restore check fails, the job stops and `migrate deploy` doesn't run.
+The workflow below runs the same steps on every push to `main` that changes `prisma/migrations`. The throwaway database runs as a service container, and the dump goes to an S3 bucket under the commit SHA and run attempt before the migration runs, so a re-run doesn't overwrite the dump taken before the first attempt. If the restore check fails, the job stops and `migrate deploy` doesn't run.
 
 Add these repository secrets under **Settings > Secrets and variables > Actions**:
 
@@ -273,7 +293,7 @@ jobs:
           diff tables-production.txt tables-copy.txt
 
       - name: Upload the dump
-        run: aws s3 cp pre-migrate.dump "s3://${{ secrets.BACKUP_BUCKET }}/prisma-migrate/${{ github.sha }}.dump"
+        run: aws s3 cp pre-migrate.dump "s3://${{ secrets.BACKUP_BUCKET }}/prisma-migrate/${{ github.sha }}-${{ github.run_attempt }}.dump"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -283,7 +303,7 @@ jobs:
         run: npx prisma migrate deploy
 ```
 
-The PostgreSQL install step is there because the client that ships on the runner can be older than your Supabase Postgres. For Cloudflare R2 or another S3-compatible store, add `--endpoint-url` with your provider's endpoint to the `aws s3 cp` command.
+If you added `--schema` flags in step 2, add them to the **Dump the database** step as well. The PostgreSQL install step is there because the client that ships on the runner can be older than your Supabase Postgres. For Cloudflare R2 or another S3-compatible store, add `--endpoint-url` with your provider's endpoint to the `aws s3 cp` command.
 
 To verify the workflow, push a commit that adds a migration. In the run log, the **Check the dump restores** step ends with `Restore finished with only the expected Supabase errors.`, the **Apply pending migrations** step ends with `All migrations have been successfully applied.`, and the bucket has a new object:
 
