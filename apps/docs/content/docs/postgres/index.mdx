@@ -79,21 +79,28 @@ Current docs: https://www.prisma.io/docs/postgres.md.
 
 ### Already have a Prisma schema?
 
-If your project already has a `prisma/schema.prisma` file for PostgreSQL (Prisma ORM 7 or earlier), skip the quickstarts: create the database, then apply your schema to it. Install the project's dependencies first, so `npx prisma` runs the project's Prisma CLI.
+If your project already has a `prisma/schema.prisma` file for PostgreSQL (Prisma ORM 7 or earlier), skip the quickstarts and apply your schema to a new database. Install the project's dependencies first, so `npx prisma` runs the project's Prisma CLI.
 
-```npm
-npx create-db@latest --env .env
-```
+1. Create the database and write its connection string to `.env`:
 
-```npm
-npx prisma migrate deploy
-```
+   ```npm
+   npx create-db@latest --env .env
+   ```
 
-`--env .env` appends `DATABASE_URL` and `CLAIM_URL` to `.env`; if the file already had a `DATABASE_URL` line, delete the older one. The connection string uses the direct host, `db.prisma.io`, which is the one migrations need.
+   `--env .env` appends `DATABASE_URL` and `CLAIM_URL` to `.env`; if the file already had a `DATABASE_URL` line, delete the older one. The connection string uses the direct host, `db.prisma.io`, which is the one migrations need.
 
-`migrate deploy` applies the migrations in `prisma/migrations` that the database has not run yet. If the project has no `prisma/migrations` folder, `npx prisma db push` creates the tables from the schema instead.
+2. Point the Prisma CLI at the new database before you run a migration:
+   - If the config or the schema's `datasource` block reads another variable for migrations, such as `DIRECT_URL`, set it to the same connection string.
+   - If your shell already sets `DATABASE_URL` or that variable, unset it: a value set in the shell is used instead of the one in `.env`.
+   - If the project has a `prisma.config.ts` (every Prisma ORM 7 project does), it loads `.env` only when it starts with `import "dotenv/config"`, with `dotenv` installed. Add the line if it is missing ([Prisma Config reference](/orm/v7/reference/prisma-config-reference)).
 
-If the project has a `prisma.config.ts` (every Prisma ORM 7 project does), the CLI loads `.env` through its `import "dotenv/config"` line, so keep that line ([Prisma Config reference](/orm/v7/reference/prisma-config-reference)). If the config or the schema's `datasource` block reads another variable for migrations, such as `DIRECT_URL`, set it to the same connection string.
+3. Apply the schema:
+
+   ```npm
+   npx prisma migrate deploy
+   ```
+
+   `migrate deploy` applies the migrations in the project's migrations folder that the database has not run yet: `prisma/migrations`, unless `prisma.config.ts` sets another `migrations.path`. It applies nothing else, so if the schema has changes that no migration contains yet, create that migration first with `npx prisma migrate dev` against a development database. If the project has never used Prisma Migrate and has no migrations folder, `npx prisma db push` creates the tables from the schema instead.
 
 Before the database serves production traffic:
 
