@@ -73,6 +73,8 @@ const SOURCES = [
         href: "https://supabase.com/docs/guides/platform/cost-control#spend-cap",
       },
       { label: "Branching", href: "https://supabase.com/docs/guides/deployment/branching" },
+      { label: "Supabase Compute", href: "https://supabase.com/compute" },
+      { label: "Custom domains", href: "https://supabase.com/docs/guides/platform/custom-domains" },
       {
         label: "Apache License 2.0",
         href: "https://github.com/supabase/supabase/blob/master/LICENSE",

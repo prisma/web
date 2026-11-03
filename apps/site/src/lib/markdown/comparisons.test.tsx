@@ -1223,7 +1223,7 @@ test("Supabase Markdown carries the byline, disclosure, and Sources on the share
       `missing ${social.label} profile`,
     );
   }
-  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes("Checked November 2026."));
   assert.ok(markdown.includes(`dateModified: ${supabase.SUPABASE_UPDATED.iso}`));
   assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
   assert.ok(markdown.includes("\n## Sources\n"));
