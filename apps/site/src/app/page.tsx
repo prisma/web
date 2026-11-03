@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   // The homepage's Markdown rendition is /index.md, as in next.config.mjs's
   // Link header.
   alternates: { canonical: "/", types: { "text/markdown": "/index.md" } },
+  other: { "toolradar-verify": "toolradar-verify-vDqf_MSPnb-3W9WW01608G" },
 };
 
 export default function HomePage() {
