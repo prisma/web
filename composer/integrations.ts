@@ -10,7 +10,12 @@ const integrations: Record<string, { sites: Website[]; secrets: string[] }> = {
   extensions: { sites: ["site"], secrets: ["GITHUB_EXTENSIONS_TOKEN"] },
   linear: {
     sites: ["docs"],
-    secrets: ["GITHUB_WEBHOOK_SECRET", "BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK", "LINEAR_API_KEY"],
+    secrets: [
+      "GITHUB_WEBHOOK_SECRET",
+      "BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK",
+      "LINEAR_API_KEY",
+      "LINEAR_TEAM_ID",
+    ],
   },
 };
 
