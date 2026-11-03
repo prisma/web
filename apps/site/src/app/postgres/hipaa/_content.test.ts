@@ -32,7 +32,7 @@ test("the covered-entity BAA FAQ sits with the other BAA questions", () => {
 
   const item = HIPAA_FAQ.find((faq) => faq.question === COVERED_ENTITY_QUESTION);
   assert.ok(item, "covered-entity BAA FAQ missing");
-  assert.match(item.answer, /\[Contact us\]\(\/contact\)/);
+  assert.match(item.answer, /Email compliance@prisma\.io to get started\./);
   assert.ok(!/\$/.test(item.answer), "covered-entity BAA answer must not add pricing");
 });
 

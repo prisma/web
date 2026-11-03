@@ -85,7 +85,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
     question:
       "Will Prisma sign a BAA directly with a covered entity, such as a medical practice or clinic?",
     answer:
-      "Yes. Prisma signs BAAs directly with covered entities as well as business associates. Covered entities usually have their own requirements or a custom BAA, so Prisma works through those terms with you rather than using the sample BAA, which is written for business associates. [Contact us](/contact) to get started.",
+      "Yes. Prisma signs BAAs directly with covered entities as well as business associates. Covered entities usually have their own requirements or a custom BAA, so Prisma works through those terms with you rather than using the sample BAA, which is written for business associates. Email compliance@prisma.io to get started.",
   },
   {
     question: "Which products does the BAA cover?",
