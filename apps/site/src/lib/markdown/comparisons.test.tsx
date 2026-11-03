@@ -1113,7 +1113,7 @@ test("Neon Markdown carries the byline, disclosure, and Sources on the shared ch
       `missing ${social.label} profile`,
     );
   }
-  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes("Checked November 2026."));
   assert.ok(markdown.includes(`dateModified: ${neon.NEON_UPDATED.iso}`));
   assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
   assert.ok(markdown.includes("\n## Sources\n"));
