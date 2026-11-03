@@ -176,9 +176,11 @@ export function DocsLayout(props: DocsLayoutProps) {
                   className={cn(
                     inkPill,
                     "w-full",
+                    // Sign up is the one primary CTA; Login is the bordered,
+                    // quieter pill (the eclipse `default` variant's fill).
                     item.secondary
-                      ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse"
-                      : "bg-fd-primary text-fd-primary-foreground",
+                      ? "border border-stroke-neutral bg-background-default text-foreground-neutral hover:border-transparent hover:bg-background-neutral"
+                      : "bg-background-neutral-reverse-strong text-foreground-neutral-reverse",
                   )}
                 >
                   {item.text}
@@ -364,9 +366,11 @@ function DocsNavbar({
                     item={item}
                     className={cn(
                       inkPill,
+                      // Sign up is the one primary CTA; Login is the
+                      // bordered, quieter pill (eclipse `default` fill).
                       item.secondary
-                        ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse"
-                        : "bg-fd-primary text-fd-primary-foreground",
+                        ? "border border-stroke-neutral bg-background-default text-foreground-neutral hover:border-transparent hover:bg-background-neutral"
+                        : "bg-background-neutral-reverse-strong text-foreground-neutral-reverse",
                       item.navbarClassName,
                     )}
                   >

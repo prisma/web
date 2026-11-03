@@ -47,6 +47,7 @@ export const links: LinkItemType[] = [
 export const docsLinks: LinkItemType[] = [];
 
 export const authLinks: LinkItemType[] = [
+  // Login is the secondary pill; Sign up is the one primary CTA.
   {
     type: "button",
     text: "Login",
@@ -66,7 +67,6 @@ export const authLinks: LinkItemType[] = [
     url: "https://console.prisma.io/sign-up?utm_source=docs&utm_medium=navbar&utm_content=signup",
     active: "none",
     on: "nav",
-    secondary: true,
     navbarClassName: "max-lg:hidden",
   },
 ];
