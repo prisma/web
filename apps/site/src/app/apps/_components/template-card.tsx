@@ -15,15 +15,16 @@ import { TemplatePreview } from "./template-preview";
 // then the stack chips (each a link into the matching page on prisma.io), and
 // the two actions pinned to the bottom so every card's buttons line up.
 //
-// The preview and the title both link to the console's deploy flow; the
+// The preview and the title both open the template's own page on this site,
+// where the deploy and source links live again with the full story; the
 // preview link is taken out of the tab order so keyboard users reach each
-// template once.
+// template once. "Use this app" goes straight to the console.
 
 export function TemplateCard({ template }: { template: GalleryTemplate }) {
   return (
     <article className="group/card relative flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.08] bg-card shadow-[0_1px_2px_rgba(21,21,21,0.04),0_10px_24px_-16px_rgba(21,21,21,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-[0_1px_2px_rgba(21,21,21,0.05),0_18px_40px_-18px_rgba(21,21,21,0.22)] motion-reduce:transition-none">
       <a
-        href={template.deployUrl}
+        href={template.pagePath}
         tabIndex={-1}
         aria-hidden
         className="block border-b border-black/[0.06]"
@@ -49,9 +50,9 @@ export function TemplateCard({ template }: { template: GalleryTemplate }) {
 
         <h3 className="mt-2 text-xl leading-snug">
           <a
-            href={template.deployUrl}
+            href={template.pagePath}
             className="spectrum-underline text-foreground"
-            aria-label={`Use the ${template.name} app`}
+            aria-label={`About the ${template.name} app`}
           >
             {template.name}
           </a>

@@ -9,7 +9,9 @@ import {
   frameworkMeta,
   frameworkOptions,
   groupByCategory,
+  ogCardPathFor,
   sortTemplates,
+  templatePage,
   templateManifestSchema,
   TEMPLATE_META,
   type ManifestTemplate,
@@ -231,9 +233,10 @@ test("room booking uses its scheduler screenshot instead of the framework fallba
     NOW,
   );
   assert.equal(room.preview, "/apps/previews/room-booking-prisma-template.png");
-  assert.equal(room.useCase, null, "the byline stays the author name");
-  assert.equal(room.publishedAt, null);
-  assert.equal(room.isNew, false);
+  assert.equal(room.useCase, "Booking app");
+  assert.equal(room.publishedAt, "2026-11-01");
+  assert.equal(room.pagePath, "/apps/room-booking-prisma-template");
+  assert.equal(room.author.name, "Mohammed Obaid", "the manifest author wins");
   const png = readFileSync(
     new URL("../../../../public/apps/previews/room-booking-prisma-template.png", import.meta.url),
   );
@@ -349,4 +352,71 @@ test("frameworkMeta falls back to a title-cased label", () => {
   assert.equal(frameworkMeta("react-router").label, "React Router");
   assert.equal(frameworkMeta("sveltekit").label, "SvelteKit");
   assert.equal(frameworkMeta("some-new-thing").label, "Some New Thing");
+});
+
+test("a curated template page uses its own copy and licence", () => {
+  const [room] = enrichTemplates(
+    [
+      {
+        id: "room-booking-prisma-template",
+        name: "Room Booking",
+        description: "Next.js meeting room booking.",
+        path: "compute/room-booking-prisma-template",
+        framework: "nextjs",
+        author: { name: "Mohammed Obaid", url: "https://github.com/mdobaid311" },
+      },
+    ],
+    NOW,
+  );
+  const page = templatePage(room);
+  assert.equal(page.title, "Room Booking: a Next.js app that never double-books");
+  assert.ok(page.description.length <= 160, `meta description is ${page.description.length} chars`);
+  assert.notEqual(page.ogTitle, page.title);
+  assert.equal(page.highlights.length, 4);
+  assert.equal(page.license.label, "MIT");
+  assert.match(page.license.href, /room-booking-prisma-template\/LICENSE$/);
+});
+
+test("an uncurated template still gets a complete page from the manifest", () => {
+  const [novel] = enrichTemplates(
+    [
+      {
+        id: "remix-notes",
+        name: "Remix Notes",
+        description: "A notes app.",
+        path: "compute/remix-notes",
+        framework: "remix-run",
+      },
+    ],
+    NOW,
+  );
+  const page = templatePage(novel);
+  assert.equal(page.title, "Remix Notes on Prisma Compute: Remix Run app template");
+  assert.match(page.description, /^A notes app\. Deploy it to Prisma Compute in one click/);
+  assert.equal(page.ogTitle, "Remix Notes on Prisma Compute");
+  assert.equal(page.tagline, "A notes app.");
+  assert.deepEqual(page.highlights, []);
+  assert.equal(page.demoUrl, null);
+  assert.equal(page.license.label, "Apache 2.0");
+  assert.equal(novel.pagePath, "/apps/remix-notes");
+});
+
+test("the social card URL names the template and changes with its copy", () => {
+  const manifest = {
+    id: "remix-notes",
+    name: "Remix Notes",
+    description: "A notes app.",
+    path: "compute/remix-notes",
+    framework: "remix-run",
+  };
+  const [a] = enrichTemplates([manifest], NOW);
+  const [b] = enrichTemplates([{ ...manifest, description: "A better notes app." }], NOW);
+  const [again] = enrichTemplates([manifest], NOW);
+
+  const url = new URL(ogCardPathFor(a), "https://www.prisma.io");
+  assert.equal(url.pathname, "/og/app.png");
+  assert.equal(url.searchParams.get("id"), "remix-notes");
+  assert.match(url.searchParams.get("v") ?? "", /^[0-9a-f]{8}$/);
+  assert.equal(ogCardPathFor(a), ogCardPathFor(again));
+  assert.notEqual(ogCardPathFor(a), ogCardPathFor(b));
 });
