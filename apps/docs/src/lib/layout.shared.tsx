@@ -47,11 +47,13 @@ export const links: LinkItemType[] = [
 export const docsLinks: LinkItemType[] = [];
 
 export const authLinks: LinkItemType[] = [
-  // Login is the secondary pill; Sign up is the one primary CTA.
+  // Login is the secondary pill; Sign up is the one primary CTA. No hardcoded
+  // UTM parameters: they would override the visitor's own, which useUtmHref
+  // propagates onto these links instead.
   {
     type: "button",
     text: "Login",
-    url: "https://console.prisma.io/login?utm_source=docs&utm_medium=login",
+    url: "https://console.prisma.io/login",
     active: "none",
     on: "nav",
     secondary: true,
@@ -64,7 +66,7 @@ export const authLinks: LinkItemType[] = [
   {
     type: "button",
     text: "Sign up",
-    url: "https://console.prisma.io/sign-up?utm_source=docs&utm_medium=navbar&utm_content=signup",
+    url: "https://console.prisma.io/sign-up",
     active: "none",
     on: "nav",
     navbarClassName: "max-lg:hidden",
