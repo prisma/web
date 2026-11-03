@@ -81,7 +81,8 @@ export function SidebarProvider({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const mode: Mode = useMediaQuery("(width < 768px)") ? "drawer" : "full";
+  // Keep in step with `--breakpoint-md`: the menu button and sidebar swap at `md`.
+  const mode: Mode = useMediaQuery("(width < 874px)") ? "drawer" : "full";
 
   useOnChange(pathname, () => {
     if (closeOnRedirect.current) {
