@@ -258,6 +258,40 @@ export const CONTRIBUTE = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// Per-template pages — every template has a public permalink at /apps/{id}
+// built from the manifest alone. The optional `page` block below adds what
+// the manifest cannot say: a sharper headline, a few highlights, a running
+// demo. A template without one still gets a complete page from its name,
+// description, framework, author and stack.
+
+export type TemplateHighlight = { title: string; body: string };
+
+export type TemplatePageMeta = {
+  /** One sentence under the name, in place of the manifest description. */
+  tagline?: string;
+  /** `<title>` without the site name. Defaults to "{name} on Prisma Compute: {framework} app template". */
+  seoTitle?: string;
+  /** Meta description, ideally under 160 characters. Defaults to the manifest description plus the deploy line. */
+  seoDescription?: string;
+  /** Headline on the social card and in og:title. Defaults to `seoTitle`. */
+  ogTitle?: string;
+  /** Body on the social card and in og:description. Defaults to `seoDescription`. */
+  ogDescription?: string;
+  /** Two to four things the app does, each a short title and one or two sentences. */
+  highlights?: readonly TemplateHighlight[];
+  /** A public, running copy of the template. */
+  demoUrl?: string;
+  /** Libraries the template is built around, beyond the stack chips. */
+  builtWith?: readonly { label: string; href: string }[];
+  /** The template's own licence, when it is not the repository's Apache 2.0. */
+  license?: { label: string; href: string };
+};
+
+export function pagePathFor(id: string): string {
+  return `/apps/${id}`;
+}
+
+// ---------------------------------------------------------------------------
 // Per-template registry
 
 type TemplateMeta = {
@@ -281,6 +315,8 @@ type TemplateMeta = {
   popularRank?: number;
   /** Screenshot under /public, 1280x800, captured from the running template. */
   preview?: string;
+  /** Copy for the template's own page at /apps/{id}. */
+  page?: TemplatePageMeta;
 };
 
 export const TEMPLATE_META: Record<string, TemplateMeta> = {
@@ -324,14 +360,50 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     popularRank: 4,
     preview: "/apps/previews/personal-site.png",
   },
-  // Screenshot only. The manifest already supplies the author, and the card
-  // keeps the same fallbacks for use case, date, and sort as an uncurated app.
+  // The manifest supplies the author; the registry adds the use case, the
+  // date it landed, the screenshot and the page copy.
   "room-booking-prisma-template": {
     category: "app",
+    useCase: "Booking app",
     framework: "nextjs",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
+    publishedAt: "2026-11-01",
     featuredRank: 5,
     preview: "/apps/previews/room-booking-prisma-template.png",
+    page: {
+      tagline: "Book meeting rooms on a drag-to-book timeline that never double-books.",
+      seoTitle: "Room Booking: a Next.js app that never double-books",
+      seoDescription:
+        "Drag to book a meeting room on a timeline; a red footprint blocks busy slots. Next.js, Prisma ORM and Prisma Postgres by Mohammed Obaid. Deploy it in one click.",
+      ogTitle: "Room Booking: meeting rooms that never double-book",
+      ogDescription:
+        "A drag-to-book timeline in Next.js with Prisma ORM and Prisma Postgres, by Mohammed Obaid. Deploy it to Prisma Compute in one click.",
+      highlights: [
+        {
+          title: "Drag to book",
+          body: "Rooms are rows, half hours are columns. Drag across free time to book, drag a booking to move it, drag its edge to resize it, click it to cancel.",
+        },
+        {
+          title: "Red means taken",
+          body: "A busy slot, a time outside opening hours or one that already started turns red before you drop, so most mistakes never reach the server.",
+        },
+        {
+          title: "One winner per slot",
+          body: "Every write runs in a transaction that locks the room and re-checks the rules, and a Postgres exclusion constraint backstops it. Twenty-five people booking the same slot at once: exactly one wins.",
+        },
+        {
+          title: "On the office clock",
+          body: "Times are shown and checked in the office's time zone, whatever zone the visitor or the server is in. An empty database seeds six rooms and a day of bookings on first visit.",
+        },
+      ],
+      builtWith: [
+        { label: "Resource Scheduler", href: "https://www.npmjs.com/package/resource-scheduler" },
+      ],
+      license: {
+        label: "MIT",
+        href: "https://github.com/prisma/prisma-examples/blob/latest/compute/room-booking-prisma-template/LICENSE",
+      },
+    },
   },
 };
 
@@ -348,6 +420,8 @@ export type GalleryTemplate = {
   path: string;
   sourceUrl: string;
   deployUrl: string;
+  /** The template's own page on this site. */
+  pagePath: string;
   framework: FrameworkMeta;
   author: AuthorMeta;
   category: Category;
@@ -403,6 +477,7 @@ export function enrichTemplates(
       path: template.path,
       sourceUrl: `${TEMPLATE_SOURCE_BASE}${template.path}`,
       deployUrl: deployUrlFor(template.id),
+      pagePath: pagePathFor(template.id),
       framework: frameworkMeta(frameworkId),
       author: authorFor(template, meta),
       category: meta?.category ?? "app",
@@ -497,4 +572,75 @@ export function groupByCategory(templates: readonly GalleryTemplate[]) {
     meta: CATEGORY_META[category],
     templates: templates.filter((template) => template.category === category),
   })).filter((group) => group.templates.length > 0);
+}
+
+// ---------------------------------------------------------------------------
+// Page copy — what /apps/{id}, its metadata and its social card say. Every
+// field has a fallback built from the manifest, so an uncurated template still
+// gets a complete, specific page.
+
+export type TemplatePage = {
+  title: string;
+  description: string;
+  ogTitle: string;
+  ogDescription: string;
+  tagline: string;
+  highlights: readonly TemplateHighlight[];
+  demoUrl: string | null;
+  builtWith: readonly { label: string; href: string }[];
+  license: { label: string; href: string };
+};
+
+// prisma-examples is Apache 2.0 at the root; a community template may carry its own.
+const REPO_LICENSE = { label: "Apache 2.0", href: `${CONTRIBUTE.repoUrl}/blob/latest/LICENSE` };
+
+export function templatePage(template: GalleryTemplate): TemplatePage {
+  const page = TEMPLATE_META[template.id]?.page;
+  const title =
+    page?.seoTitle ??
+    `${template.name} on Prisma Compute: ${template.framework.label} app template`;
+  const description =
+    page?.seoDescription ??
+    `${template.description} Deploy it to Prisma Compute in one click, or fork the source on GitHub.`;
+
+  return {
+    title,
+    description,
+    // The card headline is short on purpose; the SEO title carries the detail.
+    ogTitle: page?.ogTitle ?? `${template.name} on Prisma Compute`,
+    ogDescription: page?.ogDescription ?? description,
+    tagline: page?.tagline ?? template.description,
+    highlights: page?.highlights ?? [],
+    demoUrl: page?.demoUrl ?? null,
+    builtWith: page?.builtWith ?? [],
+    license: page?.license ?? REPO_LICENSE,
+  };
+}
+
+// The page's social card lives at /og/app.png (see app/og/app.png/route.tsx).
+// The version is a hash of what the card prints, so the URL changes whenever
+// the copy, author or screenshot does and the social networks refetch it.
+export function ogCardPathFor(template: GalleryTemplate): string {
+  const page = templatePage(template);
+  const inputs = [
+    template.name,
+    page.ogTitle,
+    page.tagline,
+    template.author.name,
+    template.author.logo ?? "",
+    template.framework.label,
+    template.preview ?? "",
+  ].join("\n");
+  const params = new URLSearchParams({ id: template.id, v: fnv1a(inputs) });
+  return `/og/app.png?${params}`;
+}
+
+// 32-bit FNV-1a, as eight hex characters. A cache key, not a security hash.
+function fnv1a(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
 }

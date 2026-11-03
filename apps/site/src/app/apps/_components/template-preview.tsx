@@ -7,7 +7,17 @@ import type { FrameworkMeta, GalleryTemplate } from "../_lib/catalog";
 // screenshot for yet, a brand panel carrying the framework mark. Either way
 // the framework badge sits in the corner so the stack reads at a glance.
 
-export function TemplatePreview({ template }: { template: GalleryTemplate }) {
+export function TemplatePreview({
+  template,
+  sizes = "(min-width: 1280px) 400px, (min-width: 640px) 50vw, 100vw",
+  priority = false,
+}: {
+  template: GalleryTemplate;
+  /** `next/image` sizes; the card's default is a third of the grid, the page hero passes its own. */
+  sizes?: string;
+  /** The page hero's screenshot is above the fold, so it loads eagerly. */
+  priority?: boolean;
+}) {
   return (
     <div className="relative aspect-[16/10] overflow-hidden bg-muted">
       {template.preview ? (
@@ -15,7 +25,8 @@ export function TemplatePreview({ template }: { template: GalleryTemplate }) {
           src={template.preview}
           alt={`${template.name} running in a browser`}
           fill
-          sizes="(min-width: 1280px) 400px, (min-width: 640px) 50vw, 100vw"
+          sizes={sizes}
+          priority={priority}
           className="object-cover object-top transition-transform duration-500 ease-out group-hover/card:scale-[1.03] motion-reduce:transition-none"
         />
       ) : (
@@ -82,9 +93,7 @@ function PreviewFallback({ framework }: { framework: FrameworkMeta }) {
             className="size-10 object-contain"
           />
         ) : (
-          <span className="font-heading text-2xl text-foreground">
-            {framework.label.charAt(0)}
-          </span>
+          <span className="font-heading text-2xl text-foreground">{framework.label.charAt(0)}</span>
         )}
       </span>
     </div>
