@@ -48,7 +48,6 @@ if (
 const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
-    https://front.agentfront.sh
     https://ingest.promptwatch.com
     https://cdn-cookieyes.com
     https://cdn.tolt.io
@@ -133,7 +132,6 @@ const ContentSecurityPolicy = `
     https://stats.g.doubleclick.net;
 
   connect-src 'self'
-    https://front.agentfront.sh
     https://ingest.promptwatch.com
     https://api.github.com
     https://p2zxqf70.api.sanity.io

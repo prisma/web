@@ -87,10 +87,6 @@ export default function RootLayout({
       className={`${sora.variable} ${inter.variable}`}
     >
       <head>
-        <script
-          async
-          src="https://front.agentfront.sh/v1/serve/a47a4199-8327-477f-bfe8-74523dddb644/webmcp.js"
-        />
         <Script
           id="fontawesome"
           src={WebFA}
