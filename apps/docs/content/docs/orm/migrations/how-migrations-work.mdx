@@ -8,7 +8,7 @@ metaDescription: 'What a Prisma ORM migration is, the plan-review-apply loop, an
 
 A migration is how Prisma ORM changes your database when your contract changes. Your contract is the `contract.prisma` file that replaced `schema.prisma`, and `npx prisma orm init` puts it in `src/prisma/`. After you edit it, run `npx prisma contract emit`, which replaces `prisma generate`. Next to `contract.prisma` it writes the files the rest of Prisma ORM reads: `contract.json`, which the migration commands read, and `contract.d.ts`, which your client's types come from.
 
-Prisma ORM 8 supports PostgreSQL and MongoDB. SQLite is experimental, and MySQL is not supported, as [Supported databases](/orm/supported-databases) lists.
+Prisma ORM 8 supports PostgreSQL and MongoDB. SQLite is experimental, and MySQL is an early preview whose migrations can create and drop tables, columns, indexes, unique constraints and foreign keys, as [Supported databases](/orm/supported-databases) lists.
 
 You run this loop many times a day:
 
@@ -168,28 +168,7 @@ If you used Prisma ORM 7, these commands replace its migrate commands:
 
 - `migrate dev` becomes `migration plan`, then `db migrate --advance-ref db`. `migrate dev` also had a second job, making a development database match the contract without writing migration files, and that job is now `db update`, which changes the database directly. [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) lists what each of these does to the ref.
 - `migrate deploy` becomes `db migrate`.
-- `migrate reset` has no equivalent. On PostgreSQL, drop the database, create it again, and run your migrations, here for a database named `mydb`:
-
-  ```bash
-  dropdb --if-exists mydb
-  createdb mydb
-  npx prisma db migrate --advance-ref db
-  ```
-
-  `dropdb` and `createdb` are PostgreSQL's own command-line tools. They do not read `DATABASE_URL`. They read the server, user, and password from the `PGHOST`, `PGPORT`, `PGUSER`, and `PGPASSWORD` environment variables, which are PostgreSQL's standard ones. `db migrate` does not run a seed script, so run yours afterwards.
-
-  To create the tables your contract declares without running the migrations, replace the last line with [`npx prisma db init`](/cli/db-init).
-
-  If you cannot drop the database, drop both the `public` schema and the `prisma_contract` schema, and then run the same `db migrate` or `db init` command:
-
-  ```sql
-  DROP SCHEMA public CASCADE;
-  DROP SCHEMA prisma_contract CASCADE;
-  ```
-
-  You do not need to create `public` again, because `db migrate` and `db init` create it.
-
-  Do not drop only `public`, because the marker is in `prisma_contract` and stays in the database. `db migrate` then reports `Already up to date` on a database with no tables, while `db verify` fails.
+- `migrate reset` has no equivalent, because Prisma ORM 8 never resets a database. On a database whose migration history does not need to be kept, such as a development database, [`npx prisma db update`](/cli/db-update) moves it to your contract and asks before it loses data. A database that changes only through migrations, such as production, is moved with `npx prisma db migrate`. Neither runs a seed script, so run yours afterwards.
 - `migrate diff` becomes `migration show <dir>`, which prints one migration, or `db update --dry-run`, which shows the operations that would make a database match the contract.
 - Baselining, marking an existing database as already migrated, is now [`npx prisma db sign`](/cli/db-sign), which checks that the tables match your contract before it writes the marker. For a database Prisma ORM 7 migrated, follow [Prisma ORM 7 to 8 (PostgreSQL)](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership).
 

@@ -132,7 +132,7 @@ namespace billing {
 
 In queries, that model is `db.orm.billing.Invoice`, and if a long name gets in the way, you can assign it once: `const User = db.orm.public.User`. The name after `db.orm.` follows a different rule on each database. On PostgreSQL it is the PostgreSQL schema, such as `public`, and then the model name. MongoDB has no schemas, so there it is only the collection name: a `User` model stored in a `users` collection is `db.orm.users`.
 
-On PostgreSQL, a `DateTime` field comes back as a `Temporal.Instant`, not a JavaScript `Date`. [Scalar fields](/orm/data-modeling#scalar-fields) explains the type and how to get a `Date` instead.
+On PostgreSQL, a `DateTime` field comes back as a JavaScript `Date`, and a `Date` or `Time` field as an ISO 8601 string. [Scalar fields](/orm/data-modeling#scalar-fields) explains the types and how to get a `Temporal` value instead.
 
 ## Migrations: steps from one contract to another
 
@@ -261,7 +261,7 @@ The names in this section come up in error messages and in the pages about exten
 
 **Supported database features.** Your database package and any extension packages list the database features they support, such as `RETURNING` clauses or `DISTINCT ON`, and `contract.json` records that list. If your contract uses a feature your database package does not support, `contract emit` fails. If you call a query method that needs a missing feature, it throws `ORM.CAPABILITY_MISSING` when you build the query, before it runs. See [Supported database features](/orm/contract-authoring/capabilities).
 
-**How values are stored and read.** Each column type in your contract comes with the code that converts its values between JavaScript and the database, in both directions. The `DateTime` to `Temporal.Instant` conversion above is one of these. Extensions bring conversions for the types they add, so a pgvector `Vector(1536)` column comes back as a typed vector, not a string. Error codes such as `RUNTIME.CODEC_DESCRIPTOR_INVALID` refer to this conversion. `fns.raw` fragments and MongoDB raw commands skip the conversion, so you convert those values yourself.
+**How values are stored and read.** Each column type in your contract comes with the code that converts its values between JavaScript and the database, in both directions. The conversion of a `timestamptz` column to a `Date` above is one of these. Extensions bring conversions for the types they add, so a pgvector `Vector(1536)` column comes back as a typed vector, not a string. Error codes such as `RUNTIME.CODEC_DESCRIPTOR_INVALID` refer to this conversion. `fns.raw` fragments and MongoDB raw commands skip the conversion, so you convert those values yourself.
 
 **Extensions.** An extension is a package that adds column types, query operations, index kinds, and database features, and at the widest, support for a whole database. You list it in `prisma.config.ts` and pass it to the client. After that, `pgvector.Vector(1536)` is a column type in your contract, vector operators appear in the query builder, and `migration plan` knows how to create vector indexes. See [Using extensions](/orm/extensions/using-extensions).
 

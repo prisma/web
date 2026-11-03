@@ -129,7 +129,7 @@ export function VariantConsole() {
                   </p>
                   <p>
                     spend-limit{"   "}
-                    <span className="text-prism-cyan-300">on by default</span>
+                    <span className="text-prism-cyan-300">set in the Console</span>
                   </p>
                   {rec.custom && (
                     <p>

@@ -4,9 +4,9 @@ export const NEON_TITLE =
   "Prisma Postgres vs Neon: TypeScript app hosting or Neon backend primitives?";
 
 export const NEON_DESCRIPTION =
-  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Neon for Functions, Auth, Object Storage, and AI Gateway. Checked October 2026.";
+  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Neon for Functions, Auth, Object Storage, and AI Gateway. Checked November 2026.";
 
-export const CHECKED = "October 2026";
+export const CHECKED = "November 2026";
 
 /** The blog's author page and photo; `/blog` is rewritten to the blog app. */
 export const NEON_AUTHOR = {
@@ -16,7 +16,7 @@ export const NEON_AUTHOR = {
 } as const;
 
 export const NEON_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const NEON_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
+export const NEON_UPDATED = { iso: "2026-11-03", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -45,10 +45,10 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Database",
     neon: "Managed PostgreSQL (Lakebase Postgres) with autoscaling, connection pooling, and scale-to-zero. Works with any language, framework, or ORM that supports Postgres.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Prisma Postgres has no cold starts. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       neon: "https://neon.com/pricing",
-      prisma: "https://www.prisma.io/docs/postgres",
+      prisma: "https://www.prisma.io/blog/prisma-postgres-the-future-of-serverless-databases",
     },
   },
   {
@@ -65,7 +65,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "App hosting",
     neon: "Neon Functions run backend logic next to the database. Neon recommends hosting the UI on a separate platform such as Vercel or Netlify.",
     prisma:
-      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. WebSocket servers are not supported.",
+      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler today; native cron is planned for early 2027. WebSocket servers are not supported today; support is planned for early 2027.",
     sources: {
       neon: "https://neon.com/docs/get-started/full-backend-quickstart",
       prisma: "https://www.prisma.io/docs/compute/limitations",
@@ -85,7 +85,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Database pricing model",
     neon: "Compute in CU-hours plus storage and other usage. Launch is $0.106 per CU-hour. Scale is $0.222 per CU-hour. Storage is $0.35 per GB-month on paid plans. Suspended compute is $0.",
     prisma:
-      "Operations plus storage, with spend limits on paid plans. Prisma Postgres Free includes 200,000 operations a month and 2 GB of storage.",
+      "Operations plus storage, with spend limits on paid plans. [Prisma Postgres Free](/postgres/free-postgresql-hosting) includes 200,000 operations a month and 2 GB of storage.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -94,20 +94,21 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "Auth, object storage, and AI gateway",
     neon: "Managed Better Auth, S3-compatible Object Storage, and an AI Gateway ship as Neon backend primitives, declared in `neon.ts`.",
-    prisma: "Not included. Use integrations with other tools.",
+    prisma:
+      "S3-compatible Object Store buckets live in the project, next to its databases and Compute apps; pricing and plan limits are not published yet. Use integrations with other tools for auth and an AI gateway.",
     sources: {
       neon: "https://neon.com/docs/get-started/backend-overview",
-      prisma: "https://www.prisma.io/docs/postgres",
+      prisma: "https://www.prisma.io/docs/storage",
     },
   },
   {
     feature: "Point-in-time restore",
     neon: "Instant restore within the project's history window on paid plans: up to 7 days on Launch, up to 30 days on Scale, billed at $0.20 per GB-month. Free lists a 6-hour history window with a 1 GB limit, and does not list instant restore as a plan feature.",
     prisma:
-      "No point-in-time recovery yet; it is coming in November 2026. Paid Prisma Postgres plans include daily backups (7 days on Starter and Pro, 30 days on Business). Free has no backups.",
+      "Paid Prisma Postgres plans include daily backups, taken only on days the database has activity and kept 7 days on Starter and Pro and 30 days on Business, that you restore from the Console in place, keeping the connection strings, or into a new database. Point-in-time recovery is coming in November 2026. Free has no backups.",
     sources: {
       neon: "https://neon.com/pricing",
-      prisma: "https://www.prisma.io/pricing",
+      prisma: "https://www.prisma.io/docs/postgres/database/backups",
     },
   },
 ];
@@ -135,7 +136,7 @@ export const APART = [
   {
     id: "http-hosting",
     title: "Full TypeScript app hosting",
-    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported. Compute has no built-in cron scheduler.",
+    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported today; support is planned for early 2027. Compute has no built-in cron scheduler today; native cron is planned for early 2027.",
   },
   {
     id: "preview-app-and-db",
@@ -186,7 +187,7 @@ export const PRICING: readonly {
   },
   {
     label: "Spend controls",
-    neon: "Spending notifications on Launch and Scale. Invoices under $0.50 are not collected.",
+    neon: "Spending notifications on Launch and Scale, which only alert; a compute size limit caps compute spend; per-project quotas set through the Neon API suspend compute. Invoices under $0.50 are not collected.",
     prisma: "Spend limits on Starter, Pro, and Business.",
     sources: {
       neon: "https://neon.com/pricing",
@@ -198,7 +199,7 @@ export const PRICING: readonly {
 export const WRONG_CHOICE = [
   "You want Neon Functions, Managed Better Auth, Object Storage, or AI Gateway as first-party primitives next to Postgres. Prisma Postgres does not include those. See [How a Neon backend fits together](https://neon.com/docs/get-started/backend-overview).",
   "You want a preview that starts from a copy-on-write clone of production data. A Prisma preview branch gets its own database; production data is not copied. See [Compute branching](/docs/compute/branching).",
-  "You need instant restore to a moment inside a history window today. Prisma Postgres has no point-in-time recovery yet (it is coming in November 2026). Paid plans include daily backups. Neon documents instant restore on paid plans at [Neon pricing](https://neon.com/pricing).",
+  "You need instant restore to a moment inside a history window today. On paid plans, Prisma Postgres restores daily backups, taken only on days the database has activity, in place or into a new database, and point-in-time recovery is coming in November 2026. Neon documents instant restore on paid plans at [Neon pricing](https://neon.com/pricing).",
   "You want database compute that bills $0 while the instance is suspended, rather than operation-based pricing. Neon CU-hours stop while scale-to-zero has suspended compute; storage still bills.",
 ];
 
@@ -226,7 +227,7 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "Does Prisma Postgres have point-in-time recovery?",
     answer:
-      "Not yet: point-in-time recovery is coming to Prisma Postgres in November 2026. Until then, paid plans include daily backups (7 days on Starter and Pro, 30 days on Business). Neon paid plans list instant restore within a history window of up to 7 days on Launch and 30 days on Scale. Source: [Prisma pricing](/pricing) and [Neon pricing](https://neon.com/pricing), October 2026.",
+      "On paid plans, Prisma Postgres restores from daily backups today, and point-in-time recovery is coming in November 2026. Backups are taken only on days the database has activity and kept 7 days on Starter and Pro and 30 days on Business, and you restore one from the database's Backups tab in the Console, in place, keeping the connection strings, or into a new database. Neon paid plans list instant restore within a history window of up to 7 days on Launch and 30 days on Scale. Source: [Prisma Postgres backups](/docs/postgres/database/backups), [Prisma pricing](/pricing) and [Neon pricing](https://neon.com/pricing), October 2026.",
   },
 ];
 

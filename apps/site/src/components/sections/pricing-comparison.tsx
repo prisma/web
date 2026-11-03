@@ -122,6 +122,9 @@ export const ALTERNATIVES = [
 // The client's comparison doc phrases them analytically ("Postgres operations
 // and storage + application Compute usage", "Unlimited database data transfer",
 // "Spend limits included on paid plans") — same substance, so V2 wins on voice.
+// Exception: V2's "On by default" for spend limits was wrong. A paid workspace
+// has no limit until someone sets one in the Console (docs: /console/more/billing),
+// so the row says the cap is one you set (2026-10-29).
 //
 // The cost is the 2026-07-30 doc's $72–90 (V2 had $70–90). The home page
 // scenario card (pricing-scale.tsx) uses the same figure.
@@ -131,7 +134,7 @@ export const PRISMA = {
   rows: [
     { label: "Billing", value: "One bill, one platform" },
     { label: "Database data transfer", value: "Included" },
-    { label: "Spend limits", value: "On by default" },
+    { label: "Spend limits", value: "Hard cap you set, on every paid plan" },
   ],
 };
 
@@ -252,7 +255,7 @@ export function PricingComparison() {
                 <strong className="font-semibold text-foreground">
                   Prisma Pro can cost less than half as much as a typical Neon + Vercel setup
                 </strong>
-                , with one bill, included database data transfer, and spend limits on by default.
+                , with one bill, included database data transfer, and a hard spend limit you set.
               </p>
             </Reveal>
 

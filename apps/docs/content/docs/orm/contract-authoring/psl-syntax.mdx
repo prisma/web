@@ -133,9 +133,20 @@ Set `contract` to a glob, such as `"./src/prisma/**/*.prisma"`, to write the con
 
 ## Models and fields
 
-Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`. On PostgreSQL, plain `String` is a `text` column, `Int` is `int4`, and `DateTime` is `timestamptz`. You can also use one of these PostgreSQL types as the field type: `VarChar`, `Char`, `Numeric`, `Timestamp`, `Timestamptz`, `Time`, `Timetz`, `Date`, `Uuid`, `Inet`, `SmallInt`, `Real`, `Bit`, `VarBit`, or `Interval`. Their arguments are optional: `VarChar(35)`, `Char(2)`, `Bit(8)`, and `VarBit(64)` set a length, `Numeric(10, 2)` sets a precision and scale, and `Timestamp(3)`, `Timestamptz(3)`, `Time(3)`, `Timetz(3)`, and `Interval(3)` set how many digits of a second are kept. Write each argument as a whole number without quotes: `VarChar("35")` and `VarChar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Timestamptz` without an argument is the same column as `DateTime`, so use it only when you want to set that precision.
+Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`. On PostgreSQL, plain `String` is a `text` column, `Int` is `int4`, and `DateTime` is `timestamptz(3)`. You can also use one of these PostgreSQL types as the field type: `VarChar`, `Char`, `Numeric`, `Uuid`, `Inet`, `SmallInt`, `Real`, `Bit`, `VarBit`, `Xml`, `Oid`, `Money`, or one of the date and time types below. Their arguments are optional: `VarChar(35)`, `Char(2)`, `Bit(8)`, and `VarBit(64)` set a length, `Numeric(10, 2)` sets a precision and scale, and `TimestamptzTemporal(3)` or `DateTime(precision: 6)` sets how many digits of a second are kept. Write each argument as a whole number without quotes: `VarChar("35")` and `VarChar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Xml` reads and writes text and has no equality, so no filter can compare it. `Oid` reads a whole number from 0 to 4294967295. `Money` reads a decimal string with two fraction digits, such as `"-1234.56"`, whatever the database's locale.
 
-On PostgreSQL, the date and time types reach your code as `Temporal` values: `DateTime` and `Timestamptz` as a `Temporal.Instant`, `Timestamp` as a `Temporal.PlainDateTime`, `Date` as a `Temporal.PlainDate`, and `Time` as a `Temporal.PlainTime`. Your app needs a global `Temporal` to read and write them, and [Scalar fields](/orm/data-modeling#scalar-fields) says how to check for it. When you want a string instead, use `DateString`, a `date` column your code gets as a string, or `TimestampString`, `TimestamptzString`, and `TimeString`, which do the same for `timestamp`, `timestamptz`, and `time`. `TimestamptzJsDate` is a `timestamptz` column your code gets as a JavaScript `Date`, so it needs no `Temporal`, but a `Date` drops the microseconds PostgreSQL stores.
+On PostgreSQL, a date or time field is written with one of four types named for what the field means. Each becomes one explicit type, which names the column and the kind of value your code reads. At their defaults they need no `Temporal`:
+
+| Written | Becomes | Column | Your code reads |
+| --- | --- | --- | --- |
+| `DateTime` | `TimestamptzJsDate(3)` | `timestamptz(3)` | a JavaScript `Date` |
+| `Date` | `DateString` | `date` | a string, such as `"2024-02-29"` |
+| `Time` | `TimeString` | `time` | a string, such as `"09:30:00"` |
+| `Duration` | `IntervalString` | `interval` | an ISO 8601 duration, such as `"P1M"` |
+
+Arguments choose another explicit type. `as` picks what your code reads: `jsDate`, `string` or `temporal` for `DateTime`, `string` or `temporal` for `Date` and `Time`, and `string` or `parts` for `Duration`. `storage` picks the column: `timestamptz` or `timestamp` for `DateTime`, and `time` or `timetz` for `Time`. `precision` sets the digits of a second. So `DateTime(as: temporal)` is `TimestamptzTemporal`, read as a `Temporal.Instant`; `DateTime(as: string)` is `TimestamptzString`; `DateTime(storage: timestamp)` is `TimestampJsDate(3)`; `Date(as: temporal)` is `DateTemporal`, a `Temporal.PlainDate`; `Time(as: temporal)` is `TimeTemporal`, a `Temporal.PlainTime`; `Time(storage: timetz)` is `Timetz`; and `Duration(as: parts)` is `IntervalParts`, read as `{ months, days, micros }`. The contract stores only the explicit type, so you can also write the explicit type itself. `TimestampTemporal`, a `timestamp` read as a `Temporal.PlainDateTime`, has no convenience form. A type read as a `Temporal` value needs a global `Temporal`, and [Scalar fields](/orm/data-modeling#scalar-fields) says how to check for it.
+
+The string types are ISO 8601 on every server, whatever its `TimeZone` and `DateStyle`: a `timestamptz` reads as the instant in UTC, such as `2024-01-01T00:00:00Z`. The exception is `infinity` and `-infinity`, which PostgreSQL can store in a `date` or timestamp column: a string type reads them as `infinity` and `-infinity`, and a type read as a `Date` or a `Temporal` value fails to read them with `RUNTIME.DECODE_FAILED`. A JavaScript `Date` holds milliseconds, so a type read as a `Date` on a column with more digits of a second, such as `DateTime(precision: 6)`, drops the rest. `TimestampJsDate` and `TimestampInstant` read a `timestamp` column as a `Date` and a `Temporal.Instant`, treating the stored date and time as UTC.
 
 - `@id` marks the primary key. `@@id([a, b])` declares a composite key.
 - `@unique` adds a unique constraint on one field. `@@unique([userId, title])` adds one across several fields.
@@ -190,21 +201,29 @@ Each function makes a value for the field's type: `uuid()` works on `String`, `V
 
 An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The value a function writes must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `VarChar(5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a bare `VarChar` has no limit.
 
-Prisma ORM 8 has no `@updatedAt`. To replace `@updatedAt`, write `updatedAt temporal.updatedAt()`:
+For the column of a generated identifier, write its type alias. `UuidString`, `Ulid`, `Nanoid`, `Cuid2` and `Ksuid` are `Char(36)`, `Char(26)`, `Char(21)`, `Char(24)` and `Char(27)`, as in `id Ulid @id @onCreate(ulid())`. The alias sets only the column, so the field writes `@id` and `@onCreate(...)` itself, and a foreign key that holds the identifier uses the alias alone, as in `authorId Ulid`. On SQLite, write the aliases in the `sql` namespace, such as `sql.Ulid`, and a fixed-length text column as `sql.Char(n)`. On PostgreSQL a new schema can store a UUID in the native `Uuid` column instead, as `id Uuid @id @onCreate(uuid(7))`.
+
+:::note[Upgrading from before `8.0.0-rc.21`]
+
+Field presets, such as `id.ulid()`, `nanoid({ size: 12 })`, `json()` and `temporal.updatedAt()`, are removed. `prisma contract emit` refuses each one with `PSL_UNRESOLVED_REFERENCE`, and the message gives the exact rewrite, such as `Ulid @id @onCreate(ulid())`, `Char(12)`, `Jsonb` or `temporal.UpdatedAt`. Each rewrite stores the same contract as the preset did before `8.0.0-rc.22`. Since `8.0.0-rc.22`, `temporal.UpdatedAt` is a `timestamptz(3)` column read as a `Date`, where `temporal.updatedAt()` read a `Temporal.Instant`, so follow the `8.0.0-rc.22` upgrade instructions for those fields.
+
+:::
+
+Prisma ORM 8 has no `@updatedAt`. To replace `@updatedAt`, write `updatedAt temporal.UpdatedAt`:
 
 ```prisma
 model Post {
-  updatedAt temporal.updatedAt()
+  updatedAt temporal.UpdatedAt
 }
 ```
 
-Prisma ORM sets the field to the current time on every create and update, and you can still set it yourself on a write. `temporal.createdAt()` sets its field once, when the row is created. You do not import or declare `temporal`: it is a group of timestamp field types built into the contract syntax. On PostgreSQL the column is `timestamptz`.
+Prisma ORM sets the field to the current time on every create and update, and you can still set it yourself on a write. `temporal.CreatedAt` sets its field once, when the row is created. You do not import or declare `temporal`: it is a group of [named types](#named-types) built into the contract syntax. On PostgreSQL the column is `timestamptz`.
 
 Both take the time from your application's clock, not from the database, so the column has no database default, and a row you insert with raw SQL must supply the value. For a value the database generates, use `DateTime @default(now())` instead.
 
-`temporal.UpdatedAt`, without parentheses, is the same column written as a [named type](#named-types). Write `@onCreate(now()) @onUpdate(now())` yourself only for another type or a precision. The example at the top of this section writes them on a `DateTime` field only to show the attributes.
+`temporal.UpdatedAt` is written without parentheses. It is `DateTime @onCreate(now()) @onUpdate(now())`, a `timestamptz(3)` column your code reads as a JavaScript `Date`, and `temporal.CreatedAt` is `DateTime @onCreate(now())`. Write the attributes yourself for another type or a precision, such as `DateTime(as: string) @onCreate(now()) @onUpdate(now())` for a string. The example at the top of this section writes them on a `DateTime` field only to show the attributes.
 
-`temporal.createdAt()` and `temporal.updatedAt()` need a global `Temporal` for writes as well as reads. When your Node.js version has none, install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` at the top of `src/prisma/db.ts`. `temporal.createdAtJsDate()` and `temporal.updatedAtJsDate()` work the same way, but with a JavaScript `Date` in place of a `Temporal` value.
+`now()` takes the column's precision and rounds the time down to it, so the value a create returns is the value PostgreSQL stores. A field written with `as: temporal`, such as `DateTime(as: temporal) @onCreate(now())`, needs a global `Temporal` for writes as well as reads. When your Node.js version has none, install `temporal-polyfill` and add `import "temporal-polyfill/full/global"` at the top of `src/prisma/db.ts`.
 
 ### Columns of any database type
 
@@ -245,11 +264,11 @@ model Account {
 - A decimal default is a bare number.
 - `NaN`, `Infinity`, and `-Infinity` are written without quotes, and so are `true` and `false`.
 - A text default is a quoted string.
-- A fixed date, time, or interval is a tagged literal named after the column's PostgreSQL type: `timestamptz` for `DateTime` and `Timestamptz`, and `timestamp`, `date`, `time`, `timetz`, and `interval` for the types of those names, as in ``@default(interval`P1D`)``. A `timestamptz` default is a point in time with a UTC offset, such as ``timestamptz`2024-01-01T00:00:00Z` ``, and a `timestamp` default has no offset, such as ``timestamp`2024-01-01 00:00:00` ``. A quoted string on one of these fields is refused, and the message shows the tagged literal to write.
+- A fixed date, time, or interval is a tagged literal named after the column's PostgreSQL type: `timestamptz` for `DateTime` and the other `timestamptz` types, and `timestamp`, `date`, `time`, `timetz`, and `interval` for the types of those names, as in ``@default(interval`P1D`)``. A `timestamptz` default is a point in time with a UTC offset, such as ``timestamptz`2024-01-01T00:00:00Z` ``, and a `timestamp` default has no offset, such as ``timestamp`2024-01-01 00:00:00` ``. A quoted string on one of these fields is refused, and the message shows the tagged literal to write.
 - A `Bytes` default is a `bytea` tagged literal holding the bytes as hexadecimal after `\x`, as `payload` shows. Base64 text is not accepted.
 - On SQLite, a `DateTime` default uses the `datetime` tag, as in ``@default(datetime`2024-01-01T00:00:00Z`)``, and a `Bytes` default the `blob` tag, which holds hexadecimal digits, as in ``@default(blob`68656c6c6f`)``.
-- Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `VarChar(n)` or `Char(n)` takes, a number a `Numeric(p, s)` would round, more digits of a second than a `Timestamptz(3)` keeps, an integer outside the range of `Int` or `SmallInt`, or text that is not a UUID on a `Uuid` field.
-- A date or time default that the field's type does not hold makes `contract emit` fail with `PSL_INVALID_DEFAULT_LITERAL`, and the message shows a text the field takes. That includes an offset on a `Timestamp`, `Date`, or `Time` default, a missing offset on a `DateTime`, `Timestamptz`, or `Timetz` default, more than six digits after the decimal point (three on SQLite), and a date or time that does not exist, such as `2024-02-30`. The CLI checks these defaults on Node.js 24 too, which has no built-in `Temporal`.
+- Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `VarChar(n)` or `Char(n)` takes, a number a `Numeric(p, s)` would round, more digits of a second than a `TimestamptzTemporal(3)` keeps, digits below a millisecond on a field read as a JavaScript `Date`, which cannot hold them (also on MySQL's `DateTime`), an integer outside the range of `Int` or `SmallInt`, or text that is not a UUID on a `Uuid` field.
+- A date or time default that the field's type does not hold makes `contract emit` fail with `PSL_INVALID_DEFAULT_LITERAL`, and the message shows a text the field takes. That includes an offset on a `timestamp`, `date`, or `time` default, a missing offset on a `timestamptz` or `timetz` default, more than six digits after the decimal point (three on SQLite), and a date or time that does not exist, such as `2024-02-30`. The CLI checks these defaults on Node.js 24 too, which has no built-in `Temporal`.
 - On a field typed with an `enum` block, the default is the member's name without quotes, as in `@default(Low)`. On a `pg.enum(...)` field, it is the value the member stores, in quotes, as in `@default("admin")`. [Enums](#enums) covers both.
 - Any other SQL expression is a `sql` tagged literal, and it goes into the column default exactly as written. Write the current time as `now()` and a sequence as `autoincrement()`, not as `` sql`now()` `` or `` sql`autoincrement()` ``, which are refused.
 
@@ -343,7 +362,7 @@ A mixin is a named set of members you write once and include in several blocks. 
 ```prisma
 model mixin Timestamps {
   createdAt DateTime @default(now())
-  updatedAt temporal.updatedAt()
+  updatedAt temporal.UpdatedAt
 
   @@index([createdAt])
 }
@@ -386,7 +405,7 @@ types {
 }
 ```
 
-Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. You do not have to name a type: a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Numeric(10, 2)`, `Uuid`, or `Timestamptz`.
+Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. You do not have to name a type: a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Numeric(10, 2)`, `Uuid`, or `TimestamptzTemporal`.
 
 A named type is shorthand: the contract stores the column type, not the name.
 
@@ -410,7 +429,7 @@ model Post {
 - A field may add any attribute its named type does not set. Here `updatedAt` adds `@default(now())`, a database default, so a row inserted outside Prisma ORM also gets a time. A field that repeats an attribute its named type already sets is refused with `PSL_DUPLICATE_ATTRIBUTE`.
 - A named type is built on a type or an enum, not on another named type.
 
-Prisma ORM provides two named types you do not declare: `temporal.CreatedAt`, set to the current time on create, and `temporal.UpdatedAt`, set on create and on every update. Write them without parentheses, as `createdAt` does above. They are the named-type form of `temporal.createdAt()` and `temporal.updatedAt()`, and store the same column: a `timestamptz` column on PostgreSQL. PostgreSQL also has `temporal.CreatedAtString` and `temporal.UpdatedAtString`, which give your code the time as a string, and `temporal.CreatedAtJsDate` and `temporal.UpdatedAtJsDate`, which give it a JavaScript `Date`. They take no arguments; for a precision, write the type and the attributes yourself, as `UpdatedAt` above does.
+Prisma ORM provides two named types you do not declare: `temporal.CreatedAt`, set to the current time on create, and `temporal.UpdatedAt`, set on create and on every update. Write them without parentheses, as `createdAt` does above. On PostgreSQL they store a `timestamptz(3)` column that your code reads as a JavaScript `Date`. They take no arguments. For a string, a `Temporal` value or a precision, write the type and the attributes yourself, such as `DateTime(as: string) @onCreate(now()) @onUpdate(now())`, as `UpdatedAt` above does.
 
 Three types cover big integers, and they differ in what your code receives:
 
@@ -470,6 +489,8 @@ On PostgreSQL, some types cannot hold enum members. JSON (`pg/json@1` and `pg/js
 
 At runtime, `db.enums` holds each member as a query returns it, such as a `bigint` for `pg/int8@1`.
 
+On PostgreSQL and SQLite, removing a member, or changing the value a member stores, changes rows that hold the old value, so `migration plan` and `db update` ask whether you renamed the member or want its value removed. [Renames and data loss](/cli/migration-plan#renames-and-data-loss) shows the answers.
+
 An `enum` block is not a PostgreSQL `enum` type: the column is text or an integer. For a PostgreSQL `enum` type, declare it in a `native_enum` block and type the field `pg.enum(Role)`:
 
 ```prisma
@@ -504,7 +525,7 @@ model User {
 }
 ```
 
-A value object field can be optional or a list, and a `type` block can hold a field of another `type`. Watch the two spellings: `types { ... }` declares named types, and `type X { ... }` declares a value object. Storage differs by database: on PostgreSQL a value object field is stored in a single `jsonb` column, while on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On MongoDB, whether to embed or reference is the central modeling decision, and [MongoDB data modeling](/orm/data-modeling/mongodb#embed-or-reference) covers it.
+A value object field can be optional or a list, and a `type` block can hold a field of another `type`. Watch the two spellings: `types { ... }` declares named types, and `type X { ... }` declares a value object. Storage differs by database: on PostgreSQL a value object field is stored in a single `jsonb` column, while on MongoDB it is an embedded document. Either way, `contract.d.ts` types it as a structured object rather than untyped JSON. On PostgreSQL, a table whose [control policy](#control-policy) is managed also gets a check on each value object column, named `<table>_<column>_shape_<hash>`, that accepts only a JSON object with every required field, each of its JSON type, and no other key. A value object is stored data, so changing one, such as renaming a field, changes the contract's storage hash, and `migration plan` writes a migration that replaces the check. That migration fails on a row the new check refuses, and the error names the check and the query that finds the rows. On MongoDB, whether to embed or reference is the central modeling decision, and [MongoDB data modeling](/orm/data-modeling/mongodb#embed-or-reference) covers it.
 
 ## Relations
 
@@ -659,6 +680,8 @@ model User {
 
 A wildcard index covers every field under a path, which is how you index documents whose keys you do not know in advance. Write `wildcard()` in the field list to cover the whole document, or `wildcard(meta)` to cover the fields under `meta`; the key becomes `$**` or `meta.$**`. `include` and `exclude` are lists of field names, quoted, that narrow what the index covers; give one or the other, and only with `wildcard()`. An index can hold one `wildcard()`, and it cannot be an `@@unique`, take `expireAfterSeconds`, or set a `type:` such as `"hashed"`.
 
+`contract emit` refuses, with `PSL_INVALID_INDEX`, any other index MongoDB would refuse, such as a `type: "hashed"` index on several fields, collation options without `collationLocale`, or a second text index in one collection. Two indexes in one collection with the same fields and options become one index, counting an option set to `false` as left out. So does a plain index beside a unique index on the same fields with otherwise the same options, such as `@unique` and `@@index([email])` on one field: the contract keeps the unique index, which serves every query the plain one would. Indexes on the same fields with a different collation, partial filter or other option stay separate. A TypeScript contract follows the same rules, as [the MongoDB builder](/orm/contract-authoring/typescript-schema-builder#how-definecontract-works) describes.
+
 ## Base models and variants
 
 A base model declares a discriminator field, the field whose value says which variant a row is. Each variant names its base and its discriminator value:
@@ -690,7 +713,7 @@ The discriminator field must be required and hold one value, so it cannot be opt
 - on SQLite, `String` or `sql.String(n)`, SQLite's text type with a length;
 - on MongoDB, `String`.
 
-A [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be the value a member stores, such as `"bug"` for `Bug = "bug"`, or `contract emit` lists the values you can write. A `@@base` value the field's type refuses, such as one longer than a `VarChar(5)` holds, is `PSL_VALUE_REFUSED`.
+A [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. On PostgreSQL and SQLite, your code reads the discriminator field as one of its variants' values, such as `'bug' | 'feature'`, not as any `string`. On PostgreSQL, a table whose control policy is managed also gets a check on the discriminator column, named `<table>_<column>_check_<hash>`, that accepts only those values. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be the value a member stores, such as `"bug"` for `Bug = "bug"`, or `contract emit` lists the values you can write. A `@@base` value the field's type refuses, such as one longer than a `VarChar(5)` holds, is `PSL_VALUE_REFUSED`.
 
 A variant can be in a different `namespace` block from its base, on PostgreSQL a different schema. Name the base with its namespace, as in `@@base(a.Task, "chore")`. In `contract.json`, the base model lists its variants by discriminator value, each naming the variant model and its namespace: `"variants": { "bug": { "model": "Bug", "namespace": "public" } }`.
 
@@ -698,7 +721,7 @@ You query a variant through the base model: `db.orm.public.Task.variant('bug')` 
 
 On a variant, `@@map` does more than rename: on PostgreSQL it chooses between two storage layouts. Give the variant its own `@@map`, as `Bug` has here, and its fields are in a table of their own that shares the base model's primary key. Leave `@@map` out and they are nullable columns in the base table. [Relational data modeling](/orm/data-modeling/relational-databases#polymorphic-relations) covers choosing between the two.
 
-On MongoDB, a variant adds its fields to documents in the base model's collection, so it declares `@@base` but no `@@map` of its own.
+On MongoDB, a variant adds its fields to documents in the base model's collection, so it declares `@@base` but no `@@map` of its own. Because the variant's fields share documents with the base model's, a variant field stored under a name a base field uses, such as the discriminator's, is refused with `PSL_DUPLICATE_STORED_NAME`. A variant field that restates a base field with a different stored name, type, optionality or list shape is refused with `PSL_VARIANT_FIELD_DIFFERS_FROM_BASE`: restate it exactly as the base declares it, or leave it out.
 
 ## Extension types
 
@@ -729,6 +752,22 @@ model Post {
 ```
 
 A field can also use the pack's type directly, with the argument named: `embedding pgvector.Vector(length: 1536)?`. The `pgvector` part of `pgvector.Vector(1536)` is a fixed name the pack declares, not the name you gave the import. List the pack before using its types, and run `npx prisma contract emit` again after changing the extension list. [Using extensions](/orm/extensions/using-extensions) covers installing a pack and names the packs you can add.
+
+## PostgreSQL extensions
+
+A PostgreSQL contract can declare an extension it needs, such as `pg_trgm`, at the top level, which installs it in the `public` schema, or inside a `namespace` block, which installs it in that schema:
+
+```prisma title="src/prisma/contract.prisma"
+// use prisma-8
+
+extension pg_trgm {}
+
+namespace extensions {
+  extension postgis {}
+}
+```
+
+`migration plan` and `db update` create a declared extension that the database lacks, with `CREATE EXTENSION IF NOT EXISTS`, before the tables that use its types. Removing a declaration plans a `DROP EXTENSION`, which is destructive, so both commands ask first. `db verify` reports a declared extension that is not installed, and `db sign` accepts a database only when it has every declared extension. The contract records no extension version, because hosts offer different ones. `contract infer` writes an `extension` block for every installed extension except `plpgsql` and those a configured pack declares. An extension's name is unique across the database, so declaring one name in two namespaces is refused. An extension pack such as pgvector, PostGIS or ParadeDB declares its own extension, so you do not declare it again. A TypeScript contract declares an extension with `extension('pg_trgm')` in its `entities` list, as [the TypeScript builder](/orm/contract-authoring/typescript-schema-builder) shows.
 
 ## Starting from an existing database
 

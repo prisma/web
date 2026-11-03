@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 //  - prisma.io/pricing: Starter $10 and Pro $49 a month; 1M / 10M operations
 //    included then $8 / $2 per million; 10 GB / 50 GB storage then $2.00 /
 //    $1.50 per GB; 1,000 databases; 5M / 20M Compute requests then $1 per
-//    million; unlimited Prisma Postgres data transfer; spend limits on by
-//    default on paid plans; daily backups.
+//    million; unlimited Prisma Postgres data transfer; a spend limit you
+//    set on paid plans (none until set, docs /console/more/billing); daily
+//    backups.
 //  - neon.com/pricing: Launch has no monthly fee, $0.106 per CU-hour,
 //    $0.35 per GB-month of storage, 500 GB of data transfer per project then
 //    $0.10 per GB, extra branches $1.50 per branch-month, spending
@@ -26,7 +27,12 @@ import { cn } from "@/lib/utils";
 //    not covering compute.
 // The 50K MAU figures in the hero are the pricing page's own and are not
 // repeated here; this table is the list prices a visitor can check.
+// The Neon quotas and the Supabase hosting notes are not list prices. They were
+// read on NOTES_CHECKED_ON: Neon from neon.com/pricing, the Supabase Compute
+// status from supabase.com/compute, and the Edge Functions frontend limit from
+// supabase.com/docs/guides/platform/custom-domains.
 const CHECKED_ON = "October 21, 2026";
+const NOTES_CHECKED_ON = "November 2, 2026";
 
 type Row = {
   label: string;
@@ -57,7 +63,8 @@ const ROWS: Row[] = [
       "Included on the same plan: 5M or 20M requests a month, then $1 per million, with memory, CPU and bandwidth metered",
     neonVercel:
       "Vercel: invocations from $0.60 per million, active CPU from $0.128 an hour, memory from $0.0106 per GB-hour",
-    supabase: "Edge Functions for backend logic. The frontend is hosted elsewhere",
+    supabase:
+      "Edge Functions for backend logic. The frontend is hosted elsewhere; Supabase Compute, which runs backend services, is in private alpha behind a waitlist",
   },
   {
     label: "Database data transfer",
@@ -74,9 +81,9 @@ const ROWS: Row[] = [
   },
   {
     label: "Spend limits",
-    prisma: "A hard spend limit on every paid plan, on by default",
+    prisma: "A hard spend limit you set, on every paid plan",
     neonVercel:
-      "Neon: spending notifications at 80% and 100%. Vercel: a spend budget with an optional pause",
+      "Neon: spending notifications at 80% and 100%, and per-project quotas through its API that suspend compute. Vercel: a spend budget with an optional pause",
     supabase: "Spend Cap on by default on Pro; database compute is not covered",
   },
 ];
@@ -147,7 +154,9 @@ export function ProviderCompare({
           Rates as listed on prisma.io/pricing, neon.com/pricing, vercel.com/pricing and
           supabase.com/pricing on {CHECKED_ON}. Neon and Vercel rates are their Launch and Pro
           plans&rsquo; &ldquo;starting at&rdquo; prices. The 50K MAU figures above are
-          Prisma&rsquo;s published scenario on prisma.io/pricing.
+          Prisma&rsquo;s published scenario on prisma.io/pricing. Neon&rsquo;s quotas and the status
+          of Supabase Compute are as listed on neon.com/pricing and supabase.com/compute on{" "}
+          {NOTES_CHECKED_ON}.
         </p>
       </div>
     </section>

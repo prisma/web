@@ -56,12 +56,23 @@ export type ProductPageContent = {
      * restated by the section under the hero.
      */
     subheadline: string;
-    /** Exactly three specific benefits. Sit under the CTA, not above it. */
-    benefits: [string, string, string];
+    /**
+     * Exactly three specific benefits. Sit under the CTA, not above it.
+     * Omit them when a custom visual already shows those steps. Pages that
+     * pass the three still render the same list.
+     */
+    benefits?: [string, string, string];
     primaryCta: Cta;
     secondaryCta: Cta;
     /** Reassurance directly under the CTA — price, licence or reach. */
     microline?: string;
+    /** When set, the microline is a text link with this href. */
+    microlineHref?: string;
+    /**
+     * Anchor text inside the microline. Defaults to the full microline.
+     * Located with `indexOf`, so it can sit anywhere in the line.
+     */
+    microlineLink?: string;
     /** Optional in-page link under the microline, for a related comparison. */
     related?: { label: string; href: string };
     /**

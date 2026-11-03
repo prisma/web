@@ -5,6 +5,7 @@ import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
 import { isLandingPath } from "@/lib/landing-routes";
 import { extensions } from "@prisma-docs/ui/data/extensions";
+import { loadTemplates } from "@/app/apps/_lib/manifest";
 import { getAnswerEntries } from "./answer-page-content";
 import { getGitFileDates, getRouteLastModified } from "./sitemap-lastmod";
 
@@ -138,18 +139,29 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
 /** Generate sitemap entries for all public pages in the site app. */
 export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<SitemapEntry[]> {
   const answers = getAnswerEntries();
-  const [pageRoutes, changelogPages] = await Promise.all([
+  const [pageRoutes, changelogPages, templates] = await Promise.all([
     collectPageRoutes(APP_DIRECTORY),
     changelogSource.getPages(),
+    // The app pages come from the Compute template manifest; an unreachable
+    // manifest at build time leaves them out rather than failing the sitemap.
+    loadTemplates(),
   ]);
 
   // TSX routes have no frontmatter date: use the last commit that changed the
-  // page or a module it imports (see `@/lib/sitemap-lastmod`). Without git
-  // history the route gets no lastmod, never the build date.
-  const fileDates = getGitFileDates(SRC_DIRECTORY);
+  // page or its content files (see `@/lib/sitemap-lastmod`). The production
+  // build fetches the commit's history when the build host has none (Vercel)
+  // or a shallow one. Without git history the route gets no lastmod, never
+  // the build date.
+  const fileDates = getGitFileDates(SRC_DIRECTORY, {
+    fetchHistory: process.env.NODE_ENV === "production",
+    report: (message) => console.log(`sitemap-site.xml: ${message}`),
+  });
   const pageLastModMap = new Map<string, string | undefined>();
   for (const { pathname, filePath } of pageRoutes) {
-    pageLastModMap.set(pathname, getRouteLastModified(filePath, SRC_DIRECTORY, fileDates));
+    pageLastModMap.set(
+      pathname,
+      getRouteLastModified(pathname, filePath, SRC_DIRECTORY, fileDates),
+    );
   }
 
   // Changelog entries use their frontmatter date as lastmod
@@ -168,6 +180,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       ...pageRoutes.map((route) => route.pathname).filter((pathname) => !isLandingPath(pathname)),
       ...changelogPages.map((page) => page.url),
       ...extensions.map((entry) => `/extensions/${entry.slug}`),
+      ...templates.map((template) => template.pagePath),
       ...answers.map((entry) => entry.url),
     ]),
   ];
@@ -179,6 +192,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       lastModified:
         answers.find((entry) => entry.url === pathname)?.data.updatedAt ??
         changelogLastModMap.get(pathname) ??
+        templates.find((template) => template.pagePath === pathname)?.publishedAt ??
         pageLastModMap.get(pathname),
       ...getEntryMetadata(pathname),
     }));

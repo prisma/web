@@ -42,8 +42,8 @@ npx prisma migration plan --name add_users_table
 | `--name <slug>` | Sets the migration directory name suffix. |
 | `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
-| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
-| `--delete <subject>` | Lets the migration lose the data of a model, a field, a table no model stores, or every model of a namespace the contract removed. For a type change, accepts the database's own cast. Repeatable. |
+| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the migration lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed. For a type change, accepts the database's own cast. Repeatable. |
 | `--convert <Model.field>` | For a type change that can lose values, writes an `alterColumnType` whose conversion you fill in. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
 | `--backfill <Model.field>` | For a new required field or a field made required, writes a backfill step you fill in, instead of a temporary value. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
@@ -82,6 +82,15 @@ A namespace is a PostgreSQL schema that your contract declares with a `namespace
 `migration plan` does not read the database, so it cannot see a table, view or function in that schema that no contract declares. If the schema holds one, `db migrate` fails before it drops the schema, and the error names the object. Drop or move it yourself, then run `db migrate` again.
 
 The command leaves alone a schema that no contract declared, such as Supabase's `auth`, and a namespace that only another contract space declares. Before `8.0.0-rc.20`, the command did not ask about a removed namespace and left its tables in place.
+
+On PostgreSQL and SQLite, removing a member from an `enum` block, or changing the value a member stores, is asked about too, because rows may hold the old value. The command asks once for each value, however many columns hold it:
+
+- If you renamed the member, answer with `--rename Status.ARCHIVED:Status.RETIRED`. The migration changes the stored value in every column and list that holds it.
+- To let the value go, answer with `--delete Status.ARCHIVED`. Optional columns that hold it are set to `NULL`, and lists lose it. A required column cannot take `NULL`, so while any of its rows hold the value, the apply fails with `MIGRATION.PRECHECK_FAILED` before it changes anything. The error counts those rows and says how to keep them.
+
+A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value, and two members that swap their stored values, can only be answered with `--delete`. To keep those rows, the question names the `this.removeStoredValue(...)` call in the planned `migration.ts` to replace with `this.replaceStoredValue(...)` calls, and the `node migration.ts` command that runs it. [Stored enum values](/orm/reference/migration-api#stored-enum-values) in the migration API reference shows both calls.
+
+Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
 
 On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. Removing a field from a model removes it from every document that holds it, so the command asks about it as it asks about a dropped collection: answer with `--delete User.nickname` or `--rename User.nickname:User.<new name>`. The planner refuses a rename of the field stored as `_id`, of a field whose stored name contains `.` or starts with `$`, of a time-series collection, and of a variant whose discriminator value changes, and says what to do instead.
 

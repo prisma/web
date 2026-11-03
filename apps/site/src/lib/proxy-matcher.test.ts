@@ -231,6 +231,95 @@ test("/__ora/status answers with configuration and no key", async () => {
   assert.ok(!JSON.stringify(body).includes("ora_sk"));
 });
 
+// --- the blog's link tag: ?from_theconsensus ---------------------------------
+
+function assertPassesThrough(response: Response, label: string) {
+  assert.equal(response.status, 200, label);
+  assert.equal(response.headers.get("location"), null, label);
+  assert.equal(response.headers.get("x-middleware-next"), "1", label);
+}
+
+test("a tagged blog URL gets a 308 to the same URL without the tag", async () => {
+  for (const [tagged, clean] of [
+    ["/blog?from_theconsensus=1", "/blog"],
+    ["/blog/some-post?from_theconsensus=1", "/blog/some-post"],
+    ["/blog/some-post.md?from_theconsensus=1", "/blog/some-post.md"],
+    ["/blog/some-post?from_theconsensus", "/blog/some-post"],
+    ["/blog/some-post?from_theconsensus=0", "/blog/some-post"],
+    ["/blog/some-post?from_theconsensus=1&from_theconsensus=2", "/blog/some-post"],
+  ]) {
+    for (const method of ["GET", "HEAD"]) {
+      const response = await proxy(request(tagged, {}, method), event);
+      assert.equal(response.status, 308, `${method} ${tagged}`);
+      assert.equal(
+        response.headers.get("location"),
+        `https://www.prisma.io${clean}`,
+        `${method} ${tagged}`,
+      );
+      assert.equal(response.headers.get("x-middleware-next"), null, `${method} ${tagged}`);
+    }
+  }
+});
+
+test("agents get the redirect too, and the clean URL then serves them as usual", async () => {
+  for (const [label, headers] of [
+    ["Accept: text/markdown", { accept: "text/markdown" }],
+    [
+      "ChatGPT-User",
+      {
+        "user-agent":
+          "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+      },
+    ],
+    [
+      "Googlebot",
+      { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
+    ],
+  ] as [string, Record<string, string>][]) {
+    const tagged = await proxy(request("/blog/some-post?from_theconsensus=1", headers), event);
+    assert.equal(tagged.status, 308, label);
+    assert.equal(tagged.headers.get("location"), "https://www.prisma.io/blog/some-post", label);
+
+    const clean = await proxy(request("/blog/some-post", headers), event);
+    assertPassesThrough(clean, label);
+  }
+});
+
+test("only the tag leaves the query: every other parameter stays, in order", async () => {
+  const response = await proxy(
+    request("/blog/some-post?utm_source=a&from_theconsensus=1&ref=b&ref=c"),
+    event,
+  );
+  assert.equal(response.status, 308);
+  assert.equal(
+    response.headers.get("location"),
+    "https://www.prisma.io/blog/some-post?utm_source=a&ref=b&ref=c",
+  );
+});
+
+test("nothing else redirects: other parameters, other paths and other methods", async () => {
+  for (const pathname of [
+    "/blog",
+    "/blog/some-post",
+    "/blog/some-post?utm_source=a&ref=b",
+    "/blog/some-post?from_theconsensus_v2=1",
+    "/blog/some-post?ref=from_theconsensus",
+    "/blogroll?from_theconsensus=1",
+    "/pricing/enterprise?from_theconsensus=1",
+    "/docs/orm/overview?from_theconsensus=1",
+    "/?from_theconsensus=1",
+  ]) {
+    assertPassesThrough(await proxy(request(pathname), event), pathname);
+  }
+
+  for (const method of ["POST", "PUT", "DELETE", "OPTIONS"]) {
+    assertPassesThrough(
+      await proxy(request("/blog/some-post?from_theconsensus=1", {}, method), event),
+      method,
+    );
+  }
+});
+
 // --- product guides: /postgres/<slug> and /compute/<slug> --------------------
 
 const answerUrls = getAnswerEntries().map((entry) => entry.url);

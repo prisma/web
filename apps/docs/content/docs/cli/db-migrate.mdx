@@ -66,6 +66,10 @@ npx prisma db migrate --db "$DATABASE_URL" --to production
 
 Manage refs with [`migration ref`](/cli/migration-ref).
 
+## When the marker is outside your migrations
+
+Before it runs anything, `db migrate` checks that the database's marker names a contract state that one of your migrations starts or ends at, in every contract space. When it does not, the command fails with `MIGRATION.MARKER_MISMATCH` and changes nothing. The error's `why` says what moved the database there, such as a migration that is no longer on disk or a `db update`. Its next actions give two ways back, and neither resets the database: `db update` for a database whose migration history does not need to be kept, or new migrations for a database that changes only through migrations, such as production. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) walks through both.
+
 ## When an apply fails [#when-an-apply-fails]
 
 Each operation checks the database before and after it runs, as [How migrations work](/orm/migrations/how-migrations-work#every-operation-checks-itself) explains. When a check fails, `db migrate` stops and its `why` says which check failed and, when the check names one object, what the database already has or lacks:
@@ -77,7 +81,7 @@ Each operation checks the database before and after it runs, as [How migrations 
 
 Some checks name no object, such as a check about data or a check in a migration planned before `8.0.0-rc.20`. For those, `why` says only "That check failed on this database."
 
-The `why` ends by saying whether the database changed. On PostgreSQL and SQLite a failed apply is rolled back, so it says "The failed apply changed nothing." MongoDB has no transaction around a migration, so once an operation has written anything it says "The operations that ran before the failure stay applied." Before `8.0.0-rc.20`, `db migrate` said a failed apply on MongoDB changed nothing even when earlier operations stayed applied.
+The `why` ends by saying whether the database changed. On PostgreSQL and SQLite a failed apply is rolled back, so it says "The failed apply changed nothing." MongoDB has no transaction around a migration, so once an operation has written anything it says "The operations that ran before the failure stay applied." Before `8.0.0-rc.20`, `db migrate` said a failed apply on MongoDB changed nothing even when earlier operations stayed applied. When the apply stopped in an extension's [contract space](/cli/migration-status#contract-spaces) rather than your own, the `why` also names it, ending with `The apply stopped in contract space "<id>".`, and `meta.failingSpace` holds its id. After you fix the cause, run `db migrate` again: it skips the migrations that were applied and finishes the rest.
 
 With `--json`, the error's `meta` holds the same facts:
 

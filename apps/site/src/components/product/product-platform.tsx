@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion/reveal";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 import { PlatformStack } from "./platform-stack";
 import type { ProductPageContent } from "./types";
 
@@ -16,7 +17,13 @@ const SWAP_LINE = "Best together. Swappable when needed.";
 // the stack layer by layer and watch the golden path dim rather than break. The
 // argument for using all of Prisma is made by what they lose on each swap, in
 // the stack's own footer, rather than by a diagram insisting on it.
-export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform">) {
+export function ProductPlatform({
+  platform,
+  points,
+}: Pick<ProductPageContent, "platform"> & {
+  /** Short named claims under the intro. Not cards: the stack below is the visual. */
+  points?: readonly { title: string; body: string }[];
+}) {
   return (
     <section className="relative overflow-hidden bg-white px-4 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-site">
@@ -28,11 +35,31 @@ export function ProductPlatform({ platform }: Pick<ProductPageContent, "platform
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-              {platform.body}
+              {renderFaqAnswer(platform.body)}
             </p>
           </Reveal>
+          {points?.length ? (
+            <div className="mt-10 grid gap-8 text-left sm:grid-cols-3">
+              {points.map((point) => (
+                <div key={point.title}>
+                  <h3 className="text-[0.9375rem] font-semibold leading-snug text-foreground">
+                    {point.title}
+                  </h3>
+                  <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
+                    {point.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <Reveal delay={0.16}>
-            <p className="mt-4 text-pretty font-semibold leading-relaxed text-foreground">
+            <p
+              className={
+                points?.length
+                  ? "mt-10 text-pretty font-semibold leading-relaxed text-foreground"
+                  : "mt-4 text-pretty font-semibold leading-relaxed text-foreground"
+              }
+            >
               {SWAP_LINE}
             </p>
           </Reveal>
