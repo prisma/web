@@ -34,7 +34,3 @@ test("a page without a Markdown rendition names none", () => {
 test("the homepage names /index.md", () => {
   assert.deepEqual(homeMetadata.alternates?.types, { "text/markdown": "/index.md" });
 });
-
-test("the homepage includes the Toolradar verification meta tag", () => {
-  assert.equal(homeMetadata.other?.["toolradar-verify"], "toolradar-verify-vDqf_MSPnb-3W9WW01608G");
-});
