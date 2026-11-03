@@ -1,3 +1,4 @@
+import { PROVIDER_COMPARISON } from "../mcp-content";
 import { CapabilityCard, type McpCapabilityIcon } from "./capability-cards";
 
 export type McpCapability = {
@@ -25,6 +26,16 @@ export function McpCapabilitiesSection({
             />
           ))}
         </div>
+        <p className="mt-8 text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
+          {PROVIDER_COMPARISON.lead}{" "}
+          <a
+            href={PROVIDER_COMPARISON.href}
+            className="font-semibold text-foreground underline underline-offset-4 transition-colors hover:text-prism-cyan-700"
+          >
+            {PROVIDER_COMPARISON.label}
+          </a>
+          .
+        </p>
       </div>
     </section>
   );

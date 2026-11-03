@@ -119,6 +119,13 @@ export const capabilities: McpCapability[] = [
   },
 ];
 
+/** Shown under the capability cards, for readers weighing other providers' servers. */
+export const PROVIDER_COMPARISON = {
+  lead: "Comparing MCP servers across Postgres providers?",
+  label: "See what each provider's server can do and which permission controls it offers",
+  href: "/postgres/ai-agent-mcp-databases",
+};
+
 export const TALLY_HREF = "https://tally.so/r/wA1R1N";
 
 export const MANUAL_CONFIG = JSON.stringify(
