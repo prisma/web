@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { staticManifestPath, type StaticAssets } from "./static-assets.ts";
 import { POSTHOG_API_HOST } from "../packages/ui/src/lib/posthog-config.ts";
 import { get as httpGet } from "node:http";
+import { assertIndexable } from "./indexability.ts";
 
 let session: DevSession | undefined;
 let origin: string | undefined = process.argv[2];
@@ -88,13 +89,6 @@ try {
       true,
     );
     assert.equal(response.status, 200, `${path}: expected a working page`);
-    if (process.env.WEB_REQUIRE_INDEXABLE === "1") {
-      assert.doesNotMatch(
-        response.headers.get("x-robots-tag") ?? "",
-        /\b(?:noindex|none)\b/i,
-        `${path}: public host must be indexable, including internal ingress headers`,
-      );
-    }
     for (const name of [
       "x-composer-public-document",
       "x-nextjs-cache",
@@ -109,6 +103,7 @@ try {
       `${path}: escaped the local stack`,
     );
     const html = await response.text();
+    if (process.env.WEB_REQUIRE_INDEXABLE === "1") assertIndexable(response.headers, html, path);
     if (path === "/docs/composer") {
       documentVary = response.headers.get("vary");
     }
