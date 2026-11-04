@@ -104,14 +104,7 @@ export function HipaaHero() {
                   Compare plans
                 </Link>
               </p>
-              {/* Light in-page jump to the competitor table further down —
-                  same #anchor pattern as careers → #open-positions. */}
-              <p className="mt-2 text-sm text-muted-foreground">
-                <Link href={`#${HIPAA_COMPARE_ANCHOR}`} className={INLINE_LINK}>
-                  See how Prisma Postgres compares for HIPAA&nbsp;&rarr;
-                </Link>
-              </p>
-              <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
+              <ul className="mt-6 flex flex-col gap-2.5 border-t border-black/[0.07] pt-6">
                 {[
                   {
                     label: "A signed BAA with covered entities or business associates",
