@@ -23,9 +23,10 @@ export function HipaaRegionFlip({ className }: { className?: string }) {
 
   useEffect(() => {
     if (reduceMotion) return;
+    // ~2s fully visible, then a long soft crossfade into the next region.
     const id = window.setInterval(() => {
       setIndex((i) => (i + 1) % US_REGIONS.length);
-    }, 2000);
+    }, 3200);
     return () => window.clearInterval(id);
   }, [reduceMotion]);
 
@@ -48,10 +49,11 @@ export function HipaaRegionFlip({ className }: { className?: string }) {
         <span
           key={region}
           className={cn(
-            "col-start-1 row-start-1 text-right transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            // ~1.1s soft dissolve + whisper of vertical drift — calm, not snappy.
+            "col-start-1 row-start-1 text-right transition-[opacity,transform] duration-[1100ms] ease-[cubic-bezier(0.33,0,0.2,1)]",
             i === index
               ? "translate-y-0 opacity-100"
-              : "pointer-events-none translate-y-1 opacity-0",
+              : "pointer-events-none translate-y-[0.2rem] opacity-0",
           )}
           aria-hidden={i !== index}
         >
