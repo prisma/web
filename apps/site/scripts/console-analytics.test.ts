@@ -36,6 +36,7 @@ function setup() {
     commands: () => (window.dataLayer as ArrayLike<unknown>[]).map((entry) => Array.from(entry)),
   };
 }
+const externalId = "0123456789abcdef".repeat(4);
 const grant = {
   type: "console-analytics",
   consent: { decided: true, analytics: true, advertisement: true },
@@ -46,6 +47,7 @@ const grant = {
     method: "google",
     email: "private@example.com",
     openaiEventId: "a1b2c3d4e5f6",
+    openaiExternalId: externalId,
   },
 };
 const googleSdk = "https://www.googletagmanager.com/gtag/js?id=G-4B72WBX9ET";
@@ -205,6 +207,15 @@ test("loads the OpenAI pixel on advertising consent only and measures a signup o
   assert.equal(calls.filter((c) => c.startsWith('["consent"')).length, 0);
   const measures = calls.filter((call) => call.startsWith('["measure"'));
   assert.equal(measures.length, 1);
+  // The hashed user id is set on the pixel right before the sign-up is measured.
+  const identified = calls.indexOf(
+    JSON.stringify([
+      "init",
+      { pixelId: OPENAI_ADS_PIXEL_ID, user: { external_id_sha256: externalId } },
+    ]),
+  );
+  assert.ok(identified > 0);
+  assert.equal(calls.indexOf(measures[0]), identified + 1);
   assert.equal(
     measures[0],
     JSON.stringify([
@@ -227,6 +238,25 @@ test("loads the OpenAI pixel on advertising consent only and measures a signup o
     conversion: { id: "handoff-4", event: "sign_up", method: "email", openaiEventId: "bad id!" },
   });
   assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
+
+  // A malformed customer identifier is dropped; the sign-up is still measured.
+  app.send({
+    ...grant,
+    conversion: {
+      id: "handoff-5",
+      event: "sign_up",
+      method: "email",
+      openaiEventId: "eeee",
+      openaiExternalId: "not a hash",
+    },
+  });
+  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 2);
+  assert.equal(
+    oaiqCalls(app).filter(
+      ([command, data]) => command === "init" && (data as { user?: unknown }).user,
+    ).length,
+    1,
+  );
 
   // Revoking advertising consent is passed to the SDK, which drops its cookies.
   app.send({
