@@ -225,9 +225,9 @@ function ComplianceCard() {
         <div className="border-t border-black/[0.06] pt-3">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5 sm:gap-x-7 lg:gap-x-8">
             <HipaaCompliantMark className="h-10 sm:h-11" />
-            <Soc2TypeIiMark className="h-7 opacity-[0.85] sm:h-8" />
-            <Iso27001Mark className="h-7 opacity-[0.85] sm:h-8" />
-            <GdprMark className="h-7 opacity-[0.85] sm:h-8" />
+            <Soc2TypeIiMark className="h-8 opacity-[0.85] sm:h-9" />
+            <Iso27001Mark className="h-8 opacity-[0.85] sm:h-9" />
+            <GdprMark className="h-8 opacity-[0.85] sm:h-9" />
           </div>
         </div>
       </div>
