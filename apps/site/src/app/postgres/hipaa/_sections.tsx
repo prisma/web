@@ -264,7 +264,11 @@ export function HipaaGlance() {
       heading: "How do I get a BAA?",
       body: (
         <>
-          Read or download the BAA, sign up and upgrade your workspace to Business, then email{" "}
+          Read or download the{" "}
+          <Link href={BAA_HTML_PATH} className={INLINE_LINK}>
+            BAA
+          </Link>
+          , sign up and upgrade your workspace to Business, then email{" "}
           <a href={BAA_MAILTO} className={INLINE_LINK}>
             compliance@prisma.io
           </a>{" "}
