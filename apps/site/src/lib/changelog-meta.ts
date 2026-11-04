@@ -83,7 +83,7 @@ const AREA_PATTERNS: [ChangelogCategory, RegExp][] = [
   ["studio", /studio/],
   ["compute", /compute|composer/],
   ["postgres", /postgres|accelerate|pulse|data platform/],
-  ["orm", /orm|client|migrate|schema/],
+  ["orm", /\borm\b|client|migrate|schema/],
 ];
 
 export function categoriesForTags(tags: string[] = []): ChangelogCategory[] {

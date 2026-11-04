@@ -22,6 +22,9 @@ test("the colouring area is the most specific one", () => {
 
 test("tags that name no product are platform-wide", () => {
   assert.deepEqual(categoriesForTags(["Prisma", "REST API"]), ["platform"]);
+  // "Platform" contains "orm"; it must not read as an ORM tag.
+  assert.deepEqual(categoriesForTags(["Prisma Compute", "Platform"]), ["compute"]);
+  assert.deepEqual(categoriesForTags(["Platform"]), ["platform"]);
   assert.deepEqual(categoriesForTags(), ["platform"]);
   assert.equal(categoryForTags(["MCP"]), "platform");
 });

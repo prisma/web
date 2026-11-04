@@ -249,13 +249,21 @@ function EntryCard({
       />
 
       <div className="relative">
-        {/* meta row: category chip + date (date shows here on mobile, where the
-            rail is hidden) */}
+        {/* meta row: one chip per product area the entry belongs to, then the
+            date (which shows here on mobile, where the rail is hidden) */}
         <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.09] bg-white px-2 py-1 text-xs font-semibold leading-none text-foreground shadow-[0_1px_2px_rgba(21,21,21,0.05)]">
-            <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} />
-            {meta.label}
-          </span>
+          {entry.categories.map((id) => (
+            <span
+              key={id}
+              className="inline-flex items-center gap-1.5 rounded-md border border-black/[0.09] bg-white px-2 py-1 text-xs font-semibold leading-none text-foreground shadow-[0_1px_2px_rgba(21,21,21,0.05)]"
+            >
+              <span
+                aria-hidden
+                className={cn("size-1.5 shrink-0 rounded-full", CATEGORY_META[id].dot)}
+              />
+              {CATEGORY_META[id].label}
+            </span>
+          ))}
           {entry.highlight && (
             <span className={cn("text-xs font-semibold", meta.text)}>Highlight</span>
           )}
