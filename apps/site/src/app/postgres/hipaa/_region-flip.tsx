@@ -39,8 +39,6 @@ export function HipaaRegionFlip({ className }: { className?: string }) {
     };
   }, [reduceMotion]);
 
-  const current = US_REGIONS[index] ?? US_REGIONS[0];
-
   if (reduceMotion) {
     return <span className={cn("font-mono", className)}>{REGION_LIST}</span>;
   }
@@ -64,12 +62,13 @@ export function HipaaRegionFlip({ className }: { className?: string }) {
             "absolute inset-y-0 right-0 whitespace-nowrap transition-opacity duration-[1800ms] ease-in-out",
             i === index ? "opacity-100" : "opacity-0",
           )}
-          aria-hidden={i !== index}
+          aria-hidden
         >
           {region}
         </span>
       ))}
-      <span className="sr-only">{current}</span>
+      {/* Always expose both regions to AT; the flip is visual-only. */}
+      <span className="sr-only">{REGION_LIST}</span>
     </span>
   );
 }
