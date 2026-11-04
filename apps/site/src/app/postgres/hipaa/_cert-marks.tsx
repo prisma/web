@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 // at crisp resolution in the same grey-on-dark palette. Source PNGs live
 // under /public/postgres/hipaa/certs/ for provenance.
 
-// Mid grey that reads on the light card surface (assets were grey-on-dark;
-// darkened slightly so the marks stay elegant without a charcoal plaque).
-const MARK_GREY = "#6E6E6E";
+// Mid grey on the light card surface. HIPAA defaults larger; companions
+// default quieter — callers may override height via className.
+const MARK_GREY = "#5F5F5F";
 
 type MarkProps = {
   className?: string;
@@ -21,7 +21,7 @@ export function HipaaCompliantMark({ className }: MarkProps) {
       viewBox="0 0 148 44"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-9 w-auto", className)}
+      className={cn("h-10 w-auto", className)}
       aria-hidden
     >
       {/* Caduceus — winged staff with twin serpents */}
@@ -65,7 +65,7 @@ export function Soc2TypeIiMark({ className }: MarkProps) {
       viewBox="0 0 92 44"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-9 w-auto", className)}
+      className={cn("h-8 w-auto", className)}
       aria-hidden
     >
       <path
@@ -124,7 +124,7 @@ export function Iso27001Mark({ className }: MarkProps) {
       viewBox="0 0 118 44"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-9 w-auto", className)}
+      className={cn("h-8 w-auto", className)}
       aria-hidden
     >
       {/* ISO-style globe mark */}
@@ -162,7 +162,7 @@ export function GdprMark({ className }: MarkProps) {
       viewBox="0 0 44 44"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={cn("h-9 w-auto", className)}
+      className={cn("h-8 w-auto", className)}
       aria-hidden
     >
       {stars.map(({ cx, cy, key }) => (

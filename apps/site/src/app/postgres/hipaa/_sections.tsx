@@ -210,16 +210,19 @@ function ComplianceCard() {
             </div>
           ))}
         </div>
-        {/* Grey monochrome cert marks — no dark plaque; sit on the card
-            surface. HIPAA leads, then SOC 2, ISO 27001, GDPR. */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3 pt-1">
-          <HipaaCompliantMark />
-          <Soc2TypeIiMark />
-          <Iso27001Mark />
-          <GdprMark />
+        {/* Cert marks: quiet hairline group on the light card — no dark box.
+            HIPAA carries more weight; companions sit a step quieter. Gaps and
+            padding tuned against the settings rows above and the footnote below. */}
+        <div className="mt-1 border-t border-black/[0.06] pt-5 pb-0.5">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3.5 sm:gap-x-8">
+            <HipaaCompliantMark className="h-10" />
+            <Soc2TypeIiMark className="h-[1.875rem] opacity-[0.88]" />
+            <Iso27001Mark className="h-[1.875rem] opacity-[0.88]" />
+            <GdprMark className="h-[1.875rem] opacity-[0.88]" />
+          </div>
         </div>
       </div>
-      <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] text-muted-foreground">
+      <p className="border-t border-border/70 bg-muted/40 px-5 py-3.5 text-[0.8125rem] leading-snug text-muted-foreground">
         One BAA for the workspace. Encryption, isolation and backups are on by default.
       </p>
     </div>
