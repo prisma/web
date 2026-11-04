@@ -135,6 +135,7 @@ test("everything the proxy must not intercept maps to undefined", () => {
     "/changelog.md",
     "/skill.md",
     "/favicon.ico",
+    "/listings/homepage.png",
     "/sitemap.xml",
     "/robots.txt",
     // Pages that exist but have no rendition.

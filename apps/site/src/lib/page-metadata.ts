@@ -3,7 +3,7 @@ import { getBaseUrl } from "@/lib/url";
 import { SITE_NAME } from "@/lib/site-metadata";
 import { getOgCardUrl } from "@/lib/og-card";
 import { getAgentMarkdownPath, getMarkdownUrlPath } from "@/lib/agent-markdown";
-import type { OgAccent } from "@prisma-docs/ui/components/og-image";
+import { OG_HEIGHT, OG_WIDTH, type OgAccent } from "@prisma-docs/ui/components/og-image";
 
 type PageMetadataOptions = {
   title: string;
@@ -13,6 +13,12 @@ type PageMetadataOptions = {
   ogKicker?: string;
   /** Product accent on the generated card. Defaults to cyan. */
   ogAccent?: OgAccent;
+  /**
+   * A page with its own generated card (the app pages render a screenshot
+   * and the author on theirs) names its route here, with alt text for the
+   * platforms that read it. The default text card is skipped.
+   */
+  ogImage?: { path: string; alt: string };
 };
 
 /**
@@ -56,14 +62,17 @@ export function createPageMetadata({
   path,
   ogKicker,
   ogAccent,
+  ogImage,
 }: PageMetadataOptions): Metadata {
   const title = withSiteName(rawTitle);
-  const ogImagePath = getOgCardUrl({
-    title: ogCardHeadline(rawTitle, ogKicker ?? SITE_NAME),
-    description,
-    kicker: ogKicker,
-    accent: ogAccent,
-  });
+  const ogImagePath =
+    ogImage?.path ??
+    getOgCardUrl({
+      title: ogCardHeadline(rawTitle, ogKicker ?? SITE_NAME),
+      description,
+      kicker: ogKicker,
+      accent: ogAccent,
+    });
   const pathname = path === "/" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const baseUrl = getBaseUrl();
   const url = new URL(pathname, baseUrl).toString();
@@ -93,7 +102,11 @@ export function createPageMetadata({
       siteName: "Prisma",
       locale: "en_US",
       type: "website",
-      images: [{ url: ogImageUrl }],
+      images: [
+        ogImage
+          ? { url: ogImageUrl, width: OG_WIDTH, height: OG_HEIGHT, alt: ogImage.alt }
+          : { url: ogImageUrl },
+      ],
     },
     twitter: {
       card: "summary_large_image",

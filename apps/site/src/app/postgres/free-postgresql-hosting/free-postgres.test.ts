@@ -134,7 +134,7 @@ test("title, meta and H1 match the brief", () => {
 });
 
 test("FAQ answers strip cleanly and match FAQPage JSON-LD", () => {
-  assert.equal(FREE_POSTGRES_FAQ.length, 12);
+  assert.equal(FREE_POSTGRES_FAQ.length, 13);
 
   const structured = createFaqStructuredData(
     FREE_POSTGRES_PATH,

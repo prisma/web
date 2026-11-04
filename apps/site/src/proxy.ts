@@ -11,10 +11,9 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
  * Three jobs, in this order.
  *
  * 1. A permanent redirect from a `/blog` URL carrying `?from_theconsensus` to
- *    the same URL without it (see `blogLinkTagRedirect`). It comes first so a
- *    visit reaches Agent Front once, on the clean URL.
- * 2. Agent Front (`src/agent-front.ts`, ora's file, with one change marked
- *    PRISMA LOCAL CHANGE that strips the query string from the referer)
+ *    the same URL without it (see `blogLinkTagRedirect`).
+ * 2. Agent Front (`src/agent-front.ts`, ora's generated file, which strips
+ *    query strings and fragments from reported referers)
  *    reports each page request to ora after the response has been sent, so the
  *    Agent traffic page can tell agents from people. It answers a request
  *    itself only for `/__ora/status`, or once Autopilot is switched on in the
@@ -32,6 +31,11 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const redirected = blogLinkTagRedirect(request);
   if (redirected) return redirected;
+
+  // Prisma owns /mcp, including during an Ora policy outage.
+  if (request.nextUrl.pathname === "/mcp" || request.nextUrl.pathname === "/mcp/") {
+    return agentMarkdown(request);
+  }
 
   const answered = await handleAgentFront(request, event);
   if (answered) return answered;
@@ -178,3 +182,4 @@ export const config = {
     },
   ],
 };
+

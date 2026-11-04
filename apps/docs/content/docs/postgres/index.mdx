@@ -77,6 +77,37 @@ Current docs: https://www.prisma.io/docs/postgres.md.
 
 </AgentPrompt>
 
+### Already have a Prisma schema?
+
+If your project already has a `prisma/schema.prisma` file for PostgreSQL (Prisma ORM 7 or earlier), skip the quickstarts and apply your schema to a new database. These steps create the tables, not the rows: to bring existing data from another PostgreSQL database, local or hosted, follow [Import from PostgreSQL](/prisma-postgres/import-from-existing-database-postgresql) instead. Install the project's dependencies first, so `npx prisma` runs the project's Prisma CLI. If `package.json` lists `@prisma/client` but not `prisma`, add `prisma` as a dev dependency at the same version as `@prisma/client`.
+
+1. Create the database and write its connection string to `.env`. `create-db` needs Node.js 20.12 or later; on an older Node.js, create the database in the [Console](https://console.prisma.io) and copy its direct connection string into `.env` instead.
+
+   ```npm
+   npx create-db@latest --env .env
+   ```
+
+   `--env .env` appends `DATABASE_URL` and `CLAIM_URL` to `.env`. If the file already had either line, delete the older one, so the claim URL you open belongs to the new database. In a Prisma ORM 6 project, also remove `DATABASE_URL` from `prisma/.env` if that file sets it: Prisma ORM 6 stops with an error when both files set the same variable. The connection string uses the direct host, `db.prisma.io`, which is the one migrations need.
+
+2. Point the Prisma CLI at the new database before you run a migration:
+   - If the config or the schema's `datasource` block reads another variable for migrations, such as `DIRECT_URL`, set it to the same connection string.
+   - If your shell already sets `DATABASE_URL` or that variable, unset it: a value set in the shell is used instead of the one in `.env`.
+   - If the project has a `prisma.config.ts` (every Prisma ORM 7 project does), it loads `.env` only when it starts with `import "dotenv/config"`, with `dotenv` installed. Add the line if it is missing ([Prisma Config reference](/orm/v7/reference/prisma-config-reference)).
+
+3. Apply the schema:
+
+   ```npm
+   npx prisma migrate deploy
+   ```
+
+   `migrate deploy` applies the migrations in the project's migrations folder that the database has not run yet: `prisma/migrations`, unless `prisma.config.ts` sets another `migrations.path`. It applies nothing else, so if the schema has changes that no migration contains yet, create that migration first with `npx prisma migrate dev` against a development database. If the project has never used Prisma Migrate and has no migrations folder, `npx prisma db push` creates the tables from the schema instead.
+
+Before the database serves production traffic:
+
+- Open `CLAIM_URL` and claim the database with a free Prisma account. Unclaimed databases are deleted after 24 hours.
+- Give the app the pooled connection string in `DATABASE_URL`, and put the direct one in a separate variable, such as `DIRECT_URL`, that the Prisma CLI reads for migrations. Migrations through the pooler can fail with lock or prepared-statement errors ([Recommended setups](/postgres/database/connecting-to-your-database#recommended-setups)).
+- Pick a plan with backups: daily backups are kept for 7 days on Starter and Pro and for 30 days on Business. The Free plan has no backups.
+
 ## What's included
 
 Each Prisma Postgres database includes the following, with no extra services to configure:

@@ -4,9 +4,9 @@ export const NEON_TITLE =
   "Prisma Postgres vs Neon: TypeScript app hosting or Neon backend primitives?";
 
 export const NEON_DESCRIPTION =
-  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Neon for Functions, Auth, Object Storage, and AI Gateway. Checked October 2026.";
+  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Neon for Functions, Auth, Object Storage, and AI Gateway. Checked November 2026.";
 
-export const CHECKED = "October 2026";
+export const CHECKED = "November 2026";
 
 /** The blog's author page and photo; `/blog` is rewritten to the blog app. */
 export const NEON_AUTHOR = {
@@ -16,7 +16,7 @@ export const NEON_AUTHOR = {
 } as const;
 
 export const NEON_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const NEON_UPDATED = { iso: "2026-10-30", label: "October 2026" } as const;
+export const NEON_UPDATED = { iso: "2026-11-03", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -187,7 +187,7 @@ export const PRICING: readonly {
   },
   {
     label: "Spend controls",
-    neon: "Spending notifications on Launch and Scale. Invoices under $0.50 are not collected.",
+    neon: "Spending notifications on Launch and Scale, which only alert; a compute size limit caps compute spend; per-project quotas set through the Neon API suspend compute. Invoices under $0.50 are not collected.",
     prisma: "Spend limits on Starter, Pro, and Business.",
     sources: {
       neon: "https://neon.com/pricing",

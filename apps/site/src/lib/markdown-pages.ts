@@ -171,7 +171,7 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
     h1: FREE_POSTGRES_MARKDOWN_H1,
     subheadline: FREE_POSTGRES_MARKDOWN_SUBHEADLINE,
     renderBody: renderFreePostgresqlDatabaseMarkdown,
-    checked: "October 2026",
+    checked: "November 2026",
     dateModified: FREE_POSTGRES_LAST_MODIFIED,
   },
 };
