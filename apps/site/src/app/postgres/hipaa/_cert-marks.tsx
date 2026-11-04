@@ -107,12 +107,12 @@ export function Soc2TypeIiMark({ className }: MarkProps) {
         x="36"
         y="35"
         fill={MARK_GREY}
-        fontSize="6.5"
+        fontSize="7.5"
         fontWeight="600"
-        letterSpacing="0.14em"
+        letterSpacing="0.12em"
         style={{ fontFamily: "var(--font-sans, system-ui, sans-serif)" }}
       >
-        CERTIFIED
+        ATTESTED
       </text>
     </svg>
   );
