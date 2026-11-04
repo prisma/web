@@ -136,22 +136,70 @@ export function HipaaHero() {
               </ul>
             </div>
 
-            {/* Hero visual: a compliance-settings panel, same card shell idiom
-                as the /postgres hero tour. */}
+            {/* Hero visual: compliance panel in front; a quiet dark terminal
+                peeks from behind on desktop only so it never crowds mobile. */}
             <div className="relative max-md:mt-4 md:flex md:items-center">
               <PrismRay
                 className="left-[75%] top-1/2 h-12 w-[32rem] -translate-x-1/2 -translate-y-1/2 md:h-24 md:w-[64rem]"
                 angle={-50}
                 intensity="hero"
               />
-              <div className="relative w-full">
-                <ComplianceCard />
+              <div className="relative w-full md:pb-5 md:pl-3 lg:pb-6 lg:pl-4">
+                <HipaaTerminal
+                  aria-hidden
+                  className="pointer-events-none absolute -left-1 top-8 z-0 hidden w-[90%] max-w-[28rem] select-none md:block lg:-left-2 lg:top-10 lg:w-[88%]"
+                />
+                <div className="relative z-10 md:ml-6 lg:ml-8">
+                  <ComplianceCard />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+// Dark terminal layered behind the compliance panel on md+. Generic fake
+// ops only (no PHI, no "encrypted"/"HIPAA" lines). Stays quieter than the
+// panel so the H1 and compliance card keep focus.
+function HipaaTerminal({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<"div">) {
+  return (
+    <div
+      {...props}
+      className={cn(
+        "overflow-hidden rounded-2xl border border-white/[0.08] bg-[#141414] text-left shadow-[0_12px_40px_-20px_rgba(21,21,21,0.45)]",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
+        <span className="size-2 rounded-full bg-white/15" />
+        <span className="size-2 rounded-full bg-white/15" />
+        <span className="ml-1.5 font-mono text-[0.6875rem] text-white/40">
+          acme-health / terminal
+        </span>
+      </div>
+      <pre className="overflow-hidden px-4 py-3.5 font-mono text-[0.6875rem] leading-[1.55] text-white/55 sm:text-[0.75rem]">
+        <span className="text-prism-cyan-400">$</span>
+        {" npx prisma migrate deploy\n"}
+        {"  Applying migration 20261104_init\n"}
+        {"  "}
+        <span className="text-prism-cyan-400">✔</span>
+        {" All migrations applied\n"}
+        <span className="text-prism-cyan-400">$</span>
+        {' psql "postgres://••••@db.prisma.io:5432/acme_health"\n'}
+        <span className="text-prism-cyan-400/80">{"acme_health=>"}</span>
+        {" select count(*) from appointments;\n"}
+        {" count\n"}
+        {"-------\n"}
+        {"     1\n"}
+        {"(1 row)"}
+      </pre>
+    </div>
   );
 }
 
