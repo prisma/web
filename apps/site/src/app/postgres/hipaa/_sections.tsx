@@ -137,13 +137,13 @@ export function HipaaHero() {
 
             {/* Hero visual: a compliance-settings panel, same card shell idiom
                 as the /postgres hero tour. */}
-            <div className="relative max-md:mt-4 md:self-stretch">
+            <div className="relative max-md:mt-4 md:flex md:items-center">
               <PrismRay
                 className="left-[75%] top-1/2 h-12 w-[32rem] -translate-x-1/2 -translate-y-1/2 md:h-24 md:w-[64rem]"
                 angle={-50}
                 intensity="hero"
               />
-              <div className="relative md:h-full">
+              <div className="relative w-full">
                 <ComplianceCard />
               </div>
             </div>
@@ -167,7 +167,7 @@ function ComplianceCard() {
     <div
       role="img"
       aria-label="Illustration of a Prisma Postgres workspace on the Business plan with a signed BAA, encryption, a US region, 30 day backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
-      className="pointer-events-none relative flex h-full w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
+      className="pointer-events-none relative flex w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
     >
       <div className="flex items-center gap-2 border-b border-border/70 px-5 py-3.5">
         <span className="size-2 rounded-full bg-border" />
@@ -176,7 +176,9 @@ function ComplianceCard() {
           acme-health / settings / compliance
         </span>
       </div>
-      <div className="flex flex-1 flex-col justify-center gap-5 p-5 sm:gap-6 sm:p-6">
+      {/* Height follows content — no h-full/justify-center stretch, which left
+          the tall empty band Martin marked between the divider and footer. */}
+      <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-xl border border-black/[0.06] bg-prism-cyan-50">
             <Shield className="size-5 text-prism-cyan-800" aria-hidden />
@@ -210,11 +212,10 @@ function ComplianceCard() {
             </div>
           ))}
         </div>
-        {/* Cert marks on the light card — no dark box. HIPAA leads with more
-            optical weight; companions are a step smaller and quieter. Hairline
-            + padding separate the row from settings above and the footnote. */}
-        <div className="border-t border-black/[0.06] pt-5 sm:pt-6">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 sm:gap-x-7 lg:gap-x-8">
+        {/* Cert marks: compact band — small pad under the hairline, flush to
+            the footnote. HIPAA leads; companions quieter. No dark box. */}
+        <div className="border-t border-black/[0.06] pt-3">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5 sm:gap-x-7 lg:gap-x-8">
             <HipaaCompliantMark className="h-10 sm:h-11" />
             <Soc2TypeIiMark className="h-7 opacity-[0.85] sm:h-8" />
             <Iso27001Mark className="h-7 opacity-[0.85] sm:h-8" />
@@ -222,7 +223,7 @@ function ComplianceCard() {
           </div>
         </div>
       </div>
-      <p className="border-t border-border/70 bg-muted/40 px-5 py-3.5 text-[0.8125rem] leading-snug text-muted-foreground sm:px-6">
+      <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] leading-snug text-muted-foreground sm:px-6">
         One BAA for the workspace. Encryption, isolation and backups are on by default.
       </p>
     </div>
