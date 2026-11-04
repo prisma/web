@@ -80,8 +80,9 @@ export function HipaaHero() {
                 HIPAA compliant database for <GlassGlide>healthcare</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Prisma Postgres comes with a signed Business Associate Agreement on the Business
-                plan, encrypts your patient data, and runs your TypeScript app right next to it.
+                Prisma signs a Business Associate Agreement with covered entities and business
+                associates on the Business plan, encrypts your patient data, and runs your TypeScript
+                app right next to it.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 {/* Primary CTA goes to the same console sign-up URL the site
@@ -112,7 +113,7 @@ export function HipaaHero() {
               <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
                 {[
                   {
-                    label: "A signed Business Associate Agreement (BAA)",
+                    label: "A signed BAA with covered entities or business associates",
                     color: "text-prism-cyan-500",
                   },
                   {
@@ -155,10 +156,14 @@ export function HipaaHero() {
 }
 
 function ComplianceCard() {
+  // Card values mirror live HIPAA / Business facts on this page and pricing:
+  // Business-only HIPAA, encryption at rest + in transit, tenant isolation
+  // (not a dedicated host), us-east-1 as a real US region choice, daily
+  // backups retained 30 days on Business. "Active" illustrates a signed BAA.
   const rows = [
     { label: "Plan", value: "Business" },
     { label: "Encryption", value: "At rest and in transit" },
-    { label: "Isolation", value: "Dedicated per tenant" },
+    { label: "Isolation", value: "Isolated per tenant" },
     { label: "Region", value: "us-east-1", mono: true },
     { label: "Backups", value: "Daily, kept 30 days" },
   ];
@@ -166,7 +171,7 @@ function ComplianceCard() {
   return (
     <div
       role="img"
-      aria-label="Illustration of a Prisma Postgres workspace on the Business plan with a signed BAA, encryption, a US region, 30 day backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
+      aria-label="Illustration of a Prisma Postgres Business workspace with a signed BAA for covered entities or business associates, encryption at rest and in transit, tenant isolation, a US region, 30 day daily backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
       className="pointer-events-none relative flex w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
     >
       <div className="flex items-center gap-2 border-b border-border/70 px-5 py-3.5">
@@ -183,13 +188,13 @@ function ComplianceCard() {
           <span className="flex size-10 items-center justify-center rounded-xl border border-black/[0.06] bg-prism-cyan-50">
             <Shield className="size-5 text-prism-cyan-800" aria-hidden />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-[0.9375rem] font-semibold text-foreground">HIPAA</p>
-            <p className="text-[0.8125rem] text-muted-foreground">
-              Business Associate Agreement signed
+            <p className="text-[0.8125rem] leading-snug text-muted-foreground">
+              BAA signed with covered entity or business associate
             </p>
           </div>
-          <span className="ml-auto rounded-full border border-prism-cyan-300 bg-prism-cyan-50 px-2.5 py-1 text-[0.6875rem] font-semibold text-prism-cyan-800">
+          <span className="ml-auto shrink-0 rounded-full border border-prism-cyan-300 bg-prism-cyan-50 px-2.5 py-1 text-[0.6875rem] font-semibold text-prism-cyan-800">
             Active
           </span>
         </div>
