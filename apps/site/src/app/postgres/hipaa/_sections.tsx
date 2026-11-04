@@ -76,8 +76,8 @@ export function HipaaHero() {
           <div className="mx-auto grid max-w-site items-center gap-12 pb-20 pt-36 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:pb-28 md:pt-48 lg:gap-16">
             <div className="flex flex-col items-start">
               <RoleKicker color="bg-prism-yellow-400">Prisma Postgres for healthcare</RoleKicker>
-              <h1 className="isolate mt-4 max-w-[min(16ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
-                HIPAA compliant Postgres for <GlassGlide>healthcare apps</GlassGlide>
+              <h1 className="isolate mt-4 max-w-[min(18ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                HIPAA compliant database for <GlassGlide>healthcare</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
                 Prisma Postgres comes with a signed Business Associate Agreement on the Business
@@ -176,7 +176,7 @@ function ComplianceCard() {
           acme-health / settings / compliance
         </span>
       </div>
-      <div className="flex flex-1 flex-col justify-center gap-5 p-5 sm:p-6">
+      <div className="flex flex-1 flex-col justify-center gap-5 p-5 sm:gap-6 sm:p-6">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-xl border border-black/[0.06] bg-prism-cyan-50">
             <Shield className="size-5 text-prism-cyan-800" aria-hidden />
@@ -210,19 +210,19 @@ function ComplianceCard() {
             </div>
           ))}
         </div>
-        {/* Cert marks: quiet hairline group on the light card — no dark box.
-            HIPAA carries more weight; companions sit a step quieter. Gaps and
-            padding tuned against the settings rows above and the footnote below. */}
-        <div className="mt-1 border-t border-black/[0.06] pt-5 pb-0.5">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3.5 sm:gap-x-8">
-            <HipaaCompliantMark className="h-10" />
-            <Soc2TypeIiMark className="h-[1.875rem] opacity-[0.88]" />
-            <Iso27001Mark className="h-[1.875rem] opacity-[0.88]" />
-            <GdprMark className="h-[1.875rem] opacity-[0.88]" />
+        {/* Cert marks on the light card — no dark box. HIPAA leads with more
+            optical weight; companions are a step smaller and quieter. Hairline
+            + padding separate the row from settings above and the footnote. */}
+        <div className="border-t border-black/[0.06] pt-5 sm:pt-6">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3 sm:gap-x-7 lg:gap-x-8">
+            <HipaaCompliantMark className="h-10 sm:h-11" />
+            <Soc2TypeIiMark className="h-7 opacity-[0.85] sm:h-8" />
+            <Iso27001Mark className="h-7 opacity-[0.85] sm:h-8" />
+            <GdprMark className="h-7 opacity-[0.85] sm:h-8" />
           </div>
         </div>
       </div>
-      <p className="border-t border-border/70 bg-muted/40 px-5 py-3.5 text-[0.8125rem] leading-snug text-muted-foreground">
+      <p className="border-t border-border/70 bg-muted/40 px-5 py-3.5 text-[0.8125rem] leading-snug text-muted-foreground sm:px-6">
         One BAA for the workspace. Encryption, isolation and backups are on by default.
       </p>
     </div>
