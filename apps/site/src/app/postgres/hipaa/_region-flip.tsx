@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 
 // USA Prisma Postgres regions only (see /postgres/hipaa copy + FAQ).
 const US_REGIONS = ["us-east-1", "us-west-1"] as const;
+const FADE_MS = 1800;
+const DWELL_MS = 5000;
+const REGION_LIST = US_REGIONS.join(" / ");
 
 /** Soft opacity crossfade through US regions. No vertical motion. */
 export function HipaaRegionFlip({ className }: { className?: string }) {
@@ -21,19 +24,25 @@ export function HipaaRegionFlip({ className }: { className?: string }) {
 
   useEffect(() => {
     if (reduceMotion) return;
-    // 5s fully settled, then the ~1.8s opacity crossfade into the next region.
-    const FADE_MS = 1800;
-    const DWELL_MS = 5000;
-    const id = window.setInterval(() => {
+    // First flip after a full dwell; later flips wait dwell + fade so each
+    // region is fully settled for DWELL_MS before the next dissolve starts.
+    let intervalId: number | undefined;
+    const timeoutId = window.setTimeout(() => {
       setIndex((i) => (i + 1) % US_REGIONS.length);
-    }, DWELL_MS + FADE_MS);
-    return () => window.clearInterval(id);
+      intervalId = window.setInterval(() => {
+        setIndex((i) => (i + 1) % US_REGIONS.length);
+      }, DWELL_MS + FADE_MS);
+    }, DWELL_MS);
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (intervalId !== undefined) window.clearInterval(intervalId);
+    };
   }, [reduceMotion]);
 
   const current = US_REGIONS[index] ?? US_REGIONS[0];
 
   if (reduceMotion) {
-    return <span className={cn("font-mono", className)}>{US_REGIONS[0]}</span>;
+    return <span className={cn("font-mono", className)}>{REGION_LIST}</span>;
   }
 
   return (

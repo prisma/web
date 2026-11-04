@@ -174,7 +174,7 @@ function ComplianceCard() {
   return (
     <div
       role="img"
-      aria-label="Illustration of a Prisma Postgres Business workspace with a signed BAA for covered entities or business associates, encryption at rest and in transit, tenant isolation, a US region, 30 day daily backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
+      aria-label="Illustration of a Prisma Postgres Business workspace with a signed BAA for covered entities or business associates, encryption at rest and in transit, tenant isolation, two US regions us-east-1 and us-west-1, 30 day daily backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
       className="pointer-events-none relative flex w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
     >
       <div className="flex items-center gap-2 border-b border-border/70 px-5 py-3.5">
