@@ -171,7 +171,7 @@ function ComplianceCard() {
     { label: "Encryption", value: "At rest and in transit" },
     { label: "Isolation", value: "Isolated per tenant" },
     {
-      label: "Region",
+      label: "Two US Regions",
       value: <HipaaRegionFlip className="text-[0.8125rem] font-semibold text-foreground" />,
       mono: true,
     },
