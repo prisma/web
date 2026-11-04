@@ -34,6 +34,7 @@ import {
   TRUST_URL,
   baaComplianceMailto,
 } from "./_content";
+import { HipaaRegionFlip } from "./_region-flip";
 
 // Prefilled mailto for every link on /postgres/hipaa.
 const BAA_MAILTO = baaComplianceMailto("/postgres/hipaa");
@@ -158,13 +159,22 @@ export function HipaaHero() {
 function ComplianceCard() {
   // Card values mirror live HIPAA / Business facts on this page and pricing:
   // Business-only HIPAA, encryption at rest + in transit, tenant isolation
-  // (not a dedicated host), us-east-1 as a real US region choice, daily
-  // backups retained 30 days on Business. "Active" illustrates a signed BAA.
-  const rows = [
+  // (not a dedicated host), daily backups retained 30 days on Business.
+  // Region flips through USA regions only (us-east-1, us-west-1).
+  // "Active" illustrates a signed BAA.
+  const rows: {
+    label: string;
+    value: React.ReactNode;
+    mono?: boolean;
+  }[] = [
     { label: "Plan", value: "Business" },
     { label: "Encryption", value: "At rest and in transit" },
     { label: "Isolation", value: "Isolated per tenant" },
-    { label: "Region", value: "us-east-1", mono: true },
+    {
+      label: "Region",
+      value: <HipaaRegionFlip className="text-[0.8125rem] font-semibold text-foreground" />,
+      mono: true,
+    },
     { label: "Backups", value: "Daily, kept 30 days" },
   ];
 
@@ -209,7 +219,7 @@ function ComplianceCard() {
               <span
                 className={cn(
                   "ml-auto text-right text-[0.8125rem] font-semibold text-foreground",
-                  mono && "font-mono",
+                  mono && typeof value === "string" && "font-mono",
                 )}
               >
                 {value}
