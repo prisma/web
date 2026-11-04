@@ -79,7 +79,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Does Prisma sign a BAA, and how do I get one?",
     answer:
-      "Yes. Prisma signs a BAA with customers on the Business plan. Read or download the BAA, sign up for Prisma and upgrade your workspace to Business, then email compliance@prisma.io from your account email with your company name, address, workspace and signatory name and email. Prisma sends the agreement for e-signature.",
+      "Yes. Prisma signs a BAA with customers on the Business plan. Read or download the [BAA](/legal/baa), sign up for Prisma and upgrade your workspace to Business, then email compliance@prisma.io from your account email with your company name, address, workspace and signatory name and email. Prisma sends the agreement for e-signature.",
   },
   {
     question:
