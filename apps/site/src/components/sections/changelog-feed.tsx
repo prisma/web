@@ -13,9 +13,15 @@ import { cn } from "@/lib/utils";
 
 // The feed: a sticky category filter over a colour-coded release timeline.
 // One client component because the tabs and the list share a single piece of
-// filter state — the same call data/blog-browser makes. Twelve entries is far
-// too few to debounce or round-trip, so filtering is a plain array filter in
-// the client and the state stays out of the URL (no deep links to share yet).
+// filter state — the same call data/blog-browser makes. A few dozen entries is
+// far too few to debounce or round-trip, so filtering is a plain array filter
+// in the client and the state stays out of the URL (no deep links to share yet).
+//
+// The filter is multi-select: each pill toggles an area, and an entry shows
+// when it belongs to any selected area. An entry belongs to every area its
+// tags name (a Compute launch backed by Prisma Postgres is under both), so
+// picking Postgres lists everything about Postgres, not only entries whose
+// first tag is Postgres. No selection means every entry.
 //
 // The timeline is the redesign's answer to the live changelog's flat numbered
 // list: a vertical spine on desktop with a category-coloured node per entry,
@@ -30,25 +36,35 @@ const FMT = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-type Filter = ChangelogCategory | "all";
-
 export function ChangelogFeed({ entries: allEntries }: { entries: ChangelogEntry[] }) {
-  const [filter, setFilter] = useState<Filter>("all");
+  // The selected areas. Empty means no filter, which the "All updates" pill
+  // both shows and restores.
+  const [selected, setSelected] = useState<ReadonlySet<ChangelogCategory>>(new Set());
+
+  const toggle = (id: ChangelogCategory) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
 
   // Counts per category — totals over the whole feed that never change with the
-  // active filter.
+  // active filter. An entry counts towards every area it belongs to.
   const COUNTS = useMemo(
     () =>
       CATEGORY_ORDER.reduce<Record<string, number>>((acc, id) => {
-        acc[id] = allEntries.filter((e) => e.category === id).length;
+        acc[id] = allEntries.filter((e) => e.categories.includes(id)).length;
         return acc;
       }, {}),
     [allEntries],
   );
 
   const entries = useMemo(
-    () => (filter === "all" ? allEntries : allEntries.filter((e) => e.category === filter)),
-    [filter, allEntries],
+    () =>
+      selected.size === 0
+        ? allEntries
+        : allEntries.filter((e) => e.categories.some((id) => selected.has(id))),
+    [selected, allEntries],
   );
 
   return (
@@ -60,8 +76,8 @@ export function ChangelogFeed({ entries: allEntries }: { entries: ChangelogEntry
           <div className="pointer-events-none absolute inset-0 bg-white/80 backdrop-blur-md [mask-image:linear-gradient(to_bottom,black_70%,transparent)]" />
           <div className="relative flex flex-wrap items-center justify-center gap-2">
             <FilterPill
-              active={filter === "all"}
-              onClick={() => setFilter("all")}
+              active={selected.size === 0}
+              onClick={() => setSelected(new Set())}
               label="All updates"
               count={allEntries.length}
             />
@@ -71,8 +87,8 @@ export function ChangelogFeed({ entries: allEntries }: { entries: ChangelogEntry
             {CATEGORY_ORDER.filter((id) => (COUNTS[id] ?? 0) > 0).map((id) => (
               <FilterPill
                 key={id}
-                active={filter === id}
-                onClick={() => setFilter(id)}
+                active={selected.has(id)}
+                onClick={() => toggle(id)}
                 label={CATEGORY_META[id].label}
                 count={COUNTS[id] ?? 0}
                 dot={CATEGORY_META[id].dot}
