@@ -14,6 +14,7 @@ function template(overrides: Partial<GalleryTemplate>): GalleryTemplate {
     sourceUrl: "https://github.com/prisma/prisma-examples/tree/latest/compute/room-booking",
     deployUrl:
       "https://console.prisma.io/apps/room-booking?utm_source=website&utm_medium=templates",
+    pagePath: "/apps/room-booking",
     framework: { id: "nextjs", label: "Next.js" },
     author: {
       name: "Mohammed Obaid",
@@ -74,4 +75,14 @@ test("a community author with no GitHub profile gets the GitHub mark, not Prisma
   assert.doesNotMatch(html, /<img/);
   assert.match(html, /<svg/);
   assert.match(html, />Acme</);
+});
+
+test("the preview and the name open the template's page, the button deploys", () => {
+  const html = renderToStaticMarkup(<TemplateCard template={template({})} />);
+
+  assert.equal(html.match(/href="\/apps\/room-booking"/g)?.length, 2);
+  assert.match(
+    html,
+    /href="https:\/\/console\.prisma\.io\/apps\/room-booking[^"]*"[^>]*>(?:<span[^>]*>)?Use this app/,
+  );
 });

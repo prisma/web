@@ -108,6 +108,8 @@ export function createSoftwareApplicationStructuredData({
   operatingSystem = "Cross-platform",
   license,
   downloadUrl,
+  image,
+  author,
   offers,
 }: {
   path: string;
@@ -117,6 +119,10 @@ export function createSoftwareApplicationStructuredData({
   operatingSystem?: string;
   license?: string;
   downloadUrl?: string;
+  /** Screenshot path or URL. */
+  image?: string;
+  /** Who built it, when it is not Prisma. */
+  author?: { name: string; url: string };
   offers?: {
     "@type": "Offer";
     price: string;
@@ -139,6 +145,8 @@ export function createSoftwareApplicationStructuredData({
     operatingSystem,
     ...(license && { license }),
     ...(downloadUrl && { downloadUrl }),
+    ...(image && { image: absoluteUrl(image) }),
+    ...(author && { author: { "@type": "Person", name: author.name, url: author.url } }),
     offers: offers ?? {
       "@type": "Offer",
       price: "0",

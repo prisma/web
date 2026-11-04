@@ -5,6 +5,7 @@ import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
 import { isLandingPath } from "@/lib/landing-routes";
 import { extensions } from "@prisma-docs/ui/data/extensions";
+import { loadTemplates } from "@/app/apps/_lib/manifest";
 import { getAnswerEntries } from "./answer-page-content";
 import { getGitFileDates, getRouteLastModified } from "./sitemap-lastmod";
 
@@ -138,9 +139,12 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
 /** Generate sitemap entries for all public pages in the site app. */
 export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<SitemapEntry[]> {
   const answers = getAnswerEntries();
-  const [pageRoutes, changelogPages] = await Promise.all([
+  const [pageRoutes, changelogPages, templates] = await Promise.all([
     collectPageRoutes(APP_DIRECTORY),
     changelogSource.getPages(),
+    // The app pages come from the Compute template manifest; an unreachable
+    // manifest at build time leaves them out rather than failing the sitemap.
+    loadTemplates(),
   ]);
 
   // TSX routes have no frontmatter date: use the last commit that changed the
@@ -176,6 +180,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       ...pageRoutes.map((route) => route.pathname).filter((pathname) => !isLandingPath(pathname)),
       ...changelogPages.map((page) => page.url),
       ...extensions.map((entry) => `/extensions/${entry.slug}`),
+      ...templates.map((template) => template.pagePath),
       ...answers.map((entry) => entry.url),
     ]),
   ];
@@ -187,6 +192,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       lastModified:
         answers.find((entry) => entry.url === pathname)?.data.updatedAt ??
         changelogLastModMap.get(pathname) ??
+        templates.find((template) => template.pagePath === pathname)?.publishedAt ??
         pageLastModMap.get(pathname),
       ...getEntryMetadata(pathname),
     }));
