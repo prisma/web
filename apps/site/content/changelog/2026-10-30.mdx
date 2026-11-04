@@ -1,0 +1,170 @@
+---
+title: "Put a custom domain on a Prisma Compute preview branch"
+date: "2026-10-30"
+version: "2026-10-30"
+slug: "2026-10-30"
+headline: "Put a custom domain on a Prisma Compute preview branch"
+tags:
+  - "Prisma"
+  - "Prisma Compute"
+  - "Prisma ORM"
+  - "Prisma Postgres"
+  - "Prisma MCP server"
+  - "REST API"
+canonical: "/changelog#log2026-10-30"
+metaDescription: "A custom domain can now point at a preview or staging branch of a Prisma Compute app, and you prove you own a domain with a TXT record before it is attached. Also new: every part of a Composer app has an address you can pass to prisma commands, and Prisma ORM 8 reads dates as JavaScript Date values again."
+share:
+  active: true
+  content: "Look at this page: "
+---
+**A custom domain can now point at a preview or staging branch of a Prisma Compute app, not only at production, and you prove that you own a domain with a DNS record before Prisma attaches it.** Every service, database, and bucket of a Prisma Compute app now has an address that starts with the app's name, such as `shop.api`, and you can pass that address to `prisma` commands instead of looking up an id. In Prisma ORM 8 on Postgres, a `DateTime` field now reaches your code as a JavaScript `Date` by default, and MySQL has its first packages as an early preview.
+
+If you deploy to Prisma Compute, read "What you need to do" before you raise the `prisma` version in your deploy workflow: the first deploy with `prisma@8.0.0-rc.29` or newer renames every part of the app and replaces its connection strings and access keys, and the entry file moves into `prisma.config.ts`. If you are on a Prisma ORM 8 release candidate, the date types change. See "What you need to do". Prisma Postgres Early Access databases are deleted on **November 1, 2026**, and Accelerate is retired on **December 1, 2026**.
+
+## Give a preview branch its own domain, and prove you own it first
+
+Until now, a custom domain could only be attached to a Prisma Compute app's production branch, so a staging environment lived on its generated `prisma.build` address. Now the same domain workflow works on every branch that has a live deployment. In the [Prisma Console](https://console.prisma.io), open the branch app's **Domains** page and add the hostname, and from the command line, since `prisma@8.0.0-rc.28`, pass `--branch` to the domain commands, as in `prisma service domain add staging.example.com --project acme-app --service hello-world --branch staging`. Without `--branch`, the commands still target production. The branch's primary URL and its **Visit** link then use the hostname. A branch that has a domain is no longer removed when its Git branch is deleted or when the branch is cleaned up for inactivity, and the Console's Git page says why it was kept. A workspace can register ten new domains per hour, and the limit of three domains per app stays. ([prisma-cli#354](https://github.com/prisma/prisma-cli/pull/354))
+
+Attaching a domain now also asks you to prove that your workspace owns it. A domain that was attached before this change stays attached. The Console shows a TXT record to publish at `_prisma-verification.<hostname>`, with a value specific to your workspace, beside the CNAME record, and a **Verify and connect** button checks both. The proof is kept, so you do not repeat it when you recreate the app or the branch. Before, a hostname that one workspace had released could be claimed by another one while its old DNS record still pointed at Prisma, and this closes that gap. If your hostname is proxied through Cloudflare, the error now tells you what to do: set the record to DNS only first, wait until the domain shows **Active**, then switch it to Proxied with the TLS mode **Full (strict)**.
+
+A tool that deploys for you, such as a template installer, can send you straight to a domain's setup by adding `?setup=<hostname>` to an app's Domains page, which opens the setup with the hostname filled in, or shows that the domain is already added. In the [REST API](https://www.prisma.io/docs/rest-api), a `POST /v1/apps/{appId}/domains` request for a hostname that is not verified yet answers `422` with the code `domain-ownership-required` and the TXT record to publish as data, so a client can publish the record and retry. A workspace can also prove a whole domain once, such as `example.com` or `*.preview.example.com`, before it adds any hostname under it, with `POST /v1/workspaces/{workspaceId}/domain-ownerships`. These routes are marked experimental in the [OpenAPI spec](https://www.prisma.io/openapi.json) and may still change.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://console.prisma.io?utm_source=changelog&utm_medium=cta&utm_campaign=branch-domains" ctaLocation="changelog-branch-domains">Add a domain in the Console</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/compute/domains" ctaLocation="changelog-branch-domains">Read about custom domains</PrismButtonOutline>
+</div>
+
+## Address every part of your Prisma Compute app by name
+
+A Prisma Compute app is described by [Prisma Composer](https://www.prisma.io/docs/composer), the `composer` section of `prisma.config.ts` that the Console's setup pull request adds to a repository, and Composer names each part it deploys. The Prisma 8 command-line tool, `prisma`, runs those deploys for every app, including Prisma ORM 7 apps, and a workflow the Console set up pins its version. From `prisma@8.0.0-rc.28`, which ships Composer 0.35.0, each part's name is its full path starting with the app's name: `shop.api` is the service `api` of the app `shop`, and `shop.catalog.db` is the database `db` inside the app's `catalog` module. The part's environment variable names start with the same string, such as `COMPOSER_SHOP_CATALOG_DB`. The first deploy on this version renames an existing app's parts in place and replaces the connection strings and access keys Composer created, as described under "What you need to do". ([composer#384](https://github.com/prisma/composer/pull/384))
+
+The new `prisma deploy list` prints every part an app has deployed on a stage, with its address, kind, platform id, and URL. A stage is a branch's deployment, and `--stage pr-42` names the same thing as the `pr-42` in an address below. Without `--stage` it lists production, and `--json` gives the same rows for scripts. ([composer#388](https://github.com/prisma/composer/pull/388))
+
+```bash title="Terminal"
+npx prisma deploy list --stage pr-42
+```
+
+Since `prisma@8.0.0-rc.29`, the `prisma` commands that act on a project, a service, a database, or a bucket accept an address in place of the id, written `@<environment>:<address>`, and leaving the environment out means production. So `prisma service logs @pr-42:shop.api` reads the logs of the `pr-42` preview, and `prisma postgres backup list @shop.catalog.db`, with no environment and no colon, lists production backups, without a lookup first. A command that deletes something takes the address itself as its confirmation, as in `prisma postgres delete @shop.catalog.db --confirm @shop.catalog.db`, and the question it asks says plainly when the target is production. The commands that take an address are `service show|delete|logs|open|version`, `postgres show|delete|usage|backup|connection`, `bucket delete|key`, and `project show|delete|transfer|link`, where a project's address is the app's name alone. ([prisma-cli#373](https://github.com/prisma/prisma-cli/pull/373))
+
+Under `prisma dev`, which runs the app on your machine, a Next.js service now runs `next dev` instead of its production build, so your edits reload and its logs appear in your terminal, and a `node()` service can name its own dev command, as in `node({ dev: ["npm", "run", "dev"] })`. Each dev server gets the same environment a deployment would, on its own port. ([composer#381](https://github.com/prisma/composer/pull/381))
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/composer/deploying" ctaLocation="changelog-composer-addresses">Read about deploying with Composer</PrismButton>
+  <PrismButtonOutline href="https://github.com/prisma/composer/releases/tag/v0.35.0" ctaLocation="changelog-composer-addresses">See the Composer 0.35.0 release notes</PrismButtonOutline>
+</div>
+
+## On Postgres, a DateTime field in Prisma ORM 8 is a JavaScript Date again
+
+On Postgres, a field declared `DateTime` in a Prisma ORM 8 schema now reaches your code as a JavaScript `Date`, stored in a `timestamptz(3)` column. Until now it gave you a `Temporal.Instant`, which meant a polyfill on Node.js 22 and 24 and a conversion wherever a library expected a `Date`. The schema types `Date` and `Time`, not to be confused with the JavaScript class, now give you strings such as `"2024-02-29"` and `"09:30:00"`, and the new `Duration` gives you an ISO 8601 duration such as `"P1M"`. Every one of these types takes optional arguments: `DateTime(as: string, precision: 6)` reads the column as an ISO 8601 string with microseconds instead of a `Date`. To keep a field exactly as it was, rename its type to `TimestamptzTemporal`, `DateTemporal`, or `TimeTemporal`. If Prisma ORM 8 reads your Prisma 7 schema, a `DateTime` field is a JavaScript `Date` again, as it was in Prisma ORM 7. SQLite, MySQL, and MongoDB keep their date types. The [schema reference](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax) lists each type and what it reads. ([#30847](https://github.com/prisma/orm/pull/30847))
+
+```prisma title="prisma/schema.prisma"
+model Event {
+  id      Int                 @id @default(autoincrement())
+  at      DateTime            // JavaScript Date, timestamptz(3)
+  day     Date                // "2024-02-29"
+  span    Duration            // "P1M"
+  exact   TimestamptzTemporal // Temporal.Instant, as before
+}
+```
+
+Prisma ORM 8 is still a release candidate, and this change arrived in `8.0.0-rc.22`. The explicit names came one release earlier, in `8.0.0-rc.21`, which also made every text date and time value ISO 8601 on every server, where it used to follow the Postgres session's time zone and date style. ([#30834](https://github.com/prisma/orm/pull/30834))
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/orm/contract-authoring/psl-syntax" ctaLocation="changelog-orm-dates">Read the schema reference</PrismButton>
+  <PrismButtonOutline href="https://github.com/prisma/orm/releases/tag/v8.0.0-rc.22" ctaLocation="changelog-orm-dates">See the rc.22 release notes</PrismButtonOutline>
+</div>
+
+## What you need to do
+
+- **If you deploy to Prisma Compute, your first deploy with `prisma@8.0.0-rc.29` or newer renames every part of the app and replaces its credentials.** Databases keep their rows, buckets keep their objects, and custom domains stay, but each database connection string and bucket access key that Composer created is replaced by a new one, which your services receive in the same deploy. Anything outside the app that copied an old connection string or access key needs the new one, which you copy from the Console. Do not deploy that environment with an older `prisma` afterwards, because the older version looks for the old names, recreates every resource, and loses the data. A workflow the Console set up pins the `prisma` version in its file under `.github/workflows/`, so this happens when you raise that pin. One case needs a manual step first: an app with a module or service named like the app itself, directly below the root. The [deploying guide](https://github.com/prisma/composer/blob/main/docs/guides/deploying.md) covers it under "Upgrading to addresses that start with the app name". ([composer#384](https://github.com/prisma/composer/pull/384))
+- **Before that deploy, set the entry file in `prisma.config.ts` and use full addresses in your code.** The entry file is the module that exports your app, usually `module.ts`. If your workflow or scripts run `prisma deploy module.ts` or `prisma dev module.ts`, that now fails with `CLI.INVALID_ARGUMENTS`, because the file name no longer goes on the command line. Write `composer: composer({ entry: "./module.ts", ... })` in `prisma.config.ts`, and use `--entry <path>` to override it for one run. Change `serviceOrigin("api")` to `serviceOrigin("shop.api")`, and run `prisma dev url shop.api` rather than `prisma dev url api`. ([composer#387](https://github.com/prisma/composer/pull/387))
+- **If you are on a Prisma ORM 8 release candidate older than `8.0.0-rc.22`**, follow the upgrade guides for [rc.21](https://github.com/prisma/orm/blob/v8.0.0-rc.21/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.20-to-8.0.0-rc.21/) and [rc.22](https://github.com/prisma/orm/blob/v8.0.0-rc.22/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.21-to-8.0.0-rc.22/) in order. They tell you which date fields to rename and ship scripts for the rest. Each ends with `prisma contract emit`, which regenerates the contract (the generated file that describes your schema, which the client and the migration commands read), and `prisma db sign --db "$DATABASE_URL"` against every database, which records that the database matches the new contract. Use library `8.0.0-rc.22` with the tool `prisma@8.0.0-rc.30`. The breaking changes below are the ones most likely to affect an app. `prisma skills sync` downloads the upgrade guides into your project as agent skills, and the guides for the rc.18 and rc.19 steps were repaired in rc.21.
+- **If you install Prisma ORM 8 twice**, for example two versions of `@prisma/orm-postgres` in one project, every command and client now stops with `RUNTIME.MULTIPLE_ORM_COPIES` and names each copy. Install one version of every `@prisma/orm-*` package, and the `prisma` tool release that goes with it. ([#30883](https://github.com/prisma/orm/pull/30883))
+- **If a Prisma Compute app relies on its generated `prisma.build` address being found by search engines**, put it on a custom domain. Every generated host, including production, preview, and version addresses, now sends `X-Robots-Tag: noindex`, so search engines and AI crawlers stop indexing it. On a custom domain, your app controls indexing as before.
+- **Prisma Postgres Early Access databases are deleted on November 1, 2026 at 00:00 UTC.** Follow the [migration guide](https://www.prisma.io/docs/postgres/migrate-from-ea-to-ga) today.
+- **Accelerate is retired on December 1, 2026.** [Switch to a pooled connection or to the serverless driver](https://www.prisma.io/docs/postgres/database/switch-from-accelerate), or [keep your own database and connect to it without Accelerate](https://www.prisma.io/docs/accelerate/keep-your-database).
+
+## Breaking changes between Prisma ORM 8 release candidates
+
+These apply only if you upgrade from an earlier release candidate to `8.0.0-rc.21` or `8.0.0-rc.22`. The release notes for [rc.21](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.21) and [rc.22](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.22) list every change, including the ones for extension authors. After either upgrade, run `prisma contract emit` once, so that the versions of the Prisma ORM extension packages recorded in your contract match the ones you installed.
+
+- **`DateTime`, `Date`, and `Time` read different values on Postgres**, as described above. Rename a field to `TimestamptzTemporal`, `DateTemporal`, or `TimeTemporal` to keep it as it was. A schema you generate again from the database with `prisma contract infer` reads a `timestamptz` column as a `Date` and drops its microseconds, unless you change the field's type to `DateTime(as: string, precision: 6)`. ([#30847](https://github.com/prisma/orm/pull/30847))
+- **`Timestamptz`, `Timestamp`, and `Interval` are renamed.** They are now `TimestamptzTemporal`, `TimestampTemporal`, and `IntervalParts`, and the old names are errors. Renaming them is all you do; no re-emit and no migration is needed. ([#30834](https://github.com/prisma/orm/pull/30834))
+- **Text date and time values are ISO 8601 on every server.** A `TimestamptzString` field that read `2024-01-01 01:00:00+01` on a server in Berlin now reads `2024-01-01T00:00:00Z` everywhere, and a literal default on these types must be written in that form. The Postgres driver sets the session's `DateStyle` to ISO for you, including on a pool you pass in, so there is nothing to configure, but code that compared these strings to the old text needs the new one. ([#30834](https://github.com/prisma/orm/pull/30834))
+- **Field presets are removed.** A preset was a helper such as `id.uuidv4String()` or `temporal.createdAt()` that set a field's type and attributes in one call. Each is replaced by the type and attributes written out: `temporal.createdAt()` becomes `temporal.CreatedAt`, and `id.ulid()` becomes `Ulid @id @onCreate(ulid())`. The schema error names the exact rewrite, and the rewrite is all you do; no re-emit and no migration is needed. ([#30845](https://github.com/prisma/orm/pull/30845))
+- **A client member that returns a promise rejects instead of throwing at the call.** `query`, `execute`, `transaction`, and ORM calls on a closed client now report the failure through what they return, so a `try`/`catch` around a call without `await` no longer catches it. Add `await`. ([#30840](https://github.com/prisma/orm/pull/30840))
+- **Removing an enum value asks first**, like removing a model or a field, as described under "Prisma ORM" below. A script that runs without a terminal fails with `CLI.CONSENT_REQUIRED` until you answer with `--rename` or `--delete`. ([#30849](https://github.com/prisma/orm/pull/30849))
+- **Changing a value object is now a migration.** A value object is a composite type stored inside a row, such as an address with street and city fields. On Postgres, the next `prisma migration plan` also adds a check constraint for each value object column and for each column that tells model variants apart, and `prisma db migrate` fails on a row that does not fit. Run the rc.22 script, then `prisma db sign` against each database, then `prisma contract emit`, in that order, because the script rewrites the stored contract that signing checks. ([#30869](https://github.com/prisma/orm/pull/30869))
+- **The pgvector, PostGIS, and ParadeDB extension packages declare their Postgres extension, and `prisma contract emit` now writes each one's migration files** into its own folder under `migrations/`. Commit them, then run `prisma db migrate` on each database. ([#30902](https://github.com/prisma/orm/pull/30902))
+- **A Prisma 7 schema's `@default(now())` is filled by the client on create.** A create through Prisma ORM 8 now writes the current time in UTC, as Prisma 7's client did. Re-emit and commit the contract; no migration or `db sign` is needed. ([#30834](https://github.com/prisma/orm/pull/30834))
+- **`close()` now always closes the client.** It never closes a pool you passed in; end that yourself. ([#30833](https://github.com/prisma/orm/pull/30833))
+- **On MongoDB, only code that builds the query builder, raw API, or ORM objects itself changes.** Those now take a context from `mongoStatic({ contract })` instead of `{ contract }`, `mongoContract(schemaPath, options)` requires `options.target`, and identical or redundant indexes in one collection are merged into one. An app that calls `mongo({ contract, url })` sees no difference. ([#30865](https://github.com/prisma/orm/pull/30865), [#30846](https://github.com/prisma/orm/pull/30846), [#30894](https://github.com/prisma/orm/pull/30894))
+
+## Prisma ORM
+
+When your schema removes an enum value, or changes the value it stores, `migration plan` and `db update` on Postgres and SQLite now ask what the change means and rewrite the rows that hold the old value. `prisma migration plan --rename Status.ARCHIVED:Status.RETIRED` changes the stored value in every column and list that holds it, and `--delete Status.ARCHIVED` sets it to `NULL` in optional columns and takes it out of lists. On a required column that still holds the value, the apply stops before changing anything and says how to keep the data. Before, Postgres failed at apply when a row held the old value, and SQLite planned nothing. Native Postgres enums declared with `pg.enum(...)` are unchanged. ([docs](https://www.prisma.io/docs/cli/migration-plan#renames-and-data-loss), [#30849](https://github.com/prisma/orm/pull/30849))
+
+MySQL has its first public packages, `@prisma/orm-mysql` and `@prisma/orm-target-mysql`, as an early preview. They can emit a contract, and on MySQL 8.4 plan and apply migrations that create and drop tables, columns, indexes, unique constraints, and foreign keys, and, since `8.0.0-rc.22`, read with the ORM and the SQL query builder, including nested and ordered includes. Other schema changes and writes are refused with a message that says they are not supported on MySQL yet. The [supported databases](https://www.prisma.io/docs/orm/supported-databases) page says what works today. ([#30841](https://github.com/prisma/orm/pull/30841), [#30863](https://github.com/prisma/orm/pull/30863))
+
+The two releases also add the following:
+
+- **Declare the Postgres extensions your schema needs.** `extension pg_trgm {}` in a schema file, or `extension('pg_trgm')` in TypeScript, makes `prisma db verify` check that the extension is installed and makes a migration create it. When Prisma ORM 8 reads a Prisma 7 schema, it reads the `extensions` list of its datasource too, so a Prisma 7 database that uses pgvector, PostGIS, or ParadeDB can now be adopted with `prisma contract emit` and `prisma db sign`. ([docs](https://www.prisma.io/docs/orm/contract-authoring/psl-syntax#postgresql-extensions), [#30902](https://github.com/prisma/orm/pull/30902))
+- **Read every Postgres `@db.*` type from a Prisma 7 schema.** A new package, `@prisma/orm-postgres-contrib`, adds the case-insensitive `citext.Citext` type, and Postgres gains `Xml`, `Oid`, and `Money`. With them, Prisma ORM 8 reads `@db.Citext`, `@db.Bit`, `@db.VarBit`, `@db.Xml`, `@db.Oid`, and `@db.Money` from a Prisma 7 schema. A `money` column reads and writes the same value in any locale. ([#30904](https://github.com/prisma/orm/pull/30904), [#30900](https://github.com/prisma/orm/pull/30900))
+- **Call `connect()` more than once.** `connect()` without options on a client is now safe to call again: it waits for a connection in progress, or returns the connection the client already uses. ([#30899](https://github.com/prisma/orm/pull/30899))
+- **Pick the right type for a generated id.** Every SQL target has a type alias for each generated identifier's column, such as `Ulid`, `Nanoid`, and `Cuid2`, so `id Ulid @id @onCreate(ulid())` declares a column of the right length. SQLite gains `sql.Char(n)`. ([#30845](https://github.com/prisma/orm/pull/30845))
+- **Read a `timestamp` column as a `Date` or an `Instant`.** `TimestampJsDate(p?)` and `TimestampInstant(p?)` read a `timestamp` column as UTC, and `IntervalString(p?)` reads an `interval` as an ISO 8601 duration. ([#30834](https://github.com/prisma/orm/pull/30834))
+- **Find extensions on npm.** Prisma's extension packages carry the npm keyword `prisma-orm-extension`, and the [extensions](https://www.prisma.io/docs/orm/extensions) page tells community authors to use the same keyword, so one search finds them all. ([#30892](https://github.com/prisma/orm/pull/30892))
+
+## Prisma Compute
+
+Creating a branch no longer copies the default branch's Object Storage buckets into the new branch. A new branch starts with no buckets, whether you create it from the Console, the REST API, or the Prisma MCP server. If your workflow relied on those copies, create the buckets yourself, in the Console or with `prisma bucket create`.
+
+Repository search when you connect GitHub now covers your whole list of repositories, up to 1,000, instead of the first 100, so you no longer click **Load more** to find one.
+
+## Prisma Postgres
+
+Databases created through the Vercel Marketplace integration now also get a `DATABASE_URL_POOLED` variable, pointing at the connection pooler, beside the direct `DATABASE_URL`. Until now the [Vercel guide](https://www.prisma.io/docs/guides/postgres/vercel) told you to create the pooled string in the Console and add it by hand. A database that already exists gets the variable when you rotate its credentials with **Rotate Secrets** in the Vercel integration's settings.
+
+## Prisma Console
+
+Signing out of the Console now ends every session on every device, including the session at `auth.prisma.io`. Before, only the browser you signed out of lost its session.
+
+## Prisma MCP server
+
+ChatGPT, and other MCP clients that register themselves with the Prisma MCP server, no longer stop working 30 days after setup with `Invalid Client ID`. If yours did, reconnect it, and it keeps working without being set up again. A connection that stays unused for 30 days still asks you to sign in again.
+
+## Docs and website
+
+- [Deploy to Vercel](https://www.prisma.io/docs/guides/deployment/vercel) takes a Next.js app on Prisma ORM 8 from repository to Vercel in five steps, and explains why a server component that reads rows at build time shows stale data unless the page sets `export const dynamic = "force-dynamic"`.
+- [Money and decimals](https://www.prisma.io/docs/orm/data-modeling/money) says when to store integer cents, `Numeric(p, s)`, or `Decimal`, and why decimal fields are strings in both directions.
+- [Types for your code](https://www.prisma.io/docs/orm/fundamentals/types) lists the Prisma ORM 8 types for typing your own functions, with each Prisma ORM 7 type, such as `Prisma.UserWhereInput`, beside its replacement.
+- Three new extension pages take you from install to a working query: [PostGIS](https://www.prisma.io/docs/orm/extensions/postgis), [ParadeDB](https://www.prisma.io/docs/orm/extensions/paradedb), and [arktype-json](https://www.prisma.io/docs/orm/extensions/arktype-json).
+- [Backups](https://www.prisma.io/docs/postgres/database/backups) now explains where a restore goes: into a new database in the same project, which gets a new connection string, or in place, which overwrites the database, closes open connections, and keeps the connection strings.
+- The [Prisma Postgres error reference](https://www.prisma.io/docs/postgres/error-reference) explains each `Failed to identify your database` error, and the [FAQ](https://www.prisma.io/docs/postgres/faq) answers how to delete a database created through Vercel and why custom database roles cannot be created.
+- [Free PostgreSQL hosting](/postgres/free-postgresql-hosting) explains what the free Prisma Postgres database includes and how a temporary database from `create-db` differs from one you claim.
+- The CLI reference now has exit codes and error codes for [`orm init`](https://www.prisma.io/docs/cli/orm-init#exit-codes), `migration ref`, and `contract emit --json`, so a CI step can branch on them.
+
+## Fixes
+
+### Prisma ORM 8
+
+- On SQLite, a query with parameters in a join or derived table and also in `WHERE`, or in `GROUP BY` and also in `HAVING` or `ORDER BY`, bound its values to the wrong placeholders and returned wrong rows. Each value now binds to its own placeholder. ([#30853](https://github.com/prisma/orm/pull/30853))
+- If the database says it is at a migration that no longer exists in your migrations folder, for example because the migration was deleted or planned again, `prisma db migrate` now explains that and offers two ways to recover. Before, it suggested commands the CLI refuses. Neither recovery resets the database. ([#30866](https://github.com/prisma/orm/pull/30866))
+- A lost Postgres connection, such as `57P01` or `EPIPE`, is now reported as a connection error, and a failed connection attempt is reported on every later use instead of hanging. A SQLite file that cannot be opened is now a connection error too, not a query error. ([#30833](https://github.com/prisma/orm/pull/30833))
+- The upgrade guides and scripts for rc.18 to rc.19 and rc.19 to rc.20 now work on real projects: the scripts skip hidden directories such as `.next/`, and both guides say how to recover a database that is behind on migrations. ([#30855](https://github.com/prisma/orm/pull/30855))
+- On Postgres, the `now` generator of a timestamp column rounds the time down to the column's precision, so the value a create returns is the value the database stores. ([#30847](https://github.com/prisma/orm/pull/30847))
+- `Temporal` fields were typed `any` in a project without a polyfill's global declarations. They are now typed correctly without one. ([#30834](https://github.com/prisma/orm/pull/30834))
+- A schema with a field whose type does not resolve now reports that field's own error, instead of an unrelated relation error. On SQLite, an unknown bare type such as `Ulid` suggests `sql.Ulid`. ([#30845](https://github.com/prisma/orm/pull/30845))
+- The error for a Prisma 7 `@db.*` attribute in a Prisma ORM 8 schema suggests the type Prisma ORM 8 renamed it to, such as `String` for `@db.Text`. ([#30909](https://github.com/prisma/orm/pull/30909))
+
+### Prisma Console
+
+- Opening a Console page from a link no longer sometimes shows `No result found for routeId` on the first load.
+
+## Guides and articles
+
+- [How we moved Prisma's control plane to Prisma Postgres without downtime](https://www.prisma.io/blog/moving-prismas-control-plane-to-prisma-postgres): 83 tables and 74 GB moved from Amazon RDS with logical replication, with a rollback kept open for a week.
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](/enterprise) can help with schema design, performance, security, and compliance.*

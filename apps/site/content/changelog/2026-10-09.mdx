@@ -1,0 +1,183 @@
+---
+title: "Prisma ORM 8 migrations now ask before they drop your data"
+date: "2026-10-09"
+version: "2026-10-09"
+slug: "2026-10-09"
+headline: "Prisma ORM 8 migrations now ask before they drop your data"
+tags:
+  - "Prisma"
+  - "Prisma ORM"
+  - "Prisma Compute"
+  - "Prisma Postgres"
+canonical: "/changelog#log2026-10-09"
+metaDescription: "Prisma ORM 8 migrations now ask about each model or field they would drop, and --rename keeps the rows. Also new: runtime logs in the Prisma Console, a comparison of a preview branch with production, and Prisma Composer's settings move into prisma.config.ts."
+share:
+  active: true
+  content: "Look at this page: "
+---
+**Prisma ORM 8 migrations now ask about each model or field they would drop, and you can answer with a rename that keeps the rows.** In the Prisma Console, a Prisma Compute deployment now shows its runtime logs, and a preview branch's services and connections can be compared with production. Prisma Composer, the TypeScript description of a Prisma Compute app's services and databases, now reads its settings from the `composer` section of `prisma.config.ts`, so a project has one config file, and the old separate file needs to be moved.
+
+Two deadlines from earlier entries still stand: Prisma Postgres Early Access databases are deleted on **November 1, 2026**, and Accelerate is retired on **December 1, 2026**. The steps are under "What you need to do" below.
+
+## Keep your data when a migration would drop it
+
+When your schema removes a model or a field, `prisma migration plan` and `prisma db update` now stop and ask whether each one is a real delete or a rename, before they write anything. Before, a renamed field was planned as a drop and a create, the `--confirm` flag accepted every such change at once, and the rows were gone after the migration. Now, at your terminal, the command prompts you for each question, and you can also answer up front with flags: `--delete Legacy` for a model or `--delete User.nickname` for a field lets the data go, and the new `--rename User.name:User.fullName` keeps it. A rename keeps the table or column and its rows instead of dropping and recreating it. ([#30648](https://github.com/prisma/orm/pull/30648), [#30638](https://github.com/prisma/orm/pull/30638))
+
+```bash title="Terminal"
+npx prisma migration plan --rename User.name:User.fullName --delete Legacy
+```
+
+In CI, where nobody can answer, a command with an open question fails with `CLI.CONSENT_REQUIRED` and lists the flags to add, so a schema change that drops data fails once and you add the flag to the job. `prisma db update` also stops and asks when a change lets more people read or write a model's rows, for example when it drops a row-level security policy, and you accept that with `--allow <Model>`. Dropping an index, a constraint, a check, or a default no longer asks, because no data is lost. On MongoDB, renames are refused for now. The [migration plan](https://www.prisma.io/docs/cli/migration-plan#renames-and-data-loss) reference lists each question and its answer.
+
+Prisma ORM 8 is still a release candidate. You need two packages for it, released separately and with different version numbers: the library your app imports, `@prisma/orm-postgres`, which replaces `@prisma/client` and is at `8.0.0-rc.17` for this change, and the command-line tool, `prisma`, at `8.0.0-rc.22`. `prisma@latest` installs the Prisma 8 tool, and `prisma@7`, which `prisma@prev` also points at, is Prisma ORM 7. The tool also runs Prisma Compute deploys and `prisma dev` for every app, including Prisma ORM 7 apps.
+
+Two Prisma ORM 8 words appear throughout this entry. The contract is a generated file that describes your schema, written by `prisma contract emit` and read by the client and the migration commands, much as `prisma generate` wrote the client in Prisma ORM 7; "re-emit" means running that command again. Signing a database with `prisma db sign --db "$DATABASE_URL"` marks it as already matching the contract, so no migration runs against it.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://www.prisma.io/docs/cli/migration-plan" ctaLocation="changelog-migration-rename">Read the migration plan reference</PrismButton>
+  <PrismButtonOutline href="https://github.com/prisma/orm/releases/tag/v8.0.0-rc.17" ctaLocation="changelog-migration-rename">See the rc.17 release notes</PrismButtonOutline>
+</div>
+
+## Read runtime logs and compare branches in the Console
+
+A deployment's page in the [Prisma Console](https://console.prisma.io) now shows the output your app writes while it runs, and it updates on its own. You can pause the stream, refresh it, copy it, and jump to the latest line. Before, the page showed the deployment's status, ports, and environment variables, and the logs were only available from the command line with `prisma service logs`. The **Serving live** card on the app page has a **View runtime logs** button that opens the live deployment's logs directly.
+
+The **Topology** view, which draws a project's services and databases and how they connect, now opens a preview branch with a comparison against production. {/* plain-language:defined */} Services, ports, and connections that the branch adds or removes are highlighted, unchanged parts fade, and a changed value shows its before and after. A toggle turns the comparison off and shows the branch on its own.
+
+Your app also receives two headers on every request it serves. `Prisma-Connecting-IP` holds the address of the client that made the request, as a single value, and `Prisma-Request-ID` holds an id for the request that Prisma also returns on the response, so you can match a log line to a request. Any `Prisma-*` header a client sends is dropped before the request reaches your app, so your code can trust these two.
+
+<div className="not-prose flex flex-wrap gap-3">
+  <PrismButton href="https://console.prisma.io?utm_source=changelog&utm_medium=cta&utm_campaign=compute-runtime-logs" ctaLocation="changelog-runtime-logs">Open the Console</PrismButton>
+  <PrismButtonOutline href="https://www.prisma.io/docs/compute/deployments" ctaLocation="changelog-runtime-logs">Read about deployments</PrismButtonOutline>
+</div>
+
+## Share query logic across models and lock the rows you read
+
+Prisma ORM 8 can now define a piece of a query once and apply it to any model that has the right fields. A soft-delete filter, a default sort, or a set of fields to select becomes a function you pass to a collection. In `8.0.0-rc.15` this was called a scope, and `8.0.0-rc.17` renamed it: you build the piece with `db.orm.fragment(...)` or `db.orm.public.Post.fragment(...)`, and apply it with `.with(...)`. If you subclass a model's collection to add methods such as `published()`, those methods now survive `where`, `orderBy`, and `limit`, so `db.orm.public.Post.where({ userId }).published()` compiles. ([#30564](https://github.com/prisma/orm/pull/30564), [#30560](https://github.com/prisma/orm/pull/30560), [#30635](https://github.com/prisma/orm/pull/30635))
+
+```ts title="src/posts.ts"
+const notDeleted = db.orm.public.Post.fragment((posts) =>
+  posts.where((p) => p.deletedAt.isNull()),
+);
+
+const posts = await db.orm.public.Post.with(notDeleted).orderBy((p) => p.createdAt.desc()).all();
+```
+
+The [query fragments](https://www.prisma.io/docs/orm/reference/orm-client#query-fragments) reference has two more examples: a soft-delete filter that works on any model with a `deletedAt` field, and a helper that turns a `?sort=` value from a request into a safe `orderBy`.
+
+A read can also lock the rows it returns, so two workers that pick a job from a queue do not pick the same one: `db.orm.public.Job.where((j) => j.state.eq("queued")).forUpdate({ skipLocked: true }).first()`. Here `db.orm.public.Job` is the `Job` model in the `public` PostgreSQL schema. The ORM collections and the lower-level SQL query builder, `db.sql`, both have `forUpdate()`, `forNoKeyUpdate()`, `forShare()`, and `forKeyShare()`, each with `nowait` and `skipLocked` options. They exist only on databases that support them, so they are absent on SQLite. ([#30549](https://github.com/prisma/orm/pull/30549), [#30555](https://github.com/prisma/orm/pull/30555))
+
+The release candidates of this week also add the following:
+
+- **Invalidate cached reads.** The built-in cache middleware, which keeps query results in your app's memory, can now drop an entry on demand: `cache.invalidate({ keys: ["posts:home"] })` removes the reads that named that key in `cacheAnnotation({ key })`. The default store keeps an entry for 60 seconds. ([docs](https://www.prisma.io/docs/orm/middleware/built-in-cache), [#30530](https://github.com/prisma/orm/pull/30530))
+- **Run code after a transaction commits.** Middleware has an `afterTransaction` hook that runs for each query once the transaction it ran in has committed or rolled back, and tells you which of the two happened. ([#30614](https://github.com/prisma/orm/pull/30614))
+- **Rename a table in a hand-written migration.** `this.renameTable({ table: "userProfile", to: "UserProfile" })` in a migration made with `prisma migration new` renames the table and the constraints and indexes named after it, and keeps the rows. ([docs](https://www.prisma.io/docs/orm/reference/migration-api), [#30331](https://github.com/prisma/orm/pull/30331))
+- **Allow `null` inside a list.** `String?[]` allows `null` elements, `String[]?` allows a `null` list, and `String?[]?` allows both. ([#30051](https://github.com/prisma/orm/pull/30051))
+- **Give an existing column an `autoincrement()` default.** The migration now plans a sequence that starts past the column's current maximum, where it used to plan nothing. ([#30606](https://github.com/prisma/orm/pull/30606))
+- **Name the index that backs a relation.** `@relation(..., index: "post_author_live")` tells Prisma ORM 8 which index, unique constraint, or primary key serves the foreign key, so it creates no extra one. `prisma contract emit` now warns when two named indexes are identical or when a plain index repeats a unique constraint. ([#30561](https://github.com/prisma/orm/pull/30561))
+- **Hover, go to definition, and find references in your editor.** Hovering a model, field, or attribute in a `.prisma` file shows its declaration and documentation, and go to definition and find references work across every schema file of the project. The editor also completes the values inside a block such as `policy_select`. ([#30569](https://github.com/prisma/orm/pull/30569), [#30578](https://github.com/prisma/orm/pull/30578), [#30567](https://github.com/prisma/orm/pull/30567))
+- **Read more Prisma 6 MongoDB schemas.** `prisma orm init` recognizes a Prisma 6 MongoDB project, and the reader accepts every native type Prisma 6 accepts except `DateTime @db.Timestamp`. ([#30521](https://github.com/prisma/orm/pull/30521))
+
+## What you need to do
+
+- **If you deploy to Prisma Compute, move Composer's settings into `prisma.config.ts` before your next deploy with `prisma@8.0.0-rc.20` or newer.** If the Console set up deploys for your repository before October 8, its pull request wrote a `prisma-composer.config.mjs` file, and that file is no longer read; `prisma deploy` and `prisma dev` stop and tell you what to move. Move the `extensions` and `state` from the old file into a `composer` section, and delete the old file: ([composer#328](https://github.com/prisma/composer/pull/328))
+
+  ```ts title="prisma.config.ts"
+  import { definePrismaConfig } from "prisma/config";
+  import { defineConfig as composer } from "@prisma/composer/config";
+  import { nodeBuild } from "@prisma/composer/node/control";
+  import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
+
+  export default definePrismaConfig({
+    composer: composer({
+      extensions: [prismaCloud(), nodeBuild()],
+      state: prismaState(),
+    }),
+  });
+  ```
+
+- **If a deploy with `prisma@8.0.0-rc.22` or newer fails because a package your service imports cannot be found**, add `dependencies: "external"` to that service, as in `node({ dir: "build", entry: "server.mjs", dependencies: "external" })`. A deploy now uploads only your build output, which is right for a build that bundles its packages. With `"external"`, the deploy also uploads the packages your build imports from `node_modules`, as it did before. ([composer#341](https://github.com/prisma/composer/pull/341))
+- **If you are on a Prisma ORM 8 release candidate older than `8.0.0-rc.15`**, download `data-type-in-contract.ts` from the [rc.15 upgrade guide](https://github.com/prisma/orm/blob/v8.0.0-rc.15/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.14-to-8.0.0-rc.15/), run it with Node in your project root before any other step, then run `prisma db sign` against every database, as the first breaking change below explains. Then replace each `--confirm` in your scripts, as described above.
+- **If you are on Prisma ORM 7**, your code does not change. Check any script or CI job that installs `prisma@latest` and change it to `prisma@7`, because `latest` is Prisma ORM 8. The two deadlines below may apply to you.
+- **Prisma Postgres Early Access databases are deleted on November 1, 2026 at 00:00 UTC.** The Console shows a notice on each affected project and database. The [migration guide](https://www.prisma.io/docs/postgres/migrate-from-ea-to-ga) walks you through the export and the restore.
+- **Accelerate is retired on December 1, 2026.** If your app connects through a URL that starts with `prisma+postgres://accelerate.prisma-data.net`, [switch to a pooled connection or to the serverless driver](https://www.prisma.io/docs/postgres/database/switch-from-accelerate) before then. If you use Accelerate with your own database, [keep your database and connect to it without Accelerate](https://www.prisma.io/docs/accelerate/keep-your-database).
+
+## Breaking changes between Prisma ORM 8 release candidates
+
+These apply only if you already use a Prisma ORM 8 release candidate and are upgrading to `8.0.0-rc.15`, `8.0.0-rc.16`, or `8.0.0-rc.17`. If you are trying Prisma ORM 8 for the first time, you start on the newest release candidate and can skip this list, and if you are on Prisma ORM 7, nothing here changes your app: the bullets that mention a Prisma 7 schema are about Prisma ORM 8 reading that file. Several bullets end with `prisma contract emit` and `prisma db sign`; one run of each after all the other steps is enough. The release notes for [rc.15](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.15), [rc.16](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.16), and [rc.17](https://github.com/prisma/orm/releases/tag/v8.0.0-rc.17) list every change, including the ones that only affect extension authors, and each links an upgrade guide with scripts.
+
+- **`--confirm` no longer consents to data loss.** `prisma migration plan` and `prisma db update` ask about each model, field, or table they would lose data from, and you answer with `--delete` or `--rename`, as described above. Replace each `--confirm` in scripts and CI. ([#30648](https://github.com/prisma/orm/pull/30648))
+- **The contract file format changed, and a contract in the old format is refused with `CONTRACT.VALIDATION_FAILED` until you run the upgrade script.** Upgrade the extensions you use, such as pgvector and PostGIS, in the same step. Then download `data-type-in-contract.ts` from the rc.15 upgrade guide, run `node data-type-in-contract.ts` in your project root, which rewrites every contract and migration in your project, and run `prisma db sign` against every database. Until a database is signed, `prisma db migrate` refuses with `MIGRATION.MARKER_MISMATCH`. ([#30576](https://github.com/prisma/orm/pull/30576), [#30051](https://github.com/prisma/orm/pull/30051))
+- **`scope` is now `fragment`, and `apply` is now `with`.** The types `Scope`, `FieldScope`, and `ScopeFacts` are now `Fragment`, `FieldFragment`, and `FragmentFacts`. This applies to the SQL client only. ([#30635](https://github.com/prisma/orm/pull/30635), [#30647](https://github.com/prisma/orm/pull/30647))
+- **A bulk write refuses a `limit`, `offset`, `cursor`, or `distinct` it would ignore.** `updateAll`, `updateAndCount`, `deleteAll`, and `deleteAndCount` change every row that matches the filter. Before, `where(...).limit(10).deleteAll()` deleted every matching row. It now throws `ORM.ARGUMENT_INVALID`. Select the ids first, then delete by id. If your code applies a `where` only on some code paths, TypeScript now rejects `deleteAll()` and `updateAll()` on the result. ([#30564](https://github.com/prisma/orm/pull/30564), [#30560](https://github.com/prisma/orm/pull/30560))
+- **`variant()` takes the stored value, not the model name.** This applies only to schemas that use `@@base`, Prisma ORM 8's way to store several model variants in one table. For a variant declared with `@@base(Task, "bug")`, write `db.orm.public.Task.variant("bug")`. A value the schema does not declare now throws instead of silently reading every variant. ([#30577](https://github.com/prisma/orm/pull/30577))
+- **The `pg.sql` and `sqlite.sql` tags are removed.** Write ``@default(sql`now()`)``. The stored default does not change. ([#30534](https://github.com/prisma/orm/pull/30534))
+- **A Prisma 7 schema's date and time columns are read as text.** This is about Prisma ORM 8 reading your Prisma 7 file, not about Prisma ORM 7 itself. A `DateTime` column and the `@db.Timestamp`, `@db.Timestamptz`, `@db.Date`, and `@db.Time` columns now give you strings such as `"2026-09-14 10:00:00.123"` instead of `Temporal` values, so your app no longer needs a `Temporal` polyfill. Change the code that treated these fields as `Temporal` values, re-emit the contract, then run `prisma db sign`. ([#30553](https://github.com/prisma/orm/pull/30553))
+- **The cache middleware's store decides how long an entry lives.** `cacheAnnotation` no longer takes `ttl`, every annotated read is cached, `skip` is now `bypass`, and `maxEntries` moves from `createCacheMiddleware` to `createInMemoryCacheStore`. ([#30530](https://github.com/prisma/orm/pull/30530))
+- **`db.enums`, the list of each enum's members, now gives you each member as the database stores it.** A member stored as a bigint is a `bigint`, a date member is a `Date` or a `Temporal` value. Remove the conversions your code applied, and run `prisma contract emit`. An enum member must also be written as the database stores it, so `"01.5"` on a `numeric` enum is refused with a message that says what to write. ([#30628](https://github.com/prisma/orm/pull/30628))
+- **Every contract with a foreign key changes.** Run `prisma contract emit`, then `prisma migration plan`, which tells you what to do: write an empty migration with `prisma migration new` if you deploy with migrations, or run `prisma db sign` if you keep your database in sync with `db update`. A partial index no longer counts as the index behind a relation, so `migration plan` creates a plain one next to it unless the relation names the index with `index:`. ([#30561](https://github.com/prisma/orm/pull/30561))
+- **If Prisma ORM 8 reads your Prisma 7 `schema.prisma`, the contract now records the constraint names Prisma 7 chose.** Run `prisma contract emit`, then `prisma db sign`, or `prisma migration plan` if Prisma ORM 8 already manages your migrations. ([#30606](https://github.com/prisma/orm/pull/30606))
+- **MongoDB indexes write their sort direction as `sort(field, Desc)`.** `@@index([createdAt(sort: Desc)])` is now `@@index([sort(createdAt, Desc)])`. The database index does not change. ([#30636](https://github.com/prisma/orm/pull/30636))
+- **A schema written in TypeScript must list the extensions whose types it uses.** A schema that uses a pgvector, PostGIS, or arktype-json column without listing that extension in `extensions` fails with `CONTRACT.CODEC_DESCRIPTOR_MISSING`. ([#30547](https://github.com/prisma/orm/pull/30547))
+- **`db verify --strict` reports a table that no contract declares as `CONTRACT.SCHEMA_VERIFICATION_FAILED`.** `CONTRACT.MARKER_REQUIRED` now only means the database has not been signed. If a script looks for the old code to detect stray tables, change it to the new one. ([#30601](https://github.com/prisma/orm/pull/30601))
+
+## Prisma Compute
+
+A deploy now applies a database's migrations before the service that uses it goes live. Before, the two steps ran at the same time, so new code could serve requests for a few minutes against a database that was not yet at the new schema. A failed migration now stops the new code from shipping. ([composer#334](https://github.com/prisma/composer/pull/334))
+
+`prisma deploy` also reports each step as it starts and finishes, with how long it took: loading the app, assembling each service, connecting to the project, checking environment variables, and applying the plan. The last line names the real total, as in `Deployed shop to production in 9m 35s`, where it used to show only the time the final apply took. ([composer#338](https://github.com/prisma/composer/pull/338))
+
+In pnpm projects, `prisma dev` and `prisma deploy` no longer fail with `DEPLOY.ALCHEMY_BIN_MISSING`. ([composer#332](https://github.com/prisma/composer/pull/332))
+
+Deleting a project now also stops the Compute apps it was running, within an hour, and the delete dialog says so. Before, the apps' servers kept running after the project was gone.
+
+## Prisma Postgres
+
+A Free workspace that has used up its included queries can now restore database access for 24 hours from the notice in the Console, once per workspace, so you can export your data or finish a task without opening a support request. Payment and support holds are not lifted by this, and paid plans do not need it. The [Prisma Postgres FAQ](https://www.prisma.io/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) describes each option when you reach the limit.
+
+## Prisma Console
+
+The sign-in page at `auth.prisma.io`, which the Prisma CLI and the Prisma MCP server send you to, now looks like the Console's own login page and follows your light or dark theme. When an OAuth sign-in fails, the error is now shown on the page. Before, it was sent to a notification that never appeared, so a failed sign-in looked like nothing had happened.
+
+## Docs and website
+
+- The [app templates page](/apps) is now a gallery. Each Prisma Compute template shows a screenshot of the running app, and you can filter by type and framework and sort by featured, newest, or popular. The filters live in the URL, so a link such as `/apps?framework=nextjs` opens the list already narrowed.
+- The [changelog](/changelog) has a product filter, so you can see only the entries that cover Prisma Studio, Prisma Compute, Prisma Postgres, or Prisma ORM.
+- The docs remember which database you pick in code examples across pages and reloads, and a link with `?db=postgresql` opens a page on that database's examples.
+- [Deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) now explains how to run a test version of your app next to production: every branch you push gets its own deployment, URL, and databases, a branch you keep gives you a staging environment, and only the default branch deploys production.
+- [Import an existing database](https://www.prisma.io/docs/postgres/import-from-existing-database) is now a short guide: create the database, `pg_dump`, `pg_restore`, then verify.
+
+## Fixes
+
+### Prisma Compute
+
+- The pull request that Prisma opens to set up deploys on a connected repository works again. Before, a version conflict could stop it from being opened at all. The workflow it writes now sets a pnpm version for repositories without a `packageManager` field, and the job that tears down a deleted branch no longer fails.
+- Projects that deploy through `prisma/cloud-deploy-action` set up by hand no longer show a **Builds paused** card forever. It clears once a CI build has succeeded.
+- Leaving an app page open in the Console no longer ends in a `Failed to fetch` error screen after a dropped request, such as after your laptop sleeps. The page also polls less often while nothing is building.
+- When a background refresh of the dashboard or a project overview fails, the Console keeps the page instead of replacing it with an error.
+
+### Prisma MCP server
+
+- Connecting Codex to the Prisma MCP server no longer returns `401` right after a successful Prisma sign-in.
+
+### Prisma ORM 8
+
+- With Bun, `prisma orm init` and `prisma contract emit` no longer fail with `CONTRACT.VALIDATION_FAILED` on a valid contract. ([#30632](https://github.com/prisma/orm/pull/30632))
+- A `jsonb` column that holds a JSON string such as `"standard"` reads back as that string. Before, it failed with `RUNTIME.DECODE_FAILED`, and `"123"` read as a number. ([#30597](https://github.com/prisma/orm/pull/30597))
+- A query sent after `close()` fails with `DRIVER.NOT_CONNECTED`, and work already started finishes, instead of a misleading error or an unhandled rejection. ([#30533](https://github.com/prisma/orm/pull/30533))
+- A `Bytes` literal default or a pgvector list default no longer rolls back `db init`, `db update`, and `db migrate` with `MIGRATION.SCHEMA_VERIFY_FAILED`. ([#30603](https://github.com/prisma/orm/pull/30603))
+- On SQLite, a `now()` default stores the same text the application writes, so rows that took the default compare and sort correctly. ([#30612](https://github.com/prisma/orm/pull/30612))
+- When a contract change needs no database change, `prisma migration plan` explains why and names the command to run next. ([#30639](https://github.com/prisma/orm/pull/30639))
+- Dropping a constraint of a table with a long name no longer fails. ([#30606](https://github.com/prisma/orm/pull/30606))
+- Error messages from the database driver no longer include the connection string. ([#30451](https://github.com/prisma/orm/pull/30451))
+- A `@default` that the schema refuses is reported at the written value, with a message that says what to write instead, such as `Expected a number; got a list`. ([#30539](https://github.com/prisma/orm/pull/30539))
+- An unknown or misspelled type name reports one diagnostic, `PSL_UNRESOLVED_REFERENCE`, in both the SQL and MongoDB schema families. ([#30563](https://github.com/prisma/orm/pull/30563))
+- On MongoDB, a nullable list field accepts an explicit `null`, and the ORM accepts writes of enum values whose stored form differs from the value, such as bigint and date members. ([#30568](https://github.com/prisma/orm/pull/30568), [#30628](https://github.com/prisma/orm/pull/30628))
+
+## Guides and articles
+
+- [App hosting platforms with managed Postgres compared (2026)](https://www.prisma.io/blog/app-hosting-platforms-with-managed-postgres-2026): Prisma Compute, Railway, Render, Fly.io, Supabase, Neon, and Vercel compared for an app next to a managed Postgres database, on previews, idle cost, pooling, backups, and price.
+
+---
+
+*Need help applying these changes in production? [Prisma Enterprise Support](/enterprise) can help with schema design, performance, security, and compliance.*
