@@ -6,9 +6,7 @@ import { cn } from "@/lib/utils";
 // USA Prisma Postgres regions only (see /postgres/hipaa copy + FAQ).
 const US_REGIONS = ["us-east-1", "us-west-1"] as const;
 
-/**
- * Subtle crossfade through US regions every 2s. Static under reduced motion.
- */
+/** Soft opacity crossfade through US regions. No vertical motion. */
 export function HipaaRegionFlip({ className }: { className?: string }) {
   const [index, setIndex] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -23,10 +21,12 @@ export function HipaaRegionFlip({ className }: { className?: string }) {
 
   useEffect(() => {
     if (reduceMotion) return;
-    // ~2s fully visible, then a long soft crossfade into the next region.
+    // 5s fully settled, then the ~1.8s opacity crossfade into the next region.
+    const FADE_MS = 1800;
+    const DWELL_MS = 5000;
     const id = window.setInterval(() => {
       setIndex((i) => (i + 1) % US_REGIONS.length);
-    }, 3200);
+    }, DWELL_MS + FADE_MS);
     return () => window.clearInterval(id);
   }, [reduceMotion]);
 
@@ -38,22 +38,22 @@ export function HipaaRegionFlip({ className }: { className?: string }) {
 
   return (
     <span
-      className={cn("relative inline-grid font-mono", className)}
+      className={cn(
+        // Fixed box: sizer sets height/width; layers absolute-overlay inside.
+        "relative inline-block h-[1.25em] font-mono",
+        className,
+      )}
       aria-live="off"
     >
-      {/* Invisible sizer so the row width stays stable across flips. */}
-      <span className="invisible col-start-1 row-start-1" aria-hidden>
+      <span className="invisible whitespace-nowrap" aria-hidden>
         {US_REGIONS.reduce((a, b) => (a.length >= b.length ? a : b))}
       </span>
       {US_REGIONS.map((region, i) => (
         <span
           key={region}
           className={cn(
-            // ~1.1s soft dissolve + whisper of vertical drift — calm, not snappy.
-            "col-start-1 row-start-1 text-right transition-[opacity,transform] duration-[1100ms] ease-[cubic-bezier(0.33,0,0.2,1)]",
-            i === index
-              ? "translate-y-0 opacity-100"
-              : "pointer-events-none translate-y-[0.2rem] opacity-0",
+            "absolute inset-y-0 right-0 whitespace-nowrap transition-opacity duration-[1800ms] ease-in-out",
+            i === index ? "opacity-100" : "opacity-0",
           )}
           aria-hidden={i !== index}
         >
