@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 // at crisp resolution in the same grey-on-dark palette. Source PNGs live
 // under /public/postgres/hipaa/certs/ for provenance.
 
-const MARK_GREY = "#B4B4B4";
+// Mid grey that reads on the light card surface (assets were grey-on-dark;
+// darkened slightly so the marks stay elegant without a charcoal plaque).
+const MARK_GREY = "#6E6E6E";
 
 type MarkProps = {
   className?: string;

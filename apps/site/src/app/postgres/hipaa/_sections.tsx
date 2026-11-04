@@ -210,16 +210,13 @@ function ComplianceCard() {
             </div>
           ))}
         </div>
-        {/* Certification plaque — Martin's yellow-highlight target. Grey
-            monochrome marks on charcoal (matching the official asset palette),
-            not text pills or a cyan seal. */}
-        <div className="rounded-xl bg-[#161616] px-4 py-3.5">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-            <Soc2TypeIiMark />
-            <Iso27001Mark />
-            <GdprMark />
-            <HipaaCompliantMark />
-          </div>
+        {/* Grey monochrome cert marks — no dark plaque; sit on the card
+            surface. HIPAA leads, then SOC 2, ISO 27001, GDPR. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3 pt-1">
+          <HipaaCompliantMark />
+          <Soc2TypeIiMark />
+          <Iso27001Mark />
+          <GdprMark />
         </div>
       </div>
       <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] text-muted-foreground">
