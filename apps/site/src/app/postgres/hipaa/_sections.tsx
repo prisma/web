@@ -17,6 +17,12 @@ import { CtaBurst } from "@/components/sections/cta-burst";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 import {
+  GdprMark,
+  HipaaCompliantMark,
+  Iso27001Mark,
+  Soc2TypeIiMark,
+} from "./_cert-marks";
+import {
   BAA_COMPLIANCE_EMAIL,
   BAA_HTML_PATH,
   BAA_SAMPLE_PDF,
@@ -114,7 +120,7 @@ export function HipaaHero() {
                     color: "text-prism-yellow-400",
                   },
                   {
-                    label: "SOC 2 Type II and ISO 27001 on Business; GDPR on every plan",
+                    label: "SOC 2 Type II and ISO 27001 reports in the Trust Center",
                     color: "text-prism-red-500",
                   },
                 ].map(({ label, color }) => (
@@ -127,32 +133,17 @@ export function HipaaHero() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-4 text-sm text-muted-foreground">
-                Audit reports live in the{" "}
-                <a href={TRUST_URL} className={INLINE_LINK}>
-                  Prisma Trust Center
-                </a>
-                .
-              </p>
             </div>
 
-            {/* Hero visual: compliance panel with a large HIPAA seal watermark
-                behind it — authority without a sticker cluster. */}
+            {/* Hero visual: a compliance-settings panel, same card shell idiom
+                as the /postgres hero tour. */}
             <div className="relative max-md:mt-4 md:self-stretch">
               <PrismRay
                 className="left-[75%] top-1/2 h-12 w-[32rem] -translate-x-1/2 -translate-y-1/2 md:h-24 md:w-[64rem]"
                 angle={-50}
                 intensity="hero"
               />
-              {/* Atmospheric seal: large, calm, behind the panel. Soft bloom
-                  entrance mirrors hero-home; reduced motion keeps the settled mark. */}
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-8 -top-8 z-0 size-[17rem] animate-hero-bloom opacity-[0.13] motion-reduce:animate-none sm:-right-10 sm:-top-12 sm:size-[20rem] md:-right-14 md:-top-16 md:size-[24rem] lg:size-[26rem]"
-              >
-                <HipaaSealMark id="hipaa-seal-watermark" />
-              </div>
-              <div className="relative z-10 animate-hero-rise-late motion-reduce:animate-none md:h-full">
+              <div className="relative md:h-full">
                 <ComplianceCard />
               </div>
             </div>
@@ -160,101 +151,6 @@ export function HipaaHero() {
         </div>
       </div>
     </section>
-  );
-}
-
-// Circular engraved seal used as the hero watermark and the card mark.
-// Drawn, not emoji — thin double ring, curved labels, Prisma cyan ink.
-// `id` must be unique per instance so textPath defs do not collide.
-function HipaaSealMark({ id, className }: { id: string; className?: string }) {
-  const topId = `${id}-top`;
-  const bottomId = `${id}-bottom`;
-  return (
-    <svg
-      viewBox="0 0 200 200"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn("size-full text-prism-cyan-800", className)}
-      aria-hidden
-    >
-      <defs>
-        <path id={topId} d="M 28 100 A 72 72 0 0 1 172 100" />
-        <path id={bottomId} d="M 172 100 A 72 72 0 0 1 28 100" />
-      </defs>
-      <circle
-        cx="100"
-        cy="100"
-        r="96"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        opacity="0.55"
-      />
-      <circle
-        cx="100"
-        cy="100"
-        r="88"
-        stroke="currentColor"
-        strokeWidth="0.75"
-        opacity="0.35"
-      />
-      <circle
-        cx="100"
-        cy="100"
-        r="62"
-        stroke="currentColor"
-        strokeWidth="0.75"
-        opacity="0.28"
-      />
-      <text
-        fill="currentColor"
-        fontSize="9.5"
-        fontWeight="600"
-        letterSpacing="0.22em"
-        opacity="0.7"
-      >
-        <textPath href={`#${topId}`} startOffset="50%" textAnchor="middle">
-          PRISMA POSTGRES
-        </textPath>
-      </text>
-      <text
-        fill="currentColor"
-        fontSize="8.5"
-        fontWeight="600"
-        letterSpacing="0.18em"
-        opacity="0.62"
-      >
-        <textPath href={`#${bottomId}`} startOffset="50%" textAnchor="middle">
-          SIGNED BAA · BUSINESS
-        </textPath>
-      </text>
-      <text
-        x="100"
-        y="98"
-        textAnchor="middle"
-        fill="currentColor"
-        fontSize="28"
-        fontWeight="700"
-        letterSpacing="0.04em"
-        style={{ fontFamily: "var(--font-display, inherit)" }}
-      >
-        HIPAA
-      </text>
-      <text
-        x="100"
-        y="118"
-        textAnchor="middle"
-        fill="currentColor"
-        fontSize="7.5"
-        fontWeight="600"
-        letterSpacing="0.28em"
-        opacity="0.55"
-      >
-        READY
-      </text>
-      {/* Tiny ticks at the ring equator — engraved seal detail. */}
-      <circle cx="30" cy="100" r="1.6" fill="currentColor" opacity="0.45" />
-      <circle cx="170" cy="100" r="1.6" fill="currentColor" opacity="0.45" />
-    </svg>
   );
 }
 
@@ -266,19 +162,11 @@ function ComplianceCard() {
     { label: "Region", value: "us-east-1", mono: true },
     { label: "Backups", value: "Daily, kept 30 days" },
   ];
-  // Engraved cert ledger — not pills. Plan claims stay accurate: HIPAA / SOC 2 /
-  // ISO on Business; GDPR on every plan. Trust Center holds the reports.
-  const certifications = [
-    { name: "HIPAA", note: "Business" },
-    { name: "SOC 2 Type II", note: "Business" },
-    { name: "ISO 27001", note: "Business" },
-    { name: "GDPR", note: "Every plan" },
-  ] as const;
 
   return (
     <div
       role="img"
-      aria-label="Illustration of a Prisma Postgres workspace on the Business plan with a signed BAA, HIPAA seal, encryption, a US region, 30 day backups, and SOC 2 Type II, ISO 27001 and GDPR coverage"
+      aria-label="Illustration of a Prisma Postgres workspace on the Business plan with a signed BAA, encryption, a US region, 30 day backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
       className="pointer-events-none relative flex h-full w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
     >
       <div className="flex items-center gap-2 border-b border-border/70 px-5 py-3.5">
@@ -289,21 +177,17 @@ function ComplianceCard() {
         </span>
       </div>
       <div className="flex flex-1 flex-col justify-center gap-5 p-5 sm:p-6">
-        <div className="flex items-center gap-4">
-          <span className="relative flex size-14 shrink-0 items-center justify-center">
-            <span
-              aria-hidden
-              className="absolute inset-0 rounded-full bg-prism-cyan-50/80"
-            />
-            <HipaaSealMark id="hipaa-seal-card" className="relative size-14" />
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-xl border border-black/[0.06] bg-prism-cyan-50">
+            <Shield className="size-5 text-prism-cyan-800" aria-hidden />
           </span>
-          <div className="min-w-0">
+          <div>
             <p className="text-[0.9375rem] font-semibold text-foreground">HIPAA</p>
             <p className="text-[0.8125rem] text-muted-foreground">
               Business Associate Agreement signed
             </p>
           </div>
-          <span className="ml-auto hidden text-[0.75rem] font-semibold text-prism-cyan-800 sm:inline">
+          <span className="ml-auto rounded-full border border-prism-cyan-300 bg-prism-cyan-50 px-2.5 py-1 text-[0.6875rem] font-semibold text-prism-cyan-800">
             Active
           </span>
         </div>
@@ -326,22 +210,16 @@ function ComplianceCard() {
             </div>
           ))}
         </div>
-        <div className="border-t border-black/[0.06] pt-4">
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-            {certifications.map(({ name, note }) => (
-              <li key={name} className="min-w-0">
-                <p className="text-[0.8125rem] font-semibold leading-tight text-foreground">
-                  {name}
-                </p>
-                <p className="mt-0.5 text-[0.6875rem] leading-tight text-muted-foreground">
-                  {note}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-[0.75rem] leading-snug text-muted-foreground">
-            Audit reports in the Trust Center
-          </p>
+        {/* Certification plaque — Martin's yellow-highlight target. Grey
+            monochrome marks on charcoal (matching the official asset palette),
+            not text pills or a cyan seal. */}
+        <div className="rounded-xl bg-[#161616] px-4 py-3.5">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <Soc2TypeIiMark />
+            <Iso27001Mark />
+            <GdprMark />
+            <HipaaCompliantMark />
+          </div>
         </div>
       </div>
       <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] text-muted-foreground">
