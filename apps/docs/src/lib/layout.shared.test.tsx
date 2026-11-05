@@ -127,15 +127,21 @@ test("the navbar offers Login and then Sign up, each on its own Console page", (
       ["Sign up", "https://console.prisma.io/sign-up"],
     ],
   );
+  // No hardcoded UTM parameters: they would override the visitor's own,
+  // which useUtmHref propagates onto these links instead.
   for (const item of buttons) {
     assert.equal(item.on, "nav");
-    assert.equal(
-      item.secondary,
-      true,
-      `${String(item.text)} should use the same ink pill as Login`,
-    );
-    assert.equal(new URL(item.url).searchParams.get("utm_source"), "docs");
+    assert.deepEqual([...new URL(item.url).searchParams.keys()], []);
   }
+  // Sign up is the one primary CTA (the ink pill); Login is the quieter,
+  // bordered pill.
+  assert.deepEqual(
+    buttons.map((item) => [item.text, item.secondary === true]),
+    [
+      ["Login", true],
+      ["Sign up", false],
+    ],
+  );
   // Login shows at every desktop width; Sign up only from `lg`, where a second
   // pill clips only the longest section crumbs.
   assert.deepEqual(
