@@ -38,8 +38,7 @@ async function main() {
   });
 
   const relativePath = (file: string) => path.relative(DOCS_DIR, file).split(path.sep).join("/");
-  // A page that must pin versions other than npm latest, such as the ones the Console's
-  // Compute setup installs, says so in an MDX comment holding IGNORE_MARKER.
+  // Pages holding IGNORE_MARKER pin something other than npm latest, such as the Console's Compute setup.
   const files = findMdxFiles(DOCS_DIR).filter(
     (file) =>
       !isVersionedTree(relativePath(file)) &&
