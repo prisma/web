@@ -5,14 +5,15 @@ import { UTM_ATTRIBUTION_STORAGE_KEY, buildSiteRef } from "@prisma-docs/ui/lib/u
 
 /**
  * Blog attribution carrier. Client-routes only under `/blog`, and stamps
- * `ref=prisma.io/blog/<slug>` on Console links for untagged visitors.
+ * `ref=prisma.io/blog/<slug>` on every Console link, next to the visitor's own
+ * attribution.
  */
 export function UtmPersistence() {
   return (
     <SharedUtmPersistence
       storageKey={UTM_ATTRIBUTION_STORAGE_KEY}
       basePath="/blog"
-      fallbackConsoleRef={buildSiteRef}
+      consolePageRef={buildSiteRef}
     />
   );
 }
