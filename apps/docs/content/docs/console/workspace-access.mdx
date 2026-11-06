@@ -1,0 +1,118 @@
+---
+title: Workspace roles and project access (proposal)
+description: Proposed roles and access scopes for Prisma Console workspace members.
+metaTitle: Workspace Roles and Project Access | Prisma Console Proposal
+metaDescription: Review proposed Admin, Developer, Viewer, and Billing roles, with access to an entire workspace or selected projects.
+url: /console/workspace-access
+noindex: true
+---
+
+:::warning[Proposal for review]
+This page describes proposed behavior. These roles and project restrictions are not available yet. Today, workspace members have the Admin role. When released, the roles and project restrictions will be available on all plans. Release timing has not been decided.
+:::
+
+Your role controls what you can do. For Developer and Viewer, an Admin also chooses a scope: the entire workspace or selected projects.
+
+For example, a contractor could be a Developer on one project, while a teammate could be a Viewer across the entire workspace.
+
+Project resources include databases, branches, applications hosted on [Prisma Compute](/compute) (called apps), deployed versions of those apps (called deployments), and [Object Storage](/storage) buckets. A bucket is a container for files.
+
+Managing a project resource means creating, viewing, changing, and deleting it, including its settings, stored data, secrets, and credentials. Existing resource limits and lifecycle rules still apply.
+
+This page uses two kinds of token. A **personal user token** is issued for an individual Prisma account and follows that member's current role and project access. A **workspace service token** is for automation. It has its own entire-workspace or project scope, which does not change when its creator's member role or project assignments change.
+
+## Roles
+
+| Role | Intended use | Access |
+| --- | --- | --- |
+| **Admin** | People responsible for the workspace | Manage all projects, members, role assignments, workspace settings, and billing. |
+| **Developer** | People building and operating applications | Manage databases, branches, apps, deployments, buckets and their files, connection strings or access keys, and application environment variables including their values in accessible projects. Cannot manage workspace members, workspace settings, or billing. |
+| **Viewer** | People monitoring projects | View project, branch, app, and database names, regions, deployment status, and totals or averages such as query counts and average query duration. Cannot change resources, reveal secrets, read database records or stored files, or run SQL. |
+| **Billing** | People responsible for payments and costs | View workspace costs, invoices, and usage totals used to calculate charges. Manage payment details and subscriptions. Cannot access database contents, stored files, connection strings, access keys, or project settings. |
+
+Only Admins can change member roles or scope, including their own. A workspace must retain at least one Admin.
+
+### Permission summary
+
+Permissions below describe the proposed first release. Project permissions apply only within the member's scope.
+
+| Action | Admin | Developer | Viewer | Billing |
+| --- | --- | --- | --- | --- |
+| View project status and performance metrics | Yes | Yes | Yes | No |
+| Create, change, or delete resources within a project | Yes | Yes | No | No |
+| Deploy apps and manage branches within a project | Yes | Yes | No | No |
+| View or change application environment variables, including secret values | Yes | Yes | No | No |
+| Use Studio in Console, run SQL, or access database credentials | Yes | Yes | No | No |
+| Read or change files in Object Storage | Yes | Yes | No | No |
+| Read application logs, SQL text, or values passed into SQL queries | Yes | Yes | No | No |
+| Create a project | Yes | Entire-workspace scope only | No | No |
+| Delete a project | Yes | No | No | No |
+| Invite or remove members; change roles or project access | Yes | No | No | No |
+| Manage workspace settings or workspace service tokens for automation | Yes | No | No | No |
+| View workspace costs, invoices, and usage totals used to calculate charges | Yes | No | No | Yes |
+| Manage payment details and subscriptions | Yes | No | No | Yes |
+| Delete the workspace | Yes | No | No | No |
+
+Developer access includes changes to production resources within an accessible project. The first release does not separate development and production permissions.
+
+Viewer access does not grant read-only access to database records or stored files. Application logs, SQL text, values passed into SQL queries, environment variable values, and connection strings can expose sensitive information and are excluded from Viewer access.
+
+Billing access includes workspace-wide financial information, including project costs and the usage totals used to calculate charges. It does not include performance measurements such as query duration or grant access to those projects' resources.
+
+## Access scopes
+
+Developer and Viewer members can have either of these scopes:
+
+| Scope | Projects included | Future projects |
+| --- | --- | --- |
+| **Entire workspace** | Every project in the workspace | Included automatically |
+| **Selected projects** | Only projects explicitly assigned by an Admin | Require a new assignment |
+
+Admin always applies to the entire workspace. Billing applies to workspace billing and has no project selector.
+
+A member has one role within a workspace. That role applies to every resource in each project in their scope. Different roles for different projects, custom roles, and branch-specific permissions are outside the first release. There are no separate grants for individual databases, buckets, or files.
+
+### Selected projects
+
+A Developer or Viewer with selected-project access:
+
+- Can see only assigned projects in project lists, search, dashboards, and project selectors.
+- Cannot access another project by opening its URL or using the REST API, CLI, or [MCP tools](/ai/mcp-tools) with their personal user token. MCP tools let AI assistants work with Prisma.
+- Cannot create a new project or grant themselves access to another project.
+- Gets access to the branches and resources within each assigned project, subject to their role.
+
+Workspace pages and downloaded reports must also respect the member's role and scope. They must not reveal information about unassigned projects to a selected-project member.
+
+Removing the last project assignment leaves the member with no project access. It never changes their scope to the entire workspace. If a project moves to another workspace, its previous project assignments do not carry over.
+
+## Inviting members and changing access
+
+The proposed invitation flow lets an Admin choose a role and, for Developer or Viewer, either the entire workspace or one or more projects. Developer is the default role for a new invitation; the Admin must choose its scope explicitly. The invitation keeps the selected role and scope until the person accepts it, an Admin revokes it, or it expires after seven days. If a selected project is deleted or moved before the person accepts, the invitation can no longer be accepted, and an Admin needs to send a new one. To change a pending invitation's access, an Admin revokes it and sends a new invitation with the new role and scope.
+
+Existing members keep their Admin role and entire-workspace access when the feature launches. Invitations sent before launch continue to grant Admin access to the entire workspace when accepted. An Admin can then change each member's role and scope explicitly.
+
+Once an Admin saves an access change, the member's next action in Console, the CLI, the REST API, or MCP tools uses their updated permissions. A deployment, query, or file download that started with permission before the change may still finish. Keeping a Console page open does not allow new actions after access is removed. A member who loses access to a project cannot continue through a saved project URL or an older personal user token.
+
+## Credentials and automation
+
+Role and project restrictions apply when you use Console or use the CLI, REST API, or MCP tools with a personal user token. A personal user token cannot grant more access than its user currently has.
+
+An AI assistant or automated program using a member's personal user token cannot exceed that member's current role and project access.
+
+Database connection strings and bucket access keys grant access to their resources separately from Console membership.
+
+Workspace service tokens are created in **Settings > Service Tokens**. An entire-workspace service token can create, read, change, and delete projects and their resources through the REST API. A project-scoped service token can read, change, and delete its assigned project and resources, but cannot create another project. Workspace service tokens cannot manage members or billing.
+
+Removing a member or changing their Console role does not revoke database connection strings, bucket access keys, or workspace service tokens they previously copied.
+
+When a departing member had access to these credentials, review the [database credentials](/postgres/database/connecting-to-your-database#rotate-or-delete-a-credential), [bucket access keys](/cli/bucket), and [workspace service tokens](/rest-api/endpoints/service-tokens/delete-workspaces-by-workspace-id-service-tokens-by-service-token-id) they could have copied. Revoke credentials whose access should end. If an application still needs access, give it a replacement credential and delete the old one.
+
+Workspace roles control who can manage Prisma projects. They do not set permissions for your application's own users or add a role check to each application request or database query.
+
+## Examples
+
+- **Contractor:** Developer with access to one project. They can deploy and manage its resources but cannot invite teammates or access other projects.
+- **Team lead:** Viewer for the entire workspace. They can monitor project status and metrics, including new projects, without access to database records or secrets.
+- **Finance teammate:** Billing. They can download invoices and update payment details without access to production databases.
+
+Learn more about [workspaces and projects](/console/concepts).
