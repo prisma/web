@@ -16,6 +16,26 @@ A Prisma ORM 6 app does not need to upgrade to Prisma ORM 7 first: Prisma 8 read
 
 The examples follow a small feedback board: Express 4, EJS views, Prisma ORM 6.19, compiled with `tsc` and run with `node`. Its models are `Board`, `Post`, `Vote` and `Comment`, with a `PostStatus` enum. Map the names to your own app.
 
+## Two ways to upgrade
+
+Follow the steps below yourself, or have your coding agent follow them with the `prisma-postgres-upgrade` [skill](/ai/tools/skills):
+
+```npm
+npx skills add prisma/skills --skill prisma-postgres-upgrade
+```
+
+Then ask your agent from the project root:
+
+<AgentPrompt>
+
+```text
+Upgrade this app from Prisma ORM 6 to Prisma 8 and set it up to deploy on Prisma Compute.
+```
+
+</AgentPrompt>
+
+The agent runs your project's type check, build and tests before and after the upgrade, and stops for what only you can do: connecting the repository in the Console, providing environment variable values, and pushing.
+
 ## Prerequisites
 
 - **Node.js 24.11 or newer.** Prisma 8 itself runs on Node.js 22.18 or newer too (see [Supported versions](/orm/supported-versions)), but `prisma dev`, which runs the app locally the way Prisma Compute runs it in step 6, needs Node.js 24.11 or newer. The deploy workflow uses Node.js 24.
@@ -43,7 +63,7 @@ Leave `@prisma/client`, a driver adapter such as `@prisma/adapter-pg`, and the g
 
 :::note[Your old client after a fresh install]
 
-From here on, `prisma` is the Prisma 8 CLI, so nothing in the project regenerates the Prisma ORM 6 or 7 client. Prisma ORM 7 has `@prisma/prisma7`, which runs its CLI beside Prisma 8 as `prisma7`, and the [side-by-side guide](/guides/upgrade-prisma-orm/postgresql) uses it. Prisma ORM 6 has no such package.
+From here on, `prisma` is the Prisma 8 CLI and nothing regenerates your old client, so this guide rewrites every query in one pass. To move a Prisma ORM 7 app gradually instead, keep its CLI as `prisma7` with `@prisma/prisma7` and follow the [side-by-side guide](/guides/upgrade-prisma-orm/postgresql). Prisma ORM 6 has no equivalent.
 
 The client you already generated keeps working on your machine while you rewrite queries in step 5. A fresh install, such as a CI run or a new clone, has none, and a Prisma ORM 6 app then fails with `@prisma/client did not initialize yet`. Rewrite every query before you push this work to a branch that CI builds.
 
@@ -100,6 +120,14 @@ export default definePrismaConfig({
 
 [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists how each date and time type reads, and the parts of a schema Prisma 8 cannot read, such as `view` blocks. If your schema uses PostgreSQL extensions such as `pgvector` or `citext`, that section also shows the packs to add to the config.
 
+If you use a coding agent, install the [agent skills](/cli/skills) that ship inside the Prisma 8 packages, matched to their versions:
+
+```npm
+npx prisma skills sync
+```
+
+It needs the Prisma 8 `prisma.config.ts`: with a Prisma ORM 7 config still in place, it fails with `CLI.CONFIG_UNREADABLE`. Run it again after step 6, which adds Composer and its skill.
+
 ### 2.2. Emit the contract
 
 ```npm
@@ -120,7 +148,7 @@ npx prisma db sign
 
 [`db sign`](/cli/db-sign) checks that the tables match the contract, then writes a marker in the database that names the contract it matches. It does not change your tables. It also writes a snapshot of the contract under `migrations/snapshots/` and a ref named `db` in `migrations/app/refs/db.json`, which step 3 plans from.
 
-**Expected result:** `Database signed` and `Advanced ref "db"`. If you keep using other existing databases, such as a staging database, run `db sign` once against each of them with `DATABASE_URL` pointing at it; a database the Compute deploy creates in step 6 does not need it.
+**Expected result:** the command prints `Database signed` and `Advanced ref "db"`. If you keep using other existing databases, such as a staging database, run `db sign` once against each of them with `DATABASE_URL` pointing at it; a database the Compute deploy creates in step 6 does not need it.
 
 ## 3. Hand migrations to Prisma 8
 
@@ -138,7 +166,7 @@ npx prisma migration plan --name init
 npx prisma db migrate
 ```
 
-**Expected result:** `(no operations)`. The Compute deploy runs the same command against the new database it creates, and there it applies the baseline.
+**Expected result:** the command prints `(no operations)`, while the Compute deploy runs the same command against the new database it creates and applies the baseline there.
 
 ### 3.2. Retire `prisma/migrations`
 
@@ -158,7 +186,7 @@ npx prisma migration plan --name <change>
 npx prisma db migrate --advance-ref db
 ```
 
-`--advance-ref db` moves the `db` ref to the new contract, so the next plan starts from it. [How migrations work](/orm/migrations/how-migrations-work) covers the full loop.
+`--advance-ref db` points `migrations/app/refs/db.json` at the new contract, so the next `migration plan` starts from it. [How migrations work](/orm/migrations/how-migrations-work) covers the full loop.
 
 ## 4. Point TypeScript at the Prisma 8 client
 
