@@ -1,6 +1,6 @@
 ---
 title: Core concepts
-description: "The ideas every Composer declaration and command builds on: services, resources, Modules, ports, contracts, stages, and the deploy model."
+description: "The ideas every Composer declaration and command builds on: services, resources, Modules, ports, contracts, environments, and the deploy model."
 url: /composer/core-concepts
 metaTitle: Prisma Composer core concepts
 metaDescription: Learn the core concepts behind Prisma Composer in one page. What services, resources, and Modules are, how ports and contracts wire them, and how deploys converge.
@@ -85,10 +85,10 @@ const { products } = await catalog.listProducts({});
 **Input** is configuration: plain values and credentials, declared together as one [Standard Schema](https://standardschema.dev) and read through `service.input()`. The service declares what shapes are legal; the place that provisions it decides where each value comes from. There are three bindings:
 
 1. A **literal**: the value is written at the provision site and travels with the deployment.
-2. **`envParam(NAME)`**: the value is read from a named platform variable per environment, so the same app reads different values in production and in a staging copy.
-3. **`envSecret(NAME)`**: like `envParam`, but the value is a credential: redacted in output and never stored in deploy state. This is the only thing Composer calls a secret.
+2. **`envParam(NAME)`**: the deploy reads `NAME` from the app configuration, by default the shell that runs the command, or `.env` files when you list `dotenv()` in `prisma.config.ts`, and writes its value into the service's input. It is read again on every deploy, so the same app gets different values in production and in a staging copy.
+3. **`envSecret(NAME)`**: the value is a credential. Each deployed environment keeps it in a platform variable, and `prisma dev` reads it from the `secrets` list in `prisma.config.ts`, by default your shell. The deploy carries only its name, and Composer redacts its value in output. This is the only thing Composer calls a secret.
 
-The split is what makes environments cheap: production, a staging stage, a local run, and a test all execute the same code with different injected values. See [Service input](/composer/service-input).
+A module body can also compute a value per environment with `resolve()`, from `environment.name`. The split is what makes environments cheap: production, a staging environment, a local run, and a test all execute the same code with different injected values. See [Service input](/composer/service-input).
 
 ## Contracts
 
@@ -106,17 +106,17 @@ npx prisma deploy
 
 Two consequences of convergence are worth naming. Removing a node from your module removes the deployed thing on the next deploy, because the topology is the source of truth. And tearing a whole environment down works through the same mechanism, via the `destroy` operation in `@prisma/composer/control`. See [Deploying](/composer/deploying) and the [`deploy` reference](/cli/deploy).
 
-## Stages
+## Environments
 
-A **stage** is an environment name chosen at deploy time, never written in the topology. The same graph deploys anywhere:
+An **environment** is a place the app runs. You choose its name when you deploy or run `prisma dev`, not in your code. A module body can still read it as `environment.name` inside a `resolve()` to compute a value that differs per environment. The same graph deploys anywhere:
 
 ```npm
-npx prisma deploy                  # production
-npx prisma deploy --stage staging  # a persistent staging environment
-npx prisma deploy --stage pr-42    # one environment per PR
+npx prisma deploy                        # production
+npx prisma deploy --environment staging  # a persistent staging environment
+npx prisma deploy --environment pr-42    # one environment per PR
 ```
 
-Deploying with no `--stage` targets production, which lives at the project level. A named stage is a complete, isolated copy of the app, deployed as a [preview branch](/compute/branching) of the same project: its own services, its own databases, its own configuration. The only thing a stage shares with production is the code, which is exactly what the two-channel design promises: same topology, different injected values.
+Deploying with no `--environment` targets `production`, the project's default branch. Any other environment is a complete, isolated copy of the app, deployed as a [preview branch](/compute/branching) of the same project: its own services, its own databases, its own configuration. Services, databases, and buckets the module declares are separate per environment; an external database or service the app reaches through a variable such as `DATABASE_URL` is only as separate as that variable's value in each environment. Apart from that, the only thing an environment shares with production is the code, which is exactly what the two-channel design promises: the same app, with different injected values.
 
 ## Local development
 
