@@ -42,10 +42,10 @@ npx prisma migration plan --name add_users_table
 | `--name <slug>` | Sets the migration directory name suffix. |
 | `--from <contract>` | Uses a specific starting contract state instead of the `db` ref. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), or [`@empty`](#contract-references). `@db` is not accepted here, because `migration plan` is offline and cannot read a database. `@contract` is not accepted either. |
 | `--to <contract>` | Sets the destination contract state. Defaults to the emitted contract. Accepts the same forms as `--from`, except `@empty`, which is refused as a destination. |
-| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
-| `--delete <subject>` | Lets the migration lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed. For a type change, accepts the database's own cast. Repeatable. |
-| `--convert <Model.field>` | For a type change that can lose values, writes an `alterColumnType` whose conversion you fill in. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
-| `--backfill <Model.field>` | For a new required field or a field made required, writes a backfill step you fill in, instead of a temporary value. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
+| `--rename <old>:<new>` | Renames a namespace, a model or a field and keeps its rows, instead of dropping and creating it, or moves a model to another namespace. On PostgreSQL and SQLite, also renames an enum value in the rows that hold it, as in `--rename Status.ARCHIVED:Status.RETIRED`, a field of a value object, as in `--rename GeoPoint.lat:GeoPoint.latitude`, and a variant. Repeatable. See [Renames and data loss](#renames-and-data-loss). |
+| `--delete <subject>` | Lets the migration lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed, a field of a value object, or the rows of a variant. For a type change, accepts the database's own cast. Repeatable. |
+| `--convert <Model.field>` | For a type change that can lose values, writes an `alterColumnType` whose conversion you fill in. On PostgreSQL and SQLite, `--convert <Variant>` rewrites the stored discriminator value of a variant whose value changed. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
+| `--backfill <Model.field>` | For a new required field or a field made required, writes a backfill step you fill in, instead of a temporary value. On PostgreSQL and SQLite, also takes a field of a value object, as in `--backfill GeoPoint.country`. Repeatable. See [Type changes and required fields](#type-changes-and-required-fields). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
@@ -92,6 +92,21 @@ A member you rename while keeping its stored value, such as `RETIRED = "archived
 
 Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
 
+On PostgreSQL and SQLite, a field of a [value object](/orm/contract-authoring/psl-syntax#value-objects) is asked about too when the contract renames it, removes it, or makes it required. Name the field through its value object, such as `GeoPoint.lat`, not through a model. Each statement acts on every column that holds the value object, including lists of it and value objects nested in another:
+
+- `--rename GeoPoint.lat:GeoPoint.latitude` renames the key in every stored object.
+- `--delete GeoPoint.lng` removes the key from every stored object.
+- An enum value inside a value object is asked about as the enum value. `--rename Status.ARCHIVED:Status.RETIRED` rewrites it wherever it is stored, and `--delete Status.DRAFT` sets an optional field that holds it to JSON `null` and takes it out of a list.
+- `--backfill GeoPoint.country` fills a field that becomes required. The migration gets a `fillStoredKey` step whose value is `placeholder('GeoPoint.country:value')`. Replace the placeholder with one JSON value, then run `node migration.ts`. `db migrate` refuses the migration while the placeholder is left. Without `--backfill`, the command refuses and names the flag.
+
+A [variant](/orm/contract-authoring/psl-syntax#base-models-and-variants) whose discriminator value changes, or that the contract removes, is asked about as a model:
+
+- `--convert Bug` rewrites the old value to the new one in the base table's discriminator column.
+- `--rename Bug:Defect` of a variant whose value also changed rewrites the value in the same way.
+- `--delete Bug` deletes the rows that hold the old value, then drops a removed variant's own table or the columns only it used.
+
+On MongoDB, `--rename` of a value object field or of a variant whose discriminator value changes is refused, and so are `--convert` of a variant and `--backfill` of a value object field.
+
 On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. Removing a field from a model removes it from every document that holds it, so the command asks about it as it asks about a dropped collection: answer with `--delete User.nickname` or `--rename User.nickname:User.<new name>`. The planner refuses a rename of the field stored as `_id`, of a field whose stored name contains `.` or starts with `$`, of a time-series collection, and of a variant whose discriminator value changes, and says what to do instead.
 
 On MongoDB, `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. For a field `id ObjectId @id @map("_id")`, write `--rename User.id:User.userId`, not `User._id`.
@@ -100,7 +115,7 @@ The first MongoDB migration you plan after upgrading from a release before `8.0.
 
 ## Type changes and required fields [#type-changes-and-required-fields]
 
-On PostgreSQL and SQLite, a type change that can lose values, such as `String` to `Int` or a longer `VarChar` to a shorter one, is a question like a drop. Answer it in one of two ways:
+On PostgreSQL and SQLite, a type change that can lose values, such as `String` to `Int` or a longer `varchar` to a shorter one, is a question like a drop. Answer it in one of two ways:
 
 - `--convert <Model.field>` writes an `alterColumnType` with `using: placeholder('<Model.field>:convert')`. Replace the placeholder with the conversion as SQL over the column, such as `using: '"age"::integer'`, then run `node migration.ts`. On SQLite the slot is the column's copy expression in `recreateTable`, such as `copyExpressions: { age: 'CAST("age" AS INTEGER)' }`.
 - `--delete <Model.field>` lets the database's own cast run. It may cut or round values, and a value it cannot cast fails the apply.
