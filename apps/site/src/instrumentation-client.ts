@@ -1,5 +1,6 @@
 import { captureBrowserAcquisition } from "@prisma-docs/ui/lib/acquisition.browser";
 import { onCtaClick } from "@prisma-docs/ui/lib/analytics";
+import { recordExperimentExposure } from "@prisma-docs/ui/lib/experiments";
 import posthog from "posthog-js";
 import { hasAnalyticsConsent, onAnalyticsConsentChange } from "@prisma-docs/ui/lib/consent";
 import { getPaidPersonProperties, onAttributionChange } from "@prisma-docs/ui/lib/attribution";
@@ -21,6 +22,9 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
   before_send: (event) => {
     if (event?.event === "$pageview")
       event.properties = { ...event.properties, ...acquisitionProperties() };
+    // Remember the experiment variants this visitor saw, so the Console link
+    // carries them to signup (see `UtmPersistence`).
+    if (event?.event === "$feature_flag_called") recordExperimentExposure(event.properties);
     return event;
   },
   api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
