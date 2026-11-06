@@ -70,6 +70,23 @@ Manage refs with [`migration ref`](/cli/migration-ref).
 
 Before it runs anything, `db migrate` checks that the database's marker names a contract state that one of your migrations starts or ends at, in every contract space. When it does not, the command fails with `MIGRATION.MARKER_MISMATCH` and changes nothing. The error's `why` says what moved the database there, such as a migration that is no longer on disk or a `db update`. Its next actions give two ways back, and neither resets the database: `db update` for a database whose migration history does not need to be kept, or new migrations for a database that changes only through migrations, such as production. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) walks through both.
 
+## When no migration reaches the target
+
+`db migrate` only applies migrations that are on disk. When no chain of migrations leads from the database's current state to the target, it fails with `MIGRATION.PATH_UNREACHABLE`, exits with code `2`, and changes nothing. This happens in two common cases:
+
+- You changed your contract and ran `db migrate` without planning a migration for the change. The target is then the new contract, and no migration ends at it.
+- You passed `--to` with an earlier migration, to go back. Migrations only go forward, so no migration leads back to it.
+
+The error names both contract states and prints the `migration plan` and `db migrate --to` commands that would join them:
+
+```text
+✘ [MIGRATION.PATH_UNREACHABLE] Current contract has no planned migration path
+→ Plan the missing edge: prisma migration plan --from <current hash> --to <target hash> --name <slug>
+→ Apply it: prisma db migrate --to <target hash>
+```
+
+In the first case, plan the migration with [`migration plan`](/cli/migration-plan) and run `db migrate` again. In the second case, the plan you get is a migration that undoes the later ones. It usually drops tables or columns and the data in them, so review it before you apply it. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) explains the choices. With `--json`, `error.meta` holds `kind`, `spaceId`, `fromHash`, and `targetHash`. `kind` is `pathUnreachable`, or `neverPlanned` when the contract space has no migrations at all. A `neverPlanned` error has no `fromHash`.
+
 ## When an apply fails [#when-an-apply-fails]
 
 Each operation checks the database before and after it runs, as [How migrations work](/orm/migrations/how-migrations-work#every-operation-checks-itself) explains. When a check fails, `db migrate` stops and its `why` says which check failed and, when the check names one object, what the database already has or lacks:
