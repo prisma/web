@@ -101,7 +101,7 @@ Do not declare `vector` in your own contract as well. `contract emit` refuses an
 
 :::note[Upgrading pgvector, PostGIS, ParadeDB or citext from before `8.0.0-rc.23`]
 
-Since `8.0.0-rc.23`, each of these extensions declares its PostgreSQL extension outside any schema. After you upgrade, run `npx prisma contract emit`, which writes one new migration and a new head ref under the extension's directory in `migrations/`, and commit them. Then run `npx prisma db migrate` against each database. The new migration has no operations, so the database does not change. If your own contract declares the same extension, remove that declaration first, as described above.
+Since `8.0.0-rc.23`, each of these extensions declares its PostgreSQL extension outside any schema. After you upgrade, run `npx prisma contract emit`, which writes new migrations and a new head ref under the extension's directory in `migrations/`, and commit all of them. When you upgrade from before `8.0.0-rc.22`, these include the migrations the next note describes. Then run `npx prisma db migrate` against each database. On a database that already ran the migrations added in `8.0.0-rc.22`, the migration it runs has no operations, so the database does not change. If your own contract declares the same extension, remove that declaration first, as described above.
 
 :::
 
@@ -229,9 +229,7 @@ export const db = await supabase({
 
 `supabase(...)` takes the options `postgres(...)` takes, so pgvector or another extension goes in its `extensions` array in the same way. That includes `cursor`, which streams rows from a server-side cursor, and `binding`, which takes `{ kind: 'url', url }` or `{ kind: 'pgPool', pool }`.
 
-To use a `pg` pool you build yourself, pass it as `pg` in place of `url`. `pg` takes a `pg.Pool` only, because each role-bound query needs a connection of its own. A `pg.Client` fails at `supabase(...)` with an error whose `code` is `SUPABASE.CONFIG_INVALID` and whose message is "Supabase takes a pg.Pool or a url, not a pg.Client".
-
-Pass exactly one of `url`, `pg` and `binding`. `supabase(...)` checks them when you call it, and a wrong one fails at once with an error whose `code` is `RUNTIME.BINDING_INVALID`, not on the first query. That happens when you pass both `url` and `pg`, an empty `url`, a `url` that does not start with `postgres://` or `postgresql://`, a `pg` value that is not a `pg.Pool` or a `pg.Client`, or `null` as any of the three. To leave an option unset, leave it out rather than passing `null`.
+To use a `pg` pool you build yourself, pass it as `pg` in place of `url`. `supabase(...)` takes a `pg.Pool`, not a `pg.Client`, and checks the database input when you call it. [`postgres(options)`](/orm/reference/transactions-and-runtime#postgresoptions) lists what it accepts and the error a wrong input gives.
 
 ```ts title="src/prisma/db.ts (excerpt)"
 import { Pool } from 'pg';
