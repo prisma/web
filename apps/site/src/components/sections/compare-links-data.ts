@@ -60,6 +60,12 @@ export const COMPARE_PRISMA_LINKS: CompareLink[] = [
       "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Auth, Storage, Realtime, and Edge Functions.",
   },
   {
+    label: "Prisma vs Vercel",
+    href: "/compare/vercel",
+    description:
+      "Prisma Compute, Prisma Postgres, and Prisma ORM compared with Vercel application hosting.",
+  },
+  {
     label: "Prisma vs Vercel + Neon + Drizzle",
     href: "/compare/vercel-neon-drizzle",
     description:
