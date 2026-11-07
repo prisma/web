@@ -208,7 +208,9 @@ export function vercel(config: VercelSource, options: VercelOptions = {}): Routi
           ) ?? []),
         ].map((rule) => ({
           pattern: rule.regex ?? sourceToRegex(rule.source).src,
-          caseSensitive: false,
+          // Vercel executes the exported path regex without an /i flag. A
+          // case-only sibling can be a real page in another mounted site.
+          caseSensitive: true,
           has: rule.has,
           missing: rule.missing,
         }));

@@ -9,6 +9,9 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { staticManifestPath, type StaticAssets } from "./static-assets.ts";
+import { POSTHOG_API_HOST } from "../packages/ui/src/lib/posthog-config.ts";
+import { get as httpGet } from "node:http";
+import { assertIndexable } from "./indexability.ts";
 
 let session: DevSession | undefined;
 let origin: string | undefined = process.argv[2];
@@ -86,19 +89,28 @@ try {
       true,
     );
     assert.equal(response.status, 200, `${path}: expected a working page`);
+    for (const name of [
+      "x-composer-public-document",
+      "x-nextjs-cache",
+      "x-nextjs-prerender",
+      "x-nextjs-stale-time",
+      "x-powered-by",
+    ])
+      assert.equal(response.headers.has(name), false, `${path}: leaked ${name}`);
     assert.equal(
       new URL(response.url).origin,
       new URL(origin).origin,
       `${path}: escaped the local stack`,
     );
     const html = await response.text();
+    if (process.env.WEB_REQUIRE_INDEXABLE === "1") assertIndexable(response.headers, html, path);
     if (path === "/docs/composer") {
       documentVary = response.headers.get("vary");
     }
     if (path === "/blog") {
       const media = [
         ...new Set(
-          [...html.matchAll(/<img\b[^>]*\bsrc="([^"]*\?[^\"]*__asset=[a-f0-9]{64}[^\"]*)"/g)].map(
+          [...html.matchAll(/<img\b[^>]*\bsrc="([^"]*\?[^"]*__asset=[a-f0-9]{64}[^"]*)"/g)].map(
             (match) => match[1].replaceAll("&amp;", "&"),
           ),
         ),
@@ -217,7 +229,6 @@ try {
   );
   for (const image of [optimizedImage, docsImage])
     for (const format of ["webp", "jpeg"]) {
-      let hit = false;
       let previous: string | undefined;
       for (let attempt = 0; attempt < 3; attempt++) {
         const response = await get(image, { headers: { accept: `image/${format}` } });
@@ -228,13 +239,18 @@ try {
           .digest("hex");
         if (previous) assert.equal(digest, previous, "image bytes changed between cache reads");
         previous = digest;
-        hit ||=
-          response.headers.get("x-nextjs-cache") === "HIT" ||
-          response.headers.get("cf-cache-status") === "HIT";
+        assert.equal(
+          response.headers.has("x-nextjs-cache"),
+          false,
+          "image responses must not expose Next cache markers",
+        );
+        assert.match(response.headers.get("vary") ?? "", /accept/i);
+        assert.match(response.headers.get("cache-control") ?? "", /public/i);
       }
-      assert.ok(hit, `${image.pathname}: optimized ${format} never became a cache hit`);
     }
-  console.log("PASS optimized images: origin cache reuse and separate WebP/JPEG variants");
+  console.log(
+    "PASS optimized images: stable bytes, public cache policy and separate WebP/JPEG variants",
+  );
   // Exercise original public files served by Next, including the largest file.
   // Select representatives from the checkout, without a runtime media catalog.
   const publicDir = fileURLToPath(new URL("../apps/blog/public/", import.meta.url));
@@ -311,6 +327,164 @@ try {
     assert.equal(location.searchParams.get("value"), "a/b", source);
   }
   console.log("PASS Vercel redirects, repeated query values, and URL normalization");
+
+  if (session) {
+    // Exercise real host-dependent Next redirects locally. Cloud ingress must
+    // separately accept each registered hostname; spoofing Host cannot test it.
+    // Bypass the emulator's own routing proxy, which rewrites Host itself.
+    const state = JSON.parse(
+      readFileSync(
+        path.join(process.env.PRISMA_COMPOSER_EMULATORS_DIR!, "compute/instances.json"),
+        "utf8",
+      ),
+    ) as {
+      instances: Record<string, { labels: Record<string, string>; port: number; status: string }>;
+    };
+    const gateway = Object.values(state.instances).find(
+      (instance) =>
+        instance.status === "running" &&
+        instance.labels["composer.directory"] === process.cwd() &&
+        instance.labels["composer.app"] === "web" &&
+        instance.labels["composer.address"] === "gateway",
+    );
+    assert.ok(gateway);
+    for (const [host, path, status, destination] of [
+      ["prisma.io", "/pricing", 308, "https://www.prisma.io/pricing"],
+      ["docs.prisma.io", "/", 308, "https://www.prisma.io/docs"],
+      ["blog.prisma.io", "/", 307, "https://www.prisma.io/blog"],
+    ] as const) {
+      const response = await new Promise<{ status: number; location?: string }>(
+        (resolve, reject) => {
+          const request = httpGet(
+            `http://127.0.0.1:${gateway.port}${path}?ref=cutover`,
+            { headers: { host } },
+            (response) => {
+              response.resume();
+              resolve({ status: response.statusCode!, location: response.headers.location });
+            },
+          );
+          request.once("error", reject);
+          request.setTimeout(10_000, () =>
+            request.destroy(new Error("Host redirect probe timed out")),
+          );
+        },
+      );
+      assert.equal(response.status, status, host);
+      assert.equal(response.location, `${destination}?ref=cutover`, host);
+    }
+    console.log(
+      "PASS canonical-host redirect rules (binding/TLS still require final-host verification)",
+    );
+  }
+
+  const retired = [
+    "/blog/performance-engineering-aeduv0rei0jk",
+    "/blog/prisma-studio-3rtf78dg99fe",
+    "/blog/prisma-the-complete-orm-inw24qjeawmb",
+    "/docs/cli/dev",
+    "/docs/guides/deployment/vercel",
+    "/docs/orm/reference",
+    "/docs/postgres/iac/alchemy",
+    "/docs/prisma-orm",
+  ];
+  const locations = new Set<string>();
+  for (const path of ["/blog/sitemap.xml", "/docs/sitemap.xml"]) {
+    const response = await get(new URL(path, origin));
+    assert.equal(response.status, 200, path);
+    for (const match of (await response.text()).matchAll(/<loc>([^<]+)<\/loc>/g))
+      locations.add(new URL(match[1]).pathname);
+  }
+  for (const path of retired)
+    assert.equal(locations.has(path), false, `${path}: redirect stub in sitemap`);
+  for (const path of [
+    "/docs/cli/v7/dev",
+    "/docs/compute/alchemy",
+    "/docs/orm/v7/reference/prisma-cli-reference",
+    "/docs/guides/integrations/vercel-deployment",
+    "/docs/prisma-postgres/quickstart/prisma-orm",
+    "/docs/orm/v6/overview/introduction/why-prisma",
+    "/docs/studio/getting-started",
+    "/blog",
+  ])
+    assert.ok(locations.has(path), `${path}: canonical destination missing from sitemap`);
+  console.log("PASS audited sitemap redirects removed and canonical destinations retained");
+
+  for (const [path, status] of [
+    ["/blog/fullstack-remix-prisma-mongodb-1-7d0bftxbmb6r", 200],
+    ["/blog/fullstack-remix-prisma-mongodb-1-7D0BfTXBmB6r", 308],
+  ] as const) {
+    const response = await get(new URL(path, origin), { redirect: "manual" });
+    assert.equal(response.status, status, `${path}: case-sensitive redirect parity`);
+    await response.body?.cancel();
+  }
+  for (const path of [
+    "/sitemap.xml",
+    "/docs/sitemap.xml",
+    "/llms.txt",
+    "/docs/llms.txt",
+    "/blog/llms.txt",
+  ]) {
+    const response = await get(new URL(path, origin));
+    assert.equal(response.status, 200, path);
+    assert.match(
+      response.headers.get("cdn-cache-control") ?? "",
+      /^public, max-age=60, stale-while-revalidate=300$/,
+      path,
+    );
+    assert.equal(response.headers.get("cache-control"), "public, max-age=0", path);
+    await response.body?.cancel();
+  }
+  for (const path of [
+    "/docs-static/_next/static/cutover-not-found.js",
+    "/blog/_next/static/cutover-not-found.js",
+  ]) {
+    const response = await get(new URL(path, origin));
+    assert.equal(response.status, 404, path);
+    assert.ok((await response.arrayBuffer()).byteLength < 1000, path);
+  }
+  const staticEntry = Object.entries(retained.assets).find(
+    ([, file]) => file.current && file.brotliBytes !== undefined,
+  );
+  assert.ok(staticEntry, "gateway must ship precompressed static text");
+  const impossible = await get(new URL(staticEntry[0], origin), {
+    headers: { range: "bytes=999999999999-" },
+  });
+  assert.equal(impossible.status, 416);
+  assert.equal(impossible.headers.get("content-range"), `bytes */${staticEntry[1].bytes}`);
+  await impossible.body?.cancel();
+  console.log(
+    "PASS case-sensitive redirects, bounded document TTLs, range rejection and small static misses",
+  );
+
+  if (
+    process.env.WEB_REQUIRE_INTEGRATIONS === "1" ||
+    process.env.COMPOSER_INTEGRATIONS?.split(",").some((name) => name.trim() === "mixedbread")
+  ) {
+    for (const path of ["/api/search", "/docs/api/search", "/blog/api/search"]) {
+      const response = await get(new URL(`${path}?query=Prisma`, origin));
+      assert.equal(response.status, 200, `${path}: search must be configured and reachable`);
+      const results = await response.json();
+      assert.ok(Array.isArray(results) && results.length > 0, `${path}: expected search results`);
+    }
+    console.log("PASS site/docs/blog search integrations");
+  }
+  if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+    // Fetch configuration only; do not capture synthetic analytics events.
+    const response = await fetch(`${POSTHOG_API_HOST}/flags/?v=2`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        token: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+        distinct_id: "web-deployment-config-check",
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    assert.equal(response.status, 200, "PostHog public configuration endpoint");
+    assert.equal(typeof (await response.json()), "object");
+    console.log("PASS pinned PostHog configuration endpoint (no captured event)");
+  } else if (process.env.WEB_REQUIRE_INTEGRATIONS === "1") {
+    assert.fail("Production analytics key missing from smoke environment");
+  }
 
   const siteRedirect = await get(new URL("/docs/1.0/example?ref=a&ref=b", origin), {
     redirect: "manual",

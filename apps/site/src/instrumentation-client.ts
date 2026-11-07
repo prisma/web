@@ -1,3 +1,4 @@
+import { POSTHOG_API_HOST } from "@prisma-docs/ui/lib/posthog-config";
 import { captureBrowserAcquisition } from "@prisma-docs/ui/lib/acquisition.browser";
 import { onCtaClick } from "@prisma-docs/ui/lib/analytics";
 import { recordExperimentExposure } from "@prisma-docs/ui/lib/experiments";
@@ -27,7 +28,7 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
     if (event?.event === "$feature_flag_called") recordExperimentExposure(event.properties);
     return event;
   },
-  api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  api_host: POSTHOG_API_HOST,
   capture_pageview: "history_change",
   defaults: "2025-11-30",
   // ChatGPT ad clicks land with `oppref` and no UTM params. Treating it as a
