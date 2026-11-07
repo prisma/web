@@ -7,6 +7,8 @@
  * the one in the `dependencies` of `prisma@latest`. A version mentioned as history ("since 8.0.0-rc.10",
  * an "Added in" column) is allowed to be older, and so is a pin to an older
  * major line, such as a `prisma@6.x` install step for readers staying on 6.
+ * A page whose source contains `lint-versions-ignore-file` is skipped, for pins that
+ * must follow something other than npm, such as the Console's Compute setup.
  *
  * Usage: npx tsx scripts/lint-versions.ts [--fix]
  */
@@ -18,6 +20,7 @@ import { fetchVersions, isVersionedTree, lintVersions, rewriteVersions } from ".
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = path.join(__dirname, "../content/docs");
+const IGNORE_MARKER = "lint-versions-ignore-file";
 
 function findMdxFiles(dir: string, fileList: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -35,7 +38,12 @@ async function main() {
   });
 
   const relativePath = (file: string) => path.relative(DOCS_DIR, file).split(path.sep).join("/");
-  const files = findMdxFiles(DOCS_DIR).filter((file) => !isVersionedTree(relativePath(file)));
+  // Pages holding IGNORE_MARKER pin something other than npm latest, such as the Console's Compute setup.
+  const files = findMdxFiles(DOCS_DIR).filter(
+    (file) =>
+      !isVersionedTree(relativePath(file)) &&
+      !fs.readFileSync(file, "utf8").includes(IGNORE_MARKER),
+  );
   if (process.argv.includes("--fix")) {
     for (const file of files) {
       const content = fs.readFileSync(file, "utf8");
