@@ -127,7 +127,7 @@ function buildVercelPage(minutes: number) {
         <Link href="/docs/compute" className={INLINE}>
           Prisma Compute
         </Link>{" "}
-        runs the app next to{" "}
+        runs the app in the same project as{" "}
         <Link href="/docs/postgres" className={INLINE}>
           Prisma Postgres
         </Link>{" "}

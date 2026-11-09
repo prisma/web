@@ -3,7 +3,7 @@ export const VERCEL_PATH = "/compare/vercel";
 export const VERCEL_TITLE = "Prisma vs Vercel: app hosting with or without the database?";
 
 export const VERCEL_DESCRIPTION =
-  "Both host TypeScript apps. Pick Prisma Compute when the app should run next to Prisma Postgres and Prisma ORM on one first-party platform. Pick Vercel when you want mature frontend hosting and a Marketplace database. Checked October 2026.";
+  "Both host TypeScript apps. Pick Prisma Compute when the app should run on one first-party platform with Prisma Postgres and Prisma ORM. Pick Vercel when you want mature frontend hosting and a Marketplace database. Checked October 2026.";
 
 export const CHECKED = "October 2026";
 
@@ -21,7 +21,7 @@ export const VERCEL_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as 
 export const VERCEL_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
 
 export const CHOOSE_PRISMA = [
-  "You want the app hosted next to [Prisma Postgres](/docs/postgres) in the same project, without a cross-vendor network hop.",
+  "You want the app hosted in the same project as [Prisma Postgres](/docs/postgres), without a cross-vendor network hop.",
   "You want a [preview branch](/docs/compute/branching) that can own its app services and its database.",
   "You want [Prisma ORM](/docs/orm), Prisma Postgres, and [Prisma Compute](/docs/compute) as one first-party platform.",
   "You want one Prisma workflow across the data model, the database, and deploys.",
@@ -79,31 +79,21 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "App and database placement",
     vercel: "Database placement depends on the Marketplace provider and the deployment region.",
     prisma:
-      "Prisma Compute hosts the app next to Prisma Postgres in the same project, so the app and database do not need a cross-vendor network hop.",
+      "Prisma Compute hosts the app in the same project as Prisma Postgres, so the app and database do not need a cross-vendor network hop. Each service runs in one region, so create it in the database's region.",
     sources: {
       vercel: "https://vercel.com/marketplace",
       prisma: "https://www.prisma.io/docs/compute",
     },
   },
   {
-    feature: "Preview environments",
+    feature: "Environments",
     vercel:
-      "Preview deployments for every Git push. A preview database depends on the Marketplace provider.",
+      "Preview deployments for every Git push on Hobby and Pro. A preview database depends on the Marketplace provider.",
     prisma:
-      "A Prisma [preview branch](/docs/compute/branching) can own its Compute services and its Prisma Postgres database. Production data is not copied into that database.",
+      "After deploy-on-push is set up, every pushed branch gets a Prisma [preview branch](/docs/compute/branching) that can own its Compute services and its Prisma Postgres database. Production data is not copied into that database.",
     sources: {
       vercel: "https://vercel.com/docs/deployments/environments",
       prisma: "https://www.prisma.io/docs/compute/branching",
-    },
-  },
-  {
-    feature: "Preview deployments",
-    vercel: "Preview deployments for every Git push on Hobby and Pro.",
-    prisma:
-      "After deploy-on-push is set up, every pushed branch gets an isolated environment with its own services and, optionally, its own database.",
-    sources: {
-      vercel: "https://vercel.com/docs/deployments/environments",
-      prisma: "https://www.prisma.io/docs/compute",
     },
   },
   {
@@ -121,7 +111,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "Mature frontend hosting and CDN",
     vercel: "Global CDN, Image Optimization, and a mature frontend hosting ecosystem.",
     prisma:
-      "Prisma Compute focuses on TypeScript HTTP services next to Prisma Postgres. It is not a general CDN platform. WebSocket servers are not supported. Compute has no built-in cron scheduler.",
+      "Prisma Compute focuses on TypeScript HTTP services in the same project as Prisma Postgres. It is not a general CDN platform. WebSocket servers are not supported. Compute has no built-in cron scheduler; scheduled jobs come from Composer's [cron building block](/docs/composer/building-blocks#cron).",
     sources: {
       vercel: "https://vercel.com/docs/cdn",
       prisma: "https://www.prisma.io/docs/compute/limitations",
@@ -139,7 +129,7 @@ export const VERCEL_FITS = [
 export const PRISMA_FITS = [
   "Prisma Compute and Prisma Postgres run as one first-party platform.",
   "A preview branch can own its app services and its database.",
-  "The app can sit next to Prisma Postgres in the same project, without a cross-vendor network hop.",
+  "The app and Prisma Postgres sit in the same project, without a cross-vendor network hop.",
   "Prisma ORM connects the typed data layer to the same workflow. It is optional and free to use.",
 ];
 
@@ -151,8 +141,8 @@ export const APART = [
   },
   {
     id: "co-located",
-    title: "App and database next to each other",
-    body: "Prisma Compute hosts the app next to Prisma Postgres in the same project, so the path does not cross vendors. On Vercel, database placement depends on the provider and the integration.",
+    title: "App and database in one project",
+    body: "Prisma Compute hosts the app in the same project as Prisma Postgres, so the path does not cross vendors. Each service runs in one region, so create it in the database's region. On Vercel, database placement depends on the provider and the integration.",
   },
   {
     id: "one-workflow",
@@ -226,10 +216,10 @@ export const PRICING: readonly {
 ];
 
 export const WRONG_CHOICE = [
-  "You want a mature frontend CDN, Image Optimization, and the Vercel hosting ecosystem. Prisma Compute hosts TypeScript HTTP services next to Prisma Postgres. It is not a general CDN platform.",
+  "You want a mature frontend CDN, Image Optimization, and the Vercel hosting ecosystem. Prisma Compute hosts TypeScript HTTP services in the same project as Prisma Postgres. It is not a general CDN platform.",
   "You want hosting and the database managed from the Vercel dashboard. Prisma Postgres works with an app on Vercel, but it is managed from the Prisma Console.",
   "You want to pick the database and ORM separately and connect them yourself. See [Prisma vs Vercel + Neon + Drizzle](/compare/vercel-neon-drizzle) when that stack is the alternative.",
-  "You need WebSocket servers or a built-in cron scheduler. Prisma Compute does not support those today. See [Compute limitations](/docs/compute/limitations).",
+  "You need WebSocket servers, or an app that runs in more than one region. Prisma Compute does not support those today: each service runs in one region. Compute also has no built-in cron scheduler; scheduled jobs come from Composer's [cron building block](/docs/composer/building-blocks#cron). See [Compute limitations](/docs/compute/limitations).",
 ];
 
 export const FAQ: readonly { question: string; answer: string }[] = [
@@ -251,7 +241,7 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "Does Prisma Compute include a CDN like Vercel?",
     answer:
-      "No. Prisma Compute hosts TypeScript HTTP services next to Prisma Postgres. It is not a general CDN platform. Vercel includes a global CDN and Image Optimization. Source: [Compute limitations](/docs/compute/limitations) and [Vercel CDN](https://vercel.com/docs/cdn), October 2026.",
+      "No. Prisma Compute hosts TypeScript HTTP services in the same project as Prisma Postgres. It is not a general CDN platform. Vercel includes a global CDN and Image Optimization. Source: [Compute limitations](/docs/compute/limitations) and [Vercel CDN](https://vercel.com/docs/cdn), October 2026.",
   },
   {
     question: "How is this different from Prisma vs Vercel + Neon + Drizzle?",
