@@ -88,7 +88,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     combo:
       "Neon bills compute in CU-hours plus storage. Vercel bills a Pro seat plus usage. Drizzle is free. Neon installed as Vercel's native integration is billed through Vercel.",
     prisma:
-      "Prisma Postgres and Prisma Compute are on one bill: Prisma Postgres is billed by operations and storage, Prisma Compute by requests, memory, CPU, and bandwidth. Every paid plan includes a hard spend limit you set in the Console.",
+      "Prisma Postgres and Prisma Compute are on one bill: Prisma Postgres is billed by operations and storage, Prisma Compute by requests, memory, CPU, and bandwidth. Every paid plan includes a hard spend limit you set in the Console; it counts usage charges, not the plan fee.",
     sources: {
       combo: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -129,7 +129,7 @@ export const APART = [
   {
     id: "spend",
     title: "Spend managed in one place",
-    body: "Prisma Postgres and Prisma Compute are on one bill, and every paid plan includes a hard spend limit you set in the Console. Neon and Vercel each have their own pricing model and their own spend controls.",
+    body: "Prisma Postgres and Prisma Compute are on one bill. Every paid plan includes a hard spend limit you set in the Console: it counts usage charges, not the plan fee, and stops queries to your workspace's databases when reached. Neon and Vercel each have their own pricing model and their own spend controls.",
   },
 ];
 
@@ -153,7 +153,7 @@ export const PRICING: readonly {
     combo:
       "Neon Free is $0, with 100 CU-hours and 1 GB of storage per project. Launch compute is $0.106 per CU-hour. Scale is $0.222 per CU-hour. Storage on paid plans is $0.35 per GB-month.",
     prisma:
-      "Prisma Postgres Free is $0. No credit card required. 200,000 operations a month, 2 GB of storage, and 50 databases. Paid plans bill operations and storage, with spend limits.",
+      "Prisma Postgres Free is $0. No credit card required. 200,000 operations a month, 2 GB of storage, and 50 databases. Paid plans bill operations and storage past their included amounts, and each includes a spend limit you set for usage charges.",
     sources: {
       combo: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -175,7 +175,7 @@ export const PRICING: readonly {
     combo:
       "Neon and Vercel each bill on their own pricing model, or Neon bills through Vercel when installed as Vercel's native integration. Drizzle adds no bill.",
     prisma:
-      "One bill for Prisma Postgres and Prisma Compute; every paid plan includes a hard spend limit you set in the Console.",
+      "One bill for Prisma Postgres and Prisma Compute; every paid plan includes a hard spend limit you set in the Console, which counts usage charges, not the plan fee.",
     sources: {
       combo: "https://neon.com/docs/guides/vercel-managed-integration",
       prisma: "https://www.prisma.io/pricing",
@@ -199,7 +199,7 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "How do Vercel, Neon, and Prisma bill this stack?",
     answer:
-      "Drizzle is free and open source. Neon Free is $0; Launch compute is $0.106 per CU-hour and Scale is $0.222 per CU-hour. Vercel Hobby is free for personal use; Pro is $20 a month for one deploying seat plus usage. Neon installed as Vercel's native integration is billed through Vercel. Prisma ORM is free and open source, and always will be. Prisma Postgres Free is $0 with no credit card, 200,000 operations, 2 GB of storage, and 50 databases. Paid Prisma plans are a $10 Starter base, $49 Pro and $129 Business a month, with Compute usage metered on top. Every paid plan includes a hard spend limit you set in the Console. Source: [Neon pricing](https://neon.com/pricing), [Vercel pricing](https://vercel.com/pricing), and [Prisma pricing](/pricing), November 2026.",
+      "Drizzle is free and open source. Neon Free is $0; Launch compute is $0.106 per CU-hour and Scale is $0.222 per CU-hour. Vercel Hobby is free for personal use; Pro is $20 a month for one deploying seat plus usage. Neon installed as Vercel's native integration is billed through Vercel. Prisma ORM is free and open source, and always will be. Prisma Postgres Free is $0 with no credit card, 200,000 operations, 2 GB of storage, and 50 databases. Paid Prisma plans are a $10 Starter base, $49 Pro and $129 Business a month, with Compute usage metered on top. Every paid plan includes a hard spend limit you set in the Console; it counts usage charges, not the plan fee. Source: [Neon pricing](https://neon.com/pricing), [Vercel pricing](https://vercel.com/pricing), and [Prisma pricing](/pricing), November 2026.",
   },
   {
     question: "Do I need Prisma ORM to use Prisma Postgres?",
