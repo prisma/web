@@ -3,7 +3,7 @@ import { ChangelogFeed } from "@/components/sections/changelog-feed";
 import { ChangelogHero } from "@/components/sections/changelog-hero";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { extractPreview, getChangelogEntries } from "@/lib/changelog";
-import { categoryForTags, isHighlight, type ChangelogEntry } from "@/lib/changelog-meta";
+import { categoriesForTags, isHighlight, type ChangelogEntry } from "@/lib/changelog-meta";
 
 export const metadata = createPageMetadata({
   title: "Changelog",
@@ -16,16 +16,18 @@ export const metadata = createPageMetadata({
 // /changelog — the redesign (spectral hero, product-area filter, colour-coded
 // timeline) driven by the live changelog content so it keeps auto-updating.
 // Entries come from the same source as the per-entry pages and the AI/GEO feed;
-// each entry's product area is derived from its tags (see categoryForTags), and
+// each entry's product areas are derived from its tags (see categoriesForTags), and
 // the feed is a client component, so we build the list here and pass it down.
 export default function ChangelogPage() {
   const entries: ChangelogEntry[] = getChangelogEntries().map((entry) => {
     const title = entry.frontmatter.headline ?? entry.frontmatter.title;
+    const categories = categoriesForTags(entry.frontmatter.tags);
     return {
       date: entry.frontmatter.date,
       title,
       description: entry.frontmatter.metaDescription ?? extractPreview(entry.content) ?? "",
-      category: categoryForTags(entry.frontmatter.tags),
+      category: categories[0],
+      categories,
       tags: entry.frontmatter.tags?.slice(0, 3) ?? [],
       highlight: isHighlight(title),
       href: `/changelog/${entry.slug}`,
