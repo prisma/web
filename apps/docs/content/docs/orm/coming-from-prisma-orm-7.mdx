@@ -40,7 +40,7 @@ Commands are written as `prisma ...` in the tables below. Run them as `npx prism
 
 `schema.prisma` is now `src/prisma/contract.prisma`. It is the same file, renamed: you still describe your models in it. In Prisma ORM 8, "schema" means a PostgreSQL schema, the namespace your tables live in, usually `public`.
 
-The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma type plus a `@db.` attribute, such as `String @db.VarChar(255)`, Prisma ORM 8 writes the database type as the field type: `VarChar(255)`.
+The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma type plus a `@db.` attribute, such as `String @db.VarChar(255)`, Prisma ORM 8 sets the column with arguments on the type, `String(storage: varchar, length: 255)`, or writes the database type as the field type, such as `Xml`.
 
 | Prisma ORM 7 | Prisma ORM 8 | Notes |
 | --- | --- | --- |
@@ -49,8 +49,8 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 | `generator client { ... }` | removed | `emit` is the new word for `generate`. `prisma contract emit` writes two files next to your contract, `contract.json` and `contract.d.ts`. Commit both |
 | `datasource db { ... }` | the `orm` section of `prisma.config.ts` | the connection string and file paths live in the config file, not the schema. Example below |
 | `String @db.Text` | `String` | `String` is already stored as `text` |
-| `String @db.VarChar(255)` | `VarChar(255)` | the same for most other `@db.` types, such as `@db.Xml`, `@db.Oid` and `@db.Money`: the attribute name becomes the field type. [PSL syntax](/orm/contract-authoring/psl-syntax#models-and-fields) lists them. `@db.Citext` becomes `citext.Citext`, from the citext pack in `@prisma/orm-postgres-contrib`; see [Using extensions](/orm/extensions/using-extensions) |
-| `Decimal @db.Decimal(10, 2)` | `Numeric(10, 2)` | `Decimal` on its own still exists and is a `numeric` column without a fixed precision |
+| `String @db.VarChar(255)` | `String(storage: varchar, length: 255)` | `Int @db.SmallInt` is `Int(storage: int2)`, `Float @db.Real` is `Float(storage: float4)`, and for most other `@db.` types, such as `@db.Xml`, `@db.Oid` and `@db.Money`, the attribute name becomes the field type. [PSL syntax](/orm/contract-authoring/psl-syntax#models-and-fields) lists them. `@db.Citext` becomes `citext.Citext`, from the citext pack in `@prisma/orm-postgres-contrib`; see [Using extensions](/orm/extensions/using-extensions) |
+| `Decimal @db.Decimal(10, 2)` | `Decimal(precision: 10, scale: 2)` | `Decimal` on its own still exists and is a `numeric` column without a fixed precision |
 | `Int`, `Boolean`, `Float`, `BigInt`, `Bytes` | unchanged | |
 | `String @db.Uuid` | `Uuid` | |
 | `DateTime` | `DateTime(storage: timestamp)` | Prisma ORM 7 stored a `DateTime` as `timestamp(3)`, which this keeps. Values come back as a JavaScript `Date`, as in Prisma ORM 7. Plain `DateTime` is a `timestamptz(3)` column, so on an existing table it is a different column. See the note below the table |
