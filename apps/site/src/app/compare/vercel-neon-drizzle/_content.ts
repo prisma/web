@@ -4,9 +4,9 @@ export const VERCEL_NEON_DRIZZLE_TITLE =
   "Prisma vs Vercel + Neon + Drizzle: two ways to build a TypeScript backend";
 
 export const VERCEL_NEON_DRIZZLE_DESCRIPTION =
-  "Compare Prisma ORM, Prisma Postgres, and Prisma Compute with the Vercel, Neon, and Drizzle setup: one TypeScript platform, or a host, a database, and an ORM from three providers. Checked October 2026.";
+  "Compare Prisma ORM, Prisma Postgres, and Prisma Compute with the Vercel, Neon, and Drizzle setup: one TypeScript platform, or a host, a database, and an ORM from three providers. Checked November 2026.";
 
-export const CHECKED = "October 2026";
+export const CHECKED = "November 2026";
 
 /** The existing Prisma ORM vs Drizzle page. Do not invent /compare/drizzle. */
 export const DRIZZLE_ORM_COMPARE_PATH = "/docs/orm/v7/more/comparisons/prisma-and-drizzle";
@@ -19,7 +19,7 @@ export const VERCEL_NEON_DRIZZLE_AUTHOR = {
 } as const;
 
 export const VERCEL_NEON_DRIZZLE_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const VERCEL_NEON_DRIZZLE_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
+export const VERCEL_NEON_DRIZZLE_UPDATED = { iso: "2026-11-09", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want fewer integrations to manage. The ORM, the database, and the hosting come from one platform.",
@@ -32,7 +32,7 @@ export const CHOOSE_COMBO = [
   "You want to pick the tool you prefer for each layer and connect them yourself.",
   "You already deploy on Vercel and want Neon Postgres installed from the Vercel Marketplace.",
   "You prefer Drizzle's SQL-first, query-builder style.",
-  "You want preview databases that start as copy-on-write clones of production data.",
+  "You want preview databases that start as copy-on-write clones of your Neon default branch.",
 ];
 
 export type CompareRow = {
@@ -66,11 +66,11 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "Environments",
     combo:
-      "A Neon branch per Vercel preview deployment through the Neon integration for Vercel, cloned from production data.",
+      "With preview branching on, the Neon integration for Vercel creates a Neon branch for each Vercel preview deployment, cloned from the Neon project's default branch.",
     prisma:
       "A Prisma [preview branch](/docs/compute/branching) owns its app services and its own database, which starts empty.",
     sources: {
-      combo: "https://neon.com/docs/guides/vercel-native-integration",
+      combo: "https://neon.com/docs/guides/vercel-managed-integration",
       prisma: "https://www.prisma.io/docs/compute/branching",
     },
   },
@@ -86,9 +86,9 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "Billing",
     combo:
-      "Neon bills compute in CU-hours plus storage. Vercel bills a Pro seat plus usage. Drizzle is free. Neon installed from the Vercel Marketplace is billed through Vercel.",
+      "Neon bills compute in CU-hours plus storage. Vercel bills a Pro seat plus usage. Drizzle is free. Neon installed as Vercel's native integration is billed through Vercel.",
     prisma:
-      "Prisma Postgres and Prisma Compute share one set of plans, billed by operations and storage, with spend limits on paid plans.",
+      "Prisma Postgres and Prisma Compute are on one bill: Prisma Postgres is billed by operations and storage, Prisma Compute by requests, memory, CPU, and bandwidth. Every paid plan includes a hard spend limit you set in the Console.",
     sources: {
       combo: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -100,7 +100,7 @@ export const COMBO_FITS = [
   "You want to pick the tool you prefer for each layer and connect them yourself.",
   "You already deploy on Vercel and want Neon Postgres installed from the Vercel Marketplace.",
   "You prefer Drizzle's SQL-first, query-builder style.",
-  "You want preview databases that start as copy-on-write clones of production data.",
+  "You want preview databases that start as copy-on-write clones of your Neon default branch.",
 ];
 
 export const PRISMA_FITS = [
@@ -129,7 +129,7 @@ export const APART = [
   {
     id: "spend",
     title: "Spend managed in one place",
-    body: "Prisma Postgres and Prisma Compute share one set of plans, with spend limits on paid plans. Neon and Vercel each have their own pricing model and their own spend controls.",
+    body: "Prisma Postgres and Prisma Compute are on one bill, and every paid plan includes a hard spend limit you set in the Console. Neon and Vercel each have their own pricing model and their own spend controls.",
   },
 ];
 
@@ -164,7 +164,7 @@ export const PRICING: readonly {
     combo:
       "Vercel Hobby is free for personal, non-commercial use. Pro is $20 a month for one deploying seat plus usage, and includes $20 in monthly credit. Extra deploying seats are $20 a month each.",
     prisma:
-      "Prisma Compute sits on the same Prisma plans as Prisma Postgres: Free $0, Starter $10, Pro $49, Business $129 a month.",
+      "Prisma Compute and Prisma Postgres are billed in one workspace, on one bill. Free is $0. Starter is a $10 monthly base with Compute usage metered on top; Pro ($49) and Business ($129) work the same way.",
     sources: {
       combo: "https://vercel.com/docs/plans/pro-plan",
       prisma: "https://www.prisma.io/pricing",
@@ -173,11 +173,11 @@ export const PRICING: readonly {
   {
     label: "How you pay",
     combo:
-      "Neon and Vercel each bill on their own pricing model, or Neon bills through Vercel when installed from the Vercel Marketplace. Drizzle adds no bill.",
+      "Neon and Vercel each bill on their own pricing model, or Neon bills through Vercel when installed as Vercel's native integration. Drizzle adds no bill.",
     prisma:
-      "One set of plans for Prisma Postgres and Prisma Compute, with spend limits on paid plans.",
+      "One bill for Prisma Postgres and Prisma Compute; every paid plan includes a hard spend limit you set in the Console.",
     sources: {
-      combo: "https://neon.com/docs/guides/vercel-native-integration",
+      combo: "https://neon.com/docs/guides/vercel-managed-integration",
       prisma: "https://www.prisma.io/pricing",
     },
   },
@@ -186,7 +186,7 @@ export const PRICING: readonly {
 export const WRONG_CHOICE = [
   "You want to pick the tool you prefer for each layer and connect Drizzle, Neon, and Vercel yourself. Prisma puts the ORM, database, and hosting on one platform.",
   "You want hosting and the database managed from the Vercel dashboard. Prisma Postgres works with an app on Vercel, but it is managed from the Prisma Console.",
-  "You want preview databases seeded with production data. A Neon branch is a copy-on-write clone of production; a Prisma preview database starts empty.",
+  "You want preview databases seeded with existing data. A Neon preview branch is a copy-on-write clone of the project's default branch; a Prisma preview database starts empty.",
   "You prefer Drizzle's SQL-first, query-builder style. Prisma ORM uses a declarative Prisma schema. See [how Prisma ORM compares to Drizzle](/docs/orm/v7/more/comparisons/prisma-and-drizzle).",
 ];
 
@@ -194,12 +194,12 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "How does Prisma ORM compare to Drizzle?",
     answer:
-      "Drizzle is a SQL-first TypeScript query builder. Prisma ORM uses a declarative Prisma schema and a generated client. This page compares the whole Vercel + Neon + Drizzle setup with the Prisma platform. The ORM-only comparison is [Prisma ORM vs Drizzle](/docs/orm/v7/more/comparisons/prisma-and-drizzle). Source: Prisma docs, October 2026.",
+      "Drizzle is a TypeScript ORM with SQL-like and relational query APIs. Prisma ORM uses a declarative Prisma schema and a generated client. This page compares the whole Vercel + Neon + Drizzle setup with the Prisma platform. The ORM-only comparison is [Prisma ORM vs Drizzle](/docs/orm/v7/more/comparisons/prisma-and-drizzle). Source: [Drizzle overview](https://orm.drizzle.team/docs/overview) and Prisma docs, November 2026.",
   },
   {
     question: "How do Vercel, Neon, and Prisma bill this stack?",
     answer:
-      "Drizzle is free and open source. Neon Free is $0; Launch compute is $0.106 per CU-hour and Scale is $0.222 per CU-hour. Vercel Hobby is free for personal use; Pro is $20 a month for one deploying seat plus usage. Neon installed from the Vercel Marketplace is billed through Vercel. Prisma ORM is free and open source, and always will be. Prisma Postgres Free is $0 with no credit card, 200,000 operations, 2 GB of storage, and 50 databases. Paid Prisma plans are Starter $10, Pro $49, and Business $129 a month, with spend limits. Source: [Neon pricing](https://neon.com/pricing), [Vercel pricing](https://vercel.com/pricing), and [Prisma pricing](/pricing), October 2026.",
+      "Drizzle is free and open source. Neon Free is $0; Launch compute is $0.106 per CU-hour and Scale is $0.222 per CU-hour. Vercel Hobby is free for personal use; Pro is $20 a month for one deploying seat plus usage. Neon installed as Vercel's native integration is billed through Vercel. Prisma ORM is free and open source, and always will be. Prisma Postgres Free is $0 with no credit card, 200,000 operations, 2 GB of storage, and 50 databases. Paid Prisma plans are a $10 Starter base, $49 Pro and $129 Business a month, with Compute usage metered on top. Every paid plan includes a hard spend limit you set in the Console. Source: [Neon pricing](https://neon.com/pricing), [Vercel pricing](https://vercel.com/pricing), and [Prisma pricing](/pricing), November 2026.",
   },
   {
     question: "Do I need Prisma ORM to use Prisma Postgres?",
@@ -214,7 +214,7 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "Do Prisma preview environments include the app and the database?",
     answer:
-      "A Prisma preview branch can own both its Compute services and its Prisma Postgres database. Production data is not copied into that database. With Vercel and Neon, the Neon integration for Vercel can create a copy-on-write Neon branch for each preview deployment. Source: [Compute branching](/docs/compute/branching) and [Neon + Vercel](https://neon.com/docs/guides/vercel-native-integration), October 2026.",
+      "A Prisma preview branch can own both its Compute services and its Prisma Postgres database. Production data is not copied into that database. With Vercel and Neon, the Neon integration for Vercel can create a copy-on-write Neon branch for each preview deployment. Source: [Compute branching](/docs/compute/branching) and [Neon + Vercel](https://neon.com/docs/guides/vercel-managed-integration), October 2026.",
   },
 ];
 
