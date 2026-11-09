@@ -1,0 +1,140 @@
+---
+title: "Designing a Streaming API for Serverless Postgres"
+slug: "designing-a-streaming-api-for-serverless-postgres"
+date: "2026-09-16"
+authors:
+  - "Ankur Datta"
+metaTitle: "Designing a Streaming API for Serverless Postgres"
+metaDescription: "How Prisma Postgres carries SQL over HTTP and WebSockets without buffering whole results: the API contract, the streamed Bind and DataRow paths, backpressure, and the limits that remain."
+excerpt: "A serverless access path that handles database results incrementally."
+heroImagePath: "/designing-a-streaming-api-for-serverless-postgres/imgs/hero.svg"
+heroImageAlt: "Cover: a database tile and a client tile connected by a channel in which small row chunks move one at a time, a gauge labeled bounded memory above and a dashed arrow labeled a slow client slows the sender below, under the headline Stream rows, not results."
+metaImagePath: "/designing-a-streaming-api-for-serverless-postgres/imgs/meta.png"
+tags:
+  - "prisma-postgres"
+  - "education"
+  - "platform"
+series: prisma-postgres-connectivity
+seriesIndex: 3
+---
+
+_This is the third post in a four-part series on how Prisma Postgres handles database connectivity. [Post 1](/why-prisma-postgres-needs-a-gateway) covered the gateway; [Post 2](/why-serverless-apps-are-hard-on-postgres-connections) covered connection pooling. This one is about reaching Postgres from runtimes where a Postgres socket is not the right tool._
+
+After reading this post, you'll understand what an API has to promise in order to carry Postgres interactions over HTTP and WebSockets, and how designing that API around streaming changes what the gateway has to hold in memory.
+
+Start from a constraint. Vercel's Edge runtime exposes a subset of Web APIs: `fetch`, `Request`, `Response`, and a short list of Node modules that does not include `net` or `tls`. There is no way to open a TCP socket from it, which means no way to speak the Postgres protocol, which means no Postgres driver. Cloudflare Workers can open TCP sockets, but a socket cannot be shared across requests, and every request pays connection setup again. Browsers cannot open a raw socket at all. And even on a runtime with a full Node API, a request-scoped function is an odd home for a protocol built around sessions that expect to live for minutes or hours.
+
+Post 2 established that connection lifecycle pressure is one problem. This is a different one: the transport itself. The question is how to give code in those environments a database it can talk to using the tools it has, `fetch` and WebSockets, without giving up what makes Postgres useful.
+
+## Two ways to build it
+
+There are two broad designs, and the difference between them is where the Postgres protocol gets spoken.
+
+**Wrap the wire protocol.** Keep the client speaking real Postgres messages and carry those bytes over a WebSocket to a relay that opens the TCP connection on the client's behalf. The client is a normal Postgres driver with a different socket underneath. Every Postgres feature works because nothing about the protocol changed. The cost is that the relay is protocol-blind and the client still has to do everything a Postgres driver does, including a full connection handshake per WebSocket.
+
+**Define a database API.** Give the client a smaller, purpose-built contract: "run this SQL with these parameters, give me rows back", carried in whatever framing the transport supports. The server speaks Postgres on the client's behalf. Now the server can pool, meter, and stream, but every Postgres feature the API does not model is unavailable, and the API's own limits become the application's limits.
+
+Neon's serverless driver is a useful case study because it ships both. At version 1.1.0 (released April 2026), its [documentation](https://neon.com/docs/serverless/serverless-driver) describes an HTTP path, `neon()`, for "single, non-interactive transactions" or a batch of queries wrapped in one non-interactive transaction, and a WebSocket path, `Pool` and `Client`, for sessions and interactive transactions with node-postgres compatibility. The WebSocket path is the wrapped-protocol design: the driver talks Postgres over a WebSocket to a small open-source Go relay, `wsproxy`, that forwards bytes to the database. The HTTP path is a database API: the driver POSTs JSON to an `/sql` endpoint and reads a JSON response body. In the driver's source the HTTP client awaits the full response and parses it as JSON, and the documentation lists a 64 MB maximum on request and response size. Neither of those is a criticism; they are the natural shape of a request/response RPC. But they define the tradeoff: the HTTP path is stateless and easy to use from any runtime, and it holds a whole result in memory on both sides.
+
+Prisma chose the database-API design for its serverless path, and then spent most of the engineering effort on not holding whole results in memory. The rest of this post is about why and how.
+
+## What a fully buffered query RPC costs
+
+Nothing about HTTP requires buffering. An HTTP response is a byte stream; a client can read it incrementally and a server can write it incrementally. The buffering shows up when the API contract says "the response is one JSON document", because then the server has to know the whole document before it can send a valid one, and the client has to receive the whole document before it can parse it.
+
+For a query that returns twenty rows this is invisible. Two situations make it expensive.
+
+The first is a large result. A report query that returns a few hundred thousand rows, or a single row holding a large `bytea` or `text` value, becomes a few hundred megabytes of JSON on the server before a single byte reaches the client. That memory belongs to the tenant who ran the query, but it is taken from a process shared with other tenants: the noisy-neighbor problem from Post 1, now with a buffer attached to it.
+
+The second is a slow consumer. If the server must buffer until the query completes, a query that produces rows slowly holds memory for its whole duration, and a client that reads the response slowly holds the server's copy until it finishes. Both push a shared process toward caps: a cap on how long a query may run, and a cap on how large a response may be.
+
+Prisma has operated a system with exactly this shape. Accelerate, the successor to the Data Proxy described in Post 2, carries Prisma's query protocol over HTTPS to a query engine near the database, and its [documentation](https://www.prisma.io/docs/accelerate/faq) publishes per-plan limits on query duration (10 to 60 seconds), interactive transaction duration, and response size (5 to 20 MB). Caps like those are the natural consequence of the shape: an engine that materializes results for a JSON response has to bound what it will materialize. The team also learned that scaling the engine's connection pool horizontally, adding instances to spread the load, produced user-visible slowness rather than smoothing it out, and the replacement they designed scales vertically alongside each database VM instead. The lesson that carried into the next design is not "HTTP was wrong". It is that a contract which forces the server to hold whole results makes caps unavoidable, and that the fix has to be in the contract.
+
+## The contract Prisma built
+
+The serverless path lives inside the same gateway process that terminates TCP connections, which matters for Post 4. It exposes two transports:
+
+- **HTTP** at `/v0/statement`: one statement per request. The request is a multipart body carrying a JSON descriptor part (the SQL, and how to render the result) followed by one part per parameter that is too large to inline. The response is a stream of newline-delimited JSON by default.
+- **WebSocket** at `/v0/session`: a persistent session that carries many statements over one socket, with an authentication message first, then statements and results. Results come back in the order statements were sent.
+
+Both are what the [`@prisma/ppg` driver](https://www.prisma.io/docs/postgres/database/serverless-driver) speaks, and both are pooled by default at the gateway, so a serverless function gets the pooling from Post 2 without configuring it. At the protocol level a request can opt out of pooling with a header, though the driver does not expose that as a documented option.
+
+The contract is deliberately small: a statement is a SQL string plus parameters, and a result is a column description, a sequence of rows, and a completion or an error. Sessions and transactions exist on the WebSocket path because a transaction needs the same backend connection for `BEGIN` through `COMMIT`. The driver's `transaction()` opens a session, sends `BEGIN`, runs your callback's statements, and sends `COMMIT` or `ROLLBACK` on that session. Its `batch()` is a transaction that runs statements in sequence; there is no separate batch endpoint on the server.
+
+The parts that took engineering are on either end of that contract: how the gateway turns a request into Postgres messages without reading the request into memory, and how it turns Postgres messages into a response without reading the result into memory.
+
+## Request side: forging the protocol from a stream
+
+When a statement arrives, the gateway has to speak the Postgres [extended query protocol](https://www.postgresql.org/docs/current/protocol-flow.html) on the client's behalf. A statement with no parameters becomes a single simple `Query` message. A statement with parameters becomes the extended sequence: `Parse` (the SQL), `Bind` (the parameter values), `Describe`, `Execute`, and `Sync`.
+
+`Bind` is the message that carries parameter values, and a parameter can be large. The naive implementation reads all parameters, computes the message length, and writes the message. The gateway instead builds `Bind` as a chain of readers: the header, then for each parameter a length prefix followed by a reader over that parameter's bytes, then the footer. Small parameters are inline in the JSON descriptor. A parameter above a size threshold (the driver's threshold is one kilobyte) arrives as its own multipart part or WebSocket frame, and the gateway's reader for that parameter pulls from the transport as the message is written to the database. Postgres requires the message length up front, so the client declares each streamed parameter's size in the descriptor, which lets the gateway stamp the header before it has read a single parameter byte.
+
+The result is that a parameter value flows from the client's request body, through the gateway, into the database's socket in bounded chunks. A one-kilobyte parameter and a hundred-megabyte one take the same code path and the same amount of gateway memory.
+
+## Response side: transcoding rows as they arrive
+
+Coming back, the database sends a `RowDescription` message, then one `DataRow` message per row, then `CommandComplete` and `ReadyForQuery`. A `DataRow` is a field count followed by, for each field, a four-byte length and that many bytes. The gateway needs to look inside it, because the client expects JSON, not Postgres binary framing. But a single field can be larger than any sane buffer.
+
+So the gateway reads `DataRow` structurally without materializing it. It reads the field count, then for each field reads the length and wraps the next that-many bytes of the upstream socket in a bounded reader. That reader is handed to the encoder, which writes the field to the client transport as it goes: text fields through a streaming JSON escaper, `bytea` fields through a streaming base64 transform. The upstream read and the client write interleave field by field. On the HTTP path the encoder flushes its output at a threshold; on the WebSocket path each result frame is sent as its own message. At no point does a whole row, let alone a whole result, exist in gateway memory.
+
+```mermaid
+sequenceDiagram
+%% Streaming path of the serverless API, response side, showing how a slow client
+%% propagates backpressure to the database. Conceptual; based on the gateway's
+%% field-by-field DataRow transcoding (ignite pg-protocol catalog 1.4; transports 6.2)
+%% and the redesign's coupled copy loops (pdp-metal pg-api-adapter design).
+    participant App as Serverless function<br/>(@prisma/ppg)
+    participant GW as Gateway<br/>(API adapter + pipeline)
+    participant DB as PostgreSQL
+
+    App->>GW: POST /v0/statement<br/>(descriptor, streamed parameters)
+    GW->>DB: Parse, Bind, Describe,<br/>Execute, Sync
+    Note over GW,DB: parameter bytes stream through as the client sends them
+    DB-->>GW: RowDescription
+    GW-->>App: column metadata
+    loop each row
+        DB-->>GW: DataRow
+        Note over GW: one field at a time: bounded read, encode, write
+        GW-->>App: row (NDJSON line)
+    end
+    Note over App,DB: a slow client blocks the gateway's write, so it stops reading; the TCP window closes and the database stops sending
+    DB-->>GW: CommandComplete, ReadyForQuery
+    GW-->>App: completion
+```
+
+_Response streaming on the serverless API. Each DataRow is read one field at a time and written to the client as it is decoded, so a client that reads slowly stops the gateway reading the database socket. Conceptual sequence; message names are the real protocol messages._
+
+The diagram shows the property this buys, which is backpressure, and it is worth spelling out in plain language. If the client reads slowly, the encoder's write to the client transport blocks. Because the encoder is what is pulling bytes off the upstream socket, that read stops too. Because the gateway has stopped reading, the socket's receive buffer fills, TCP's window closes, and the database stops sending. A slow client slows the database down instead of filling the gateway with rows the client has not asked for yet. The same coupling runs the other way on the request side: a slow database blocks the gateway's write, which stops it reading the client's request body, which stops the client sending parameter bytes. There is no queue in the middle to grow, and that absence is the design.
+
+Precision matters here, because backpressure is one of those words that gets claimed more often than it is delivered. In the gateway implementation that serves production today, the response side is a pull iterator that the transport drains, and the coupling above holds along that pull. On the WebSocket path, however, the request side accepts pipelined statements into a queue that has no bound. A client that sends statements faster than the database answers them grows that queue, and the redesign in Post 4 replaces it with a bounded one that blocks the sender. On the client side, the driver's HTTP path streams rows to your code as they arrive, while its WebSocket path buffers rows in the driver if your code consumes them more slowly than the socket delivers them. Streaming is end to end on the HTTP path today, and end to end on the WebSocket path once the bounded queue lands.
+
+## On the client: streaming first, collection optional
+
+The driver exposes results as a `CollectableIterator`: an async iterator you can consume row by row, with a `collect()` method that gathers everything into an array when a result is small and an array is what you want. Streaming is the default representation and collection is a convenience on top of it, rather than the other way around. That ordering is the client-side expression of the same contract: the API never promises that a result fits in memory, so the driver never assumes it.
+
+Two things fall out of the session design for free, and both deserve a precise description.
+
+**Pipelining.** On a WebSocket session, the driver sends statements without waiting for the previous result, and results come back in send order. This removes a round trip of latency per statement for a sequence of independent statements. It does not run them in parallel: Postgres executes statements on a connection in the order it receives them, exactly as [libpq's pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html) describes. Pipelining saves waiting, not execution time.
+
+**Transactions as ordinary statements.** Because results are ordered, the driver can send `BEGIN` and the first statement of a transaction without waiting for `BEGIN` to be acknowledged. A transaction is nothing more than statements that happen to share a session. That is also why interactive transactions belong on the WebSocket path and not the HTTP one: HTTP requests do not share a backend connection, so `BEGIN` in one request and `COMMIT` in another would land on different backends through the pool.
+
+## What still bounds a request
+
+Removing whole-result buffering removes one family of caps: there is no gateway limit on how many rows a result may contain or how large a field may be, because the gateway never holds them. It is not the same as saying nothing is limited, and the remaining limits are worth listing plainly.
+
+- Pooled connections, which the serverless path uses by default, carry the [10-minute query timeout](https://www.prisma.io/docs/postgres/database/connection-pooling) documented for pooled traffic. Work that needs longer belongs on a direct connection.
+- The gateway arms per-operation read and write deadlines and an idle timeout on every connection, so a stalled client or database is torn down rather than held forever. Those are operational settings, not contract guarantees, and they are not published as product limits.
+- The gateway does cap small control messages: the statement descriptor and the session authentication message have fixed size limits, and the protocol's own control messages are materialized into a bounded buffer. Only row data and parameter values are unbounded, and only because they are never materialized.
+- Session state on pooled connections is subject to the same transaction-mode rules as Post 2 described.
+
+Two Postgres features are outside the contract. `COPY` is not exposed through the statement API, and asynchronous notifications (`LISTEN`/`NOTIFY`) need a direct connection. Both are cases where the wrapped-protocol design wins, and the tradeoff is the one stated at the top: a database API models what it models.
+
+## A note on where this goes
+
+The team has discussed the fact that a contract this small, framed over HTTP and WebSockets, could be implemented by a driver in any language, and has sketched what a JDBC driver might look like. Nothing beyond the TypeScript driver exists today, and there is no committed plan, so treat that as a direction the design leaves open rather than a roadmap item.
+
+## Takeaway
+
+A serverless database API has to promise something narrower than the Postgres protocol, and the value of the design lives in choosing that contract carefully. By making the response a stream of rows rather than a document, and by building the request as a stream of parameters rather than a message assembled in memory, Prisma's gateway carries arbitrarily large results and parameters through a shared process without buffering them, and a slow consumer slows its producer instead of consuming shared memory. What remains bounded is bounded on purpose: control messages, timeouts, and the transaction-mode rules of the pool behind it.
+
+The gateway now has two ways to speak Postgres: forwarding a client's own messages on the TCP path, and forging messages from an API request on the serverless path. For a long time those were two separate implementations of the same protocol inside one process. Unifying them is the subject of the final post.
