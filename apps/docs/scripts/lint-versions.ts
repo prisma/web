@@ -39,11 +39,11 @@ async function main() {
 
   const relativePath = (file: string) => path.relative(DOCS_DIR, file).split(path.sep).join("/");
   // Pages holding IGNORE_MARKER pin something other than npm latest, such as the Console's Compute setup.
-  const files = findMdxFiles(DOCS_DIR).filter(
-    (file) =>
-      !isVersionedTree(relativePath(file)) &&
-      !fs.readFileSync(file, "utf8").includes(IGNORE_MARKER),
-  );
+  // They are listed on every run, so the opt-out stays visible in CI output.
+  const current = findMdxFiles(DOCS_DIR).filter((file) => !isVersionedTree(relativePath(file)));
+  const ignored = current.filter((file) => fs.readFileSync(file, "utf8").includes(IGNORE_MARKER));
+  const files = current.filter((file) => !ignored.includes(file));
+  for (const file of ignored) console.log(`Skipped (${IGNORE_MARKER}): ${relativePath(file)}`);
   if (process.argv.includes("--fix")) {
     for (const file of files) {
       const content = fs.readFileSync(file, "utf8");
