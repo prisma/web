@@ -16,7 +16,7 @@ export const NEON_AUTHOR = {
 } as const;
 
 export const NEON_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const NEON_UPDATED = { iso: "2026-11-03", label: "November 2026" } as const;
+export const NEON_UPDATED = { iso: "2026-11-09", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -65,7 +65,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "App hosting",
     neon: "Neon Functions run backend logic next to the database. Neon recommends hosting the UI on a separate platform such as Vercel or Netlify.",
     prisma:
-      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler today; native cron is planned for early 2027. WebSocket servers are not supported today; support is planned for early 2027.",
+      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It runs next to Prisma Postgres in the same project, on one bill. Compute has no built-in cron scheduler today; native cron is planned for early 2027. WebSocket servers are not supported today; support is planned for early 2027.",
     sources: {
       neon: "https://neon.com/docs/get-started/full-backend-quickstart",
       prisma: "https://www.prisma.io/docs/compute/limitations",
