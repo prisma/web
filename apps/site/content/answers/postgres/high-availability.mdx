@@ -1,0 +1,103 @@
+---
+title: "What is PostgreSQL high availability, and do I need it?"
+description: "Usually not yet. A standby takes over when the primary fails. Failovers typically take under 35 seconds to two minutes, and most new apps need backups first."
+summary: "Usually not yet. PostgreSQL high availability is a setup where a standby server keeps a live copy of the primary database and takes over if the primary fails. Amazon RDS documents that failover as typically under 35 seconds for Multi-AZ DB clusters and 60 to 120 seconds for Multi-AZ DB instances. Azure documents 60 to 120 seconds, and a busy server can take longer. Add high availability when a few minutes of database downtime would cost you more than a second server running all year, or when you have promised your customers more uptime than your database host promises you."
+author: "Martin Janse van Rensburg"
+authorUrl: "https://github.com/vanrensbird"
+date: "2026-11-02"
+updatedAt: "2026-11-06"
+readingTime: "6 min read"
+faq:
+  - question: "Does Prisma Postgres offer high availability?"
+    answer: "No, Prisma Postgres doesn't run a standby server or fail over to one. It backs up every database to separate storage, restarts a database that stops responding, and rebuilds a database on another server in the same region if its server fails. Starter, Pro and Business plans add daily backups that you can restore yourself, and Pro, Business and Enterprise plans include a 99.95% monthly uptime commitment in the [service level agreement](https://www.prisma.io/legal/sla)."
+  - question: "Does high availability mean zero downtime?"
+    answer: "No. A failover is a short outage of its own. Amazon RDS documents failovers as typically under 35 seconds for Multi-AZ DB clusters and 60 to 120 seconds for Multi-AZ DB instances, and your app has to reconnect afterwards. Azure Database for PostgreSQL documents 60 to 120 seconds for zone-redundant failover, and says it can take longer on a busy server."
+  - question: "How much data could I lose if a Prisma Postgres server fails?"
+    answer: "You could lose only the most recent changes that hadn't been backed up off the server yet. Prisma Postgres adds your changes to its backups on separate storage in small batches. Everything backed up before the failure comes back when we rebuild the database."
+  - question: "What is the difference between high availability and backups?"
+    answer: "High availability keeps a database answering when its server fails. Backups let you return to an earlier copy of your data after something goes wrong, such as a mistaken delete. A standby usually copies a mistake within moments, so a backup is the usual way to undo it."
+related:
+  - title: "What a small production app needs from Postgres"
+    href: "/postgres/small-production-app-postgres"
+  - title: "Recovering deleted records and setting up backups"
+    href: "/postgres/recover-deleted-records"
+  - title: "Practicing database recovery"
+    href: "/postgres/practice-database-recovery"
+  - title: "Deciding whether you need a read replica"
+    href: "/postgres/do-i-need-a-read-replica"
+cta:
+  title: "Start with backups you can restore"
+  description: "Starter, Pro and Business plans include daily backups that you can restore from the Console or the Prisma CLI. The Free plan doesn't include backups you can restore yourself. Any Postgres client works, and Prisma ORM is optional."
+  label: "Read the backups docs"
+  href: "/docs/postgres/database/backups"
+---
+
+The outages a new app is most likely to see come from changes, mistakes and an overloaded app, and a standby doesn't prevent them.
+
+We make Prisma Postgres. PostgreSQL and provider behavior on this page links to each project's or provider's documentation, checked on November 2, 2026.
+
+## What is PostgreSQL high availability?
+
+PostgreSQL high availability is a setup where a standby server keeps a live copy of the primary database and takes over if the primary fails. The primary streams its write-ahead log, the record of every change, to the standby through [streaming replication](https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION). PostgreSQL itself [doesn't detect a failed primary](https://www.postgresql.org/docs/current/warm-standby-failover.html), so a separate tool or the hosting provider watches the primary and promotes the standby to primary when the primary stops answering.
+
+### Synchronous or asynchronous?
+
+The standby can be synchronous or asynchronous. With a synchronous standby, the primary waits until the standby has saved each committed change before it confirms the commit to your app, so a failover doesn't lose committed data. Every write takes longer as a result. An asynchronous standby keeps writes fast, and a failover can lose the last changes that hadn't reached it yet.
+
+## How long does a failover take?
+
+A failover is a short outage of its own. Amazon RDS documents failovers as [typically under 35 seconds](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/multi-az-db-clusters-concepts-failover.html) for Multi-AZ DB clusters and [typically 60 to 120 seconds](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.Failover.html) for Multi-AZ DB instances. In both cases your app has to re-establish its connections afterwards. Azure Database for PostgreSQL documents [60 to 120 seconds](https://learn.microsoft.com/en-us/azure/postgresql/high-availability/concepts-high-availability) for zone-redundant failover, and says a busy server can take longer.
+
+Planned maintenance works the same way. Azure applies minor version upgrades to the standby first, then fails over. Your app is unavailable during that failover.
+
+## What doesn't high availability protect against?
+
+A standby protects you from one kind of failure: the primary's server breaking. Most outages have other causes. Google's SRE team found that [roughly 70% of outages](https://sre.google/sre-book/introduction/) are due to changes in a live system.
+
+- **Bad changes to your app.** A broken deploy or configuration change takes your app down while the database and its standby stay healthy.
+- **Mistakes in your data.** A mistaken `DELETE` or a bad migration reaches the standby within moments. Azure's documentation says [you can't use the standby](https://learn.microsoft.com/en-us/azure/postgresql/high-availability/concepts-high-availability) to recover from an accidental drop of a table or incorrect updates, and that you need a restore from backup instead.
+- **An overloaded app.** A full connection pool, where every database connection is in use, or a slow query can stop your app while the database server keeps running.
+- **Regional outages.** On Amazon RDS Multi-AZ and Azure, the standby runs in the same region as the primary, so a regional outage stops both servers.
+
+## Do you need high availability?
+
+Not for most new apps. You are ready for it when one of these is true:
+
+- A few minutes of downtime would cost you more than a second server running all year.
+- A contract promises your customers more uptime than your database host promises you.
+
+Until then, these protections cover more of the failures you are likely to have:
+
+1. **Backups you have restored.** Restore one to a new database before you need it, as the [recovery practice guide](/postgres/practice-database-recovery) shows.
+2. **An app that reconnects.** Retry a dropped connection with a short delay, so a restart or a failover on any host causes a short burst of errors, not a stuck app.
+3. **A health check.** Alert someone when the app can't reach the database.
+
+The [small production app guide](/postgres/small-production-app-postgres) lists which hosts include high availability. It names plans for Fly.io and Render.
+
+## Where does Prisma Postgres fit?
+
+[Prisma Postgres](/docs/postgres) is managed PostgreSQL. It doesn't run a standby server or fail over to one. It backs up every database to separate storage and keeps adding your latest changes in small batches. If your database stops responding, Prisma Postgres notices and restarts it. If a server fails for good, we rebuild your database from its backups on another server in the same region. You could lose only the most recent changes that hadn't been backed up off the server yet.
+
+| | Standby high availability | Prisma Postgres |
+| --- | --- | --- |
+| Takeover | A standby keeps a live copy and takes over if the primary fails. PostgreSQL doesn't detect a failed primary, so a tool or the host promotes the standby. | Doesn't run a standby server or fail over to one. |
+| Unavailability | RDS Multi-AZ clusters: typically under 35 seconds. RDS Multi-AZ instances: typically 60 to 120 seconds. Azure zone-redundant: 60 to 120 seconds, longer on a busy server. The app has to reconnect. | A database that stops responding is restarted. A server that fails for good is rebuilt from backups on another server in the same region. Most of a rebuild is moving data, so a larger database takes longer. |
+| Data a failure can drop | Synchronous: the standby has saved each committed change, and every write waits. Asynchronous: the last changes that hadn't reached the standby. | The most recent changes that hadn't been backed up off the server yet. Backups are on separate storage, and the latest changes are added in small batches. |
+| Mistaken delete | The standby copies it within moments. Azure says you can't use the standby to recover a dropped table or a bad update. Restore from backup. | Daily backups, taken on days with database activity, that you can restore on Starter, Pro and Business. Starter and Pro keep 7 days, Business keeps 30. The Free plan doesn't include backups you can restore yourself. Point-in-time recovery is coming in November 2026. |
+| Bad deploy, bad config, full pool, slow query | The database and its standby can stay healthy while the app is down. | Doesn't run a standby. A restart runs when the database stops responding. |
+| Whole region | On RDS Multi-AZ and Azure, the standby is in the same region, so both stop. | The rebuild is on another server in the same region. |
+| Uptime commitment on this page | Not quoted here. | Pro, Business and Enterprise: at least 99.95% each month, in the SLA. |
+
+- **Backups on separate storage.** Prisma Postgres backs up every database to separate storage, away from the server that runs it. It keeps adding your latest changes to those backups in small batches.
+- **Backups you can restore yourself.** On the Starter, Pro and Business plans, a [daily backup](/docs/postgres/database/backups) is available on each day that your database has activity. Starter and Pro keep the last 7 days, and Business keeps the last 30. You can restore one from the Console or with the Prisma CLI. A restore brings your data back as it was when the backup ran. Point-in-time recovery is coming in November 2026.
+- **Automatic restarts.** If your database stops responding, Prisma Postgres notices and restarts it.
+- **Recovery from a lost server.** If a server fails for good, we rebuild your database from its backups on another server in the same region. Once the rebuild starts, most of its time goes to moving your data, so a larger database takes longer.
+- **An uptime commitment.** On the Pro, Business and Enterprise plans, the [service level agreement](https://www.prisma.io/legal/sla) commits to at least 99.95% uptime each month.
+
+Your app keeps its Postgres client, whether that is `pg`, Drizzle, Kysely or Prisma ORM. Prisma ORM is optional.
+
+## Where is Prisma Postgres the wrong choice?
+
+For an app that needs a standby with automatic failover today. Prisma Postgres doesn't run a standby server or fail over to one (its [docs](/docs/postgres) list none, checked November 2, 2026). It also rebuilds a lost database within one region. If your app needs more than the uptime the service level agreement commits to, [contact us](https://www.prisma.io/contact), or choose a host from the [small production app guide](/postgres/small-production-app-postgres#high-availability) that offers a standby, and verify that the provider's uptime commitment meets your app's requirement.
+
+The Free plan doesn't include backups you can restore yourself. If you are on Free and need them, [contact us](https://www.prisma.io/contact).

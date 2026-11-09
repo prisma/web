@@ -3,13 +3,8 @@ import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { TemplateGallery } from "./_components/template-gallery";
-import {
-  CONTRIBUTE,
-  enrichTemplates,
-  TEMPLATE_MANIFEST_URL,
-  templateManifestSchema,
-  type GalleryTemplate,
-} from "./_lib/catalog";
+import { CONTRIBUTE } from "./_lib/catalog";
+import { loadTemplates } from "./_lib/manifest";
 
 export const metadata = createPageMetadata({
   title: "Prisma Compute apps",
@@ -20,25 +15,8 @@ export const metadata = createPageMetadata({
   ogAccent: "red",
 });
 
-// The manifest lives in prisma/prisma-examples and is refreshed every five
-// minutes; the gallery enriches it with the registry in _lib/catalog.ts.
-async function getTemplates(): Promise<GalleryTemplate[]> {
-  try {
-    const response = await fetch(TEMPLATE_MANIFEST_URL, {
-      next: { revalidate: 300 },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) return [];
-
-    const result = templateManifestSchema.safeParse(await response.json());
-    return result.success ? enrichTemplates(result.data.templates) : [];
-  } catch {
-    return [];
-  }
-}
-
 export default async function AppsPage() {
-  const templates = await getTemplates();
+  const templates = await loadTemplates();
 
   return (
     <>

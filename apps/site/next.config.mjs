@@ -49,6 +49,7 @@ const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
     https://ingest.promptwatch.com
+    https://analytics.ahrefs.com
     https://cdn-cookieyes.com
     https://cdn.tolt.io
     https://unpkg.com
@@ -126,6 +127,8 @@ const ContentSecurityPolicy = `
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
     https://raw.githubusercontent.com
+    https://github.com
+    https://avatars.githubusercontent.com
     https://*.meetupstatic.com
     https://www.prisma.io
     https://*.google-analytics.com
@@ -133,6 +136,7 @@ const ContentSecurityPolicy = `
 
   connect-src 'self'
     https://ingest.promptwatch.com
+    https://analytics.ahrefs.com
     https://api.github.com
     https://p2zxqf70.api.sanity.io
     https://www.youtube.com
@@ -1132,3 +1136,4 @@ const config = {
 };
 
 export default withMDX(config);
+

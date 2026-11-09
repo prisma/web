@@ -49,7 +49,7 @@ const KICKER_DOT = 10;
    apps/blog/public/logo/full-color.svg, minus the clip-path satori
    cannot render. The mark carries at thumbnail scale where small type
    disappears, so this is the sign-off rather than a URL. */
-function PrismaLockup() {
+export function PrismaLockup() {
   return (
     <svg width={LOCKUP_WIDTH} height={LOCKUP_HEIGHT} viewBox="0 0 264 67" fill="none">
       <path

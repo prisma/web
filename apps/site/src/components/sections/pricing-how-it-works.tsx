@@ -50,8 +50,8 @@ export function PricingHowItWorks() {
                 than a boxed callout. */}
             <Reveal delay={0.2}>
               <p className="mt-5 text-pretty text-base font-semibold leading-relaxed text-foreground">
-                Every paid plan also includes a hard spend limit, on by default, so usage-based
-                pricing stays predictable and never becomes a surprise bill.
+                Every paid plan also includes a hard spend limit: set it in the Console, and
+                usage-based pricing stays predictable and never becomes a surprise bill.
               </p>
             </Reveal>
           </div>

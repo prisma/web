@@ -8,15 +8,17 @@ import {
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
 /**
- * Two jobs, in this order.
+ * Three jobs, in this order.
  *
- * 1. Agent Front (`src/agent-front.ts`, ora's file, with one change marked
- *    PRISMA LOCAL CHANGE that strips the query string from the referer)
+ * 1. A permanent redirect from a `/blog` URL carrying `?from_theconsensus` to
+ *    the same URL without it (see `blogLinkTagRedirect`).
+ * 2. Agent Front (`src/agent-front.ts`, ora's generated file, which strips
+ *    query strings and fragments from reported referers)
  *    reports each page request to ora after the response has been sent, so the
  *    Agent traffic page can tell agents from people. It answers a request
  *    itself only for `/__ora/status`, or once Autopilot is switched on in the
  *    ora Portal; otherwise it returns null and the request carries on.
- * 2. The Markdown rendition of a marketing page, product guide or Data Guide
+ * 3. The Markdown rendition of a marketing page, product guide or Data Guide
  *    page for agents that ask for it, mirroring apps/docs/src/proxy.ts and
  *    apps/blog's posts, with a `Vary` append on both variants (see
  *    `agentMarkdown`).
@@ -24,13 +26,43 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server
  * The site app is the root zone, and a proxy runs before `rewrites()`, so this
  * one file sees `/docs/*` and `/blog/*` on their way to the docs and blog
  * zones. That is what lets a single Agent Front install cover all of
- * www.prisma.io, and it is also why the second job needs a boundary.
+ * www.prisma.io, and it is also why the third job needs a boundary.
  */
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const redirected = blogLinkTagRedirect(request);
+  if (redirected) return redirected;
+
+  // Prisma owns /mcp, including during an Ora policy outage.
+  if (request.nextUrl.pathname === "/mcp" || request.nextUrl.pathname === "/mcp/") {
+    return agentMarkdown(request);
+  }
+
   const answered = await handleAgentFront(request, event);
   if (answered) return answered;
 
   return agentMarkdown(request);
+}
+
+const BLOG_LINK_TAG = "from_theconsensus";
+
+/**
+ * The tag changes nothing on the page, so a tagged URL is the same post at a
+ * second address. This lives here and not in `redirects()` because a
+ * next.config redirect passes the request's query on to its destination, so it
+ * cannot remove a parameter. Any other query value stays on the redirect.
+ *
+ * The Composer gateway sends `/blog` straight to the blog server, without this
+ * proxy, so there a tagged URL keeps answering 200 with its canonical link.
+ */
+function blogLinkTagRedirect(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+  if (!searchParams.has(BLOG_LINK_TAG)) return null;
+  if (pathname !== "/blog" && !pathname.startsWith("/blog/")) return null;
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+
+  const url = request.nextUrl.clone();
+  url.searchParams.delete(BLOG_LINK_TAG);
+  return NextResponse.redirect(url, 308);
 }
 
 function withVaryAccept(response: NextResponse) {
@@ -150,3 +182,4 @@ export const config = {
     },
   ],
 };
+

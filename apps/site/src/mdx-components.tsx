@@ -3,11 +3,12 @@ import Image from "next/image";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import type { MDXComponents } from "mdx/types";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import * as icons from "lucide-react";
 import {
   Accordion,
   Accordions,
+  Alert,
   Button,
   CodeBlock,
   CodeBlockTab,
@@ -55,6 +56,35 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
         <Pre>{props.children}</Pre>
       </CodeBlock>
     ),
+    CalloutTitle: ({ children }: { children: ReactNode }) => <>{children}</>,
+    CalloutDescription: ({ children }: { children: ReactNode }) => <>{children}</>,
+    CalloutContainer: ({
+      type,
+      children,
+      icon,
+      ...props
+    }: {
+      type?: string;
+      children: ReactNode;
+      icon?: ReactNode;
+    }) => {
+      const variantMap: Record<string, "ppg" | "note" | "error" | "success" | "warning"> = {
+        ppg: "ppg",
+        error: "error",
+        success: "success",
+        warning: "warning",
+        info: "note",
+        note: "note",
+        tip: "success",
+        danger: "error",
+      };
+
+      return (
+        <Alert variant={variantMap[type ?? ""] || "note"} icon={icon} {...props}>
+          {children}
+        </Alert>
+      );
+    },
     ...components,
   };
 }

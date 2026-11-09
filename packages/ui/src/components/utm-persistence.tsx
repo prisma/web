@@ -16,6 +16,7 @@ import {
 } from "../lib/utm";
 import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
 import { hasAdvertisingConsent } from "../lib/consent";
+import { readExperimentVariants, syncExperimentParams } from "../lib/experiments";
 
 interface UtmPersistenceProps {
   /**
@@ -216,7 +217,7 @@ export function UtmPersistence({
       // `target="_blank"` header link) names the current page, not the first
       // one clicked.
       const pageRef = consolePageRef?.(window.location.pathname);
-      const updated = syncConsoleHandoff(targetUrl, {
+      let updated = syncConsoleHandoff(targetUrl, {
         attribution,
         pageRef,
         stampedRef: anchor.dataset.consoleRef,
@@ -224,6 +225,9 @@ export function UtmPersistence({
       if (pageRef && targetUrl.searchParams.get("ref") === pageRef) {
         anchor.dataset.consoleRef = pageRef;
       }
+      // The experiment variants the visitor saw go along with or without a
+      // campaign, so the signup counts toward the page version they saw.
+      updated = syncExperimentParams(targetUrl, readExperimentVariants()) || updated;
 
       if (!updated) {
         return;

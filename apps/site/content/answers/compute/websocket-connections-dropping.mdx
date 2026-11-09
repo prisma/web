@@ -5,7 +5,7 @@ summary: "A WebSocket is one connection that has to stay open, and a serverless 
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-22"
-updatedAt: "2026-10-24"
+updatedAt: "2026-10-29"
 readingTime: "10 min read"
 faq:
   - question: "Does Vercel support WebSockets now?"
@@ -15,7 +15,7 @@ faq:
   - question: "Do I need sticky sessions for WebSockets?"
     answer: "Not for the WebSocket connection itself, because it stays on the server that accepted it. Socket.IO needs sticky sessions when HTTP long-polling is enabled, which it is by default, because long-polling sends many separate requests per session. What you do need with more than one instance is a way to broadcast across them, such as Socket.IO's Redis adapter or Redis pub/sub, because a message sent on one instance doesn't reach clients connected to another."
   - question: "Can I run a WebSocket server on Prisma Compute?"
-    answer: "No. WebSocket servers are not supported on Prisma Compute. It runs HTTP services, and streaming responses such as server-sent events work, because its 60-second deadline covers only the wait for a response's first bytes. For a bidirectional WebSocket server, use a host from the table on this page. Prisma Postgres works as the database behind that server from any host, and Prisma ORM is optional."
+    answer: "No. Prisma Compute does not run WebSocket servers today; support is planned for early 2027. It runs HTTP services, and streaming responses such as server-sent events work, because its 60-second deadline covers only the wait for a response's first bytes. For a bidirectional WebSocket server, use a host from the table on this page. Prisma Postgres works as the database behind that server from any host, and Prisma ORM is optional."
 related:
   - title: "Prisma Compute known limitations"
     href: "/docs/compute/limitations"
@@ -175,7 +175,7 @@ If the messages come from database writes, PostgreSQL's [`LISTEN` and `NOTIFY`](
 
 ## Where does Prisma Compute fit?
 
-[Prisma Compute](/docs/compute) fits when the browser only needs updates from the server and you can send them as server-sent events: a service has 60 seconds to start responding, and a response that has started streaming isn't cut off ([Request timeout](/docs/compute/request-timeout#streaming-responses)). WebSocket servers are not supported on Compute, so it isn't a place to move a `ws` or Socket.IO server ([Known limitations](/docs/compute/limitations)).
+[Prisma Compute](/docs/compute) fits when the browser only needs updates from the server and you can send them as server-sent events: a service has 60 seconds to start responding, and a response that has started streaming isn't cut off ([Request timeout](/docs/compute/request-timeout#streaming-responses)). Compute does not run WebSocket servers today ([Known limitations](/docs/compute/limitations)); support is planned for early 2027. Until then, it isn't a place to move a `ws` or Socket.IO server.
 
 An SSE endpoint on Compute is an HTTP handler that returns a stream. This one reads new updates every 2 seconds, sends each with an `id`, and sends a comment line when it has been quiet for 5 seconds. Compute runs TypeScript services on Bun ([FAQ](/docs/compute/faq)), and Bun's HTTP server [closes a stream that sends nothing for 10 seconds](https://bun.com/docs/runtime/http/server#idletimeout) by default, so the keep-alive has to come more often than that. `getUpdatesAfter` stands for your own query, for example rows with an ID greater than the last one sent.
 
@@ -236,7 +236,7 @@ Every poll is a query, so a 2-second interval is about 1.3 million queries per o
 
 Know the limits before you rely on it:
 
-- WebSocket servers are not supported on Prisma Compute. If clients send frequent messages to the server, as in chat with typing indicators, multiplayer cursors or games, run the WebSocket server on one of the hosts in step 3 or use a managed service from step 4.
+- Prisma Compute does not run WebSocket servers today; support is planned for early 2027. If clients send frequent messages to the server, as in chat with typing indicators, multiplayer cursors or games, run the WebSocket server on one of the hosts in step 3 or use a managed service from step 4.
 - The 60-second deadline covers the wait for a response's first bytes. Send something right away, keep data flowing, and let the client reconnect: the [request timeout docs](/docs/compute/request-timeout#streaming-responses) recommend reconnecting over holding one connection open indefinitely.
 - `waitUntil` and `KeepAwakeGuard` only stop an instance from scaling to zero. They don't change connection-lifetime limits or keep work running through restarts or deployments ([Known limitations](/docs/compute/limitations#runtime)).
 - While any stream is open, a request is in flight, so the instance keeps running and doesn't scale to zero. Compute bills provisioned memory for that time ([Compute pricing](/docs/compute/pricing)). One stream open all month at 1 GB is about 720 GB-hours, and Free includes 360 GB-hours a month, about 15 days of one instance at 1 GB.

@@ -270,7 +270,7 @@ namespace public {
     email     String            @unique(map: "users_email_unique")
     name      String?
     role      pg.enum(Role)     @default("USER")
-    createdAt TimestamptzString @default(now()) @map("created_at")
+    createdAt DateTime(precision: 6) @default(now()) @map("created_at")
     posts     Posts[]
     profiles  Profiles?
 
@@ -283,7 +283,7 @@ namespace public {
     content           String?
     published         Boolean             @default(false)
     authorId          Int                 @map("author_id")
-    createdAt         TimestamptzString   @default(now()) @map("created_at")
+    createdAt         DateTime(precision: 6)   @default(now()) @map("created_at")
     postsToCategories PostsToCategories[]
     author            Users               @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
 
@@ -323,7 +323,7 @@ Here is how each part of the Drizzle schema came through:
 - **Names.** Model names are PascalCase versions of the table names, so they are plural (`Users`, `Posts`); `@@map` keeps the real table name. Snake case columns become camelCase fields with `@map`, so `created_at` is `createdAt`.
 - **Constraints and defaults.** Primary keys, unique constraints and foreign keys keep their database names through `map:`. `serial` columns become `Int @id @default(autoincrement())`. The `default(false)` and `defaultNow()` calls come back as `@default(false)` and `@default(now())`.
 - **Enum.** The `pgEnum("role", ...)` type is a `native_enum Role` block with `@@map("role")`, and the column uses it as `pg.enum(Role) @default("USER")`. The TypeScript type of the field is `'USER' | 'ADMIN'`.
-- **Timestamps.** `timestamp(..., { withTimezone: true })` columns are typed `TimestamptzString`. The next step covers what that means for your code.
+- **Timestamps.** `timestamp(..., { withTimezone: true })` columns are typed `DateTime(precision: 6)`. The next step covers what that means for your code.
 - **Relations.** Each `.references(...)` is an `@relation(...)` on the side that holds the foreign key, with `onDelete: Cascade` carried over. `index: false` records that Drizzle created no separate index for the foreign key. The list side (`posts Posts[]`) is derived for you; the `relations(...)` helpers in `schema.ts` have no equivalent because the contract already knows both directions.
 - **One-to-one.** The unique `user_id` on `profiles` came through as `profiles Profiles?` on `Users` and `user Users` on `Profiles`.
 - **Many-to-many.** The join table is an explicit `PostsToCategories` model with a composite `@@id`, and `Posts` and `Categories` each hold a list of the join model, not of each other. Prisma ORM has no implicit many-to-many; the [many-to-many section](#many-to-many-relations-in-prisma-8) below shows how to add the direct traversal.
@@ -336,9 +336,9 @@ Inference is a starting point. Make two edits before you emit, and check how tim
 
 Rename the models to singular PascalCase and keep every `@@map`, so the table names do not change: `Categories` becomes `Category`, `Users` becomes `User`, `Posts` becomes `Post`, `Profiles` becomes `Profile`, and `PostsToCategories` becomes `PostToCategory`. Update the relation field types to match, and rename the `profiles` field on `User` to `profile`.
 
-### 3.2. Timestamps are strings
+### 3.2. Timestamps are `Date` objects
 
-`contract infer` typed both timestamp fields `TimestamptzString`. It keeps the `timestamptz` column exactly as it is and hands your code the value as a string, so your app needs no `Temporal`. Drizzle gave you a `Date` here, so a JSON response changes from `"2026-09-10T15:32:51.298Z"` to `"2026-09-10 21:32:51.298482+06"`. If a client depends on the ISO form, convert with `new Date(value).toISOString()` at the edge.
+`contract infer` typed both timestamp fields `DateTime(precision: 6)`. It keeps the `timestamptz` column exactly as it is and hands your code the value as a JavaScript `Date`, as Drizzle did, so a JSON response such as `"2026-09-10T15:32:51.298Z"` does not change and your app needs no `Temporal`. A `Date` holds milliseconds, so the microseconds PostgreSQL stores are dropped. To keep them, change the field to `DateTime(as: string, precision: 6)`, which reads an ISO 8601 string such as `"2026-09-10T15:32:51.298482Z"`.
 
 ### 3.3. Add direct many-to-many fields
 
@@ -364,7 +364,7 @@ namespace public {
     email     String            @unique(map: "users_email_unique")
     name      String?
     role      pg.enum(Role)     @default("USER")
-    createdAt TimestamptzString @default(now()) @map("created_at")
+    createdAt DateTime(precision: 6) @default(now()) @map("created_at")
     posts     Post[]
     profile   Profile?
 
@@ -377,7 +377,7 @@ namespace public {
     content           String?
     published         Boolean           @default(false)
     authorId          Int               @map("author_id")
-    createdAt         TimestamptzString @default(now()) @map("created_at")
+    createdAt         DateTime(precision: 6) @default(now()) @map("created_at")
     postsToCategories PostToCategory[]
     categories        Category[]
     author            User              @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "posts_author_id_users_id_fk", index: false)
@@ -502,25 +502,25 @@ curl http://localhost:3000/api/users
 ```json no-copy
 [
   {
-    "createdAt": "2026-09-10 21:32:51.298482+06",
+    "createdAt": "2026-09-10T15:32:51.298Z",
     "email": "alice@prisma.io",
     "id": 1,
     "name": "Alice",
     "role": "ADMIN",
     "profile": { "bio": "Writes about databases", "id": 1, "userId": 1 },
     "posts": [
-      { "authorId": 1, "content": "First post", "createdAt": "2026-09-10 21:32:51.929589+06", "id": 1, "published": true, "title": "Hello Drizzle" }
+      { "authorId": 1, "content": "First post", "createdAt": "2026-09-10T15:32:51.929Z", "id": 1, "published": true, "title": "Hello Drizzle" }
     ]
   },
   {
-    "createdAt": "2026-09-10 21:32:51.298482+06",
+    "createdAt": "2026-09-10T15:32:51.298Z",
     "email": "bob@prisma.io",
     "id": 2,
     "name": "Bob",
     "role": "USER",
     "profile": null,
     "posts": [
-      { "authorId": 2, "content": null, "createdAt": "2026-09-10 21:32:51.929589+06", "id": 2, "published": false, "title": "Typed queries" }
+      { "authorId": 2, "content": null, "createdAt": "2026-09-10T15:32:51.929Z", "id": 2, "published": false, "title": "Typed queries" }
     ]
   }
 ]
@@ -571,11 +571,11 @@ curl http://localhost:3000/api/posts
   {
     "authorId": 1,
     "content": "First post",
-    "createdAt": "2026-09-10 21:32:51.929589+06",
+    "createdAt": "2026-09-10T15:32:51.929Z",
     "id": 1,
     "published": true,
     "title": "Hello Drizzle",
-    "author": { "createdAt": "2026-09-10 21:32:51.298482+06", "email": "alice@prisma.io", "id": 1, "name": "Alice", "role": "ADMIN" },
+    "author": { "createdAt": "2026-09-10T15:32:51.298Z", "email": "alice@prisma.io", "id": 1, "name": "Alice", "role": "ADMIN" },
     "categories": [
       { "id": 1, "name": "databases" },
       { "id": 2, "name": "typescript" }
@@ -584,11 +584,11 @@ curl http://localhost:3000/api/posts
   {
     "authorId": 2,
     "content": null,
-    "createdAt": "2026-09-10 21:32:51.929589+06",
+    "createdAt": "2026-09-10T15:32:51.929Z",
     "id": 2,
     "published": false,
     "title": "Typed queries",
-    "author": { "createdAt": "2026-09-10 21:32:51.298482+06", "email": "bob@prisma.io", "id": 2, "name": "Bob", "role": "USER" },
+    "author": { "createdAt": "2026-09-10T15:32:51.298Z", "email": "bob@prisma.io", "id": 2, "name": "Bob", "role": "USER" },
     "categories": [{ "id": 2, "name": "typescript" }]
   }
 ]
@@ -655,7 +655,7 @@ curl -X POST http://localhost:3000/api/posts \
 ```
 
 ```json no-copy
-{ "authorId": 1, "content": "Migration notes", "createdAt": "2026-09-10 21:58:28.179323+06", "id": 5, "published": false, "title": "Drizzle to Prisma" }
+{ "authorId": 1, "content": "Migration notes", "createdAt": "2026-09-10T15:58:28.179Z", "id": 5, "published": false, "title": "Drizzle to Prisma" }
 ```
 
 Optional fields are explicit: pass `null` for a nullable column you do not set, as `content` shows. The users route follows the same pattern with two plain creates, `User.create(...)` and then `Profile.create({ userId: user.id, bio })`.
@@ -722,8 +722,8 @@ curl -X DELETE http://localhost:3000/api/posts/5
 ```
 
 ```json no-copy
-{ "authorId": 2, "content": null, "createdAt": "2026-09-10 21:32:51.929589+06", "id": 2, "published": true, "title": "Typed queries" }
-{ "authorId": 1, "content": "Migration notes", "createdAt": "2026-09-10 21:58:28.179323+06", "id": 5, "published": false, "title": "Drizzle to Prisma" }
+{ "authorId": 2, "content": null, "createdAt": "2026-09-10T15:32:51.929Z", "id": 2, "published": true, "title": "Typed queries" }
+{ "authorId": 1, "content": "Migration notes", "createdAt": "2026-09-10T15:58:28.179Z", "id": 5, "published": false, "title": "Drizzle to Prisma" }
 { "error": "Not found" }
 ```
 
@@ -803,11 +803,11 @@ await db.orm.public.Post.where({ id: postId }).update({
 
 :::warning
 
-If you edit the contract after signing, `db verify` fails with `CONTRACT.MARKER_MISMATCH` (`Contract storageHash does not match database marker`). When the database still matches the new contract, as with a type change from `TimestamptzString` to `Timestamptz`, run `contract emit` and then `db sign` again; the signature moves from the old hash to the new one. When the change needs new columns or tables, use `db update` or `migration plan` instead of re-signing.
+If you edit the contract after signing, `db verify` fails with `CONTRACT.MARKER_MISMATCH` (`Contract storageHash does not match database marker`). When the database still matches the new contract, as with a type change from `DateTime(precision: 6)` to `DateTime(as: string, precision: 6)`, run `contract emit` and then `db sign` again; the signature moves from the old hash to the new one. When the change needs new columns or tables, use `db update` or `migration plan` instead of re-signing.
 
 :::
 
-- Inferred `TimestamptzString` fields return strings, not `Date` objects, as step 3.2 shows.
+- Inferred `DateTime(precision: 6)` fields return `Date` objects, which drop microseconds, as step 3.2 shows.
 - `.count()` is only valid inside an `.include(...)` callback. To count rows, use `.aggregate((a) => ({ total: a.count() }))`.
 - In a long-running server, do not call `db.close()` in route handlers; the connection pool is shared across requests. Close it only on [process shutdown](/orm/reference/transactions-and-runtime#close), and never in a Next.js route.
 - Bare `.update()` and `.delete()` need a `.where(...)` and touch one row. Use `.updateAll(...)` and `.deleteAll()` for many rows.

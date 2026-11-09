@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DeferredVideo } from "@/components/brand/deferred-video";
 import { CheckBold } from "@/components/icons/forma";
 import { GlassPrismSpin } from "@/components/brand/glass-prism-spin";
@@ -32,7 +33,7 @@ type CtaBurstProps = {
   /** Override the body measure (default max-w-[52ch]). */
   bodyMaxWidth?: string;
   body?: string;
-  checks?: readonly { label: string; color: string }[];
+  checks?: readonly { label: string; color: string; href?: string }[];
   primaryCta?: Cta;
   /** Pass `null` for a single-CTA closer (the campaign landing pages). */
   secondaryCta?: Cta | null;
@@ -133,13 +134,22 @@ export function CtaBurst({
 
               <Reveal delay={0.16}>
                 <ul className="mt-7 flex flex-wrap items-center justify-start gap-x-7 gap-y-3 sm:justify-center">
-                  {checks.map(({ label, color }, i) => (
+                  {checks.map(({ label, color, href }, i) => (
                     <li
                       key={i}
                       className="flex items-start gap-2 text-left text-[15px] font-semibold text-foreground"
                     >
                       <CheckBold className={cn("mt-0.5 size-4 shrink-0", color)} aria-hidden />
-                      {label}
+                      {href ? (
+                        <Link
+                          href={href}
+                          className="underline underline-offset-4 decoration-black/20 transition-colors hover:decoration-black/60"
+                        >
+                          {label}
+                        </Link>
+                      ) : (
+                        label
+                      )}
                     </li>
                   ))}
                 </ul>

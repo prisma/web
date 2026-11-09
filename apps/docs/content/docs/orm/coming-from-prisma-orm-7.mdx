@@ -8,13 +8,13 @@ metaDescription: 'A lookup table from Prisma ORM 7 to Prisma ORM 8: schema attri
 
 If you know Prisma ORM 7, this page tells you what each thing you already use is called in Prisma ORM 8. Two renamed things to know before the tables: the schema file is now called the contract (the same file, renamed), and generating the client types is now called `emit`. This page is a lookup table, not a tutorial: one table each for the schema, the command-line tool, and the query API, and a final section on what is missing.
 
-To move a running application, follow [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql) instead. It runs both versions side by side against the same database and moves one part of the app at a time. To decide whether to move at all, see [Release status](/orm/release-status).
+To move a running application, follow [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql-incremental) instead. It runs both versions side by side against the same database and moves one part of the app at a time. To decide whether to move at all, see [Release status](/orm/release-status).
 
 All examples use PostgreSQL.
 
 ## Before you start
 
-If you are adding Prisma ORM 8 to an application that runs Prisma ORM 7, do not run the new-project commands further down in that project, because `npm install prisma` installs version 8 in place of the version 7 command-line tool. Follow [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql) instead. It runs both versions side by side against your existing database without changing its data, and ends with Prisma ORM 8 managing its migrations.
+If you are adding Prisma ORM 8 to an application that runs Prisma ORM 7, do not run the new-project commands further down in that project, because `npm install prisma` installs version 8 in place of the version 7 command-line tool. Follow [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql-incremental) instead. It runs both versions side by side against your existing database without changing its data, and ends with Prisma ORM 8 managing its migrations.
 
 On PostgreSQL, the following command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, and sets up Prisma ORM 8 to read your `schema.prisma` as its contract:
 
@@ -22,7 +22,7 @@ On PostgreSQL, the following command moves Prisma ORM 7 to the `prisma7` command
 npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 ```
 
-It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with [phase 3 of the guide](/guides/upgrade-prisma-orm/postgresql#3-migrate-one-route), moving routes one at a time to the client in `src/prisma/db.ts`. Prisma ORM 7 keeps owning your migrations until the guide's [phase 4](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 needs a contract file written for Prisma ORM 8. Before you start it, create one with the guide's steps 2.3 to 2.5, and set `contract` in `prisma.config.ts` to that file's path.
+It does not change `prisma/` or the database. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with [phase 3 of the guide](/guides/upgrade-prisma-orm/postgresql-incremental#3-migrate-one-route), moving routes one at a time to the client in `src/prisma/db.ts`. Prisma ORM 7 keeps owning your migrations until the guide's [phase 4](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 needs a contract file written for Prisma ORM 8. Before you start it, create one with the guide's steps 2.3 to 2.5, and set `contract` in `prisma.config.ts` to that file's path.
 
 To set up Prisma ORM 8 in a new project, install `prisma` and `@prisma/orm-postgres`, then run `orm init`:
 
@@ -40,7 +40,7 @@ Commands are written as `prisma ...` in the tables below. Run them as `npx prism
 
 `schema.prisma` is now `src/prisma/contract.prisma`. It is the same file, renamed: you still describe your models in it. In Prisma ORM 8, "schema" means a PostgreSQL schema, the namespace your tables live in, usually `public`.
 
-The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma type plus a `@db.` attribute, such as `String @db.VarChar(255)`, Prisma ORM 8 writes the database type as the field type: `VarChar(255)`.
+The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma type plus a `@db.` attribute, such as `String @db.VarChar(255)`, Prisma ORM 8 sets the column with arguments on the type, `String(storage: varchar, length: 255)`, or writes the database type as the field type, such as `Xml`.
 
 | Prisma ORM 7 | Prisma ORM 8 | Notes |
 | --- | --- | --- |
@@ -48,14 +48,15 @@ The biggest visible change is in field types. Where Prisma ORM 7 wrote a Prisma 
 | (nothing) | `// use prisma-8` as the first line | required in every Prisma ORM 8 `.prisma` contract file; see the note below the table |
 | `generator client { ... }` | removed | `emit` is the new word for `generate`. `prisma contract emit` writes two files next to your contract, `contract.json` and `contract.d.ts`. Commit both |
 | `datasource db { ... }` | the `orm` section of `prisma.config.ts` | the connection string and file paths live in the config file, not the schema. Example below |
-| `String @db.Text` | `String` | `String` is already stored as `text`. A known bug in one error message suggests `Text`; there is no such type |
-| `String @db.VarChar(255)` | `VarChar(255)` | the same for every other `@db.` type: the attribute name becomes the field type. [PSL syntax](/orm/contract-authoring/psl-syntax#models-and-fields) lists them |
-| `Decimal @db.Decimal(10, 2)` | `Numeric(10, 2)` | `Decimal` on its own still exists and is a `numeric` column without a fixed precision |
+| `String @db.Text` | `String` | `String` is already stored as `text` |
+| `String @db.VarChar(255)` | `String(storage: varchar, length: 255)` | `Int @db.SmallInt` is `Int(storage: int2)`, `Float @db.Real` is `Float(storage: float4)`, and for most other `@db.` types, such as `@db.Xml`, `@db.Oid` and `@db.Money`, the attribute name becomes the field type. [PSL syntax](/orm/contract-authoring/psl-syntax#models-and-fields) lists them. `@db.Citext` becomes `citext.Citext`, from the citext pack in `@prisma/orm-postgres-contrib`; see [Using extensions](/orm/extensions/using-extensions) |
+| `Decimal @db.Decimal(10, 2)` | `Decimal(precision: 10, scale: 2)` | `Decimal` on its own still exists and is a `numeric` column without a fixed precision |
 | `Int`, `Boolean`, `Float`, `BigInt`, `Bytes` | unchanged | |
 | `String @db.Uuid` | `Uuid` | |
-| `DateTime`, `DateTime @db.Timestamptz` | `DateTime` | same name, and it is already a `timestamptz` column. Values come back as `Temporal.Instant`, not JavaScript `Date`; `new Date(value.epochMilliseconds)` converts one. See the note below the table |
-| `updatedAt DateTime @updatedAt` | `updatedAt temporal.updatedAt()` | `temporal.updatedAt()`, written where the type would go, sets the field from your application's clock on create and on every update. `temporal.` is part of the contract syntax; there is nothing to import. `temporal.UpdatedAt` is the same column written as a named type. The attribute form, `updatedAt DateTime @onCreate(now()) @onUpdate(now())`, also works, and lets you pick another type or a precision |
-| `createdAt DateTime @default(now())` | the same, or `createdAt temporal.createdAt()` | both work. `@default(now())` is a database default. `temporal.createdAt()` is set by Prisma ORM from your application's clock and gives the column no database default |
+| `DateTime` | `DateTime(storage: timestamp)` | Prisma ORM 7 stored a `DateTime` as `timestamp(3)`, which this keeps. Values come back as a JavaScript `Date`, as in Prisma ORM 7. Plain `DateTime` is a `timestamptz(3)` column, so on an existing table it is a different column. See the note below the table |
+| `DateTime @db.Timestamptz(3)` | `DateTime` | the same `timestamptz(3)` column, read as a `Date`. For another precision, write `DateTime(precision: 6)` |
+| `updatedAt DateTime @updatedAt` | `updatedAt temporal.UpdatedAt` | `temporal.UpdatedAt`, a named type written without parentheses, is a `timestamptz(3)` column that Prisma ORM sets from your application's clock on create and on every update. `temporal.` is part of the contract syntax; there is nothing to import. To keep Prisma ORM 7's `timestamp(3)` column, write the attributes yourself: `updatedAt DateTime(storage: timestamp) @onCreate(now()) @onUpdate(now())` |
+| `createdAt DateTime @default(now())` | the same, or `createdAt temporal.CreatedAt` | both work, as `timestamptz(3)` columns; add `(storage: timestamp)` to keep Prisma ORM 7's `timestamp(3)`. `@default(now())` is a database default. `temporal.CreatedAt` is set by Prisma ORM from your application's clock and gives the column no database default |
 | `String @id @default(uuid())` | `String @id @onCreate(uuid())` | `@default` is now only a database default, and a value Prisma ORM generates is written `@onCreate(...)`. The same goes for `uuid(7)`, `ulid()`, and `nanoid()`. `@default(uuid())` is rejected with `PSL_GENERATOR_IN_DEFAULT`. [Generated values](/orm/contract-authoring/psl-syntax#generated-values) lists the functions |
 | `String @default(cuid())` | `String @onCreate(cuid(2))` | `2` is the cuid version. Plain `cuid()` is rejected |
 | `@default(dbgenerated("gen_random_uuid()"))` | ``@default(sql`gen_random_uuid()`)`` | `dbgenerated` is rejected. Write any SQL expression as `` sql`...` `` instead, but keep writing `now()` and `autoincrement()` as plain functions. [Default values](/orm/contract-authoring/psl-syntax#default-values) covers every kind of default |
@@ -98,9 +99,9 @@ A `pg.enum(...)` field supports the `eq` and `in` filters, not `like` or `ilike`
 
 :::note[DateTime values and Node.js versions]
 
-The `DateTime` type reads and writes its values as `Temporal.Instant` objects. If you would rather work with the timestamp as a string, write `TimestamptzString` in place of `DateTime`.
+The `DateTime` type reads and writes its values as JavaScript `Date` objects, as Prisma ORM 7 did, and needs no polyfill. A `Date` holds milliseconds. To keep the microseconds a `timestamptz` column can store, write `DateTime(as: temporal)`, which reads a `Temporal.Instant`, or `DateTime(as: string)`, which reads an ISO 8601 string.
 
-`Temporal` is built into Node.js 26 and later, but not in Node.js 22 or 24. On those versions, install `temporal-polyfill` and add this line at the top of `src/prisma/db.ts`:
+`Temporal` is built into Node.js 26 and later, but not in Node.js 22 or 24. If you use a type that reads a `Temporal` value on those versions, install `temporal-polyfill` and add this line at the top of `src/prisma/db.ts`:
 
 ```ts
 import "temporal-polyfill/full/global";
@@ -108,7 +109,7 @@ import "temporal-polyfill/full/global";
 
 Homebrew's build of Node.js 26 leaves `Temporal` out, so check with `node -p "typeof Temporal"`; if it prints `undefined`, add the polyfill.
 
-This applies to a contract you write yourself. When Prisma ORM 8 reads your `schema.prisma` through `prisma7Schema(...)`, as `orm init --from-prisma7-schema` sets it up, a `DateTime` field reads and writes as the text PostgreSQL returns, such as `2026-09-14 10:00:00.123`, and needs no `Temporal`.
+When Prisma ORM 8 reads your `schema.prisma` through `prisma7Schema(...)`, as `orm init --from-prisma7-schema` sets it up, a `DateTime` field, with or without `@db.Timestamp` or `@db.Timestamptz`, also reads and writes as a `Date`. A `@db.Date` or `@db.Time` field reads as an ISO 8601 string, such as `2026-09-14` or `10:00:00.5`. None of them needs `Temporal`. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists each type.
 
 :::
 
@@ -178,18 +179,18 @@ The Prisma ORM 8 command-line tool groups commands by what they act on: `contrac
 | `prisma migrate dev` | `prisma db update`, or `prisma migration plan` then `prisma db migrate` | see the paragraph below the table |
 | `prisma migrate deploy` | `prisma db migrate` | applies the migration files in your repository |
 | `prisma migrate status` | `prisma migration status` | reports which migrations the database has applied |
-| `prisma db push` | `prisma db init` the first time, on an empty database; `prisma db update` after that | `db init` creates the tables; `db update` changes existing tables to match the contract. For a database that already has your Prisma ORM 7 tables, run neither; see [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership). See [`db update`](/cli/db-update) |
+| `prisma db push` | `prisma db init` the first time, on an empty database; `prisma db update` after that | `db init` creates the tables; `db update` changes existing tables to match the contract. For a database that already has your Prisma ORM 7 tables, run neither; see [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership). See [`db update`](/cli/db-update) |
 | `prisma db pull` | `prisma contract infer` | writes a first draft of a contract from an existing database |
 | `prisma migrate diff` | `prisma db update --dry-run` to see what would change in the database, or `prisma migration show <migration name>` to print what a migration file does | `<migration name>` is a folder name under `migrations/app/`, for example `20260911T1030_add_bio`. To diff two migrations into a new migration file, `prisma migration plan --from <migration name> --to <migration name>` |
 | `prisma migrate resolve --applied` | see [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) | for a migration that failed half way |
-| `prisma migrate resolve` for a database that already matches your schema | [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) | the guide records which contract the database matches, both in the database and in your repository. Follow it rather than running the commands by hand |
-| `prisma migrate reset` | none | drop and recreate the database with your database tools, then `prisma db migrate` to apply every migration |
+| `prisma migrate resolve` for a database that already matches your schema | [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership) | the guide records which contract the database matches, both in the database and in your repository. Follow it rather than running the commands by hand |
+| `prisma migrate reset` | `prisma db update` | Prisma ORM 8 never resets a database. `db update` moves a database whose migration history does not need to be kept to your contract, and asks before it loses data. A database that changes only through migrations, such as production, is moved with `prisma db migrate` |
 | `prisma db seed` | none | there is no seed command. Write a script that imports `db` from `src/prisma/db.ts` and calls `.create(...)`, and run it the way you run any TypeScript file, for example `npx tsx src/prisma/seed.ts` |
 | `prisma studio` | none in the Prisma ORM 8 tool | run Studio from the Prisma ORM 7 tool, from a directory outside your project, with the connection string spelled out: `cd /tmp && npx prisma@7 studio --url "postgresql://user:password@localhost:5432/mydb"`. See [Studio with Prisma ORM](/studio/prisma-next) |
 | `prisma format` | `prisma contract format` | |
 | `prisma validate` | none | `prisma contract emit` fails if the contract is invalid, and `prisma db verify` checks it against the database |
 
-If you type `prisma migrate dev`, `deploy`, `status`, `diff`, `reset` or `resolve` in the Prisma ORM 8 tool, it exits with code `2` and the error code `CLI.COMMAND_MOVED`, and its next action names the Prisma ORM 8 command to use. Until you hand your migrations to Prisma ORM 8, in [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership), keep running `migrate dev`, `migrate deploy` and `migrate status` with the Prisma ORM 7 tool, which the guide installs as `prisma7`: for example, `npx prisma7 migrate dev`.
+If you type `prisma migrate dev`, `deploy`, `status`, `diff`, `reset` or `resolve` in the Prisma ORM 8 tool, it exits with code `2` and the error code `CLI.COMMAND_MOVED`, and its next action names the Prisma ORM 8 command to use. Until you hand your migrations to Prisma ORM 8, in [step 4 of the migration guide](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership), keep running `migrate dev`, `migrate deploy` and `migrate status` with the Prisma ORM 7 tool, which the guide installs as `prisma7`: for example, `npx prisma7 migrate dev`.
 
 Day to day, the loop that replaces `prisma migrate dev` is: edit the contract, run `prisma contract emit`, then `prisma db update` to apply the change to your development database. `db update --dry-run` shows what it would change, and `db update` asks before it applies an operation that loses data. To rename a model or field and keep its data, pass `--rename <old>:<new>`. When you want a migration file to commit, run `prisma migration plan` instead of `db update`; it writes a folder under `migrations/app/` with a `migration.ts` you can read, edit, and commit. Then `prisma db migrate` applies it. See [Generating a migration](/orm/migrations/generating-a-migration).
 
@@ -421,7 +422,7 @@ Also not available today:
 
 ## Where to go next
 
-- [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql), the step-by-step migration for a running PostgreSQL application.
+- [Migrate from Prisma ORM 7 to 8](/guides/upgrade-prisma-orm/postgresql-incremental), the step-by-step migration for a running PostgreSQL application.
 - [Core concepts](/orm/core-concepts), for what a contract is and what `contract emit` does.
 - [ORM client reference](/orm/reference/orm-client), for every query method.
 - [Reading data](/orm/fundamentals/reading-data) and [Writing data](/orm/fundamentals/writing-data), for the query API in full.
