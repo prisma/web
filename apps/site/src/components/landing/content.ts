@@ -114,7 +114,7 @@ export type LandingContent = {
 const DEPLOY_STOP: ProductTourStop = {
   label: "Deploy",
   caption:
-    "One command, npx prisma deploy module.ts, provisions the app and its Prisma Postgres database and applies your migrations.",
+    "One command, npx prisma deploy, provisions the app and its Prisma Postgres database and applies your migrations.",
   illustration: "deployLog",
 };
 
@@ -203,7 +203,7 @@ export const computeLanding: LandingContent = {
     {
       question: "Can I deploy an app I already have?",
       answer:
-        "Yes, if it is a TypeScript service for Node.js, Bun or Next.js. Add a short declaration (a service.ts and a module.ts) around the server code you already have, then run npx prisma deploy module.ts. The docs include a prompt your coding agent can write the declaration from.",
+        "Yes, if it is a TypeScript service for Node.js, Bun or Next.js. Add a declaration (a service.ts and a module.ts) around the server code you already have, name module.ts as the entry in the composer section of prisma.config.ts, then run npx prisma deploy. The docs include a prompt your coding agent can write the declaration from.",
     },
     {
       question: "What does it cost?",
