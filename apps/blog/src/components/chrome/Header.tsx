@@ -20,6 +20,7 @@ import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
 import { ThemeToggle } from "@prisma-docs/ui/components/theme-toggle";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { Menu, Search } from "lucide-react";
+import { preloadSearch } from "@/components/search";
 import { useEffect, useState } from "react";
 import { Logo } from "./logo";
 import {
@@ -80,6 +81,9 @@ function SearchButton({ className }: { className?: string }) {
     <button
       type="button"
       aria-label="Search Prisma"
+      onPointerEnter={preloadSearch}
+      onPointerDown={preloadSearch}
+      onFocus={preloadSearch}
       onClick={() => setOpenSearch(true)}
       className={cn(
         "text-foreground-neutral-weak hover:text-foreground-neutral hover:bg-background-neutral rounded-circle flex size-8 cursor-pointer items-center justify-center transition-colors duration-300 outline-none",

@@ -11,7 +11,7 @@ pnpm install
 pnpm --filter handbook dev
 ```
 
-Runs on **http://localhost:3004/handbook** (site is 3000, docs 3001, blog 3002, eclipse 3003). `@prisma/eclipse` must be built first; `pnpm dev` at the root does that via Turbo, or run `pnpm --filter @prisma/eclipse build` once.
+Runs on **http://localhost:3004/handbook** (site is 3000, docs 3001, blog 3002, eclipse 3003). `@prisma/eclipse` must be built first; `pnpm dev:turbo` at the root does that via Turbo, or run `pnpm --filter @prisma/eclipse build` once.
 
 ## Structure
 

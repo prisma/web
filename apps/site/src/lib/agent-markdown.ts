@@ -1,4 +1,5 @@
 import { COMPARISON_PATHS } from "@/app/compare/comparisons";
+import { getDataguideRewritePathname } from "@/lib/dataguide-markdown";
 
 /**
  * Agent-facing Markdown content negotiation for the marketing site.
@@ -63,6 +64,7 @@ export const AGENT_MARKDOWN_PATHS = [
   "/stack",
   "/enterprise",
   "/mcp",
+  "/postgres/free-postgresql-hosting",
   ...COMPARISON_PATHS,
 ] as const;
 
@@ -71,6 +73,19 @@ export type AgentMarkdownPath = (typeof AGENT_MARKDOWN_PATHS)[number];
 const AGENT_MARKDOWN_PATH_SET: ReadonlySet<string> = new Set(AGENT_MARKDOWN_PATHS);
 
 export type AgentMarkdownSignal = "accept" | "user-agent";
+
+/**
+ * The `Vary` value for a Markdown rendition. A page URL answers Markdown on
+ * either signal above, so a shared cache has to key on both request headers.
+ *
+ * Both the proxy and the Markdown route send it, because on Vercel each one
+ * covers a different response (measured on www.prisma.io, 2026-10-19). A 200
+ * carries the route's own `Vary` and drops the proxy's: the proxy sent
+ * `Accept, User-Agent` and the client got the route's `Accept`. A CDN 304 on
+ * a page URL carries the proxy's `Vary` and not the route's. A 304 on a `.md`
+ * or `/llms.mdx/*` URL, which the proxy never sees, carries no `Vary` at all.
+ */
+export const AGENT_MARKDOWN_VARY = "Accept, User-Agent";
 
 /**
  * The product guides in `content/answers` (`/postgres/<slug>`,
@@ -86,7 +101,7 @@ export type AgentMarkdownSignal = "accept" | "user-agent";
  * `proxy-matcher.test.ts` checks the proxy end to end on every guide.
  */
 export const ANSWER_PAGE_RESERVED_SEGMENTS: Readonly<Record<string, readonly string[]>> = {
-  postgres: ["guides", "hipaa"],
+  postgres: ["guides", "hipaa", "free-postgresql-hosting"],
   compute: ["guides"],
 };
 
@@ -174,6 +189,12 @@ export function getAnswerPagePath(pathname: string): string | undefined {
  * homepage — the same slug `/index.md` produces.
  */
 export function getAgentMarkdownRewritePathname(pathname: string): string | undefined {
+  // Data Guide pages, which the site forwards to the Data Guide deployment;
+  // their Markdown is read from that deployment's export. See
+  // `@/lib/dataguide-markdown`.
+  const dataguidePathname = getDataguideRewritePathname(pathname);
+  if (dataguidePathname) return dataguidePathname;
+
   const answerPath = getAnswerPagePath(pathname);
   if (answerPath) return `/llms.mdx${answerPath}`;
 

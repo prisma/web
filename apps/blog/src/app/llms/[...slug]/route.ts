@@ -4,20 +4,35 @@ import { getBaseUrl } from "@/lib/url";
 import { notFound } from "next/navigation";
 
 export const revalidate = false;
+/**
+ * Only the years generateStaticParams lists exist: Next answers any other
+ * `/blog/llms/*` path with a 404 before this handler runs.
+ */
 export const dynamicParams = false;
 
-/** `/blog/llms/2026.txt` -> 2026. Anything else is not a year index. */
-function parseYear(slug: string[] | undefined): number {
+let cached: { posts: ReturnType<typeof getLlmsPosts>; years: number[] } | undefined;
+
+/** Built once per process: every route call and every static param shares it. */
+function getIndex() {
+  cached ??= (() => {
+    const posts = getLlmsPosts();
+    return { posts, years: getPostYears(posts) };
+  })();
+  return cached;
+}
+
+/** `/blog/llms/2026.txt` -> 2026, or null for anything that is not a year file. */
+function parseYear(slug: string[] | undefined): number | null {
   const match = slug?.length === 1 ? /^(\d{4})\.txt$/.exec(slug[0]) : null;
-  if (!match) notFound();
-  return Number(match[1]);
+  return match ? Number(match[1]) : null;
 }
 
 export async function GET(_req: Request, { params }: RouteContext<"/llms/[...slug]">) {
   const { slug } = await params;
+  const { posts, years } = getIndex();
   const year = parseYear(slug);
-  const posts = getLlmsPosts();
-  if (!getPostYears(posts).includes(year)) notFound();
+  // Unreachable while dynamicParams is false; kept so flipping it cannot serve an empty file.
+  if (year === null || !years.includes(year)) notFound();
 
   return new Response(buildLlmsYearContent(year, posts, getBaseUrl()), {
     headers: {
@@ -27,5 +42,5 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms/[...slu
 }
 
 export function generateStaticParams() {
-  return getPostYears(getLlmsPosts()).map((year) => ({ slug: [`${year}.txt`] }));
+  return getIndex().years.map((year) => ({ slug: [`${year}.txt`] }));
 }

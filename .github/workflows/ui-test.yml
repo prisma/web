@@ -1,0 +1,53 @@
+name: UI Tests
+
+# Unit tests for packages/ui (`pnpm --filter @prisma-docs/ui test`). Runs on
+# every PR rather than behind a path filter: the suite renders @prisma/eclipse
+# components and its tests may read source elsewhere in the repo (such as the
+# app layouts that load shared ui scripts), so a change outside packages/ui can
+# break it, and a run is only a filtered install, an Eclipse build and a few
+# seconds of tests.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Unit Tests (UI)
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Install and test run dependency code; nothing here needs git auth.
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter "@prisma-docs/ui..."
+
+      # The newsletter form imports @prisma/eclipse, whose package entry is the
+      # built dist. The install does not produce it.
+      - name: Build Eclipse
+        run: pnpm --filter @prisma/eclipse build
+
+      - name: Run unit tests
+        run: pnpm --filter @prisma-docs/ui test

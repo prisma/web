@@ -10,16 +10,15 @@ export default function robots(): MetadataRoute.Robots {
   // on www.prisma.io, so the zone rules have to live here.
   // /blog/*?tag=* is deliberately not disallowed: blog tag landing pages 301
   // into /blog?tag=<tag>, so blocking it would block a redirect destination.
+  // OG images must remain crawlable for social previews. Their responses
+  // use X-Robots-Tag: noindex to keep generated cards out of search indexes.
   const zoneDisallow = [
-    "/og/",
     "/docs/api/",
-    "/docs/og/",
     "/docs/*?query=*",
     "/docs/*&query=*",
     "/docs/*?page=*",
     "/docs/*&page=*",
     "/blog/api/",
-    "/blog/og/",
     "/blog/*?page=*",
     "/blog/*&page=*",
   ];

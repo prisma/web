@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { renderToStaticMarkup } from "react-dom/server";
 import { postgresContent } from "@/components/product/content/postgres";
-import { stripFaqAnswerMarkup } from "@/lib/faq-answer";
+import { renderFaqAnswer, stripFaqAnswerMarkup } from "@/lib/faq-answer";
 
 /**
  * The visible /postgres FAQ and the FAQPage JSON-LD on the same page come
@@ -20,6 +21,12 @@ import { stripFaqAnswerMarkup } from "@/lib/faq-answer";
 const faq = postgresContent.faq ?? [];
 
 const MARKUP_PATTERN = /[`[\]()]|(?:^|[^!])\(https?:\/\//;
+
+const HOSTING_GUIDE = "https://hipaacomplianthosting.com/blog/hipaa-compliant-app-hosting";
+
+function htmlOf(answer: string): string {
+  return renderToStaticMarkup(<>{renderFaqAnswer(answer)}</>);
+}
 
 test("every /postgres FAQ answer strips cleanly to plain text", () => {
   assert.equal(faq.length, 9, "expected the 9-item v2 FAQ");
@@ -78,4 +85,46 @@ test("every answer the parser touches carries recognisable markup", () => {
       `${item.question}: answer looks like it has markup but neither link nor code form matches`,
     );
   }
+});
+
+test("anchor, relative, and ordinary external FAQ links get no target or rel", () => {
+  const answers = [
+    "See [database support](#databases).",
+    "See [pricing](/pricing).",
+    "Audit reports are in the [Prisma Trust Center](https://trust.prisma.io).",
+    "Short links such as [this](https://pris.ly/cli) stay in place.",
+    "The repo is [prisma/prisma](https://github.com/prisma/prisma).",
+  ];
+
+  for (const answer of answers) {
+    const html = htmlOf(answer);
+    assert.ok(!html.includes("target="), `${answer}: unexpected target`);
+    assert.ok(!html.includes("rel="), `${answer}: unexpected rel`);
+    assert.ok(!html.includes("opens in a new tab"), `${answer}: unexpected new-tab cue`);
+  }
+});
+
+test("an opted-in {newtab} link opens in a new tab with noopener noreferrer", () => {
+  const html = htmlOf(
+    `HIPAA Compliant Hosting's [guide to HIPAA compliant app hosting](${HOSTING_GUIDE}){newtab} covers the hosting options.`,
+  );
+
+  assert.match(
+    html,
+    /href="https:\/\/hipaacomplianthosting\.com\/blog\/hipaa-compliant-app-hosting"/,
+  );
+  assert.match(html, /target="_blank"/);
+  assert.match(html, /rel="noopener noreferrer"/);
+  assert.ok(!html.includes("nofollow"));
+  assert.match(html, /opens in a new tab/);
+  assert.match(html, />guide to HIPAA compliant app hosting</);
+});
+
+test("stripFaqAnswerMarkup drops the {newtab} marker and keeps the label", () => {
+  assert.equal(
+    stripFaqAnswerMarkup(
+      `See HIPAA Compliant Hosting's [guide to HIPAA compliant app hosting](${HOSTING_GUIDE}){newtab} for hosting options.`,
+    ),
+    "See HIPAA Compliant Hosting's guide to HIPAA compliant app hosting for hosting options.",
+  );
 });

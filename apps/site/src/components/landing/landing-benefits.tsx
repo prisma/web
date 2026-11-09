@@ -7,7 +7,11 @@ import type { LandingContent } from "./content";
 // doing, two sentences. No card chrome, so the section reads as prose with
 // markers rather than as another grid of boxes; the proof sections that
 // follow it carry the tables.
-export function LandingBenefits({ benefits }: { benefits: LandingContent["benefits"] }) {
+export function LandingBenefits({
+  benefits,
+}: {
+  benefits: NonNullable<LandingContent["benefits"]>;
+}) {
   return (
     <section className="bg-white px-4 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">

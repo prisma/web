@@ -35,6 +35,7 @@ export function LandingHero({
   visual?: ReactNode;
 }) {
   const { hero, kicker, accent } = content;
+  const ctaLabel = content.ctaLabel ?? CTA_LABEL;
 
   return (
     <section className="bg-white px-3 pt-3 sm:px-4 sm:pt-4">
@@ -80,7 +81,7 @@ export function LandingHero({
                   ctaLocation="lp_hero"
                   className="w-full justify-center sm:w-auto [&>a]:w-full [&>a]:justify-center [&>a]:px-10 sm:[&>a]:min-w-[15rem]"
                 >
-                  {CTA_LABEL}
+                  {ctaLabel}
                 </PrismButton>
               </div>
               {/* the offer: the real free-plan terms, right under the action */}

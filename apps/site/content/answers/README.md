@@ -4,7 +4,7 @@ Use this collection for focused use-case and troubleshooting guides under produc
 
 ## Add a product guide
 
-1. Add `postgres/<topic>.mdx` or `compute/<topic>.mdx` beside the existing guides. The filename becomes `/<product>/<topic>`. Keep published filenames stable. `guides` is reserved in both products; `hipaa` is also reserved in Postgres.
+1. Add `postgres/<topic>.mdx` or `compute/<topic>.mdx` beside the existing guides. The filename becomes `/<product>/<topic>`. Keep published filenames stable. `guides` is reserved in both products; `hipaa` and `free-postgresql-hosting` are also reserved in Postgres.
 2. Copy the frontmatter shape from the existing guide. `answer-page-schema.ts` validates metadata, ISO dates, author profile, FAQ, related links and CTA at build time. Keep `title` phrased as the reader's question; it supplies both the H1 and HTML title. `summary` is the first visible paragraph and must answer it.
 3. Write Markdown with H2/H3 headings. The compiled MDX supplies heading anchors and the template's desktop contents automatically. Put 3–4 FAQ entries in frontmatter; the template renders the site's accordion and matching FAQ structured data from the same strings. Inline links and code in FAQ answers use the site's FAQ markup.
 4. Use the decision structure: requirements, options and trade-offs, setup, limits, FAQ and CTA. Source competitor claims and record the check date. Follow `.claude/skills/content-write-answer-page/SKILL.md` for claim rules and review.

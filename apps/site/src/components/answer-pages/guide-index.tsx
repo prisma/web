@@ -16,6 +16,32 @@ export function getGuideIndexMetadata(product: AnswerProduct) {
   });
 }
 
+type GuideIndexItem = {
+  url: string;
+  title: string;
+  description: string;
+  readingTime?: string;
+};
+
+const HIPAA_GUIDE_CARD: GuideIndexItem = {
+  url: "/postgres/hipaa",
+  title: "HIPAA compliant database for healthcare",
+  description: "A signed BAA, encryption and isolated databases on the Business plan.",
+};
+
+function getGuideIndexItems(product: AnswerProduct): GuideIndexItem[] {
+  const pages = getAnswerPages(product).map((page) => ({
+    url: page.url,
+    title: page.data.title,
+    description: page.data.description,
+    readingTime: page.data.readingTime,
+  }));
+  if (product !== "postgres") return pages;
+  const gdprIndex = pages.findIndex((page) => page.url === "/postgres/eu-data-residency");
+  const insertAt = gdprIndex === -1 ? 0 : gdprIndex + 1;
+  return [...pages.slice(0, insertAt), HIPAA_GUIDE_CARD, ...pages.slice(insertAt)];
+}
+
 /** List a product's guide collection using the shared article-directory layout. */
 export function GuideIndex({ product }: { product: AnswerProduct }) {
   const config = answerProducts[product];
@@ -31,17 +57,19 @@ export function GuideIndex({ product }: { product: AnswerProduct }) {
         {config.description}
       </p>
       <ul className="mt-14 max-w-4xl divide-y divide-border border-y border-border">
-        {getAnswerPages(product).map((page) => (
+        {getGuideIndexItems(product).map((page) => (
           <li key={page.url}>
             <Link href={page.url} className="group flex items-start justify-between gap-6 py-8">
               <div>
                 <h2 className="text-balance font-heading text-xl font-medium group-hover:text-prism-cyan-700 sm:text-2xl">
-                  {page.data.title}
+                  {page.title}
                 </h2>
                 <p className="mt-3 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-                  {page.data.description}
+                  {page.description}
                 </p>
-                <p className="mt-4 text-sm text-muted-foreground">{page.data.readingTime}</p>
+                {page.readingTime ? (
+                  <p className="mt-4 text-sm text-muted-foreground">{page.readingTime}</p>
+                ) : null}
               </div>
               <ArrowRight
                 className="mt-1 size-5 shrink-0 transition-transform group-hover:translate-x-1 motion-reduce:transform-none"

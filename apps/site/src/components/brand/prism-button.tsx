@@ -1,9 +1,10 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trackCTA } from "@prisma-docs/ui/lib/analytics";
 import { BurstFill } from "@/components/brand/burst-fill";
+import { observeAnimationActivity } from "@/lib/animation-activity";
 import { cn } from "@/lib/utils";
 
 const SPECTRUM =
@@ -99,8 +100,21 @@ export function PrismButton({
   const burstOn = hover && !reduce;
   const MotionComp = href ? motion.a : motion.button;
 
+  // The resting drift is a blurred layer re-composited every frame for as
+  // long as the button exists, so it only runs while the button is on screen
+  // (every PrismButton on a page was drifting, in view or not).
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const [onScreen, setOnScreen] = useState(false);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    return observeAnimationActivity(root, setOnScreen);
+  }, []);
+  const drift = onScreen && !reduce;
+
   return (
     <span
+      ref={rootRef}
       className={cn("relative inline-flex items-center", fullWidth && "w-full", className)}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -111,10 +125,14 @@ export function PrismButton({
           className="absolute inset-y-0 block w-[240%]"
           style={{ backgroundImage: SPECTRUM }}
           animate={
-            reduce ? { x: "0%", scaleY: 1 } : { x: ["0%", "-58%", "0%"], scaleY: hover ? 1.18 : 1 }
+            drift ? { x: ["0%", "-58%", "0%"], scaleY: hover ? 1.18 : 1 } : { x: "0%", scaleY: 1 }
           }
           transition={{
-            x: { duration: 7, repeat: Infinity, ease: "easeInOut" },
+            // The settle-back must not inherit the loop's repeat, or parking
+            // the glow would itself become an endless 7s tween.
+            x: drift
+              ? { duration: 7, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.6, ease: "easeOut" },
             scaleY: { duration: 0.35, ease: "easeOut" },
           }}
         />
@@ -150,7 +168,11 @@ export function PrismButton({
         {/* prismatic burst — erupts from the centre via an expanding radial reveal */}
         <BurstFill on={burstOn} />
 
-        <span className="relative z-10 whitespace-nowrap font-semibold leading-[1.5] text-white">
+        {/* inline-flex nowrap keeps a label icon on the label's line. Preflight
+            sets svg { display: block }, which stacks the icon above the text
+            whenever this span is not a flex box, so the icon is forced back
+            to an inline-block that cannot grow the pill past its size. */}
+        <span className="relative z-10 inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-white [&_svg]:inline-block [&_svg]:shrink-0">
           {children}
         </span>
       </MotionComp>
@@ -188,7 +210,8 @@ export function PrismButtonOutline({
         className,
       )}
     >
-      <span className="whitespace-nowrap font-semibold leading-[1.5] text-foreground">
+      {/* Same row treatment as the filled pill's label. */}
+      <span className="inline-flex items-center gap-2 flex-nowrap whitespace-nowrap font-semibold leading-[1.5] text-foreground [&_svg]:inline-block [&_svg]:shrink-0">
         {children}
       </span>
     </Comp>

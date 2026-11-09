@@ -1,0 +1,186 @@
+---
+title: Types for your code
+description: Name the type of a row, a query result, or a create, update, or filter argument in Prisma ORM 8, with the Prisma ORM 7 name beside each one.
+url: /orm/fundamentals/types
+metaTitle: Model, result, and input types | Prisma ORM
+metaDescription: 'Type your own functions with Prisma ORM 8: Models, Scalars, Shape, and ResultType for rows, and CreateInput, ScalarUpdateInput, ShorthandWhereFilter, ModelAccessor, and UniqueConstraintCriterion for arguments, with the Prisma ORM 7 type each replaces.'
+---
+
+When a function returns a user or takes a filter, you want to name that type instead of repeating the fields. This page shows the types for both, on PostgreSQL first and then on MongoDB.
+
+The types start from your contract, `src/prisma/contract.prisma`, the file where you declare your models. Run `npx prisma contract emit` after every change to it; it writes `contract.d.ts` next to the contract, with one type per model. You pass that type to the helper types on this page. They come from `@prisma/orm-postgres`, the package your app already uses. `db` in the examples is the client from `src/prisma/db.ts`, imported with `import { db } from "./prisma/db";`.
+
+The examples use this contract:
+
+```prisma title="src/prisma/contract.prisma"
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String?
+  posts Post[]
+}
+
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId Int
+}
+```
+
+## Model types
+
+`contract.d.ts` exports `Models`, with one type per model, and `Contract`, the type of the whole contract, which you need for the argument types further down. Import them with a path relative to your own file; from a file in `src/`, that is:
+
+```ts
+import type { Contract, Models } from "./prisma/contract.d";
+```
+
+On PostgreSQL, a model's type name starts with the PostgreSQL schema its table is in, so a model in the default `public` schema is `Models.public_User`. A model type lists every scalar field and every relation. No query returns all of them, so do not use it as the type of a row. Pass it to `Scalars` or `Shape` instead.
+
+## The row a query returns
+
+`Scalars<M>` is a row with every scalar field and no relations. It is what `first()` and `all()` return when you call neither `select()` nor `include()`:
+
+```ts
+import type { Scalars } from "@prisma/orm-postgres/family-contract/types";
+
+type User = Scalars<Models.public_User>;
+
+async function getUser(id: number): Promise<User | null> {
+  return db.orm.public.User.where({ id }).first();
+}
+```
+
+`ResultType<typeof query>` is the row of a query you have already written. When the query depends on an argument, put it in a function that returns the query, and take the type of what the function returns:
+
+```ts
+import type { ResultType } from "@prisma/orm-postgres/components/runtime";
+
+function userWithPosts(id: number) {
+  return db.orm.public.User.where({ id }).include("posts");
+}
+
+type UserWithPosts = ResultType<ReturnType<typeof userWithPosts>>;
+```
+
+`first()` on that query returns `UserWithPosts | null`, and `all()` returns `UserWithPosts[]`.
+
+## Choose the fields of a row
+
+`Shape<M, Spec>` describes a row with the fields and relations you choose, so you can declare what a function returns before you write the query. A user with all of their posts is:
+
+```ts
+import type { Shape } from "@prisma/orm-postgres/family-contract/types";
+
+type UserWithPosts = Shape<Models.public_User, { "+": "posts" }>;
+
+async function getUserWithPosts(id: number): Promise<UserWithPosts | null> {
+  return db.orm.public.User.where({ id }).include("posts").first();
+}
+```
+
+The query's result fits the type as it is, so the function returns it directly. The spec, the second argument, works like this:
+
+- `"+"` lists what to keep, as a union such as `"id" | "posts"`. If it names any scalar field, you get only the scalar fields it names, plus any relations it names. If it names only relations, you get every scalar field plus those relations. A relation in `"+"` comes with all of its scalar fields and none of its own relations.
+- `"-"` lists scalar fields to leave out. A relation cannot be listed, because a row has no relations unless you ask for them.
+- You cannot name scalar fields in both `"+"` and `"-"` of the same spec.
+- Any other key is a relation, which the key alone adds to the row, and its value is a spec for that relation's rows, such as `posts: { "+": "id" | "title" }`.
+- With no `"+"` and no `"-"`, you get every scalar field, so `Shape<Models.public_User>` is the same as `Scalars<Models.public_User>`.
+
+Breaking one of these rules, or naming a field the model does not have, is a TypeScript error that names that key. To add a field no query returns, such as a computed count, combine types: `Shape<Models.public_User> & { postCount: number }`.
+
+Leaving a field out of a type does not remove it from the data. TypeScript accepts a row that still has `email` where the type has none, so a function that must not send `email` to a client selects only the fields it needs:
+
+```ts
+type PublicUser = Shape<Models.public_User, { "-": "email" }>;
+
+async function getPublicUser(id: number): Promise<PublicUser | null> {
+  return db.orm.public.User.where({ id }).select("id", "name").first();
+}
+```
+
+## The arguments you pass in
+
+The argument types come from `@prisma/orm-postgres/orm-client`. Each takes `Contract` first and the model name, and `ShorthandWhereFilter` and `ModelAccessor` also take the PostgreSQL schema, in a different position in each, as the examples show:
+
+```ts
+import type {
+  CreateInput,
+  ScalarUpdateInput,
+  ShorthandWhereFilter,
+  UniqueConstraintCriterion,
+} from "@prisma/orm-postgres/orm-client";
+
+function createUser(data: CreateInput<Contract, "User">) {
+  return db.orm.public.User.create(data);
+}
+
+function updateUser(id: number, data: ScalarUpdateInput<Contract, "User">) {
+  return db.orm.public.User.where({ id }).update(data);
+}
+
+function findUsers(filter: ShorthandWhereFilter<Contract, "public", "User">) {
+  return db.orm.public.User.where(filter).all();
+}
+
+function findByKey(key: UniqueConstraintCriterion<Contract, "User">) {
+  return db.orm.public.User.whereUnique(key).first();
+}
+```
+
+- `CreateInput` is what `create()` takes. A field with a default is optional, and a relation field can create related rows, as in `posts: (p) => p.create([{ title: "Hello" }])`, which replaces Prisma ORM 7's `posts: { create: [...] }`. `create()` returns the new row as `Scalars<Models.public_User>`.
+- `ScalarUpdateInput` is the scalar fields `update()` takes, each one optional. It does not include relation changes such as `connect`, and no exported type does yet, so pass relation changes in a separate argument of your function and write them where you call `update()`.
+- `ShorthandWhereFilter` is a filter written as an object, such as `{ name: "Ada" }`, which matches rows whose fields equal those values. Its second argument is the PostgreSQL schema of the model.
+- `UniqueConstraintCriterion` is what `whereUnique()` takes: the `@id`, a `@unique` field, or all the fields of a `@@unique`, such as `{ email: "ada@example.com" }`. `first()` then returns that row or `null`.
+
+A filter that uses operators, such as `ilike` or `or`, or that filters on a relation, is a function instead of an object. The function takes a `ModelAccessor` and returns a `Condition`:
+
+```ts
+import { or, type Condition, type ModelAccessor } from "@prisma/orm-postgres/orm-client";
+
+type UserFields = ModelAccessor<Contract, "User", "public">;
+
+function findUsersWhere(filter: (user: UserFields) => Condition) {
+  return db.orm.public.User.where(filter).all();
+}
+
+await findUsersWhere((user) => user.email.ilike("%@example.com"));
+await findUsersWhere((user) => or(user.name.eq("Ada"), user.name.eq("Grace")));
+await findUsersWhere((user) => user.posts.some((post) => post.title.eq("Hello")));
+```
+
+[Reading data](/orm/fundamentals/reading-data) lists the operators.
+
+## Coming from Prisma ORM 7
+
+Prisma ORM 8 has no `Prisma` namespace; each type above replaces one from Prisma ORM 7:
+
+| Prisma ORM 7 | Prisma ORM 8 |
+| --- | --- |
+| `User` from your generated client | `Scalars<Models.public_User>` |
+| `Prisma.UserGetPayload<{ include: { posts: true } }>` | `Shape<Models.public_User, { "+": "posts" }>` |
+| `Prisma.UserGetPayload<{ select: { id: true; posts: { select: { title: true } } } }>` | `Shape<Models.public_User, { "+": "id"; posts: { "+": "title" } }>` |
+| `Awaited<ReturnType<typeof getUsers>>` | still works; `ResultType<ReturnType<typeof userWithPosts>>` names the row of a function that returns a query |
+| `Prisma.UserCreateInput` | `CreateInput<Contract, "User">` |
+| `Prisma.UserUpdateInput` | `ScalarUpdateInput<Contract, "User">`, for scalar fields |
+| `Prisma.UserWhereInput` | `ShorthandWhereFilter<Contract, "public", "User">` for equality, a function of `ModelAccessor` for operators and relation filters |
+| `Prisma.UserWhereUniqueInput` | `UniqueConstraintCriterion<Contract, "User">` |
+
+The difference to notice first is in the plain row. In Prisma ORM 7, the `User` type had the scalar fields only. In Prisma ORM 8, `Models.public_User` has every relation too, so the plain row is `Scalars<Models.public_User>`.
+
+## MongoDB
+
+On MongoDB, where the contract has no `namespace` blocks, a model is `Models.unbound_User`, and the types come from `@prisma/orm-mongo`:
+
+| Type | Import from |
+| --- | --- |
+| `Scalars`, `Shape` | `@prisma/orm-mongo/family-contract` |
+| `ResultType` | `@prisma/orm-mongo/components/runtime` |
+| `CreateInput<Contract, "User">`, `UpdateInput<Contract, "User">` | `@prisma/orm-mongo/orm` |
+| `MongoWhereFilter<Contract, "User">`, the filter for `where()` | `@prisma/orm-mongo/orm` |
+
+## Next steps
+
+- [Model and result types](/orm/reference/orm-client#model-and-result-types) in the client reference.
+- [Reading data](/orm/fundamentals/reading-data) shows `select()`, `include()`, and `where()`, whose results these types describe.

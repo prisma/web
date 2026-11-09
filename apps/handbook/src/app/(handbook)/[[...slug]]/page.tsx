@@ -2,6 +2,7 @@ import { source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
 import { withHandbookBasePath } from "@/lib/url";
 import { ChapterMeta } from "@/components/handbook/chapter-meta";
+import { BuildingToolSelector } from "@/components/handbook/building-tool";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
@@ -24,6 +25,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
       <ChapterMeta status={status} readingTime={readingTime} lastModified={lastModified} />
+      {page.data.toolSpecific && <BuildingToolSelector />}
       <DocsBody>
         <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>

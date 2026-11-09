@@ -55,10 +55,7 @@ for (const code of [
 }
 
 test("the error for a rejected heading names the accepted shapes", () => {
-  assert.throws(
-    () => generate("### FAQ\n\nText."),
-    /NAMESPACE\.SUBCODE.*PSL_PRESET_CONFLICT/,
-  );
+  assert.throws(() => generate("### FAQ\n\nText."), /NAMESPACE\.SUBCODE.*PSL_PRESET_CONFLICT/);
 });
 
 for (const heading of [
@@ -90,7 +87,10 @@ test("a duplicate undotted code is rejected", () => {
 
 const intro = "Every error is a structured envelope. This page lists every published code.";
 
-function sourceWith({ intro: firstParagraph = intro, namespaces = ["AUTH", "CLI"] }: { intro?: string; namespaces?: string[] } = {}) {
+function sourceWith({
+  intro: firstParagraph = intro,
+  namespaces = ["AUTH", "CLI"],
+}: { intro?: string; namespaces?: string[] } = {}) {
   const sections = namespaces.map(
     (namespace) => `## ${namespace}\n\n### ${namespace}.FAILED\n\nIt failed.\n`,
   );
@@ -137,7 +137,9 @@ test("the shared CLI namespace is explained only when the source has a CLI secti
   const withoutCli = transform(TARGETS.cli, sourceWith({ namespaces: ["AUTH"] })).mdx;
 
   assert.ok(withCli.includes(TARGETS.cli.sharedCliNamespace));
-  assert.ok(withCli.indexOf(TARGETS.cli.sharedCliNamespace) < withCli.indexOf("Namespaces on this page:"));
+  assert.ok(
+    withCli.indexOf(TARGETS.cli.sharedCliNamespace) < withCli.indexOf("Namespaces on this page:"),
+  );
   assert.ok(!withoutCli.includes("One exception:"));
 });
 
@@ -160,4 +162,37 @@ test("the frontmatter descriptions do not claim to list every code", () => {
   for (const target of Object.values(TARGETS)) {
     assert.doesNotMatch(target.frontmatter, /\bevery\b/i);
   }
+});
+
+test("links to the docs and blog origin hosts point at www.prisma.io", () => {
+  const mdx = generate(
+    "### CLI.CONSENT_UNUSED\n\n" +
+      "See [CLI.CONSENT_UNUSED](https://docs.prisma.io/docs/cli/error-reference#CLI.CONSENT_UNUSED) " +
+      "and [the post](https://blog.prisma.io/blog/rethinking-database-migrations).\n\n" +
+      "```text\ndocs: https://docs.prisma.io/docs/orm/reference/error-reference#CLI.CONSENT_UNUSED\n```",
+  );
+  assert.match(
+    mdx,
+    /\]\(https:\/\/www\.prisma\.io\/docs\/cli\/error-reference#CLI\.CONSENT_UNUSED\)/,
+  );
+  assert.match(mdx, /\]\(https:\/\/www\.prisma\.io\/blog\/rethinking-database-migrations\)/);
+  assert.doesNotMatch(mdx, /\]\(https:\/\/(?:docs|blog)\.prisma\.io/);
+  assert.match(mdx, /^docs: https:\/\/docs\.prisma\.io\/docs\/orm/m);
+});
+
+test("links inside code spans and fences keep the origin hosts", () => {
+  const mdx = generate(
+    "### CLI.CONSENT_UNUSED\n\n" +
+      "```md\n[CLI.CONSENT_UNUSED](https://docs.prisma.io/docs/cli/error-reference)\n```\n\n" +
+      "Inline: `[the post](https://blog.prisma.io/blog/rethinking-database-migrations)`.",
+  );
+  assert.match(
+    mdx,
+    /^\[CLI\.CONSENT_UNUSED\]\(https:\/\/docs\.prisma\.io\/docs\/cli\/error-reference\)$/m,
+  );
+  assert.match(
+    mdx,
+    /`\[the post\]\(https:\/\/blog\.prisma\.io\/blog\/rethinking-database-migrations\)`/,
+  );
+  assert.doesNotMatch(mdx, /\]\(https:\/\/www\.prisma\.io\//);
 });

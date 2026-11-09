@@ -13,6 +13,7 @@
   let openaiLoaded = false;
   let previousConsent = "";
   let previousOpenaiConsent = null;
+  let openaiExternalId = null;
   window.dataLayer = window.dataLayer || [];
   function gtag() { window.dataLayer.push(arguments); }
   gtag("consent", "default", {
@@ -29,7 +30,8 @@
     // One validation for both destinations: an invalid handoff is neither measured nor acknowledged.
     const validConversion =
       conversion && typeof conversion.id === "string" && conversion.id.length > 0 && conversion.id.length <= 128 &&
-      ["sign_up", "login"].includes(conversion.event) && ["google", "github", "email"].includes(conversion.method)
+      (conversion.event === "project_created" ||
+        (["sign_up", "login"].includes(conversion.event) && ["google", "github", "email"].includes(conversion.method)))
         ? conversion
         : null;
     const measuredByOpenai = measureOpenaiConversion(consent, validConversion);
@@ -75,7 +77,9 @@
       }
       if (validConversion && !seen.has(validConversion.id)) {
         seen.add(validConversion.id);
-        gtag("event", validConversion.event, { ...parameters, method: validConversion.method });
+        const eventParameters = { ...parameters };
+        if (validConversion.event !== "project_created") eventParameters.method = validConversion.method;
+        gtag("event", validConversion.event, eventParameters);
       }
     }
     // Acknowledge once a destination has measured (or already holds) the handoff.
@@ -88,8 +92,11 @@
   // never sees a denial that would delete its click-id cookie), keeps its
   // consent flag in sync afterwards, and reports a completed signup as
   // `registration_completed`. `openaiEventId` is the same id the Console sends
-  // through the Conversions API, so OpenAI counts the signup once.
-  // Returns true when the pixel measured this signup now or already had it.
+  // through the Conversions API, so OpenAI counts the signup once, and
+  // `openaiExternalId` is the same hashed user id that report carries as its
+  // customer identifier, so OpenAI can match the browser copy to the click.
+  // Returns true when the pixel measured this signup now or already had it,
+  // or left it to the Conversions API report (see the identifier note below).
   function measureOpenaiConversion(consent, conversion) {
     const granted = consent?.decided === true && consent?.advertisement === true;
     if (!granted && !openaiLoaded) return false;
@@ -114,6 +121,19 @@
     if (typeof eventId !== "string" || !/^[A-Za-z0-9_:-]{1,128}$/.test(eventId)) return false;
     if (!seenOpenai.has(eventId)) {
       seenOpenai.add(eventId);
+      // The SDK takes identifiers through `init` only; a repeat `init` on the
+      // same pixel updates its user data for the events measured afterwards.
+      const externalId = conversion.openaiExternalId;
+      const identified = typeof externalId === "string" && /^[0-9a-f]{64}$/.test(externalId);
+      // The SDK documents no way to clear user data once it is set. A signup
+      // without a valid identifier that follows an identified one would be
+      // measured under the earlier user, so the frame leaves it to the
+      // Console's Conversions API report, which carries the same event id.
+      if (!identified && openaiExternalId !== null) return true;
+      if (identified && externalId !== openaiExternalId) {
+        openaiExternalId = externalId;
+        window.oaiq("init", { pixelId: openaiPixelId, user: { external_id_sha256: externalId } });
+      }
       window.oaiq("measure", "registration_completed", { type: "customer_action" }, { event_id: eventId });
     }
     return true;

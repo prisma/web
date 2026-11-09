@@ -38,7 +38,7 @@ Migrate this Mongoose app to Prisma ORM against the same MongoDB database, follo
 1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
 2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma contract emit`.
 3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
-4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive --confirm <database name from DATABASE_URL>`, then run `npx prisma db verify`.
+4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive`, then run `npx prisma db verify`.
 ```
 
 </AgentPrompt>
@@ -146,7 +146,7 @@ Choose `PSL` when asked for the contract authoring style and keep the default sc
 ```text no-copy
 ✔ npm add @prisma/orm-mongo dotenv
 ✔ npm add -D prisma@latest
-✔ npm add -D @prisma/cli-engine@0.7.0
+✔ npm add -D @prisma/cli-engine@0.9.0
 ✔ Emit the contract
 │  target:     mongodb
 │  authoring:  psl
@@ -165,7 +165,7 @@ installed
 ├─ @prisma/orm-mongo
 ├─ dotenv
 ├─ prisma@latest (dev)
-└─ @prisma/cli-engine@0.7.0 (dev)
+└─ @prisma/cli-engine@0.9.0 (dev)
 ✔ Done. Open prisma-8.md to get started.
 ```
 
@@ -205,11 +205,14 @@ It also wrote `src/prisma/db.ts`, the client the rest of the app imports. There 
 ```typescript title="src/prisma/db.ts"
 import 'dotenv/config';
 import mongo from '@prisma/orm-mongo/runtime';
+import { contractFromJson } from '@prisma/orm-mongo/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = mongo<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = mongo({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```
@@ -286,8 +289,8 @@ model Post {
 
 Before you go on, check these differences from Mongoose:
 
-- Prisma ORM reads and writes MongoDB fields by their stored names. `authorId @map("author")` is exposed by the query API as `author`, the key Mongoose stores, and `.include("author")` fills it with the user document the way `populate("author")` does. `db.orm.posts.where({ authorId })` is a type error.
-- Mongoose adds a `__v` version key to every document. It is not in the contract and Prisma ORM passes it through on reads. You remove it in step 4, before Prisma ORM adds validators.
+- The query API names each field as the contract does. `id ObjectId @id @map("_id")` is `id` in `where`, in rows and in write data, and `authorId ObjectId @map("author")` is `authorId`, although MongoDB stores them as `_id` and `author`. `.include("author")` adds the user document as `author`, the way `populate("author")` does.
+- Mongoose adds a `__v` version key to every document. It is not in the contract, so Prisma ORM leaves it out of the rows it returns. You remove it from the documents in step 4, before Prisma ORM adds validators.
 
 You do not have to model every collection on day one. Start with the ones the routes you migrate first touch.
 
@@ -344,19 +347,19 @@ const posts = await Post.find({ published: true }).populate("author");
 const users = await db.orm.users.orderBy({ name: 1 }).all();
 
 // Find one by id
-const user = await db.orm.users.where({ _id: id }).first();
+const user = await db.orm.users.where({ id }).first();
 
 // Find one by field
 const alice = await db.orm.users.where({ email: "alice@prisma.io" }).first();
 
-// Create; returns the inserted document with its _id
+// Create; returns the inserted document with its id
 const user = await db.orm.users.create({ email: "alice@prisma.io", name: "Alice", profile: null });
 
 // Update one; returns the updated document
-await db.orm.users.where({ _id: id }).update({ name: "New name" });
+await db.orm.users.where({ id }).update({ name: "New name" });
 
 // Delete one
-await db.orm.users.where({ _id: id }).delete();
+await db.orm.users.where({ id }).delete();
 
 // Populate a single reference
 const posts = await db.orm.posts.where({ published: true }).include("author").all();
@@ -407,7 +410,7 @@ app.get("/users", async (_req, res) => {
 });
 
 app.get("/users/:id", async (req, res) => {
-  const user = await db.orm.users.where({ _id: req.params.id }).first();
+  const user = await db.orm.users.where({ id: req.params.id }).first();
   if (!user) return res.status(404).json({ error: "Not found" });
   res.json(user);
 });
@@ -455,10 +458,10 @@ curl http://localhost:3000/users
 ```
 
 ```json no-copy
-[{"profile":{"bio":"Writes about databases"},"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice"},{"profile":null,"__v":0,"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob"}]
+[{"profile":{"bio":"Writes about databases"},"id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice"},{"profile":null,"id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob"}]
 ```
 
-The same documents Mongoose returned, `__v` included, because both read the same collection. Bob's document has no `profile`, and because `profile` is optional in the contract, Prisma ORM returns it as `null`.
+These are the documents Mongoose returned, because both read the same collection, but the JSON differs in two ways. The id is under `id`, the field name in the contract, instead of `_id`, so update any client of your API that reads `_id`. And `__v` is left out, because the contract does not declare it. Bob's document has no `profile`, and because `profile` is optional in the contract, Prisma ORM returns it as `null`.
 
 ```bash
 curl http://localhost:3000/posts
@@ -468,6 +471,8 @@ curl http://localhost:3000/posts
 [{"_id":"6aa2cd2ed97f8d7357dc9bd5","title":"Hello MongoDB","content":"First post","published":true,"author":{"_id":"6aa2cd2ed97f8d7357dc9bd1","email":"alice@prisma.io","name":"Alice","profile":{"bio":"Writes about databases"},"__v":0},"categories":[{"_id":"6aa2cd2ed97f8d7357dc9bd3","name":"Databases","__v":0}],"__v":0},{"_id":"6aa2cd2ed97f8d7357dc9bd7","title":"Bob's post","content":"Hi","published":true,"author":{"_id":"6aa2cd2ed97f8d7357dc9bd2","email":"bob@prisma.io","name":"Bob","__v":0},"categories":[],"__v":0}]
 ```
 
+This route still returns `_id` and `__v`, unlike `GET /users`. It reads through the pipeline builder, which returns documents as MongoDB stores them. The `__v` keys go away when you remove them from the documents in step 4.2.
+
 ```bash
 curl -X POST http://localhost:3000/users \
   -H "content-type: application/json" \
@@ -475,10 +480,10 @@ curl -X POST http://localhost:3000/users \
 ```
 
 ```json no-copy
-{"_id":"6aa2d3fcc0a1a4429529ba2c","email":"carol@prisma.io","name":"Carol","profile":null}
+{"id":"6aa2d3fcc0a1a4429529ba2c","email":"carol@prisma.io","name":"Carol","profile":null}
 ```
 
-`.create(...)` returns the inserted document with its server-assigned `_id`, so the handler needs no second query.
+`.create(...)` returns the inserted document with its server-assigned `id`, so the handler needs no second query.
 
 ### 3.4. Run both side by side
 
@@ -534,11 +539,9 @@ npx prisma db update --dry-run
 ✔ Planned 3 operation(s) across 1 contract space
 
 App space
-├─ ⚠ Add validator on categories
-├─ ⚠ Add validator on posts
-└─ ⚠ Add validator on users
-
-⚠ This migration contains destructive operations that may cause data loss.
+├─ Add validator on categories
+├─ Add validator on posts
+└─ Add validator on users
 
 ℹ Operation preview
 
@@ -549,13 +552,19 @@ db.runCommand({ collMod: "users", validator: {"$jsonSchema":{"additionalProperti
 ℹ This is a dry run. No changes were applied.
 ```
 
-Adding a validator to a populated collection counts as destructive, so `db update` asks you to type the database name before applying it. The name is the one in `DATABASE_URL`, here `blog`. Apply the validators:
+A validator applies only to later writes, so adding one loses no data, and `db update` applies it without asking. MongoDB does not check the documents already in a collection when it adds a validator. A document the validator would refuse stays as it is, and the next write to it fails. The documents in this guide match the validators once `__v` is gone. In your own database, find the documents a validator would refuse before you apply it. In `mongosh`, pass the `$jsonSchema` object from the preview above:
+
+```javascript
+db.users.find({ $nor: [{ $jsonSchema: { /* the users validator from the preview */ } }] })
+```
+
+Fix or remove each document it returns, and repeat for `posts` and `categories`. Then apply the validators:
 
 ```npm
 npx prisma db update
 ```
 
-Type `blog` when the command asks. In CI, or with `--no-interactive`, where the command cannot ask, pass the name as `--confirm blog` instead. `db update` applies the three validators and records in the database that it matches the contract. Then verify it:
+`db update` applies the three validators and records in the database that it matches the contract. Then verify it:
 
 ```npm
 npx prisma db verify
@@ -576,21 +585,21 @@ Document failed validation
 
 ## Common gotchas
 
-:::warning[Field names are storage names]
+:::warning[Field names are contract names]
 
-The query API uses the field names stored in MongoDB, not the names on the left of `@map`. With `authorId ObjectId @map("author")`, filter with `.where({ author: id })` and read `post.author`. TypeScript rejects the contract-side name.
+The ORM query API uses the field names in the contract, not the names in `@map`. With `authorId ObjectId @map("author")`, filter with `.where({ authorId: id })` and read `post.authorId`. TypeScript rejects the stored name. The pipeline builder reads documents as MongoDB stores them, so it uses stored names, such as `_id` and `author`.
 
 :::
 
 :::warning[ObjectId filters in the pipeline builder]
 
-In the pipeline builder, `.match((f) => f._id.eq(id))` sends the id as a plain string and matches nothing. Filter ObjectId fields through the ORM, `db.orm.posts.where({ _id: id })` or `db.orm.posts.where(MongoFieldFilter.eq("_id", id))`, which converts the id for you. In a pipeline, pass an `ObjectId` instead, as the [`match()` reference](/orm/reference/pipeline-builder#match) shows.
+In the pipeline builder, `.match((f) => f._id.eq(id))` sends the id as a plain string and matches nothing. Filter ObjectId fields through the ORM, `db.orm.posts.where({ id })` or `db.orm.posts.where(MongoFieldFilter.eq("id", id))`, which converts the id for you. Import `MongoFieldFilter` from `@prisma/orm-mongo/query-ast/execution`. In a pipeline, pass an `ObjectId` from the `mongodb` package instead, as the [`match()` reference](/orm/reference/pipeline-builder#match) shows.
 
 :::
 
 :::warning[No transactions on MongoDB yet]
 
-The MongoDB client has no `db.transaction(...)`. For multi-document atomicity, pass your own `MongoClient` to `mongo({ contractJson, mongoClient, dbName })` and use the driver's `session.withTransaction(...)`, as shown in the [transactions](/orm/fundamentals/transactions) docs.
+The MongoDB client has no `db.transaction(...)`. For multi-document atomicity, pass your own `MongoClient` to `mongo({ contract, mongoClient, dbName })` and use the driver's `session.withTransaction(...)`, as shown in the [transactions](/orm/fundamentals/transactions) docs.
 
 :::
 

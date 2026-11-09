@@ -249,7 +249,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "composer",
     title: "Prisma Composer",
     description:
-      "Prisma Composer (Early Access): a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
+      "Prisma Composer: a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
     prefixes: ["/composer"],
   },
   {

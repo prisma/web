@@ -1,13 +1,8 @@
 export const deployTerminalLines = [
-  "Deploying my-app / remove-legacy-name / web",
-  "◇ Creating branch database…",
-  "✔ Created branch database",
-  "✔ Added branch env: DATABASE_URL",
-  "Building locally…  Built",
-  "Uploading…  Uploaded",
-  "Deploying…  Deployed",
-  "✔ Live in 4.2s",
-  "  https://remove-legacy-name.my-app.prisma.build",
+  "my-app",
+  "├─ db    postgres-database db_def456",
+  "└─ web   compute-service cps_abc123",
+  "         https://xyz.ewr.prisma.build",
 ];
 
 export const expandContractBefore = `model User {
@@ -30,19 +25,20 @@ export const expandContractAfter = `model User {
 
 export const expandTerminalLines = [
   "✔ Planned 1 operation(s)",
-  "│",
+  "",
+  "migrations/app/20260724T1000_add_display_name",
   '└─ Add column "displayName" to "user"',
   "",
-  "DDL preview",
+  "ℹ DDL preview",
   "",
   'ALTER TABLE "public"."user" ADD COLUMN "displayName" text;',
 ];
 
 export const contractContractBefore = `model User {
-  id          Int    @id @default(autoincrement())
-  email       String @unique
+  id          Int     @id @default(autoincrement())
+  email       String  @unique
   displayName String
-  name        String // no code reads this anymore
+  name        String? // no query reads or writes this since step 4
 
   @@map("user")
 }`;
@@ -58,12 +54,13 @@ export const contractContractAfter = `model User {
 
 export const contractTerminalLines = [
   "✔ Planned 1 operation(s)",
-  "│",
-  '└─ Drop column "name" from "user" (destructive)',
+  "",
+  "migrations/app/20260724T1200_drop_legacy_name",
+  '└─ ⚠ Drop column "name" from "user"',
   "",
   "⚠ This migration contains destructive operations that may cause data loss.",
   "",
-  "DDL preview",
+  "ℹ DDL preview",
   "",
   'ALTER TABLE "public"."user" DROP COLUMN "name";',
 ];

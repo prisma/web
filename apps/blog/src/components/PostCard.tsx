@@ -1,9 +1,8 @@
-"use client";
-
 import { AuthorAvatarGroup } from "@/components/AuthorAvatarGroup";
 import { formatDate, formatTag } from "@/lib/format";
 import { withBlogBasePathForImageSrc } from "@/lib/url";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { versionPublicImage } from "@/lib/public-image-version";
 
 type PostCardItem = {
   url: string;
@@ -65,7 +64,9 @@ export function PostCard({
   const date = formatDate(post.date);
   const updatedAt = post.updatedAt ? formatDate(post.updatedAt) : "";
 
-  const imageSrc = post.imageSrc ? withBlogBasePathForImageSrc(post.imageSrc) : null;
+  const imageSrc = post.imageSrc
+    ? versionPublicImage(withBlogBasePathForImageSrc(post.imageSrc))
+    : null;
 
   // The featured slot only splits into two columns when there is an image to
   // put in the second one; without one it falls back to the upright card so no
@@ -158,6 +159,7 @@ export function PostCard({
             alt={post.imageAlt ?? post.title}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             loading={featured ? "eager" : "lazy"}
+            fetchPriority={featured ? "high" : "auto"}
           />
         </div>
       ) : null}

@@ -8,7 +8,7 @@ metaDescription: 'Add Prisma ORM to an app you already have: run orm init, write
 
 This page uses PostgreSQL. [Use MongoDB instead](/prisma-orm/quickstart/existing-app/mongodb).
 
-Use this page when you already have an app and its database has no tables yet. By the end, your app has one model, the database has a table for it, and a script writes and reads a row. You also change the model once and apply the change to the database with a migration. If your database already has tables, follow [Add Prisma ORM to an existing PostgreSQL database](/prisma-orm/add-to-existing-project/postgresql) instead. If your app uses Prisma ORM 7 today, follow [Prisma ORM 7 to 8 (PostgreSQL)](/guides/upgrade-prisma-orm/postgresql).
+Use this page when you already have an app and its database has no tables yet. By the end, your app has one model, the database has a table for it, and a script writes and reads a row. You also change the model once and apply the change to the database with a migration. If your database already has tables, follow [Add Prisma ORM to an existing PostgreSQL database](/prisma-orm/add-to-existing-project/postgresql) instead. If your app uses Prisma ORM 6 or 7 today, follow [Upgrade to Prisma 8](/guides/upgrade-prisma-orm).
 
 :::note[Using Prisma ORM 7?]
 
@@ -20,7 +20,7 @@ For what release candidate means, when the final release is expected, and how to
 
 ## Prerequisites
 
-- A project directory with a `package.json`, on Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended).
+- A project directory with a `package.json`, on Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended). [Supported versions](/orm/supported-versions) has every floor.
 - A way to run a TypeScript file. This page uses `tsx`. If your project does not have it, run `npm install --save-dev tsx typescript`.
 - An empty PostgreSQL database, version 15 or newer. Step 2 shows how to get one if you have none.
 
@@ -59,7 +59,7 @@ installed
 ├─ dotenv
 ├─ prisma@latest (dev)
 ├─ @types/node (dev)
-└─ @prisma/cli-engine@0.7.0 (dev)
+└─ @prisma/cli-engine@0.9.0 (dev)
 
 ✔ Done. Open prisma-8.md to get started.
 ```
@@ -77,11 +77,14 @@ You do not need `prisma-8.md` for this page. It is a short reference for writing
 ```typescript title="src/prisma/db.ts"
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = postgres({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```
@@ -98,7 +101,7 @@ If you had no `.env`, `orm init` wrote one with a placeholder, `DATABASE_URL="po
 DATABASE_URL="postgresql://username:password@host:5432/database"
 ```
 
-If you have no database at all, [`npx create-db@latest`](/postgres/npx-create-db) creates a temporary Prisma Postgres database and prints its connection string.
+If you have no database at all, [`npx create-db@latest`](/postgres/npx-create-db) creates a temporary Prisma Postgres database and prints its connection string. For a database on your own machine, see [A database on your machine](/prisma-orm/local-database).
 
 `orm init` added `.env` to `.gitignore`, so the password stays out of version control.
 

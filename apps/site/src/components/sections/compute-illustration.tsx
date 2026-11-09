@@ -1,5 +1,7 @@
 "use client";
 
+import cpu3DImage from "@prisma-docs/ui/assets/brand/cpu-3d.webp";
+
 import { useRef } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { prismBands } from "@/components/brand/prism-ray";
@@ -85,7 +87,7 @@ export function ComputeIllustration() {
           filter doesn't touch the card content */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[url('/brand/feature-compute.jpg')] bg-cover bg-[position:20%_90%] [filter:saturate(1.45)_contrast(1.04)]"
+        className="absolute inset-0 brand-compute bg-cover bg-[position:20%_90%] [filter:saturate(1.45)_contrast(1.04)]"
       />
       <div className="relative flex w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-[0_8px_24px_-12px_rgba(21,21,21,0.16)]">
         {/* brand ray masking in top-to-bottom through the chip */}
@@ -184,7 +186,9 @@ export function ComputeIllustration() {
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/brand/cpu-3d.png"
+            src={cpu3DImage.src}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="relative w-full drop-shadow-[0_20px_30px_rgba(21,21,21,0.24)]"
           />

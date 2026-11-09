@@ -17,6 +17,12 @@ import { CtaBurst } from "@/components/sections/cta-burst";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
 import {
+  GdprMark,
+  HipaaCompliantMark,
+  Iso27001Mark,
+  Soc2TypeIiMark,
+} from "./_cert-marks";
+import {
   BAA_COMPLIANCE_EMAIL,
   BAA_HTML_PATH,
   BAA_SAMPLE_PDF,
@@ -28,6 +34,7 @@ import {
   TRUST_URL,
   baaComplianceMailto,
 } from "./_content";
+import { HipaaRegionFlip } from "./_region-flip";
 
 // Prefilled mailto for every link on /postgres/hipaa.
 const BAA_MAILTO = baaComplianceMailto("/postgres/hipaa");
@@ -70,12 +77,13 @@ export function HipaaHero() {
           <div className="mx-auto grid max-w-site items-center gap-12 pb-20 pt-36 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:pb-28 md:pt-48 lg:gap-16">
             <div className="flex flex-col items-start">
               <RoleKicker color="bg-prism-yellow-400">Prisma Postgres for healthcare</RoleKicker>
-              <h1 className="isolate mt-4 max-w-[min(16ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
-                HIPAA compliant Postgres for <GlassGlide>healthcare apps</GlassGlide>
+              <h1 className="isolate mt-4 max-w-[min(18ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
+                HIPAA compliant database for <GlassGlide>healthcare</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Prisma Postgres comes with a signed Business Associate Agreement on the Business
-                plan, encrypts your patient data, and runs your TypeScript app right next to it.
+                Prisma signs a Business Associate Agreement with covered entities and business
+                associates on the Business plan, encrypts your patient data, and runs your TypeScript
+                app right next to it.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 {/* Primary CTA goes to the same console sign-up URL the site
@@ -96,17 +104,10 @@ export function HipaaHero() {
                   Compare plans
                 </Link>
               </p>
-              {/* Light in-page jump to the competitor table further down —
-                  same #anchor pattern as careers → #open-positions. */}
-              <p className="mt-2 text-sm text-muted-foreground">
-                <Link href={`#${HIPAA_COMPARE_ANCHOR}`} className={INLINE_LINK}>
-                  See how Prisma Postgres compares for HIPAA&nbsp;&rarr;
-                </Link>
-              </p>
-              <ul className="mt-8 flex flex-col gap-2.5 border-t border-black/[0.07] pt-7">
+              <ul className="mt-6 flex flex-col gap-2.5 border-t border-black/[0.07] pt-6">
                 {[
                   {
-                    label: "A signed Business Associate Agreement (BAA)",
+                    label: "A signed BAA with covered entities or business associates",
                     color: "text-prism-cyan-500",
                   },
                   {
@@ -131,13 +132,13 @@ export function HipaaHero() {
 
             {/* Hero visual: a compliance-settings panel, same card shell idiom
                 as the /postgres hero tour. */}
-            <div className="relative max-md:mt-4 md:self-stretch">
+            <div className="relative max-md:mt-4 md:flex md:items-center">
               <PrismRay
                 className="left-[75%] top-1/2 h-12 w-[32rem] -translate-x-1/2 -translate-y-1/2 md:h-24 md:w-[64rem]"
                 angle={-50}
                 intensity="hero"
               />
-              <div className="relative md:h-full">
+              <div className="relative w-full">
                 <ComplianceCard />
               </div>
             </div>
@@ -149,20 +150,32 @@ export function HipaaHero() {
 }
 
 function ComplianceCard() {
-  const rows = [
+  // Card values mirror live HIPAA / Business facts on this page and pricing:
+  // Business-only HIPAA, encryption at rest + in transit, tenant isolation
+  // (not a dedicated host), daily backups retained 30 days on Business.
+  // Region flips through USA regions only (us-east-1, us-west-1).
+  // "Active" illustrates a signed BAA.
+  const rows: {
+    label: string;
+    value: React.ReactNode;
+    mono?: boolean;
+  }[] = [
     { label: "Plan", value: "Business" },
     { label: "Encryption", value: "At rest and in transit" },
-    { label: "Isolation", value: "Dedicated per tenant" },
-    { label: "Region", value: "us-east-1", mono: true },
+    { label: "Isolation", value: "Isolated per tenant" },
+    {
+      label: "Two US Regions",
+      value: <HipaaRegionFlip className="text-[0.8125rem] font-semibold text-foreground" />,
+      mono: true,
+    },
     { label: "Backups", value: "Daily, kept 30 days" },
   ];
-  const badges = ["SOC 2 Type II", "ISO 27001", "GDPR", "HIPAA"];
 
   return (
     <div
       role="img"
-      aria-label="Illustration of a Prisma Postgres workspace on the Business plan with a signed BAA, encryption, a US region and 30 day backups"
-      className="pointer-events-none relative flex h-full w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
+      aria-label="Illustration of a Prisma Postgres Business workspace with a signed BAA for covered entities or business associates, encryption at rest and in transit, tenant isolation, two US regions us-east-1 and us-west-1, 30 day daily backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
+      className="pointer-events-none relative flex w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
     >
       <div className="flex items-center gap-2 border-b border-border/70 px-5 py-3.5">
         <span className="size-2 rounded-full bg-border" />
@@ -171,18 +184,20 @@ function ComplianceCard() {
           acme-health / settings / compliance
         </span>
       </div>
-      <div className="flex flex-1 flex-col justify-center gap-5 p-5 sm:p-6">
+      {/* Height follows content — no h-full/justify-center stretch, which left
+          the tall empty band Martin marked between the divider and footer. */}
+      <div className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-xl border border-black/[0.06] bg-prism-cyan-50">
             <Shield className="size-5 text-prism-cyan-800" aria-hidden />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-[0.9375rem] font-semibold text-foreground">HIPAA</p>
-            <p className="text-[0.8125rem] text-muted-foreground">
-              Business Associate Agreement signed
+            <p className="text-[0.8125rem] leading-snug text-muted-foreground">
+              BAA signed with covered entity or business associate
             </p>
           </div>
-          <span className="ml-auto rounded-full border border-prism-cyan-300 bg-prism-cyan-50 px-2.5 py-1 text-[0.6875rem] font-semibold text-prism-cyan-800">
+          <span className="ml-auto shrink-0 rounded-full border border-prism-cyan-300 bg-prism-cyan-50 px-2.5 py-1 text-[0.6875rem] font-semibold text-prism-cyan-800">
             Active
           </span>
         </div>
@@ -197,7 +212,7 @@ function ComplianceCard() {
               <span
                 className={cn(
                   "ml-auto text-right text-[0.8125rem] font-semibold text-foreground",
-                  mono && "font-mono",
+                  mono && typeof value === "string" && "font-mono",
                 )}
               >
                 {value}
@@ -205,18 +220,18 @@ function ComplianceCard() {
             </div>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2 pt-1">
-          {badges.map((b) => (
-            <span
-              key={b}
-              className="rounded-full border border-black/[0.08] bg-white px-3 py-1 text-[0.75rem] font-semibold text-foreground"
-            >
-              {b}
-            </span>
-          ))}
+        {/* Cert marks: compact band — small pad under the hairline, flush to
+            the footnote. HIPAA leads; companions quieter. No dark box. */}
+        <div className="border-t border-black/[0.06] pt-3">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5 sm:gap-x-7 lg:gap-x-8">
+            <HipaaCompliantMark className="h-10 sm:h-11" />
+            <Soc2TypeIiMark className="h-8 opacity-[0.85] sm:h-9" />
+            <Iso27001Mark className="h-8 opacity-[0.85] sm:h-9" />
+            <GdprMark className="h-8 opacity-[0.85] sm:h-9" />
+          </div>
         </div>
       </div>
-      <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] text-muted-foreground">
+      <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] leading-snug text-muted-foreground sm:px-6">
         One BAA for the workspace. Encryption, isolation and backups are on by default.
       </p>
     </div>
@@ -252,7 +267,11 @@ export function HipaaGlance() {
       heading: "How do I get a BAA?",
       body: (
         <>
-          Read or download the BAA, sign up and upgrade your workspace to Business, then email{" "}
+          Read or download the{" "}
+          <Link href={BAA_HTML_PATH} className={INLINE_LINK}>
+            BAA
+          </Link>
+          , sign up and upgrade your workspace to Business, then email{" "}
           <a href={BAA_MAILTO} className={INLINE_LINK}>
             compliance@prisma.io
           </a>{" "}

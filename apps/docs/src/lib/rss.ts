@@ -3,7 +3,7 @@ import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "./urls";
 
-export function getRSS() {
+export async function getRSS() {
   const baseUrl = getBaseUrl();
   const allPages = source.getPages();
 
@@ -17,12 +17,15 @@ export function getRSS() {
         name: "Prisma Data, Inc.",
       },
     },
-    allPages.map((page: any) => ({
-      id: `${withDocsBasePath(page.url)}`,
-      url: `${withDocsBasePath(page.url)}`,
-      title: getPageTitleText(page.data.title, page.url),
-      description: page.data.description,
-      date: page.data.lastModified ? new Date(page.data.lastModified) : new Date(),
-    })),
+    await Promise.all(
+      allPages.map(async (page) => ({
+        id: `${withDocsBasePath(page.url)}`,
+        url: `${withDocsBasePath(page.url)}`,
+        title: getPageTitleText(page.data.title, page.url),
+        description: page.data.description,
+        date: (await pageContent(page.data)).lastModified ?? new Date(),
+      })),
+    ),
   );
 }
+import { pageContent } from "@prisma-docs/ui/lib/page-content";

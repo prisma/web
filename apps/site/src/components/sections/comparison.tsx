@@ -15,7 +15,7 @@ const AFTER = [
   "Your agent runs the full loop: build, deploy, debug, fix, redeploy",
   "One platform: hosting, database, and ORM built to work together natively",
   "A preview database per feature branch, wired to its preview deployment",
-  "App and database co-located on the same host, at latency no two-vendor setup can match",
+  "App and database on one platform in the same region, so queries stay low-latency and never leave the region",
   "Spend limits on every paid tier, so your bill stops where you tell it to",
 ];
 

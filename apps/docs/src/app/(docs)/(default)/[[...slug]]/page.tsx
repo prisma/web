@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { getPageImage, source } from "@/lib/source";
 import { getPageTitleText } from "@/lib/page-title";
 import { withDocsBasePath, withMarkdownPath } from "@/lib/urls";
@@ -30,7 +31,9 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const page = source.getPage(slug);
   if (!page) notFound();
 
-  const MDX = page.data.body;
+  const content = await pageContent(page.data);
+  const MDX = content.body;
+  const lastModified = (content as { lastModified?: Date }).lastModified;
 
   const aiPromptSlug = (page.data as { aiPrompt?: string }).aiPrompt;
   const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
@@ -51,13 +54,13 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       {/* The hidden llms.txt directive for AI agents lives in the root layout
           (src/app/layout.tsx) as the first child of <body> — agent-readiness
           audits require it near the top of the HTML, before the sidebar. */}
-      <TechArticleSchema page={page} />
+      <TechArticleSchema page={{ ...page, data: content }} />
       <BreadcrumbSchema page={page} />
       <DocsPage
         tableOfContent={{
           style: "normal",
         }}
-        toc={page.data.toc}
+        toc={content.toc}
         full={page.data.full}
         // Resolved here rather than in the client footer: it is the only
         // consumer of the page tree's `description`, and keeping it on the
@@ -111,18 +114,17 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
           <EditOnGitHub
             href={`https://github.com/prisma/docs/edit/main/apps/docs/content/docs/${page.path}`}
           />
-          {(page.data as { lastModified?: Date }).lastModified && (
-            <PageLastUpdate date={(page.data as { lastModified: Date }).lastModified} />
-          )}
+          {lastModified && <PageLastUpdate date={lastModified} />}
         </div>
       </DocsPage>
     </>
   );
 }
 
-export async function generateStaticParams() {
-  return source.generateParams();
-}
+// Omit the generator in Composer: returning [] opts into ISR, which would
+// accumulate all article HTML/RSC on Compute's 1 GB filesystem.
+export const generateStaticParams =
+  process.env.COMPOSER_BUILD === "1" ? undefined : async () => source.generateParams();
 
 export async function generateMetadata({
   params,
@@ -154,6 +156,11 @@ export async function generateMetadata({
     ...(noindex && { robots: { index: false, follow: true } }),
     alternates: {
       canonical,
+      // The page's Markdown rendition, for agents that look for one before
+      // parsing the HTML. next.config.mjs sends the same URL in a Link header.
+      types: {
+        "text/markdown": withMarkdownPath(page.url, "md"),
+      },
     },
     openGraph: {
       siteName: "Prisma",

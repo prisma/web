@@ -54,14 +54,14 @@ The model that holds the foreign key declares the relation, and the `@unique` on
 
 ```prisma
 model Profile {
-  id     String @id @default(cuid(2))
+  id     String @id @onCreate(cuid(2))
   bio    String
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
 }
 ```
 
-Write `@default(cuid(2))` and you never pass `id` yourself: `cuid(2)` generates the id (the `2` is the CUID version). To read a profile with its user, query from the profile and include the relation:
+Write `@onCreate(cuid(2))` and you never pass `id` yourself: `cuid(2)` generates the id (the `2` is the CUID version). To read a profile with its user, query from the profile and include the relation:
 
 ```typescript
 const profileWithUser = await db.orm.public.Profile
@@ -75,7 +75,7 @@ const profileWithUser = await db.orm.public.Profile
 
 ```prisma
 model User {
-  id      String   @id @default(cuid(2))
+  id      String   @id @onCreate(cuid(2))
   email   String   @unique
   profile Profile?
 }
@@ -105,13 +105,13 @@ The child stores the parent's id, and the parent declares a list field:
 
 ```prisma
 model User {
-  id    String @id @default(cuid(2))
+  id    String @id @onCreate(cuid(2))
   email String @unique
   posts Post[]
 }
 
 model Post {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   title     String
   published Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -169,14 +169,14 @@ Write three models: on each side, declare a list field typed as the other model,
 
 ```prisma
 model Post {
-  id        String  @id @default(cuid(2))
+  id        String  @id @onCreate(cuid(2))
   title     String
   published Boolean @default(false)
   tags      Tag[]
 }
 
 model Tag {
-  id    String @id @default(cuid(2))
+  id    String @id @onCreate(cuid(2))
   name  String @unique
   posts Post[]
 }
@@ -245,7 +245,7 @@ See [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet)
 
 ```typescript
 const user = await db.orm.users.create({ email: "jane@prisma.io" });
-const post = await db.orm.posts.create({ title: "Hello", published: false, authorId: user._id });
+const post = await db.orm.posts.create({ title: "Hello", published: false, authorId: user.id });
 ```
 
 If you need the link records themselves, for example because the join table has columns of its own, query its model directly:
@@ -312,7 +312,7 @@ type Address {
 }
 
 model User {
-  id      ObjectId @id @map("_id") // the property is _id, because of @map("_id")
+  id      ObjectId @id @map("_id") // stored as _id; the property is id
   email   String
   address Address?
   posts   Post[]

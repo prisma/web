@@ -40,7 +40,7 @@ Confirm that the app's runtime can open PostgreSQL connections and that outbound
 
 Inspect how your code configures its client. The [node-postgres connection guide](https://node-postgres.com/features/connecting) supports connection URIs and individual PostgreSQL environment variables. Setting `DATABASE_URL` does nothing if the application only reads `PGHOST` and related fields without passing the URL to its client.
 
-List required extensions, transactions, migrations and session-dependent features. For example, `LISTEN/NOTIFY` and session-level settings need a connection mode that preserves the required session state. Use Prisma Postgres's [connection-mode guidance](/docs/postgres/database/connecting-to-your-database) rather than assuming pooled and direct endpoints are interchangeable.
+List required extensions, transactions, migrations and session-dependent features. For example, `LISTEN/NOTIFY` and session-level settings need a connection mode that preserves the required session state. Use Prisma Postgres's [connection-mode guidance](/docs/postgres/database/connecting-to-your-database) rather than assuming pooled and direct endpoints are interchangeable. Queries that set a `name` create named prepared statements, which can fail behind a transaction-mode pooler that does not track them; see [fixing "prepared statement already exists" behind a pooler](/postgres/prepared-statement-already-exists).
 
 ## Which hosted Postgres service fits an existing pg app?
 
@@ -95,17 +95,19 @@ The result is `[ { value: 1 } ]`. The two-connection maximum is for this probe, 
 
 ### 3. Keep the application pool reusable
 
-Point the existing app's connection configuration at the development database and run its integration tests. Follow the [node-postgres pooling guidance](https://node-postgres.com/features/pooling): reuse pools within processes, release acquired clients and consider the total connections across app instances.
+Point the existing app's connection configuration at the development database and run its integration tests. Follow the [node-postgres pooling guidance](https://node-postgres.com/features/pooling): reuse pools within processes, release acquired clients and consider the total connections across app instances. If the database starts refusing connections under load, see [how to fix "too many connections"](/postgres/too-many-connections).
 
 For transactions, acquire one client for the entire operation rather than issuing each statement through unrelated `pool.query` calls. The [transaction walkthrough](/postgres/customer-order-transactions) explains the consistency boundary and rollback behavior.
 
-Use the provider's documented [TLS configuration](https://node-postgres.com/features/ssl). In `pg`, SSL options in a connection string can replace an explicit `ssl` configuration object; check that interaction if your current code supplies both. Fix certificate configuration rather than disabling verification to hide an error.
+Use the provider's documented [TLS configuration](https://node-postgres.com/features/ssl). In `pg`, SSL options in a connection string can replace an explicit `ssl` configuration object; check that interaction if your current code supplies both. Fix certificate configuration rather than disabling verification to hide an error. If the connection fails with an SSL or certificate error, see [what to check when Node can't connect to hosted Postgres over SSL](/postgres/ssl-connection-error).
 
 ### 4. Move schema and data deliberately
 
 A successful `SELECT 1` does not create tables or import records. [Apply the app's migrations](/postgres/production-database-migrations) to the target database. If moving an existing database, follow the [Postgres import guide](/docs/postgres/import-from-existing-database), verify the imported records and rehearse the application switch.
 
 Update the deployed server's secrets, redeploy and verify a representative read and write. Keep development, preview and production values separate. If the app moves to Prisma Compute, a [Composer dependency](/docs/composer/databases) named `db` can supply `service.load().db.url`; a separately managed database uses a server-side URL input instead.
+
+If the application uses Bun instead of node-postgres, the [Bun SQL hosting guide](/postgres/bun-sql-hosting) covers PostgreSQL URLs, transaction-pooler settings and a small native-client connection check.
 
 ## When should I choose another setup?
 

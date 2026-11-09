@@ -1,0 +1,116 @@
+---
+title: "Where should I host an app that imports spreadsheets?"
+description: "Keep imported customer records in managed Postgres, run the TypeScript importer on a managed host and preserve data through app updates."
+summary: "Host the TypeScript server separately from its saved customer records, and commit validated imports to managed Postgres. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a small team that wants the app and database configured in one project. Keep an existing Vercel or Netlify app if its deployment workflow already works. An app update should replace code; imported records stay in the database, with reviewed migrations handling schema changes."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-23"
+updatedAt: "2026-10-23"
+readingTime: "7 min read"
+faq:
+  - question: "Should I keep the uploaded spreadsheet as well as its imported rows?"
+    answer: "Keep the source file when reconciliation or audit requirements need it, using access-controlled object storage and a defined retention period. Store the file reference and import result in Postgres. A saved spreadsheet does not replace the application's customer records."
+  - question: "Does redeploying Prisma Compute delete imported records?"
+    answer: "A normal deployment of the same declared application reuses its database resource. Imported rows remain there unless application code, migrations or resource changes remove them. Verify the project, stage and database identifiers before release; deploying a different stage creates a separate environment."
+  - question: "Can I import Excel files with PostgreSQL COPY?"
+    answer: "COPY accepts supported text formats such as CSV, not an Excel workbook. Parse the workbook with an appropriate application library or export a selected sheet to CSV, then validate columns and values before inserting customer records."
+  - question: "Do I need Prisma ORM for an import app?"
+    answer: "No. Prisma Postgres works with ordinary PostgreSQL clients and other ORMs. Keep the application's data-access library, and use parameterized writes with server-side access checks."
+related:
+  - title: "Keeping uploaded files after redeploys"
+    href: "/compute/file-uploads-disappear-after-redeploy"
+  - title: "Customer records and flexible JSON"
+    href: "/postgres/customer-records-json"
+  - title: "Testing database recovery"
+    href: "/postgres/practice-database-recovery"
+cta:
+  title: "Keep customer records beyond the next release"
+  description: "Connect the import app to Prisma Postgres and test one import, retry and redeploy before moving real customer records."
+  label: "Set up Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+A spreadsheet import has two outputs: the rows the business will use and evidence of what happened to the file. Save both outside the server process. Otherwise a successful upload can disappear with a restart, or a repeated upload can create a second copy of every customer.
+
+We make Prisma Compute and Prisma Postgres. The linked provider and PostgreSQL documentation was checked on October 23, 2026. Prisma ORM is optional.
+
+## What needs to survive an app update?
+
+Keep customer records in Postgres and give each record an identifier that comes from the source system or your application, rather than its current row number in a spreadsheet. Keep import jobs in a separate table with the business account, source-file reference, status and accepted/rejected counts.
+
+Store retained source files in [object storage](/compute/file-uploads-disappear-after-redeploy). A temporary upload path or an in-memory array is useful while processing a request, but it is not a permanent record. Restrict file access to the importing account and avoid logging full rows with personal data.
+
+Decide whether an import only adds customers or may update existing ones. For updates, define which system owns each field: a repeated spreadsheet must not silently replace a correction that staff made yesterday.
+
+## Which hosting setup should I choose?
+
+These options are alphabetical by app host. Each can use Prisma Postgres for saved records.
+
+| Setup | Choose it when | Check for the import workload |
+| --- | --- | --- |
+| Netlify + Prisma Postgres | The app already uses [Netlify's Next.js integration](https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/). | Function limits, server-side credentials and a separate worker for imports that exceed the request's capacity. |
+| Prisma Compute + Prisma Postgres | You want the TypeScript import server and database declared together through [Prisma Composer](/docs/composer). | Runtime compatibility, durable job state and migrations for your chosen database client. |
+| Vercel + Prisma Postgres | The app already follows [Vercel's Next.js deployment workflow](https://vercel.com/docs/frameworks/full-stack/nextjs). | The function's request limits, upload handling and where lengthy import work runs. |
+
+For a new TypeScript business app, Prisma Compute gives the team one project in which to find the importer and its database. That is useful when a coding assistant changes both the upload handler and the customer schema. Review those changes together while keeping production data outside its test environment.
+
+## How should I prepare the import on Prisma?
+
+### 1. Connect a review app to a separate database
+
+Use the [Next.js guide](/docs/guides/frameworks/nextjs) for a new app, or [port the existing server](/docs/composer/porting-an-app) by adding Composer's module and service declarations. These TypeScript files describe the resources the app needs. Build the application before deploying it to an [isolated review stage](/docs/composer/deploying#production-and-stages).
+
+The [database dependency guide](/docs/composer/databases) has two paths: `rawPostgres()` supplies a connection URL for your own client; `postgres()` can connect a Prisma ORM data contract with deploy-time migrations. A raw connection leaves schema migrations with your existing tooling. Do not put a database reset or spreadsheet seed into every build.
+
+For a separately configured Prisma Postgres database, use the [connection appropriate to your client](/docs/postgres/database/connecting-to-your-database): pooled TCP for conventional application clients, direct for administrative tools and the Prisma Postgres serverless driver. Keep credentials on the server. Confirm the database identifier before importing fictional customer rows.
+
+### 2. Validate and preview the rows
+
+Parse the uploaded file, map its columns and show a preview before committing changes. Check required values, duplicate identifiers within the file, date interpretation and the account that owns the import. Preserve leading zeros in identifiers such as `00042`; treating those as numbers changes their meaning.
+
+PostgreSQL's [COPY format reference](https://www.postgresql.org/docs/current/sql-copy.html) covers CSV, not Excel workbooks. Use a maintained parser for the actual file format and test it against your deployed runtime. Put limits on file size, row count and parsing work before accepting files from customers.
+
+Reject ambiguous rows with an explanation the operator can act on. For example, two rows with the same customer reference and different addresses need an explicit rule, rather than whichever row happened to be processed last.
+
+### 3. Make repeating an import predictable
+
+In a fresh development database, this small SQL example shows an append-only rule. Run it through the direct connection; the account and values are fictional:
+
+```sql
+CREATE TABLE import_customer_demo (
+  account_id integer NOT NULL,
+  external_id text NOT NULL,
+  name text NOT NULL,
+  PRIMARY KEY (account_id, external_id)
+);
+
+INSERT INTO import_customer_demo (account_id, external_id, name)
+VALUES (42, '00042', 'Sample customer')
+ON CONFLICT (account_id, external_id) DO NOTHING;
+
+INSERT INTO import_customer_demo (account_id, external_id, name)
+VALUES (42, '00042', 'A changed name in a repeated file')
+ON CONFLICT (account_id, external_id) DO NOTHING;
+
+SELECT external_id, name FROM import_customer_demo WHERE account_id = 42;
+```
+
+The result is one row: `00042`, `Sample customer`. [ON CONFLICT](https://www.postgresql.org/docs/current/sql-insert.html) leaves the original row in place here. It does not tell the user that the repeated file contained a changed value. A real importer should report skipped records and conflicts, and offer a separate reviewed update path when changes are intended.
+
+Use bound parameters for real input and derive account permissions from the authenticated server session. For imports that must succeed together, commit the batch and its completed-job record in one transaction. For large imports, use bounded batches with recorded progress and an explicit policy for partially completed work. Remove the demonstration table when finished:
+
+```sql
+DROP TABLE import_customer_demo;
+```
+
+### 4. Test a retry and a release
+
+Import a file, retry the same job after a simulated lost response, and check the accepted/rejected counts against saved records. Then deploy a code change to the same review stage and verify the database identifier and those records again. Test an unauthorized account, malformed dates and a file with conflicting customer identifiers as well.
+
+Choose a [backup policy](/docs/postgres/database/backups) and [practice recovery](/postgres/practice-database-recovery) before the importer becomes the business's record system. A code rollback cannot reverse committed customer updates. Keep any migration that changes existing data reviewable and test it against a disposable copy first.
+
+## When should I choose a different setup?
+
+Prisma Compute focuses on HTTP services. Its [current limits](/docs/compute/limitations) include a 60-second deadline to start a response and no persistent filesystem. A large workbook may need a durable queue and a separately deployed worker with retries. Keeping an instance awake does not make a job survive a crash or redeploy.
+
+Use an established import or integration product when column mapping, reconciliation and scheduled synchronization matter more than custom application behavior. Managed hosting supplies the runtime and database; your team still owns the rules that decide which customer records change.

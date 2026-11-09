@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { type FileObject, printErrors, scanURLs, validateFiles } from "next-validate-link";
 import type { InferPageType } from "fumadocs-core/source";
 
@@ -5,12 +6,14 @@ import { register } from "node:module";
 register("fumadocs-mdx/node/loader", import.meta.url);
 
 const { blog } = await import("@/lib/source");
-const blogPages = blog.getPages().map((page) => {
-  return {
-    value: { slug: page.slugs },
-    hashes: getHeadings(page),
-  };
-});
+const blogPages = await Promise.all(
+  blog.getPages().map(async (page) => {
+    return {
+      value: { slug: page.slugs },
+      hashes: await getHeadings(page),
+    };
+  }),
+);
 
 async function checkLinks() {
   const scanned = await scanURLs({
@@ -35,21 +38,20 @@ async function checkLinks() {
   );
 }
 
-function getHeadings({ data }: InferPageType<typeof blog>): string[] {
-  return data.toc.map((item) => item.url.slice(1));
+async function getHeadings({ data }: InferPageType<typeof blog>): Promise<string[]> {
+  const content = await pageContent(data);
+  return content.toc.map((item) => item.url.slice(1));
 }
 
 function getFiles() {
   console.log("Validating Files");
 
-  const blogPromises = blog.getPages().map(
-    async (page): Promise<FileObject> => ({
-      path: page.absolutePath ?? "",
-      content: await page.data.getText("raw"),
-      url: page.url,
-      data: page.data,
-    }),
-  );
+  const blogPromises = blog.getPages().map(async (page): Promise<FileObject> => ({
+    path: page.absolutePath ?? "",
+    content: await page.data.getText("raw"),
+    url: page.url,
+    data: page.data,
+  }));
 
   const promises = [...blogPromises];
 

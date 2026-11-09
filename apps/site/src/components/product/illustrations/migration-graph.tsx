@@ -48,7 +48,7 @@ function RefPill({ children, accent }: { children: React.ReactNode; accent?: boo
 
 export function MigrationGraph() {
   return (
-    <RayFrame photo="bg-[url('/brand/feature-orm.jpg')] bg-[position:0%_65%]">
+    <RayFrame photo="brand-orm bg-[position:0%_65%]">
       <div
         role="img"
         aria-label="Illustration of a Prisma migration history tracked as a graph: a trunk of migrations with production tagged on its head, a branch peeling off it carrying three more migrations, and preview tagged on the newest — driven by the plan, apply and inspect commands"

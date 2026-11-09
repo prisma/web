@@ -1,0 +1,173 @@
+---
+title: "Still billed after stopping a test deployment? How to find the app and database resources still running"
+description: "Read the bill by day and resource, list what still exists in every region and project, then delete, not stop, what the test left behind."
+summary: "Start from the bill, not the dashboard: open your provider's cost view for the days after you stopped the test, group it by project, then by service or resource, and note every service that still costs something each day. Then list what still exists in every region and project and delete it. Stopping an app or database usually ends compute charges but not storage: a stopped EC2 instance still pays for its EBS volumes, a stopped AWS RDS database still pays for its storage and starts again by itself after seven days, a stopped Cloud SQL instance still pays for storage and IP addresses, and volumes, public IP addresses, snapshots, preview copies and database add-ons bill until they are deleted. A charge can also arrive after everything is gone, because many hosts bill usage at the end of the period. On [Prisma Compute](/docs/compute), an app that has scaled to zero isn't billed, the Console's Usage page breaks Compute usage down by app and day, and for an app deployed on push with Prisma Composer, deleting a preview's Git branch removes its services, databases and buckets."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-22"
+updatedAt: "2026-10-22"
+readingTime: "10 min read"
+faq:
+  - question: "Does stopping a database stop the charges?"
+    answer: "Usually only part of them. A stopped AWS RDS instance still pays for provisioned storage and backup storage, and RDS starts it again by itself after seven consecutive days. Stopping a Cloud SQL instance suspends instance charges, while storage and IP address charges continue. A Heroku data add-on accrues usage for as long as it is enabled. To end the charges, export what you need with `pg_dump` and delete the database. On RDS, also delete the snapshots you no longer need: DB snapshots are billed, and automated backups you choose to retain are kept for their retention period."
+  - question: "Why did I get a charge after I deleted everything?"
+    answer: "Many hosts bill usage after the period ends. Heroku sends the bill for the previous month of use, Railway bills usage above the plan's included amount in arrears, and Prisma charges usage after each billing period on the next invoice, including a final invoice after you cancel a paid plan. Check the dates the invoice covers: if they end before you deleted the resources, the charge is for the time they were still running. A plan's monthly fee also continues until you cancel the plan itself."
+  - question: "Will a budget alert stop the resources that cost money?"
+    answer: "Not by itself. A budget alert sends a notification, and Azure's documentation says a budget doesn't affect resources or stop consumption. AWS Budgets can also run a budget action you configure, such as applying an IAM policy that blocks new resources, and some hosts can act on a limit: Railway's hard limit shuts down workloads, Vercel's Spend Management can pause production deployments on Pro teams that turn it on, and a Prisma spending limit blocks further usage on paid plans. A limit protects the next bill, but the forgotten resource is still there until you delete it."
+  - question: "Do preview deployments keep costing money after I stop using them?"
+    answer: "It depends on how the host bills them. Render bills a PR preview at its base service's rate until the pull request is merged or closed, and doesn't delete image previews by itself. Railway's PR environments run real services, so five open pull requests can mean five copies of the workload. On Prisma Compute, creating a preview branch isn't billed and an idle preview's services cost nothing; they cost money only while they serve traffic or run background work. Any databases the preview holds still count toward your Prisma Postgres storage until the branch is deleted."
+related:
+  - title: "Which TypeScript app hosts show what is driving my bill?"
+    href: "/compute/typescript-hosting-cost-visibility"
+  - title: "Hosting spending controls and alerts"
+    href: "/compute/typescript-hosting-spending-controls"
+  - title: "Prisma Compute pricing and what isn't billed"
+    href: "/docs/compute/pricing"
+  - title: "Prisma billing, cancellation and spending limits"
+    href: "/docs/console/more/billing"
+cta:
+  title: "Run test deployments that clean up with the branch"
+  description: "Deploy each Git branch as a preview with every service and declared database in your Prisma Composer module on Prisma Compute, and remove all of it by deleting the branch."
+  label: "Set up deploy on push"
+  href: "/docs/compute/deploy-on-push"
+---
+
+When a test deployment keeps costing money after you stopped using it, something it created is still there. Stopping an app usually ends the charge for its compute, but the database, its storage and backups, the IP addresses, volumes and preview copies around it keep billing until they are deleted. Work from the bill to the resource: the bill tells you which account, project and service is still charging, and the resource list tells you what to delete.
+
+We make Prisma Compute and Prisma Postgres. The steps below work on any host. Every provider behavior on this page links to that provider's documentation, checked on October 22, 2026.
+
+## Why a stopped test deployment can still cost money
+
+A test deployment is rarely one resource. Each of these can outlive the app:
+
+- **Stopped is not deleted.** A stopped [EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/how-ec2-instance-stop-start-works.html) isn't charged for usage, but its EBS volumes are, and so are Elastic IP addresses associated with it. A stopped [AWS RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html) instance still pays for its provisioned storage and backup storage, and RDS starts it again after seven consecutive days. Stopping a [Cloud SQL](https://cloud.google.com/sql/docs/postgres/start-stop-restart-instance) instance suspends instance charges, while storage and IP address charges continue. An Azure VM shut down from inside the guest OS is in the Stopped state and [still billed](https://learn.microsoft.com/en-us/azure/virtual-machines/states-billing); Stopped (Deallocated) ends the VM's charge, while its disks and networking keep billing. Stopped [Fly.io Machines](https://docs.fly.io/about/billing) are billed for their root file system.
+- **The pieces around the app.** AWS [charges for every public IPv4 address](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html), including Elastic IP addresses that aren't attached to anything, and a [NAT gateway](https://aws.amazon.com/vpc/pricing/) is charged by the hour. [Fly.io volumes](https://docs.fly.io/about/pricing) are billed on provisioned size, including while detached, and [Railway](https://docs.railway.com/pricing/understanding-your-bill) bills volume storage as its own line item.
+- **Preview and test copies.** [Render](https://render.com/docs/service-previews) bills a PR preview at its base service's rate and doesn't delete image previews by itself; [preview environments](https://render.com/docs/preview-environments) have no expiry unless you set one. [Railway](https://docs.railway.com/pricing/understanding-your-bill) PR environments run real services. Neon child branches [add storage](https://neon.com/docs/introduction/plans#storage) as they change, and branches beyond the plan's allowance are billed per branch-month.
+- **A database billed on its own.** Each [Supabase](https://supabase.com/docs/guides/platform/manage-your-usage/compute) project is charged Compute by the hour while it runs, however little its database is used; paused projects don't count toward Compute usage, so pause or delete one you no longer use. A [Heroku data add-on](https://devcenter.heroku.com/articles/usage-and-billing) accrues usage for as long as it is enabled. Databases from the [Vercel Marketplace](https://vercel.com/docs/marketplace-storage) are paid through your Vercel account, so they show up on the Vercel invoice, not the database provider's.
+- **Billing in arrears.** [Heroku](https://devcenter.heroku.com/articles/usage-and-billing) sends the bill for the previous month of use, [Railway](https://docs.railway.com/pricing/understanding-your-bill) bills usage above the plan's included amount in arrears, and [Prisma](/docs/console/more/billing) charges usage after each billing period ends. The first invoice after you stop can be for usage from before you stopped.
+- **Something still calls it.** An uptime monitor, a CI workflow or a crawler can keep waking a service that scales to zero, and every query it runs counts as database usage.
+
+## How to find what is still running
+
+These steps work on any host. Do them in order: the bill narrows down where to look, so you don't have to inspect every service by hand.
+
+### 1. Find the account that bills you
+
+Check who issued the invoice and for which account. Teams often have several: a personal and a team account, a second cloud account or subscription for experiments, or a database bought through a marketplace and billed by the app host.
+
+### 2. Read the bill by day and by resource
+
+Open the cost view for the days since you stopped the test, and group it first by project, account or resource group, then by service or resource. A service that still costs something every day is still running. One whose daily cost has dropped to zero is a charge for earlier usage.
+
+These hosts are ordered alphabetically:
+
+| Host | Where to look | What to know |
+| --- | --- | --- |
+| AWS | [Cost Explorer](https://docs.aws.amazon.com/cost-management/latest/userguide/ce-filtering.html), grouped by Service, Region or Resource | Resource-level grouping is an opt-in setting and covers EC2 instances. [Cost allocation tags](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html) appear in Cost Explorer only after you activate them. |
+| Azure | [Cost analysis](https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/quick-acm-cost-analysis), drilling down from subscription to resource group to resource | Cost data usually appears within 8 to 24 hours, according to Azure's [budget docs](https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets). |
+| Fly.io | Billing is [per organization](https://docs.fly.io/about/billing) | Stopped Machines, volumes and volume snapshots each appear as charges. |
+| Google Cloud | [Cloud Billing reports](https://cloud.google.com/billing/docs/how-to/reports), grouped by Project or SKU | The default views leave out invoice-level charges such as taxes and adjustments; set the time range to Billing period to include them. |
+| Heroku | Current Usage on the account's [Billing tab](https://devcenter.heroku.com/articles/usage-and-billing) | Updated nightly. Dynos accrue usage while scaled above 0, whether or not they get traffic. |
+| Prisma Compute and Prisma Postgres | The workspace's **Usage** page in the [Console](https://console.prisma.io), with Compute usage by app and by day | Each workspace has its own plan and bill; details [below](#where-does-prisma-compute-fit). |
+| Railway | The workspace [usage page](https://docs.railway.com/pricing/cost-control) | [Invoice line items](https://docs.railway.com/pricing/understanding-your-bill) separate volume disk, network, vCPU and memory. |
+| Render | **Billing** in the [Render Dashboard](https://render.com/docs/render-dashboard) | Shows usage charges accrued in the current month. |
+| Vercel | **Usage** in the dashboard, filtered by project, or `vercel usage --since 30d --group-by project` ([docs](https://vercel.com/docs/pricing/manage-and-optimize-usage)) | [Marketplace databases](https://vercel.com/docs/marketplace-storage) are paid through your Vercel account. |
+
+### 3. List what exists in every region and project
+
+The cost view tells you the service; the resource list tells you which instance of it to delete. Check every region and every project, because a test deployment created from a template or a script may have landed in a region you don't normally use.
+
+On the large clouds, a search across regions is faster than opening each service. On Azure, the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/resource?view=azure-cli-latest) lists every resource in the subscription, or in one resource group:
+
+```sh
+az resource list --output table
+az resource list --resource-group <test-resource-group> --output table
+```
+
+On Google Cloud, [Cloud Asset Inventory](https://cloud.google.com/asset-inventory/docs/search-resources) searches the resources in a project once the Cloud Asset Inventory API is enabled:
+
+```sh
+gcloud asset search-all-resources --scope=projects/<project-id>
+```
+
+On AWS, [Resource Explorer](https://docs.aws.amazon.com/resource-explorer/latest/userguide/welcome.html) is on by default and searches the current Region; turn on cross-Region search, which uses one aggregator Region, to search every Region in the account.
+
+On a platform host, open each project or app and list its services, databases, volumes, add-ons and preview environments. Check preview environments in particular: they are created per branch or pull request and often outlive the work they were made for.
+
+### 4. Delete, don't stop, and keep what you need first
+
+Stop only what you plan to start again. For everything else:
+
+1. Export data you might need. For Postgres, run `pg_dump` against the direct connection string. Deleting a database usually deletes its data, and on Heroku, [destroying an add-on](https://devcenter.heroku.com/articles/usage-and-billing) destroys its data.
+2. Delete the app or service, then its database, volumes, IP addresses and snapshots.
+3. On Azure, if a resource group holds only the test, [deleting the group](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/delete-resource-group) deletes the resources in it. Remove any resource locks and backup data first.
+4. Close or delete the branches and pull requests that preview environments are tied to, so a later push doesn't recreate them.
+
+### 5. Check the bill again a day later
+
+Cost data lags, so give it a day and look at the daily view again. A service whose daily cost is now zero is done. If one still costs something every day, go back to step 3 for that service: there is a second resource you haven't found yet, often in another region or project.
+
+## Where does Prisma Compute fit?
+
+[Prisma Compute](/docs/compute) hosts TypeScript apps built for Node.js, Bun or Next.js (deployed apps run on Bun), next to [Prisma Postgres](/docs/postgres) in one project. Prisma Compute fits when you want an unused test deployment to stop adding Compute charges on its own: an app that has scaled to zero isn't billed, and for an app declared with [Prisma Composer](/docs/composer) and deployed on push, deleting the Git branch removes the preview's services, databases and buckets. Compute doesn't require Prisma ORM or Prisma Postgres, and Prisma Postgres works with any PostgreSQL client.
+
+**What can still cost money.** [Compute pricing](/docs/compute/pricing) meters requests, provisioned memory while an app is running or kept awake, active CPU and outbound bandwidth. Deployments, preview branch creation, inactive apps and apps that have scaled to zero are not billed. So a quiet test service costs nothing, and one that still costs money is doing work: something sends it requests, or background work keeps it awake. Prisma Postgres bills [operations and storage](/docs/postgres/faq); every query counts as an operation, including a `SELECT 1` from a health check. Paid plans also have a monthly fee, and the Free plan has no usage billing at all.
+
+**Where to see it.** In the [Console](https://console.prisma.io), the workspace's **Usage** page shows Compute requests, memory, CPU and bandwidth [by day, by app and by response status](/changelog/2026-08-28), and the **Current invoice** card under **Workspace Settings** > **Usage** shows the usage charges built up so far in the period ([billing docs](/docs/console/more/billing#cap-usage-charges-with-a-spending-limit)). A growing request count on an app you stopped using points to something still calling it. A workspace created through the Vercel Marketplace is [billed on your Vercel invoice](/docs/console/more/billing#workspaces-billed-through-vercel), and its Console invoices show a zero balance.
+
+**What exists.** Sign in, list the projects in the workspace, then list each project's branches and what they hold. Every branch owns its own services, deployments and any databases created on it ([environments docs](/docs/compute/branching)), and the `service` and `postgres` commands take `--branch` to target one branch:
+
+```sh
+npx prisma@latest auth login
+npx prisma@latest project list
+npx prisma@latest project link <project-id-or-name>
+npx prisma@latest branch list
+npx prisma@latest service list --branch <branch>
+npx prisma@latest postgres list --branch <branch>
+npx prisma@latest postgres usage <database>
+npx prisma@latest bucket list
+```
+
+Run `service list` and `postgres list` once for each branch. `postgres usage` prints usage metrics for one database ([postgres commands](/docs/cli/postgres)).
+
+**Remove it.** [Deploy on push](/docs/compute/deploy-on-push) deploys an app declared with Prisma Composer: each pushed branch other than the default one gets its own services, and its own new database for each database the module declares. With the GitHub repository connected, deleting the Git branch tears down the matching preview, and [automated cleanup never touches production or the default branch](/docs/compute/deploy-on-push#7-delete-the-branch-to-clean-up):
+
+```sh
+git push origin --delete feature/search
+```
+
+To remove resources one at a time, use the [service](/docs/cli/service), [postgres](/docs/cli/postgres), [bucket](/docs/cli/bucket) and [project](/docs/cli/project) commands. `service delete` asks you to confirm first, and `postgres delete` and `project delete` take the exact id as confirmation. `bucket delete` removes the bucket and all its access keys, so check the id before you run it:
+
+```sh
+npx prisma@latest service delete web --branch feature/search
+npx prisma@latest postgres delete <database>
+npx prisma@latest bucket delete <bucket-id>
+npx prisma@latest project delete <project-id-or-name>
+```
+
+Run `pg_dump` against the database's direct connection string before `postgres delete` if you might need the data. Deleting a bucket removes its objects and access keys in the same call, [even when it isn't empty](/docs/compute/object-storage#deleting-a-bucket). `service version stop` only [takes a version out of service](/docs/compute/deployments#start-stop-delete) and keeps its artifact, so delete the service when you are done with the test.
+
+**Cap the next surprise.** Paid plans have a [spending limit](/docs/console/more/billing#cap-usage-charges-with-a-spending-limit) on usage charges, set under **Workspace Settings** > **Billing**. Every workspace member gets an email at 75% of the limit, and at 100% Prisma blocks further usage and queries to the workspace's databases stop. The limit doesn't count the plan fee. To stop the plan fee itself, [cancel the paid plan](/docs/console/more/billing#cancel-a-paid-plan): the workspace moves to Free at the end of the billing period, and usage from that last period arrives on a final invoice.
+
+Know the limits before you rely on it:
+
+- Compute usage per app is in the Console. The CLI and API report Prisma Postgres usage, and equivalent Compute usage reporting there is [still being built](/docs/compute/pricing#usage-data-for-humans-and-agents).
+- The docs describe automatic teardown only for deleting a Git branch while the GitHub repository is connected. Previews per Git branch come from the deploy-on-push workflow for a Prisma Composer app; an app deployed from the Console or the REST API doesn't get them, so remove its services with `service delete`. A stage you deployed from the terminal is torn down with the `destroy` operation from `@prisma/composer/control` ([Destroying](/docs/composer/deploying#destroying)), and a branch made with `service create --branch` needs its services, databases and buckets deleted with the commands above.
+- Background work started with `waitUntil` or `KeepAwakeGuard` keeps an instance awake, and awake instances bill memory. Pass a `signal` with a timeout so a hung promise or a guard that is never released can't keep it awake indefinitely ([Keeping instances awake](/docs/compute/keeping-instances-awake)).
+- A test service that something keeps calling, such as an uptime monitor or a CI workflow, keeps doing billed work. Turn the caller off too.
+- [Object Store pricing](/docs/compute/object-storage) isn't published yet.
+- If the leftover resources are on AWS, Azure, Google Cloud or another host, the fix is in that provider's cost tools. Moving hosts doesn't remove what is already there, and for cost tracking by tag across many services, the large clouds' cost tools go further than a per-app usage page.
+
+## How to prevent it
+
+Put each test in a container you can delete in one step: its own resource group on Azure, its own project on Google Cloud or in the Prisma Console, or its own account for experiments on AWS. Tag or name test resources consistently, and on AWS activate the tag as a cost allocation tag so it shows up in Cost Explorer.
+
+Set an expiry on previews, so a forgotten one removes itself. Render's `previews.expireAfterDays` [deletes a preview environment after days without commits](https://render.com/docs/preview-environments), Neon recommends a [time to live](https://neon.com/docs/introduction/plans#storage) on development and preview branches. On Prisma Compute, a preview is removed when its Git branch is deleted, not after a set time, so turn on GitHub's [**Automatically delete head branches**](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-the-automatic-deletion-of-branches) setting to delete each branch when its pull request merges.
+
+Set a budget alert on every account, and a hard limit where the host has one and an interruption is acceptable. An alert from [AWS Budgets](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) or an alerts-only [Google Cloud budget](https://cloud.google.com/billing/docs/how-to/budgets) tells you something grew but doesn't stop it, and Azure's docs say a budget [doesn't stop consumption](https://learn.microsoft.com/en-us/azure/cost-management-billing/costs/tutorial-acm-create-budgets). [Railway's hard limit](https://docs.railway.com/pricing/cost-control) shuts down workloads when it is reached, and a Google Cloud [spend cap budget](https://cloud.google.com/billing/docs/how-to/budgets-spend-caps) pauses usage of supported services in a project for the rest of the budget period.
+
+## When this doesn't apply
+
+If every resource is gone and the daily cost is flat at zero, the charge on the invoice is from an earlier period, a plan fee, seats or taxes. Compare the period the invoice covers with the date you deleted things. If the plan fee is what remains, cancel or downgrade the plan itself.
+
+If a charge doesn't match any resource you can find, ask the provider's billing support with the invoice line, the account and the dates. A database bought through a marketplace may also need to be removed from the app host's integration settings, not only from the database provider.

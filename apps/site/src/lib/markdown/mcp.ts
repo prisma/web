@@ -4,6 +4,7 @@ import {
   DOCS_MCP,
   heroFeatures,
   MANUAL_CONFIG,
+  PROVIDER_COMPARISON,
   TALLY_HREF,
 } from "@/app/mcp/mcp-content";
 import { bulletList, ctaList, heading, joinBlocks, link, paragraphs } from "./blocks";
@@ -60,6 +61,7 @@ export function renderMcpMarkdown(): string {
       // Labelled after the card's "Copy example prompt" affordance.
       `Example prompt: \`${capability.prompt}\``,
     ]),
+    paragraphs(`${PROVIDER_COMPARISON.lead} ${link(PROVIDER_COMPARISON)}.`),
 
     heading(2, "Start building with AI"),
     paragraphs(

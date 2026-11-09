@@ -55,7 +55,7 @@ export function renderStackMarkdown(): string {
     // ---- ProductHero, everything after the h1 + subheadline ----
     ctaList([hero.primaryCta, hero.secondaryCta]),
     hero.microline,
-    bulletList([...hero.benefits]),
+    hero.benefits ? bulletList([...hero.benefits]) : undefined,
 
     // ---- StackBento (stack-bento.tsx) ----
     // The <LearnMore> links render "Learn more" plus a screen-reader-only

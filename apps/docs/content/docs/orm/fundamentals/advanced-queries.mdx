@@ -18,7 +18,7 @@ Every example on this page queries these four models:
 
 ```prisma
 model User {
-  id    String  @id @default(cuid(2))
+  id    String  @id @onCreate(cuid(2))
   email String  @unique
   name  String?
   posts Post[]
@@ -27,7 +27,7 @@ model User {
 }
 
 model Post {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   title     String
   published Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -39,7 +39,7 @@ model Post {
 }
 
 model Tag {
-  id    String @id @default(cuid(2))
+  id    String @id @onCreate(cuid(2))
   name  String @unique
   posts Post[]
 
@@ -57,7 +57,7 @@ model PostTag {
 }
 ```
 
-In Prisma ORM 8 a many-to-many relation is the two list fields plus a model for the join table, as `PostTag` here; see [Relations and joins](/orm/fundamentals/relations-and-joins). The MongoDB examples use the same models, except that each id is declared as `id ObjectId @id @map("_id")`, so the property is `_id`.
+In Prisma ORM 8 a many-to-many relation is the two list fields plus a model for the join table, as `PostTag` here; see [Relations and joins](/orm/fundamentals/relations-and-joins). The MongoDB examples use the same models, except that each id is declared as `id ObjectId @id @map("_id")`, so the property is `id` and the stored field is `_id`.
 
 ## PostgreSQL: SQL query builder
 
@@ -76,9 +76,9 @@ A SQL builder query takes two steps: first you build it, then you run it. You de
 
 Start from a table with `db.sql.public.<table>`. `db.sql` is the SQL query builder, keyed by table name. A table's name is the model's `@@map` value, or the model name exactly as written when the model has no `@@map`, and column names are the field names unless a field sets `@map`. `public` is the PostgreSQL schema your tables are in. If you put a model inside a `namespace` block in your contract, the block's name is the PostgreSQL schema instead, so for a model inside `namespace billing { ... }` you write `billing` in place of `public`: `db.sql.billing.<table>`.
 
-`db.runtime()` is the database connection; call it whenever you run a query. `query()` always resolves to an array of rows, even when the query matches one row.
+`db.query(...)` runs a built query and always resolves to an array of rows, even when the query matches one row.
 
-Chain the clauses you want, call `.build()`, and pass the result to `db.runtime().query(...)`:
+Chain the clauses you want, call `.build()`, and pass the result to `db.query(...)`:
 
 ```typescript
 import { db } from "./prisma/db";
@@ -89,7 +89,7 @@ const publishedPosts = db.sql.public.post
   .limit(10).offset(20)
   .build();
 
-const rows = await db.runtime().query(publishedPosts);
+const rows = await db.query(publishedPosts);
 ```
 
 The `.where(...)` callback receives two arguments. The first, `f`, holds the column references, and the second, `fns`, holds the operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `and`, `or`, and `ilike` for text columns on PostgreSQL. There are more; the [SQL query builder reference](/orm/reference/sql-query-builder#built-in-functions) has the full list.
@@ -116,7 +116,7 @@ function titles(posts: PublishedPost[]) {
 }
 ```
 
-`ResultType<...>` is one row, not the array, so `await db.runtime().query(publishedPosts)` resolves to `PublishedPost[]`. See [`ResultType`](/orm/reference/sql-query-builder#resulttype) in the reference.
+`ResultType<...>` is one row, not the array, so `await db.query(publishedPosts)` resolves to `PublishedPost[]`. See [`ResultType`](/orm/reference/sql-query-builder#resulttype) in the reference.
 
 ### Join tables with precise control
 
@@ -131,7 +131,7 @@ const postsWithAuthors = db.sql.public.post
   .limit(10)
   .build();
 
-const rows = await db.runtime().query(postsWithAuthors);
+const rows = await db.query(postsWithAuthors);
 // Array<{ postId, title, authorEmail }>
 ```
 
@@ -147,7 +147,7 @@ const postTagPairs = db.sql.public.post_tag
   .select((f) => ({ postTitle: f.p.title, tagName: f.t.name }))
   .build();
 
-const rows = await db.runtime().query(postTagPairs);
+const rows = await db.query(postTagPairs);
 ```
 
 ```js no-copy
@@ -171,7 +171,7 @@ const topAuthors = db.sql.public.post
   .limit(5)
   .build();
 
-const rows = await db.runtime().query(topAuthors);
+const rows = await db.query(topAuthors);
 ```
 
 ```js no-copy
@@ -194,11 +194,11 @@ const insertUser = db.sql.public.user
   .insert([{ email: "sql@prisma.io" }])
   .returning("id", "email").build();
 
-const [insertedUser] = await db.runtime().query(insertUser);
-// insertedUser is { id, email }. The id comes from the @default(cuid(2)) in the contract.
+const [insertedUser] = await db.query(insertUser);
+// insertedUser is { id, email }. The id comes from the @onCreate(cuid(2)) in the contract.
 ```
 
-Drop the `.returning(...)` call and the insert returns no rows, so run it with `db.runtime().execute(...)`, which resolves to `{ affectedRows }`.
+Drop the `.returning(...)` call and the insert returns no rows, so run it with `db.execute(...)`, which resolves to `{ affectedRows }`.
 
 The builder writes updates and deletes too. Choose the rows with `.where(...)`, and add `.returning(...)` when you want columns back. `postId` and `tagId` here are values from your own code:
 
@@ -208,8 +208,8 @@ const publishPost = db.sql.public.post
   .where((f, fns) => fns.eq(f.id, postId)).build();
 const deleteTag = db.sql.public.tag.delete().where((f, fns) => fns.eq(f.id, tagId)).build();
 
-const { affectedRows } = await db.runtime().execute(publishPost);
-await db.runtime().execute(deleteTag);
+const { affectedRows } = await db.execute(publishPost);
+await db.execute(deleteTag);
 ```
 
 Neither of those two returns rows, so both go to `execute()`. Add `.returning(...)` to either one and you run it with `query()` instead.
@@ -226,7 +226,7 @@ const users = db.sql.public.user
   .select("upperEmail", (f, fns) => fns.raw`UPPER(${f.email})`.returns("pg/text@1"))
   .limit(10).build();
 
-const rows = await db.runtime().query(users);
+const rows = await db.query(users);
 // [{ id: 'cuid20000000000000000001', email: 'alice@prisma.io', upperEmail: 'ALICE@PRISMA.IO' }, ...]
 ```
 
@@ -250,7 +250,7 @@ const authorPostCounts = db.raw.sql`
   .returnsRow({ id: user.columns.id, email: user.columns.email, postCount: "pg/int8@1" })
   .build();
 
-const rows = await db.runtime().query(authorPostCounts);
+const rows = await db.query(authorPostCounts);
 ```
 
 Quote identifiers as PostgreSQL requires; `"authorId"` keeps the camel case. Each entry in the `.returnsRow(...)` object says how to read one result column. An entry is either a column from the contract, as in `user.columns.id`, or a type name as a string for a result column the contract has no counterpart for. `"pg/int8@1"` is a 64-bit integer, so `postCount` comes back as a `bigint`.
@@ -262,7 +262,7 @@ const publishDrafts = db.raw.sql`
   UPDATE "post" SET "published" = true WHERE "published" = false
 `.affectedCount().build();
 
-const { affectedRows } = await db.runtime().execute(publishDrafts);
+const { affectedRows } = await db.execute(publishDrafts);
 ```
 
 To use one raw statement inside another, interpolate it with `${...}`. End the inner statement at `.returnsRow(...)` without `.build()`; call `.build()` only on the outer one. Every un-built raw statement exposes its declared columns as `.returns`, so the outer statement can reuse them:
@@ -290,7 +290,7 @@ const activeAuthors = db.raw.sql`
   postCount: authorsWithPosts.returns.postCount,
 }).build();
 
-const rows = await db.runtime().query(activeAuthors);
+const rows = await db.query(activeAuthors);
 ```
 
 A column the inner statement already declared can be reused in the outer row object, as `authorsWithPosts.returns.postCount` is here. The [raw queries reference](/orm/reference/raw-queries#the-client-level-dbrawsql-tag) documents every raw query method.
@@ -387,7 +387,7 @@ Each row is a post document with an extra `author` field, and that field is an a
 
 `db.orm` holds your models by model name, as in `db.orm.public.User` on PostgreSQL. On MongoDB there is no schema segment, and the name is the collection: `db.orm.post`.
 
-A built query that returns rows runs through `db.runtime().query(builtQuery)` on PostgreSQL. On MongoDB, await the connection first: `(await db.runtime()).query(builtQuery)`. A write that returns no rows goes to `execute(builtQuery)` instead, which resolves to `{ affectedRows }`.
+A built query that returns rows runs through `db.query(builtQuery)` on PostgreSQL, and a write that returns no rows through `db.execute(builtQuery)`, which resolves to `{ affectedRows }`. `db.toSql(builtQuery)` returns the SQL and parameters the query would send, as `{ sql, params }`, without a database. On MongoDB, await the connection first: `(await db.runtime()).query(builtQuery)`.
 
 Inside a transaction, `tx` is the argument your callback receives, and you run the built query on it: `await db.transaction(async (tx) => tx.query(builtQuery))`. `tx.query(...)` and `tx.execute(...)` run built queries inside a transaction; see [Transactions](/orm/fundamentals/transactions).
 

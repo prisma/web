@@ -4,15 +4,10 @@ import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = getBaseUrl();
   const sitemap = new URL(withDocsBasePath("/sitemap.xml"), baseUrl).toString();
-  const disallow = [
-    "/api/",
-    "/_next/",
-    "/og/",
-    "/*?query=*",
-    "/*?page=*",
-    "/*&query=*",
-    "/*&page=*",
-  ].map(withDocsBasePath);
+  // Social crawlers need OG images; their responses carry noindex instead.
+  const disallow = ["/api/", "/_next/", "/*?query=*", "/*?page=*", "/*&query=*", "/*&page=*"].map(
+    withDocsBasePath,
+  );
 
   return {
     rules: {

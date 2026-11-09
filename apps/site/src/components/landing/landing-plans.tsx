@@ -9,6 +9,8 @@ import { CONSOLE_SIGNUP_URL, CTA_LABEL } from "./content";
 // the /pricing plan cards (sections/pricing-plans.tsx), trimmed to one line
 // per product; the Free plan's storage is 2 GB per the product team
 // (2026-10-14). Keep in step with /pricing when the cards change.
+export type PlanName = "Free" | "Starter" | "Pro" | "Business";
+
 const PLANS = [
   {
     name: "Free",
@@ -17,14 +19,13 @@ const PLANS = [
     compute: "1M requests, 360 GB-hours memory, 4 active vCPU-hours a month",
     postgres: "200k operations a month, 2 GB storage, 50 databases",
     platform: "No usage billing",
-    lit: true,
   },
   {
     name: "Starter",
     price: "$10",
     tagline: "Your first production app",
     compute: "5M requests a month, then metered",
-    postgres: "1M operations a month, 10 GB storage, daily backups",
+    postgres: "1M operations a month, 10 GB storage, 1,000 databases, daily backups",
     platform: "Spend limits",
     popular: true,
   },
@@ -33,16 +34,16 @@ const PLANS = [
     price: "$49",
     tagline: "Real traffic, lower overage rates",
     compute: "20M requests a month, then metered",
-    postgres: "10M operations a month, 50 GB storage, daily backups",
-    platform: "Spend limits, GDPR, HIPAA",
+    postgres: "10M operations a month, 50 GB storage, 1,000 databases, daily backups",
+    platform: "Spend limits, GDPR",
   },
   {
     name: "Business",
     price: "$129",
     tagline: "Sustained volume and compliance",
     compute: "100M requests a month, then metered",
-    postgres: "50M operations a month, 100 GB storage, 30-day backups",
-    platform: "Spend limits, SOC 2, ISO 27001",
+    postgres: "50M operations a month, 100 GB storage, 1,000 databases, 30-day backups",
+    platform: "Spend limits, GDPR, HIPAA, SOC 2, ISO 27001",
   },
 ] as const;
 
@@ -55,10 +56,26 @@ const ROWS = [
 export function LandingPlans({
   headline = "Start free. Pay when the app grows.",
   body = "Every plan covers both the app and the database. Free has no time limit and no usage billing; paid plans meter what the app does, under a spend limit you set.",
+  highlight = "Free",
+  include,
+  ctaLabel = CTA_LABEL,
 }: {
   headline?: string;
   body?: string;
+  /** The lit plan's CTA wording; the page's own label. */
+  ctaLabel?: string;
+  /** The plan lit as the page's offer; it carries the CTA. */
+  highlight?: PlanName;
+  /** The plans shown, in ladder order. Default: all four. */
+  include?: PlanName[];
 }) {
+  const plans = include ? PLANS.filter((plan) => include.includes(plan.name)) : PLANS;
+  const columns = {
+    1: "lg:grid-cols-1",
+    2: "lg:grid-cols-2",
+    3: "lg:grid-cols-3",
+    4: "lg:grid-cols-4",
+  }[Math.min(plans.length, 4) as 1 | 2 | 3 | 4];
   return (
     <section className="bg-white px-4 py-16 sm:px-8 sm:py-24">
       <div className="mx-auto max-w-site">
@@ -71,10 +88,10 @@ export function LandingPlans({
           </p>
         </Reveal>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-          {PLANS.map((plan) => {
-            const lit = "lit" in plan && plan.lit;
-            const popular = "popular" in plan && plan.popular;
+        <div className={cn("mt-10 grid gap-4 sm:grid-cols-2 lg:gap-5", columns)}>
+          {plans.map((plan) => {
+            const lit = plan.name === highlight;
+            const popular = "popular" in plan && plan.popular && !lit;
             return (
               <Reveal
                 key={plan.name}
@@ -133,12 +150,14 @@ export function LandingPlans({
                   {lit ? (
                     <div className="mt-7">
                       <PrismButton href={CONSOLE_SIGNUP_URL} ctaLocation="lp_plans" fullWidth>
-                        {CTA_LABEL}
+                        {ctaLabel}
                       </PrismButton>
                     </div>
                   ) : (
                     <p className="mt-7 text-sm text-muted-foreground">
-                      Upgrade from the Console when you need it.
+                      {plan.name === "Free"
+                        ? "Start here if you only want to try it."
+                        : "Upgrade from the Console when you need it."}
                     </p>
                   )}
                 </div>

@@ -42,7 +42,8 @@ const PAIRS = [
   },
   {
     before: "A database from Neon, an ORM from Drizzle, hosting from Vercel",
-    after: "App and database co-located on the same host, at latency no two-vendor setup can match",
+    after:
+      "App and database on one platform in the same region, so queries stay low-latency and never leave the region",
     tone: "cyan",
   },
   {

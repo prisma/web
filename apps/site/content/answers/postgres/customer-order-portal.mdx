@@ -1,0 +1,130 @@
+---
+title: "What hosting and database should I use for a customer order-tracking portal?"
+description: "Replace emailed order spreadsheets with a hosted TypeScript portal, shared Postgres data and customer-specific access to order status."
+summary: "Use managed TypeScript hosting and one shared Postgres database, with a server that checks which customer's orders each signed-in user may see. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a small team that wants the portal and database in one project. Keep an existing Vercel or Netlify deployment if it works well, and connect it to Prisma Postgres. Start with a narrow workflow: staff update an order, its customer signs in and sees the saved status."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-20"
+updatedAt: "2026-10-22"
+readingTime: "7 min read"
+faq:
+  - question: "Should every customer get a separate Postgres database?"
+    answer: "A small portal can use one shared database with customer ownership on each order and server-side authorization on every read and write. Separate databases are an architectural choice, not a substitute for authentication or access checks. Use a separate development database for testing."
+  - question: "Can customers keep using spreadsheet exports?"
+    answer: "Yes. Make exports a view of the portal's saved records, scoped to the signed-in customer. Treat an exported spreadsheet as a copy, and define how staff resolve corrections instead of accepting competing versions as equally authoritative."
+  - question: "Does Prisma Postgres require Prisma ORM?"
+    answer: "No. Prisma Postgres accepts PostgreSQL clients, including node-postgres, and other ORMs. Keep the portal's existing data-access library and configure its server-side connection."
+  - question: "Will changing the portal code undo an incorrect order update?"
+    answer: "No. An application rollback does not reverse committed database changes. Keep an order-status history, define a correction workflow and test database recovery separately from code deployment."
+related:
+  - title: "Transactions for customer and order records"
+    href: "/postgres/customer-order-transactions"
+  - title: "Hosting a shared inventory app"
+    href: "/compute/multi-user-inventory-app"
+  - title: "Separate databases for test environments"
+    href: "/postgres/typescript-test-environment"
+  - title: "Choosing SaaS tenant isolation"
+    href: "/postgres/multi-tenant-saas-database"
+cta:
+  title: "Give customers one current order status"
+  description: "Create Prisma Postgres, connect your portal and test customer-specific access before replacing the spreadsheet workflow."
+  label: "Set up Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+An emailed spreadsheet gives each recipient a different copy of the order list. A portal works when there is one saved record behind those views and someone is responsible for updating it. Hosting is part of that change; the rules for ownership and status matter just as much.
+
+We make Prisma Compute and Prisma Postgres. The provider documentation linked here was checked on October 20, 2026. The SQL demonstration uses ordinary Postgres; Prisma ORM is optional.
+
+## What does an order portal need?
+
+Give orders stable identifiers that survive a CSV import, a correction and a redeploy. Separate the customer-visible status from internal notes, supplier costs and staff-only fields. Decide who may change each field before asking an AI assistant to build the screens.
+
+The customer identity must come from the authenticated session on the server. A query parameter such as `customerId=501` is a request, not evidence that the person owns customer 501. Apply the ownership check to detail pages, search, exports and status endpoints, including links that someone guesses or forwards.
+
+Keep the database outside the app process. A server restart should not reset the order list, and two staff members should read the same saved state. Store attachments in [object storage](/compute/file-uploads-disappear-after-redeploy) and their ownership and file references in Postgres.
+
+## Which managed setup fits a small team?
+
+These options are listed alphabetically by app host. All three can use Prisma Postgres; the host choice does not decide your authorization rules.
+
+| Setup | Choose it when | Work the team still owns |
+| --- | --- | --- |
+| Netlify + Prisma Postgres | The portal already uses Netlify's [deployment and function workflow](https://docs.netlify.com/deploy/deploy-overview/). | Customer sign-in, server-side database configuration and migration/import steps. |
+| Prisma Compute + Prisma Postgres | You want the TypeScript server and database in one project, with a [deployment declaration](/docs/composer) kept beside the application code. | The customer model, access checks, migrations and acceptance tests. |
+| Vercel + Prisma Postgres | Your Next.js portal already follows [Vercel deployments](https://vercel.com/docs/deployments). | Preview versus production database settings and the same application rules. |
+
+For a team starting with a TypeScript repository, Prisma Compute makes the app and database a single project to inspect and evolve. If you also need a bundled authentication and storage system, compare [Supabase's architecture](https://supabase.com/docs/guides/getting-started/architecture). Its integrated services can reduce application plumbing, while a separate app host still runs your chosen frontend framework.
+
+## How do I move from the spreadsheet to Prisma?
+
+### 1. Prepare a review environment
+
+Create an account-owned development database in [Prisma Console](https://console.prisma.io). Use the [pooled URL](/docs/postgres/database/connecting-to-your-database) for normal application queries and the separate direct URL for the SQL demonstration and administration. Keep both credentials server-side.
+
+Follow the [Compute getting-started guide](/docs/compute/getting-started) to declare the app with Composer and build before deploying. Target an [isolated review stage](/docs/composer/deploying#production-and-stages), for example with `--stage review`, rather than the production default. For a manually configured database URL, give the review app its own scoped value; the word "preview" in a deployment name does not isolate data.
+
+### 2. Model a saved status and a change history
+
+Run this small example in a fresh development database:
+
+```sql
+CREATE TABLE portal_order_demo (
+  id integer PRIMARY KEY,
+  account_id integer NOT NULL,
+  customer_id integer NOT NULL,
+  reference text NOT NULL,
+  status text NOT NULL CHECK (status IN ('received', 'processing', 'ready')),
+  UNIQUE (account_id, reference)
+);
+
+CREATE TABLE portal_status_demo (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  order_id integer NOT NULL REFERENCES portal_order_demo(id),
+  status text NOT NULL,
+  changed_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO portal_order_demo
+  (id, account_id, customer_id, reference, status)
+VALUES (1, 10, 501, 'TEST-1001', 'received');
+
+WITH changed AS (
+  UPDATE portal_order_demo SET status = 'processing'
+  WHERE id = 1 AND account_id = 10 AND status = 'received'
+  RETURNING id, status
+)
+INSERT INTO portal_status_demo (order_id, status)
+SELECT id, status FROM changed;
+
+SELECT reference, status FROM portal_order_demo
+WHERE account_id = 10 AND customer_id = 501;
+```
+
+The result is `TEST-1001` with status `processing`. The conditional update and its history insert form one statement. Repeating that transition changes no rows and adds no second event. This example illustrates a transition, not a complete order system: add your real customer relationships, permitted transitions, actor identity and concurrency rules in migrations. Use bound parameters for application input and obtain account/customer permissions from the server's session checks.
+
+Remove the demonstration tables afterward:
+
+```sql
+DROP TABLE portal_status_demo, portal_order_demo;
+```
+
+### 3. Reconcile a trial import
+
+Import a copy of the spreadsheet into development first. Compare row counts and a selection of order identifiers, dates and totals. Define what happens to duplicate rows and blank customer references; silently assigning an order to the wrong customer is worse than rejecting the import for correction.
+
+Agree on a cutover time. After that point, staff update the portal, and spreadsheet exports are copies. Keep the original file for reconciliation, with access restricted appropriately, rather than letting two writable systems diverge.
+
+### 4. Test the customer workflow and recovery
+
+With fictional records, check that customer A can see their own order and cannot fetch customer B's by changing the URL. Have staff update a status, then reload as the customer and verify the saved value. Test exports and repeated submissions too.
+
+Before live orders depend on the portal, choose a [backup plan](/docs/postgres/database/backups) and rehearse recovery into a separate database. Check which recent changes a restored snapshot would omit and how staff would reconstruct them.
+
+For the step before an order exists, the [quote-calculator hosting guide](/compute/quote-calculator-hosting) explains server-side pricing, saved price versions and staff follow-up on submitted quotes.
+
+## When should I choose another approach?
+
+If you need a ready-made order-management product, managed hosting still leaves you maintaining custom application code. An existing commerce or operations product may be less work than owning that software.
+
+Prisma Compute runs deployed services on Bun, with one region per service and no WebSocket server support or persistent writable filesystem. Check the [runtime limits](/docs/compute/limitations) against the portal's dependencies. Prisma Postgres has no point-in-time recovery yet (it is coming in November 2026); choose a database with the recovery capability your order workflow requires if daily plan-dependent snapshots are insufficient.

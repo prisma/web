@@ -1,3 +1,4 @@
+import { preload } from "react-dom";
 import "@prisma-docs/ui/search.css";
 import { Provider } from "@/components/provider";
 import { buttonVariants } from "@/components/ui/button";
@@ -16,25 +17,8 @@ import { PromptwatchScript } from "@prisma-docs/ui/components/promptwatch-script
 import { Banner } from "fumadocs-ui/components/banner";
 import { ArrowRightIcon } from "lucide-react";
 
-// Inter is vendored inside @prisma/eclipse now, so load the same files here
-// rather than pulling a second copy from Google.
-const inter = localFont({
-  src: [
-    {
-      path: "../../../../packages/eclipse/src/static/fonts/InterVariable.woff2",
-      weight: "100 900",
-      style: "normal",
-    },
-    {
-      path: "../../../../packages/eclipse/src/static/fonts/InterVariable-Italic.woff2",
-      weight: "100 900",
-      style: "italic",
-    },
-  ],
-  variable: "--font-inter",
-  display: "swap",
-});
-
+// Inter's shared Unicode-ranged CSS keeps one composite family, including
+// non-Latin text, without preloading two full font files.
 // Sora replaces Mona Sans VF as the display face. next/font/local has no
 // per-source `unicode-range`, so only the latin subset is preloaded here; the
 // latin-ext subset is served by the plain "Sora" @font-face in the package's
@@ -49,7 +33,7 @@ const sora = localFont({
 
 // Code face — unchanged by the rebrand.
 const monaSansMono = localFont({
-  src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF[wght].woff2",
+  src: "../../../../packages/eclipse/src/static/fonts/MonaSansMonoVF.woff2",
   variable: "--font-mona-mono",
   display: "swap",
   weight: "200 900",
@@ -66,10 +50,19 @@ export const metadata: Metadata = {
 };
 
 export default function Layout({ children }: { children: ReactNode }) {
+  // Preload the same URL as the Unicode-ranged CSS face, without a second
+  // Next font family or duplicate binary. Body text must not swap line wraps.
+  preload(
+    new URL(
+      "../../../../packages/eclipse/src/static/fonts/subsets/InterVariable-latin.woff2",
+      import.meta.url,
+    ).href,
+    { as: "font", type: "font/woff2", crossOrigin: "anonymous", fetchPriority: "high" },
+  );
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${inter.variable} ${monaSansMono.variable}`}
+      className={`${sora.variable} ${monaSansMono.variable}`}
       suppressHydrationWarning
     >
       <head>

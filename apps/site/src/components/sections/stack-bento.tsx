@@ -62,14 +62,25 @@ const HOME_CONTENT: StackBentoContent = {
     ],
   },
   compute: {
-    body: "TypeScript app hosting that runs on the same host as your database, so your agent can deploy, debug, and redeploy end-to-end.",
+    body: "TypeScript app hosting on the same platform and in the same region as your database, so your agent can deploy, debug, and redeploy end-to-end.",
     bullets: [
       "Bun runtime on bare metal",
       "Co-located with Prisma Postgres, single-digit ms query latency",
       <>
         Long-running workloads: WebSockets, cron, background jobs <em>(coming soon)</em>
       </>,
-      "Versioned deployments with preview URLs, deploy by git push or CLI",
+      // A plain <a>: /docs is another zone (lib/zones.ts). The homepage's
+      // Markdown rendition (lib/markdown/home.ts) carries the same link.
+      <>
+        Versioned deployments with preview URLs,{" "}
+        <a
+          href="/docs/compute/deploy-on-push"
+          className="underline decoration-black/20 underline-offset-4 transition-colors hover:decoration-black/60"
+        >
+          deploy by git push
+        </a>{" "}
+        or CLI
+      </>,
     ],
   },
   studio: {

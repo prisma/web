@@ -191,7 +191,7 @@ npx prisma generate
 
 ## 7. Instantiate Prisma Client
 
-Now that you have all the dependencies installed, you can instantiate Prisma Client. You need to pass an instance of the Prisma ORM driver adapter adapter to the `PrismaClient` constructor:
+Now that you have all the dependencies installed, you can instantiate Prisma Client. You need to pass an instance of the Prisma ORM driver adapter to the `PrismaClient` constructor:
 
 ```typescript title="lib/prisma.ts"
 import "dotenv/config";
@@ -207,7 +207,13 @@ export { prisma };
 ```
 
 ### Using SQLite with Bun
-When targeting Bun, use the `@prisma/adapter-libsql` adapter instead of `@prisma/adapter-better-sqlite3`. Bun doesn't support the native SQLite driver that `better-sqlite3` relies on (see the [`node:sqlite` reference](https://bun.com/reference/node/sqlite)). Instantiate Prisma Client like so:
+When targeting Bun, use the `@prisma/adapter-libsql` adapter instead of `@prisma/adapter-better-sqlite3`. Bun doesn't support the native SQLite driver that `better-sqlite3` relies on (see the [`node:sqlite` reference](https://bun.com/reference/node/sqlite)). Install it:
+
+```shell
+bun add @prisma/adapter-libsql@7
+```
+
+Then instantiate Prisma Client like so:
 
 ```ts
 import "dotenv/config";
@@ -232,9 +238,11 @@ Create a `script.ts` file to test your setup:
 import { prisma } from "./lib/prisma";
 
 async function main() {
-  // Create a new user with a post
-  const user = await prisma.user.create({
-    data: {
+  // Create a user with a post, or return the existing user if the script already ran
+  const user = await prisma.user.upsert({
+    where: { email: "alice@prisma.io" },
+    update: {},
+    create: {
       name: "Alice",
       email: "alice@prisma.io",
       posts: {
@@ -249,7 +257,7 @@ async function main() {
       posts: true,
     },
   });
-  console.log("Created user:", user);
+  console.log("User:", user);
 
   // Fetch all users with their posts
   const allUsers = await prisma.user.findMany({
@@ -277,7 +285,7 @@ Run the script:
 npx tsx script.ts
 ```
 
-You should see the created user and all users printed to the console.
+You should see the user and all users printed to the console. The script uses `upsert` because `email` is unique, so you can run it again without a unique constraint error.
 
 ## 9. Explore your data with Prisma Studio
 

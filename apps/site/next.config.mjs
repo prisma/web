@@ -1,4 +1,6 @@
+import { composerBuild, composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
+import { fileURLToPath } from "node:url";
 
 const withMDX = createMDX();
 
@@ -30,6 +32,7 @@ const imageRemoteHostnames = [
 
 if (
   process.env.NODE_ENV === "production" &&
+  !composerBuild &&
   (!process.env.NEXT_DOCS_ORIGIN || !process.env.NEXT_BLOG_ORIGIN)
 ) {
   throw new Error(
@@ -46,6 +49,7 @@ const ContentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval'
     https://ingest.promptwatch.com
+    https://analytics.ahrefs.com
     https://cdn-cookieyes.com
     https://cdn.tolt.io
     https://unpkg.com
@@ -123,6 +127,8 @@ const ContentSecurityPolicy = `
     https://vercel.live https://vercel.com data: blob:
     https://td.doubleclick.net
     https://raw.githubusercontent.com
+    https://github.com
+    https://avatars.githubusercontent.com
     https://*.meetupstatic.com
     https://www.prisma.io
     https://*.google-analytics.com
@@ -130,6 +136,7 @@ const ContentSecurityPolicy = `
 
   connect-src 'self'
     https://ingest.promptwatch.com
+    https://analytics.ahrefs.com
     https://api.github.com
     https://p2zxqf70.api.sanity.io
     https://www.youtube.com
@@ -269,6 +276,7 @@ const agentMarkdownPaths = [
   "/stack",
   "/enterprise",
   "/mcp",
+  "/postgres/free-postgresql-hosting",
   "/compare",
   "/compare/convex",
   "/compare/kysely",
@@ -325,7 +333,8 @@ function agentMarkdownHeaders(path) {
  * that the two agree.
  */
 export const ANSWER_PAGE_HEADER_SOURCES = {
-  postgres: "/postgres/:slug((?!(?:guides|hipaa)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
+  postgres:
+    "/postgres/:slug((?!(?:guides|hipaa|free-postgresql-hosting)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
   compute: "/compute/:slug((?!(?:guides)$)[a-z0-9]+(?:-[a-z0-9]+)*)",
 };
 
@@ -349,11 +358,16 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
+  ...(composerBuild
+    ? { cacheHandler: fileURLToPath(new URL("../../composer/next-cache.cjs", import.meta.url)) }
+    : {}),
   reactCompiler: true,
   assetPrefix: "/site-static",
   allowedDevOrigins,
   reactStrictMode: true,
   images: {
+    ...(composerBuild ? { customCacheHandler: true } : {}),
     unoptimized: false,
     remotePatterns: imageRemoteHostnames.map((hostname) => ({
       protocol: "https",
@@ -371,13 +385,32 @@ const config = {
       // `oppref`. A visit with no `utm_source` at all is left alone: it is not
       // evidence of a paid click, so the Console link falls back to
       // `ref=prisma.io/lp/<slug>` like any other direct visit.
-      ...["compute", "postgres", "free"].map((slug) => ({
+      ...["compute", "postgres", "free", "1000-databases", "providers"].map((slug) => ({
         source: `/lp/${slug}`,
         has: [{ type: "query", key: "utm_source" }],
         missing: [{ type: "query", key: "utm_term" }],
         destination: `/lp/${slug}?utm_term=lp-${slug}`,
         permanent: false,
       })),
+      // The free Postgres page lives at /postgres/free-postgresql-hosting.
+      // Earlier URLs keep a permanent redirect onto that page. The HTML
+      // sources do not match the .md rendition, which is rewritten to
+      // /llms.mdx separately, so the old Markdown URL is redirected too.
+      {
+        source: "/free-postgresql-database",
+        destination: "/postgres/free-postgresql-hosting",
+        permanent: true,
+      },
+      {
+        source: "/free-postgresql-hosting",
+        destination: "/postgres/free-postgresql-hosting",
+        permanent: true,
+      },
+      {
+        source: "/free-postgresql-hosting.md",
+        destination: "/postgres/free-postgresql-hosting.md",
+        permanent: true,
+      },
       // Search Console 404s: published docs URLs missing the /docs base path.
       // Exact mappings preserve the /orm marketing page and unknown-path 404s.
       { source: "/ai/mcp-tools", destination: "/docs/ai/mcp-tools", permanent: true },
@@ -432,6 +465,7 @@ const config = {
       { source: "/privacy", destination: "/legal/privacy", permanent: true },
       { source: "/terms", destination: "/legal/terms", permanent: true },
       { source: "/sla", destination: "/legal/sla", permanent: true },
+      { source: "/security", destination: "/legal/security-and-compliance", permanent: true },
       { source: "/startups", destination: "/programs/startups", permanent: true },
       { source: "/partners", destination: "/programs/partners", permanent: true },
       { source: "/oss-friends", destination: "/programs/oss-friends", permanent: true },
@@ -623,13 +657,19 @@ const config = {
       },
       {
         permanent: true,
+        source: "/blog/comparison-prisma-typeorm-A9nlX0Pb5G1X",
+        destination: "/docs/orm/v7/more/comparisons/prisma-and-typeorm",
+      },
+      // v1.prisma.io/forum and /tutorials 404. Exact /tutorials/postgres-* rules above still win.
+      {
+        permanent: true,
         source: "/forum/:any*",
-        destination: "https://v1.prisma.io/forum/:any*",
+        destination: "/community",
       },
       {
         permanent: true,
         source: "/tutorials/:any*",
-        destination: "https://v1.prisma.io/tutorials/:any*",
+        destination: "/docs/guides",
       },
       {
         permanent: true,
@@ -654,7 +694,7 @@ const config = {
       {
         permanent: true,
         source: "/with-rest",
-        destination: "/docs/understand-prisma/prisma-in-your-stack/rest",
+        destination: "/docs/orm/v7/core-concepts/api-patterns",
       },
       {
         permanent: true,
@@ -918,6 +958,7 @@ const config = {
   },
 
   async rewrites() {
+    const crossZone = (rule) => !composerBuild || !/^\/(docs|blog)(?:[/:.-]|$)/.test(rule.source);
     return {
       beforeFiles: [
         {
@@ -1021,7 +1062,7 @@ const config = {
           destination: `${BLOG_ORIGIN}/blog-static/:path*`,
           missing: [{ type: "host", value: BLOG_ORIGIN_HOST }],
         },
-      ],
+      ].filter(crossZone),
       afterFiles: [
         // Markdown renditions of the marketing pages: /orm.md, /pricing.md,
         // /index.md for the homepage, and so on, all handled by
@@ -1067,6 +1108,11 @@ const config = {
   async headers() {
     return [
       {
+        // Keep social cards fetchable without indexing the generated images.
+        source: "/og/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
+      {
         source: "/:path*",
         headers: securityHeaders,
       },
@@ -1091,3 +1137,4 @@ const config = {
 };
 
 export default withMDX(config);
+

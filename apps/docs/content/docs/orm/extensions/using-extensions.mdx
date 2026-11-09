@@ -51,11 +51,12 @@ Add the extension to the `extensions` array on the client as well, which is what
 ```ts title="src/prisma/db.ts"
 import pgvector from '@prisma/orm-extension-pgvector/runtime';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   extensions: [pgvector],
 });
@@ -79,7 +80,7 @@ types {
 }
 
 model Post {
-  id        String         @id @default(uuid())
+  id        String         @id @onCreate(uuid())
   title     String
   embedding Embedding1536?
 }
@@ -89,11 +90,26 @@ model Post {
 
 Getting the new column from your contract into your database takes these commands, in this order:
 
-1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. Run it again after every later change to `contract.prisma`.
-2. `npx prisma migration plan`, which writes the extension's own migration into `migrations/`, so commit it along with your other migrations. Skip this and the next command stops with an error whose `code` is `MIGRATION.CONTRACT_SPACE_LAYOUT_VIOLATION`.
-3. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and makes the database match your contract: it creates the `Post` table, or adds the `embedding` column when the `Post` table already exists.
+1. `npx prisma contract emit`, so that `contract.json` and `contract.d.ts` pick up the new column. It also writes the extension's own files under `migrations/pgvector/`: its contract, its head ref and its migrations. Commit them along with your other migrations. Run it again after every later change to `contract.prisma`, and after you upgrade the extension package.
+2. `npx prisma db init` on a new database, or `npx prisma db update` on one that already has tables, which [Applying a migration](/orm/migrations/applying-a-migration) covers. This runs the extension's migration and makes the database match your contract: it creates the `Post` table, or adds the `embedding` column when the `Post` table already exists.
 
-The extension's migration is the `CREATE EXTENSION IF NOT EXISTS vector` statement, so you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
+The extension's contract declares the PostgreSQL extension `vector`, so its migration runs `CREATE EXTENSION IF NOT EXISTS vector` and you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
+
+The extension's contract declares `vector` outside any schema, so `db sign` and `db verify` accept the extension in any schema on the connection's search path, such as the `extensions` schema Supabase installs extensions in. A Supabase database that already has pgvector, PostGIS, ParadeDB or citext there adopts Prisma ORM 8 with `npx prisma contract emit` and `npx prisma db sign`. When the extension is in a schema that is not on the search path, `db verify` fails and names the schema and the search path. Add that schema to the search path of the role your app connects as, or reinstall the extension in a schema on the search path.
+
+Do not declare `vector` in your own contract as well. `contract emit` refuses an `extension vector {}` block with `PSL_ENTITY_DECLARED_BY_PACK`, and `migration plan` and `db update` refuse an `extension('vector')` handle in a TypeScript contract. The same holds for `postgis` with the PostGIS extension, `pg_search` with ParadeDB, and `citext` with the citext pack.
+
+:::note[Upgrading pgvector, PostGIS, ParadeDB or citext from before `8.0.0-rc.23`]
+
+Since `8.0.0-rc.23`, each of these extensions declares its PostgreSQL extension outside any schema. After you upgrade, run `npx prisma contract emit`, which writes new migrations and a new head ref under the extension's directory in `migrations/`, and commit all of them. When you upgrade from before `8.0.0-rc.22`, these include the migrations the next note describes. Then run `npx prisma db migrate` against each database. On a database that already ran the migrations added in `8.0.0-rc.22`, the migration it runs has no operations, so the database does not change. If your own contract declares the same extension, remove that declaration first, as described above.
+
+:::
+
+:::note[Upgrading pgvector, PostGIS or ParadeDB from before `8.0.0-rc.22`]
+
+Since `8.0.0-rc.22`, each of these extensions declares its PostgreSQL extension in its contract, instead of installing it in a migration that records an invariant, an id the database keeps to show that migration ran. After you upgrade, run `npx prisma contract emit` and commit the files it writes under the extension's directory in `migrations/`: a new head ref and two new migrations. Then run `npx prisma db migrate` against each database. On a database where the old migration already installed the extension, the new migration only moves the extension's marker. On a database that has the extension but was never signed, `npx prisma db sign` works now. `db sign` refuses a contract space whose head ref needs an invariant the database has not recorded, with `MIGRATION.SIGN_INVARIANTS_MISSING`, because only `db migrate` can run the migration that records it.
+
+:::
 
 With the column in your database, write an embedding into it. A vector value is a plain `number[]` with as many entries as the column's dimension, so a column typed `Embedding1536` takes an array of 1536 numbers, which is what an embedding model gives you. Prisma ORM does not produce the numbers, and `embed` in this example stands for whichever model you call:
 
@@ -106,11 +122,17 @@ await db.orm.public.Post.create({ title: 'about cats', embedding });
 
 In Prisma ORM 8 `create` takes the fields directly, with no `data` wrapper. [Create a record](/orm/coming-from-prisma-orm-7#create-a-record) shows the two side by side. `public` is the PostgreSQL schema your tables are in.
 
-Searching for the rows closest to a query vector uses the operations the extension adds, and you write that search with the SQL query builder rather than with `db.orm`. In that block:
+To get the rows closest to a query vector on `db.orm`, use the method pgvector adds for each vector field under `using`. It orders the rows by cosine distance, nearest first, and an optional second argument keeps only the rows within that distance:
+
+```ts
+const nearest = await db.orm.public.Post.using.embedding_nearest(queryVector).limit(10).all();
+```
+
+[Package methods with `using`](/orm/reference/orm-client#package-methods-with-using) covers these methods. To get the distance itself in each row, write the search with the SQL query builder, as in the block below, where:
 
 - `db.orm` is the ORM API, and under it you address a model by the name in your contract, so the model `Post` is `db.orm.public.Post`.
 - `db.sql` is the [SQL query builder](/orm/fundamentals/advanced-queries), and under it you address a table by the name it has in the database, so the same data is `db.sql.public.Post`. The two names are the same because the model sets no `@@map`.
-- `db.runtime()` is what runs a built query.
+- `db.query(...)` runs a built query.
 - `f`, in the callback of each builder method, holds the row's columns.
 - `fns` holds the functions you can call on those columns, including the ones pgvector adds.
 - `queryVector` is a `number[]` of the same length as the stored embeddings.
@@ -126,11 +148,11 @@ export async function similaritySearch(queryVector: number[]) {
     .limit(10)
     .build();
 
-  return db.runtime().query(plan);
+  return db.query(plan);
 }
 ```
 
-`.select('distance', ...)` names the computed column `distance`, and `.build()` returns a plain object that `db.runtime().query(...)` runs. Each row that comes back has `id`, `title`, and `distance`, a `number` that is `null` when the row has no embedding.
+`.select('distance', ...)` names the computed column `distance`, and `.build()` returns a plain object that `db.query(...)` runs. Each row that comes back has `id`, `title`, and `distance`, a `number` that is `null` when the row has no embedding.
 
 Alongside `fns.cosineDistance`, pgvector gives you `fns.cosineSimilarity`. Both take two vectors and return a PostgreSQL `float8`, which you get as a `number`. The difference is which way you sort: order ascending when you sort by distance, because the closest row has the smallest distance, and descending when you sort by similarity.
 
@@ -153,7 +175,7 @@ Every extension, whether Prisma wrote it or someone in the community did, is lis
 | --- | --- | --- | --- | --- |
 | [arktype-json](https://www.prisma.io/extensions/arktype-json) | JSON columns validated by an arktype schema and typed end to end. | `@prisma/orm-extension-arktype-json` | PostgreSQL | Prisma |
 | [MongoDB](https://www.prisma.io/extensions/mongodb) | MongoDB support for Prisma ORM: config, runtime, contract authoring, BSON values, and migrations in one package. | `@prisma/orm-mongo` | MongoDB | Prisma |
-| [ParadeDB](https://www.prisma.io/extensions/paradedb) (experimental) | BM25 full-text search indexes. | `@prisma/orm-extension-paradedb` | PostgreSQL | Prisma |
+| [ParadeDB](https://www.prisma.io/extensions/paradedb) (experimental) | BM25 full-text search ranked by relevance, with fuzzy, phrase, and proximity queries. | `@prisma/orm-extension-paradedb` | PostgreSQL | Prisma |
 | [pgvector](https://www.prisma.io/extensions/pgvector) | Vector columns and similarity search for embeddings. | `@prisma/orm-extension-pgvector` | PostgreSQL | Prisma |
 | [PostGIS](https://www.prisma.io/extensions/postgis) | Geometry columns and geospatial queries such as distance and containment. | `@prisma/orm-extension-postgis` | PostgreSQL | Prisma |
 | [PostgreSQL](https://www.prisma.io/extensions/postgresql) | PostgreSQL support for Prisma ORM: config, runtime, contract authoring, and migrations in one package. | `@prisma/orm-postgres` | PostgreSQL | Prisma |
@@ -192,11 +214,12 @@ The client is where the real difference is, because you build it with `supabase(
 
 ```ts title="src/prisma/db.ts"
 import { supabase } from '@prisma/orm-extension-supabase/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = await supabase<Contract>({
-  contractJson,
+export const db = await supabase({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   jwksUrl: process.env['SUPABASE_JWKS_URL']!,
 });
@@ -204,13 +227,40 @@ export const db = await supabase<Contract>({
 
 `jwksUrl` is your project's JWKS endpoint, `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`, and it is the right option for a current Supabase project, because those sign their JWTs with ES256 keys. An older project that still signs with the shared HS256 secret passes `jwtSecret` instead of `jwksUrl`, and never both. `supabase status` prints a `JWT_SECRET` even for an ES256 project, so its presence does not tell you which one yours uses. A token signed the other way is rejected with an error whose `code` is `SUPABASE.JWT_INVALID`, and the message names the fix.
 
-`supabase(...)` takes the same `extensions` array as `postgres(...)`, so pgvector or another extension goes there in the same way.
+`supabase(...)` takes the options `postgres(...)` takes, so pgvector or another extension goes in its `extensions` array in the same way. That includes `cursor`, which streams rows from a server-side cursor, and `binding`, which takes `{ kind: 'url', url }` or `{ kind: 'pgPool', pool }`.
 
-`await db.asUser(jwt)` takes the user's Supabase JWT and gives you a client that runs as that user. `db.asAnon()` gives you one that runs as the anonymous role, and `db.asServiceRole()` one that bypasses row-level security. `db` itself has no `orm` or `sql`: those live on the three role-bound clients.
+To use a `pg` pool you build yourself, pass it as `pg` in place of `url`. `supabase(...)` takes a `pg.Pool`, not a `pg.Client`, and checks the database input when you call it. [`postgres(options)`](/orm/reference/transactions-and-runtime#postgresoptions) lists what it accepts and the error a wrong input gives.
+
+```ts title="src/prisma/db.ts (excerpt)"
+import { Pool } from 'pg';
+
+export const pool = new Pool({ connectionString: process.env['DATABASE_URL']! });
+export const db = await supabase({
+  contract: contractFromJson<Contract>(contractJson),
+  pg: pool,
+  jwksUrl: process.env['SUPABASE_JWKS_URL']!,
+});
+```
+
+`db.close()` does not end a pool you pass in, so at shutdown call `await db.close()` and then `await pool.end()`. After `db.close()`, a query on a role-bound client does not throw at the call. The promise or query result it returns rejects when you await or read it, so do that inside `try`/`catch`.
+
+You run queries through a client bound to a role, not through `db` itself, which has no `orm` or `sql`. `db` gives you three of them:
+
+- `await db.asUser(jwt)` takes the user's Supabase JWT and runs as that user.
+- `db.asAnon()` runs as the anonymous role.
+- `db.asServiceRole()` bypasses row-level security.
+
+When a role-bound client is done with a connection, it resets the connection's role before the connection goes back to the pool, so the next query on that connection does not run as that role.
+
+Each role-bound client has the members a `postgres(...)` client uses to run queries: `orm`, `sql`, `raw`, `prepare`, `query`, `execute`, `toSql`, `enums`, `nativeEnums`, and `transaction()`. The `tx` a role-bound `transaction()` passes to your callback has the same members as a [`postgres(...)` transaction](/orm/reference/transactions-and-runtime#dbtransactioncallback), `enums` and `nativeEnums` included. For example, `prepare` prepares a statement you run many times with different values, as [`db.prepare`](/orm/reference/transactions-and-runtime#dbpreparedeclaration-callback) describes.
+
+`db.close()` closes every role-bound client and the `.supabase` client of `db.asServiceRole()`, which queries Supabase's own `auth` and `storage` tables. A query on any of them that starts after `close()` rejects with an error whose `code` is `DRIVER.NOT_CONNECTED` (`Runtime is closed`). `close()` waits for queries already running, and for open role transactions, before it ends the pool it created from `url`. Await every role transaction before you call `close()`.
+
+If you add your own methods to a model by subclassing `Collection`, as [Custom `Collection` subclass](/orm/reference/orm-client#custom-collection-subclass) shows, pass the subclass to `supabase(...)` in the `collections` option, as you would to `postgres(...)`. The role-bound clients then use it on their `orm`.
 
 `@prisma/orm-extension-supabase` has a contract of its own, which describes Supabase's `auth` and `storage` tables, check constraints included. Prisma read those tables from one Supabase version, supabase/postgres 17.6.1.106, and a Supabase project on another version can have a different set of check constraints. [`npx prisma db verify`](/cli/db-verify) compares your database with the extension's contract as well as with yours, and when a check constraint the extension describes is missing from your database, `db verify` lists it and fails. You cannot fix that with a migration, because Prisma ORM never changes Supabase's own tables. Instead, [open an issue on prisma/orm](https://github.com/prisma/orm/issues) with the output of `db verify` and your Supabase version, so the extension can be updated to match.
 
-[`npx prisma db sign`](/cli/db-sign) checks that a database matches your contract and then records in the database which contract it matches, and it records the extension's contract the same way. When an update to `@prisma/orm-extension-supabase` changes the extension's contract, that record no longer matches, and `npx prisma db verify` fails with `MIGRATION.CONTRACT_SPACE_VIOLATION` until you run `npx prisma db sign` again against every database you signed with the earlier version. The Prisma ORM release notes say when an update changes the extension's contract, for example for the change introduced in 8.0.0-rc.12. If you are also re-emitting your own contract with `npx prisma contract emit`, run that before `db sign`.
+[`npx prisma db sign`](/cli/db-sign) checks that a database matches your contract and then records in the database which contract it matches, and it records the extension's contract the same way. When an update to `@prisma/orm-extension-supabase` changes the extension's contract, that record no longer matches, and `npx prisma db verify` fails with `MIGRATION.CONTRACT_SPACE_VIOLATION` until you run `npx prisma db sign` again against every database you signed with the earlier version. The Prisma ORM release notes say when an update changes the extension's contract, for example for the change introduced in 8.0.0-rc.12. A change introduced in `8.0.0-rc.20` changed it again, so after you upgrade from a version before `8.0.0-rc.20`, run `npx prisma db sign` against every Supabase database. The database itself does not change. If you are also re-emitting your own contract with `npx prisma contract emit`, run that before `db sign`.
 
 :::
 

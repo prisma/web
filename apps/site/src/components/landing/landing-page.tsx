@@ -31,29 +31,34 @@ export function landingMetadata(content: LandingContent): Metadata {
 }
 
 /**
- * The shared page shape: hero, the three-product flow, the plan ladder with
- * the Free plan lit (the second CTA, one screen below the first), the
- * benefits, then whatever proof the page adds (`children`), the FAQ and the
- * closer. Every
- * CTA on the page is the same label to the same Console URL; the attribution
- * listener in the root layout stamps the campaign params at click time.
+ * The shared page shape: hero, the three-product flow (when the page has
+ * one), the plan ladder with the page's plan lit (the second CTA, one screen
+ * below the first), the benefits (when the page has them), then whatever
+ * proof the page adds (`children`), the FAQ and the closer. Every CTA on the
+ * page is the same label to the same Console URL; the attribution listener
+ * in the root layout stamps the campaign params at click time.
  */
 export function LandingPage({
   content,
   heroVisual,
   children,
+  plansAfterChildren = false,
 }: {
   content: LandingContent;
   heroVisual?: ReactNode;
   children?: ReactNode;
+  /** Put the plan ladder after the page's proof section instead of before the benefits. */
+  plansAfterChildren?: boolean;
 }) {
+  const plans = <LandingPlans {...content.plans} ctaLabel={content.ctaLabel} />;
   return (
     <>
       <LandingHero content={content} visual={heroVisual} />
-      <LandingFlow flow={content.flow} />
-      <LandingPlans />
-      <LandingBenefits benefits={content.benefits} />
+      {content.flow ? <LandingFlow flow={content.flow} /> : null}
+      {plansAfterChildren ? null : plans}
+      {content.benefits ? <LandingBenefits benefits={content.benefits} /> : null}
       {children}
+      {plansAfterChildren ? plans : null}
       <Faq heading="Before you sign up" items={content.faq} />
       <div id={CLOSER_CTA_ID}>
         <CtaBurst
@@ -62,7 +67,7 @@ export function LandingPage({
           body={content.cta.body}
           bodyMaxWidth="max-w-[64ch]"
           checks={content.cta.checks.map((label, i) => ({ label, color: CHECK_COLORS[i % 3] }))}
-          primaryCta={{ label: CTA_LABEL, href: CONSOLE_SIGNUP_URL }}
+          primaryCta={{ label: content.ctaLabel ?? CTA_LABEL, href: CONSOLE_SIGNUP_URL }}
           secondaryCta={null}
           ctaLocation="lp_closer"
         />

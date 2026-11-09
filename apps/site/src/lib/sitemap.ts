@@ -1,11 +1,13 @@
 import type { Dirent } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { changelogSource } from "@/lib/changelog-source";
 import { getBaseUrl } from "@/lib/url";
 import { isLandingPath } from "@/lib/landing-routes";
 import { extensions } from "@prisma-docs/ui/data/extensions";
+import { loadTemplates } from "@/app/apps/_lib/manifest";
 import { getAnswerEntries } from "./answer-page-content";
+import { getGitFileDates, getRouteLastModified } from "./sitemap-lastmod";
 
 type SitemapEntry = {
   url: string;
@@ -15,7 +17,8 @@ type SitemapEntry = {
 };
 
 const HOST_SITEMAPS = ["/sitemap-site.xml", "/docs/sitemap.xml", "/blog/sitemap.xml"];
-const APP_DIRECTORY = path.join(process.cwd(), "src/app");
+const SRC_DIRECTORY = path.join(process.cwd(), "src");
+const APP_DIRECTORY = path.join(SRC_DIRECTORY, "app");
 
 /** Escape XML-sensitive characters before writing values into sitemap markup. */
 function escapeXml(value: string): string {
@@ -133,31 +136,36 @@ async function collectPageRoutes(directory: string, segments: string[] = []): Pr
   return routes.flat();
 }
 
-/** Get the last modified date of a file as an ISO date string (YYYY-MM-DD). */
-async function getFileLastModified(filePath: string): Promise<string | undefined> {
-  try {
-    const fileStat = await stat(filePath);
-    return fileStat.mtime.toISOString().split("T")[0];
-  } catch {
-    return undefined;
-  }
-}
-
 /** Generate sitemap entries for all public pages in the site app. */
 export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<SitemapEntry[]> {
   const answers = getAnswerEntries();
-  const [pageRoutes, changelogPages] = await Promise.all([
+  const [pageRoutes, changelogPages, templates] = await Promise.all([
     collectPageRoutes(APP_DIRECTORY),
     changelogSource.getPages(),
+    // The app pages come from the Compute template manifest; an unreachable
+    // manifest at build time leaves them out rather than failing the sitemap.
+    // Read it once, at build: a revalidating read would make Next rebuild this
+    // sitemap on the server, where there is no git history for the TSX route
+    // dates below.
+    loadTemplates("build"),
   ]);
 
-  // Build a map of pathname → lastmod from page file stats
+  // TSX routes have no frontmatter date: use the last commit that changed the
+  // page or its content files (see `@/lib/sitemap-lastmod`). The production
+  // build fetches the commit's history when the build host has none (Vercel)
+  // or a shallow one. Without git history the route gets no lastmod, never
+  // the build date.
+  const fileDates = getGitFileDates(SRC_DIRECTORY, {
+    fetchHistory: process.env.NODE_ENV === "production",
+    report: (message) => console.log(`sitemap-site.xml: ${message}`),
+  });
   const pageLastModMap = new Map<string, string | undefined>();
-  await Promise.all(
-    pageRoutes.map(async ({ pathname, filePath }) => {
-      pageLastModMap.set(pathname, await getFileLastModified(filePath));
-    }),
-  );
+  for (const { pathname, filePath } of pageRoutes) {
+    pageLastModMap.set(
+      pathname,
+      getRouteLastModified(pathname, filePath, SRC_DIRECTORY, fileDates),
+    );
+  }
 
   // Changelog entries use their frontmatter date as lastmod
   const changelogLastModMap = new Map<string, string>();
@@ -175,6 +183,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       ...pageRoutes.map((route) => route.pathname).filter((pathname) => !isLandingPath(pathname)),
       ...changelogPages.map((page) => page.url),
       ...extensions.map((entry) => `/extensions/${entry.slug}`),
+      ...templates.map((template) => template.pagePath),
       ...answers.map((entry) => entry.url),
     ]),
   ];
@@ -186,6 +195,7 @@ export async function getSiteSitemapEntries(baseUrl = getBaseUrl()): Promise<Sit
       lastModified:
         answers.find((entry) => entry.url === pathname)?.data.updatedAt ??
         changelogLastModMap.get(pathname) ??
+        templates.find((template) => template.pagePath === pathname)?.publishedAt ??
         pageLastModMap.get(pathname),
       ...getEntryMetadata(pathname),
     }));

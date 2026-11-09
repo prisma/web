@@ -24,7 +24,10 @@ function toPlainText(value: string): string {
       // the FAQPage JSON-LD must not inherit: links keep the anchor words, code
       // chips keep their contents, both drop their markup. Fences keep the code.
       .replace(/```(?:\w+)?\n?([\s\S]*?)```/g, " $1 ")
-      .replace(/\[((?:[^[\]\\`]|`[^`]*`)+)\]\((?:\/[^\s)]*|#[^\s)]+|https?:\/\/[^\s)]+)\)/g, "$1")
+      .replace(
+        /\[((?:[^[\]\\`]|`[^`]*`)+)\]\((?:\/[^\s)]*|#[^\s)]+|https?:\/\/[^\s)]+)\)(?:\{newtab\})?/g,
+        "$1",
+      )
       .replace(/`([^`]+)`/g, "$1")
       .replace(/&amp;quot;/g, '"')
       .replace(/&amp;#39;|&amp;apos;/g, "'")
@@ -105,6 +108,8 @@ export function createSoftwareApplicationStructuredData({
   operatingSystem = "Cross-platform",
   license,
   downloadUrl,
+  image,
+  author,
   offers,
 }: {
   path: string;
@@ -114,6 +119,10 @@ export function createSoftwareApplicationStructuredData({
   operatingSystem?: string;
   license?: string;
   downloadUrl?: string;
+  /** Screenshot path or URL. */
+  image?: string;
+  /** Who built it, when it is not Prisma. */
+  author?: { name: string; url: string };
   offers?: {
     "@type": "Offer";
     price: string;
@@ -136,6 +145,8 @@ export function createSoftwareApplicationStructuredData({
     operatingSystem,
     ...(license && { license }),
     ...(downloadUrl && { downloadUrl }),
+    ...(image && { image: absoluteUrl(image) }),
+    ...(author && { author: { "@type": "Person", name: author.name, url: author.url } }),
     offers: offers ?? {
       "@type": "Offer",
       price: "0",

@@ -4,7 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { FrameworkProvider } from "fumadocs-core/framework";
 import type * as PageTree from "fumadocs-core/page-tree";
 import { TreeContextProvider } from "@fumadocs/base-ui/contexts/tree";
-import { baseOptions } from "./layout.shared";
+import { authLinks, baseOptions } from "./layout.shared";
+import type { ButtonItemType } from "../components/layout/link-item";
 import { SidebarViewProvider } from "../components/layout/notebook/sidebar-nav";
 import { textContent } from "@prisma-docs/ui/lib/html-text";
 
@@ -110,4 +111,38 @@ test("the section breadcrumb is a named link to the section", () => {
 
   assert.equal(found.length, 3, "expected the lockup, the wordmark, and the section crumb");
   assert.deepEqual(found.map((a) => [a.href, a.text]).at(-1), ["/composer", "Composer"]);
+});
+
+test("the navbar offers Login and then Sign up, each on its own Console page", () => {
+  const buttons = authLinks.filter((item): item is ButtonItemType => item.type === "button");
+
+  assert.deepEqual(
+    buttons.map((item) => {
+      const url = new URL(item.url);
+      return [item.text, `${url.origin}${url.pathname}`];
+    }),
+    [
+      ["Login", "https://console.prisma.io/login"],
+      // Not the Console root: signed out, it redirects to /login and drops the query.
+      ["Sign up", "https://console.prisma.io/sign-up"],
+    ],
+  );
+  for (const item of buttons) {
+    assert.equal(item.on, "nav");
+    assert.equal(
+      item.secondary,
+      true,
+      `${String(item.text)} should use the same ink pill as Login`,
+    );
+    assert.equal(new URL(item.url).searchParams.get("utm_source"), "docs");
+  }
+  // Login shows at every desktop width; Sign up only from `lg`, where a second
+  // pill clips only the longest section crumbs.
+  assert.deepEqual(
+    buttons.map((item) => [item.text, item.navbarClassName]),
+    [
+      ["Login", undefined],
+      ["Sign up", "max-lg:hidden"],
+    ],
+  );
 });

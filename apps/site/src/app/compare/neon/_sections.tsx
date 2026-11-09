@@ -90,6 +90,12 @@ const SOURCES = [
     product: "Prisma Postgres, Prisma ORM, and Prisma Compute",
     links: [
       { label: "Prisma Postgres", href: "/docs/postgres" },
+      {
+        label: "No cold starts on Prisma Postgres",
+        href: "/blog/prisma-postgres-the-future-of-serverless-databases",
+      },
+      { label: "Object Store buckets", href: "/docs/storage" },
+      { label: "Object storage on Prisma Compute", href: "/docs/compute/object-storage" },
       { label: "Prisma ORM docs", href: "/docs/orm" },
       { label: "Prisma Compute", href: "/docs/compute" },
       { label: "Compute limitations", href: "/docs/compute/limitations" },
@@ -163,6 +169,17 @@ function buildNeonPage(minutes: number) {
           competitorItems: CHOOSE_NEON,
           prismaItems: CHOOSE_PRISMA,
         })}
+        <p className="max-w-[68ch]">
+          Want the whole app, frontend included, hosted next to the database? See{" "}
+          <a href="/blog/neon-vs-prisma-postgres-app-hosting-in-one-place" className={INLINE}>
+            Neon alternatives with app hosting and Postgres in one place (2026)
+          </a>{" "}
+          and, for more hosts,{" "}
+          <a href="/blog/app-hosting-platforms-with-managed-postgres-2026" className={INLINE}>
+            App hosting platforms with managed Postgres compared (2026)
+          </a>
+          .
+        </p>
       </section>
 
       <section className={SECTION}>
@@ -276,7 +293,11 @@ function buildNeonPage(minutes: number) {
               <a href="https://neon.com/pricing" className={QUIET_LINK}>
                 Neon pricing
               </a>
-              , {CHECKED}).
+              , {CHECKED}). Business at $129 a month adds{" "}
+              <Link href="/postgres/hipaa" className={QUIET_LINK}>
+                HIPAA with a signed BAA
+              </Link>
+              , SOC 2 Type II and ISO 27001.
             </>
           }
         />

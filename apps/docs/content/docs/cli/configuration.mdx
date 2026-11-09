@@ -6,7 +6,7 @@ metaTitle: Prisma ORM CLI configuration
 metaDescription: 'Learn how Prisma ORM CLI commands find config, read database URLs, and format output.'
 ---
 
-Prisma ORM CLI commands read `prisma.config.ts`, starting in the directory you run them from. The file has one section per part of the CLI. The `orm` section holds your schema, database, and migration settings, which the `contract`, `db`, and `migration` commands read. The `skills` section holds the settings for the [agent skills commands](/cli/skills), which copy Prisma's instructions for AI coding agents into your project. The `composer` section holds [Prisma Composer](/composer)'s deploy config, the extensions and the deploy-state store that [`deploy`](/cli/deploy) and [`dev`](/cli/dev) read; [Composer getting started](/composer/getting-started) shows how to write it.
+Prisma ORM CLI commands read `prisma.config.ts`, starting in the directory you run them from. The file has one section per part of the CLI. The `orm` section holds your schema, database, and migration settings, which the `contract`, `db`, and `migration` commands read. The `skills` section holds the settings for the [agent skills commands](/cli/skills), which copy Prisma's instructions for AI coding agents into your project. The `composer` section holds [Prisma Composer](/composer)'s deploy config, the entry module, the extensions and the deploy-state store that [`deploy`](/cli/deploy) and [`dev`](/cli/dev) read; [Composer getting started](/composer/getting-started) shows how to write it.
 
 ## Config file
 
@@ -123,11 +123,44 @@ export default definePrismaConfig({
 });
 ```
 
-`prisma7Schema` takes one schema file, or a directory of `.prisma` files as Prisma ORM 7 reads it. A `DateTime` field, and a field with `@db.Timestamp`, `@db.Timestamptz`, `@db.Date`, or `@db.Time`, reads and writes strings such as `"2026-09-14 10:00:00.123"`, the text PostgreSQL prints, not `Temporal` values, so your application needs no `Temporal`. A `DateTime` value is in UTC, as Prisma ORM 7 writes it. To get `Temporal` values, write a Prisma ORM 8 contract with `npx prisma contract print --output prisma/contract.prisma` and change the types there. It reads every `.prisma` file it is given, so these files do not need the `// use prisma-8` first line. `contract emit` writes `contract.json` and `contract.d.ts` into the directory that holds the schema, here `prisma/`, unless you set `output`. Prisma ORM 7 keeps owning the database and its migrations, and you run its commands as `prisma7`, the Prisma ORM 7 CLI that [`orm init --from-prisma7-schema`](/cli/orm-init#on-a-prisma-orm-7-project) installs next to Prisma ORM 8.
+`prisma7Schema` takes one schema file, or a directory of `.prisma` files as Prisma ORM 7 reads it. `prisma7Schema` reads every `.prisma` file it is given, so these files do not need the `// use prisma-8` first line. `contract emit` writes `contract.json` and `contract.d.ts` into the directory that holds the schema, here `prisma/`, unless you set `output`. Prisma ORM 7 keeps owning the database and its migrations, and you run its commands as `prisma7`, the Prisma ORM 7 CLI that [`orm init --from-prisma7-schema`](/cli/orm-init#on-a-prisma-orm-7-project) installs next to Prisma ORM 8. `orm init --from-prisma7-schema` also writes this config for you.
+
+With `prisma7Schema`, each date and time field keeps its column and reads as the type below:
+
+| Prisma ORM 7 field | Prisma ORM 8 type | Your code reads |
+| --- | --- | --- |
+| `DateTime` | `TimestampJsDate(3)`, printed `DateTime(storage: timestamp)` | a JavaScript `Date`, the stored value read as UTC, as Prisma ORM 7 did |
+| `@db.Timestamptz(p)` | `TimestamptzJsDate(p)`, printed `DateTime(precision: p)` | a JavaScript `Date` |
+| `@db.Timestamp(p)` | `TimestampJsDate(p)` | a JavaScript `Date`, the stored value read as UTC |
+| `@db.Date` | `DateString` | an ISO 8601 string, such as `"2026-09-14"` |
+| `@db.Time(p)` | `TimeString(p)` | an ISO 8601 string, such as `"10:00:00.5"` |
+| `@db.Timetz(p)` | `Timetz(p)` | an ISO 8601 string with a full offset, such as `"10:00:00+02:00"` |
+
+A `Date` holds milliseconds, so a `@db.Timestamptz(6)` or `@db.Timestamp(6)` column with values that use the extra digits reads with them dropped. A `Date` cannot hold `infinity` or `-infinity` either, so a row that stores one fails to read with `RUNTIME.DECODE_FAILED`.
+
+To read other types, such as strings that keep every digit or `Temporal` objects, write a Prisma ORM 8 contract with `npx prisma contract print --output prisma/contract.prisma`. In that file, add `as: string` or `as: temporal` to a `DateTime(...)` field, as in `DateTime(as: string, storage: timestamp)`, and write `Date(as: temporal)` or `Time(as: temporal)` for a date or a time. `Temporal` is the newer JavaScript date and time API. Runtimes without it, such as Node.js 24, need the `temporal-polyfill` package and `import "temporal-polyfill/full/global"` at the top of the file that creates your client, before it reads a `Temporal` field. A column that can hold `infinity` needs `as: string`. Then change `contract` in `prisma.config.ts` from `prisma7Schema("prisma/schema.prisma")` to `"./prisma/contract.prisma"`, so that `contract emit` reads the edited file.
+
+When your code creates or updates a row, Prisma ORM fills each `@updatedAt` field with the time from your application's clock, as a `Date` or as text in the form its type reads, rounded down to the column's precision. This also works on a `@db.Date`, `@db.Time`, or `@db.Timetz` field. A field can have both `@updatedAt` and `@default(now())`, and `@default(now())` stays the column's default in the database. When your code creates a row without a value for a `@default(now())` field, Prisma ORM fills it with the current UTC time, as the Prisma ORM 7 client did, so it reads `@default(now())` as `@default(now()) @onCreate(now())`. An `INSERT` from outside Prisma ORM still gets the column default.
+
+A list such as `String[]` reads as a list whose elements may be `null`, because the database that Prisma ORM 7 built does not stop a list from holding `null` elements.
+
+A `@db.Citext` field reads as `citext.Citext`, from the citext pack in `@prisma/orm-postgres-contrib`. Add the pack to the config with `import citext from "@prisma/orm-postgres-contrib/citext/control"` and `extensions: [citext]`; without it, `contract emit` refuses the field with `PSL.PRISMA7_EXTENSION_PACK_MISSING`, which names the import to add. The datasource's `extensions` list, such as `extensions = [vector, pg_trgm]`, is read too: an extension a configured pack provides, such as pgvector's `vector`, comes from the pack, and any other is declared in the contract, so `db sign` checks that the database has it.
 
 Once the config is in place, run `npx prisma contract emit` and then [`npx prisma db sign`](/cli/db-sign). `db sign` checks that the database matches the contract and then records that in the database, without changing your tables. Run both commands again after each Prisma ORM 7 migration, whether you ran `npx prisma7 migrate dev` or `npx prisma7 migrate deploy`, so that the record names the new contract.
 
-`contract emit` fails on any part of the schema that Prisma ORM 8 cannot represent exactly, such as a `view` block, `Unsupported(...)`, or `relationMode = "prisma"`. The error names the file and the line and suggests an edit to the Prisma ORM 7 schema. When that edit would also change the database on the next Prisma ORM 7 migration, the error says so. For example, removing an `Unsupported(...)` field drops its column, so for that field the error suggests adding `@@ignore` to the model instead, which leaves the next Prisma ORM 7 migration empty but removes the model from the Prisma ORM 7 client. Prisma ORM 8 has no views, so for a `view` block the error suggests removing the view or replacing it with a model over the table the view reads. `orm init --from-prisma7-schema` writes this config for you.
+An `Unsupported("ltree")` field becomes a column of that database type with no field on the model, as in the Prisma ORM 7 client: migrations and `db verify` keep the column, and your code cannot read or write it. `contract print` cannot write such a column yet, so a schema with `Unsupported(...)` fields stays your contract source.
+
+`contract emit` fails on any part of the schema that Prisma ORM 8 cannot represent exactly, such as a `view` block or `relationMode = "prisma"`. The error names the file and the line and suggests an edit to the Prisma ORM 7 schema. When that edit would also change the database on the next Prisma ORM 7 migration, the error says so.
+
+Prisma ORM 8 has no views, so for a `view` block the error suggests removing the view or replacing it with a model over the table the view reads.
+
+`contract emit` also fails when a default function gets an argument it does not take, such as `uuid(5)` or `cuid(1)`. The error code is `PSL.PRISMA7_UNKNOWN_DEFAULT`, and the message names the values the function takes, for example `uuid: version must be 4 or 7, got 5`.
+
+The contract also keeps the columns and tables of `@ignore` fields and `@@ignore` models, as storage that no model maps, so adding or removing `@ignore` plans no migration. The ORM still leaves those fields and models out of its queries. Because they are in the contract, they have to meet the same rules as the rest of the schema: every `@db.*` type Prisma ORM 7 accepts on PostgreSQL is read, and `@db.Citext` needs the citext pack even on an ignored model.
+
+The contract keeps the constraint names Prisma ORM 7 gave the database. Where Prisma ORM 7's name for a primary key or foreign key differs from the name Prisma ORM 8 would derive, the contract states it: a `map` on `@id`, `@@id`, or `@relation`, the primary key of an implicit many-to-many table such as `_PostToTag_AB_pkey`, and a name Prisma ORM 7 cut to 63 bytes. A later migration that touches one of these constraints then targets the name the database has. A `map` longer than PostgreSQL keeps is refused, as Prisma ORM 7 refuses it.
+
+After Prisma ORM 8 takes over the migrations, you can give an existing integer column `@default(autoincrement())`. `migration plan` and `db update` create or reuse a sequence for it and start the sequence past the column's current maximum, so rows already in the table do not collide with new ones.
 
 ## Use a Prisma ORM 6 MongoDB schema
 
@@ -151,6 +184,12 @@ export default definePrismaConfig({
 The schema file does not need the `// use prisma-8` first line. Run `npx prisma contract emit` and then [`npx prisma db sign`](/cli/db-sign), which checks that the database Prisma ORM 6 built matches the contract.
 
 `prisma6Schema` reads each field as the BSON type Prisma ORM 6 stores. A plain `Int` and an `Int @db.Long` are a `number` in your code, written as a BSON long, and a stored value with a fraction fails to read with `RUNTIME.DECODE_FAILED`. A `Bytes @db.ObjectId` field reads as a 24-digit hex string and takes a hex string or an `ObjectId`, not a `Buffer`. Every native type Prisma ORM 6 accepts on MongoDB is read, except `DateTime @db.Timestamp`.
+
+Each index keeps the name Prisma ORM 6 gave it: the name its `map:` sets (or `name:` on `@@index`), or else the name Prisma ORM 6 derives, such as `User_email_key` for a unique index on `email` and `User_email_idx` for a plain one. `db verify` checks these names against the database. If it reports an index whose name differs, write the name the database holds with `map:`.
+
+The indexes are kept as Prisma ORM 6 wrote them, and none are merged. Two indexes of one model with the same fields and the same sort, such as `@unique` and `@@unique` on one field, are refused with `PSL.PRISMA6_MONGO_INDEX_ALREADY_EXISTS`, as Prisma ORM 6 refuses them. Remove one of them, and when only one is unique, keep that one. A unique and a plain index on the same field that Prisma ORM 6 accepts, such as `@unique` beside `@@index([email(sort: Asc)])`, are both kept. Two indexes of one model with one name are refused with `PSL.PRISMA6_MONGO_INDEX_NAME_DUPLICATE`, and an empty `map:` or one longer than 127 bytes with `PSL.PRISMA6_MONGO_INDEX_NAME_INVALID`.
+
+After you upgrade from a release before `8.0.0-rc.23`, a contract emitted from a schema with indexes gets a new storage hash. Run `npx prisma contract emit`, then `npx prisma db verify` and `npx prisma db sign` against each database. The database does not change; `db sign` only updates the storage hash it records.
 
 `contract emit` fails on any part of the schema that Prisma ORM 8 cannot represent exactly, with an error code that starts with `PSL.PRISMA6_MONGO_`. The [error reference](/orm/reference/error-reference) lists each code and what to change.
 
@@ -239,9 +278,11 @@ Use the default text output when running commands locally. Use `--json` in CI or
 npx prisma db verify --db "$DATABASE_URL" --json
 ```
 
+Piping a command does not switch it to JSON: without `--json`, standard output gets the command's plain data, such as one line per item of a list. See [Global flags](/cli/global-flags#output-formats).
+
 For an AI agent that reads the output as text rather than parsing JSON, use `--format markdown`; see [Global flags](/cli/global-flags#output-formats).
 
-Use `--no-interactive` for scripts that must never pause for user input. Use `--confirm <token>` to grant a consent prompt non-interactively. For example, [`db update`](/cli/db-update) asks for the database name before a destructive change.
+Use `--no-interactive` for scripts that must never pause for user input. Use `--confirm <token>` to grant a consent prompt non-interactively. Commands that ask about data loss, such as [`db update`](/cli/db-update), take their answers as flags instead: `--delete`, `--rename`, and `--allow`.
 
 ## JSON output
 

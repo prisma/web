@@ -32,6 +32,7 @@ const NOT_GUIDES = [
   "/postgres/",
   "/postgres/guides",
   "/postgres/hipaa",
+  "/postgres/free-postgresql-hosting",
   "/compute/guides",
   "/postgres/guides/",
   "/postgres/typescript-test-environment/nested",
@@ -68,9 +69,14 @@ test("near misses are not guides and are not rewritten", () => {
   for (const pathname of NOT_GUIDES) {
     assert.equal(getAnswerPagePath(pathname), undefined, pathname);
   }
-  // The two product pages keep their own renditions.
+  // The two product pages keep their own renditions, and so does the free
+  // Postgres page that sits beside the guides.
   assert.equal(getAgentMarkdownRewritePathname("/postgres"), "/llms.mdx/postgres");
   assert.equal(getAgentMarkdownRewritePathname("/compute"), "/llms.mdx/compute");
+  assert.equal(
+    getAgentMarkdownRewritePathname("/postgres/free-postgresql-hosting"),
+    "/llms.mdx/postgres/free-postgresql-hosting",
+  );
   for (const pathname of ["/postgres/guides", "/postgres/hipaa", "/compute/guides"]) {
     assert.equal(getAgentMarkdownRewritePathname(pathname), undefined, pathname);
   }

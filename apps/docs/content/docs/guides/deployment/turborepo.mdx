@@ -159,18 +159,21 @@ The generated `db.ts` reads `DATABASE_URL` from the environment and is the modul
 ```typescript title="packages/database/src/prisma/db.ts"
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = postgres({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```
 
 ### 2.4. Set the database connection
 
-Create `packages/database/.env` with your PostgreSQL connection string. Use your own, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database.
+Create `packages/database/.env` with your PostgreSQL connection string. Use your own, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL; claim it with a free Prisma account to keep the database.
 
 ```bash title="packages/database/.env"
 DATABASE_URL="postgres://user:password@localhost:5432/turborepo_prisma"
@@ -192,7 +195,7 @@ model User {
   name      String?
   posts     Post[]
   createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
 }
 
 model Post {
@@ -202,7 +205,7 @@ model Post {
   author    User     @relation(fields: [authorId], references: [id])
   authorId  Int
   createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
 }
 ```
 
@@ -232,7 +235,7 @@ Add the database scripts and a package entrypoint to `packages/database/package.
     "dotenv": "^17.4.2"
   },
   "devDependencies": {
-    "@prisma/cli-engine": "0.6.2",
+    "@prisma/cli-engine": "0.9.0",
     "@types/node": "26.4.1",
     "prisma": "8.0.0"
   }
@@ -343,7 +346,7 @@ CREATE TABLE "public"."Post" (
 ...
 ```
 
-Turborepo shows the tasks in a terminal UI while they run and leaves each task's log in your terminal when it exits. Without a terminal, for example in CI, the Prisma CLI prints JSON instead; add `--format human` to the script to keep the human-readable output. See [Global flags](/cli/global-flags).
+Turborepo shows the tasks in a terminal UI while they run and leaves each task's log in your terminal when it exits. Without a terminal, for example in CI, the Prisma CLI prints the same human-readable output. Before `8.0.0-rc.24` it printed JSON there; add `--format human` to the script on those versions. See [Global flags](/cli/global-flags#output-formats).
 
 The command is offline: it writes `packages/database/migrations/app/<timestamp>_init/` with the migration as TypeScript (`migration.ts`), the compiled operations (`ops.json`), and the history marker (`migration.json`), and prints the exact DDL it will run. Review it, then apply it:
 
@@ -521,7 +524,7 @@ model User {
   bio       String? // [!code ++]
   posts     Post[]
   createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
 }
 ```
 

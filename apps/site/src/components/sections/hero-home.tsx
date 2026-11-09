@@ -55,7 +55,7 @@ export function HeroHome() {
           />
         </div>
         {/* brand grain across the whole panel */}
-        <Texture opacity={0.06} blend="multiply" />
+        <Texture opacity={0.06} blend="multiply" eager />
 
         <div className="relative px-4 sm:px-8">
           <div className="mx-auto flex max-w-4xl animate-hero-rise flex-col items-start pt-28 text-left motion-reduce:animate-none md:items-center md:pt-36 md:text-center">

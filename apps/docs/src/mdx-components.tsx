@@ -158,13 +158,13 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CalloutTitle: ({ children }: any) => <div className="mb-3 font-semibold">{children}</div>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, className, ...props }: any) => {
-      const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {
+      const variantMap: Record<string, "ppg" | "note" | "error" | "success" | "warning"> = {
         ppg: "ppg",
         error: "error",
         success: "success",
         warning: "warning",
-        info: "ppg",
-        note: "ppg",
+        info: "note",
+        note: "note",
         tip: "success",
         danger: "error",
       };

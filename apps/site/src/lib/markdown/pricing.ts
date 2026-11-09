@@ -116,7 +116,7 @@ const PLANS = [
       "1,000 databases",
       "30-day backup retention",
     ],
-    platform: ["Spend limits", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
+    platform: ["Spend limits", "GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
     cta: "Get started",
     popular: false,
   },
@@ -189,19 +189,24 @@ const COMPARISON_HEADERS = [
 ];
 
 const COMPARISON_ROWS = [
-  ["Monthly cost at ~50K MAU", "$385–450", "$95–145", "$72–90"],
+  ["Monthly cost at ~50K MAU", "$110–270", "$95–145", "$72–90"],
   [
     "Billing",
-    "Separate database + hosting bills",
+    "Billed through Vercel via the Marketplace, or as separate Neon and Vercel bills",
     "Platform subscription + Postgres compute + function usage",
     "One bill, one platform",
   ],
-  ["Database data transfer", "Pay per GB", "250 GB egress included, then $0.09/GB", "Included"],
+  [
+    "Database data transfer",
+    "500 GB egress per project included, then $0.10/GB",
+    "250 GB egress included, then $0.09/GB",
+    "Included",
+  ],
   [
     "Spend limits",
-    "Not standard",
+    "Neon: spending notifications at 80% and 100%. Vercel: a spend budget with an optional pause",
     "Spend cap on by default for covered usage; database compute excluded",
-    "On by default",
+    "Hard cap you set, on every paid plan",
   ],
 ];
 
@@ -235,7 +240,7 @@ const SPEC_GROUPS: {
       ["Storage overage", "—", "$2.00 per GB", "$1.50 per GB", "$1.00 per GB"],
       ["Databases", "50", "1,000", "1,000", "1,000"],
       ["Data transfer", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-      ["Spend limits", "—", INCLUDED, INCLUDED, INCLUDED],
+      ["Spend limits", "Fixed at $0, no card required", INCLUDED, INCLUDED, INCLUDED],
     ],
   },
   {
@@ -270,9 +275,15 @@ const SPEC_GROUPS: {
       ["Connection limit (pooled)", "10", "100", "500", "1,000"],
       ["Connection limit (direct)", "10", "10", "50", "100"],
       ["Connection idle timeout", "60 minutes", "60 minutes", "60 minutes", "60 minutes"],
-      ["Auto-scaling", INCLUDED, INCLUDED, INCLUDED, INCLUDED],
+      ["Pool mode", "Transaction", "Transaction", "Transaction", "Transaction"],
       ["Operation response size", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
-      ["Operation duration (db queries)", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
+      [
+        "Operation duration (db queries)",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+      ],
       ["Operation duration (interactive)", "Unlimited", "Unlimited", "Unlimited", "Unlimited"],
     ],
   },
@@ -392,8 +403,8 @@ export function renderPricingMarkdown(): string {
         "number of people on your team never add to the bill. An idle app scales to zero and " +
         "costs nothing. A request does the same work whether it comes from a person, a script, " +
         "or an AI agent, so that work is all you're charged for.",
-      "Every paid plan also includes a hard spend limit, on by default, so usage-based pricing " +
-        "stays predictable and never becomes a surprise bill.",
+      "Every paid plan also includes a hard spend limit: set it in the Console, and usage-based " +
+        "pricing stays predictable and never becomes a surprise bill.",
     ]),
     heading(3, "Every plan includes"),
     bulletList(EVERY_PLAN_INCLUDES),
@@ -416,19 +427,19 @@ export function renderPricingMarkdown(): string {
       "Database data transfer — unlimited, included free",
     ]),
     definitionList(CALCULATOR_PLAN_TERMS),
-    paragraphs("Hard spend limit, on by default — never a surprise bill."),
+    paragraphs("Hard spend limit on every paid plan, set in the Console — never a surprise bill."),
 
     heading(2, "See how Prisma compares at scale"),
     paragraphs([
       "Prisma charges per operation: each query your app runs against your database counts as " +
         "one. No seats. No database egress fees. And every paid plan includes a hard spend limit so there " +
         "are no surprises.",
-      "At around 50K monthly active users, Prisma Pro can cost up to 5x less than a typical " +
-        "Neon + Vercel setup, with one bill, included database data transfer, and spend limits on by " +
-        "default.",
+      "At around 50K monthly active users, Prisma Pro can cost less than half as much as a typical " +
+        "Neon + Vercel setup, with one bill, included database data transfer, and a hard spend limit " +
+        "you set.",
       // The badge on the Prisma Pro column; its multiple is derived from the
       // costs in the table below.
-      "Up to 5x less vs Neon + Vercel",
+      "Up to 2x less vs Neon + Vercel",
     ]),
     table(COMPARISON_HEADERS, COMPARISON_ROWS),
 
@@ -457,7 +468,7 @@ export function renderPricingMarkdown(): string {
     ),
     bulletList([
       "No credit card required to start",
-      "Free tier with no time limit",
+      "[Free tier with no time limit](/postgres/free-postgresql-hosting)",
       "Upgrade or downgrade anytime",
     ]),
     ctaList([

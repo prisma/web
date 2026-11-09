@@ -1,5 +1,6 @@
 import { Marker } from "@/components/brand/marker";
 import { PrismButton, PrismButtonOutline } from "@/components/brand/prism-button";
+import { SpectrumRing } from "@/components/brand/spectrum-ring";
 import { CheckBold } from "@/components/icons/forma";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
@@ -63,7 +64,7 @@ const PLANS = [
     ],
     platform: ["Spend limits"],
     blurb:
-      "Ship your first production app without worrying about the bill. Backups included, spend limits on by default.",
+      "Ship your first production app without worrying about the bill. Backups included, and a spend limit you set.",
     cta: "Get started",
     href: "https://console.prisma.io/sign-up",
     popular: true,
@@ -110,7 +111,7 @@ const PLANS = [
     // HIPAA deep-links to /postgres/hipaa (the Business-plan landing page);
     // the card renders feature strings through `renderFaqAnswer`, which turns
     // `[text](/path)` into an inline link.
-    platform: ["Spend limits", "GDPR, [HIPAA](/postgres/hipaa), SOC 2, ISO 27001"],
+    platform: ["Spend limits", "GDPR, [HIPAA with a BAA](/postgres/hipaa), SOC 2, ISO 27001"],
     blurb: "Built for high-growth teams with compliance requirements and sustained high volume.",
     cta: "Get started",
     href: "https://console.prisma.io/sign-up",
@@ -142,7 +143,7 @@ export function PricingPlans() {
             className={cn(
               "relative flex flex-col rounded-2xl border bg-white p-6 sm:p-7",
               plan.popular
-                ? "spectrum-border spectrum-border-on border-transparent shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                ? "border-transparent shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
                 : "border-black/[0.06]",
             )}
           >
@@ -199,6 +200,7 @@ export function PricingPlans() {
                 </PrismButtonOutline>
               )}
             </div>
+            {plan.popular && <SpectrumRing />}
           </div>
         ))}
       </div>

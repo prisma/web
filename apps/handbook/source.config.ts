@@ -12,6 +12,7 @@ export const handbook = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       status: z.enum(CHAPTER_STATUS).optional(),
+      toolSpecific: z.boolean().optional(),
       // Minutes, hand-set. Reading-time estimators lie about prose with
       // checklists and code in it.
       readingTime: z.number().int().positive().optional(),

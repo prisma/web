@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { blog } from "@/lib/source";
+import { getPublishedPages } from "@/lib/source";
 import { getSeriesMetadata, seriesRegistry } from "@/lib/series-registry";
 import { withBlogBasePath } from "@/lib/url";
 import { SeriesIndexGrid, type SeriesShelfItem } from "@/components/SeriesShelf";
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function SeriesIndexPage() {
   const seriesCounts = new Map<string, number>();
-  for (const post of blog.getPages()) {
+  for (const post of getPublishedPages()) {
     const seriesKey = (post.data as { series?: string }).series;
     if (typeof seriesKey === "string") {
       seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) ?? 0) + 1);

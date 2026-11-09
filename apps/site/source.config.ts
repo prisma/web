@@ -18,7 +18,11 @@ export const releaseNotes = defineCollections({
   type: "doc",
   dir: "content/changelog",
   schema: frontmatterSchema.extend({
-    date: z.coerce.date(),
+    // `date: 2024-03-13`, quoted or not, parses as a string and becomes a Date
+    // here. Anything but a real YYYY-MM-DD date fails the build: coercing the
+    // raw value would turn an empty or numeric one into a 1970 date and roll
+    // 2024-02-30 over to March 1.
+    date: z.iso.date().pipe(z.coerce.date()),
     version: z.string(),
     summary: z.string().optional(),
     metaTitle: z.string().optional(),

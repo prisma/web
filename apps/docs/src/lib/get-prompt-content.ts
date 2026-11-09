@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { source } from "@/lib/source";
 
 /**
@@ -8,7 +9,7 @@ export async function getPromptContent(slug: string) {
   const page = source.getPage(["ai", "prompts", slug]);
   if (!page) return null;
 
-  const processed = await page.data.getText("processed");
+  const processed = await (await pageContent(page.data)).getText("processed");
   const match = processed.match(/````md\n([\s\S]*?)\n````/);
   if (!match) return null;
 

@@ -4,9 +4,9 @@ export const SUPABASE_TITLE =
   "Prisma Postgres vs Supabase: what's the difference and which should I pick?";
 
 export const SUPABASE_DESCRIPTION =
-  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Supabase for Auth, Storage, Realtime, and Edge Functions. Checked October 2026.";
+  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM and Prisma Compute in one project. Pick Supabase for Auth, Storage, Realtime, and Edge Functions. Checked November 2026.";
 
-export const CHECKED = "October 2026";
+export const CHECKED = "November 2026";
 
 /** The blog's author page and photo; `/blog` is rewritten to the blog app. */
 export const SUPABASE_AUTHOR = {
@@ -16,7 +16,7 @@ export const SUPABASE_AUTHOR = {
 } as const;
 
 export const SUPABASE_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const SUPABASE_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
+export const SUPABASE_UPDATED = { iso: "2026-11-03", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -46,7 +46,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "Managed PostgreSQL. A project can be used as a standalone Postgres database with any Postgres client. Auth, Storage, Realtime, and Edge Functions are included and optional.",
     prisma:
-      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL. Any Postgres client works with it, so Prisma ORM is optional.",
+      "[Prisma Postgres](/docs/postgres) is managed PostgreSQL that autoscales, with no instance to size or upgrade. Any Postgres client works with it, so Prisma ORM is optional.",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/docs/postgres",
@@ -66,11 +66,11 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "App hosting",
     supabase:
-      "Edge Functions run server-side logic next to the database. Full app and frontend hosting remains on a separate platform.",
+      "Edge Functions suit short-lived work such as webhooks and lightweight APIs, and Supabase says its [custom domains](https://supabase.com/docs/guides/platform/custom-domains) are not intended for hosting a frontend through them. Its Compute private alpha, which runs backend services, is us-west-2 only and not for production, so the frontend and a production app server need another host.",
     prisma:
       "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. WebSocket servers are not supported.",
     sources: {
-      supabase: "https://supabase.com/pricing",
+      supabase: "https://supabase.com/compute",
       prisma: "https://www.prisma.io/docs/compute/limitations",
     },
   },
@@ -100,7 +100,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "Organization plan plus compute billed separately per project. Pro is from $25 a month. Pro and Team include $10 a month in compute credits, enough for one Micro instance. Additional compute is billed hourly.",
     prisma:
-      "Operations plus storage, with spend limits on paid plans. Prisma Postgres Free includes 200,000 operations a month and 2 GB of storage.",
+      "Operations plus storage, with spend limits on paid plans. Prisma Postgres [Free includes 200,000 operations a month and 2 GB of storage](/postgres/free-postgresql-hosting).",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -111,7 +111,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "SOC 2 and ISO 27001 are included on Team at $599 a month. HIPAA is a paid add-on on Team and Enterprise. Not listed on Free or Pro.",
     prisma:
-      "HIPAA, SOC 2 Type II, and ISO 27001 are on the Business plan at $129 a month, with a signed BAA for HIPAA. Not available on Free, Starter, or Pro. GDPR is on every plan.",
+      "[HIPAA, SOC 2 Type II, and ISO 27001 are on the Business plan at $129 a month, with a signed BAA for HIPAA](/postgres/hipaa). Not available on Free, Starter, or Pro. GDPR is on every plan.",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/postgres/hipaa",
@@ -155,6 +155,9 @@ export const APART = [
     body: "Prisma Postgres HIPAA, SOC 2 Type II, and ISO 27001 are on Business at $129 a month. HIPAA needs a signed BAA and is not on Free, Starter, or Pro. Supabase lists SOC 2 and ISO 27001 on Team at $599 a month, with HIPAA as a paid add-on. See [HIPAA on the Business plan](/postgres/hipaa).",
   },
 ];
+
+export const PRICING_NOTE =
+  "Prisma Postgres Free includes 200,000 operations, 2 GB of storage and 50 databases with no credit card, while Supabase Free gives 500 MB per project and pauses after a week of inactivity (see [Prisma pricing](/pricing) and [Supabase pricing](https://supabase.com/pricing)).";
 
 export const PRICING: readonly {
   label: string;
@@ -209,7 +212,7 @@ export const PRICING: readonly {
 export const WRONG_CHOICE = [
   "You want Auth, Storage, Realtime, auto-generated APIs, or Edge Functions as first-party services next to Postgres. Prisma Postgres does not include those. See [Supabase pricing](https://supabase.com/pricing).",
   "You want the frontend on a host such as Vercel, with Supabase isolating Auth, Storage, Edge Functions, and the database on a preview branch. A Prisma preview branch can own Compute services and databases; it does not include those Supabase backend products. See [Supabase branching](https://supabase.com/docs/guides/deployment/branching).",
-  "You need point-in-time recovery today. Prisma Postgres has no point-in-time recovery. Paid plans include daily backups. Supabase sells PITR as a $100 per month add-on per 7 days of retention on [Supabase pricing](https://supabase.com/pricing).",
+  "You need point-in-time recovery today. Prisma Postgres has no point-in-time recovery yet (it is coming in November 2026). Paid plans include daily backups. Supabase sells PITR as a $100 per month add-on per 7 days of retention on [Supabase pricing](https://supabase.com/pricing).",
   "You want database compute billed by the hour with a $25 Pro base, and you are fine that the Spend Cap excludes compute. Prisma Postgres bills operations and storage instead.",
 ];
 
@@ -222,7 +225,7 @@ export const FAQ: readonly { question: string; answer: string }[] = [
   {
     question: "Does Supabase host the frontend?",
     answer:
-      "Supabase Edge Functions run server-side logic next to the database. Full app and frontend hosting remains on a separate platform. Source: [Supabase pricing](https://supabase.com/pricing), October 2026.",
+      "Supabase Edge Functions suit short-lived work such as webhooks and lightweight APIs. Supabase does not host frontends, and its Compute private alpha, which runs backend services, is us-west-2 only and not for production, so the frontend and a production app server need another host. Source: [Supabase custom domains](https://supabase.com/docs/guides/platform/custom-domains) and [Supabase Compute](https://supabase.com/compute), November 2026.",
   },
   {
     question: "Does Prisma Postgres include Auth, Storage, or Realtime?",

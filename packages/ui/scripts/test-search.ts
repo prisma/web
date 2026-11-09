@@ -108,6 +108,47 @@ assert.equal(
   (await GET(new Request("http://localhost/api/search?query=test&tag=bad"))).status,
   400,
 );
+// Outside local development, docs and blog results link under the public site origin, even when
+// NEXT_DOCS_ORIGIN and NEXT_BLOG_ORIGIN point at the rewrite origins.
+const savedOrigins = {
+  site: process.env.NEXT_SITE_ORIGIN,
+  docs: process.env.NEXT_DOCS_ORIGIN,
+  blog: process.env.NEXT_BLOG_ORIGIN,
+};
+const restoreOrigin = (name: string, value: string | undefined) => {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+};
+try {
+  process.env.NEXT_DOCS_ORIGIN = "https://docs.prisma.io";
+  process.env.NEXT_BLOG_ORIGIN = "https://blog.prisma.io";
+  for (const siteOrigin of [undefined, "https://preview.example.com"]) {
+    restoreOrigin("NEXT_SITE_ORIGIN", siteOrigin);
+    const response = await GET(new Request("https://www.prisma.io/api/search?query=postgres"));
+    assert.equal(response.status, 200);
+    const urls = (await response.json()).map((item: { url: string }) => new URL(item.url));
+    assert.ok(urls.some((url: URL) => url.pathname.startsWith("/docs/")));
+    assert.ok(urls.some((url: URL) => url.pathname.startsWith("/blog/")));
+    for (const url of urls) assert.equal(url.origin, siteOrigin ?? "https://www.prisma.io");
+  }
+  // Local development keeps linking to the separately running docs and blog apps.
+  delete process.env.NEXT_SITE_ORIGIN;
+  process.env.NEXT_DOCS_ORIGIN = "http://localhost:4001";
+  process.env.NEXT_BLOG_ORIGIN = "http://localhost:4002";
+  const local = await GET(new Request("http://localhost:3000/api/search?query=postgres"));
+  const origins = new Set(
+    (await local.json()).map((item: { url: string }) => new URL(item.url).origin),
+  );
+  assert.deepEqual([...origins].sort(), [
+    "http://localhost:3000",
+    "http://localhost:4001",
+    "http://localhost:4002",
+  ]);
+} finally {
+  restoreOrigin("NEXT_SITE_ORIGIN", savedOrigins.site);
+  restoreOrigin("NEXT_DOCS_ORIGIN", savedOrigins.docs);
+  restoreOrigin("NEXT_BLOG_ORIGIN", savedOrigins.blog);
+}
 for (const [text, expected] of [
   ["## **Connection** `pooling`", "Connection pooling"],
   ["# [Connection](https://example.com) pooling", "Connection pooling"],
@@ -180,7 +221,7 @@ assert.equal(
   503,
 );
 console.log(
-  "Mixedbread request routing, reranking, result normalization, deduplication, Eclipse exclusion, cross-zone URLs, website Mixedbread routing, and failure handling passed (mock transport; no live relevance/analytics assertion).",
+  "Mixedbread request routing, reranking, result normalization, deduplication, Eclipse exclusion, cross-zone URLs, public-origin URLs, website Mixedbread routing, and failure handling passed (mock transport; no live relevance/analytics assertion).",
 );
 
 // Scope validation must reject leakage for both direct paths and HTTP result URLs.

@@ -6,6 +6,7 @@ import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
 import remarkConsoleUtm from "@/lib/remark-console-utm";
+import { docsLastModified } from "@/lib/last-modified";
 import { BADGE_TYPES } from "@/lib/badge-types";
 import { rehypeCodeOptions } from "@prisma-docs/ui/mdx/rehype-code-options";
 
@@ -48,6 +49,8 @@ function convertLine(cmd: string, pm: "npm" | "pnpm" | "yarn" | "bun"): string {
 export const docs = defineDocs({
   dir: "content/docs",
   docs: {
+    // Keep hundreds of compiled MDX modules out of Compute's startup heap.
+    async: process.env.COMPOSER_BUILD === "1",
     schema: frontmatterSchema.extend({
       image: z.string().optional(),
       badge: z.enum(BADGE_TYPES).optional(),
@@ -58,6 +61,13 @@ export const docs = defineDocs({
       // `/orm/v7/more/troubleshooting/nuxt`. Set only where two docs URLs are
       // materially the same document; pages are self-canonical otherwise.
       canonical: z.string().optional(),
+      // When the page was first published, for its TechArticle structured data
+      // (structured-data.tsx), e.g. `datePublished: 2024-03-01`. Quoted or not,
+      // the value parses as a string and becomes a Date here. An empty, numeric
+      // or unparseable value fails the build (without `z.string()` first, an
+      // empty or numeric one would become a 1970 date); a page that sets none
+      // gets no `datePublished`.
+      datePublished: z.string().pipe(z.coerce.date()).optional(),
       aiPrompt: z.string().optional(),
       noindex: z.boolean().optional(),
       // Visually hides the docs sidebar on landing pages; the pages stay in
@@ -76,7 +86,10 @@ export const docs = defineDocs({
 });
 
 export default defineConfig({
-  plugins: [lastModified()],
+  // Dates come from cache/last-modified.json, written before the build from
+  // full git history (fetched when the build host has none); see
+  // src/lib/last-modified.ts.
+  plugins: [lastModified({ versionControl: docsLastModified })],
   mdxOptions: {
     // Class-based Shiki token colours instead of a style attribute per token.
     rehypeCodeOptions,

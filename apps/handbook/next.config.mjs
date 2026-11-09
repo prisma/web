@@ -1,3 +1,4 @@
+import { composerNextConfig } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
 
 const withMDX = createMDX();
@@ -10,6 +11,7 @@ const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
+  ...composerNextConfig,
   reactStrictMode: true,
   basePath: "/handbook",
   assetPrefix: "/handbook-static",
@@ -17,6 +19,11 @@ const config = {
   transpilePackages: ["@prisma/eclipse"],
   async redirects() {
     return [
+      {
+        source: "/part-two/stub-chapter",
+        destination: "/part-two/first-version",
+        permanent: true,
+      },
       {
         source: "/",
         destination: "/handbook",
