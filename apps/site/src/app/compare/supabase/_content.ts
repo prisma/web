@@ -16,7 +16,7 @@ export const SUPABASE_AUTHOR = {
 } as const;
 
 export const SUPABASE_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const SUPABASE_UPDATED = { iso: "2026-11-03", label: "November 2026" } as const;
+export const SUPABASE_UPDATED = { iso: "2026-11-09", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -68,7 +68,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     supabase:
       "Edge Functions suit short-lived work such as webhooks and lightweight APIs, and Supabase says its [custom domains](https://supabase.com/docs/guides/platform/custom-domains) are not intended for hosting a frontend through them. Its Compute private alpha, which runs backend services, is us-west-2 only and not for production, so the frontend and a production app server need another host.",
     prisma:
-      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. WebSocket servers are not supported.",
+      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It runs next to Prisma Postgres in the same project, on one bill. Compute has no built-in cron scheduler today; native cron is planned for early 2027. WebSocket servers are not supported today; support is planned for early 2027.",
     sources: {
       supabase: "https://supabase.com/compute",
       prisma: "https://www.prisma.io/docs/compute/limitations",
@@ -109,7 +109,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
   {
     feature: "HIPAA, SOC 2, and ISO 27001",
     supabase:
-      "SOC 2 and ISO 27001 are included on Team at $599 a month. HIPAA is a paid add-on on Team and Enterprise. Not listed on Free or Pro.",
+      "SOC 2 and ISO 27001 are included on Team at $599 a month. HIPAA is a paid add-on on Team and Enterprise. Not included on Free or Pro.",
     prisma:
       "[HIPAA, SOC 2 Type II, and ISO 27001 are on the Business plan at $129 a month, with a signed BAA for HIPAA](/postgres/hipaa). Not available on Free, Starter, or Pro. GDPR is on every plan.",
     sources: {
@@ -142,7 +142,7 @@ export const APART = [
   {
     id: "http-hosting",
     title: "Full TypeScript app hosting",
-    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported. Compute has no built-in cron scheduler.",
+    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported today; support is planned for early 2027. Compute has no built-in cron scheduler today; native cron is planned for early 2027.",
   },
   {
     id: "preview-app-and-db",
@@ -180,7 +180,7 @@ export const PRICING: readonly {
     label: "Paid plans",
     supabase:
       "Pro from $25 a month. Team from $599 a month. Enterprise is custom. Pro and Team include $10 a month in compute credits.",
-    prisma: "Starter $10, Pro $49, Business $129 a month for Prisma Postgres and Prisma Compute.",
+    prisma: "Starter is a $10 monthly base with Compute usage metered on top; Pro ($49) and Business ($129) work the same way. Database operations and storage past each plan's included amount are billed too.",
     sources: {
       supabase: "https://supabase.com/pricing",
       prisma: "https://www.prisma.io/pricing",

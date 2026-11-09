@@ -169,7 +169,7 @@ export const PRICING: readonly {
   {
     label: "Paid plans",
     neon: "Launch and Scale are pay-as-you-go with no monthly minimum. Launch is $0.106 per CU-hour. Scale is $0.222 per CU-hour.",
-    prisma: "Starter $10, Pro $49, Business $129 a month for Prisma Postgres and Prisma Compute.",
+    prisma: "Starter is a $10 monthly base with Compute usage metered on top; Pro ($49) and Business ($129) work the same way. Database operations and storage past each plan's included amount are billed too.",
     sources: {
       neon: "https://neon.com/pricing",
       prisma: "https://www.prisma.io/pricing",

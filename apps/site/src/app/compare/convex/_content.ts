@@ -3,9 +3,9 @@ export const CONVEX_PATH = "/compare/convex";
 export const CONVEX_TITLE = "Prisma Postgres vs Convex: standard Postgres or a reactive database?";
 
 export const CONVEX_DESCRIPTION =
-  "Convex is a reactive database with TypeScript query functions. Prisma Postgres is managed PostgreSQL, and Prisma ORM is optional. Checked October 2026.";
+  "Convex is a reactive database with TypeScript query functions. Prisma Postgres is managed PostgreSQL, and Prisma ORM is optional. Checked November 2026.";
 
-export const CHECKED = "October 2026";
+export const CHECKED = "November 2026";
 
 /** The blog's author page and photo; `/blog` is rewritten to the blog app. */
 export const CONVEX_AUTHOR = {
@@ -15,7 +15,7 @@ export const CONVEX_AUTHOR = {
 } as const;
 
 export const CONVEX_PUBLISHED = { iso: "2026-10-16", label: "October 2026" } as const;
-export const CONVEX_UPDATED = { iso: "2026-10-18", label: "October 2026" } as const;
+export const CONVEX_UPDATED = { iso: "2026-11-09", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want a standard SQL database. Prisma Postgres is PostgreSQL.",
@@ -78,7 +78,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     convex:
       "Convex runs the database and the server functions. The hosting guide says to publish the frontend with a provider such as Vercel or Netlify.",
     prisma:
-      "Prisma Compute hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. Scheduled jobs can come from Composer's cron building block.",
+      "Prisma Compute hosts the TypeScript app as HTTP services. It runs next to Prisma Postgres in the same project, on one bill. Compute has no built-in cron scheduler today; native cron is planned for early 2027. Scheduled jobs can come from Composer's cron building block.",
     sources: {
       convex: "https://docs.convex.dev/production/hosting",
       prisma: "https://www.prisma.io/docs/compute/limitations",
@@ -135,7 +135,7 @@ export const APART = [
   {
     id: "http-hosting",
     title: "HTTP app hosting",
-    body: "Prisma Compute hosts the TypeScript app. The current release focuses on HTTP services. WebSocket servers are not supported. Compute has no built-in cron scheduler. Scheduled jobs can come from Composer's cron building block, which adds a scheduler service.",
+    body: "Prisma Compute hosts the TypeScript app. The current release focuses on HTTP services. WebSocket servers are not supported today; support is planned for early 2027. Compute has no built-in cron scheduler today; native cron is planned for early 2027. Scheduled jobs can come from Composer's cron building block, which adds a scheduler service.",
   },
   {
     id: "no-seat-fee",
@@ -162,7 +162,7 @@ export const PRICING: readonly {
   {
     label: "Paid plans",
     convex: "Professional is $25 per developer per month. Business and Enterprise have a $2,500 monthly minimum.",
-    prisma: "Starter $10, Pro $49, Business $129 a month for Prisma Postgres and Prisma Compute.",
+    prisma: "Starter is a $10 monthly base with Compute usage metered on top; Pro ($49) and Business ($129) work the same way. Database operations and storage past each plan's included amount are billed too.",
     sources: {
       convex: "https://www.convex.dev/pricing",
       prisma: "https://www.prisma.io/pricing",
@@ -170,7 +170,7 @@ export const PRICING: readonly {
   },
   {
     label: "Developer seats",
-    convex: "A line on Professional, Business, and Enterprise.",
+    convex: "$25 per developer per month on Professional. The [enterprise pricing page](https://www.convex.dev/enterprise/pricing) lists Business with no per-developer fee.",
     prisma: "None. The pricing page does not list a per-developer fee.",
     sources: {
       convex: "https://www.convex.dev/pricing",
@@ -219,9 +219,9 @@ export const FAQ: readonly { question: string; answer: string }[] = [
 export const TOOLS = {
   convex: {
     name: "Convex",
-    softwareVersion: "1.47.0",
-    license: "https://www.apache.org/licenses/LICENSE-2.0",
-    codeRepository: "https://github.com/get-convex/convex-backend",
+    softwareVersion: "1.49.0",
+    license: "https://github.com/convex/convex-backend/blob/main/npm-packages/convex/LICENSE",
+    codeRepository: "https://github.com/convex/convex-backend",
     programmingLanguage: "TypeScript",
     url: "https://www.convex.dev",
   },
