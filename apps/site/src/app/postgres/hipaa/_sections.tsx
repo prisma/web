@@ -383,7 +383,7 @@ export function HipaaGlance() {
           <div className="flex items-center gap-4 border-b border-black/[0.06] px-5 py-4 sm:px-7">
             <p className="text-[0.8125rem] font-semibold text-foreground">
               Prisma Postgres HIPAA facts{" "}
-              <span className="font-normal text-muted-foreground">Updated October 2026</span>
+              <span className="font-normal text-muted-foreground">Updated November 2026</span>
             </p>
           </div>
           <table className="w-full border-collapse">

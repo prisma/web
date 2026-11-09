@@ -206,7 +206,8 @@ export const PRESETS = [
   {
     id: "scaleup",
     label: "Scaleup",
-    blurb: "Model sustained traffic, compare plan costs, and keep spend capped as usage increases.",
+    blurb:
+      "Model sustained traffic, compare plan costs, and review your spend limit as usage increases.",
     ops: 20_000_000,
     gb: 40,
   },

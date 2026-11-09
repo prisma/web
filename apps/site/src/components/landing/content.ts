@@ -208,7 +208,7 @@ export const computeLanding: LandingContent = {
     {
       question: "What does it cost?",
       answer:
-        "Nothing until you outgrow the Free plan: 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of bandwidth a month for Compute, plus 200k operations, 2 GB and 50 databases for Prisma Postgres, with no credit card and no usage billing. Starter is $10 a month with 5M requests included, then $0.006 per GB-hour of memory and $0.064 per active vCPU-hour, under a spend limit you set.",
+        "Nothing until you outgrow the Free plan: 1M requests, 360 GB-hours of memory, 4 active vCPU-hours and 10 GB of bandwidth a month for Compute, plus 200k operations, 2 GB and 50 databases for Prisma Postgres, with no credit card and no usage billing. Starter is $10 a month with 5M requests included, then $0.006 per GB-hour of memory and $0.064 per active vCPU-hour. Paid plans include a hard spend limit you set in the Console.",
     },
     {
       question: "Do I have to use Prisma ORM?",
@@ -294,9 +294,9 @@ export const postgresLanding: LandingContent = {
       },
       {
         icon: "shield",
-        name: "A bill you can cap",
+        name: "A hard spend limit",
         description:
-          "Billed per operation, with a spend limit you set on paid plans. A quiet month costs almost nothing and a busy one never surprises you.",
+          "Billed per operation, with a spend limit you set on paid plans. A quiet month costs almost nothing, and database queries stop when usage charges reach your limit.",
       },
       {
         icon: "swap",
@@ -499,7 +499,7 @@ export const starterDatabasesLanding: LandingContent = {
     {
       question: "Does $10 cover all 1,000 databases?",
       answer:
-        "Yes. The plan includes up to 1,000 databases. What you pay for is usage across them: 1M operations a month are included, then $8 per million, and 10 GB of storage is included, then $2 per GB. A spend limit you set in the Console caps the usage charges.",
+        "Yes. The plan includes up to 1,000 databases. What you pay for is usage across them: 1M operations a month are included, then $8 per million, and 10 GB of storage is included, then $2 per GB. A spend limit you set in the Console counts the usage charges and stops queries to the workspace's databases when it is reached.",
     },
     {
       question: "How do my agents create databases?",
@@ -509,7 +509,7 @@ export const starterDatabasesLanding: LandingContent = {
     {
       question: "What happens when I reach an allowance?",
       answer:
-        "Usage beyond the included operations or storage is billed at the plan's rates, up to your spend limit if you have set one in the Console. Nothing is deleted. You can set or raise the limit, move to Pro for larger allowances and lower overage rates, or stay where you are.",
+        "Usage beyond the included operations or storage is billed at the plan's rates. If you have set a spend limit in the Console, queries to the workspace's databases stop when usage charges reach it. Nothing is deleted. You can set or raise the limit, move to Pro for larger allowances and lower overage rates, or stay where you are.",
     },
   ],
   cta: {
@@ -568,7 +568,7 @@ export const providersLanding: LandingContent = {
     {
       question: "What do spend limits cover?",
       answer:
-        "On Prisma, the spend limit is a hard cap you set on any paid plan: it counts usage charges across the app and the database, and queries to the workspace's databases stop when it is reached. None is set until you enter an amount in the Console. Neon sends spending notifications at 80% and 100% of a threshold. Vercel has a spend budget with an optional pause. Supabase's Spend Cap is on by default on Pro and excludes database compute.",
+        "On Prisma, every paid plan includes a hard spend limit you set: it counts usage charges across the app and the database, and queries to the workspace's databases stop when it is reached. None is set until you enter an amount in the Console. Neon sends spending notifications at 80% and 100% of a threshold. Vercel has a spend budget with an optional pause. Supabase's Spend Cap is on by default on Pro and excludes database compute.",
     },
   ],
   cta: {

@@ -54,8 +54,9 @@ export function PricingCalculator() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
-            Estimate your usage before you upgrade, then set a spend limit so the bill can&apos;t
-            surprise you. The calculator recommends the right plan for where you are.
+            Estimate your usage before you upgrade, then set a spend limit that stops database
+            queries when usage charges reach it. The calculator recommends the right plan for where
+            you are.
           </p>
         </Reveal>
 
@@ -183,7 +184,8 @@ export function PricingCalculator() {
         <Reveal delay={0.45}>
           <p className="mt-4 flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
             <XCircle className="mt-0.5 size-4 shrink-0 text-prism-red-500" aria-hidden />
-            Hard spend limit on every paid plan, set in the Console — never a surprise bill.
+            Hard spend limit on every paid plan, set in the Console — database queries stop when it
+            is reached.
           </p>
         </Reveal>
       </div>

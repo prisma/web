@@ -55,8 +55,9 @@ export function VariantBento() {
             Estimate usage before you upgrade
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            Estimate your usage before you upgrade, then set a spend limit so the bill can&apos;t
-            surprise you. The calculator recommends the right plan for where you are.
+            Estimate your usage before you upgrade, then set a spend limit that stops database
+            queries when usage charges reach it. The calculator recommends the right plan for where
+            you are.
           </p>
         </div>
 
@@ -164,7 +165,7 @@ export function VariantBento() {
             <div className="mt-auto flex items-center gap-2.5 border-t border-black/[0.06] pt-5">
               <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Hard spend limit you set — never a surprise bill.
+                Hard spend limit you set — database queries stop when it is reached.
               </p>
             </div>
           </div>
