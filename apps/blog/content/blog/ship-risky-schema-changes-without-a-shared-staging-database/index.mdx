@@ -2,7 +2,7 @@
 title: "Ship risky schema changes without a shared staging database"
 slug: "ship-risky-schema-changes-without-a-shared-staging-database"
 date: "2026-07-24"
-updatedAt: "2026-10-27"
+updatedAt: "2026-11-09"
 authors:
   - "Shane Neubauer"
   - "Ankur Datta"
@@ -76,16 +76,16 @@ The root cause is one database serving multiple migration timelines, so the fix 
 
 ## One database per preview
 
-On Prisma Compute, a preview is a real resource in your project, a preview branch with its own services and, for each database your Composer module declares, its own new database. Deploy a stage name that doesn't exist yet and Compute provisions an isolated environment for it:
+On Prisma Compute, a preview is a real resource in your project, a preview branch with its own services and, for each database your Composer module declares, its own new database. Deploy to an environment that doesn't exist yet and Compute provisions it as an isolated copy of the app:
 
 <AgentPrompt
   prompt="Deploy this branch to Prisma Compute as a preview."
   skill="prisma-compute"
-  terminalCommand="npx prisma deploy module.ts --stage remove-legacy-name"
+  terminalCommand="npx prisma deploy --environment remove-legacy-name"
   terminalLines={deployTerminalLines}
 />
 
-With deploy on push set up, you don't run that command yourself: a push to the `remove-legacy-name` branch runs the same deploy in GitHub Actions, with the stage named after the branch. For a database declared with `postgres()`, the deploy applies your committed `migrations/` before the service starts, so the preview database starts with your schema and no rows. A `rawPostgres()` database starts empty and is yours to migrate.
+With deploy on push set up, you don't run that command yourself: a push to the `remove-legacy-name` branch runs the same deploy in GitHub Actions, with the environment named after the branch. For a database declared with `postgres()`, the deploy applies your committed `migrations/` before the service starts, so the preview database starts with your schema and no rows. A `rawPostgres()` database starts empty and is yours to migrate.
 
 Alice's preview gets a database with her schema. Bob's preview gets a database with his. Neither can break the other, and neither needs to rebase until merge time. When Bob does rebase after Alice merges, he replans against the updated contract and tests the result on his own preview database first.
 
@@ -325,7 +325,7 @@ jobs:
           build-command: npm run build
 ```
 
-The action derives the target from the branch: a push to the default branch deploys production, and a push to any other branch runs `prisma deploy module.ts --stage <branch>`. The job exchanges its GitHub OIDC token for a short-lived Prisma token, so the workflow needs no repository secrets. A branch's first push creates its preview database, and every deploy applies your committed `migrations/` to a `postgres()` database before the service starts, so each step of the expand-and-contract sequence runs on the preview before it reaches production.
+The action derives the target from the branch: a push to the default branch deploys production, and a push to any other branch deploys an environment named after the branch, as `npx prisma deploy --environment <branch>` does from a terminal. The job exchanges its GitHub OIDC token for a short-lived Prisma token, so the workflow needs no repository secrets. A branch's first push creates its preview database, and every deploy applies your committed `migrations/` to a `postgres()` database before the service starts, so each step of the expand-and-contract sequence runs on the preview before it reaches production.
 
 One piece of wiring is yours to choose: how integration tests get the preview database's connection string. The action keeps its credential to its own step, so a test step that needs one uses a service token: set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` as Actions secrets, find the branch's database with `npx prisma postgres list --project my-app --branch "$GITHUB_REF_NAME"`, and create a connection for it with `npx prisma postgres connection create <database> --name ci --project my-app --branch "$GITHUB_REF_NAME"`, which prints the connection string once. Each run adds a connection, so delete it after the tests with `npx prisma postgres connection delete <connection-id> --confirm <connection-id>`. Keep any stored value in your own secret store; Compute's [environment variables](https://www.prisma.io/docs/compute/environment-variables) are write-only, so CI can't read them back.
 
@@ -367,6 +367,6 @@ To try the workflow, start a project with [Prisma 8](/prisma-next-early-access-w
 npx prisma@latest orm init
 ```
 
-Write a contract, plan a migration, and read the `migration.ts` and `ops.json` it produces. Then [deploy the app to Compute](https://www.prisma.io/docs/prisma-compute/deploy) as a Prisma Composer module that declares the database with `postgres()`, and set up [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push). From then on, each feature branch you push gets a preview with its own new database and your migrations applied, ready for the expand-and-contract cycle. Without GitHub, `npx prisma deploy module.ts --stage <branch>` deploys the same kind of preview from your terminal.
+Write a contract, plan a migration, and read the `migration.ts` and `ops.json` it produces. Then [deploy the app to Compute](https://www.prisma.io/docs/prisma-compute/deploy) as a Prisma Composer module that declares the database with `postgres()`; the CLI finds that module through `entry` in the `composer` section of `prisma.config.ts`. Then set up [deploy on push](https://www.prisma.io/docs/compute/deploy-on-push). From then on, each feature branch you push gets a preview with its own new database and your migrations applied, ready for the expand-and-contract cycle. Without GitHub, `npx prisma deploy --environment <branch>` deploys the same kind of preview from your terminal.
 
 Tell us what worked and what didn't on [Discord](https://pris.ly/discord) in the `#prisma-next` channel, and **star [prisma/prisma](https://github.com/prisma/orm) on GitHub** to follow development.

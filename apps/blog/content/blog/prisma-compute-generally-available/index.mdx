@@ -105,6 +105,7 @@ import { definePrismaConfig } from "prisma/config";
 
 export default definePrismaConfig({
   composer: composer({
+    entry: "./module.ts",
     extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
     state: prismaState(),
   }),
@@ -113,15 +114,15 @@ export default definePrismaConfig({
 
 The module provisions a database and the API service and passes the database in as a dependency. `rawPostgres()` appears twice: with options in the module it creates the database, and bare in the service it declares what the service needs.
 
-In the server, `service.load()` returns the database URL for whichever environment the code is running in. **The same file works on your laptop, in a preview, and in production without a connection string in any settings page**, and a dependency you forgot to wire is a type error. The `prisma.config.ts` file is read only by the CLI and names the extensions that deploy to Prisma and where deploy state is kept.
+In the server, `service.load()` returns the database URL for whichever environment the code is running in. **The same file works on your laptop, in a preview, and in production without a connection string in any settings page**, and a dependency you forgot to wire is a type error. The `prisma.config.ts` file is read only by the CLI. Its `composer` section names the entry the CLI loads, `./module.ts`, along with the extensions that deploy to Prisma and where deploy state is kept.
 
 A build script such as `bun build src/api/server.ts --target=bun --outfile dist/api/server.mjs` produces the file the service points at. The `node` build adapter is for Node.js-style servers, and Compute runs the output on Bun, so an Express or Hono server is declared the same way and runs through Bun's Node.js compatibility.
 
 The `prisma` CLI you know from the ORM runs and deploys it, once the build has run:
 
-- `npx prisma dev module.ts` runs the whole app on your machine against a local Postgres.
-- `npx prisma deploy module.ts` provisions the real service and database, and running it again applies only what changed.
-- `npx prisma deploy module.ts --stage <name>` deploys an isolated copy of the whole app, which is what the GitHub Action does for each preview branch.
+- `npx prisma dev` runs the whole app on your machine against a local Postgres.
+- `npx prisma deploy` provisions the real service and database, and running it again applies only what changed.
+- `npx prisma deploy --environment <name>` deploys an isolated copy of the whole app. The GitHub Action does the same for each preview branch, with an environment named after the branch.
 
 The example uses `rawPostgres()`, which hands your server a connection URL for whatever client you already use and leaves migrations to you. If your schema is managed by Prisma ORM 8, declare the database with `postgres()` and the data contract the ORM compiles from your schema instead: the server gets a client typed by that schema, and each deploy applies your migrations, which is what gives every preview database your schema from the start.
 
@@ -215,7 +216,7 @@ npm pkg set type=module
 npm pkg set scripts.build="bun build src/api/server.ts --target=bun --outfile dist/api/server.mjs"
 npx prisma auth login
 npm run build
-npx prisma deploy module.ts
+npx prisma deploy
 ```
 
 With the `tsconfig.json` from the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), `typescript` and `@types/bun` let `npx tsc --noEmit` check the wiring.
@@ -236,3 +237,4 @@ Tell us what you build, and what gets in the way, in the `prisma-compute` channe
 
 - 2026-10-30: "What changed since the public beta" and "You pay for what your app runs" now say a paid plan's hard spend limit is one you set in the Console, with none until you set one, and that it caps usage charges in a billing cycle. Source: Prisma's [billing docs](https://www.prisma.io/docs/console/more/billing#cap-usage-charges-with-a-spending-limit), checked 2026-10-30.
 - 2026-11-09: "You pay for what your app runs" now says a spend limit counts usage charges in a billing cycle and stops queries to the workspace's databases when it is reached. Source: Prisma's [billing docs](https://www.prisma.io/docs/console/more/billing#cap-usage-charges-with-a-spending-limit), checked 2026-11-09.
+- 2026-11-09: the `npx prisma dev` and `npx prisma deploy` commands no longer name `module.ts`, because the CLI now reads the entry from the `composer` section of `prisma.config.ts`, and the example `prisma.config.ts` now sets it with `entry: "./module.ts"`. The isolated-copy command uses `--environment <name>`, which replaced `--stage <name>`. Source: Prisma's [`deploy` reference](https://www.prisma.io/docs/cli/deploy), checked 2026-11-09.
