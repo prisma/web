@@ -23,8 +23,9 @@ export function VariantReceipt() {
             Estimate usage before you upgrade
           </h2>
           <p className="mt-5 max-w-[52ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-            Estimate your usage before you upgrade, then set a spend limit so the bill can&apos;t
-            surprise you. The calculator recommends the right plan for where you are.
+            Estimate your usage before you upgrade, then set a spend limit that stops database
+            queries when usage charges reach it. The calculator recommends the right plan for where
+            you are.
           </p>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -132,7 +133,7 @@ export function VariantReceipt() {
             <div className="mt-5 flex items-center gap-2.5 border-t border-dashed border-black/20 pt-5">
               <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
               <p className="font-mono text-xs leading-relaxed text-foreground">
-                Spend limit you set — caps usage charges, not the plan fee.
+                Spend limit you set — counts usage charges, not the plan fee.
               </p>
             </div>
 

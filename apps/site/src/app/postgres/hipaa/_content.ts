@@ -19,8 +19,8 @@ export const HIPAA_BAA_ANCHOR = "request-a-baa";
 export const HIPAA_COMPARE_ANCHOR = "compare";
 export const BUSINESS_PRICE_USD = "129";
 // Stable ISO date for WebPage JSON-LD dateModified. Keep in sync with the
-// visible "Updated October 2026" microline on the HIPAA page.
-export const HIPAA_LAST_MODIFIED = "2026-10-13";
+// visible "Updated November 2026" microline on the HIPAA page.
+export const HIPAA_LAST_MODIFIED = "2026-11-09";
 // Same href the site header's "Get Started" button uses (components/header.tsx
 // -> siteConfig.consoleSignUpUrl via the shared PrismButton pattern).
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
@@ -74,7 +74,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "How much does a HIPAA compliant Postgres database cost on Prisma?",
     answer:
-      "HIPAA comes with the Business plan at $129 a month, including usage. Spend limits let you cap your bill. There is no separate HIPAA fee. See [pricing](/pricing) for plan details.",
+      "HIPAA comes with the Business plan at $129 a month, including usage. A spend limit you set in the Console counts usage charges and stops queries to your workspace's databases when reached. There is no separate HIPAA fee. See [pricing](/pricing) for plan details.",
   },
   {
     question: "Does Prisma sign a BAA, and how do I get one?",
