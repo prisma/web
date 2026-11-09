@@ -95,7 +95,8 @@
   // through the Conversions API, so OpenAI counts the signup once, and
   // `openaiExternalId` is the same hashed user id that report carries as its
   // customer identifier, so OpenAI can match the browser copy to the click.
-  // Returns true when the pixel measured this signup now or already had it.
+  // Returns true when the pixel measured this signup now or already had it,
+  // or left it to the Conversions API report (see the identifier note below).
   function measureOpenaiConversion(consent, conversion) {
     const granted = consent?.decided === true && consent?.advertisement === true;
     if (!granted && !openaiLoaded) return false;
@@ -123,7 +124,13 @@
       // The SDK takes identifiers through `init` only; a repeat `init` on the
       // same pixel updates its user data for the events measured afterwards.
       const externalId = conversion.openaiExternalId;
-      if (typeof externalId === "string" && /^[0-9a-f]{64}$/.test(externalId) && externalId !== openaiExternalId) {
+      const identified = typeof externalId === "string" && /^[0-9a-f]{64}$/.test(externalId);
+      // The SDK documents no way to clear user data once it is set. A signup
+      // without a valid identifier that follows an identified one would be
+      // measured under the earlier user, so the frame leaves it to the
+      // Console's Conversions API report, which carries the same event id.
+      if (!identified && openaiExternalId !== null) return true;
+      if (identified && externalId !== openaiExternalId) {
         openaiExternalId = externalId;
         window.oaiq("init", { pixelId: openaiPixelId, user: { external_id_sha256: externalId } });
       }

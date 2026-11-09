@@ -239,18 +239,21 @@ test("loads the OpenAI pixel on advertising consent only and measures a signup o
   });
   assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
 
-  // A malformed customer identifier is dropped; the sign-up is still measured.
+  // After an identified sign-up, one with a malformed or missing customer
+  // identifier is not measured here: the pixel would report it under the
+  // earlier user. The Conversions API report covers it, so it is still accepted.
+  const anonymous = { event: "sign_up", method: "email" };
   app.send({
     ...grant,
     conversion: {
+      ...anonymous,
       id: "handoff-5",
-      event: "sign_up",
-      method: "email",
       openaiEventId: "eeee",
       openaiExternalId: "not a hash",
     },
   });
-  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 2);
+  app.send({ ...grant, conversion: { ...anonymous, id: "handoff-6", openaiEventId: "dddd" } });
+  assert.equal(oaiqCalls(app).filter(([command]) => command === "measure").length, 1);
   assert.equal(
     oaiqCalls(app).filter(
       ([command, data]) => command === "init" && (data as { user?: unknown }).user,
@@ -281,6 +284,60 @@ test("an ads-only visitor's signup is measured by the pixel and acknowledged wit
   assert.equal(
     JSON.stringify(app.messages[1]?.[0]),
     JSON.stringify({ type: "console-analytics-accepted", id: "handoff-1" }),
+  );
+});
+
+test("a signup with no valid customer identifier never inherits an earlier user's", () => {
+  const adsOnly = { decided: true, analytics: false, advertisement: true };
+  const anonymous = { event: "sign_up", method: "email", openaiExternalId: "not a hash" };
+  const userInits = (app: ReturnType<typeof setup>) =>
+    oaiqCalls(app).filter(
+      ([command, data]) => command === "init" && (data as { user?: unknown }).user,
+    );
+  const measures = (app: ReturnType<typeof setup>) =>
+    oaiqCalls(app).filter(([command]) => command === "measure");
+  const acknowledged = (app: ReturnType<typeof setup>) =>
+    app.messages.slice(1).map(([data]) => (data as { id: string }).id);
+
+  // With no identified signup before it, it is measured without user data.
+  const fresh = setup();
+  fresh.send({
+    ...grant,
+    consent: adsOnly,
+    conversion: { ...anonymous, id: "h-1", openaiEventId: "aaaa" },
+  });
+  assert.equal(measures(fresh).length, 1);
+  assert.equal(userInits(fresh).length, 0);
+  assert.deepEqual(acknowledged(fresh), ["h-1"]);
+
+  // After an identified signup the pixel still holds that user, and the SDK has
+  // no call to clear it. The frame leaves the signup to the Conversions API
+  // report and acknowledges it, so the Console does not retry.
+  const app = setup();
+  app.send({ ...grant, consent: adsOnly });
+  app.send({
+    ...grant,
+    consent: adsOnly,
+    conversion: { ...anonymous, id: "h-2", openaiEventId: "bbbb" },
+  });
+  assert.equal(measures(app).length, 1);
+  assert.equal(userInits(app).length, 1);
+  assert.deepEqual(acknowledged(app), ["handoff-1", "h-2"]);
+
+  // The next identified signup is measured under its own identifier.
+  const second = "fedcba9876543210".repeat(4);
+  app.send({
+    ...grant,
+    consent: adsOnly,
+    conversion: { ...grant.conversion, id: "h-3", openaiEventId: "cccc", openaiExternalId: second },
+  });
+  assert.equal(measures(app).length, 2);
+  assert.equal(
+    JSON.stringify(userInits(app).at(-1)),
+    JSON.stringify([
+      "init",
+      { pixelId: OPENAI_ADS_PIXEL_ID, user: { external_id_sha256: second } },
+    ]),
   );
 });
 
