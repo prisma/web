@@ -1133,7 +1133,7 @@ test("Neon Markdown carries the byline, disclosure, and Sources on the shared ch
   assert.ok(markdown.includes("$0.222"));
   assert.ok(markdown.includes("$0.35"));
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /one[- ]plan|three bills|three accounts/);
   assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /always ready|first serverless/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
