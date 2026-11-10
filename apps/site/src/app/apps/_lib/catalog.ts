@@ -3,14 +3,24 @@ import { z } from "zod";
 // The /apps gallery is fed by the Compute template manifest in
 // prisma/prisma-examples. The manifest is the source of truth for which
 // templates exist and what they are called; this module layers the gallery's
-// own knowledge on top: framework identity and logo, the template's category,
-// the stack it ships with, when it landed, the curated Featured and Popular
-// orders, and the preview screenshot. Anything the manifest adds later that
+// own knowledge on top: framework identity and logo, the stack it ships
+// with, when it landed, the curated Featured and Popular orders, and the
+// preview screenshot. Anything the manifest adds later that
 // the registry here does not know about still renders, with sensible
 // fallbacks, so a new template is never blocked on a site change.
 
-export const TEMPLATE_MANIFEST_URL =
-  "https://raw.githubusercontent.com/prisma/prisma-examples/latest/compute/templates.json";
+export const TEMPLATE_MANIFEST_URL = manifestUrlFor("latest");
+
+// Branches of prisma-examples whose manifests preview deployments and local
+// development merge in after the latest branch, so a template that is still
+// under review shows up on its gallery PR's preview. List the branch here in
+// the PR that adds the template's page, and drop it once the template merges.
+// Production reads the latest branch only.
+export const PREVIEW_MANIFEST_BRANCHES: readonly string[] = [];
+
+export function manifestUrlFor(branch: string): string {
+  return `https://raw.githubusercontent.com/prisma/prisma-examples/${branch}/compute/templates.json`;
+}
 
 export const TEMPLATE_SOURCE_BASE = "https://github.com/prisma/prisma-examples/tree/latest/";
 
@@ -42,41 +52,6 @@ export const templateManifestSchema = z.object({
 });
 
 export type ManifestTemplate = z.infer<typeof templateManifestSchema>["templates"][number];
-
-// ---------------------------------------------------------------------------
-// Categories
-
-export type Category = "app" | "starter";
-
-// Starters lead: the personal site is the quickest thing to make your own, and
-// the framework apps follow underneath.
-export const CATEGORY_ORDER: readonly Category[] = ["starter", "app"];
-
-export type CategoryMeta = {
-  label: string;
-  shortLabel: string;
-  /** One line under the section heading. */
-  description: string;
-  /** A phrase inside `description` to render as a link. */
-  link?: { label: string; href: string };
-  dot: string;
-};
-
-export const CATEGORY_META: Record<Category, CategoryMeta> = {
-  app: {
-    label: "App templates",
-    shortLabel: "Apps",
-    description: "Framework starters with Prisma Stack, ready to build on top of and ship.",
-    link: { label: "Prisma Stack", href: "/stack" },
-    dot: "bg-prism-red-500",
-  },
-  starter: {
-    label: "Personal & starter templates",
-    shortLabel: "Personal & starter",
-    description: "Small sites and starting points that run on Prisma Compute without a database.",
-    dot: "bg-prism-yellow-400",
-  },
-};
 
 // ---------------------------------------------------------------------------
 // Frameworks
@@ -295,17 +270,16 @@ export function pagePathFor(id: string): string {
 // Per-template registry
 
 type TemplateMeta = {
-  category: Category;
   /** Who maintains the template. Defaults to Prisma. */
   author?: AuthorMeta;
-  /** Short use-case label shown beside the framework ("REST API", "Full-stack app"). */
+  /** Short use-case label shown beside the framework ("REST API", "Full-stack app", "Personal site"). */
   useCase?: string;
   /** Framework id, used when the manifest entry predates the `framework` field. */
   framework?: string;
   stack: readonly StackId[];
   /** ISO date the template landed in prisma-examples (first commit on its folder). */
   publishedAt?: string;
-  /** 1 = first. Hand-ordered: the default view leads with the broadest full-stack starter. */
+  /** 1 = first. Hand-ordered: the full-stack apps lead, broadest first, and the personal site closes. */
   featuredRank: number;
   /**
    * 1 = first. The console records a deploy_button_succeeded event per template
@@ -321,7 +295,6 @@ type TemplateMeta = {
 
 export const TEMPLATE_META: Record<string, TemplateMeta> = {
   nextjs: {
-    category: "app",
     useCase: "Full-stack app",
     framework: "nextjs",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
@@ -331,7 +304,6 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     preview: "/apps/previews/nextjs.png",
   },
   hono: {
-    category: "app",
     useCase: "REST API",
     framework: "hono",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
@@ -341,7 +313,6 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     preview: "/apps/previews/hono.png",
   },
   "tanstack-start": {
-    category: "app",
     useCase: "Full-stack app",
     framework: "tanstack-start",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
@@ -350,25 +321,25 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
     popularRank: 3,
     preview: "/apps/previews/tanstack-start.png",
   },
+  // The one template without a database, so it closes the Featured order:
+  // the full-stack apps lead and the site is the quick thing to make your own.
   "personal-site": {
-    category: "starter",
     useCase: "Personal site",
     framework: "astro",
     stack: ["bun", "typescript"],
     publishedAt: "2026-08-20",
-    featuredRank: 4,
+    featuredRank: 6,
     popularRank: 4,
     preview: "/apps/previews/personal-site.png",
   },
   // The manifest supplies the author; the registry adds the use case, the
   // date it landed, the screenshot and the page copy.
   "room-booking-prisma-template": {
-    category: "app",
     useCase: "Booking app",
     framework: "nextjs",
     stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
     publishedAt: "2026-11-01",
-    featuredRank: 5,
+    featuredRank: 4,
     preview: "/apps/previews/room-booking-prisma-template.png",
     page: {
       tagline: "Book meeting rooms on a drag-to-book timeline that never double-books.",
@@ -424,7 +395,6 @@ export type GalleryTemplate = {
   pagePath: string;
   framework: FrameworkMeta;
   author: AuthorMeta;
-  category: Category;
   useCase: string | null;
   stack: StackMeta[];
   publishedAt: string | null;
@@ -460,7 +430,8 @@ export function enrichTemplates(
   templates: readonly ManifestTemplate[],
   now: Date = new Date(),
 ): GalleryTemplate[] {
-  const unranked = Object.values(TEMPLATE_META).length + 1;
+  // Past every curated rank, so an unregistered template never ties with one.
+  const unranked = Math.max(...Object.values(TEMPLATE_META).map((meta) => meta.featuredRank)) + 1;
 
   return templates.map((template, manifestIndex) => {
     const meta = TEMPLATE_META[template.id];
@@ -480,7 +451,6 @@ export function enrichTemplates(
       pagePath: pagePathFor(template.id),
       framework: frameworkMeta(frameworkId),
       author: authorFor(template, meta),
-      category: meta?.category ?? "app",
       useCase: meta?.useCase ?? null,
       stack: (meta?.stack ?? DEFAULT_STACK).map((id) => STACK[id]),
       publishedAt,
@@ -506,10 +476,6 @@ export const SORT_OPTIONS: readonly { value: SortKey; label: string }[] = [
 
 export function isSortKey(value: string | null | undefined): value is SortKey {
   return SORT_OPTIONS.some((option) => option.value === value);
-}
-
-export function isCategory(value: string | null | undefined): value is Category {
-  return CATEGORY_ORDER.includes(value as Category);
 }
 
 const byManifest = (a: GalleryTemplate, b: GalleryTemplate) => a.manifestIndex - b.manifestIndex;
@@ -542,15 +508,12 @@ export function sortTemplates(templates: readonly GalleryTemplate[], sort: SortK
 }
 
 export type GalleryFilter = {
-  category: Category | "all";
   framework: string | "all";
 };
 
 export function filterTemplates(templates: readonly GalleryTemplate[], filter: GalleryFilter) {
   return templates.filter(
-    (template) =>
-      (filter.category === "all" || template.category === filter.category) &&
-      (filter.framework === "all" || template.framework.id === filter.framework),
+    (template) => filter.framework === "all" || template.framework.id === filter.framework,
   );
 }
 
@@ -563,15 +526,6 @@ export function frameworkOptions(templates: readonly GalleryTemplate[]) {
     else counts.set(template.framework.id, { framework: template.framework, count: 1 });
   }
   return [...counts.values()];
-}
-
-/** Templates grouped by category, in category order, skipping empty groups. */
-export function groupByCategory(templates: readonly GalleryTemplate[]) {
-  return CATEGORY_ORDER.map((category) => ({
-    category,
-    meta: CATEGORY_META[category],
-    templates: templates.filter((template) => template.category === category),
-  })).filter((group) => group.templates.length > 0);
 }
 
 // ---------------------------------------------------------------------------

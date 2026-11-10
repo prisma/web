@@ -3,13 +3,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  CATEGORY_ORDER,
   authorBadge,
   enrichTemplates,
   filterTemplates,
   frameworkMeta,
   frameworkOptions,
-  groupByCategory,
   ogCardPathFor,
   sortTemplates,
   templatePage,
@@ -85,7 +83,6 @@ test("legacy manifest entries take their framework from the registry", () => {
 
 test("unknown templates still render with fallbacks", () => {
   const unknown = byId("remix-run-blog");
-  assert.equal(unknown.category, "app");
   assert.equal(unknown.framework.label, "Remix Run");
   assert.equal(unknown.framework.logo, undefined);
   assert.equal(unknown.preview, null);
@@ -301,24 +298,13 @@ test("sorting never mutates the input", () => {
   );
 });
 
-test("filters combine category and framework", () => {
+test("filters narrow by framework and never throw on an empty result", () => {
+  assert.deepEqual(filterTemplates(catalog, { framework: "all" }).length, catalog.length);
   assert.deepEqual(
-    filterTemplates(catalog, { category: "app", framework: "all" }).map((t) => t.id),
-    ["hono", "nextjs", "tanstack-start", "remix-run-blog"],
-  );
-  assert.deepEqual(
-    filterTemplates(catalog, { category: "starter", framework: "all" }).map((t) => t.id),
-    ["personal-site"],
-  );
-  assert.deepEqual(
-    filterTemplates(catalog, { category: "all", framework: "nextjs" }).map((t) => t.id),
+    filterTemplates(catalog, { framework: "nextjs" }).map((t) => t.id),
     ["nextjs"],
   );
-  assert.deepEqual(
-    filterTemplates(catalog, { category: "starter", framework: "nextjs" }),
-    [],
-    "a framework with no template in the category yields no results rather than throwing",
-  );
+  assert.deepEqual(filterTemplates(catalog, { framework: "sveltekit" }), []);
 });
 
 test("framework options list only frameworks present, in featured order, with counts", () => {
@@ -331,20 +317,6 @@ test("framework options list only frameworks present, in featured order, with co
   assert.ok(
     !options.some((o) => o.framework.id === "nestjs"),
     "registry-only frameworks are not offered as filters",
-  );
-});
-
-test("category groups follow CATEGORY_ORDER and skip empty groups", () => {
-  const groups = groupByCategory(catalog);
-  assert.deepEqual(
-    groups.map((g) => g.category),
-    [...CATEGORY_ORDER],
-  );
-  assert.deepEqual(
-    groupByCategory(filterTemplates(catalog, { category: "all", framework: "astro" })).map(
-      (g) => g.category,
-    ),
-    ["starter"],
   );
 });
 

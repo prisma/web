@@ -3,7 +3,6 @@ import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { TemplateGallery } from "./_components/template-gallery";
-import { CONTRIBUTE } from "./_lib/catalog";
 import { loadTemplates } from "./_lib/manifest";
 
 export const metadata = createPageMetadata({
@@ -48,8 +47,9 @@ export default async function AppsPage() {
               <h1 className="isolate mt-3 max-w-[20ch] text-balance text-[clamp(2rem,3.2vw,2.75rem)] leading-[1.08]">
                 Start from an app
               </h1>
-              <p className="mt-4 max-w-[76ch] text-pretty leading-relaxed text-muted-foreground md:text-lg">
-                Open-source templates on the Prisma Stack. Preview one, check its stack, deploy it.
+              <p className="mt-4 max-w-[62ch] text-pretty leading-relaxed text-muted-foreground md:text-lg">
+                Open-source templates on the Prisma Stack, each one a click away from running on
+                Prisma Compute. Preview one, check its stack, make it yours.
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
                 Built a template on the Prisma Stack?{" "}
@@ -83,14 +83,14 @@ export default async function AppsPage() {
       <CtaBurst
         headline="Bring your own app"
         headlineMaxWidth="max-w-[18ch]"
-        body="Prisma Compute runs Node.js and Bun apps straight from a GitHub repository. Start from the deployment docs, or ask for a template for your framework."
+        body="Not starting from a template? Prisma Compute runs Node.js and Bun apps straight from a GitHub repository, with the same database and deploy flow."
         checks={[
-          { label: "Open source, fork it and make it yours", color: "text-prism-cyan-500" },
           { label: "Prisma Postgres provisioned on first deploy", color: "text-prism-yellow-400" },
           { label: "Every push to the connected branch deploys", color: "text-prism-red-500" },
+          { label: "Open source, fork it and make it yours", color: "text-prism-cyan-500" },
         ]}
         primaryCta={{ label: "Read the Compute docs", href: "/docs/compute" }}
-        secondaryCta={{ label: "Request a template", href: CONTRIBUTE.requestUrl }}
+        secondaryCta={{ label: "How Prisma Compute works", href: "/compute" }}
       />
     </>
   );
