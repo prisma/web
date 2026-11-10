@@ -1,3 +1,4 @@
+import { securityHeaders } from "../../../../../../packages/ui/security-headers.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -244,8 +245,7 @@ test("room booking uses its scheduler screenshot instead of the framework fallba
 });
 
 test("the site image policy allows GitHub profile photos to load", () => {
-  const config = readFileSync(new URL("../../../../next.config.mjs", import.meta.url), "utf8");
-  const policy = config.match(/const ContentSecurityPolicy = `([\s\S]*?)`;/)?.[1] ?? "";
+  const policy = securityHeaders.find(({ key }) => key === "Content-Security-Policy")?.value ?? "";
   const imgSrc = policy.match(/img-src[\s\S]*?;/)?.[0] ?? "";
   assert.match(imgSrc, /https:\/\/github\.com(?:\s|\/)/);
   assert.match(imgSrc, /https:\/\/avatars\.githubusercontent\.com/);

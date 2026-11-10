@@ -1,3 +1,5 @@
+import { postModifiedDate } from "@/lib/post-dates";
+import { isCanonicalBlogPage } from "@/lib/sitemap-policy";
 import type { MetadataRoute } from "next";
 import { getPublishedPages } from "@/lib/source";
 import { getBaseUrl, withBlogBasePath } from "@/lib/url";
@@ -34,29 +36,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const url = (path: string): string => new URL(withBlogBasePath(path), baseUrl).toString();
 
   // Drafts render at their URL but are left out, as on the listing pages.
-  const items = getPublishedPages().map((page) => {
-    // Same precedence as the post page's dateModified: the frontmatter
-    // `updatedAt` a rewrite sets, then the git-derived `lastModified`, then
-    // the publish date, so the visible "Updated" line, BlogPosting
-    // dateModified and this lastmod never disagree.
-    const { updatedAt, lastModified, date } = page.data as {
-      updatedAt?: Date | string;
-      lastModified?: Date | string;
-      date?: Date | string;
-    };
-    const resolvedLastModified = updatedAt ?? lastModified ?? date;
-    const lastModifiedDate = resolvedLastModified ? new Date(resolvedLastModified) : undefined;
+  const items = getPublishedPages()
+    .filter((page) => isCanonicalBlogPage(page, baseUrl))
+    .map((page) => {
+      // Use the same editorial date as BlogPosting.dateModified. Never use
+      // the synthetic deployment commit or the source file's archive mtime.
+      const modified = postModifiedDate(page.data);
 
-    return {
-      url: url(page.url),
-      lastModified:
-        lastModifiedDate && !Number.isNaN(lastModifiedDate.getTime())
-          ? lastModifiedDate
-          : undefined,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    } as MetadataRoute.Sitemap[number];
-  });
+      return {
+        url: url(page.url),
+        lastModified: modified,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      } as MetadataRoute.Sitemap[number];
+    });
 
   const listings = getListingSitemapPaths().map(
     (path) =>

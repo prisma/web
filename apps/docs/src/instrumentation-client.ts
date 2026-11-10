@@ -1,3 +1,4 @@
+import { POSTHOG_API_HOST } from "@prisma-docs/ui/lib/posthog-config";
 import { captureBrowserAcquisition } from "@prisma-docs/ui/lib/acquisition.browser";
 import posthog from "posthog-js";
 import * as Sentry from "@sentry/nextjs";
@@ -23,7 +24,7 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
       event.properties = { ...event.properties, ...acquisitionProperties() };
     return event;
   },
-  api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  api_host: POSTHOG_API_HOST,
   capture_pageview: "history_change",
   defaults: "2025-11-30",
   // ChatGPT ad clicks land with `oppref` and no UTM params. Treating it as a

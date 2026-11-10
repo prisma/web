@@ -6,7 +6,6 @@ import {
 } from "fumadocs-core/mdx-plugins";
 import { remarkImage } from "fumadocs-core/mdx-plugins";
 import { defineCollections, defineConfig, frontmatterSchema } from "fumadocs-mdx/config";
-import lastModified from "fumadocs-mdx/plugins/last-modified";
 import { z } from "zod";
 import convert from "npm-to-yarn";
 import { rehypeCodeOptions } from "@prisma-docs/ui/mdx/rehype-code-options";
@@ -81,7 +80,6 @@ export const blogPosts = defineCollections({
 });
 
 export default defineConfig({
-  plugins: [lastModified()],
   mdxOptions: {
     // Class-based Shiki token colours instead of a style attribute per token.
     rehypeCodeOptions,

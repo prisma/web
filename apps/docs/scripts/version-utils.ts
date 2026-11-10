@@ -58,9 +58,15 @@ export function isVersionedTree(relativePath: string): boolean {
   return VERSIONED_TREES.some((tree) => relativePath.startsWith(`${tree}/`));
 }
 
-function isHistoryPhrase(line: string, index: number): boolean {
+/** Recognize historical cues without exempting current installs after a retired workflow. */
+function isHistoryPhrase(line: string, index: number, bareVersion = false): boolean {
   const before = line.slice(Math.max(0, index - 40), index).toLowerCase();
-  return HISTORY_PHRASES.some((phrase) => new RegExp(`\\b${phrase}\\s+\`?$`).test(before));
+  // Generated error references name the release that raised a retired error.
+  // Match only the immediately following version, not later pins on the line.
+  return (
+    (bareVersion && /\bretired\.\s+`?$/.test(before)) ||
+    HISTORY_PHRASES.some((phrase) => new RegExp(`\\b${phrase}\\s+\`?$`).test(before))
+  );
 }
 
 /**
@@ -94,6 +100,7 @@ function cellIndex(line: string, index: number): number {
   return line.slice(0, index).split("|").length - 2;
 }
 
+/** Report stale current-version references while preserving explicitly marked release history. */
 export function lintVersions(content: string, latest: Map<string, string>): Violation[] {
   const lines = content.split("\n");
   const tables = historyColumns(lines);
@@ -101,8 +108,10 @@ export function lintVersions(content: string, latest: Map<string, string>): Viol
   const currentVersions = new Set(latest.values());
 
   lines.forEach((line, lineIndex) => {
-    const allowed = (index: number) =>
-      isHistoryPhrase(line, index) || tables.get(lineIndex)?.has(cellIndex(line, index));
+    /** Apply history exceptions to this reference's column and mention type. */
+    const allowed = (index: number, bareVersion = false) =>
+      isHistoryPhrase(line, index, bareVersion) ||
+      tables.get(lineIndex)?.has(cellIndex(line, index));
 
     for (const match of line.matchAll(PACKAGE_PIN_REGEX)) {
       const [pin, pkg, version] = match;
@@ -120,7 +129,7 @@ export function lintVersions(content: string, latest: Map<string, string>): Viol
 
     for (const match of line.matchAll(PRERELEASE_REGEX)) {
       const version = match[1];
-      if (currentVersions.has(version) || allowed(match.index)) continue;
+      if (currentVersions.has(version) || allowed(match.index, true)) continue;
       const expected = [...currentVersions].filter((v) => v.startsWith(version.split("-")[0]));
       violations.push({
         index: match.index,

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { securityHeaders } from "../../../../../packages/ui/security-headers.mjs";
 
 const siteRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -35,8 +36,7 @@ test("the Postgres Ahrefs snippet is not on the shared layout or other products"
 });
 
 test("the site CSP allows the Ahrefs analytics host to load and report", () => {
-  const config = read("next.config.mjs");
-  const policy = config.match(/const ContentSecurityPolicy = `([\s\S]*?)`;/)?.[1];
+  const policy = securityHeaders.find(({ key }) => key === "Content-Security-Policy")?.value;
   assert.ok(policy, "site ContentSecurityPolicy missing");
 
   const scriptSrc = policy.match(/script-src[\s\S]*?;/)?.[0] ?? "";

@@ -26,6 +26,7 @@ test("enabled integrations require only each website's own platform secrets", ()
     "GITHUB_WEBHOOK_SECRET",
     "BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK",
     "LINEAR_API_KEY",
+    "LINEAR_TEAM_ID",
   ]);
   assert.deepEqual(names("blog"), ["MIXEDBREAD_API_KEY", "BREVO_API_KEY"]);
   assert.deepEqual(names("handbook"), []);

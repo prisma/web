@@ -11,6 +11,7 @@ const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
+  poweredByHeader: false,
   ...composerNextConfig,
   reactStrictMode: true,
   basePath: "/handbook",

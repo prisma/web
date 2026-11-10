@@ -1,4 +1,5 @@
 type Handler = (request: Request) => Response | Promise<Response>;
+import { byteRange } from "./ranges.ts";
 export type PublicFile = { bytes: number; sha256: string };
 
 export function assetKey(path: string) {
@@ -49,6 +50,12 @@ export function withFileValidators(
     ])
       headers.delete(name);
     if (incoming.has("if-range") && incoming.get("if-range") !== expected) headers.delete("range");
+    // Bun/Next can turn an unsatisfiable range into a 500. Read the normal
+    // representation so conditional preconditions still take precedence,
+    // then answer 416 ourselves without consuming the streamed file.
+    const unsatisfiable =
+      request.method === "GET" && byteRange(headers.get("range"), file.bytes) === "unsatisfiable";
+    if (unsatisfiable || request.method === "HEAD") headers.delete("range");
     const response = await handler(readRequest);
     if (![200, 206].includes(response.status)) return response;
     const outgoing = new Headers(response.headers);
@@ -62,6 +69,7 @@ export function withFileValidators(
       outgoing.delete("last-modified");
     }
     if (
+      !unsatisfiable &&
       !normalized &&
       !["if-none-match", "if-match", "if-modified-since", "if-unmodified-since"].some((name) =>
         incoming.has(name),
@@ -83,12 +91,18 @@ export function withFileValidators(
         : modified <= Date.parse(incoming.get("if-modified-since") ?? "")
     )
       status = 304;
-    if ([304, 412].includes(status)) {
+    if (unsatisfiable && status === 200) status = 416;
+    if ([304, 412, 416].includes(status)) {
       await response.body?.cancel();
       for (const name of ["content-length", "content-range", "content-encoding"])
         outgoing.delete(name);
     }
-    return new Response([304, 412].includes(status) ? null : response.body, {
+    if (status === 416) {
+      outgoing.set("content-range", `bytes */${file.bytes}`);
+      outgoing.set("cache-control", "no-store");
+      outgoing.set("cdn-cache-control", "no-store");
+    }
+    return new Response([304, 412, 416].includes(status) ? null : response.body, {
       status,
       statusText: status === response.status ? response.statusText : undefined,
       headers: outgoing,
