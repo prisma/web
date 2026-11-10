@@ -40,6 +40,10 @@ test("retired error history is preserved without exempting subsequent install pi
     fix("Retired. Install `prisma@8.0.0-rc.22` today."),
     "Retired. Install `prisma@8.0.0-rc.25` today.",
   );
+  const install =
+    "The old workflow is retired. `prisma@8.0.0-rc.22` is the current install command.";
+  assert.equal(lintVersions(install, latest).length, 1);
+  assert.equal(fix(install), install.replace("prisma@8.0.0-rc.22", "prisma@8.0.0-rc.25"));
 });
 
 test("keeps Added in cells while rewriting other cells", () => {
