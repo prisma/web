@@ -190,7 +190,10 @@ to the five named website services, never to other origins or external rewrites.
 Because the internal hop's hostname is a generated `*.prisma.build` host,
 compute ingress noindexes its responses; the gateway drops that directive and
 re-asserts only the apps' own robots headers, so custom-domain pages stay
-indexable while generated hosts are still noindexed at the edge.
+indexable while generated hosts are still noindexed at the edge. Agent-markdown
+renditions (`/blog/*.md`, `/blog/*.mdx`, `/blog/llms.mdx`) pass through
+untouched: a draft's conditional `noindex` cannot be re-derived statically, and
+those responses carry a canonical link instead of being indexed themselves.
 
 Pages and assets need no user-supplied credentials. Optional external integrations are bound
 only when selected with `COMPOSER_INTEGRATIONS`, a comma-separated list:

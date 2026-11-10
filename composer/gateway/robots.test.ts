@@ -55,6 +55,22 @@ test("zones without an intentional rule lose the ingress noindex", async () => {
   }
 });
 
+test("draft markdown keeps its own conditional noindex", async () => {
+  const handler = withRobotsDirectives(() => noindexed("draft"));
+  for (const path of ["/blog/some-post.md", "/blog/some-post.mdx", "/blog/llms.mdx/some-post.md"]) {
+    const response = await handler(request(path));
+    assert.equal(response.headers.get("x-robots-tag"), "noindex", path);
+  }
+});
+
+test("html pages next to the markdown renditions are still stripped", async () => {
+  const handler = withRobotsDirectives(() => noindexed("page"));
+  for (const path of ["/blog/some-post", "/blog/llms.mdxextra", "/blog/some-post.md/extra"]) {
+    const response = await handler(request(path));
+    assert.equal(response.headers.has("x-robots-tag"), false, path);
+  }
+});
+
 test("responses without robots directives pass through untouched", async () => {
   const upstream = new Response("clean", { headers: { "content-type": "text/html" } });
   const response = await withRobotsDirectives(() => upstream)(request("/"));
