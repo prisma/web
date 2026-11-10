@@ -430,7 +430,8 @@ export function enrichTemplates(
   templates: readonly ManifestTemplate[],
   now: Date = new Date(),
 ): GalleryTemplate[] {
-  const unranked = Object.values(TEMPLATE_META).length + 1;
+  // Past every curated rank, so an unregistered template never ties with one.
+  const unranked = Math.max(...Object.values(TEMPLATE_META).map((meta) => meta.featuredRank)) + 1;
 
   return templates.map((template, manifestIndex) => {
     const meta = TEMPLATE_META[template.id];

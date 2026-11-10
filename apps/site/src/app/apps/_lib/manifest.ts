@@ -47,9 +47,13 @@ async function fetchManifest(url: string, read: ManifestRead): Promise<ManifestT
   return templateManifestSchema.parse(await response.json()).templates;
 }
 
-/** Whether this deployment may show templates that are still under review. */
+/**
+ * Whether this deployment may show templates that are still under review:
+ * a Vercel preview, or local development. Anything else, including a
+ * production build that does not run on Vercel, reads the latest branch only.
+ */
 export function showsPreviewManifests(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.VERCEL_ENV !== "production" && env.NODE_ENV !== "test";
+  return env.VERCEL_ENV === "preview" || env.NODE_ENV === "development";
 }
 
 // Outside production, the manifests of PREVIEW_MANIFEST_BRANCHES are added

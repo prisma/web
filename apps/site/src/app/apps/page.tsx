@@ -48,9 +48,8 @@ export default async function AppsPage() {
                 Start from an app
               </h1>
               <p className="mt-4 max-w-[62ch] text-pretty leading-relaxed text-muted-foreground md:text-lg">
-                Open-source templates on the Prisma Stack. Each one deploys to Prisma Compute in one
-                click, with a Prisma Postgres database of its own. Preview one, check its stack,
-                make it yours.
+                Open-source templates on the Prisma Stack, each one a click away from running on
+                Prisma Compute. Preview one, check its stack, make it yours.
               </p>
               <p className="mt-3 text-sm text-muted-foreground">
                 Built a template on the Prisma Stack?{" "}
@@ -88,7 +87,7 @@ export default async function AppsPage() {
         checks={[
           { label: "Prisma Postgres provisioned on first deploy", color: "text-prism-yellow-400" },
           { label: "Every push to the connected branch deploys", color: "text-prism-red-500" },
-          { label: "A preview with its own database per branch", color: "text-prism-cyan-500" },
+          { label: "Open source, fork it and make it yours", color: "text-prism-cyan-500" },
         ]}
         primaryCta={{ label: "Read the Compute docs", href: "/docs/compute" }}
         secondaryCta={{ label: "How Prisma Compute works", href: "/compute" }}

@@ -71,6 +71,7 @@ test("an unreachable manifest leaves the sitemap without app pages instead of fa
 
 test("production reads the latest branch only; previews and local dev also read review branches", () => {
   assert.equal(showsPreviewManifests({ VERCEL_ENV: "production", NODE_ENV: "production" }), false);
+  assert.equal(showsPreviewManifests({ NODE_ENV: "production" }), false, "production off Vercel");
   assert.equal(showsPreviewManifests({ VERCEL_ENV: "preview", NODE_ENV: "production" }), true);
   assert.equal(showsPreviewManifests({ NODE_ENV: "development" }), true);
   assert.equal(showsPreviewManifests({ NODE_ENV: "test" }), false);
