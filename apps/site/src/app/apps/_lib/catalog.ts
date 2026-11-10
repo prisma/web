@@ -9,12 +9,18 @@ import { z } from "zod";
 // the registry here does not know about still renders, with sensible
 // fallbacks, so a new template is never blocked on a site change.
 
-// TEMPLATE_MANIFEST_URL points a preview at another branch of prisma-examples
-// (a template under review, for instance) without a code change. Production
-// leaves it unset and reads the latest branch.
-export const TEMPLATE_MANIFEST_URL =
-  process.env.TEMPLATE_MANIFEST_URL ||
-  "https://raw.githubusercontent.com/prisma/prisma-examples/latest/compute/templates.json";
+export const TEMPLATE_MANIFEST_URL = manifestUrlFor("latest");
+
+// Branches of prisma-examples whose manifests preview deployments and local
+// development merge in after the latest branch, so a template that is still
+// under review shows up on its gallery PR's preview. List the branch here in
+// the PR that adds the template's page, and drop it once the template merges.
+// Production reads the latest branch only.
+export const PREVIEW_MANIFEST_BRANCHES: readonly string[] = [];
+
+export function manifestUrlFor(branch: string): string {
+  return `https://raw.githubusercontent.com/prisma/prisma-examples/${branch}/compute/templates.json`;
+}
 
 export const TEMPLATE_SOURCE_BASE = "https://github.com/prisma/prisma-examples/tree/latest/";
 

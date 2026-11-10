@@ -1,8 +1,11 @@
 import {
   enrichTemplates,
+  manifestUrlFor,
+  PREVIEW_MANIFEST_BRANCHES,
   TEMPLATE_MANIFEST_URL,
   templateManifestSchema,
   type GalleryTemplate,
+  type ManifestTemplate,
 } from "./catalog";
 
 /**
@@ -35,13 +38,39 @@ export function manifestFetchInit(read: ManifestRead): RequestInit {
 // template added to the manifest shows up everywhere on the site without a
 // code change. Next memoises the fetch within a request, so a page and its
 // metadata share one round trip.
-async function fetchTemplates(read: ManifestRead = "revalidate"): Promise<GalleryTemplate[]> {
-  const response = await fetch(TEMPLATE_MANIFEST_URL, {
+async function fetchManifest(url: string, read: ManifestRead): Promise<ManifestTemplate[]> {
+  const response = await fetch(url, {
     ...manifestFetchInit(read),
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`Template manifest responded ${response.status}`);
-  return enrichTemplates(templateManifestSchema.parse(await response.json()).templates);
+  return templateManifestSchema.parse(await response.json()).templates;
+}
+
+/** Whether this deployment may show templates that are still under review. */
+export function showsPreviewManifests(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.VERCEL_ENV !== "production" && env.NODE_ENV !== "test";
+}
+
+// Outside production, the manifests of PREVIEW_MANIFEST_BRANCHES are added
+// after the latest branch, by id, so a template that already merged is read
+// from latest and one still under review from its branch. A review branch
+// that is gone or broken costs nothing: its templates are left out.
+async function fetchTemplates(read: ManifestRead = "revalidate"): Promise<GalleryTemplate[]> {
+  const templates = await fetchManifest(TEMPLATE_MANIFEST_URL, read);
+  if (showsPreviewManifests()) {
+    const known = new Set(templates.map((template) => template.id));
+    for (const branch of PREVIEW_MANIFEST_BRANCHES) {
+      const extra = await fetchManifest(manifestUrlFor(branch), read).catch(() => []);
+      for (const template of extra) {
+        if (!known.has(template.id)) {
+          known.add(template.id);
+          templates.push(template);
+        }
+      }
+    }
+  }
+  return enrichTemplates(templates);
 }
 
 // Lists degrade to empty: the gallery shows its empty state until the next
