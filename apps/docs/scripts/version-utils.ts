@@ -60,7 +60,12 @@ export function isVersionedTree(relativePath: string): boolean {
 
 function isHistoryPhrase(line: string, index: number): boolean {
   const before = line.slice(Math.max(0, index - 40), index).toLowerCase();
-  return HISTORY_PHRASES.some((phrase) => new RegExp(`\\b${phrase}\\s+\`?$`).test(before));
+  // Generated error references name the release that raised a retired error.
+  // Match only the immediately following version, not later pins on the line.
+  return (
+    /\bretired\.\s+`?$/.test(before) ||
+    HISTORY_PHRASES.some((phrase) => new RegExp(`\\b${phrase}\\s+\`?$`).test(before))
+  );
 }
 
 /**

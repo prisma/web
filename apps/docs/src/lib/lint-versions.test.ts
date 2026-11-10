@@ -30,6 +30,18 @@ test("keeps historical mentions while rewriting the same version later on the li
   assert.equal(fix("This worked as of `8.0.0-rc.10`."), "This worked as of `8.0.0-rc.10`.");
 });
 
+test("retired error history is preserved without exempting subsequent install pins", () => {
+  const history =
+    "Retired. 8.0.0-rc.22 raised this when Prisma ORM was loaded from more than one folder.";
+  const content = `${history} Install \`prisma@8.0.0-rc.22\` today.`;
+  assert.deepEqual(lintVersions(history, latest), []);
+  assert.equal(fix(content), `${history} Install \`prisma@8.0.0-rc.25\` today.`);
+  assert.equal(
+    fix("Retired. Install `prisma@8.0.0-rc.22` today."),
+    "Retired. Install `prisma@8.0.0-rc.25` today.",
+  );
+});
+
 test("keeps Added in cells while rewriting other cells", () => {
   const content = [
     "| Added in | Current |",

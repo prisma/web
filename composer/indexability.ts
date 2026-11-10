@@ -17,7 +17,9 @@ const { parse } = createRequire(import.meta.url)("next/dist/compiled/node-html-p
 export function assertIndexable(headers: Headers, html: string, path: string) {
   assert.doesNotMatch(
     headers.get("x-robots-tag") ?? "",
-    /\b(?:noindex|none)\b/i,
+    // `none` can be a standalone exclusion, optionally scoped to a crawler,
+    // or a max-image-preview value that leaves the page itself indexable.
+    /\bnoindex\b|(?:^|,)\s*(?!max-image-preview\s*:)(?:[^\s:,]+\s*:\s*)?none\s*(?=,|$)/i,
     `${path}: public host must be indexable, including internal ingress headers`,
   );
   for (const meta of parse(html, { lowerCaseTagName: true }).querySelectorAll("meta[name]")) {

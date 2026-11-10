@@ -3,7 +3,16 @@ import { test } from "node:test";
 import { assertIndexable } from "./indexability.ts";
 
 test("public-host verification still rejects ingress robots exclusions", () => {
-  for (const value of ["noindex", "NoNe", "googlebot: noindex, nofollow"])
+  for (const value of [
+    "noindex",
+    "NoNe",
+    "googlebot: noindex, nofollow",
+    "googlebot: none",
+    "googlebot : none",
+    "index, bingbot: none",
+    "max-image-preview: none, noindex",
+    "googlebot: max-image-preview: none, none",
+  ])
     assert.throws(
       () => assertIndexable(new Headers({ "x-robots-tag": value }), "<html></html>", "/"),
       /indexable/,
@@ -44,4 +53,12 @@ test("indexable pages, preview-image restrictions and literal examples remain al
     assertIndexable(new Headers({ "x-robots-tag": "index, follow" }), html, "/"),
   );
   assert.doesNotThrow(() => assertIndexable(new Headers(), "<html><head></head></html>", "/"));
+  for (const value of [
+    "max-image-preview: none",
+    " max-image-preview : none ",
+    "index, max-image-preview: none",
+    "MAX-IMAGE-PREVIEW: NONE, noimageindex",
+    "googlebot: max-image-preview: none",
+  ])
+    assert.doesNotThrow(() => assertIndexable(new Headers({ "x-robots-tag": value }), html, "/"));
 });
