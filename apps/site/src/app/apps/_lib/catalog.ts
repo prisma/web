@@ -376,6 +376,50 @@ export const TEMPLATE_META: Record<string, TemplateMeta> = {
       },
     },
   },
+  // DevShelf by Anas Ibn Belal: a searchable resource directory. The manifest
+  // supplies the author; the registry adds the use case, the date it landed,
+  // the screenshot and the page copy.
+  "scalable-indexing-platform-template": {
+    useCase: "Resource directory",
+    framework: "nextjs",
+    stack: ["prisma-orm", "prisma-postgres", "bun", "typescript"],
+    publishedAt: "2026-11-06",
+    featuredRank: 5,
+    preview: "/apps/previews/scalable-indexing-platform-template.png",
+    page: {
+      tagline:
+        "A searchable resource directory with full-text search, filters and cursor pagination that stay fast past a million rows.",
+      seoTitle: "Resource Discovery: a searchable directory in Next.js and Prisma",
+      seoDescription:
+        "Full-text search, filters and keyset pagination over a million rows. Next.js, Prisma ORM and Prisma Postgres by Anas Ibn Belal. Deploy it in one click.",
+      ogTitle: "Resource Discovery: search a million rows in Next.js",
+      ogDescription:
+        "A searchable resource directory in Next.js with Prisma ORM and Prisma Postgres, by Anas Ibn Belal. Deploy it to Prisma Compute in one click.",
+      highlights: [
+        {
+          title: "Search that uses an index",
+          body: 'Titles and descriptions sit behind a PostgreSQL full-text index declared in the Prisma contract, and tags behind a GIN index. Words match as prefixes, so typing "kuber" finds Kubernetes, and a term that matches nothing answers in milliseconds.',
+        },
+        {
+          title: "Filters that seek",
+          body: "Category and difficulty filters combine with search and read from composite indexes, so the database jumps to the cursor instead of scanning.",
+        },
+        {
+          title: "Pagination that never skips",
+          body: "Next, Previous and First buttons page with a keyset cursor over one stable order. A page costs the same on the first screen or the fifty-thousandth, and rows are never repeated or dropped.",
+        },
+        {
+          title: "Seed it at any scale",
+          body: "An empty database gets 20 curated resources on the first visit. One command adds 100,000 generated rows, or a million, in batches through the ORM, so you can watch the app at scale.",
+        },
+      ],
+      demoUrl: "https://shelf.anasi.me/",
+      license: {
+        label: "MIT",
+        href: "https://github.com/prisma/prisma-examples/blob/latest/compute/scalable-indexing-platform-template/LICENSE",
+      },
+    },
+  },
 };
 
 // A template counts as new for this long after it lands.
