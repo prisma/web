@@ -63,6 +63,22 @@ test("draft markdown keeps its own conditional noindex", async () => {
   }
 });
 
+test("agent-negotiated markdown keeps its directives on the plain post URL", async () => {
+  const handler = withRobotsDirectives(
+    () =>
+      new Response("draft", {
+        headers: {
+          "x-robots-tag": "noindex",
+          "x-prisma-agent-markdown": "accept",
+          vary: "Accept, User-Agent",
+        },
+      }),
+  );
+  const response = await handler(request("/blog/some-draft"));
+  assert.equal(response.headers.get("x-robots-tag"), "noindex");
+  assert.equal(response.headers.get("x-prisma-agent-markdown"), "accept");
+});
+
 test("html pages next to the markdown renditions are still stripped", async () => {
   const handler = withRobotsDirectives(() => noindexed("page"));
   for (const path of ["/blog/some-post", "/blog/llms.mdxextra", "/blog/some-post.md/extra"]) {

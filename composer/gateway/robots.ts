@@ -28,13 +28,27 @@ const passthroughRobots: ReadonlyArray<RegExp> = [
   /^\/blog\/(?:llms\.mdx(?:\/|$)|.+\.mdx?$)/,
 ];
 
+/**
+ * The apps' own marker for an agent-negotiated Markdown rendition: their
+ * proxies rewrite a plain post URL to the Markdown route, whose directives
+ * (a draft's conditional noindex) depend on the resolved content, not the
+ * requested path. The marker is set on the response by the apps themselves,
+ * so honoring it keeps the gateway out of the rendition negotiation.
+ */
+const agentMarkdownMarker = "x-prisma-agent-markdown";
+
 /** Keep the apps' indexing directives and drop the internal hop's ingress noindex. */
 export function withRobotsDirectives(handler: Handler): Handler {
   return async (request) => {
     const response = await handler(request);
     const pathname = new URL(request.url).pathname;
     if (!response.headers.has(robotsHeader)) return response;
-    if (passthroughRobots.some((pattern) => pattern.test(pathname))) return response;
+    if (
+      response.headers.has(agentMarkdownMarker) ||
+      passthroughRobots.some((pattern) => pattern.test(pathname))
+    ) {
+      return response;
+    }
     const headers = new Headers(response.headers);
     headers.delete(robotsHeader);
     const directive = intentionalRobots.find(({ pattern }) => pattern.test(pathname));
