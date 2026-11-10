@@ -16,7 +16,10 @@ export const TEMPLATE_MANIFEST_URL = manifestUrlFor("latest");
 // under review shows up on its gallery PR's preview. List the branch here in
 // the PR that adds the template's page, and drop it once the template merges.
 // Production reads the latest branch only.
-export const PREVIEW_MANIFEST_BRANCHES: readonly string[] = [];
+export const PREVIEW_MANIFEST_BRANCHES: readonly string[] = [
+  // Resource Discovery (DevShelf), prisma/prisma-examples#8651
+  "compute/devshelf-prisma-8-review-fixes",
+];
 
 export function manifestUrlFor(branch: string): string {
   return `https://raw.githubusercontent.com/prisma/prisma-examples/${branch}/compute/templates.json`;
