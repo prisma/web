@@ -25,6 +25,12 @@ test("social card images are crawlable under the shared bot policy", () => {
     "/og/card.png?title=Prisma+Compute",
     "/docs/og/composer/image.png",
     "/blog/og/image.png",
+    "/listings/homepage.png",
+    "/listings/orm.png",
+    "/listings/postgres.png",
+    "/listings/compute.png",
+    "/listings/console-usage.png",
+    "/listings/console-workspace.png",
   ]) {
     assert.equal(isDisallowed(image), false, image);
   }
@@ -46,4 +52,5 @@ test("only generated OG responses are excluded from search indexes", async () =>
   assert.equal(isNoindex("/og/nested/image.png"), true);
   assert.equal(isNoindex("/compute"), false, "the page stays indexable");
   assert.equal(isNoindex("/og.png"), false, "other public images stay indexable");
+  assert.equal(isNoindex("/listings/homepage.png"), false, "listing screenshots stay indexable");
 });

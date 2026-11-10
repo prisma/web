@@ -71,9 +71,10 @@ const SOURCES = [
       { label: "Frontend hosting", href: "https://docs.convex.dev/production/hosting" },
       { label: "Backup and export", href: "https://docs.convex.dev/database/backup-restore" },
       { label: "Convex pricing", href: "https://www.convex.dev/pricing" },
+      { label: "Convex enterprise pricing", href: "https://www.convex.dev/enterprise/pricing" },
       {
-        label: "Apache License 2.0",
-        href: "https://github.com/get-convex/convex-backend/blob/main/LICENSE",
+        label: "Apache License 2.0 (convex npm package)",
+        href: "https://github.com/convex/convex-backend/blob/main/npm-packages/convex/LICENSE",
       },
     ],
   },

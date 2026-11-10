@@ -117,7 +117,7 @@ export const postgresContent: ProductPageContent = {
       {
         name: "Predictable pricing",
         description:
-          "Operation-based pricing with spend limits you set yourself. A quiet month costs almost nothing, a busy one never surprises you.",
+          "Operation-based pricing with spend limits you set yourself. A quiet month costs almost nothing, and database queries stop when usage charges reach your limit.",
         illustration: "spendLimits",
       },
       {

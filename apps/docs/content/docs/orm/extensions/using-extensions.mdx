@@ -95,6 +95,16 @@ Getting the new column from your contract into your database takes these command
 
 The extension's contract declares the PostgreSQL extension `vector`, so its migration runs `CREATE EXTENSION IF NOT EXISTS vector` and you never write that statement yourself, but the PostgreSQL server has to have pgvector available for it to succeed. Both databases the quickstart offers have it: the local Prisma Postgres database that Composer starts, and a Prisma Postgres database from `npx create-db@latest`. A stock PostgreSQL image may not, and then the migration fails on that statement, so install pgvector on the server first, following [pgvector's own instructions](https://github.com/pgvector/pgvector).
 
+The extension's contract declares `vector` outside any schema, so `db sign` and `db verify` accept the extension in any schema on the connection's search path, such as the `extensions` schema Supabase installs extensions in. A Supabase database that already has pgvector, PostGIS, ParadeDB or citext there adopts Prisma ORM 8 with `npx prisma contract emit` and `npx prisma db sign`. When the extension is in a schema that is not on the search path, `db verify` fails and names the schema and the search path. Add that schema to the search path of the role your app connects as, or reinstall the extension in a schema on the search path.
+
+Do not declare `vector` in your own contract as well. `contract emit` refuses an `extension vector {}` block with `PSL_ENTITY_DECLARED_BY_PACK`, and `migration plan` and `db update` refuse an `extension('vector')` handle in a TypeScript contract. The same holds for `postgis` with the PostGIS extension, `pg_search` with ParadeDB, and `citext` with the citext pack.
+
+:::note[Upgrading pgvector, PostGIS, ParadeDB or citext from before `8.0.0-rc.23`]
+
+Since `8.0.0-rc.23`, each of these extensions declares its PostgreSQL extension outside any schema. After you upgrade, run `npx prisma contract emit`, which writes new migrations and a new head ref under the extension's directory in `migrations/`, and commit all of them. When you upgrade from before `8.0.0-rc.22`, these include the migrations the next note describes. Then run `npx prisma db migrate` against each database. On a database that already ran the migrations added in `8.0.0-rc.22`, the migration it runs has no operations, so the database does not change. If your own contract declares the same extension, remove that declaration first, as described above.
+
+:::
+
 :::note[Upgrading pgvector, PostGIS or ParadeDB from before `8.0.0-rc.22`]
 
 Since `8.0.0-rc.22`, each of these extensions declares its PostgreSQL extension in its contract, instead of installing it in a migration that records an invariant, an id the database keeps to show that migration ran. After you upgrade, run `npx prisma contract emit` and commit the files it writes under the extension's directory in `migrations/`: a new head ref and two new migrations. Then run `npx prisma db migrate` against each database. On a database where the old migration already installed the extension, the new migration only moves the extension's marker. On a database that has the extension but was never signed, `npx prisma db sign` works now. `db sign` refuses a contract space whose head ref needs an invariant the database has not recorded, with `MIGRATION.SIGN_INVARIANTS_MISSING`, because only `db migrate` can run the migration that records it.
@@ -164,9 +174,8 @@ Every extension, whether Prisma wrote it or someone in the community did, is lis
 | Name | What it adds | Package | Databases | By |
 | --- | --- | --- | --- | --- |
 | [arktype-json](https://www.prisma.io/extensions/arktype-json) | JSON columns validated by an arktype schema and typed end to end. | `@prisma/orm-extension-arktype-json` | PostgreSQL | Prisma |
-| citext | Case-insensitive text columns, typed `citext.Citext`. Import it from `@prisma/orm-postgres-contrib/citext/control` and `/citext/runtime`. | `@prisma/orm-postgres-contrib` | PostgreSQL | Prisma |
 | [MongoDB](https://www.prisma.io/extensions/mongodb) | MongoDB support for Prisma ORM: config, runtime, contract authoring, BSON values, and migrations in one package. | `@prisma/orm-mongo` | MongoDB | Prisma |
-| [ParadeDB](https://www.prisma.io/extensions/paradedb) (experimental) | BM25 full-text search indexes. | `@prisma/orm-extension-paradedb` | PostgreSQL | Prisma |
+| [ParadeDB](https://www.prisma.io/extensions/paradedb) (experimental) | BM25 full-text search ranked by relevance, with fuzzy, phrase, and proximity queries. | `@prisma/orm-extension-paradedb` | PostgreSQL | Prisma |
 | [pgvector](https://www.prisma.io/extensions/pgvector) | Vector columns and similarity search for embeddings. | `@prisma/orm-extension-pgvector` | PostgreSQL | Prisma |
 | [PostGIS](https://www.prisma.io/extensions/postgis) | Geometry columns and geospatial queries such as distance and containment. | `@prisma/orm-extension-postgis` | PostgreSQL | Prisma |
 | [PostgreSQL](https://www.prisma.io/extensions/postgresql) | PostgreSQL support for Prisma ORM: config, runtime, contract authoring, and migrations in one package. | `@prisma/orm-postgres` | PostgreSQL | Prisma |
@@ -218,9 +227,9 @@ export const db = await supabase({
 
 `jwksUrl` is your project's JWKS endpoint, `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`, and it is the right option for a current Supabase project, because those sign their JWTs with ES256 keys. An older project that still signs with the shared HS256 secret passes `jwtSecret` instead of `jwksUrl`, and never both. `supabase status` prints a `JWT_SECRET` even for an ES256 project, so its presence does not tell you which one yours uses. A token signed the other way is rejected with an error whose `code` is `SUPABASE.JWT_INVALID`, and the message names the fix.
 
-`supabase(...)` takes the same `extensions` array as `postgres(...)`, so pgvector or another extension goes there in the same way.
+`supabase(...)` takes the options `postgres(...)` takes, so pgvector or another extension goes in its `extensions` array in the same way. That includes `cursor`, which streams rows from a server-side cursor, and `binding`, which takes `{ kind: 'url', url }` or `{ kind: 'pgPool', pool }`.
 
-To use a `pg` pool you build yourself, pass it as `pg` in place of `url`. `pg` takes a `pg.Pool` only, because each role-bound query needs a connection of its own. A `pg.Client` fails at `supabase(...)` with an error whose `code` is `SUPABASE.CONFIG_INVALID`.
+To use a `pg` pool you build yourself, pass it as `pg` in place of `url`. `supabase(...)` takes a `pg.Pool`, not a `pg.Client`, and checks the database input when you call it. [`postgres(options)`](/orm/reference/transactions-and-runtime#postgresoptions) lists what it accepts and the error a wrong input gives.
 
 ```ts title="src/prisma/db.ts (excerpt)"
 import { Pool } from 'pg';
@@ -240,6 +249,8 @@ You run queries through a client bound to a role, not through `db` itself, which
 - `await db.asUser(jwt)` takes the user's Supabase JWT and runs as that user.
 - `db.asAnon()` runs as the anonymous role.
 - `db.asServiceRole()` bypasses row-level security.
+
+When a role-bound client is done with a connection, it resets the connection's role before the connection goes back to the pool, so the next query on that connection does not run as that role.
 
 Each role-bound client has the members a `postgres(...)` client uses to run queries: `orm`, `sql`, `raw`, `prepare`, `query`, `execute`, `toSql`, `enums`, `nativeEnums`, and `transaction()`. The `tx` a role-bound `transaction()` passes to your callback has the same members as a [`postgres(...)` transaction](/orm/reference/transactions-and-runtime#dbtransactioncallback), `enums` and `nativeEnums` included. For example, `prepare` prepares a statement you run many times with different values, as [`db.prepare`](/orm/reference/transactions-and-runtime#dbpreparedeclaration-callback) describes.
 

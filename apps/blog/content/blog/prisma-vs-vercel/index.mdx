@@ -2,7 +2,7 @@
 title: "Prisma vs Vercel: where should you build your next TypeScript app?"
 slug: "prisma-vs-vercel"
 date: "2026-09-16"
-updatedAt: "2026-11-03"
+updatedAt: "2026-11-09"
 authors:
   - "Shane Neubauer"
 metaTitle: "Prisma vs Vercel for TypeScript apps: which platform?"
@@ -59,7 +59,7 @@ Choose Vercel if:
 | Typed data access | Prisma ORM 8 or any client | Any ORM or client, including Prisma ORM |
 | Service-to-service calls | Composer binds each dependency to a typed contract and checks it at compile time | Service bindings (beta) inject a URL; types are yours to add |
 | Previews | One environment per Git branch, deleted with the branch | One preview URL per Git branch |
-| Preview databases | One per branch, created by you or by a Composer stage deploy, no production data | Provider-specific; Neon copies production per branch |
+| Preview databases | One per branch, created by you or by a Composer deploy of the branch, no production data | Provider-specific; Neon copies production per branch |
 | Long-running work | 60 seconds to first byte, then `waitUntil`; no WebSockets | Continuous background workers from container images with [Daemons](https://vercel.com/docs/daemons) (public beta since [2026-10-15](https://vercel.com/changelog/vercel-daemons-is-now-in-public-beta), all plans); production only during beta, no inbound HTTP |
 | Billing | Plan fee plus requests, memory, CPU, and bandwidth | Plan fee plus compute, delivery, builds, and seats |
 
@@ -127,7 +127,7 @@ Both platforms give every branch other than the production branch a running prev
 2. Point the branch at it: `npx prisma@latest project env add DATABASE_URL=<printed-url> --branch feature/search`.
 3. Seed it if the feature needs realistic rows, because it starts empty.
 
-Declaring the database in the module replaces the first two steps. The stage deploy that the action runs for each pushed branch other than the default one, the same as `npx prisma@latest deploy module.ts --stage <branch>` from a terminal, creates the databases the module declares and runs their migrations, but the databases still start empty.
+Declaring the database in the module replaces the first two steps. The deploy that the action runs for each pushed branch other than the default one, to an environment named after the branch, creates the databases the module declares and runs their migrations, but the databases still start empty. From a terminal, `npx prisma@latest deploy --environment <branch>` does the same.
 
 A preview uses whatever `DATABASE_URL` it was given, so a preview that inherits the production value *writes to production*. Keep production and preview values in separate scopes, as the [environment variables docs](https://www.prisma.io/docs/compute/environment-variables) describe.
 
@@ -199,7 +199,7 @@ To run migrations, add `npx prisma@latest db migrate --db "$DATABASE_URL"` to yo
 For a TypeScript app, mostly. Prisma Compute hosts the app and Prisma Postgres holds the data. It does not replace Vercel's platform-level Next.js caching and image optimization, and Compute has no WebSockets, no multi-region deployment, and a 60-second limit before a request must start responding.
   </Accordion>
   <Accordion title="Does Prisma give each preview its own database?">
-Yes, if you create it. Each Git branch is an isolated environment, but you provision the database with the CLI or a Composer stage deploy, and it starts without production data. A preview-scoped or branch-scoped `DATABASE_URL` keeps the preview off production.
+Yes, if you create it. Each Git branch is an isolated environment, but you provision the database with the CLI or a Composer deploy of the branch, and it starts without production data. A preview-scoped or branch-scoped `DATABASE_URL` keeps the preview off production.
   </Accordion>
   <Accordion title="What is the migration graph in Prisma ORM 8?">
 A record of which schema version each migration starts from and produces. After two branches merge, the ORM can plan a path from each database's current version to the merged schema. It is an ORM feature and works on any host, including Vercel.
@@ -217,4 +217,5 @@ Yes. The Prisma Postgres Marketplace integration provisions a database and sets 
 
 ## Update history
 
+- 2026-11-09: "Previews and their databases" now gives the terminal command as `npx prisma@latest deploy --environment <branch>`, without `module.ts`, because `--environment` replaced `--stage` and the CLI reads the entry from the `composer` section of `prisma.config.ts`; the comparison table and the FAQ on preview databases say "a Composer deploy of the branch" in place of "a Composer stage deploy". Source: Prisma's [`deploy` reference](https://www.prisma.io/docs/cli/deploy), checked 2026-11-09.
 - 2026-11-03: "Previews and their databases" now says the Prisma Postgres integration sets `DATABASE_URL`, `POSTGRES_URL`, `PRISMA_DATABASE_URL`, and `DATABASE_URL_POOLED` instead of only `DATABASE_URL`, and that a project with no `DATABASE_URL_POOLED` has a database created before 2026-10-29. No other facts changed.

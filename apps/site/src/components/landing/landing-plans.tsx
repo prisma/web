@@ -55,7 +55,7 @@ const ROWS = [
 
 export function LandingPlans({
   headline = "Start free. Pay when the app grows.",
-  body = "Every plan covers both the app and the database. Free has no time limit and no usage billing; paid plans meter what the app does, under a spend limit you set.",
+  body = "Every plan covers both the app and the database. Free has no time limit and no usage billing; paid plans meter what the app does and include a hard spend limit you set in the Console.",
   highlight = "Free",
   include,
   ctaLabel = CTA_LABEL,
