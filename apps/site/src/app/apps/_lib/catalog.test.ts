@@ -241,6 +241,45 @@ test("room booking uses its scheduler screenshot instead of the framework fallba
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
 });
 
+test("resource discovery uses its catalog screenshot, page copy and licence", () => {
+  const [shelf] = enrichTemplates(
+    [
+      {
+        id: "scalable-indexing-platform-template",
+        name: "Resource Discovery",
+        description: "Next.js searchable resource directory.",
+        path: "compute/scalable-indexing-platform-template",
+        framework: "nextjs",
+        author: { name: "Anas Ibn Belal", url: "https://github.com/anas20023" },
+      },
+    ],
+    NOW,
+  );
+  assert.equal(shelf.preview, "/apps/previews/scalable-indexing-platform-template.png");
+  assert.equal(shelf.useCase, "Resource directory");
+  assert.equal(shelf.pagePath, "/apps/scalable-indexing-platform-template");
+  assert.equal(shelf.author.name, "Anas Ibn Belal", "the manifest author wins");
+  assert.deepEqual(authorBadge(shelf.author), {
+    kind: "photo",
+    src: "https://github.com/anas20023.png",
+  });
+  const png = readFileSync(
+    new URL(
+      "../../../../public/apps/previews/scalable-indexing-platform-template.png",
+      import.meta.url,
+    ),
+  );
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+
+  const page = templatePage(shelf);
+  assert.ok(page.description.length <= 160, `meta description is ${page.description.length} chars`);
+  assert.notEqual(page.ogTitle, page.title);
+  assert.equal(page.highlights.length, 4);
+  assert.equal(page.demoUrl, "https://shelf.anasi.me/");
+  assert.equal(page.license.label, "MIT");
+  assert.match(page.license.href, /scalable-indexing-platform-template\/LICENSE$/);
+});
+
 test("the site image policy allows GitHub profile photos to load", () => {
   const policy = securityHeaders.find(({ key }) => key === "Content-Security-Policy")?.value ?? "";
   const imgSrc = policy.match(/img-src[\s\S]*?;/)?.[0] ?? "";
