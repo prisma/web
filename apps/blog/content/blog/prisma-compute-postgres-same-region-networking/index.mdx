@@ -1,0 +1,88 @@
+---
+title: "How a Prisma Compute app reaches Prisma Postgres: same-region networking, resume time and the planned internal network"
+slug: "prisma-compute-postgres-same-region-networking"
+date: "2026-11-10"
+updatedAt: "2026-11-10"
+authors:
+  - "Gregory Boch"
+metaTitle: "How Prisma Compute reaches Prisma Postgres (2026)"
+metaDescription: "How a Prisma Compute app connects to Prisma Postgres in the same region today, what sleeping does to the connection, and the planned internal network."
+heroImagePath: "/prisma-compute-postgres-same-region-networking/imgs/hero.svg"
+heroImageAlt: "One project in one region holds a Prisma Compute app and a Prisma Postgres database; the app connects to the database over TLS through its public endpoint today, and a dashed link marks the planned internal network."
+metaImagePath: "/prisma-compute-postgres-same-region-networking/imgs/meta.png"
+excerpt: "A Prisma Compute app reaches Prisma Postgres over TLS through the database's endpoint in the same region. This post covers the connection path, what sleeping does to it, the planned internal network, and how Railway, Render, Fly.io and Neon handle the same question."
+tags:
+  - "platform"
+  - "prisma-postgres"
+---
+
+A Prisma Compute app reaches its Prisma Postgres database over TLS, through the database's public endpoint, in the same region. The app and the database run in one project, in one of six regions, and the app gets its connection string from the project: Prisma Composer passes it in at runtime, or the app reads an environment variable such as `DATABASE_URL`. We make Prisma Compute and Prisma Postgres. This post covers the connection path today, what happens to it when an idle app sleeps, the internal network we plan to add, and how Railway, Render, Fly.io and Neon connect an app to its database.
+
+## Today: one endpoint, in the same region
+
+Every Prisma Postgres database has two [connection strings](https://www.prisma.io/docs/postgres/database/connecting-to-your-database):
+
+| String | Host | Use it for |
+| --- | --- | --- |
+| Pooled | `pooled.db.prisma.io:5432` | Application queries |
+| Direct | `db.prisma.io:5432` | Migrations, `pg_dump`, `psql` and admin tools |
+
+Both use `sslmode=require`: TLS is mandatory. A Compute app connects through these public endpoints too, so its traffic to the database goes through the public entry point, not a private network.
+
+What this means in practice:
+
+- **Anyone holding a connection string can connect from the internet.** The string carries the password, and every credential has full access to its database. Keep it in the project's environment, never in the repository. If it leaks, [create a new credential, switch the app to it and delete the old one](https://www.prisma.io/docs/postgres/database/connecting-to-your-database#rotate-or-delete-a-credential). Rotating alone isn't enough, because the old password can keep working.
+- **Region is what you control.** Every query travels from the app to the database's region and back. Compute services and Prisma Postgres share six regions (`us-east-1`, `us-west-1`, `eu-west-3`, `eu-central-1`, `ap-northeast-1`, `ap-southeast-1`), so put both in the same one. A database's region can't be changed after you create it.
+
+## What sleeping does to the connection
+
+By default, Compute [scales idle instances to zero](https://www.prisma.io/docs/compute/keeping-instances-awake): an idle instance sleeps with a memory snapshot and resumes with its memory intact.
+
+- **Resume time.** We measured a median resume of about 30 to 40 ms for a sleeping instance. That's the instance waking up, not time to first byte: your handler's own work comes on top, and we haven't published a time-to-first-byte figure.
+- **The database connection survives the sleep.** An open connection is still there when the instance resumes, unless it slept for more than about three days. After a longer sleep, the app has to open a new connection, so use a pool or client that reconnects after a failed connection rather than holding one connection forever.
+- **Work that must outlive a request** should keep the instance awake with [`keepAwake` or `KeepAwakeGuard`](https://www.prisma.io/docs/compute/keeping-instances-awake), so the instance doesn't sleep in the middle of a job.
+
+## Planned: an internal network per project
+
+We plan to put each project's apps and Postgres databases on an internal network in their region, the setup other hosts often call a VPC:
+
+- All apps and databases in a project run in one region, and can talk to each other over the internal network.
+- Prisma Composer declares which app can reach which database, and which apps and databases are reachable from the internet.
+- A common setup: the web app is public, it talks to Postgres over the internal network, and Postgres can't be reached from the internet at all.
+
+There's no date for it yet. Until it ships, the connection path is the one described above. We'll update this post when it does.
+
+## How other hosts connect an app to its database
+
+Rows are in alphabetical order. Checked 2026-11-10 against each vendor's own docs.
+
+| Host | App-to-database path | Source |
+| --- | --- | --- |
+| Fly.io | Apps in an organization share a private WireGuard mesh (6PN) with `.internal` DNS, on by default. A Managed Postgres cluster sits in the organization's private network. | [Private networking](https://docs.fly.io/networking/private-networking), [Managed Postgres](https://docs.fly.io/postgres) |
+| Neon | By default, apps connect over the open internet through the Neon proxy. Private Networking (AWS PrivateLink) and IP Allow are on the Scale plan. | [Private Networking](https://neon.com/docs/guides/neon-private-networking), [IP Allow](https://neon.com/docs/introduction/ip-allow) |
+| Prisma Compute + Prisma Postgres | Over TLS through the database's endpoint, in the same region. An internal network per project is planned, with no date yet. | [Connection strings](https://www.prisma.io/docs/postgres/database/connecting-to-your-database), [Compute limitations](https://www.prisma.io/docs/compute/limitations) |
+| Railway | Services in a project talk over encrypted WireGuard tunnels with internal DNS, without exposing traffic to the public internet. Each environment has its own network. | [Private networking](https://docs.railway.com/networking/private-networking) |
+| Render | Apps should use the database's internal URL, which needs the service and the database in the same account and region. | [Creating and connecting](https://render.com/docs/postgresql-creating-connecting) |
+
+If you're comparing Neon with a host that runs the app and the database together, the default path is the same for Neon and Prisma Postgres: a TLS connection over the internet. Railway, Render and Fly.io already keep that traffic on a private network.
+
+## Checklist for today
+
+- Create the Compute service and the database in the same region.
+- Use the pooled string for app queries and the direct string for migrations and admin tools.
+- Keep connection strings in the project's environment, and replace a leaked one as described above.
+- Use a pool or client that reconnects after a failed connection.
+
+## Sources
+
+Checked 2026-11-10:
+
+- Prisma: [connection strings, credentials and regions](https://www.prisma.io/docs/postgres/database/connecting-to-your-database), [Prisma Postgres regions](https://www.prisma.io/docs/postgres/faq#what-regions-is-prisma-postgres-available-in), [keeping instances awake](https://www.prisma.io/docs/compute/keeping-instances-awake), [Compute limitations](https://www.prisma.io/docs/compute/limitations), [Compute FAQ](https://www.prisma.io/docs/compute/faq). The resume time and the three-day connection limit come from the Prisma Compute team.
+- Fly.io: [private networking](https://docs.fly.io/networking/private-networking), [Managed Postgres](https://docs.fly.io/postgres).
+- Neon: [Private Networking](https://neon.com/docs/guides/neon-private-networking), [IP Allow](https://neon.com/docs/introduction/ip-allow).
+- Railway: [private networking](https://docs.railway.com/networking/private-networking).
+- Render: [creating and connecting to Render Postgres](https://render.com/docs/postgresql-creating-connecting).
+
+## Update history
+
+- 2026-11-10: first published.
