@@ -187,6 +187,10 @@ The website bootstrap restores those fields before Next handles the request,
 then removes the private markers from both header representations. Forged or
 malformed markers do not change the host. The proxy sends this credential only
 to the five named website services, never to other origins or external rewrites.
+Because the internal hop's hostname is a generated `*.prisma.build` host,
+compute ingress noindexes its responses; the gateway drops that directive and
+re-asserts only the apps' own robots headers, so custom-domain pages stay
+indexable while generated hosts are still noindexed at the edge.
 
 Pages and assets need no user-supplied credentials. Optional external integrations are bound
 only when selected with `COMPOSER_INTEGRATIONS`, a comma-separated list:
