@@ -123,25 +123,6 @@ The `services` block starts a PostgreSQL container that lives for the duration o
 
 With CI in place, you'll deploy the backend to Prisma Compute using the Prisma CLI.
 
-### Prepare the app to read the port
-
-Compute assigns your app a port at runtime. Make the server read it from the environment, falling back to `3000` locally. Update `src/index.ts`:
-
-```ts
-import { serve } from "@hono/node-server";
-import app from "./app";
-
-serve(
-  {
-    fetch: app.fetch,
-    port: Number(process.env.PORT) || 3000,
-  },
-  (info) => {
-    console.log(`Server is running on http://localhost:${info.port}`);
-  },
-);
-```
-
 ### Authenticate the CLI
 
 Sign in once so the CLI can deploy on your behalf:
@@ -162,7 +143,7 @@ npm install @prisma/composer @prisma/composer-prisma-cloud
 
 The Composer flow needs the Prisma 8 CLI and its config format, so run the deploy steps with `npx prisma@latest`. Migrating the app itself to Prisma ORM 8 is outside this article's scope — the [ORM 7 → 8 migration guide](https://www.prisma.io/docs/guides/upgrade-prisma-orm/postgresql-incremental) walks the app through it, and the [Coming from Prisma ORM 7](https://www.prisma.io/docs/orm/coming-from-prisma-orm-7) lookup maps what changed. The config snippet below shows the shape the deploy needs.
 
-A `service.ts` at the project root declares the service and points at your built output — one self-contained entry file per service (`bun build --target=bun src/index.ts --outdir dist` for this app):
+A `service.ts` at the project root declares the service and points at your built output, one self-contained entry file per service:
 
 ```ts title="service.ts"
 import node from "@prisma/composer/node";
@@ -170,11 +151,20 @@ import { compute } from "@prisma/composer-prisma-cloud";
 
 export default compute({
   name: "api",
-  build: node({ module: import.meta.url, entry: "./dist/index.js" }),
+  build: node({ module: import.meta.url, entry: "./dist/server.mjs" }),
 });
 ```
 
-The root module `module.ts` provisions it:
+On Compute, the server reads its port from `service.port()` rather than `process.env.PORT`, and binds `0.0.0.0` so external traffic can reach it. Keep `src/index.ts` as it is for local development, and add a separate entry for Compute that serves the same Hono app:
+
+```ts title="src/server.ts"
+import app from "./app";
+import service from "../service.ts";
+
+Bun.serve({ port: service.port(), hostname: "0.0.0.0", fetch: app.fetch });
+```
+
+The root module `module.ts` provisions the service:
 
 ```ts title="module.ts"
 import { module } from "@prisma/composer";
@@ -203,18 +193,48 @@ export default definePrismaConfig({
 });
 ```
 
-The region is where the first deploy creates the project; a project that already exists keeps its region. The server code needs two small changes for Compute: read the port from `service.port()` instead of `process.env.PORT`, and bind `0.0.0.0`. The [port an existing app](https://www.prisma.io/docs/composer/porting-an-app) guide walks through it, and the [deploy quickstart](https://www.prisma.io/docs/prisma-compute/deploy) shows the whole flow from scratch.
+The region is where the first deploy creates the project; a project that already exists keeps its region. The [port an existing app](https://www.prisma.io/docs/composer/porting-an-app) guide covers these steps in more depth, and the [deploy quickstart](https://www.prisma.io/docs/prisma-compute/deploy) shows the whole flow from scratch.
 
-### Deploy
+### Build and create the project
 
-`prisma deploy` ships what you built — it doesn't run the build. Build the self-contained entry first (the build targets Bun, the runtime Compute runs your app on, so [install Bun](https://bun.sh) if you haven't), and add it as the `build` script so the deploy-on-push workflow later in this article can run it too:
+`prisma deploy` ships what you built — it doesn't run the build. The build targets Bun, the runtime Compute runs your app on, so [install Bun](https://bun.sh) if you haven't. Add a `build` script that generates Prisma Client and bundles the Compute entry. The client is generated into `generated/prisma`, which isn't committed, so the build has to create it before bundling. The deploy-on-push workflow later in this article runs the same script on a fresh checkout:
 
 ```sh
-bun build --target=bun src/index.ts --outdir dist
-npm pkg set scripts.build="bun build --target=bun src/index.ts --outdir dist"
+npm pkg set scripts.build="prisma generate && bun build --target=bun src/server.ts --outfile dist/server.mjs"
+npm run build
 ```
 
-From the project directory, deploy the app:
+From the project directory, run the first deploy:
+
+```sh
+npx prisma@latest deploy
+```
+
+The first deploy creates the `grading-app` project and its `api` service. The API can't serve requests yet: it reads `DATABASE_URL` at startup, and the project has no environment variables so far. You'll add them next and deploy again.
+
+`deploy` creates the project but doesn't link your directory to it. The `project env` and `git` commands below act on the linked project, so link it now:
+
+```sh
+npx prisma@latest project link grading-app
+```
+
+### Setting environment variables
+
+The backend needs three runtime variables: `DATABASE_URL` (the connection string of the Prisma Postgres database you've used throughout the series), `JWT_SECRET` (used to sign JWTs), and `RESEND_API_KEY` (used to send login emails).
+
+> **Note:** If you used the Docker alternative in part 1, its `localhost` connection string won't work here: on Compute, `localhost` is the Compute instance, not your machine. Create a hosted database with `npx create-db` as described in part 1, apply your migrations to it with `DATABASE_URL="postgres://..." npx prisma migrate deploy`, and use its connection string below.
+
+Set the variables for the production environment:
+
+```sh
+npx prisma@latest project env add DATABASE_URL="your-connection-string" --role production
+npx prisma@latest project env add JWT_SECRET=your-secret --role production
+npx prisma@latest project env add RESEND_API_KEY=your-key --role production
+```
+
+> **Note:** Generate a strong `JWT_SECRET` with: `node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"`. Use `--role preview` to set values for preview deployments.
+
+Variable values resolve at deploy time, so deploy again to give the running service its variables:
 
 ```sh
 npx prisma@latest deploy
@@ -229,18 +249,6 @@ npx prisma@latest service open api
 ```
 
 Visiting the root should return `{"up":true}`.
-
-### Setting environment variables
-
-The backend needs three runtime variables: `DATABASE_URL` (the connection string of the Prisma Postgres database you've used throughout the series), `JWT_SECRET` (used to sign JWTs), and `RESEND_API_KEY` (used to send login emails). Set them for the production environment:
-
-```sh
-npx prisma@latest project env add DATABASE_URL="your-connection-string" --role production
-npx prisma@latest project env add JWT_SECRET=your-secret --role production
-npx prisma@latest project env add RESEND_API_KEY=your-key --role production
-```
-
-> **Note:** Generate a strong `JWT_SECRET` with: `node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"`. Variable values resolve at deploy time, so if you add or change one after deploying, deploy again to pick it up. Use `--role preview` to set values for preview deployments.
 
 ### Deploying automatically on every push
 
