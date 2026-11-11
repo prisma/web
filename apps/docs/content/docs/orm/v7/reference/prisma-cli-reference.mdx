@@ -137,6 +137,16 @@ Learn more: https://pris.ly/getting-started
 
 Next, run the `prisma dev` command to interact with your local Prisma Postgres instance (e.g. to run migrations or execute queries).
 
+For a cloud database instead, use the `Cloud` option from the output: [`npx create-db`](#npx-create-db) creates a temporary [Prisma Postgres](/postgres) database without an account and prints its connection string.
+
+```bash
+npx create-db@latest
+```
+
+Replace the `DATABASE_URL` value that `init` wrote to your `.env` file with that connection string. The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL in the same output.
+
+If `.env` already had a `DATABASE_URL` before you ran `init`, the command kept it. Leave that value as it is and follow the `CONNECT EXISTING DATABASE` steps in the output.
+
 **Run `prisma init --datasource-provider sqlite`**
 
 ```bash
@@ -1233,6 +1243,15 @@ Apply all migrations and create a new migration if there are schema changes, but
 ```bash
 prisma migrate dev --create-only
 ```
+
+Create and apply a migration on a different database than the one in your Prisma config. `--url` takes a connection string for the database provider in your Prisma schema and applies to this run only: `DATABASE_URL` and your `.env` file stay as they are. For a `postgresql` datasource, [`npx create-db`](#npx-create-db) prints a connection string for a temporary Prisma Postgres database (deleted after 24 hours unless you claim it):
+
+```bash
+SCRATCH_DATABASE_URL="$(npx -y create-db@latest --quiet)" &&
+prisma migrate dev --name added_job_title --url "${SCRATCH_DATABASE_URL:?}"
+```
+
+The migration file is saved in your migrations directory, and the database in your Prisma config does not have it yet. Data loss warnings are evaluated against the database the command runs on, so review the generated SQL before you run `prisma migrate dev` or `prisma migrate deploy` against a database that holds data. `--quiet` prints only the connection string, and the claim URL goes to the terminal's error stream.
 
 ### `migrate reset`
 
