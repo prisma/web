@@ -120,15 +120,15 @@ Examples of serverless environments include Node.js functions hosted on AWS Lamb
 
 In a serverless environment, each function creates **its own instance** of `PrismaClient`, and each client instance has its own connection pool.
 
-Consider the following example, where a single AWS Lambda function uses `PrismaClient` to connect to a database. The `connection_limit` is **3**:
+Consider the following example, where a single AWS Lambda function uses `PrismaClient` to connect to a database. The pool size is **3**:
 
 ![An AWS Lambda function connecting to a database.](/img/orm/prisma-client/setup-and-configuration/databases-connections/serverless-connections.png)
 
-A traffic spike causes AWS Lambda to spawn two additional lambdas to handle the increased load. Each lambda creates an instance of `PrismaClient`, each with a `connection_limit` of **3**, which results in a maximum of **9** connections to the database:
+A traffic spike causes AWS Lambda to spawn two additional lambdas to handle the increased load. Each lambda creates an instance of `PrismaClient`, each with a pool size of **3**, which results in a maximum of **9** connections to the database:
 
 ![Three AWS Lambda function connecting to a database.](/img/orm/prisma-client/setup-and-configuration/databases-connections/serverless-connections-2.png)
 
-Many _concurrent functions_ responding to a traffic spike 📈 can exhaust the database connection limit very quickly. Furthermore, any functions that are **paused** keep their connections open by default and block them from being used by another function.
+Many _concurrent functions_ responding to a traffic spike 📈 can exhaust the database connection limit very quickly. Any functions that are **paused** also keep their connections open by default and block them from being used by another function.
 
 1. Configure a small pool size for your [driver adapter](/orm/v7/prisma-client/setup-and-configuration/databases-connections/connection-pool) (adapter-specific; start small when not using a pooler)
 2. If you need more connections per function, consider using an [external connection pooler like PgBouncer](#external-connection-poolers)
