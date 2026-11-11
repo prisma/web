@@ -2,7 +2,7 @@
 title: "Backend with TypeScript, PostgreSQL & Prisma: CI & Deployment"
 slug: "backend-prisma-typescript-orm-with-postgresql-deployment-bbba1ps7kip5"
 date: "2020-09-17"
-updatedAt: "2026-07-03"
+updatedAt: "2026-11-11"
 authors:
   - "Daniel Norman"
 metaTitle: "TypeScript, PostgreSQL, Prisma | Continuous Integration & Deployment"
@@ -14,7 +14,7 @@ series: backend-prisma-typescript-orm-with-postgresql
 seriesIndex: 4
 ---
 
-> **Update (July 2026):** This article was updated for Prisma ORM 7. Continuous integration still runs on GitHub Actions, but deployment now targets [Prisma Compute](https://www.prisma.io/compute), which runs your app next to your Prisma Postgres database, instead of Heroku. All commands work with Prisma ORM 7 and Node.js 20 or later.
+> **Update (July 2026):** This article was updated for Prisma ORM 7. Continuous integration still runs on GitHub Actions, but deployment now targets [Prisma Compute](https://www.prisma.io/compute), which runs your app next to your Prisma Postgres database, instead of Heroku. All commands work with Prisma ORM 7 and Node.js 20 or later. Deploys go through [Prisma Composer](https://www.prisma.io/docs/composer): the app is declared in a Composer module and shipped with `npx prisma deploy`.
 
 In this fourth and final part of the series, you'll configure continuous integration (CI) with GitHub Actions to run the tests, and deploy the backend to Prisma Compute.
 
@@ -147,52 +147,87 @@ serve(
 Sign in once so the CLI can deploy on your behalf:
 
 ```sh
-npx @prisma/cli@latest auth login
+npx prisma@latest auth login
 ```
 
 This opens the browser and stores a local session that later commands reuse.
 
-### Deploy
+### Declare the app with Composer
 
-From the project directory, deploy the app. The CLI auto-detects that this is a Hono app, builds it, and returns a live URL:
+Deploys are declared, not auto-detected: the app is a [Prisma Composer](https://www.prisma.io/docs/composer) module that names its services, and the CLI ships that module. Install the Composer packages:
 
 ```sh
-npx @prisma/cli@latest app deploy
+npm install @prisma/composer @prisma/composer-prisma-cloud
 ```
 
-Your app connects to the same Prisma Postgres database you've used throughout the series, so there's no separate database to provision. (If you wanted Compute to provision a fresh database as part of the deploy, you'd add the `--db` flag.)
+A `service.ts` at the project root declares the service and points at your built output — one self-contained entry file per service (`bun build --target=bun src/index.ts --outdir dist` for this app):
+
+```ts title="service.ts"
+import node from "@prisma/composer/node";
+import { compute } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "api",
+  build: node({ module: import.meta.url, entry: "./dist/index.js" }),
+});
+```
+
+The root module `module.ts` provisions it:
+
+```ts title="module.ts"
+import { module } from "@prisma/composer";
+import apiService from "./service.ts";
+
+export default module("grading-app", ({ provision }) => {
+  provision(apiService);
+});
+```
+
+And the `composer` section of `prisma.config.ts` points the CLI at the module — your existing ORM config stays as it is:
+
+```ts title="prisma.config.ts"
+import { defineConfig as composer } from "@prisma/composer/config";
+import { nodeBuild } from "@prisma/composer/node/control";
+import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
+import { definePrismaConfig } from "prisma/config";
+
+export default definePrismaConfig({
+  // …the ORM config from the earlier parts stays as it is…
+  composer: composer({
+    entry: "./module.ts",
+    extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
+    state: prismaState(),
+  }),
+});
+```
+
+The region is where the first deploy creates the project; a project that already exists keeps its region. The server code needs two small changes for Compute: read the port from `service.port()` instead of `process.env.PORT`, and bind `0.0.0.0`. The [port an existing app](https://www.prisma.io/docs/composer/porting-an-app) guide walks through it, and the [deploy quickstart](https://www.prisma.io/docs/prisma-compute/deploy) shows the whole flow from scratch.
+
+### Deploy
+
+From the project directory, deploy the app:
+
+```sh
+npx prisma deploy
+```
+
+Your app connects to the same Prisma Postgres database you've used throughout the series, so there's no separate database to provision. (In a fresh app, Composer would provision one: declare it with `rawPostgres()` in the module and wire it to the service as a dependency.)
 
 **Checkpoint:** When the deploy finishes, the CLI prints your live URL. Open it and confirm the status route responds:
 
 ```sh
-npx @prisma/cli@latest app open
+npx prisma service open api
 ```
 
 Visiting the root should return `{"up":true}`.
-
-> **Note (optional):** For reproducible deploys you can commit a typed `prisma.compute.ts` config. It's not required, since `app deploy` auto-detects the framework, and it needs the `@prisma/compute-sdk` package:
->
-> ```ts
-> import { defineComputeConfig } from "@prisma/compute-sdk/config";
->
-> export default defineComputeConfig({
->   app: {
->     framework: "hono",
->     entry: "src/index.ts",
->     httpPort: 3000,
->   },
-> });
-> ```
->
-> Fields you set become defaults for `app deploy`; explicit flags override them. See the [Prisma Compute docs](https://www.prisma.io/docs/compute) for details.
 
 ### Setting environment variables
 
 The backend needs two runtime secrets from part 3: `JWT_SECRET` (used to sign JWTs) and `RESEND_API_KEY` (used to send login emails). `DATABASE_URL` is managed for you by the platform. Set the secrets for the production environment:
 
 ```sh
-npx @prisma/cli@latest project env add JWT_SECRET=your-secret --role production
-npx @prisma/cli@latest project env add RESEND_API_KEY=your-key --role production
+npx prisma@latest project env add JWT_SECRET=your-secret --role production
+npx prisma@latest project env add RESEND_API_KEY=your-key --role production
 ```
 
 > **Note:** Generate a strong `JWT_SECRET` with: `node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"`. Use `--role preview` to set values for preview deployments.
@@ -202,15 +237,15 @@ npx @prisma/cli@latest project env add RESEND_API_KEY=your-key --role production
 To make deployment continuous, connect the repository to Prisma Compute's Git integration:
 
 ```sh
-npx @prisma/cli@latest git connect
+npx prisma@latest git connect
 ```
 
-Once connected, every push to your default branch deploys automatically, and pushes to other branches get their own preview URL. This is the modern equivalent of the deploy-on-push pipeline, with the CLI handling the build and release instead of a custom workflow job. Your GitHub Actions workflow stays focused on running the tests.
+Once connected, add Prisma's deploy-on-push workflow (connecting from the Console opens a pull request that adds it, or see [Deploy on push](https://www.prisma.io/docs/compute/deploy-on-push)), and every push to your default branch deploys automatically, while pushes to other branches get their own preview URL. Your GitHub Actions workflow stays focused on running the tests.
 
 To stream the deployed app's logs while you debug:
 
 ```sh
-npx @prisma/cli@latest app logs
+npx prisma@latest service logs api --follow
 ```
 
 ## Testing the login flow in production
