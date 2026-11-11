@@ -30,38 +30,41 @@ The command preselects PostgreSQL and prompts you for the project name, the temp
 
 Setup gives you the app template, a starter contract, `prisma-8.md`, project-level Prisma ORM skills for your coding agent, and package scripts for the database steps below. Answer no at the skills prompt, or pass `--skills none`, to skip the agent skill files; to remove them later, see [`skills sync`](/cli/skills) and the [`skills` config section](/cli/configuration#agent-skills). Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
 
-From here you have two paths: let [Prisma Composer](/composer) run a local Prisma Postgres database for you, or connect a PostgreSQL database you provide.
+Next, get a PostgreSQL database, connect the app to it, and run your first query. To keep everything on your machine instead, skip to [Run with a local database instead](#run-with-a-local-database-instead).
 
-## Path A: Run with a local database
+### 1. Get a database
 
-Composer builds the app, starts a local Prisma Postgres database, and applies the starter contract for you, so you do not need a connection string.
+If you already have a PostgreSQL database, go to [step 2](#2-set-the-database-connection) with its connection string. If you don't, create a [Prisma Postgres](/postgres) database from the terminal, without an account or with a free one.
 
-```npm
-npm run dev:composer
-```
-
-Open the URL the command prints. You should see the seeded users returned from PostgreSQL.
-
-## Path B: Connect your own database
-
-### 1. Set the database connection
-
-Export `DATABASE_URL` in the shell you run the commands from. The generated scripts read the variable from the environment, not from `.env`.
-
-```bash
-export DATABASE_URL="postgresql://username:password@host:5432/database?sslmode=require"
-```
-
-If you don't have a PostgreSQL database yet (without one, `npm run db:init` in step 2 stops with `CONFIG.DB_CONNECTION_REQUIRED`, or with `DRIVER.CONNECTION_FAILED` on the placeholder above), run [`npx create-db`](/postgres/npx-create-db) to create a temporary [Prisma Postgres](/postgres) database without an account, and export the connection string it prints in place of the placeholder above:
+**Without an account:** run [`npx create-db`](/postgres/npx-create-db) to create a temporary Prisma Postgres database. It prints a connection string and a claim URL:
 
 ```bash
 npx create-db@latest
-export DATABASE_URL="<connection string printed by create-db>"
 ```
 
-The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL in the same output. For a database on your own machine, see [A database on your machine](/prisma-orm/local-database).
+The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL in the same output.
 
-### 2. Initialize the database
+**With a free Prisma account:** to keep the database from the start, sign in from the generated project directory, create a project, and create a database in it. If you have no account yet, [create one](https://console.prisma.io/sign-up?utm_source=docs&utm_medium=content&utm_content=orm-quickstart-postgresql) first; the Free plan needs no credit card.
+
+```bash
+npx prisma auth login
+npx prisma project create my-app-db
+npx prisma postgres create my-db
+```
+
+`auth login` opens your browser, and `project create` links the directory to the new project. Name the project differently from your app, so that it does not collide with the project a later deploy creates. `postgres create` prints the connection string once; mint another later with `npx prisma postgres connection create my-db` if you need one. See [`postgres`](/cli/postgres).
+
+### 2. Set the database connection
+
+Export `DATABASE_URL` in the shell you run the commands from, with the connection string from step 1 as its value. The generated scripts read the variable from the environment, not from `.env`.
+
+```bash
+export DATABASE_URL="<connection string from step 1>"
+```
+
+A PostgreSQL connection string has the form `postgresql://username:password@host:5432/database?sslmode=require`. Without a database to connect to, `npm run db:init` in step 3 stops with `CONFIG.DB_CONNECTION_REQUIRED` when `DATABASE_URL` is not set, or with `DRIVER.CONNECTION_FAILED` when it is still a placeholder.
+
+### 3. Initialize the database
 
 From the generated project directory, run `db:init` to apply the starter contract to PostgreSQL and sign the database.
 
@@ -71,7 +74,7 @@ npm run db:init
 
 The output includes a summary like `Applied 5 operation(s) across 1 contract space`, followed by the operations and the marker it wrote.
 
-### 3. Run the app
+### 4. Run the app
 
 Start the app and confirm the sample query runs successfully.
 
@@ -80,6 +83,16 @@ npm run dev
 ```
 
 Use the URL or terminal output shown by your template. You should see the seeded users returned from PostgreSQL. If the response is `Could not query users yet`, `DATABASE_URL` is not set in the environment the app runs in; export it in the same shell and restart.
+
+## Run with a local database instead
+
+[Prisma Composer](/composer) builds the app, starts a local Prisma Postgres database, and applies the starter contract for you, so you need no connection string and none of the steps above.
+
+```npm
+npm run dev:composer
+```
+
+Open the URL the command prints. You should see the seeded users returned from PostgreSQL. For other ways to run the database locally, see [A database on your machine](/prisma-orm/local-database).
 
 ## Next steps
 
