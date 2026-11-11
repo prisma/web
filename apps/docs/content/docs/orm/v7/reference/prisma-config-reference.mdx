@@ -293,6 +293,14 @@ export default defineConfig({
 });
 ```
 
+Prisma CLI commands that connect to the database stop with one of these errors when `datasource.url` is empty, not set or not valid:
+
+- `Connection url is empty`: the value is an empty string, for example when the config reads `process.env.DATABASE_URL ?? ''` and the variable is not set.
+- `The datasource.url property is required in your Prisma config file when using prisma migrate deploy.`: the value is `undefined`, for example when the config reads `process.env["DATABASE_URL"]`, the form that `prisma init` writes on Node.js, and the variable is not set. The message ends with the command you ran, `prisma migrate deploy` in this example.
+- `P1013: The provided database string is invalid`: the value is not a valid connection URL, for example a placeholder, a missing scheme such as `postgresql://`, or a password with a `#` that is not percent-encoded. Check it against the [connection URL format](/orm/v7/reference/connection-urls#format).
+
+Prisma ORM 7 does not load `.env` files by itself. A variable that is only in `.env` is not set until the file is loaded, for example with `import "dotenv/config"` on the first line of the Prisma config file (`prisma.config.ts`, or `prisma7.config.ts` in projects created with Prisma ORM 7.10 or later). See [Using environment variables](#using-environment-variables).
+
 ### `datasource.shadowDatabaseUrl`
 
 Connection URL to the shadow database used by Prisma Migrate. Allows you to use a cloud-hosted database as the shadow database.
@@ -536,13 +544,15 @@ export default defineConfig({
 
 #### Using Node.js v20+ or tsx with --env-file flag
 
-If using Node.js v20+ or `tsx`, you can pass a `--env-file` flag to automatically load environment variables:
+With Node.js 20.6.0 or later, you can pass an `--env-file` flag to `node` or `tsx` to load environment variables. `tsx` passes the flag on to Node.js, so it needs the same Node.js version:
 
 ```bash
-tsx --env-title=".env" src/index.ts
-tsx watch --env-title=".env" --env-title=".local.env" src/index.ts
-tsx --env-title=".env" ./prisma/seed.ts
+tsx --env-file=".env" src/index.ts
+tsx watch --env-file=".env" --env-file=".local.env" src/index.ts
+tsx --env-file=".env" ./prisma/seed.ts
 ```
+
+These commands load `.env` for the script they start, such as your application or a seed script. For Prisma CLI commands, load the file in the Prisma config file, as shown above.
 
 #### Using Bun
 
@@ -588,8 +598,10 @@ The `env()` helper function from `prisma/config` **throws an error** if the spec
 For example, if you run `prisma generate` without `DATABASE_URL` set, and your config uses `env('DATABASE_URL')`, you'll see:
 
 ```bash
-Error: PrismaConfigEnvError: Missing required environment variable: DATABASE_URL
+Failed to load config file "/path/to/project" as a TypeScript/JavaScript module. Error: PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL.
 ```
+
+Prisma ORM 7.0 and 7.1 print `Missing required environment variable: DATABASE_URL` instead.
 
 **Solution:** If your environment variable isn't guaranteed to exist (e.g., in CI/CD pipelines where you only run `prisma generate` for type-checking), don't use the `env()` helper. Instead, access the environment variable directly:
 
@@ -613,6 +625,14 @@ export default defineConfig({
 Use the `env()` helper when you want to **enforce** that an environment variable exists. Use `process.env` directly when the variable may be optional depending on the command being run.
 
 :::
+
+A command that connects to the database needs the variable to be set, with either form of the config. Set `DATABASE_URL` in `.env` or on the command itself:
+
+```bash
+DATABASE_URL="your_database_connection_string_here" npx prisma migrate deploy
+```
+
+The variable applies to that command only, and no file is changed.
 
 ### Using multi-file schemas
 
