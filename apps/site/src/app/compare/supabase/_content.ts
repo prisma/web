@@ -16,7 +16,7 @@ export const SUPABASE_AUTHOR = {
 } as const;
 
 export const SUPABASE_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const SUPABASE_UPDATED = { iso: "2026-11-09", label: "November 2026" } as const;
+export const SUPABASE_UPDATED = { iso: "2026-11-12", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -157,7 +157,7 @@ export const APART = [
 ];
 
 export const PRICING_NOTE =
-  "Prisma Postgres Free includes 200,000 operations, 2 GB of storage and 50 databases with no credit card, while Supabase Free gives 500 MB per project and pauses after a week of inactivity (see [Prisma pricing](/pricing) and [Supabase pricing](https://supabase.com/pricing)).";
+  "Prisma Postgres Free includes 200,000 operations, 2 GB of storage and 50 databases with no credit card, while Supabase Free has a 500 MB database size quota, summed across the organization's projects (each Free project has a fixed 2 GB disk) and pauses after a week of inactivity (see [Prisma pricing](/pricing), [Supabase pricing](https://supabase.com/pricing) and [Supabase database size](https://supabase.com/docs/guides/platform/database-size)).";
 
 export const PRICING: readonly {
   label: string;
