@@ -216,6 +216,17 @@ const config = {
         destination: "/postgres/free-postgresql-hosting.md",
         permanent: true,
       },
+      // Short URL for the free Postgres page, with its Markdown rendition.
+      {
+        source: "/postgres/free",
+        destination: "/postgres/free-postgresql-hosting",
+        permanent: true,
+      },
+      {
+        source: "/postgres/free.md",
+        destination: "/postgres/free-postgresql-hosting.md",
+        permanent: true,
+      },
       // Short URL for the HIPAA page.
       { source: "/hipaa", destination: "/postgres/hipaa", permanent: true },
       // Search Console 404s: published docs URLs missing the /docs base path.
