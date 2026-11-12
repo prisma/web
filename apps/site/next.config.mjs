@@ -216,6 +216,8 @@ const config = {
         destination: "/postgres/free-postgresql-hosting.md",
         permanent: true,
       },
+      // Short URL for the HIPAA page.
+      { source: "/hipaa", destination: "/postgres/hipaa", permanent: true },
       // Search Console 404s: published docs URLs missing the /docs base path.
       // Exact mappings preserve the /orm marketing page and unknown-path 404s.
       { source: "/ai/mcp-tools", destination: "/docs/ai/mcp-tools", permanent: true },
