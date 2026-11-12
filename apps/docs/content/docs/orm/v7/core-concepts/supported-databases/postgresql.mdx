@@ -20,6 +20,8 @@ datasource db {
 
 Then set the connection URL in the Prisma config file: `prisma.config.ts`, or `prisma7.config.ts` in projects created with Prisma ORM 7.10 or later. Edit the file your project already has instead of adding a second one: if a project has both, the CLI reads `prisma7.config.ts`. The examples load `.env` with the `dotenv` package, which you install with `npm install dotenv`.
 
+The one-URL example comes first, and hosted services that use a pooled and a direct URL follow in the order of [Supported variants](#supported-variants).
+
 **Self-hosted PostgreSQL:**
 
 ```text title=".env"
@@ -37,6 +39,35 @@ export default defineConfig({
   },
 });
 ```
+
+**Prisma Postgres:**
+
+Each Prisma Postgres database has a pooled and a direct connection string that differ only in the host: `pooled.db.prisma.io` for application traffic and `db.prisma.io` for Prisma CLI commands. Generate both under **Connect to your database** in the Prisma Console.
+
+```text title=".env"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+```typescript title="prisma.config.ts"
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: env("DIRECT_URL"), // CLI uses the direct host
+  },
+});
+```
+
+If you have no database yet, you can create a temporary [Prisma Postgres](/postgres) database without an account. The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL the command prints.
+
+```bash
+npx create-db@latest
+```
+
+The command prints the direct connection string and a claim URL, and it does not edit `.env`. In a project that has no `DATABASE_URL` yet, put the printed string in `DIRECT_URL`, which the config above reads, and set `DATABASE_URL` to the same string with `pooled.db.prisma.io` in place of `db.prisma.io`. If the Prisma config of that project reads only `DATABASE_URL`, put the printed string there.
 
 **Serverless (Neon/Supabase):**
 
@@ -77,7 +108,7 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 ```
 
-`DATABASE_URL` has to be set in the process environment when this code runs. Node.js does not read `.env` files on its own, so install `dotenv` and add `import "dotenv/config";` at the top of your entry file, or start Node with its [`--env-file`](https://nodejs.org/api/cli.html#--env-filefile) flag. If the variable is missing, `pg` gets no connection string and falls back to its defaults, and the usual symptom is `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`.
+`DATABASE_URL` has to be set in the process environment when this code runs. Node.js does not read `.env` files on its own, so install `dotenv` and add `import "dotenv/config";` at the top of your entry file, or start Node with its [`--env-file`](https://nodejs.org/api/cli.html#--env-filefile) flag. If the variable is missing, `pg` gets no connection string and falls back to its defaults, and the usual symptom is `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`. If the project has no `DATABASE_URL` at all, in `.env` or in the shell, [Setup](#setup) shows what the value looks like for self-hosted and hosted PostgreSQL.
 
 **Neon serverless:**
 
@@ -106,7 +137,7 @@ Managed PostgreSQL 17 from Prisma, with connection pooling built in.
 - Connection URL: `postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require`
 - Application traffic uses the pooled host `pooled.db.prisma.io` (PgBouncer in transaction mode). Prisma Migrate, other CLI commands, and workloads that need session state or `LISTEN`/`NOTIFY` use the direct host `db.prisma.io`.
 - Daily backups on the Starter, Pro and Business plans, taken only on days the database has activity; none on Free. No point-in-time recovery yet; it is coming in November 2026.
-- `npx create-db` creates a temporary database in seconds, without signing up. It is deleted after 24 hours unless you claim it, which needs a Prisma account.
+- [`npx create-db`](/postgres/npx-create-db) creates a temporary database in seconds, without an account (deleted after 24 hours unless you claim it).
 
 **Resources:** [Prisma Postgres docs](/postgres) • [Connection setup](/postgres/database/connecting-to-your-database) • [create-db](/postgres/npx-create-db) • [Connection pooling](/postgres/database/connection-pooling)
 
