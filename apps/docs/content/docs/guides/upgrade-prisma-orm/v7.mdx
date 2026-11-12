@@ -315,6 +315,8 @@ export default defineConfig({
 });
 ```
 
+To try the upgraded project against a database, see [Verify the upgrade](#verify-the-upgrade).
+
 ### Metrics removed
 
 The Metrics preview feature was deprecated in [Prisma ORM 6.14.0](https://github.com/prisma/orm/releases/tag/6.14.0) and has been removed for Prisma ORM 7.0.0.
@@ -521,3 +523,19 @@ We've removed a small selection of Prisma-specific environment variables.
 - `PRISMA_CLIENT_NO_RETRY`
 - `PRISMA_MIGRATE_SKIP_GENERATE`
 - `PRISMA_MIGRATE_SKIP_SEED`
+
+## Verify the upgrade
+
+Finish the upgrade by applying your schema and running your tests against a database. If the database in `.env` cannot be reached from where you are working, Prisma CLI commands fail with `P1001` and your tests fail with a connection error such as `ECONNREFUSED`. In that case, or to keep your own database out of the check, use a temporary database. For a PostgreSQL project, [`npx create-db`](/postgres/npx-create-db) creates a temporary [Prisma Postgres](/postgres) database without an account. The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL the command prints.
+
+The commands below write nothing to `.env`. `--url` overrides the datasource URL from the Prisma config file for that command, whichever variable the config reads, and needs Prisma ORM 7.2.0 or later. `${TEST_DATABASE_URL:?}` stops the command if the variable is empty, because `db push` ignores an empty `--url` and connects to the database from the config. The last line sets `DATABASE_URL` for the test command only. By default, `dotenv` does not replace a variable that is already set, so your client uses this value in place of the one in `.env`. If your client reads another variable, set that one on the last line.
+
+```bash
+TEST_DATABASE_URL="$(npx -y create-db@latest --quiet)" &&
+npx prisma db push --url "${TEST_DATABASE_URL:?}" &&
+DATABASE_URL="$TEST_DATABASE_URL" npm test
+```
+
+`db push` creates the tables from your Prisma schema and does not run the files in `prisma/migrations`. It prints the host it connects to, which is `db.prisma.io` for the temporary database, and then `Your database is now in sync with your Prisma schema.`
+
+Replace `npm test` with your own test command. To use another empty database, such as a local one, set `TEST_DATABASE_URL` to its connection string in place of the `create-db` call.
