@@ -157,7 +157,7 @@ export const APART = [
 ];
 
 export const PRICING_NOTE =
-  "Prisma Postgres Free includes 200,000 operations, 2 GB of storage and 50 databases with no credit card, while Supabase Free has a 500 MB database size per project (a billing quota; the Free disk is 2 GB) and pauses after a week of inactivity (see [Prisma pricing](/pricing), [Supabase pricing](https://supabase.com/pricing) and [Supabase database size](https://supabase.com/docs/guides/platform/database-size)).";
+  "Prisma Postgres Free includes 200,000 operations, 2 GB of storage and 50 databases with no credit card, while Supabase Free has a 500 MB database size quota, summed across the organization's projects (each Free project has a fixed 2 GB disk) and pauses after a week of inactivity (see [Prisma pricing](/pricing), [Supabase pricing](https://supabase.com/pricing) and [Supabase database size](https://supabase.com/docs/guides/platform/database-size)).";
 
 export const PRICING: readonly {
   label: string;
