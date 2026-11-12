@@ -112,3 +112,22 @@ test("the non-TypeScript answer links the connection docs first and stays valid 
   assert.equal(coveredEntityEntity.acceptedAnswer.text, stripFaqAnswerMarkup(coveredEntity.answer));
   assert.equal(logsEntity.acceptedAnswer.text, stripFaqAnswerMarkup(logs.answer));
 });
+
+test("the BAA scope covers Prisma Compute and the hosting FAQ follows it", () => {
+  const questions = HIPAA_FAQ.map((item) => item.question);
+  const HOSTING_QUESTION = "Is Prisma Compute HIPAA compliant?";
+  assert.equal(questions.filter((question) => question === HOSTING_QUESTION).length, 1);
+  assert.equal(
+    questions[questions.indexOf("Which products does the BAA cover?") + 1],
+    HOSTING_QUESTION,
+  );
+
+  const scope = HIPAA_FAQ.find((faq) => faq.question === "Which products does the BAA cover?");
+  assert.ok(scope, "BAA scope FAQ missing");
+  assert.match(scope.answer, /\[Prisma Compute\]\(\/compute\)/);
+
+  const hosting = HIPAA_FAQ.find((faq) => faq.question === HOSTING_QUESTION);
+  assert.ok(hosting, "hosting FAQ missing");
+  assert.match(hosting.answer, /^Yes, on the Business plan\./);
+  assert.ok(!/\$/.test(hosting.answer), "hosting answer must not add pricing");
+});
