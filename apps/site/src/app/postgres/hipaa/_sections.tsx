@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Grid3x3, Lock, RotateCcw } from "lucide-react";
+import { FileText, GitBranch, Lock, RotateCcw } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -16,16 +16,12 @@ import { Texture } from "@/components/brand/texture";
 import { CtaBurst } from "@/components/sections/cta-burst";
 import { renderFaqAnswer } from "@/lib/faq-answer";
 import { cn } from "@/lib/utils";
-import {
-  GdprMark,
-  HipaaCompliantMark,
-  Iso27001Mark,
-  Soc2TypeIiMark,
-} from "./_cert-marks";
+import { GdprMark, HipaaCompliantMark, Iso27001Mark, Soc2TypeIiMark } from "./_cert-marks";
 import {
   BAA_COMPLIANCE_EMAIL,
   BAA_HTML_PATH,
   BAA_SAMPLE_PDF,
+  BUSINESS_PRICE_USD,
   CONSOLE_SIGN_UP_URL,
   HIPAA_BAA_ANCHOR,
   HIPAA_COMPARE_ANCHOR,
@@ -34,6 +30,7 @@ import {
   TRUST_URL,
   baaComplianceMailto,
 } from "./_content";
+import { HipaaPriceNudge } from "./_price-nudge";
 import { HipaaRegionFlip } from "./_region-flip";
 
 // Prefilled mailto for every link on /postgres/hipaa.
@@ -76,14 +73,15 @@ export function HipaaHero() {
         <div className="relative px-4 sm:px-8">
           <div className="mx-auto grid max-w-site items-center gap-12 pb-20 pt-36 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] md:pb-28 md:pt-48 lg:gap-16">
             <div className="flex flex-col items-start">
-              <RoleKicker color="bg-prism-yellow-400">Prisma Postgres for healthcare</RoleKicker>
+              <RoleKicker color="bg-prism-yellow-400">
+                Prisma Postgres and Compute for healthcare
+              </RoleKicker>
               <h1 className="isolate mt-4 max-w-[min(18ch,100%)] text-balance text-[clamp(2.5rem,4vw,3.5rem)] leading-[1.06]">
-                HIPAA compliant database for <GlassGlide>healthcare</GlassGlide>
+                HIPAA compliant database and app hosting for <GlassGlide>healthcare</GlassGlide>
               </h1>
               <p className="mt-6 max-w-[46ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Prisma signs a Business Associate Agreement with covered entities and business
-                associates on the Business plan, encrypts your patient data, and runs your TypeScript
-                app right next to it.
+                Your database on Prisma Postgres and your app on Prisma Compute, in one region and
+                under one Business Associate Agreement.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 {/* Primary CTA goes to the same console sign-up URL the site
@@ -96,10 +94,10 @@ export function HipaaHero() {
                   Read the BAA
                 </PrismButtonOutline>
               </div>
-              {/* Microline carries the price (the one place in the top of the
-                  page it's allowed to live). */}
+              {/* Microline carries the price under the CTAs; the compliance
+                  card on the right gives it the gentle visual nudge. */}
               <p className="mt-3.5 text-sm text-muted-foreground">
-                Available on the Business plan, $129 a month.{" "}
+                Available on the Business plan, ${BUSINESS_PRICE_USD} a month.{" "}
                 <Link href="/pricing" className={INLINE_LINK}>
                   Compare plans
                 </Link>
@@ -107,11 +105,11 @@ export function HipaaHero() {
               <ul className="mt-6 flex flex-col gap-2.5 border-t border-black/[0.07] pt-6">
                 {[
                   {
-                    label: "A signed BAA with covered entities or business associates",
+                    label: "One signed BAA for your database and your app",
                     color: "text-prism-cyan-500",
                   },
                   {
-                    label: "Encrypted at rest and in transit, isolated per tenant",
+                    label: "Encrypted databases, connections and app secrets",
                     color: "text-prism-yellow-400",
                   },
                   {
@@ -154,13 +152,21 @@ function ComplianceCard() {
   // Business-only HIPAA, encryption at rest + in transit, tenant isolation
   // (not a dedicated host), daily backups retained 30 days on Business.
   // Region flips through USA regions only (us-east-1, us-west-1).
-  // "Active" illustrates a signed BAA.
+  // "Active" illustrates a signed BAA covering Postgres and Compute.
   const rows: {
     label: string;
     value: React.ReactNode;
     mono?: boolean;
   }[] = [
-    { label: "Plan", value: "Business" },
+    {
+      label: "Plan",
+      value: (
+        <>
+          Business, <HipaaPriceNudge price={BUSINESS_PRICE_USD} />
+        </>
+      ),
+    },
+    { label: "Covers", value: "Postgres and Compute" },
     { label: "Encryption", value: "At rest and in transit" },
     { label: "Isolation", value: "Isolated per tenant" },
     {
@@ -174,7 +180,7 @@ function ComplianceCard() {
   return (
     <div
       role="img"
-      aria-label="Illustration of a Prisma Postgres Business workspace with a signed BAA for covered entities or business associates, encryption at rest and in transit, tenant isolation, two US regions us-east-1 and us-west-1, 30 day daily backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
+      aria-label="Illustration of a Prisma Business workspace with a signed BAA covering Prisma Postgres and Prisma Compute for covered entities or business associates, encryption at rest and in transit, tenant isolation, two US regions us-east-1 and us-west-1, 30 day daily backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
       className="pointer-events-none relative flex w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
     >
       <div className="flex items-center gap-2 border-b border-border/70 px-5 py-3.5">
@@ -232,7 +238,8 @@ function ComplianceCard() {
         </div>
       </div>
       <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] leading-snug text-muted-foreground sm:px-6">
-        One BAA for the workspace. Encryption, isolation and backups are on by default.
+        One BAA for the workspace, covering its databases and apps. Encryption, isolation and
+        backups are on by default.
       </p>
     </div>
   );
@@ -244,12 +251,12 @@ export function HipaaGlance() {
     body: React.ReactNode;
   }[] = [
     {
-      heading: "Does Prisma Postgres support HIPAA?",
+      heading: "Do Prisma Postgres and Prisma Compute support HIPAA?",
       body: (
         <>
-          Yes. Prisma Postgres supports HIPAA compliance on the Business plan, and Prisma signs a
-          Business Associate Agreement (BAA) with Business customers before they store protected
-          health information (PHI).
+          Yes, on the Business plan. Prisma signs a Business Associate Agreement (BAA) with Business
+          customers before they store or process protected health information (PHI), and it covers
+          both your Prisma Postgres databases and the apps you host on Prisma Compute.
         </>
       ),
     },
@@ -284,8 +291,12 @@ export function HipaaGlance() {
       heading: "What does the BAA cover?",
       body: (
         <>
-          The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health
-          information in services covered by your signed BAA. Embeddable{" "}
+          The BAA covers Prisma Postgres databases and apps hosted on{" "}
+          <Link href="/compute" className={INLINE_LINK}>
+            Prisma Compute
+          </Link>{" "}
+          in a Business workspace. Keep protected health information in services covered by your
+          signed BAA. Embeddable{" "}
           <Link href="/studio" className={INLINE_LINK}>
             Prisma Studio
           </Link>{" "}
@@ -301,6 +312,10 @@ export function HipaaGlance() {
 
   const facts: { label: string; value: React.ReactNode }[] = [
     { label: "HIPAA support", value: "Yes, with a signed BAA" },
+    {
+      label: "Covered products",
+      value: "Prisma Postgres databases and Prisma Compute apps",
+    },
     { label: "Plan", value: "Business only" },
     {
       label: "Price",
@@ -316,19 +331,27 @@ export function HipaaGlance() {
     { label: "Also on Business", value: "SOC 2 Type II, ISO 27001" },
     {
       label: "On every plan",
-      value: "GDPR, encryption at rest and in transit, tenant isolation",
+      value: "GDPR, database encryption at rest and in transit, tenant isolation",
+    },
+    {
+      label: "App secrets",
+      value: (
+        <Link href="/docs/compute/environment-variables" className={INLINE_LINK}>
+          Encrypted at rest, never read back
+        </Link>
+      ),
     },
     {
       label: "Backups",
       value: (
         <>
           <Link href="/docs/postgres/database/backups" className={INLINE_LINK}>
-            Daily, kept 30 days on Business
+            Daily database backups, kept 30 days on Business
           </Link>
         </>
       ),
     },
-    { label: "Regions", value: "6, including 2 in the US" },
+    { label: "Regions", value: "6 for databases and apps, including 2 in the US" },
     {
       label: "BAA liability cap",
       value: (
@@ -362,8 +385,8 @@ export function HipaaGlance() {
             HIPAA at a glance
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            The short version, for your security review: what Prisma Postgres offers for HIPAA,
-            which plan you need, and how the Business Associate Agreement works.
+            The short version, for your security review: what Prisma Postgres and Prisma Compute
+            offer for HIPAA, which plan you need, and how the Business Associate Agreement works.
           </p>
         </div>
 
@@ -382,7 +405,7 @@ export function HipaaGlance() {
         <div className="mx-auto mt-4 max-w-5xl overflow-hidden rounded-2xl border border-black/[0.08] bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_64px_-32px_rgba(21,21,21,0.2)]">
           <div className="flex items-center gap-4 border-b border-black/[0.06] px-5 py-4 sm:px-7">
             <p className="text-[0.8125rem] font-semibold text-foreground">
-              Prisma Postgres HIPAA facts{" "}
+              Prisma HIPAA facts{" "}
               <span className="font-normal text-muted-foreground">Updated November 2026</span>
             </p>
           </div>
@@ -413,19 +436,19 @@ export function HipaaFoundations() {
   const tiles = [
     {
       icon: <FileText className="size-5 text-foreground" strokeWidth={1.6} aria-hidden />,
-      label: "A BAA signed before any PHI is stored",
+      label: "One BAA signed before any PHI is stored or processed",
     },
     {
       icon: <Lock className="size-5 text-foreground" strokeWidth={1.6} aria-hidden />,
-      label: "Encryption at rest and in transit, on every database",
+      label: "Databases encrypted at rest and in transit, app secrets encrypted at rest",
     },
     {
-      icon: <Grid3x3 className="size-5 text-foreground" strokeWidth={1.6} aria-hidden />,
-      label: "Each database isolated from other tenants",
+      icon: <GitBranch className="size-5 text-foreground" strokeWidth={1.6} aria-hidden />,
+      label: "Preview deployments that never copy production data",
     },
     {
       icon: <RotateCcw className="size-5 text-foreground" strokeWidth={1.6} aria-hidden />,
-      label: "Daily backups you restore from the Console",
+      label: "Daily database backups and app rollback without a rebuild",
     },
   ];
 
@@ -434,16 +457,18 @@ export function HipaaFoundations() {
       <div className="mx-auto max-w-site">
         <div className="mx-auto max-w-3xl text-center max-md:text-left">
           <h2 className="text-balance text-[clamp(1.75rem,2.75vw,2.375rem)] leading-[1.1]">
-            What makes a database HIPAA compliant
+            What makes a database and app host HIPAA compliant
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            HIPAA does not certify databases. A database is suitable for protected health
-            information when the provider signs a BAA with you, protects the data with safeguards
-            such as encryption, access controls and backups, and you configure and use it correctly.
+            HIPAA does not certify databases or hosting platforms. A service is suitable for
+            protected health information when the provider signs a BAA with you, protects the data
+            with safeguards such as encryption, access controls and backups, and you configure and
+            use it correctly.
           </p>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            Prisma Postgres gives you the provider side of that on the Business plan, so your team
-            can spend its time on the healthcare product instead of on database operations.
+            Prisma Postgres and Prisma Compute give you the provider side of that on the Business
+            plan, so your team can spend its time on the healthcare product instead of on database
+            and server operations.
           </p>
         </div>
         <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -473,13 +498,13 @@ export function HipaaFeatures() {
     photoPosition: string;
   }[] = [
     {
-      title: "Keep patient data in the region you choose",
+      title: "Keep patient data and your app in one region",
       body: (
         <>
-          Pick the region when you create a database: two US regions (North Virginia and San
-          Francisco), two in the EU and two in Asia. US patient data can stay in a US region.
-          Storing or transmitting PHI outside the United States needs your advance written
-          consent under the BAA (Section V.O).
+          Pick a region for each database and each Compute service: two in the US (North Virginia
+          and San Francisco), two in the EU and two in Asia. Run the app next to its data, and keep
+          US patient data in a US region. Storing or transmitting PHI outside the United States
+          needs your advance written consent under the BAA (Section V.O).
         </>
       ),
       href: "/docs/postgres/faq#what-regions-is-prisma-postgres-available-in",
@@ -496,11 +521,11 @@ export function HipaaFeatures() {
       ),
     },
     {
-      title: "Restore from daily backups",
+      title: "Restore the database from daily backups",
       body: (
         <>
-          Business keeps daily backups for 30 days. Restore one from the database&apos;s Backups
-          tab in the Console, or take your own copy any time with pg_dump.
+          Business keeps daily backups for 30 days. Restore one from the database&apos;s Backups tab
+          in the Console, or take your own copy any time with pg_dump.
         </>
       ),
       href: "/docs/postgres/database/backups",
@@ -517,12 +542,12 @@ export function HipaaFeatures() {
       ),
     },
     {
-      title: "Run your app next to the data",
+      title: "Host your app under the same BAA",
       body: (
         <>
-          Host your Node.js, Bun or Next.js app on Prisma Compute in the same region as the
-          database. Keep protected health information in your Prisma Postgres database covered by
-          your BAA.
+          Host your Node.js, Bun or Next.js app on Prisma Compute. One BAA covers the app and its
+          database, so it can handle PHI without a separate hosting agreement. Secrets are encrypted
+          at rest, and custom domains get TLS automatically.
         </>
       ),
       href: "/compute",
@@ -533,8 +558,30 @@ export function HipaaFeatures() {
         <MiniPanel label="deploy">
           <MiniRow active>api&nbsp;&nbsp;Prisma Compute</MiniRow>
           <MiniRow active>db&nbsp;&nbsp;&nbsp;Prisma Postgres</MiniRow>
-          <MiniRow>one plan, one region</MiniRow>
+          <MiniRow>one plan, one BAA</MiniRow>
           <MiniRow>private connection</MiniRow>
+        </MiniPanel>
+      ),
+    },
+    {
+      title: "Ship changes without copying PHI",
+      body: (
+        <>
+          Every Git branch gets a preview with its own services, and databases declared in Composer
+          start fresh with your migrations and no production data. Promote a version to production,
+          or roll back without a rebuild.
+        </>
+      ),
+      href: "/docs/compute/deploy-on-push",
+      linkLabel: "Read about deploy on push",
+      photo: "/brand/feature-compute.jpg",
+      photoPosition: "80% 30%",
+      panel: (
+        <MiniPanel label="branches">
+          <MiniRow active>main&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;production</MiniRow>
+          <MiniRow>fix-intake&nbsp;&nbsp;preview</MiniRow>
+          <MiniRow>preview db&nbsp;&nbsp;no PHI copied</MiniRow>
+          <MiniRow active>Roll back to previous</MiniRow>
         </MiniPanel>
       ),
     },
@@ -570,12 +617,16 @@ export function HipaaFeatures() {
               Built for production healthcare workloads
             </h2>
             <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-              The same managed{" "}
+              The same{" "}
               <Link href="/postgres" className={INLINE_LINK}>
                 Prisma Postgres
               </Link>{" "}
-              thousands of teams run in production, with the controls a healthcare app needs.
-              Connect with any Postgres client or with Prisma ORM, using{" "}
+              and{" "}
+              <Link href="/compute" className={INLINE_LINK}>
+                Prisma Compute
+              </Link>{" "}
+              teams run in production, with the controls a healthcare app needs. Connect from your
+              Compute app, any Postgres client or Prisma ORM, using{" "}
               <Link
                 href="/docs/postgres/database/connecting-to-your-database"
                 className={INLINE_LINK}
@@ -590,7 +641,7 @@ export function HipaaFeatures() {
             </p>
           </div>
 
-          <div className="mt-14 grid gap-5 md:grid-cols-3">
+          <div className="mt-14 grid gap-5 md:grid-cols-2">
             {items.map((item) => (
               <div key={item.title} className="h-full">
                 <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-card">
@@ -668,14 +719,16 @@ export function HipaaResponsibility() {
   const prisma = [
     "Encryption of data at rest and in transit",
     "Isolation between tenants' databases",
-    "Daily automatic backups, kept 30 days on Business",
+    "Encrypted app secrets and automatic TLS for custom domains",
+    "Daily automatic database backups, kept 30 days on Business",
     "An internal HIPAA program: policies, risk management and staff training",
-    "Signing a BAA with Business customers",
+    "Signing one BAA that covers your databases and Compute apps",
   ];
   const you = [
-    "Who can access your workspace, databases and connection strings",
+    "Who can access your workspace, databases, services and secrets",
     "Keeping PHI out of services and tools the BAA does not cover",
-    "Securing your own application, its logs and its integrations",
+    "Your application code, what it writes to logs, and its integrations",
+    "Pointing preview deployments at non-production data",
     "Your own HIPAA policies, risk assessments and access reviews",
     "Keeping the workspace on the Business plan while it stores PHI",
   ];
@@ -694,8 +747,8 @@ export function HipaaResponsibility() {
             Who is responsible for what under HIPAA?
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            HIPAA compliance is shared. Prisma secures the managed database platform, and you secure
-            how your application and your team use it.
+            HIPAA compliance is shared. Prisma secures the managed database and app hosting
+            platform, and you secure how your application and your team use it.
           </p>
         </div>
         <div className="mx-auto mt-14 grid max-w-5xl gap-4 md:grid-cols-2">
@@ -715,8 +768,9 @@ export function HipaaResponsibility() {
         <div className="mx-auto mt-4 max-w-5xl rounded-2xl border border-black/[0.06] bg-white p-7">
           <p className="font-semibold text-foreground">Which products the BAA covers</p>
           <p className="mt-2 leading-relaxed text-muted-foreground">
-            The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health
-            information in services covered by your signed BAA. Prisma&apos;s{" "}
+            The BAA covers Prisma Postgres databases and apps hosted on Prisma Compute in a Business
+            workspace. Keep protected health information in services covered by your signed BAA.
+            Prisma&apos;s{" "}
             <Link href="/legal/terms" className={INLINE_LINK}>
               Terms of Service
             </Link>{" "}
@@ -813,7 +867,7 @@ export function HipaaStartups() {
     name: string;
     accent?: boolean;
   }[] = [
-    { key: "prisma", name: "Prisma Postgres", accent: true },
+    { key: "prisma", name: "Postgres and Compute", accent: true },
     { key: "supabase", name: "Supabase" },
     { key: "render", name: "Render" },
   ];
@@ -833,9 +887,9 @@ export function HipaaStartups() {
             HIPAA without an enterprise budget
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            Most managed databases put HIPAA behind enterprise plans. Prisma Postgres includes a
-            signed BAA on Business, so early stage healthcare startups can be compliant from day
-            one.
+            Most database and app hosting providers put HIPAA behind enterprise plans or add-ons.
+            Prisma includes one signed BAA for Postgres and app hosting on Business, so early stage
+            healthcare startups can be compliant from day one.
           </p>
         </div>
 
@@ -899,7 +953,9 @@ export function HipaaStartups() {
                 {STARTUP_ROWS.map((row, i) => (
                   <tr
                     key={row.label}
-                    className={i === 0 ? "border-t border-black/[0.08]" : "border-t border-black/[0.06]"}
+                    className={
+                      i === 0 ? "border-t border-black/[0.08]" : "border-t border-black/[0.06]"
+                    }
                   >
                     <th
                       scope="row"
@@ -931,8 +987,8 @@ export function HipaaStartups() {
           </div>
           <div className="flex flex-col items-start gap-4 border-t border-black/[0.08] bg-white px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7">
             <p className="max-w-xl text-[0.9375rem] leading-relaxed text-muted-foreground">
-              Start on the Business plan, get your BAA and ship to patients, without an
-              enterprise contract.
+              Start on the Business plan, get your BAA and ship to patients, without an enterprise
+              contract.
             </p>
             <div className="flex flex-wrap items-center gap-3 sm:shrink-0">
               <PrismButton href={CONSOLE_SIGN_UP_URL}>Get started</PrismButton>
@@ -987,8 +1043,8 @@ export function HipaaBaaSteps() {
           <a href={BAA_MAILTO} className={INLINE_LINK}>
             compliance@prisma.io
           </a>{" "}
-          from your account email with your company name, address, workspace, and signatory name
-          and email.
+          from your account email with your company name, address, workspace, and signatory name and
+          email.
         </>
       ),
     },
@@ -1010,9 +1066,8 @@ export function HipaaBaaSteps() {
               How do I get a BAA from Prisma?
             </h2>
             <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-              A Business Associate Agreement is the contract HIPAA requires before a vendor
-              handles PHI for you. With Prisma it takes four steps and a few minutes of your
-              time.
+              A Business Associate Agreement is the contract HIPAA requires before a vendor handles
+              PHI for you. With Prisma it takes four steps and a few minutes of your time.
             </p>
           </div>
 
@@ -1067,8 +1122,8 @@ export function HipaaResources() {
             Build your healthcare app with Prisma
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            Guides for setting up, protecting and operating your database. For field-level
-            encryption of the most sensitive columns, CipherStash works with Prisma ORM.
+            Guides for setting up, protecting and operating your database and your app. For
+            field-level encryption of the most sensitive columns, CipherStash works with Prisma ORM.
           </p>
         </div>
         <div className="mx-auto mt-14 grid max-w-5xl gap-3 md:grid-cols-2">
@@ -1158,14 +1213,14 @@ export function HipaaTrustStrip() {
 export function HipaaCloser() {
   return (
     <CtaBurst
-      headline="Build your healthcare app on Prisma Postgres"
+      headline="Build and host your healthcare app on Prisma"
       headlineMaxWidth="max-w-[30ch]"
-      body="Move to the Business plan, sign your BAA, and ship on managed Postgres that is ready for protected health information, with your app hosted right next to it."
+      body="Move to the Business plan, sign one BAA, and ship your app on Prisma Compute and its data on Prisma Postgres, both ready for protected health information."
       bodyMaxWidth="max-w-[78ch]"
       checks={[
-        { label: "A signed BAA on the Business plan", color: "text-prism-cyan-500" },
+        { label: "One signed BAA for database and app", color: "text-prism-cyan-500" },
         { label: "Encrypted, isolated, backed up daily", color: "text-prism-yellow-400" },
-        { label: "Standard Postgres underneath, no lock-in", color: "text-prism-red-500" },
+        { label: "Standard Postgres and TypeScript, no lock-in", color: "text-prism-red-500" },
       ]}
       // Headline, body and primary CTA deliberately avoid the price — see the
       // SEO brief: price is kept out of the title, meta, H1 and closer.
