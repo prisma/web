@@ -111,7 +111,7 @@ function buildStructuredData(baseUrl: string) {
       "@id": url,
       url,
       name: "HIPAA Business Associate Agreement | Prisma",
-      dateModified: "2026-10-11",
+      dateModified: "2026-11-12",
       publisher: { "@id": `${baseUrl}/#organization` },
       breadcrumb: {
         "@type": "BreadcrumbList",
@@ -130,8 +130,8 @@ export default function BaaPage() {
       <JsonLd id="baa-structured-data" data={buildStructuredData("https://www.prisma.io")} />
       <LegalAgreementPage
         title="HIPAA Business Associate Agreement"
-        intro="The standard HIPAA Business Associate Agreement Prisma Data, Inc. signs with customers on the Business plan before they store protected health information in Prisma Postgres."
-        lastUpdated="October 2026"
+        intro="The standard HIPAA Business Associate Agreement Prisma Data, Inc. signs with customers on the Business plan before they store protected health information in Prisma Postgres or in apps hosted on Prisma Compute."
+        lastUpdated="November 2026"
         pdfHref={BAA_PDF}
         keyTerms={KEY_TERMS}
         sections={BAA_SECTIONS}
@@ -169,9 +169,7 @@ export default function BaaPage() {
                 from your account email with your company name, address, workspace, and signatory
                 name and email.
               </AgreementStep>
-              <AgreementStep n={4}>
-                Prisma sends the agreement for e-signature.
-              </AgreementStep>
+              <AgreementStep n={4}>Prisma sends the agreement for e-signature.</AgreementStep>
             </ol>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <PrismButton href={CONSOLE_SIGN_UP}>Get started</PrismButton>

@@ -20,7 +20,7 @@ export const HIPAA_COMPARE_ANCHOR = "compare";
 export const BUSINESS_PRICE_USD = "129";
 // Stable ISO date for WebPage JSON-LD dateModified. Keep in sync with the
 // visible "Updated November 2026" microline on the HIPAA page.
-export const HIPAA_LAST_MODIFIED = "2026-11-09";
+export const HIPAA_LAST_MODIFIED = "2026-11-12";
 // Same href the site header's "Get Started" button uses (components/header.tsx
 // -> siteConfig.consoleSignUpUrl via the shared PrismButton pattern).
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
@@ -69,7 +69,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Is Prisma Postgres HIPAA compliant?",
     answer:
-      "Yes, on the Business plan. Prisma runs a HIPAA compliance program for Prisma Postgres, and Business customers can sign a Business Associate Agreement (BAA) with Prisma before storing protected health information. HIPAA is not available on the Free, Starter or Pro plans.",
+      "Yes, on the Business plan. Prisma runs a HIPAA compliance program covering Prisma Postgres and Prisma Compute, and Business customers can sign a single Business Associate Agreement (BAA) with Prisma before storing protected health information. HIPAA is not available on the Free, Starter or Pro plans.",
   },
   {
     question: "How much does a HIPAA compliant Postgres database cost on Prisma?",
@@ -90,7 +90,12 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Which products does the BAA cover?",
     answer:
-      "The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health information in services covered by your signed BAA. Embeddable [Prisma Studio](/studio) is not designed for regulated industries under Prisma's [Terms of Service](/legal/terms).",
+      "The BAA covers Prisma Postgres databases and apps you host on [Prisma Compute](/compute) in a Business workspace, under one agreement. Keep protected health information in services covered by your signed BAA. Embeddable [Prisma Studio](/studio) is not designed for regulated industries under Prisma's [Terms of Service](/legal/terms).",
+  },
+  {
+    question: "Does the BAA cover app hosting?",
+    answer:
+      "Yes. [Prisma Compute](/compute) is covered under the same BAA as Prisma Postgres, so you can host your HIPAA regulated Node.js, Bun or Next.js app alongside your database in a Business workspace without a second agreement or a second vendor.",
   },
   {
     question: "Where is my data stored?",
@@ -100,7 +105,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "What am I responsible for under the shared responsibility model?",
     answer:
-      "You are responsible for your application, who can access your data, keeping PHI out of services the BAA does not cover, and your own HIPAA policies. Prisma secures the managed database platform: encryption at rest and in transit, tenant isolation, daily backups on paid plans and its internal compliance program.",
+      "You are responsible for your application code, who can access your workspace and data, keeping PHI out of services the BAA does not cover, and your own HIPAA policies. Prisma secures the managed database and app hosting platform: encryption at rest and in transit, tenant isolation, daily database backups on paid plans and its internal compliance program.",
   },
   {
     question: "How are backups and encryption handled?",
@@ -115,12 +120,12 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Can I use Prisma ORM with PHI?",
     answer:
-      "Yes. Prisma ORM is a library that runs inside your application, so it does not receive your data. Use it with Prisma Postgres or any Postgres database covered by your BAA, and keep PHI out of logs, error reports and query logging tools that are not covered.",
+      "Yes. Prisma ORM is a library that runs inside your application, so it does not receive your data. Use it with Prisma Postgres or any Postgres database covered by your BAA, and keep PHI out of logs, error reports and query logging tools that are not covered. When your app also runs on Prisma Compute, both the app and the database sit inside your signed BAA.",
   },
   {
     question: "Can I use Prisma Postgres for a healthcare app that isn't written in TypeScript?",
     answer:
-      "Yes. Prisma Postgres is standard Postgres, so apps in Python, Ruby, PHP, Java or Go can connect with any Postgres driver. See the [connection docs](/docs/postgres/database/connecting-to-your-database) for the connection string. The database is covered by your BAA on the Business plan. If a third-party provider hosts your app, it needs to sign a BAA too. HIPAA Compliant Hosting's [guide to HIPAA compliant app hosting](https://hipaacomplianthosting.com/blog/hipaa-compliant-app-hosting){newtab} covers the hosting options.",
+      "Yes. Prisma Postgres is standard Postgres, so apps in Python, Ruby, PHP, Java or Go can connect with any Postgres driver. See the [connection docs](/docs/postgres/database/connecting-to-your-database) for the connection string. The database is covered by your BAA on the Business plan. Prisma Compute is the right fit for Node.js, Bun and Next.js apps and is covered by the same BAA. For runtimes Prisma Compute does not support, if a third-party provider hosts your app it needs to sign a BAA too. HIPAA Compliant Hosting's [guide to HIPAA compliant app hosting](https://hipaacomplianthosting.com/blog/hipaa-compliant-app-hosting){newtab} covers the hosting options.",
   },
   {
     question: "Is there a liability cap in the BAA?",
@@ -138,15 +143,15 @@ export const HIPAA_RESOURCES = [
   { kind: "Docs", title: "Get started with Prisma Postgres", href: "/docs/postgres" },
   {
     kind: "Docs",
+    title: "Deploy your app on Prisma Compute",
+    href: "/docs/compute",
+  },
+  {
+    kind: "Docs",
     title: "Connect to your database",
     href: "/docs/postgres/database/connecting-to-your-database",
   },
   { kind: "Docs", title: "Backups and restore", href: "/docs/postgres/database/backups" },
-  {
-    kind: "Docs",
-    title: "Prototype with synthetic data using npx create-db",
-    href: "/docs/postgres/npx-create-db",
-  },
   {
     kind: "Blog",
     title: "Search encrypted data with Prisma 8 and CipherStash",

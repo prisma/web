@@ -203,7 +203,7 @@ export const postgresContent: ProductPageContent = {
     {
       question: "Is Prisma Postgres HIPAA compliant?",
       answer:
-        "Yes, on the Business plan at $129 a month, with a signed Business Associate Agreement (BAA). HIPAA is not available on the Free, Starter or Pro plans. For comparison, Supabase only offers HIPAA from its Team plan at $599 a month, plus a paid HIPAA add-on. Business also includes SOC 2 Type II and ISO 27001, and GDPR applies on every plan, including Free. See [HIPAA on the Business plan](/postgres/hipaa) for the BAA and scope. Audit reports and control details are in the [Prisma Trust Center](https://trust.prisma.io).",
+        "Yes, on the Business plan at $129 a month, with a signed Business Associate Agreement (BAA) that also covers [Prisma Compute](/compute) under the same agreement. HIPAA is not available on the Free, Starter or Pro plans. For comparison, Supabase only offers HIPAA from its Team plan at $599 a month, plus a paid HIPAA add-on. Business also includes SOC 2 Type II and ISO 27001, and GDPR applies on every plan, including Free. See [HIPAA on the Business plan](/postgres/hipaa) for the BAA and scope. Audit reports and control details are in the [Prisma Trust Center](https://trust.prisma.io).",
     },
   ],
   cta: {

@@ -435,7 +435,7 @@ export const ROUTE_CONTENT_FILES: Readonly<Record<string, readonly string[]>> = 
   "/legal/privacy": ["lib/legal/privacy.tsx"],
   "/legal/terms": ["lib/legal/terms.tsx"],
   "/legal/sla": ["lib/legal/sla.tsx"],
-  "/legal/baa": ["app/legal/baa/_baa-text.ts"],
+  "/legal/baa": ["app/legal/baa/_baa-text.ts", "app/legal/baa/page.tsx"],
   "/legal/dpa": ["app/legal/dpa/_dpa-text.ts"],
   "/support-policy": ["data/support-policy.ts"],
   "/event-code-of-conduct": ["data/event-code-of-conduct.tsx"],

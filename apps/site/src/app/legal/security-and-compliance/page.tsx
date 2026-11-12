@@ -40,7 +40,7 @@ const STANDARDS: Standard[] = [
   {
     name: "HIPAA",
     description:
-      "Support for workloads with protected health information, with a signed Business Associate Agreement. Available on the Business plan at $129 a month.",
+      "Support for workloads with protected health information, with one signed Business Associate Agreement covering both Prisma Postgres and Prisma Compute. Available on the Business plan at $129 a month.",
     href: "/postgres/hipaa",
     hrefLabel: "HIPAA on the Business plan",
   },

@@ -83,7 +83,7 @@ type Document = {
 // prints "10 September 2025" (dateModified 2025-09-10). Security and
 // Compliance and the Trust Center have no dated version to read, so the
 // field is omitted rather than invented. Ordered alphabetically.
-const BAA_DATE_MODIFIED = "2026-10-11";
+const BAA_DATE_MODIFIED = "2026-11-12";
 const DPA_LAST_UPDATED = "10 September 2025";
 
 const DOCUMENTS: Document[] = [

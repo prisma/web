@@ -25,8 +25,9 @@ type GuideIndexItem = {
 
 const HIPAA_GUIDE_CARD: GuideIndexItem = {
   url: "/postgres/hipaa",
-  title: "HIPAA compliant database for healthcare",
-  description: "A signed BAA, encryption and isolated databases on the Business plan.",
+  title: "HIPAA compliant app hosting and Postgres",
+  description:
+    "One BAA for Prisma Postgres and Prisma Compute, with encryption and tenant isolation on the Business plan.",
 };
 
 function getGuideIndexItems(product: AnswerProduct): GuideIndexItem[] {

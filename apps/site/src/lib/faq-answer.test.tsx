@@ -60,7 +60,7 @@ test("the HIPAA and backups answers carry the VP-approved opening sentences", ()
   assert.ok(byQuestion["Is Prisma Postgres HIPAA compliant?"], "HIPAA FAQ missing");
   assert.ok(
     byQuestion["Is Prisma Postgres HIPAA compliant?"].startsWith(
-      "Yes, on the Business plan at $129 a month, with a signed Business Associate Agreement (BAA). HIPAA is not available on the Free, Starter or Pro plans.",
+      "Yes, on the Business plan at $129 a month, with a signed Business Associate Agreement (BAA) that also covers [Prisma Compute](/compute) under the same agreement. HIPAA is not available on the Free, Starter or Pro plans.",
     ),
     "HIPAA FAQ opener does not match the VP-approved copy",
   );

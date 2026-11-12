@@ -9,6 +9,7 @@ const NEW_QUESTION =
 const COVERED_ENTITY_QUESTION =
   "Will Prisma sign a BAA directly with a covered entity, such as a medical practice or clinic?";
 const AUDIT_LOGS_QUESTION = "Does Prisma Postgres provide audit logs?";
+const APP_HOSTING_QUESTION = "Does the BAA cover app hosting?";
 
 const DASH_PATTERN = /[\u2013\u2014]/;
 
@@ -34,6 +35,32 @@ test("the covered-entity BAA FAQ sits with the other BAA questions", () => {
   assert.ok(item, "covered-entity BAA FAQ missing");
   assert.match(item.answer, /Email compliance@prisma\.io to get started\./);
   assert.ok(!/\$/.test(item.answer), "covered-entity BAA answer must not add pricing");
+});
+
+test("the app-hosting FAQ sits with the BAA scope questions and names Prisma Compute", () => {
+  const questions = HIPAA_FAQ.map((item) => item.question);
+  assert.equal(questions.filter((question) => question === APP_HOSTING_QUESTION).length, 1);
+  assert.equal(
+    questions[questions.indexOf("Which products does the BAA cover?") + 1],
+    APP_HOSTING_QUESTION,
+  );
+
+  const item = HIPAA_FAQ.find((faq) => faq.question === APP_HOSTING_QUESTION);
+  assert.ok(item, "app-hosting FAQ missing");
+  assert.match(item.answer, /Prisma Compute/);
+  assert.match(item.answer, /same BAA as Prisma Postgres/);
+  assert.ok(
+    !/\b(Free|Starter|Pro)\b/.test(item.answer),
+    "app-hosting answer must not add a non-Business plan restriction",
+  );
+  assert.ok(!/\$/.test(item.answer), "app-hosting answer must not add pricing");
+});
+
+test("the BAA-scope answer names both Prisma Postgres and Prisma Compute", () => {
+  const item = HIPAA_FAQ.find((faq) => faq.question === "Which products does the BAA cover?");
+  assert.ok(item, "BAA-scope FAQ missing");
+  assert.match(item.answer, /Prisma Postgres/);
+  assert.match(item.answer, /Prisma Compute/);
 });
 
 test("the audit-logs FAQ sits with the security and operations questions", () => {
@@ -75,9 +102,13 @@ test("the non-TypeScript answer links the connection docs first and stays valid 
     item.answer.indexOf("/docs/postgres/database/connecting-to-your-database") <
       item.answer.indexOf("hipaacomplianthosting.com"),
   );
-  assert.ok(!item.answer.toLowerCase().includes("prisma compute"));
+  assert.match(
+    item.answer,
+    /Prisma Compute is the right fit for Node\.js, Bun and Next\.js apps and is covered by the same BAA\./,
+    "non-TypeScript answer must point Node.js/Bun/Next.js apps at Prisma Compute",
+  );
   assert.ok(
-    item.answer.includes("If a third-party provider hosts your app, it needs to sign a BAA too."),
+    item.answer.includes("if a third-party provider hosts your app it needs to sign a BAA too."),
   );
   assert.ok(!item.answer.includes("You also need a BAA-covered host for the app itself."));
 
