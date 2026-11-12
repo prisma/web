@@ -167,20 +167,20 @@ function ComplianceCard() {
       ),
     },
     { label: "Covers", value: "Postgres and Compute" },
-    { label: "Encryption", value: "At rest and in transit" },
-    { label: "Isolation", value: "Isolated per tenant" },
+    { label: "Database encryption", value: "At rest and in transit" },
+    { label: "Database isolation", value: "Isolated per tenant" },
     {
       label: "Two US Regions",
       value: <HipaaRegionFlip className="text-[0.8125rem] font-semibold text-foreground" />,
       mono: true,
     },
-    { label: "Backups", value: "Daily, kept 30 days" },
+    { label: "Database backups", value: "Daily, kept 30 days" },
   ];
 
   return (
     <div
       role="img"
-      aria-label="Illustration of a Prisma Business workspace with a signed BAA covering Prisma Postgres and Prisma Compute for covered entities or business associates, encryption at rest and in transit, tenant isolation, two US regions us-east-1 and us-west-1, 30 day daily backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
+      aria-label="Illustration of a Prisma Business workspace with a signed BAA covering Prisma Postgres and Prisma Compute for covered entities or business associates, database encryption at rest and in transit, database tenant isolation, two US regions us-east-1 and us-west-1, 30 day daily database backups, and grey HIPAA, SOC 2 Type II, ISO 27001 and GDPR certification marks"
       className="pointer-events-none relative flex w-full select-none flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_1px_2px_rgba(21,21,21,0.04),0_8px_16px_-4px_rgba(21,21,21,0.06),0_32px_64px_-16px_rgba(21,21,21,0.14)]"
     >
       <div className="flex items-center gap-2 border-b border-border/70 px-5 py-3.5">
@@ -238,8 +238,8 @@ function ComplianceCard() {
         </div>
       </div>
       <p className="border-t border-border/70 bg-muted/40 px-5 py-3 text-[0.8125rem] leading-snug text-muted-foreground sm:px-6">
-        One BAA for the workspace, covering its databases and apps. Encryption, isolation and
-        backups are on by default.
+        One BAA for the workspace, covering its databases and apps. Database encryption, tenant
+        isolation and daily backups are on by default.
       </p>
     </div>
   );
@@ -331,7 +331,7 @@ export function HipaaGlance() {
     { label: "Also on Business", value: "SOC 2 Type II, ISO 27001" },
     {
       label: "On every plan",
-      value: "GDPR, database encryption at rest and in transit, tenant isolation",
+      value: "GDPR, database encryption at rest and in transit, database tenant isolation",
     },
     {
       label: "App secrets",
@@ -717,7 +717,7 @@ function MiniRow({ children, active }: { children: React.ReactNode; active?: boo
 
 export function HipaaResponsibility() {
   const prisma = [
-    "Encryption of data at rest and in transit",
+    "Database encryption at rest and in transit",
     "Isolation between tenants' databases",
     "Encrypted app secrets and automatic TLS for custom domains",
     "Daily automatic database backups, kept 30 days on Business",
@@ -1219,7 +1219,7 @@ export function HipaaCloser() {
       bodyMaxWidth="max-w-[78ch]"
       checks={[
         { label: "One signed BAA for database and app", color: "text-prism-cyan-500" },
-        { label: "Encrypted, isolated, backed up daily", color: "text-prism-yellow-400" },
+        { label: "Databases encrypted, isolated, backed up daily", color: "text-prism-yellow-400" },
         { label: "Standard Postgres and TypeScript, no lock-in", color: "text-prism-red-500" },
       ]}
       // Headline, body and primary CTA deliberately avoid the price — see the

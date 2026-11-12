@@ -110,7 +110,7 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "What am I responsible for under the shared responsibility model?",
     answer:
-      "You are responsible for your application code, who can access your data, keeping PHI out of services the BAA does not cover, and your own HIPAA policies. Prisma secures the managed database and app hosting platform: encryption at rest and in transit, tenant isolation, daily database backups on paid plans and its internal compliance program.",
+      "You are responsible for your application code, who can access your data, keeping PHI out of services the BAA does not cover, and your own HIPAA policies. Prisma secures the managed database and app hosting platform: database encryption at rest and in transit, database tenant isolation, daily database backups on paid plans, encrypted app secrets and its internal compliance program.",
   },
   {
     question: "How are backups and encryption handled?",
