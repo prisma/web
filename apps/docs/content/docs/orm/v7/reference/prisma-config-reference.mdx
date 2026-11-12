@@ -301,6 +301,22 @@ Prisma CLI commands that connect to the database stop with one of these errors w
 
 Prisma ORM 7 does not load `.env` files by itself. A variable that is only in `.env` is not set until the file is loaded, for example with `import "dotenv/config"` on the first line of the Prisma config file (`prisma.config.ts`, or `prisma7.config.ts` in projects created with Prisma ORM 7.10 or later). See [Using environment variables](#using-environment-variables).
 
+If `Connection url is empty`, the `datasource.url property is required` error or `P1013` appears and your project already has a database, keep its `DATABASE_URL` and fix how it is loaded or encoded. If your project uses PostgreSQL and has no database yet, [`npx create-db`](/postgres/npx-create-db) creates a temporary [Prisma Postgres](/postgres) database without an account and prints its connection string and a claim URL. The temporary database is deleted after 24 hours unless you claim it with a free Prisma account.
+
+```bash
+npx create-db@latest
+```
+
+Rerun the Prisma CLI command that failed, with the printed connection string set on the command in the variable your Prisma config reads (`DATABASE_URL` in the example config above) and without editing `.env`:
+
+```bash
+DATABASE_URL="<connection string printed by create-db>" npx prisma migrate dev
+```
+
+In PowerShell, set the variable for the current session first, with `$env:DATABASE_URL = "<connection string printed by create-db>"`, then run `npx prisma migrate dev`. The value lasts until you close that window, and `.env` stays as it is.
+
+To keep using the temporary database, put the string in `.env` under the variable your Prisma config reads (`DATABASE_URL` in the example config above) if the file has no line for it yet, or if the line is empty or still a placeholder. A line that names a database your project uses stays as it is.
+
 ### `datasource.shadowDatabaseUrl`
 
 Connection URL to the shadow database used by Prisma Migrate. Allows you to use a cloud-hosted database as the shadow database.
@@ -632,7 +648,7 @@ A command that connects to the database needs the variable to be set, with eithe
 DATABASE_URL="your_database_connection_string_here" npx prisma migrate deploy
 ```
 
-The variable applies to that command only, and no file is changed.
+The variable applies to that command only, and no file is changed. If your project has no database yet, see [`datasource.url`](#datasourceurl).
 
 ### Using multi-file schemas
 
