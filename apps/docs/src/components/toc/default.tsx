@@ -21,9 +21,12 @@ export function TOCItems({ ref, className, ...props }: ComponentProps<"div">) {
 
   return (
     <>
+      {/* Quiet position marker: an ink bar and the current heading in full
+          ink, rather than the eclipse spectrum thumb and gradient text, which
+          competed with the article. Same scroll-tracking behaviour. */}
       <TocThumb
         containerRef={containerRef}
-        className="absolute top-(--fd-top) h-(--fd-height) w-0.5 rounded-e-sm spectrum-thumb transition-[top,height] ease-linear"
+        className="absolute top-(--fd-top) h-(--fd-height) w-0.5 rounded-e-sm bg-fd-foreground/45 transition-[top,height] ease-linear"
       />
       <div
         ref={mergeRefs(ref, containerRef)}
@@ -43,7 +46,7 @@ function TOCItem({ item }: { item: Primitive.TOCItemType }) {
     <Primitive.TOCItem
       href={item.url}
       className={cn(
-        "prose spectrum-text-active py-1.5 text-sm text-fd-muted-foreground wrap-anywhere first:pt-0 last:pb-0",
+        "prose py-1.5 text-sm text-fd-muted-foreground transition-colors duration-[120ms] ease-out hover:text-fd-foreground hover:duration-0 data-[active=true]:text-fd-foreground wrap-anywhere first:pt-0 last:pb-0",
         item.depth <= 2 && "ps-3",
         item.depth === 3 && "ps-6",
         item.depth >= 4 && "ps-8",

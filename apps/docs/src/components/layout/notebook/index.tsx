@@ -38,11 +38,16 @@ import { PaperGround } from "@/components/chrome/paper-ground";
  * Values are the eclipse variant verbatim:
  * `packages/eclipse/src/components/button.tsx`.
  */
+// Login / Sign up pills. Flat (no shadow, no hover grow): hover is a colour
+// step only, landing instantly (`hover:duration-0`) and fading out over
+// 120ms, the same crisp timing as `quiet-hover` on the rest of the header.
 const inkPill =
-  "inline-flex h-8 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap shadow-box-low transition-transform duration-300 hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100";
+  "inline-flex h-8 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors duration-[120ms] ease-out hover:duration-0 motion-reduce:transition-none";
 
 /** Pill hit area for the navbar's icon-sized controls. */
-const navIconPill = "rounded-full text-fd-muted-foreground hover:text-fd-foreground";
+// `quiet-hover` (global.css) supplies the colour and hover tint; the ghost
+// variant's cyan accent hover is cleared so the two don't stack.
+const navIconPill = "quiet-hover rounded-full hover:bg-transparent";
 
 export interface DocsLayoutProps extends BaseLayoutProps {
   tree: PageTree.Root;
@@ -176,9 +181,11 @@ export function DocsLayout(props: DocsLayoutProps) {
                   className={cn(
                     inkPill,
                     "w-full",
+                    // Sign up is the one primary CTA; Login is the bordered,
+                    // quieter pill (the eclipse `default` variant's fill).
                     item.secondary
-                      ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse"
-                      : "bg-fd-primary text-fd-primary-foreground",
+                      ? "border border-stroke-neutral bg-background-default text-foreground-neutral hover:bg-background-neutral"
+                      : "bg-background-neutral-reverse-strong text-foreground-neutral-reverse hover:bg-background-neutral-reverse-strong/85",
                   )}
                 >
                   {item.text}
@@ -364,9 +371,11 @@ function DocsNavbar({
                     item={item}
                     className={cn(
                       inkPill,
+                      // Sign up is the one primary CTA; Login is the
+                      // bordered, quieter pill (eclipse `default` fill).
                       item.secondary
-                        ? "bg-background-neutral-reverse-strong text-foreground-neutral-reverse"
-                        : "bg-fd-primary text-fd-primary-foreground",
+                        ? "border border-stroke-neutral bg-background-default text-foreground-neutral hover:bg-background-neutral"
+                        : "bg-background-neutral-reverse-strong text-foreground-neutral-reverse hover:bg-background-neutral-reverse-strong/85",
                       item.navbarClassName,
                     )}
                   >
@@ -387,7 +396,7 @@ function DocsNavbar({
                         size: "icon-sm",
                       }),
                       navIconPill,
-                      "border-stroke-neutral -me-1.5",
+                      "border-stroke-neutral hover:bg-fd-secondary -me-1.5",
                     )}
                   >
                     <SidebarIcon />

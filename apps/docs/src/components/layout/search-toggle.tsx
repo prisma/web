@@ -66,7 +66,7 @@ export function LargeSearchToggle({
       className={cn(
         // The navbar's pill: hairline ring on a paper wash, kbd chips squared
         // off inside it so the shapes read as nested rather than repeated.
-        "inline-flex items-center gap-2 rounded-full border border-stroke-neutral bg-fd-secondary/50 text-sm text-fd-muted-foreground transition-colors duration-300 hover:bg-fd-accent hover:text-fd-accent-foreground motion-reduce:transition-none",
+        "quiet-hover inline-flex items-center gap-2 rounded-full border border-stroke-neutral bg-fd-secondary/50 text-sm",
         // Labelled: a wide field that stretches with its container. Unlabelled:
         // the same 32px pill geometry as the Ask AI button.
         showLabel ? "p-1.5 ps-3" : "h-8 px-3",
