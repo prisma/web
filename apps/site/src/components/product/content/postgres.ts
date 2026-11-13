@@ -166,6 +166,11 @@ export const postgresContent: ProductPageContent = {
         "Yes, Prisma Postgres provides [free PostgreSQL hosting](/postgres/free-postgresql-hosting), needs no credit card and includes 200,000 operations a month across up to 50 databases in a workspace. An operation is one query, read or write, and usage resets at the start of each calendar month. On the [Free plan](/pricing), idle databases cost nothing and you never wake one by hand: the next query does it. Backups and spend limits start on the Starter plan at $10 a month.",
     },
     {
+      question: "Is Prisma Postgres a cloud Postgres database?",
+      answer:
+        "Yes. Prisma Postgres is a fully managed cloud PostgreSQL database: there are no servers to run, databases are provisioned instantly, connection pooling is built in, and the Free plan includes 2 GB of storage. It works with any Postgres client and is built to pair with Prisma ORM for type-safe queries and Prisma Compute for deploying your app next to your database, so you get one cloud platform for the database, the ORM and app hosting.",
+    },
+    {
       question: "What happens when I reach the Free plan limit?",
       answer:
         "Your workspace's databases stop accepting queries until the allowance resets at the start of the next month, or until you upgrade, which usually restores access within a minute. If you need time to export your data first, you can [lift the limit for 24 hours](/docs/postgres/faq#what-happens-if-i-exceed-the-included-queries-on-the-free-tier) from the Console, once per workspace. Paid plans bill operations beyond the included amount at your plan's rate, up to a spend limit if you set one in the Console.",
