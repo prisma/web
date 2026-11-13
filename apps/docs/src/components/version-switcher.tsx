@@ -86,7 +86,7 @@ export function VersionSwitcher({
           (instant in, 120ms out). */}
       <DropdownMenuTrigger
         aria-label={`Select ${label.toLowerCase()}`}
-        className="flex h-9 w-full cursor-pointer items-center gap-2 rounded-square border border-stroke-neutral px-2 text-sm transition-colors duration-[120ms] ease-out outline-none hover:bg-fd-foreground/5 hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/20 motion-reduce:transition-none"
+        className="flex h-9 w-full cursor-pointer items-center gap-2 rounded-square border border-stroke-neutral px-2 text-sm transition-colors duration-[120ms] ease-out outline-none hover:bg-fd-foreground/5 hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none"
       >
         <span className="text-fd-muted-foreground">{label}</span>
         <span className="ms-auto font-medium text-fd-foreground">

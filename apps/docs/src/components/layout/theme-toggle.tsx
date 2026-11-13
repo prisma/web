@@ -7,7 +7,7 @@ import { cn } from "@prisma-docs/ui/lib/cn";
 
 const itemVariants = cva(
   // No outline on click; keyboard focus gets a quiet neutral ring instead.
-  "size-6.5 rounded-full p-1.5 text-fd-muted-foreground outline-none transition-[color,background-color,box-shadow] duration-300 focus-visible:ring-2 focus-visible:ring-fd-foreground/20 motion-reduce:transition-none",
+  "size-6.5 rounded-full p-1.5 text-fd-muted-foreground outline-none transition-[color,background-color,box-shadow] duration-300 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none",
   {
     variants: {
       active: {

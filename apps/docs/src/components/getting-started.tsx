@@ -47,7 +47,7 @@ function InlineCode({ text }: { text: string }) {
 // 120ms out, a faint ink tint and no colour change.
 const crisp =
   "transition-colors duration-[120ms] ease-out hover:duration-0 motion-reduce:transition-none";
-const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/20";
+const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60";
 /** Bordered pill for a row's main action. */
 const outlinePill = cn(
   "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-stroke-neutral px-3 text-sm font-medium text-fd-foreground hover:bg-fd-foreground/5 [&_svg]:size-3.5",

@@ -28,7 +28,7 @@ const cache = new Map<string, string>();
  */
 const pill = "inline-flex h-8 items-stretch rounded-full border border-stroke-neutral text-sm";
 const pillPart =
-  "quiet-hover inline-flex items-center gap-1.5 font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/20 disabled:opacity-60 [&_svg]:size-3.5 [&_svg]:shrink-0";
+  "quiet-hover inline-flex items-center gap-1.5 font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60 disabled:opacity-60 [&_svg]:size-3.5 [&_svg]:shrink-0";
 
 /** A filled single-colour brand mark (Simple Icons paths, 24×24). */
 function BrandIcon({ d }: { d: string }) {

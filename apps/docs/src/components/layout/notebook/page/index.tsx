@@ -189,7 +189,7 @@ export function EditOnGitHub(props: ComponentProps<"a">) {
       // The same hairline pill as the page actions under the title: no fill,
       // label a step below ink at rest, full ink plus a faint tint on hover.
       className={cn(
-        "not-prose quiet-hover inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke-neutral px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/20",
+        "not-prose quiet-hover inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke-neutral px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60",
         props.className,
       )}
     >
