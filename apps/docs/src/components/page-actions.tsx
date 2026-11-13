@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import posthog from "posthog-js";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { ArrowUpRight, Check, ChevronDown, Copy, FileText, Heart, Zap } from "lucide-react";
@@ -117,14 +117,9 @@ type Destination = {
  * Where the page can be handed off, grouped as Clerk does. The hand-off URLs
  * come from `lib/page-destinations.ts`, where their formats are tested.
  */
-function useDestinations(markdownUrl: string) {
-  // The prompt needs the absolute Markdown URL, and the server has no origin,
-  // so it is read after hydration rather than during render.
-  const [origin, setOrigin] = useState<string | null>(null);
-  useEffect(() => setOrigin(window.location.origin), []);
-
+function useDestinations(absoluteMarkdownUrl: string) {
   return useMemo(() => {
-    const href = destinationHrefs(markdownUrl, origin);
+    const href = destinationHrefs(absoluteMarkdownUrl);
 
     const chatgpt: Destination = {
       title: "Open in ChatGPT",
@@ -194,7 +189,7 @@ function useDestinations(markdownUrl: string) {
     ];
 
     return { chatgpt, groups };
-  }, [markdownUrl, origin]);
+  }, [absoluteMarkdownUrl]);
 }
 
 function track(tool: string) {
@@ -203,15 +198,18 @@ function track(tool: string) {
 
 export function PageActions({
   markdownUrl,
+  absoluteMarkdownUrl,
   canCopy = true,
 }: {
-  /** URL of the page's raw Markdown rendition. */
+  /** Path of the page's raw Markdown rendition, fetched same-origin for copying. */
   markdownUrl: string;
+  /** The same rendition as an absolute URL, resolved on the server, for the AI hand-offs. */
+  absoluteMarkdownUrl: string;
   /** False where the page has no useful Markdown to copy (REST endpoint pages). */
   canCopy?: boolean;
 }) {
   const copy = useCopyMarkdown(markdownUrl);
-  const { chatgpt, groups } = useDestinations(markdownUrl);
+  const { chatgpt, groups } = useDestinations(absoluteMarkdownUrl);
 
   return (
     <div className="flex flex-wrap items-center gap-2">

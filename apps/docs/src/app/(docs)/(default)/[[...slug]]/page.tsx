@@ -1,7 +1,7 @@
 import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { getPageImage, source } from "@/lib/source";
 import { getPageTitleText } from "@/lib/page-title";
-import { withDocsBasePath, withMarkdownPath } from "@/lib/urls";
+import { getBaseUrl, withDocsBasePath, withMarkdownPath } from "@/lib/urls";
 import { resolveCanonicalUrl } from "@/lib/canonical";
 import { getPageVersion, withVersionDescription, withVersionTitle } from "@/lib/version-metadata";
 import { Badge } from "@prisma/eclipse";
@@ -92,6 +92,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
           {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
           <PageActions
             markdownUrl={withMarkdownPath(page.url)}
+            absoluteMarkdownUrl={new URL(withMarkdownPath(page.url), getBaseUrl()).toString()}
             canCopy={!page.url.startsWith("/rest-api/endpoints")}
           />
         </div>

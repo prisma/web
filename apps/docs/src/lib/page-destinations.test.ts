@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { destinationHrefs, destinationPrompt, type DestinationTool } from "./page-destinations";
 
-const markdownUrl = "/docs/orm.mdx";
-const origin = "https://www.prisma.io";
+const absoluteMarkdownUrl = "https://www.prisma.io/docs/orm.mdx";
 const prompt = "Read https://www.prisma.io/docs/orm.mdx, I want to ask questions about it.";
 
 /**
@@ -25,20 +24,13 @@ const expected: Record<
   lovable: { base: "https://lovable.dev/", hash: "prompt" },
 };
 
-test("the prompt points at the absolute Markdown URL", () => {
-  assert.equal(destinationPrompt(markdownUrl, origin), prompt);
-});
-
-test("before hydration the prompt falls back to the relative URL", () => {
-  assert.equal(
-    destinationPrompt(markdownUrl, null),
-    "Read /docs/orm.mdx, I want to ask questions about it.",
-  );
+test("the prompt carries the absolute Markdown URL unchanged", () => {
+  assert.equal(destinationPrompt(absoluteMarkdownUrl), prompt);
 });
 
 test("every destination has a pinned format", () => {
   assert.deepEqual(
-    Object.keys(destinationHrefs(markdownUrl, origin)).sort(),
+    Object.keys(destinationHrefs(absoluteMarkdownUrl)).sort(),
     Object.keys(expected).sort(),
   );
 });
@@ -48,7 +40,7 @@ for (const [tool, spec] of Object.entries(expected) as [
   (typeof expected)[DestinationTool],
 ][]) {
   test(`${tool}: prompt arrives intact in the expected place`, () => {
-    const url = new URL(destinationHrefs(markdownUrl, origin)[tool]);
+    const url = new URL(destinationHrefs(absoluteMarkdownUrl)[tool]);
 
     assert.equal(`${url.protocol}//${url.host}${url.pathname}`, spec.base);
 

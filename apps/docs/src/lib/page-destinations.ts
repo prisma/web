@@ -19,18 +19,19 @@ export type DestinationTool =
   | "bolt"
   | "lovable";
 
-/** The prompt every tool receives. */
-export function destinationPrompt(markdownUrl: string, origin: string | null): string {
-  const url = origin ? new URL(markdownUrl, origin).toString() : markdownUrl;
-  return `Read ${url}, I want to ask questions about it.`;
+/**
+ * The prompt every tool receives. `absoluteMarkdownUrl` must be absolute: the
+ * tool fetches it from outside the site, so a bare path would be useless. The
+ * page resolves it on the server (`getBaseUrl()`), so the links are right from
+ * the first render rather than only after hydration.
+ */
+export function destinationPrompt(absoluteMarkdownUrl: string): string {
+  return `Read ${absoluteMarkdownUrl}, I want to ask questions about it.`;
 }
 
-/** The hand-off URL for each tool, for the page at `markdownUrl`. */
-export function destinationHrefs(
-  markdownUrl: string,
-  origin: string | null,
-): Record<DestinationTool, string> {
-  const q = destinationPrompt(markdownUrl, origin);
+/** The hand-off URL for each tool, for the page at `absoluteMarkdownUrl`. */
+export function destinationHrefs(absoluteMarkdownUrl: string): Record<DestinationTool, string> {
+  const q = destinationPrompt(absoluteMarkdownUrl);
   const query = (key: string) => new URLSearchParams({ [key]: q }).toString();
 
   return {
