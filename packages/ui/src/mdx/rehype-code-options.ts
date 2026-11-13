@@ -1,20 +1,6 @@
 import { rehypeCodeDefaultOptions, type RehypeCodeOptions } from "fumadocs-core/mdx-plugins";
 import { transformerShikiTokenClasses } from "@prisma-docs/ui/mdx/shiki-token-classes";
 
-/**
- * `rehypeCodeOptions` for every app whose global CSS imports
- * `@prisma-docs/ui/styles` — docs, blog and eclipse. It is the fumadocs
- * defaults plus `transformerShikiTokenClasses` (see that module for why).
- *
- * The defaults are respread by hand because `rehypeCode` merges the caller's
- * options over them shallowly: passing `transformers` alone would drop the four
- * notation transformers (line highlight, word highlight, diff, focus) that the
- * docs content relies on.
- *
- * `apps/site` is deliberately not on this: its changelog MDX colours tokens
- * from its own `globals.css`, which does not import this package's styles, so
- * it keeps Shiki's inline declarations.
- */
 /*
  * The current Prisma mark (apps/docs/public/logo/mark.svg), for code blocks
  * in `prisma` files. fumadocs still ships the retired triangle from Simple
@@ -30,6 +16,20 @@ const prismaMark =
   '<path d="M209.686 264H113.373L156.453 220.773L263.001 114.034V210.5L209.686 264Z" fill="#FEBE29"/>' +
   "</svg>";
 
+/**
+ * `rehypeCodeOptions` for every app whose global CSS imports
+ * `@prisma-docs/ui/styles` — docs, blog and eclipse. It is the fumadocs
+ * defaults plus `transformerShikiTokenClasses` (see that module for why).
+ *
+ * The defaults are respread by hand because `rehypeCode` merges the caller's
+ * options over them shallowly: passing `transformers` alone would drop the four
+ * notation transformers (line highlight, word highlight, diff, focus) that the
+ * docs content relies on.
+ *
+ * `apps/site` is deliberately not on this: its changelog MDX colours tokens
+ * from its own `globals.css`, which does not import this package's styles, so
+ * it keeps Shiki's inline declarations.
+ */
 export const rehypeCodeOptions: RehypeCodeOptions = {
   ...rehypeCodeDefaultOptions,
   icon: { extend: { prisma: prismaMark } },
