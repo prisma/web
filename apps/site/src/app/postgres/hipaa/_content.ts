@@ -19,8 +19,8 @@ export const HIPAA_BAA_ANCHOR = "request-a-baa";
 export const HIPAA_COMPARE_ANCHOR = "compare";
 export const BUSINESS_PRICE_USD = "129";
 // Stable ISO date for WebPage JSON-LD dateModified. Keep in sync with the
-// visible "Updated October 2026" microline on the HIPAA page.
-export const HIPAA_LAST_MODIFIED = "2026-10-13";
+// visible "Updated November 2026" microline on the HIPAA page.
+export const HIPAA_LAST_MODIFIED = "2026-11-12";
 // Same href the site header's "Get Started" button uses (components/header.tsx
 // -> siteConfig.consoleSignUpUrl via the shared PrismButton pattern).
 export const CONSOLE_SIGN_UP_URL = "https://console.prisma.io/sign-up";
@@ -69,17 +69,17 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Is Prisma Postgres HIPAA compliant?",
     answer:
-      "Yes, on the Business plan. Prisma runs a HIPAA compliance program for Prisma Postgres, and Business customers can sign a Business Associate Agreement (BAA) with Prisma before storing protected health information. HIPAA is not available on the Free, Starter or Pro plans.",
+      "Yes, on the Business plan. Prisma runs a HIPAA compliance program for Prisma Postgres, and Business customers can sign a Business Associate Agreement (BAA) with Prisma before storing protected health information. The BAA also covers apps you host on Prisma Compute. HIPAA is not available on the Free, Starter or Pro plans.",
   },
   {
-    question: "How much does a HIPAA compliant Postgres database cost on Prisma?",
+    question: "How much does HIPAA compliant Postgres and app hosting cost on Prisma?",
     answer:
-      "HIPAA comes with the Business plan at $129 a month, including usage. Spend limits let you cap your bill. There is no separate HIPAA fee. See [pricing](/pricing) for plan details.",
+      "HIPAA comes with the Business plan at $129 a month, including usage on Prisma Postgres and Prisma Compute. A spend limit you set in the Console counts usage charges and stops queries to your workspace's databases when reached. There is no separate HIPAA fee. See [pricing](/pricing) for plan details.",
   },
   {
     question: "Does Prisma sign a BAA, and how do I get one?",
     answer:
-      "Yes. Prisma signs a BAA with customers on the Business plan. Read or download the BAA, sign up for Prisma and upgrade your workspace to Business, then email compliance@prisma.io from your account email with your company name, address, workspace and signatory name and email. Prisma sends the agreement for e-signature.",
+      "Yes. Prisma signs a BAA with customers on the Business plan. Read or download the [BAA](/legal/baa), sign up for Prisma and upgrade your workspace to Business, then email compliance@prisma.io from your account email with your company name, address, workspace and signatory name and email. Prisma sends the agreement for e-signature.",
   },
   {
     question:
@@ -90,27 +90,37 @@ export const HIPAA_FAQ: HipaaFaqItem[] = [
   {
     question: "Which products does the BAA cover?",
     answer:
-      "The BAA covers Prisma Postgres databases in a Business workspace. Keep protected health information in services covered by your signed BAA. Embeddable [Prisma Studio](/studio) is not designed for regulated industries under Prisma's [Terms of Service](/legal/terms).",
+      "The BAA covers Prisma Postgres databases and apps hosted on [Prisma Compute](/compute) in a Business workspace. Keep protected health information in services covered by your signed BAA. Embeddable [Prisma Studio](/studio) is not designed for regulated industries under Prisma's [Terms of Service](/legal/terms).",
+  },
+  {
+    question: "Is Prisma Compute HIPAA compliant?",
+    answer:
+      "Yes, on the Business plan. Prisma Compute hosts Node.js, Bun and Next.js apps, and the same BAA that covers your Prisma Postgres databases covers your Compute apps, so your app can handle PHI without a separate hosting BAA. Deploy the app in the same region as its database. See the [Compute docs](/docs/compute) to get started.",
+  },
+  {
+    question: "Can I use preview deployments with PHI?",
+    answer:
+      "Keep PHI in production. Each preview branch on Prisma Compute gets its own services, and databases declared in Composer start fresh with your migrations and no production data. If your app reads `DATABASE_URL`, point the preview value at a non-production database. See [deploy on push](/docs/compute/deploy-on-push).",
   },
   {
     question: "Where is my data stored?",
     answer:
-      "In the region you choose when you create each database. Prisma Postgres runs in six regions: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1), so you can keep US patient data in a US region. Storing or transmitting PHI outside the United States needs your advance written consent under the BAA (Section V.O). See the [full list of regions](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in).",
+      "In the region you choose when you create each database. Prisma Postgres runs in six regions: San Francisco (us-west-1), North Virginia (us-east-1), Paris (eu-west-3), Frankfurt (eu-central-1), Tokyo (ap-northeast-1) and Singapore (ap-southeast-1), and each Prisma Compute service runs in one of the same six, so you can keep your app and its US patient data in the same US region. Storing or transmitting PHI outside the United States needs your advance written consent under the BAA (Section V.O). See the [full list of regions](/docs/postgres/faq#what-regions-is-prisma-postgres-available-in).",
   },
   {
     question: "What am I responsible for under the shared responsibility model?",
     answer:
-      "You are responsible for your application, who can access your data, keeping PHI out of services the BAA does not cover, and your own HIPAA policies. Prisma secures the managed database platform: encryption at rest and in transit, tenant isolation, daily backups on paid plans and its internal compliance program.",
+      "You are responsible for your application code, who can access your data, keeping PHI out of services the BAA does not cover, and your own HIPAA policies. Prisma secures the managed database and app hosting platform: database encryption at rest and in transit, database tenant isolation, daily database backups on paid plans, encrypted app secrets and its internal compliance program.",
   },
   {
     question: "How are backups and encryption handled?",
     answer:
-      "Every Prisma Postgres database is encrypted at rest and in transit. Paid plans include daily automatic backups: Starter and Pro keep them for 7 days, Business for 30. The Free plan has no backups. You restore a backup from the database's Backups tab in the Console; see the [backups docs](/docs/postgres/database/backups).",
+      "Every Prisma Postgres database is encrypted at rest and in transit. Paid plans include daily automatic backups: Starter and Pro keep them for 7 days, Business for 30. The Free plan has no backups. You restore a backup from the database's Backups tab in the Console; see the [backups docs](/docs/postgres/database/backups). On Prisma Compute, environment variables are encrypted at rest and never returned by the CLI, API or Console, custom domains get TLS automatically, and you can roll a service back to a previous version without a rebuild.",
   },
   {
     question: "Does Prisma Postgres provide audit logs?",
     answer:
-      "Prisma can provide Prisma Postgres logs in cooperation with you when needed and on request. Logs are not available self-serve.",
+      "Prisma can provide Prisma Postgres logs in cooperation with you when needed and on request. Logs are not available self-serve. For Prisma Compute apps, you can read each version's application logs with `prisma service logs`, so keep PHI out of what your app writes to them.",
   },
   {
     question: "Can I use Prisma ORM with PHI?",
@@ -147,6 +157,18 @@ export const HIPAA_RESOURCES = [
     title: "Prototype with synthetic data using npx create-db",
     href: "/docs/postgres/npx-create-db",
   },
+  { kind: "Docs", title: "Deploy your app on Prisma Compute", href: "/docs/compute" },
+  {
+    kind: "Docs",
+    title: "Preview environments per Git branch",
+    href: "/docs/compute/deploy-on-push",
+  },
+  {
+    kind: "Docs",
+    title: "Keep secrets in environment variables",
+    href: "/docs/compute/environment-variables",
+  },
+  { kind: "Docs", title: "Promote and roll back deployments", href: "/docs/compute/deployments" },
   {
     kind: "Blog",
     title: "Search encrypted data with Prisma 8 and CipherStash",

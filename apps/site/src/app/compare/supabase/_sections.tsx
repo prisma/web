@@ -68,6 +68,7 @@ const SOURCES = [
     product: "Supabase",
     links: [
       { label: "Supabase pricing", href: "https://supabase.com/pricing" },
+      { label: "Database size", href: "https://supabase.com/docs/guides/platform/database-size" },
       {
         label: "Spend Cap",
         href: "https://supabase.com/docs/guides/platform/cost-control#spend-cap",

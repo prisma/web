@@ -2,12 +2,7 @@ import { JsonLd } from "@prisma-docs/ui/components/json-ld";
 import { createPageMetadata } from "@/lib/page-metadata";
 import { createFaqStructuredData } from "@/lib/structured-data";
 import { getBaseUrl } from "@/lib/url";
-import {
-  BUSINESS_PRICE_USD,
-  HIPAA_FAQ,
-  HIPAA_LAST_MODIFIED,
-  HIPAA_PATH,
-} from "./_content";
+import { BUSINESS_PRICE_USD, HIPAA_FAQ, HIPAA_LAST_MODIFIED, HIPAA_PATH } from "./_content";
 import {
   HipaaBaaSteps,
   HipaaCloser,
@@ -24,11 +19,11 @@ import {
 
 export const metadata = {
   ...createPageMetadata({
-    title: "HIPAA compliant database for healthcare | Prisma Postgres",
+    title: "HIPAA compliant database and app hosting for healthcare | Prisma",
     description:
-      "Prisma Postgres is a HIPAA ready cloud database with a signed BAA on Business. Built for teams that need HIPAA compliant database hosting without enterprise bloat.",
+      "Managed Postgres and app hosting for clinics and healthcare apps, from $129 a month. We sign a BAA with you on the Business plan to keep patient data safe.",
     path: HIPAA_PATH,
-    ogKicker: "Prisma Postgres",
+    ogKicker: "Prisma Postgres and Compute",
     ogAccent: "yellow" as const,
   }),
 };
@@ -56,7 +51,7 @@ function buildStructuredData() {
       "@type": "WebPage",
       "@id": url,
       url,
-      name: "HIPAA compliant Postgres database | Prisma Postgres",
+      name: "HIPAA compliant database and app hosting | Prisma",
       dateModified: HIPAA_LAST_MODIFIED,
       about: { "@id": `${base}/postgres#product` },
       publisher: { "@id": `${base}/#organization` },
@@ -86,7 +81,7 @@ function buildStructuredData() {
       category: "Managed PostgreSQL database",
       brand: { "@id": `${base}/#organization` },
       description:
-        "Managed Postgres with HIPAA support and a signed Business Associate Agreement on the Business plan.",
+        "Managed Postgres with HIPAA support and a signed Business Associate Agreement on the Business plan, covering databases and apps hosted on Prisma Compute.",
       offers: {
         "@type": "Offer",
         name: "Business plan",

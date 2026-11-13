@@ -4,9 +4,9 @@ export const PLANETSCALE_TITLE =
   "Prisma Postgres vs PlanetScale: TypeScript app hosting or database-first Postgres?";
 
 export const PLANETSCALE_DESCRIPTION =
-  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM, Prisma Compute, and a $0 free plan. Pick PlanetScale for database-first SKUs, Metal, and Neki. Checked October 2026.";
+  "Both are managed PostgreSQL. Pick Prisma Postgres for optional Prisma ORM, Prisma Compute, and a $0 free plan. Pick PlanetScale for database-first SKUs, Metal, and Neki. Checked November 2026.";
 
-export const CHECKED = "October 2026";
+export const CHECKED = "November 2026";
 
 /** The blog's author page and photo; `/blog` is rewritten to the blog app. */
 export const PLANETSCALE_AUTHOR = {
@@ -16,7 +16,7 @@ export const PLANETSCALE_AUTHOR = {
 } as const;
 
 export const PLANETSCALE_PUBLISHED = { iso: "2026-10-19", label: "October 2026" } as const;
-export const PLANETSCALE_UPDATED = { iso: "2026-10-19", label: "October 2026" } as const;
+export const PLANETSCALE_UPDATED = { iso: "2026-11-09", label: "November 2026" } as const;
 
 export const CHOOSE_PRISMA = [
   "You want [Prisma ORM](/docs/orm) available on the same platform as the database. Prisma ORM is optional; any Postgres client works.",
@@ -66,7 +66,7 @@ export const COMPARE_ROWS: readonly CompareRow[] = [
     feature: "App hosting",
     planetscale: "Application hosting stays with another provider. PlanetScale is the database.",
     prisma:
-      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It is separate from Prisma Postgres. Compute has no built-in cron scheduler. WebSocket servers are not supported.",
+      "[Prisma Compute](/docs/compute) hosts the TypeScript app as HTTP services. It runs next to Prisma Postgres in the same project, on one bill. Compute has no built-in cron scheduler today; native cron is planned for early 2027. WebSocket servers are not supported today; support is planned for early 2027.",
     sources: {
       planetscale: "https://planetscale.com/pricing",
       prisma: "https://www.prisma.io/docs/compute/limitations",
@@ -139,7 +139,7 @@ export const APART = [
   {
     id: "http-hosting",
     title: "Full TypeScript app hosting",
-    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported. Compute has no built-in cron scheduler.",
+    body: "Prisma Compute hosts the TypeScript app as HTTP services next to Prisma Postgres. The current release focuses on HTTP. WebSocket servers are not supported today; support is planned for early 2027. Compute has no built-in cron scheduler today; native cron is planned for early 2027.",
   },
   {
     id: "preview-app-and-db",
@@ -173,10 +173,10 @@ export const PRICING: readonly {
     label: "High availability",
     planetscale:
       "HA Postgres is one primary and two replicas. PS-5 HA is $15 a month on AWS us-east-1.",
-    prisma: "Starter $10, Pro $49, Business $129 a month for Prisma Postgres and Prisma Compute.",
+    prisma: "No, Prisma Postgres doesn't run a standby server or fail over to one.",
     sources: {
       planetscale: "https://planetscale.com/pricing",
-      prisma: "https://www.prisma.io/pricing",
+      prisma: "https://www.prisma.io/postgres/high-availability",
     },
   },
   {

@@ -93,6 +93,18 @@ Applied at                  Migration                     Change             Ops
 
 In a pipeline, nobody reads the preview, so the job is step 3 alone, with `--to <ref>` so it applies only the migrations someone has pointed the ref at; [Choosing a target](#choosing-a-target) explains refs. `db migrate` checks the marker before it runs anything and fails with `MIGRATION.MARKER_MISMATCH` when the marker names a state outside your history, and [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) says what to do then. [Migrate a shared database from a workflow](/guides/integrations/github-actions#migrate-a-shared-database) shows the job.
 
+### Rehearse on an empty database
+
+To rehearse step 3 on a PostgreSQL project, run the same migrations against an empty database first. [`npx create-db`](/postgres/npx-create-db) creates a temporary [Prisma Postgres](/postgres) database without an account, and any other empty PostgreSQL database works the same way. Pass the empty database's connection string to `--db`, which points only that run at it, so `db.connection` and `.env` stay as they are:
+
+```bash
+npx create-db@latest
+npx prisma db migrate --show --db "<connection string printed by create-db>"
+npx prisma db migrate --db "<connection string printed by create-db>"
+```
+
+The run starts from the first migration, because a new database has no marker. Once your history has branches, that path can differ from the one your production database takes, so compare the `--show` preview, which the block runs before it applies anything, with `npx prisma db migrate --show --db "$PRODUCTION_DATABASE_URL"` (see [What happens when you run db migrate](/orm/migrations/the-migration-graph#what-happens-when-you-run-db-migrate)). The migrations listed for production should be the last ones listed for the empty database, in the same order; if they are not, rehearse on staging instead. Add the same `--to` if you deploy with one. An empty database holds no rows and may lack an extension your server has, so rehearse data transforms and extension migrations on staging. The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL in the same output.
+
 ## Choosing a target
 
 By default `db migrate` runs everything that is pending, so when you want to stop part way, name the contract state you want to stop at with `--to`. The example below uses `prod`, a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) created with `npx prisma migration ref set prod <dir>`, which points `prod` at the state after that migration:
@@ -127,7 +139,7 @@ MongoDB does not give you that clean slate, because a run there is not one trans
 
 The error's `why` says which of these happened, and its next actions give two ways back that do not reset the database: `db update` for a database whose migration history does not need to be kept, and new migrations for a database that changes only through migrations, such as production. Never reset the database. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) walks through both.
 
-A database that already had tables gets its marker from `npx prisma db sign`, so `db migrate` refuses to run against it until a migration in your history ends at the signed state, as [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) shows. For a database Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql#4-transfer-migration-ownership) in the upgrade guide.
+A database that already had tables gets its marker from `npx prisma db sign`, so `db migrate` refuses to run against it until a migration in your history ends at the signed state, as [The automatic baseline](/orm/migrations/generating-a-migration#the-automatic-baseline) shows. For a database Prisma ORM 7 migrated, follow [Transfer migration ownership](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership) in the upgrade guide.
 
 ## Development vs. production
 
@@ -179,7 +191,7 @@ App space
 
 :::note[What's early]
 
-Applying, targeting, previewing, refs, the ledger, and applying several contract spaces in one run all work today. Not built yet: a rehearsal that applies migrations to a throwaway copy of the database first, and a check at apply time that `ops.json` still matches `migration.ts`. Until then, preview with `--show` and rehearse on a staging database.
+Applying, targeting, previewing, refs, the ledger, and applying several contract spaces in one run all work today. Not built yet: a rehearsal that applies migrations to a throwaway copy of the database first, and a check at apply time that `ops.json` still matches `migration.ts`. Until then, preview with `--show` and rehearse on a staging database, or on an empty one as [Rehearse on an empty database](#rehearse-on-an-empty-database) shows.
 
 :::
 

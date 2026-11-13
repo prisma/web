@@ -3,9 +3,73 @@ import { test } from "node:test";
 import { mkdtemp, mkdir, readFile, readdir, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { brotliDecompressSync } from "node:zlib";
 import { prepareRetainedAssets, type ReadPublicAsset } from "./retained-assets.ts";
 import { withRetainedStatic } from "./gateway/retained-static.ts";
 import { staticManifestPath, staticRetentionSeconds } from "./static-assets.ts";
+
+test("current static text is precompressed, conditional reads work, and ranges stay identity", async (t) => {
+  const { root } = await fixture(t);
+  const source = "console.log('public static asset');\n".repeat(500);
+  await writeFile(join(root, "apps/site/.next/static/chunks/compressed.js"), source);
+  const gateway = join(root, "gateway");
+  const manifest = await prepareRetainedAssets({ root, gateway });
+  const file = manifest.assets["/site-static/_next/static/chunks/compressed.js"];
+  assert.ok(file.brotliBytes! < file.bytes);
+  const handler = withRetainedStatic(() => new Response(source), manifest, join(gateway, "static"));
+  const url = "https://web.test/site-static/_next/static/chunks/compressed.js";
+  const compressed = await handler(
+    new Request(url, { headers: { "accept-encoding": "gzip, br" } }),
+  );
+  assert.equal(compressed.headers.get("content-encoding"), "br");
+  assert.equal(Number(compressed.headers.get("content-length")), file.brotliBytes);
+  assert.equal(
+    brotliDecompressSync(Buffer.from(await compressed.arrayBuffer())).toString(),
+    source,
+  );
+  const head = await handler(
+    new Request(url, { method: "HEAD", headers: { "accept-encoding": "br" } }),
+  );
+  assert.equal(head.body, null);
+  assert.equal(head.headers.get("content-encoding"), "br");
+  const unchanged = await handler(
+    new Request(url, {
+      headers: { "accept-encoding": "br", "if-none-match": head.headers.get("etag")! },
+    }),
+  );
+  assert.equal(unchanged.status, 304);
+  const range = await handler(
+    new Request(url, { headers: { "accept-encoding": "br", range: "bytes=0-6" } }),
+  );
+  assert.equal(range.status, 206);
+  assert.equal(range.headers.get("content-encoding"), null);
+  assert.equal(await range.text(), source.slice(0, 7));
+  const refused = await handler(new Request(url, { headers: { "accept-encoding": "br;q=0" } }));
+  assert.equal(refused.headers.get("content-encoding"), null);
+});
+
+test("missing static aliases are small cacheable 404s without rendering a website", async (t) => {
+  const { root } = await fixture(t);
+  const gateway = join(root, "gateway");
+  const manifest = await prepareRetainedAssets({ root, gateway });
+  const handler = withRetainedStatic(
+    () => {
+      throw new Error("website must not render static misses");
+    },
+    manifest,
+    join(gateway, "static"),
+  );
+  for (const path of [
+    "/docs-static/_next/static/nope.js",
+    "/blog/_next/static/nope.css",
+    "/_next/static/nope.js",
+  ]) {
+    const response = await handler(new Request(`https://web.test${path}`));
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get("cdn-cache-control"), "public, max-age=15");
+    assert.ok((await response.text()).length < 1000);
+  }
+});
 
 async function fixture(t: { after(fn: () => Promise<void>): void }) {
   const root = await mkdtemp(join(tmpdir(), "web-retained-"));
@@ -25,7 +89,7 @@ test("retention survives a deploy, deduplicates content, and drops only expired 
   const firstDir = join(root, "first");
   const first = await prepareRetainedAssets({ root, gateway: firstDir, enabled: true, now: 1000 });
   assert.equal(
-    (await readdir(join(firstDir, "static"))).length,
+    (await readdir(join(firstDir, "static"))).filter((name) => !name.endsWith(".br")).length,
     2,
     "identical files across apps share one stored blob",
   );

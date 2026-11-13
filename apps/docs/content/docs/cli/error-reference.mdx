@@ -29,6 +29,8 @@ Namespaces on this page:
 - [`BRANCH`](#branch): Branch listing (`prisma branch`)
 - [`BUCKET`](#bucket): Bucket and bucket-key management (`prisma bucket`)
 - [`CLI`](#cli): Engine-level invocation: arguments, config loading, prompts, consent, credentials, child processes
+- [`CONFIG`](#config): The `composer` section of `prisma.config.ts` and its `config` and `secrets` adapters (`prisma dev`, `prisma deploy`)
+- [`DEPLOY`](#deploy): Deploying, listing and destroying a Composer app (`prisma deploy`, `prisma deploy list`, and the `deploy` and `destroy` operations of `@prisma/composer/control`)
 - [`DEV`](#dev): Running an app on this machine with Composer (`prisma dev`, `prisma dev url`, `prisma dev stop`, `prisma emulator list`)
 - [`FEEDBACK`](#feedback): Sending product feedback (`prisma feedback`)
 - [`GIT`](#git): Git repository connections (`prisma git`)
@@ -255,6 +257,130 @@ The `prisma telemetry status|enable|disable` commands could not resolve the user
 ### CLI.UNKNOWN_COMMAND [#CLI.UNKNOWN_COMMAND]
 
 The typed path routed to no command (stricli's route failure, mapped at the adapter boundary) and no redirect claims it; next actions carry up to three "did you mean" suggestions ranked by edit distance over command paths and their prefixes, plus a pointer to `--help`. Exits 2. Meta: none.
+
+### CLI.V7_COMMAND [#CLI.V7_COMMAND]
+
+The user typed a Prisma ORM 7 command path that Prisma ORM does not have, such as `prisma bootstrap` or `prisma postgres link`; instead of failing as unknown, the redirect table settles it with the summary "`prisma <path>` is a Prisma ORM 7 command and is not available in Prisma ORM". `why` says what the suggested Prisma ORM commands do and what they do not cover. Next actions, in order: the replacement commands as run-command actions (labelled "Use the replacement" for one, "Step 1", "Step 2", … for several), a run-command pointing at the suggested command's `--help`, and an open-url action to the CLI docs when Prisma ORM has no equivalent. Each command family declares the Prisma ORM 7 paths that relate to its own commands. Exits 2. Meta: none.
+
+### CLI.V7_FLAG [#CLI.V7_FLAG]
+
+The user passed a Prisma ORM 7 flag that the same-named Prisma ORM command does not accept, such as `--datasource-provider` on `prisma init`; instead of failing as an unknown flag, the redirect table settles it with the summary "`--<flag>` on `prisma <command>` is a Prisma ORM 7 flag and is not available in Prisma ORM". `why` and the next actions follow `CLI.V7_COMMAND`. Exits 2. Meta: none.
+
+## CONFIG
+
+These codes come from Composer, the command family behind `prisma dev` and `prisma deploy`. They report a problem with the `composer` section of `prisma.config.ts`, or with what its `config` and `secrets` adapters return, and are raised before Composer starts the app.
+
+### CONFIG.ADAPTER_FAILED [#CONFIG.ADAPTER_FAILED]
+
+An adapter in `composer.config` or `composer.secrets` threw while reading the values for the environment. `why` carries the adapter's own error message, and `where.path` is the `prisma.config.ts` that lists it. The fix is to fix the adapter, or to remove it from the list. Meta: `field` (the list and index, such as `secrets[0]`).
+
+### CONFIG.ADAPTER_INVALID [#CONFIG.ADAPTER_INVALID]
+
+An adapter in `composer.config` or `composer.secrets` returned something other than an object of values: a function (usually an adapter factory listed without calling it, such as `dotenv` instead of `dotenv()`), a non-object, or, in `secrets`, a value that is not text. The fix is to return an object whose keys are the value names and, for secrets, whose values are strings. `where.path` is the `prisma.config.ts` that lists the adapter. Meta: `field` (the list and index, such as `config[1]`).
+
+### CONFIG.DESCRIPTOR_KIND_MISMATCH [#CONFIG.DESCRIPTOR_KIND_MISMATCH]
+
+A configured extension has a descriptor for a node type the app uses, but it is the wrong kind of descriptor for the step that needs it. The message names the step that needs the descriptor and the kind it needs. Meta: `extension`, `type`, `kind` (the kind the descriptor has).
+
+### CONFIG.DESCRIPTOR_MISSING [#CONFIG.DESCRIPTOR_MISSING]
+
+A configured extension has no descriptor for a node type the app uses. `why` lists the node types the extension does know. Meta: `extension`, `type`.
+
+### CONFIG.ENTRY_MISSING [#CONFIG.ENTRY_MISSING]
+
+No entry module is set, so there is no app to load. The entry is the module whose default export is the app root, built with `module(...)`. The fix is to set `entry: './module.ts'` in the `composer` section of `prisma.config.ts`, or to pass `--entry <path>`. Meta: `field` (the field at fault, when there is one), `findings` (every problem the check found; the envelope reports the first).
+
+### CONFIG.EXTENSION_DUPLICATE [#CONFIG.EXTENSION_DUPLICATE]
+
+The same extension is listed more than once in `composer.extensions`. The fix is to remove the repeated entry. Meta: `field` (the field at fault, when there is one), `findings` (every problem the check found; the envelope reports the first).
+
+### CONFIG.EXTENSION_MISSING [#CONFIG.EXTENSION_MISSING]
+
+The app uses a node from an extension that is not listed in `composer.extensions`. The fix is to import the extension's `/control` entry in `prisma.config.ts` and add its descriptor to `extensions`. Meta: `extension`, `type`.
+
+### CONFIG.FIELD_INVALID [#CONFIG.FIELD_INVALID]
+
+A field of the `composer` section has the wrong shape, for example an `entry` that is not a non-empty string, a `state` that is not a state descriptor, or an extension entry whose `nodes` is not an object. The summary names the field and the shape it must have. Meta: `field` (the field at fault, when there is one), `findings` (every problem the check found; the envelope reports the first).
+
+### CONFIG.FIELD_RETIRED [#CONFIG.FIELD_RETIRED]
+
+The `composer` section uses a field Composer no longer reads, such as `configPath`, which pointed at the retired `prisma-composer.config.ts`. The fix is to move what that field pointed at into the `composer` section itself. Meta: `field` (the field at fault, when there is one), `findings` (every problem the check found; the envelope reports the first).
+
+### CONFIG.FIELD_UNKNOWN [#CONFIG.FIELD_UNKNOWN]
+
+The `composer` section has a field Composer does not know. The section takes only `entry`, `extensions`, `state`, `config` and `secrets`. The fix is to remove the field, or, when the field is `composer`, to pass the `composer` property of the config export rather than the whole export. Meta: `field` (the field at fault, when there is one), `findings` (every problem the check found; the envelope reports the first).
+
+### CONFIG.FILE_MISSING [#CONFIG.FILE_MISSING]
+
+The config file Composer was given does not exist. The fix is to pass the path of the `prisma.config.ts` that declares the `composer` section. Meta: `field` (the field at fault, when there is one), `findings` (every problem the check found; the envelope reports the first).
+
+### CONFIG.FILE_RETIRED [#CONFIG.FILE_RETIRED]
+
+A `prisma-composer.config.*` file sits beside `prisma.config.ts`. Composer no longer reads that file, so its settings would be ignored without notice. The fix is to move its settings into the `composer` section of `prisma.config.ts` and delete the file. Meta: `field` (the field at fault, when there is one), `findings` (every problem the check found; the envelope reports the first).
+
+### CONFIG.SECRET_AS_PLAIN_VALUE [#CONFIG.SECRET_AS_PLAIN_VALUE]
+
+A plain value would hold the value of a secret that an `envSecret()` in the app reads: either a field of the root input or a configuration key. Composer writes every plain value it read to a file for the app's process and never writes a secret to a file, so it refuses. The message names where the value is and which secret, never the value. The fix is to read the secret with `envSecret('<NAME>')` where it is used, or to give the plain value text that does not contain the secret. Meta: none.
+
+## DEPLOY
+
+These codes come from Composer, the command family behind `prisma deploy`, `prisma deploy list`, and the `deploy` and `destroy` operations of `@prisma/composer/control`. The deploy and destroy operations share a pipeline that loads the config and app, assembles each service, connects to the deploy target, runs each extension's preflight (on the Prisma Cloud target, the environment-variable check), and hands the generated stack program to the deploy engine (alchemy).
+
+### DEPLOY.ALCHEMY_BIN_MISSING [#DEPLOY.ALCHEMY_BIN_MISSING]
+
+Composer starts the deploy engine from the `alchemy` package installed beside `@prisma/composer`, and either `@prisma/composer` itself could not be resolved from the app, or no runnable engine entry could be resolved beside it. Layouts without a `node_modules` directory, such as Yarn Plug'n'Play, are not supported. The fix is to check that the app depends on `@prisma/composer` and to reinstall dependencies so `@prisma/composer` and its `alchemy` dependency sit in a `node_modules` directory. Meta: none.
+
+### DEPLOY.BUILD_REQUIRED [#DEPLOY.BUILD_REQUIRED]
+
+Assembling a service failed during a destroy. Destroy evaluates the same stack program as deploy, which packages the built artifacts, so an app must be built before it can be torn down. The fix is to run the build, then retry the destroy. The underlying assemble error rides as the cause.
+
+### DEPLOY.CONTAINER_FAILED [#DEPLOY.CONTAINER_FAILED]
+
+Preparing the deploy target's container failed: ensuring it exists on a deploy, or locating it on a destroy or `prisma deploy list`. The underlying error rides as the cause.
+
+### DEPLOY.CONTAINER_REMOVE_FAILED [#DEPLOY.CONTAINER_REMOVE_FAILED]
+
+Removing the deploy target's container at the end of a destroy failed. The underlying error rides as the cause.
+
+### DEPLOY.ENGINE_FAILED [#DEPLOY.ENGINE_FAILED]
+
+The deploy engine run failed: it could not be spawned, was interrupted by a signal, or exited non-zero. The message carries the engine's own error lines (credentials redacted). `meta.diagnostics` carries the exit code or signal, the path of the generated stack file (`.prisma-composer/alchemy.run.ts`), and a reproduce command that runs the engine directly against that file — running it separates "the framework computed the wrong thing" from "the engine or platform rejected the right thing". Meta: `diagnostics` (`exitCode` or `signal`, `stackFilePath`, `reproduceCommand`, `cwd`); on a non-zero exit also `exitCode`, and `engineCause` when the engine recorded one; `signal` when interrupted.
+
+### DEPLOY.ENVIRONMENT_INVALID [#DEPLOY.ENVIRONMENT_INVALID]
+
+`--environment` was given a value that is not a valid git ref name (`git check-ref-format` rejected `refs/heads/<environment>`). Names made only of letters, digits, `-` and `_` are always valid and skip the check. The fix is to pass an environment name that is a valid git ref name. Meta: none.
+
+### DEPLOY.ENVIRONMENT_REQUIRED [#DEPLOY.ENVIRONMENT_REQUIRED]
+
+The `destroy` operation of `@prisma/composer/control` was called without an `environment`. Destroy never defaults to production, so a call without a name has no target. The fix is to pass `environment`, for example `destroy({ environment: 'staging', config })`. Meta: none.
+
+### DEPLOY.ENVIRONMENT_UNVALIDATABLE [#DEPLOY.ENVIRONMENT_UNVALIDATABLE]
+
+`git` is needed to validate an `--environment` name that contains characters other than letters, digits, `-` and `_` (via `git check-ref-format`), and running it failed, for example because git is not installed. The fix is to install git or make it runnable from PATH, or to use a name made only of letters, digits, `-` and `_`. The underlying error rides as the cause.
+
+### DEPLOY.NODE_MISSING [#DEPLOY.NODE_MISSING]
+
+Composer starts the deploy engine with Node, and no `node` was found on PATH. The fix is to install Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer, and put it on PATH, or to run `prisma` under Node. Meta: none.
+
+### DEPLOY.PREFLIGHT_FAILED [#DEPLOY.PREFLIGHT_FAILED]
+
+An extension's preflight step failed before the engine ran, or the preflight results could not be composed into the engine's environment. On the Prisma Cloud target the preflight is the environment-variable check against the connected project and branch, so this is the code behind a failed `check environment variables` step. The underlying error's message rides in the envelope.
+
+### DEPLOY.STACK_WRITE_FAILED [#DEPLOY.STACK_WRITE_FAILED]
+
+Writing the generated stack module at `.prisma-composer/alchemy.run.ts` failed. The file is regenerated on every run, so the fix is usually to resolve the filesystem problem (permissions, disk space) and retry. The underlying error rides as the cause.
+
+### DEPLOY.TARGET_NOT_FOUND [#DEPLOY.TARGET_NOT_FOUND]
+
+A destroy or `prisma deploy list` named an app and environment for which nothing is deployed, so the deploy target's container could not be located. Destroy never creates anything, so the fix is to deploy it first, or to pass the environment that actually exists. Meta: none.
+
+### DEPLOY.TEARDOWN_FAILED [#DEPLOY.TEARDOWN_FAILED]
+
+An extension's teardown step failed during a destroy. The underlying error rides as the cause.
+
+### DEPLOY.UNEXPECTED [#DEPLOY.UNEXPECTED]
+
+Not raised as an envelope of its own: the code recorded in the deploy report when the pipeline threw a non-structured error. A run that ends with this code is a bug in Composer rather than an expected failure; the original error is rethrown with its own message.
 
 ## DEV
 

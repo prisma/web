@@ -113,13 +113,30 @@ Here is an example output:
 └  Done!
 ```
 
-Once you have the output, take the connection string and add it to your `.env` file as `DATABASE_URL`. If the file already has a `DATABASE_URL`, replace that value instead of adding a second one:
+Once you have the output, check your `.env` file before you add the connection string. If it has no `DATABASE_URL` yet, or you mean to move the project to the new database, add the string as `DATABASE_URL`:
 
 ```text
 DATABASE_URL="postgres://<username>:<password>@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
-If you don't have a `.env` file yet, you can skip the copy step by creating the database with `npx create-db@latest --env .env` instead. This creates the file with `DATABASE_URL` and `CLAIM_URL`, then prints a confirmation and the claim URL with its deletion time. On a file that already exists, `--env` appends both lines without removing an existing `DATABASE_URL`, so delete the old line yourself.
+If the file already has a `DATABASE_URL` for a database you want to keep, leave that line as it is. Instead, set the new string on each command that should use the temporary database, in the variable your app or Prisma config reads. In bash or zsh:
+
+```bash title="Terminal"
+DATABASE_URL="<connection string>" npm test
+```
+
+In PowerShell, set the variable, run the command, then restore the previous value:
+
+```powershell title="PowerShell"
+$previousDatabaseUrl = $Env:DATABASE_URL
+$Env:DATABASE_URL = "<connection string>"
+npm test
+$Env:DATABASE_URL = $previousDatabaseUrl
+```
+
+By default, `dotenv` does not replace a variable that is already set, so a project that loads `.env` with `dotenv` uses the value on the command. If the project calls `dotenv` with `override: true`, the `.env` value replaces it, so check that setting first. For Prisma ORM 7 CLI commands, [Verify the upgrade](/guides/upgrade-prisma-orm/v7#verify-the-upgrade) shows the same pattern with `--url`.
+
+If you don't have a `.env` file yet, you can skip the copy step by creating the database with `npx create-db@latest --env .env` instead. This creates the file with `DATABASE_URL` and `CLAIM_URL`, then prints a confirmation and the claim URL with its deletion time. On a file that already exists, `--env` appends both lines without removing an existing `DATABASE_URL`, which leaves two `DATABASE_URL` lines in the file. If the project already has a database, set the string on the command as shown above instead.
 
 You can now follow the [Prisma Postgres quickstart guide](/v7/prisma-orm/quickstart/prisma-postgres) to connect your Prisma project to this database.
 

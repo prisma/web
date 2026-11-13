@@ -22,7 +22,7 @@ export function BlogListingHero({
     <header className="relative isolate mx-auto max-w-2xl py-16 text-center sm:py-20">
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-x-24 -inset-y-8 -z-10 overflow-hidden dark:opacity-70"
+        className="pointer-events-none absolute -inset-x-4 -inset-y-8 -z-10 overflow-hidden sm:-inset-x-24 dark:opacity-70"
       >
         <div
           className="absolute inset-0"

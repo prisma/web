@@ -5,7 +5,7 @@ summary: "Usually not yet. A read replica is a read-only copy of your database t
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-27"
-updatedAt: "2026-10-30"
+updatedAt: "2026-11-06"
 readingTime: "9 min read"
 faq:
   - question: "Will a read replica make my slow query faster?"
@@ -13,7 +13,7 @@ faq:
   - question: "Should I upgrade to a bigger database instead of adding a read replica?"
     answer: "Usually first, if your host offers a larger size. A bigger instance adds capacity for reads and writes at once, needs nothing new in your code and has no lag to handle. Move to a replica when reads are most of the load and a larger size isn't enough, when reports need their own server, or when you need reads in another region. Supabase's [read replica guide](https://supabase.com/docs/guides/platform/read-replicas) recommends the same order for its plans. On Prisma Postgres there is no instance to size or upgrade: Prisma scales the database for you."
   - question: "How many read replicas do I need?"
-    answer: "Start with one and measure. A second one helps when the first replica's CPU stays high, or when you want reads in another region. Hosts cap the count: Render allows up to five per database, an Aurora cluster up to 15 Aurora Replicas, and Neon's Free plan 3 per project. Each replica adds cost: Amazon RDS bills it as a DB instance, Neon in CU-hours, and Render and Supabase at the primary's compute size."
+    answer: "Start with one and measure. A second one helps when the first replica's CPU stays high, or when you want reads in another region. Hosts cap the count: Render allows up to five per database, an Aurora cluster up to 15 Aurora Replicas, and Neon 3 per project on Free and up to 6 per branch on paid plans. Each replica adds cost: Amazon RDS bills it as a DB instance, Neon in CU-hours, and Render and Supabase at the primary's compute size."
   - question: "Should background jobs read from a replica?"
     answer: "Jobs that only read, such as exports, report builders and search indexers, are good candidates if they can work on data a few seconds old. A job that reads a row and then updates it based on what it read should do both on the primary, in one transaction, or it can act on a stale value. Queue tables that workers poll with `SELECT ... FOR UPDATE SKIP LOCKED` stay on the primary, because a replica [can't take row locks](https://www.postgresql.org/docs/current/hot-standby.html#HOT-STANDBY-USERS)."
 related:
@@ -29,6 +29,8 @@ related:
     href: "/docs/orm/v7/prisma-client/setup-and-configuration/read-replicas"
   - title: "What a small production app needs from Postgres"
     href: "/postgres/small-production-app-postgres"
+  - title: "Deciding whether you need PostgreSQL high availability"
+    href: "/postgres/high-availability"
 cta:
   title: "Find the queries to fix first"
   description: "Prisma Postgres includes Query Insights at no extra cost, with latency, executions and reads for each query shape. Any Postgres client works; Prisma ORM is optional."
@@ -100,13 +102,13 @@ SELECT now() - pg_last_xact_replay_timestamp() AS replay_delay;
 
 ## Which hosts offer read replicas?
 
-Providers are listed alphabetically, and each row links to the provider's documentation, checked on October 27, 2026; the Prisma Postgres row was checked again on October 29, 2026.
+Providers are listed alphabetically, and each row links to the provider's documentation, checked on October 27, 2026; the Prisma Postgres row was checked again on October 29, 2026, and Neon's replica limits on November 6, 2026.
 
 | Host | Read replicas | How changes reach them | Where they can run |
 | --- | --- | --- | --- |
 | Amazon Aurora PostgreSQL | [Up to 15 Aurora Replicas](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Replication.html) in a cluster | Replicas read the cluster's shared storage volume; AWS says lag is usually much less than 100 ms | The cluster's Region; other Regions through an Aurora global database, with up to 10 read-only secondary clusters |
 | Amazon RDS for PostgreSQL | [Read-only copies of a DB instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html), billed as standard DB instances at the replica's instance class rate | Asynchronous | The same or a different AWS Region |
-| Neon | [On every plan](https://neon.com/pricing), up to 3 per project on Free; separate computes billed in CU-hours | [Asynchronous](https://neon.com/docs/introduction/read-replicas); replicas read the same storage as the primary, so no data is copied | The same region as the database |
+| Neon | [On every plan](https://neon.com/pricing), [up to 3 per project on Free and up to 6 per branch on paid plans](https://neon.com/docs/introduction/read-replicas); separate computes billed in CU-hours | [Asynchronous](https://neon.com/docs/introduction/read-replicas); replicas read the same storage as the primary, so no data is copied | The same region as the database |
 | PlanetScale Postgres | Production clusters include [2 replicas you can read from](https://planetscale.com/docs/postgres/scaling/replicas) (Single Node databases have none); extra replicas and [dedicated read replicas](https://planetscale.com/docs/postgres/scaling/dedicated-read-replicas) cost extra | Dedicated read replicas are asynchronous; reads from cluster replicas can also lag | Cluster replicas in the primary's location; dedicated read replicas in a location you pick, with the same cloud provider |
 | Prisma Postgres | None today; read replicas are planned for early 2027 (the [Prisma Postgres docs](/docs/postgres) list none, checked 2026-10-29) | Not documented | Not documented |
 | Render | [Up to five per database](https://render.com/docs/postgresql-read-replicas) with at least 10 GB of storage and a plan with at least 0.5 CPU; same compute plan and storage as the primary, billed accordingly | Asynchronous | Not stated on Render's read replica page |

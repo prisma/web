@@ -1,3 +1,4 @@
+import { postModifiedDate } from "@/lib/post-dates";
 import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { formatTag, formatDate } from "@/lib/format";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -120,10 +121,7 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
     : [];
 
   const datePublished = toIsoDate(page.data.date);
-  const dateModified =
-    toIsoDate(page.data.updatedAt) ??
-    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ??
-    datePublished;
+  const dateModified = postModifiedDate(page.data);
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",

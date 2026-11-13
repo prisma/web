@@ -1,5 +1,6 @@
 import { createReadStream, createWriteStream } from "node:fs";
-import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, writeFile, stat } from "node:fs/promises";
+import { createBrotliCompress, constants } from "node:zlib";
 import { createHash } from "node:crypto";
 import { join, relative, sep } from "node:path";
 import { Readable, Transform } from "node:stream";
@@ -178,6 +179,26 @@ export async function prepareRetainedAssets({
       );
       console.log(`Gateway: retained ${unique.length} historical public static files`);
     }
+  }
+  // Compress once on the builder, never in the 1 GB runtime. Keep identity
+  // files for ranges, archive-to-archive retention and clients without br.
+  const compressed = new Map<string, number>();
+  for (const item of Object.values(assets)) {
+    delete item.brotliBytes;
+    if (!/^(?:text\/|application\/(?:javascript|json|wasm)|image\/svg\+xml)/.test(item.contentType))
+      continue;
+    let bytes = compressed.get(item.sha256);
+    if (bytes === undefined) {
+      const target = join(directory, `${item.sha256}.br`);
+      await pipeline(
+        createReadStream(join(directory, item.sha256)),
+        createBrotliCompress({ params: { [constants.BROTLI_PARAM_QUALITY]: 5 } }),
+        createWriteStream(target),
+      );
+      bytes = (await stat(target)).size;
+      compressed.set(item.sha256, bytes);
+    }
+    item.brotliBytes = bytes;
   }
   const manifest: StaticAssets = {
     version: 1,

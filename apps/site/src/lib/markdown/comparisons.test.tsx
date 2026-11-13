@@ -1026,7 +1026,7 @@ test("Convex Markdown carries the byline, disclosure, and Sources on the shared 
       `missing ${social.label} profile`,
     );
   }
-  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes("Checked November 2026."));
   assert.ok(markdown.includes(`dateModified: ${convex.CONVEX_UPDATED.iso}`));
   assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
   assert.ok(markdown.includes("\n## Sources\n"));
@@ -1065,7 +1065,7 @@ test("convex JSON facts carry a source and dateChecked on every value", async ()
   const facts = getConvexFacts();
   assert.equal(facts.path, "/compare/convex");
   assert.equal(facts.dateChecked, convex.CONVEX_UPDATED.iso);
-  assert.equal(facts.tools.convex.softwareVersion, "1.47.0");
+  assert.equal(facts.tools.convex.softwareVersion, "1.49.0");
   assert.equal(facts.features.length, convex.COMPARE_ROWS.length);
   for (const row of [...facts.features, ...facts.pricing]) {
     assert.match(row.convex.source, /^https?:\/\//);
@@ -1133,7 +1133,7 @@ test("Neon Markdown carries the byline, disclosure, and Sources on the shared ch
   assert.ok(markdown.includes("$0.222"));
   assert.ok(markdown.includes("$0.35"));
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /one[- ]plan|three bills|three accounts/);
   assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /always ready|first serverless/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
@@ -1250,7 +1250,7 @@ test("Supabase Markdown carries the byline, disclosure, and Sources on the share
     /HIPAA starts with Pro|HIPAA from Pro|HIPAA support starts with Pro/,
   );
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /one[- ]plan|three bills|three accounts/);
   assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
@@ -1325,7 +1325,7 @@ test("PlanetScale Markdown carries the byline, disclosure, and Sources on the sh
       `missing ${social.label} profile`,
     );
   }
-  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes("Checked November 2026."));
   assert.ok(markdown.includes(`dateModified: ${planetscale.PLANETSCALE_UPDATED.iso}`));
   assert.ok(markdown.includes("Prisma makes Prisma Postgres"));
   assert.ok(markdown.includes("\n## Sources\n"));
@@ -1348,7 +1348,7 @@ test("PlanetScale Markdown carries the byline, disclosure, and Sources on the sh
   assert.ok(markdown.includes("platform preview"));
   assert.doesNotMatch(markdown, /500 MB storage on Free/);
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /one[- ]plan|three bills|three accounts/);
   assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);
@@ -1424,7 +1424,7 @@ test("Vercel + Neon + Drizzle Markdown carries the byline, disclosure, and Sourc
       `missing ${social.label} profile`,
     );
   }
-  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes("Checked November 2026."));
   assert.ok(
     markdown.includes(`dateModified: ${vercelNeonDrizzle.VERCEL_NEON_DRIZZLE_UPDATED.iso}`),
   );
@@ -1450,7 +1450,7 @@ test("Vercel + Neon + Drizzle Markdown carries the byline, disclosure, and Sourc
   assert.doesNotMatch(markdown, /\/compare\/drizzle/);
   assert.doesNotMatch(markdown, /500 MB storage on Free/);
   assert.doesNotMatch(markdown, /database branching/);
-  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /one[- ]plan|three bills|three accounts/);
   assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
   assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
   assert.doesNotMatch(markdown, /requires Prisma ORM/);

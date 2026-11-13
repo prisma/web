@@ -75,7 +75,7 @@ export function RepoConnect() {
           </div>
           <div className="flex items-center gap-2 rounded-md border border-border/80 bg-muted/40 px-3 py-2.5">
             <span className="truncate font-mono text-[0.625rem] text-muted-foreground">
-              <span className="text-prism-cyan-500">$</span> npx prisma deploy module.ts
+              <span className="text-prism-cyan-500">$</span> npx prisma deploy
             </span>
             <Copy className="ml-auto size-3 shrink-0 text-muted-foreground/60" />
           </div>

@@ -80,6 +80,12 @@ test("never matches framework or static asset paths", () => {
     "/icon.svg",
     "/apple-icon.png",
     "/og/pricing/image.png",
+    "/listings/homepage.png",
+    "/listings/orm.png",
+    "/listings/postgres.png",
+    "/listings/compute.png",
+    "/listings/console-usage.png",
+    "/listings/console-workspace.png",
     "/docs/img/diagram.webp",
     "/blog/some-post/imgs/hero.jpg",
   ]) {
@@ -91,7 +97,9 @@ test("the excluded extensions are exactly the ones Agent Front never reports", (
   // The matcher may only skip what `shouldRecord` in agent-front.ts would drop
   // anyway. If ora changes that list in a newer file, this says so.
   const agentFrontSource = readFileSync(join(siteRoot, "src/agent-front.ts"), "utf8");
-  const block = agentFrontSource.match(/const ASSET_EXTENSIONS = new Set\(\[([\s\S]*?)\]\)/)?.[1];
+  const block = agentFrontSource.match(
+    /const ASSET_EXTENSIONS = (?:\/\* @__PURE__ \*\/ )?new Set\(\[([\s\S]*?)\]\)/,
+  )?.[1];
   assert.ok(block, "expected ASSET_EXTENSIONS in src/agent-front.ts");
   const reported = [...block.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
 

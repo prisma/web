@@ -133,7 +133,19 @@ CREATE NEW DATABASE:
 Learn more: https://pris.ly/getting-started
 ```
 
+`prisma init` also creates `.env` and `.gitignore`. Prisma ORM 7.10 and later 7.x releases name the config file `prisma7.config.ts`.
+
 Next, run the `prisma dev` command to interact with your local Prisma Postgres instance (e.g. to run migrations or execute queries).
+
+For a cloud database instead, use the `Cloud` option from the output: [`npx create-db`](#npx-create-db) creates a temporary [Prisma Postgres](/postgres) database without an account and prints its connection string.
+
+```bash
+npx create-db@latest
+```
+
+Replace the `DATABASE_URL` value that `init` wrote to your `.env` file with that connection string. The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL in the same output.
+
+If `.env` already had a `DATABASE_URL` before you ran `init`, the command kept it. Leave that value as it is and follow the `CONNECT EXISTING DATABASE` steps in the output.
 
 **Run `prisma init --datasource-provider sqlite`**
 
@@ -877,6 +889,8 @@ export default defineConfig({
 | --------- | -------- | --------------------------------------------------------------------------------------------------------------------- | ------- |
 | `--force` | No       | Force overwrite of manual changes made to schema. The generated schema will be based on the introspected schema only. |
 | `--print` | No       | Prints the created `schema.prisma` to the screen instead of writing it to the filesystem.                             |
+| `--url`   | No       | Overrides the datasource URL from the Prisma config file for this run only. An empty value is ignored, and the command then runs on the database in the Prisma config. Added in Prisma ORM 7.2.0. |
+| `--config` | No       | Custom path to your Prisma config file                                                                                |
 
 #### Arguments
 
@@ -1003,6 +1017,8 @@ export default defineConfig({
 | :------------------- | :------- | :------------------------------------------------------------------------------------------------------------------------- |
 | `--force-reset`      | No       | Resets the database and then updates the schema - useful if you need to start from scratch due to unexecutable migrations. |
 | `--accept-data-loss` | No       | Ignore data loss warnings. This option is required if as a result of making the schema changes, data may be lost.          |
+| `--url`              | No       | Overrides the datasource URL from the Prisma config file for this run only. An empty value is ignored, and the command then runs on the database in the Prisma config. Added in Prisma ORM 7.2.0. |
+| `--config`           | No       | Custom path to your Prisma config file                                                                                     |
 | `--help` / `--h`     | No       | Displays the help message                                                                                                  |
 
 :::warning
@@ -1126,7 +1142,7 @@ export default defineConfig({
 
 :::info
 
-**Prisma v7 breaking change**: The `--schema` and `--url` options have been removed. Configure your database connection in `prisma.config.ts` instead.
+**Prisma v7 breaking change**: `db execute` no longer accepts the `--schema` and `--url` options. Configure your database connection in the Prisma config file (`prisma.config.ts`, or `prisma7.config.ts` in projects created with Prisma ORM 7.10 or later) instead.
 
 :::
 
@@ -1166,6 +1182,8 @@ The `migrate dev` command:
 1. Generates a new migration from any changes you made to the Prisma schema before running `migrate dev`
 1. Applies all unapplied migrations to the development database and updates the `_prisma_migrations` table
 
+In a non-interactive environment, such as a CI job, `migrate dev` cannot ask for confirmation. If the schema change raises a data loss warning, the command prints the warning, exits with an error and creates no migration. To confirm the change, run the command in an interactive terminal.
+
 :::warning
 
 This command is not supported on [MongoDB](/orm/v7/core-concepts/supported-databases/mongodb). Use [`db push`](/orm/v7/prisma-migrate/workflows/prototyping-your-schema) instead.
@@ -1189,6 +1207,8 @@ See also:
 | :-------------- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------ |
 | `--create-only` | No       | Creates a new migration but does not apply it. This also works if you haven't made any changes to your schema (in that case, an empty migration is created). Run `migrate dev` to apply migration. |         |
 | `--name` / `-n` | No       | Name the migration (e.g. `prisma migrate dev --name added_job_title`)                                                                                                                              |         |
+| `--url`         | No       | Overrides the datasource URL from the Prisma config file for this run only, for example to run against a separate development database. An empty value is ignored, and the command then runs on the database in the Prisma config. Data loss warnings are evaluated against the database the command runs on. Added in Prisma ORM 7.2.0. |         |
+| `--config`      | No       | Custom path to your Prisma config file                                                                                                                                                             |         |
 | `--help` / `-h` | No       | Displays the help message                                                                                                                                                                          |         |
 
 :::warning
@@ -1223,6 +1243,15 @@ Apply all migrations and create a new migration if there are schema changes, but
 ```bash
 prisma migrate dev --create-only
 ```
+
+Create and apply a migration on a different database than the one in your Prisma config. `--url` takes a connection string for the database provider in your Prisma schema and applies to this run only: `DATABASE_URL` and your `.env` file stay as they are. For a `postgresql` datasource, [`npx create-db`](#npx-create-db) prints a connection string for a temporary Prisma Postgres database (deleted after 24 hours unless you claim it):
+
+```bash
+SCRATCH_DATABASE_URL="$(npx -y create-db@latest --quiet)" &&
+prisma migrate dev --name added_job_title --url "${SCRATCH_DATABASE_URL:?}"
+```
+
+The migration file is saved in your migrations directory, and the database in your Prisma config does not have it yet. Data loss warnings are evaluated against the database the command runs on, so review the generated SQL before you run `prisma migrate dev` or `prisma migrate deploy` against a database that holds data. `--quiet` prints only the connection string, and the claim URL goes to the terminal's error stream.
 
 ### `migrate reset`
 

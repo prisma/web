@@ -2,7 +2,7 @@
 title: "Serverless Postgres compared (2026): Neon, Supabase, Amazon RDS/Aurora and Prisma Postgres"
 slug: "serverless-postgres"
 date: "2026-07-09"
-updatedAt: "2026-10-27"
+updatedAt: "2026-11-06"
 authors:
   - "Martin Janse van Rensburg"
 tags:
@@ -15,7 +15,7 @@ heroImagePath: "/serverless-postgres/imgs/hero.svg"
 heroImageAlt: "A compute usage curve that suspends after five minutes idle and wakes a few hundred milliseconds later."
 ---
 
-Serverless Postgres is PostgreSQL you never provision or manage: the platform allocates compute on demand and bills you for usage, not for a server size you picked up front. One label, though, covers very different products, and they differ on two things that decide your cost and your latency: **what they bill for**, and **whether compute sleeps when idle**.
+[Serverless Postgres](https://www.prisma.io/postgres) is PostgreSQL you never provision or manage: the platform allocates compute on demand and bills you for usage, not for a server size you picked up front. One label, though, covers very different products, and they differ on two things that decide your cost and your latency: **what they bill for**, and **whether compute sleeps when idle**.
 
 We make Prisma Postgres. This guide leads with the comparison and a way to choose, then explains the reasoning. It compares serverless behavior and pricing, plus a by-stage table of free tiers, backups, restore options, read replicas and high availability as each vendor documents them. Extensions, regions and compliance stay out of scope. For healthcare workloads, see [HIPAA compliant Postgres on Prisma Postgres](https://www.prisma.io/postgres/hipaa). The two tables were checked against each provider's own pages and price lists on 2026-10-12, and the rest of the guide, including the provider profiles, in July 2026 unless dated; PlanetScale's billing and idle behaviour were rechecked throughout on 2026-10-12. Prisma's figures come from Prisma's own pricing page and docs, the same kind of source used for every other provider. Neon's Free plan figures were re-checked on 2026-10-05, after Neon raised the storage limit.
 
@@ -47,7 +47,7 @@ Rows in alphabetical order; checked 2026-10-12; we make Prisma Postgres.
 | **Neon** | Free: 100 CU-hours and 1 GB per project; scales to zero after 5 min, fixed on Free | Launch: pay as you go, no monthly minimum, $0.106/CU-hour; restore window up to 7 days; pooling on every plan | Scale: restore window up to 30 days; read replicas on every plan, billed as CU-hours; multi-AZ storage on every plan, uptime SLA on Scale |
 | **PlanetScale Postgres** | No free plan; its docs don't describe scale-to-zero, and a cluster bills for the time it runs | Single node from $5/month (1/16 vCPU, 512 MiB, 10 GB storage included); backups every 12 hours, kept 2 days, with backup storage of 2x disk size included; local PgBouncer on every database, dedicated PgBouncer billed separately | Point-in-time recovery within backup retention (2 days by default; longer with custom backups, which can cost extra); high availability from $15/month: 1 primary + 2 replicas across 3 AZs with automatic failover; extra and dedicated read replicas billed separately |
 | **Prisma Postgres** | Free: 200k operations, 2 GB, 50 databases, no backups | Starter $10: 1M operations, 10 GB, PgBouncer pooling, daily snapshots kept 7 days; Pro $49: 10M operations, 50 GB, snapshots kept 7 days | Business: snapshots kept 30 days. Point-in-time recovery is not available yet; it is coming in November 2026. Prisma Postgres docs list neither read replicas nor high availability (checked 2026-10-12) |
-| **Supabase** | Free: 2 active projects, 500 MB; paused after 1 week of inactivity | Pro from $25 (8 GB disk, $10 compute credits); daily backups kept 7 days; shared pooler on every plan, dedicated pooler on paid plans | PITR add-on, $100/month per 7 days (needs Small compute or larger); asynchronous read replicas; high availability not listed on the pricing page, uptime SLAs on Enterprise only |
+| **Supabase** | Free: 2 active projects, 500 MB; paused after 1 week of inactivity | Pro from $25 (8 GB disk, $10 compute credits); daily backups kept 7 days; shared pooler on every plan, dedicated pooler on paid plans | PITR add-on, $100/month per 7 days; asynchronous read replicas; high availability not listed on the pricing page, uptime SLAs on Enterprise only |
 
 ## Choose by workload
 
@@ -103,10 +103,10 @@ Same attributes for each, so you can scan across them.
 
 ### Prisma Postgres
 
-Managed Postgres on unikernels in microVMs. (Disclosure: Prisma publishes this guide.)
+[Managed Postgres](https://www.prisma.io/postgres) on unikernels in microVMs. (Disclosure: Prisma publishes this guide.)
 
 - **Best for:** apps that want the bill to track query traffic, and fleets of many small databases.
-- **Bills for:** operations. The [pricing page](https://www.prisma.io/pricing) counts one operation per create, read, update or delete, whether it is a simple write or a query with several joins. The [Prisma Postgres FAQ](https://www.prisma.io/docs/postgres/faq#what-is-an-operation) adds that query duration does not change the price, and that with Prisma ORM each Prisma Client query is one operation, while with another client each SQL query over the direct connection is one (checked 2026-10-21).
+- **Bills for:** operations, the one per-query model among the [serverless Postgres](https://www.prisma.io/postgres) options here. The [pricing page](https://www.prisma.io/pricing) counts one operation per create, read, update or delete, whether it is a simple write or a query with several joins. The [Prisma Postgres FAQ](https://www.prisma.io/docs/postgres/faq#what-is-an-operation) adds that query duration does not change the price, and that with Prisma ORM each Prisma Client query is one operation, while with another client each SQL query over the direct connection is one (checked 2026-10-21).
 - **Idle behaviour:** Prisma Postgres docs don't describe scale-to-zero or a wake time (checked 2026-10-20).
 - **Free / entry:** 200,000 operations, 2 GB, and 50 databases, no card; paid from $10/mo (1M operations, 10 GB, then $0.008 per 1,000) to $129/mo (50M operations). Allowances are account-wide, not per database.
 - **Watch out for:** no copy-on-write database copies yet (separate databases are the substitute: on Prisma Compute, every pushed branch other than the default one gets a preview with its own services and, for databases declared in the Prisma Composer module, its own new database; production data is not copied); less operational track record than Aurora or Supabase; at sustained high query volume the per-operation math can exceed always-on billing (see the [cost comparison](#the-cost-crossover)).

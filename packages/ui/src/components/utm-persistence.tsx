@@ -17,6 +17,7 @@ import {
 } from "../lib/utm";
 import { ATTRIBUTION_CHANGE_EVENT, type AttributionChangeDetail } from "../lib/attribution";
 import { hasAdvertisingConsent } from "../lib/consent";
+import { readExperimentVariants, syncExperimentParams } from "../lib/experiments";
 
 interface UtmPersistenceProps {
   /**
@@ -211,7 +212,7 @@ export function UtmPersistence({
       const isConsoleBound = isConsoleLink || isConsoleRedirect;
       if (!isConsoleBound) return;
 
-      let updated: boolean;
+      let updated = false;
       if (attribution) {
         updated = syncUtmAttribution(targetUrl, attribution, {
           includeFirstTouch: isConsoleBound,
@@ -220,9 +221,10 @@ export function UtmPersistence({
         // No campaign ever touched this visitor, so the only thing the console
         // would learn is nothing. Tell it which page sent them instead.
         updated = syncFallbackRef(targetUrl, fallbackConsoleRef(window.location.pathname));
-      } else {
-        return;
       }
+      // The experiment variants the visitor saw go along with or without a
+      // campaign, so the signup counts toward the page version they saw.
+      updated = syncExperimentParams(targetUrl, readExperimentVariants()) || updated;
 
       if (!updated) {
         return;

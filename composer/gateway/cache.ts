@@ -27,7 +27,7 @@ export function withOriginCache(
   const blogStaleSeconds = options.blogStaleSeconds ?? 300;
   if (![300, 86_400].includes(blogStaleSeconds)) throw new Error("Unsupported blog stale window");
   const read = withFileValidators(handler, publicAssets);
-  return async (request) => {
+  const respond: Handler = async (request) => {
     const url = new URL(request.url);
     const file = publicAssets.get(assetKey(url.pathname));
     const versions = url.searchParams.getAll("__asset");
@@ -57,6 +57,13 @@ export function withOriginCache(
     );
     const asset = publicAssets.has(assetKey(url.pathname));
     const publicDocument = !asset && response.headers.get("x-composer-public-document") === "1";
+    const textDocument =
+      /(?:^|\/)(?:sitemap[^/]*\.xml|rss\.xml|atom\.xml|feed\.xml|robots\.txt|llms[^/]*\.txt)$|\/llms\/[^?]+\.txt$|\.mdx?$/.test(
+        url.pathname,
+      ) &&
+      (/^(?:text\/(?:plain|markdown|xml)|application\/(?:xml|rss\+xml))(?:;|$)/.test(contentType) ||
+        response.status === 304) &&
+      !/(?:^|\/)api(?:\/|$)/.test(url.pathname);
     const navigation =
       PRIVATE_REQUEST_HEADERS.some(
         (name) => name !== "authorization" && request.headers.has(name),
@@ -70,6 +77,7 @@ export function withOriginCache(
       !asset &&
       (/^text\/(?:html|markdown)(?:;|$)/.test(contentType) ||
         negotiatedText ||
+        textDocument ||
         navigation ||
         (response.status === 304 && (prerendered || publicDocument)))
     ) {
@@ -85,8 +93,11 @@ export function withOriginCache(
           .map((name) => name.trim().toLowerCase())
           .filter(Boolean),
       );
-      for (const name of ["accept", "accept-encoding", "user-agent", ...PRIVATE_REQUEST_HEADERS])
-        vary.add(name);
+      for (const name of ["accept", "accept-encoding", ...PRIVATE_REQUEST_HEADERS]) vary.add(name);
+      // An explicit Markdown Accept chooses the representation independently
+      // of UA. Keep this cacheable variant's schema identical to browser HTML.
+      if (request.headers.get("accept")?.toLowerCase().includes("text/markdown"))
+        vary.delete("user-agent");
       headers.set("vary", [...vary].sort().join(", "));
       response = new Response(response.body, {
         status: response.status,
@@ -114,11 +125,31 @@ export function withOriginCache(
         headers,
       });
     }
+    // Agent heuristics can return Markdown for the same Accept as a browser.
+    // Do not cache that variant or let it overwrite a browser's document.
+    // Explicit Accept: text/markdown remains the stable cacheable protocol;
+    // an agent hitting cached HTML still receives a valid public page.
+    const uaMarkdown =
+      !asset &&
+      /(?:^|,)\s*user-agent\s*(?:,|$)/i.test(response.headers.get("vary") ?? "") &&
+      !request.headers.get("accept")?.toLowerCase().includes("text/markdown") &&
+      /^text\/(?:markdown|plain)(?:;|$)/.test(contentType);
+    if (uaMarkdown) {
+      const headers = new Headers(response.headers);
+      headers.set("cdn-cache-control", "no-store");
+      headers.set("cache-control", "no-store");
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
     // Preserve framework cache policy, streaming and byte ranges.
     // A conditional HTML response can omit Content-Type, but must retain its
     // freshness cap when the CDN merges the 304 headers into its cached copy.
     if (
       !asset &&
+      !textDocument &&
       !/^text\/html(?:;|$)/.test(contentType) &&
       !(response.status === 304 && (prerendered || publicDocument))
     )
@@ -138,15 +169,26 @@ export function withOriginCache(
     // An app's positive public-file lifetime already enables edge reuse.
     if (
       publicFile &&
+      !textDocument &&
+      !headers.has("set-cookie") &&
+      !PRIVATE_REQUEST_HEADERS.some((name) => request.headers.has(name)) &&
       !versionedAsset &&
       /(?:^|,)\s*(?:s-maxage\s*=\s*\d+|max-age\s*=\s*[1-9]\d*)\s*(?:,|$)/.test(control)
     )
       return response;
     const accept = request.headers.get("accept")?.toLowerCase() ?? "";
+    const publicNotFound =
+      response.status === 404 &&
+      (prerendered || publicDocument) &&
+      /^text\/html(?:;|$)/.test(contentType) &&
+      !request.headers.has("cookie") &&
+      !/(?:^|\/)api(?:\/|$)/.test(url.pathname);
     const cacheable =
       ["GET", "HEAD"].includes(request.method) &&
-      [200, 206, 304].includes(response.status) &&
-      (publicDocument || !/(?:^|,)\s*(?:private|no-store|no-cache)\b/.test(control)) &&
+      ([200, 206, 304].includes(response.status) || publicNotFound) &&
+      (publicDocument ||
+        publicNotFound ||
+        !/(?:^|,)\s*(?:private|no-store|no-cache)\b/.test(control)) &&
       !headers.has("set-cookie") &&
       !(headers.get("vary") ?? "")
         .split(",")
@@ -166,6 +208,13 @@ export function withOriginCache(
     // Dynamic pages, APIs and Next navigation never qualify. The edge retains
     // the full query string in its cache key; no parameters are discarded.
     const publicAsset = cacheable && publicFile;
+    const publicText =
+      cacheable &&
+      textDocument &&
+      (publicDocument ||
+        prerendered ||
+        sharedAge > 0 ||
+        /(?:^|,)\s*public\s*(?:,|$)/.test(control));
 
     // Already-compressed media should retain Content-Length and byte ranges
     // through a CDN. Leave text/SVG compression enabled.
@@ -185,9 +234,11 @@ export function withOriginCache(
       "cdn-cache-control",
       publicAsset && versionedAsset
         ? `public, max-age=31536000, immutable${noTransform ? ", no-transform" : ""}`
-        : publicHtml || publicAsset
-          ? `public, max-age=${publicHtml && sharedAge > 0 ? Math.min(sharedAge, 60) : 60}, stale-while-revalidate=${publicHtml && (url.pathname === "/blog" || url.pathname.startsWith("/blog/")) ? blogStaleSeconds : 300}${noTransform ? ", no-transform" : ""}`
-          : "no-store",
+        : cacheable && publicNotFound
+          ? "public, max-age=15"
+          : publicHtml || publicAsset || publicText
+            ? `public, max-age=${publicHtml && sharedAge > 0 ? Math.min(sharedAge, 60) : 60}, stale-while-revalidate=${publicHtml && (url.pathname === "/blog" || url.pathname.startsWith("/blog/")) ? blogStaleSeconds : 300}${noTransform ? ", no-transform" : ""}`
+            : "no-store",
     );
     if (publicHtml && options.release) headers.set("x-composer-release", options.release);
     if (publicAsset && versionedAsset)
@@ -195,9 +246,28 @@ export function withOriginCache(
         "cache-control",
         `public, max-age=31536000, immutable${noTransform ? ", no-transform" : ""}`,
       );
-    else if (publicHtml) headers.set("cache-control", "public, max-age=0");
+    else if (publicHtml || publicText || (cacheable && publicNotFound))
+      headers.set("cache-control", "public, max-age=0");
     else if (noTransform) headers.set("cache-control", `${control}, no-transform`);
 
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  };
+  return async (request) => {
+    const response = await respond(request);
+    const names = [
+      "x-composer-public-document",
+      "x-nextjs-cache",
+      "x-nextjs-prerender",
+      "x-nextjs-stale-time",
+      "x-powered-by",
+    ];
+    if (!names.some((name) => response.headers.has(name))) return response;
+    const headers = new Headers(response.headers);
+    for (const name of names) headers.delete(name);
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,

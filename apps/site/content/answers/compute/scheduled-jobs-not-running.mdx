@@ -5,13 +5,13 @@ summary: "A job scheduled inside the app with `node-cron` or `setInterval` only 
 author: "Gregory Boch"
 authorUrl: "https://github.com/gregory-boch-prisma"
 date: "2026-10-22"
-updatedAt: "2026-10-29"
+updatedAt: "2026-11-12"
 readingTime: "10 min read"
 faq:
   - question: "Can I start node-cron from instrumentation.ts in Next.js?"
     answer: "Only on a server that runs one long-lived instance, such as `next start` on a single VM. Next.js calls `register` in `instrumentation.ts` once when a new server instance starts, so a scheduler started there runs in every instance: with two replicas the job runs twice, and on a serverless host it runs only while an instance happens to be alive. Check `process.env.NEXT_RUNTIME === \"nodejs\"` before importing `node-cron`, because the file also loads in the Edge runtime. For anything else, call a route from an external scheduler."
   - question: "Do Vercel cron jobs run on preview deployments?"
-    answer: "No. Vercel's troubleshooting guide says cron jobs only run on production deployments, and Vercel calls the production deployment URL with a GET request. To test a job before release, call the route yourself with the `Authorization: Bearer` header, or, once the job is deployed to production, run `vercel crons run /api/cron/daily-report`, a CLI command Vercel marks as beta, which triggers it without waiting for the schedule."
+    answer: "No. Vercel's troubleshooting guide says cron jobs only run on production deployments, and Vercel calls the production deployment URL with a GET request. To test a job before release, call the route yourself with the `Authorization: Bearer` header, or, once the job is deployed to production, run `vercel crons run /api/cron/daily-report`, a CLI command Vercel marks as beta, which triggers it without waiting for the schedule. Vercel Schedules (public beta since November 5, 2026), the successor to Cron Jobs, can run on preview branches, but a schedule defined in `vercel.json` starts inactive there until you enable it. To move a Cron Job over, replace its `crons` entry with a `schedules` entry and set `requestMethod` to `GET` so the route keeps its GET handler ([migration guide](https://vercel.com/docs/schedules/migrate-from-cron-jobs))."
   - question: "How often can a Vercel cron job run on the Hobby plan?"
     answer: "Once per day. Vercel fails the deployment if a cron expression on a Hobby account would run more often, and it may invoke the job at any point within the scheduled hour. Pro and Enterprise run jobs as often as once per minute, within the scheduled minute. Every plan allows 100 cron jobs per project."
   - question: "Should I use a job service such as Inngest or Trigger.dev instead?"
@@ -32,7 +32,7 @@ cta:
 
 On your laptop, `next dev` keeps one Node process running for hours, so a `node-cron` schedule or a `setInterval` loop fires on time. In production, that process may not exist when the schedule comes due. On Vercel, Netlify and other serverless hosts, your code runs when a request arrives. A host that scales idle apps to zero stops the process between requests. And a host that runs several instances runs the timer in each of them. The fix that works on every host: the schedule lives outside the app and calls it.
 
-We make Prisma Compute and Prisma Postgres. The fix below works on any host. The other vendors' documentation linked on this page was checked on October 22, 2026.
+We make Prisma Compute and Prisma Postgres. The fix below works on any host. The other vendors' documentation linked on this page was checked on October 22, 2026, and Vercel's Schedules documentation on November 12, 2026.
 
 ## Why doesn't the scheduled job run after deploy?
 
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
 }
 ```
 
-Generate a random value of at least 16 characters, as Vercel recommends, and set it as `CRON_SECRET` in production. Delete the old `node-cron` or `setInterval` code, so a long-running instance doesn't run the job a second time.
+Generate a random value of at least 16 characters, as Vercel recommends, and set it as `CRON_SECRET` in production. If you use Vercel Schedules on a preview branch, set it for Preview too and redeploy the branch, because [Vercel sends the `CRON_SECRET` value the branch's current deployment was built with](https://vercel.com/docs/schedules/handle-runs#which-cron_secret-value-vercel-sends). Delete the old `node-cron` or `setInterval` code, so a long-running instance doesn't run the job a second time.
 
 Call the route yourself once to check it:
 
@@ -185,7 +185,7 @@ export async function runOnce(job: string, work: () => Promise<void>) {
 }
 ```
 
-Wrap the job in the route with `await runOnce("daily-report", sendDailyReport)`. If five calls arrive at once, one claims the slot and runs the job, and the other four return `skipped`. Use `date_trunc('hour', now(), 'UTC')` for an hourly job, or [`date_bin`](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-BIN) for shorter intervals, such as `date_bin('5 minutes', now(), timestamptz '2000-01-01 00:00Z')` for a job every five minutes (PostgreSQL 14 or newer). Set the takeover window longer than the job takes. The statement uses `INSERT ... ON CONFLICT DO UPDATE ... WHERE` from [the PostgreSQL docs](https://www.postgresql.org/docs/current/sql-insert.html) and needs PostgreSQL 12 or newer for the three-argument `date_trunc`. It holds no lock after the statement ends, so it also works through a connection pooler.
+Wrap the job in the route with `await runOnce("daily-report", sendDailyReport)`. If five calls arrive at once, one claims the slot and runs the job, and the other four return `skipped`. For a schedule in a time zone other than UTC, as a Vercel Schedules entry can be, truncate in that zone so the slot matches the schedule's day, such as `date_trunc('day', now(), 'Europe/Berlin')`, and keep daily jobs away from midnight, because the slot comes from the time the call arrives and a run delayed past midnight would claim the next day. When preview deployments use the same `DATABASE_URL` as production, a preview run that claims the slot first makes the production run return `skipped`: give the preview branch its own database before you enable a schedule there, or keep the preview schedule disabled. Use `date_trunc('hour', now(), 'UTC')` for an hourly job, or [`date_bin`](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-BIN) for shorter intervals, such as `date_bin('5 minutes', now(), timestamptz '2000-01-01 00:00Z')` for a job every five minutes (PostgreSQL 14 or newer). Set the takeover window longer than the job takes. The statement uses `INSERT ... ON CONFLICT DO UPDATE ... WHERE` from [the PostgreSQL docs](https://www.postgresql.org/docs/current/sql-insert.html) and needs PostgreSQL 12 or newer for the three-argument `date_trunc`. It holds no lock after the statement ends, so it also works through a connection pooler.
 
 ### 4. Find out when a run is missed
 
@@ -206,7 +206,7 @@ A heartbeat monitor does the same from outside: the job sends a request to a uni
 
 ### 5. Write the schedule in UTC
 
-Vercel, Netlify, Railway, Render and Cloudflare read cron expressions in UTC. GitHub Actions and QStash also default to UTC, and accept a time zone if you set one. A report meant for 06:15 in Berlin is `15 4 * * *` in summer and `15 5 * * *` in winter, so either accept the UTC time or use a scheduler that takes a time zone.
+Vercel Cron Jobs, Netlify, Railway, Render and Cloudflare read cron expressions in UTC. GitHub Actions and QStash also default to UTC, and accept a time zone if you set one. [Vercel Schedules](https://vercel.com/docs/schedules) (public beta since November 5, 2026), the successor to Vercel Cron Jobs, does the same: UTC by default, or an [IANA time zone](https://vercel.com/docs/schedules/concepts#timezones) you set per schedule, such as `Europe/Berlin`. A report meant for 06:15 in Berlin is `15 4 * * *` in summer and `15 5 * * *` in winter, so either accept the UTC time or use a scheduler that takes a time zone.
 
 ### Scheduling inside the database
 

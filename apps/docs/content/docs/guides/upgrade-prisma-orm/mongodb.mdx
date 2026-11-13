@@ -24,7 +24,7 @@ Install the companion [prisma-mongodb-upgrade](https://github.com/prisma/skills/
 
 :::info
 
-Install the `latest` version of `@prisma/orm-mongo`, which is what `orm init` in step 1 does. This guide was written as of `8.0.0-rc.21`, and MongoDB support in Prisma ORM 8 still changes between release candidates, so a newer version may behave differently from what this guide shows. To see which version you have, run `npm ls @prisma/orm-mongo`.
+Install the `latest` version of `@prisma/orm-mongo`, which is what `orm init` in step 1 does. This guide was written as of `8.0.0-rc.23`, and MongoDB support in Prisma ORM 8 still changes between release candidates, so a newer version may behave differently from what this guide shows. To see which version you have, run `npm ls @prisma/orm-mongo`.
 
 :::
 
@@ -115,7 +115,7 @@ On MongoDB, `db.orm` holds your models by collection name. The collection name i
 
 This step ports the v6 `schema.prisma` to a **contract**, authored in PSL (shown here) or TypeScript. The syntax is close to v6, with a few differences.
 
-To start without porting, Prisma ORM 8 can also read the v6 `schema.prisma` directly: set `contract: prisma6Schema("prisma/schema.prisma")` in `prisma.config.ts`, as [Use a Prisma ORM 6 MongoDB schema](/cli/configuration#use-a-prisma-orm-6-mongodb-schema) shows. Read this way, a plain `Int` and an `Int @db.Long` field are `Int64Number`: a `number` in your code, written as a BSON long, as v6 writes it. A document whose `Int` field holds a fraction then fails to read with `RUNTIME.DECODE_FAILED`, so repair such documents first. A `Bytes @db.ObjectId` field reads as a 24-digit hex string and refuses a `Buffer` or `Uint8Array`. Every other native type v6 accepts is read, except `DateTime @db.Timestamp`. Port the schema when you want to use what the v6 syntax cannot express, such as polymorphism.
+To start without porting, Prisma ORM 8 can also read the v6 `schema.prisma` directly: set `contract: prisma6Schema("prisma/schema.prisma")` in `prisma.config.ts`, as [Use a Prisma ORM 6 MongoDB schema](/cli/configuration#use-a-prisma-orm-6-mongodb-schema) shows. Read this way, a plain `Int` and an `Int @db.Long` field are `Int64Number`: a `number` in your code, written as a BSON long, as v6 writes it. A document whose `Int` field holds a fraction then fails to read with `RUNTIME.DECODE_FAILED`, so repair such documents first. A `Bytes @db.ObjectId` field reads as a 24-digit hex string and refuses a `Buffer` or `Uint8Array`. Every other native type v6 accepts is read, except `DateTime @db.Timestamp`. Each index keeps the name v6 gave it, such as `User_email_key` for a unique index on `email` and `User_email_idx` for a plain one, or the name its `map:` sets. Indexes are kept as v6 wrote them, so two indexes of one model on the same fields with the same written sort are refused with `PSL.PRISMA6_MONGO_INDEX_ALREADY_EXISTS`, as v6 refuses them. A field with no sort and a field with `sort: Asc` count as different, so `@unique` on `email` and `@@index([email(sort: Asc)])` are both kept. When two indexes have the same fields and the same written sort, remove one, and if only one of them is unique, keep the unique one. Port the schema when you want to use what the v6 syntax cannot express, such as polymorphism.
 
 In the table below, the left column is how you wrote it in v6 and the right column is the Prisma ORM 8 equivalent:
 
@@ -134,7 +134,7 @@ You can use the [prisma-mongodb-upgrade](https://github.com/prisma/skills/tree/m
 | More scalar types | `BigInt`, `Decimal`, `Bytes`, `Json` | `Int64`, `Decimal128`, `Binary`, `Json`. A `Json` field holds only JSON values; type a field that holds other BSON values, such as a `Date`, as `Bson` |
 | Timestamps | `@default(now())`, `@updatedAt` | `createdAt temporal.CreatedAt`, `updatedAt temporal.UpdatedAt` |
 | Embedded document | `type Address { ... }` | `type Address { ... }` (unchanged) |
-| Index | `@@index(...)`, synced by `db push` | `@@index(...)` / `@@unique(...)`, applied by migrations |
+| Index | `@@index(...)`, synced by `db push`, named such as `User_email_idx` | `@@index(...)` / `@@unique(...)`, applied by migrations. An index without `map:` is named after its keys, such as `email_1`, so give each index `map:` with the name v6 gave it. See [MongoDB indexes](/orm/contract-authoring/psl-syntax#mongodb-indexes) |
 | Polymorphism | not supported | `@@discriminator(field)` on the base + `@@base(Base, "value")` on each variant. <br />See [Base models and variants](/orm/contract-authoring/psl-syntax#base-models-and-variants) |
 
 A fuller contract putting together enum, embedded type, relation, and polymorphism:
@@ -447,7 +447,7 @@ Work through this list before you switch production traffic over:
 - **Same database.** Your Prisma ORM 8 config points at the **same** database and connection string as v6.
 - **Server version.** Your MongoDB server is on 8.0 or newer.
 - **Dry run first.** Rehearse the whole flow on a throwaway copy of your database (`contract emit`, `db update --dry-run`, `db update`, `db verify`) and make sure `db verify` passes before you touch production.
-- **Index parity.** The indexes on each collection (`db.collection.getIndexes()`) match your contract.
+- **Index parity.** The indexes on each collection (`db.collection.getIndexes()`) match your contract, names included.
 - **Validators.** Your existing documents pass the strict validators Prisma ORM 8 adds to each collection (see *Good to know* in step 4).
 - **Addressing.** Every call site uses storage names like `db.orm.users`, not model names.
 - **Transactions.** Every v6 `$transaction` now has a driver-session equivalent.
