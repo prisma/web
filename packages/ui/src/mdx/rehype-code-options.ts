@@ -15,7 +15,7 @@ import { transformerShikiTokenClasses } from "@prisma-docs/ui/mdx/shiki-token-cl
  * from its own `globals.css`, which does not import this package's styles, so
  * it keeps Shiki's inline declarations.
  */
-/**
+/*
  * The current Prisma mark (apps/docs/public/logo/mark.svg), for code blocks
  * in `prisma` files. fumadocs still ships the retired triangle from Simple
  * Icons for that language. Brand colours are kept: the mark is defined by its
