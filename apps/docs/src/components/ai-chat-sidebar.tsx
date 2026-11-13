@@ -77,20 +77,16 @@ export const AIChatSidebar = ({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           buttonVariants({ variant: "outline" }),
-          "hidden shrink-0 shadow-none md:inline-flex items-center gap-2 h-8 group cursor-pointer",
+          "quiet-hover hover:bg-transparent hidden shrink-0 md:inline-flex items-center gap-2 h-8 cursor-pointer",
           // Pill hit area, matching the header's other controls.
           "rounded-full border-stroke-neutral px-3",
         )}
       >
-        <MessagesSquareIcon className="size-4 text-fd-muted-foreground group-hover:text-fd-accent-foreground" />
+        <MessagesSquareIcon className="size-4" />
         <span>Ask AI</span>
         <div className="ms-auto inline-flex gap-0.5">
-          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">
-            {isMac ? "⌘" : "Ctrl"}
-          </kbd>
-          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">
-            I
-          </kbd>
+          <kbd className="rounded-md border bg-fd-background px-1.5">{isMac ? "⌘" : "Ctrl"}</kbd>
+          <kbd className="rounded-md border bg-fd-background px-1.5">I</kbd>
         </div>
       </button>
 
@@ -99,10 +95,10 @@ export const AIChatSidebar = ({
           <button
             className={cn(
               buttonVariants({ variant: "outline", size: "sm" }),
-              "shadow-none inline-flex items-center gap-1.5 rounded-full border-stroke-neutral px-3",
+              "quiet-hover hover:bg-transparent inline-flex items-center gap-1.5 rounded-full border-stroke-neutral px-3",
             )}
           >
-            <MessagesSquareIcon className="size-3.5 text-fd-muted-foreground" />
+            <MessagesSquareIcon className="size-3.5" />
             <span>Ask AI</span>
           </button>
         </DrawerTrigger>
