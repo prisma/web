@@ -86,6 +86,7 @@ const PAGE_SOURCES: Record<AgentMarkdownPath, string[]> = {
   "/compare/neon": ["src/app/compare/neon/_sections.tsx"],
   "/compare/planetscale": ["src/app/compare/planetscale/_sections.tsx"],
   "/compare/supabase": ["src/app/compare/supabase/_sections.tsx"],
+  "/compare/vercel": ["src/app/compare/vercel/_sections.tsx"],
   "/compare/vercel-neon-drizzle": ["src/app/compare/vercel-neon-drizzle/_sections.tsx"],
   "/mcp": [
     "src/app/mcp/page.tsx",
@@ -132,6 +133,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/compare/neon": 10,
   "/compare/planetscale": 10,
   "/compare/supabase": 10,
+  "/compare/vercel": 10,
   "/compare/vercel-neon-drizzle": 10,
 };
 

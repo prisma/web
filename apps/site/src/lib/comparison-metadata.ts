@@ -24,6 +24,7 @@ export function getComparisonMetadata(slug: ComparisonSlug) {
     slug === "neon" ||
     slug === "planetscale" ||
     slug === "supabase" ||
+    slug === "vercel" ||
     slug === "vercel-neon-drizzle"
   ) {
     types["application/json"] = new URL(`${page.path}.json`, baseUrl).toString();

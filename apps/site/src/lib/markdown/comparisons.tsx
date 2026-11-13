@@ -22,6 +22,8 @@ import {
 import { getPlanetScalePageContent } from "@/app/compare/planetscale/_sections";
 import { CHECKED as SUPABASE_CHECKED, SUPABASE_UPDATED } from "@/app/compare/supabase/_content";
 import { getSupabasePageContent } from "@/app/compare/supabase/_sections";
+import { CHECKED as VERCEL_CHECKED, VERCEL_UPDATED } from "@/app/compare/vercel/_content";
+import { getVercelPageContent } from "@/app/compare/vercel/_sections";
 import {
   CHECKED as VERCEL_NEON_DRIZZLE_CHECKED,
   VERCEL_NEON_DRIZZLE_UPDATED,
@@ -38,6 +40,7 @@ export const comparisonContent = {
   neon: getNeonPageContent,
   planetscale: getPlanetScalePageContent,
   supabase: getSupabasePageContent,
+  vercel: getVercelPageContent,
   "vercel-neon-drizzle": getVercelNeonDrizzlePageContent,
 } satisfies Record<ComparisonSlug, () => ReactNode>;
 
@@ -49,6 +52,7 @@ const comparisonFreshness = {
   neon: { checked: NEON_CHECKED, dateModified: NEON_UPDATED.iso },
   planetscale: { checked: PLANETSCALE_CHECKED, dateModified: PLANETSCALE_UPDATED.iso },
   supabase: { checked: SUPABASE_CHECKED, dateModified: SUPABASE_UPDATED.iso },
+  vercel: { checked: VERCEL_CHECKED, dateModified: VERCEL_UPDATED.iso },
   "vercel-neon-drizzle": {
     checked: VERCEL_NEON_DRIZZLE_CHECKED,
     dateModified: VERCEL_NEON_DRIZZLE_UPDATED.iso,

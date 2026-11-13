@@ -4,6 +4,7 @@ import { MONGOOSE_DESCRIPTION, MONGOOSE_TITLE } from "./mongoose/_content";
 import { NEON_DESCRIPTION, NEON_TITLE } from "./neon/_content";
 import { PLANETSCALE_DESCRIPTION, PLANETSCALE_TITLE } from "./planetscale/_content";
 import { SUPABASE_DESCRIPTION, SUPABASE_TITLE } from "./supabase/_content";
+import { VERCEL_DESCRIPTION, VERCEL_TITLE } from "./vercel/_content";
 import {
   VERCEL_NEON_DRIZZLE_DESCRIPTION,
   VERCEL_NEON_DRIZZLE_TITLE,
@@ -87,6 +88,13 @@ export const COMPARISONS = [
     competitor: "Supabase",
     title: SUPABASE_TITLE,
     description: SUPABASE_DESCRIPTION,
+  },
+  {
+    slug: "vercel",
+    category: "compute",
+    competitor: "Vercel",
+    title: VERCEL_TITLE,
+    description: VERCEL_DESCRIPTION,
   },
   {
     slug: "vercel-neon-drizzle",
