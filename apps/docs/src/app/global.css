@@ -586,12 +586,21 @@ header &[data-search-full] {
   --shell-ground: var(--color-paper); /* #f9faf5 */
   --shell-sheet: var(--color-background-default); /* #ffffff */
   --shell-sheet-shadow: 0 1px 2px rgba(21, 21, 21, 0.04), 0 16px 40px -16px rgba(21, 21, 21, 0.12);
+  /* Selected segment of the navbar theme toggle: white, lifted by a whisper
+     of shadow. */
+  --segment-selected: #ffffff;
+  --segment-selected-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.04);
 }
 
 .dark {
   --shell-ground: var(--color-background-default); /* #0f0f0f */
   --shell-sheet: var(--color-background-neutral-weaker); /* #141414 */
   --shell-sheet-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
+  /* On near-black a drop shadow does not read, so the segment is a lift in
+     ink with a faint inner hairline for its edge. */
+  --segment-selected: color-mix(in srgb, var(--color-fd-foreground) 18%, transparent);
+  --segment-selected-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--color-fd-foreground) 10%, transparent);
 }
 
 /* `position: relative` anchors PaperGround's ray layer to the grid;
@@ -631,3 +640,104 @@ header &[data-search-full] {
    .spectrum-text-hover, .spectrum-text-active, .spectrum-thumb and the
    --gradient-spectrum-cool token) moved to the shared eclipse globals.css so
    the blog's InlineTOC gets the identical treatment. */
+
+/* Sidebar rows: quiet at rest, crisp on hover. This replaces the eclipse
+   class's spectrum hover text, which read too loud on every row the pointer
+   crossed. Rows rest a step below full ink; hover brings the label and icon
+   to full ink over a faint tint of the same ink, so it works on the paper
+   ground and in dark alike. The hover lands instantly and only the exit
+   fades. The selected row is full ink and keeps its spectrum ring (a ::after
+   layer, untouched here). Element selectors outrank the eclipse rules
+   regardless of stylesheet order.
+
+   The eclipse class also sets `background-clip: text` for its gradient,
+   which would clip the tint to the glyphs and hide it, so both go. */
+a.sidebar-prism-item,
+button.sidebar-prism-item {
+  color: color-mix(in srgb, var(--color-fd-foreground) 70%, transparent);
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  transition:
+    color 0.12s ease-out,
+    background-color 0.12s ease-out;
+}
+
+a.sidebar-prism-item svg,
+button.sidebar-prism-item svg {
+  color: inherit;
+}
+
+a.sidebar-prism-item:hover,
+button.sidebar-prism-item:hover,
+a.sidebar-prism-item[data-active="true"] {
+  color: var(--color-fd-foreground);
+}
+
+a.sidebar-prism-item:hover,
+button.sidebar-prism-item:hover {
+  background-color: color-mix(in srgb, var(--color-fd-foreground) 5%, transparent);
+  transition: none;
+}
+
+/* Current page: a small, still spectrum dot hung just left of the row,
+   instead of the eclipse class's animated ring, which pulled the eye off the
+   article. The ::after that drew the ring is reset (no mask, padding or
+   animation) and reshaped into the dot; a conic sweep so all the spectrum
+   colours show at 6px. It sits just outside the row's box, 8px from the
+   label, in the sidebar's 16px scroll padding, so labels and icons never
+   move. */
+a.sidebar-prism-item::after,
+button.sidebar-prism-item::after {
+  inset: 50% auto auto -0.375rem;
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border-radius: 9999px;
+  background-image: conic-gradient(
+    var(--color-prism-cyan-400),
+    var(--color-prism-yellow-300),
+    var(--color-spectrum-orange),
+    var(--color-spectrum-scarlet),
+    var(--color-spectrum-pink),
+    var(--color-prism-cyan-400)
+  );
+  background-size: auto;
+  -webkit-mask: none;
+  mask: none;
+  transform: translateY(-50%);
+  animation: none;
+  transition: none;
+}
+
+a.sidebar-prism-item[data-active="true"]::after {
+  opacity: 1;
+  animation: none;
+}
+
+/* The same quiet, crisp hover for the header and page-action controls:
+   label a step below ink at rest, full ink plus a faint ink tint on hover,
+   landing instantly and fading out. The tint is an inset shadow rather than
+   a background so it layers over whatever resting fill the control has (the
+   paper pill, the transparent icons) without knowing it. Unlayered, so it
+   outranks the Tailwind colour utilities on these elements. */
+.quiet-hover {
+  color: color-mix(in srgb, var(--color-fd-foreground) 70%, transparent);
+  transition:
+    color 0.12s ease-out,
+    box-shadow 0.12s ease-out;
+}
+
+.quiet-hover:hover {
+  color: var(--color-fd-foreground);
+  box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--color-fd-foreground) 5%, transparent);
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiet-hover,
+  a.sidebar-prism-item,
+  button.sidebar-prism-item {
+    transition: none;
+  }
+}

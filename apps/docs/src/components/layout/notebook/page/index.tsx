@@ -1,6 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { buttonVariants } from "../../../ui/button";
 import { Edit, Text } from "lucide-react";
 import { T } from "@fuma-translate/react";
 import {
@@ -187,12 +186,10 @@ export function EditOnGitHub(props: ComponentProps<"a">) {
       target="_blank"
       rel="noreferrer noopener"
       {...props}
+      // The same hairline pill as the page actions under the title: no fill,
+      // label a step below ink at rest, full ink plus a faint tint on hover.
       className={cn(
-        buttonVariants({
-          color: "secondary",
-          size: "sm",
-          className: "gap-1.5 not-prose",
-        }),
+        "not-prose quiet-hover inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke-neutral px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/20",
         props.className,
       )}
     >

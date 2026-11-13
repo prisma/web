@@ -9,7 +9,7 @@ import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { CopyPromptButton, LLMCopyButton, ViewOptions } from "@/components/page-actions";
+import { CopyPromptButton, PageActions } from "@/components/page-actions";
 import { getPromptContent } from "@/lib/get-prompt-content";
 import { getPageFooterItems } from "@/lib/page-footer-items";
 import {
@@ -68,36 +68,32 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         // of every page. Same two cards, same subtitles.
         footer={{ items: getPageFooterItems(source.pageTree, page.url) }}
       >
-        <div className="flex flex-col md:flex-row items-start gap-4 pt-2 pb-1 md:justify-between">
-          <div className="flex flex-row flex-wrap items-center gap-3">
-            <DocsTitle>{page.data.title}</DocsTitle>
-            {/* Versioned trees (`/orm/v6`, `/cli/v7`, ...) repeat the title of
-                their twin in every other tree, so the page carries the version
-                as a visible signal next to — never inside — the <h1>. */}
-            {pageVersion && (
-              <Badge
-                color="neutral"
-                label={pageVersion.label}
-                size="md"
-                // `rounded-full!`: the eclipse badge ships `rounded-square`,
-                // which tailwind-merge cannot collapse without the important
-                // flag. Same pattern as the sidebar badges.
-                className="shrink-0 rounded-full!"
-                data-markdown-ignore
-              />
-            )}
-          </div>
-          <div className="flex flex-row gap-2 items-center" data-markdown-ignore>
-            {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
-            {!page.url.startsWith("/rest-api/endpoints") && (
-              <LLMCopyButton markdownUrl={withMarkdownPath(page.url)} />
-            )}
-
-            <ViewOptions
-              markdownUrl={withMarkdownPath(page.url)}
-              githubUrl={`https://github.com/prisma/docs/blob/main/apps/docs/content/docs/${page.path}`}
+        <div className="flex flex-row flex-wrap items-center gap-3 pt-2">
+          <DocsTitle>{page.data.title}</DocsTitle>
+          {/* Versioned trees (`/orm/v6`, `/cli/v7`, ...) repeat the title of
+              their twin in every other tree, so the page carries the version
+              as a visible signal next to — never inside — the <h1>. */}
+          {pageVersion && (
+            <Badge
+              color="neutral"
+              label={pageVersion.label}
+              size="md"
+              // `rounded-full!`: the eclipse badge ships `rounded-square`,
+              // which tailwind-merge cannot collapse without the important
+              // flag. Same pattern as the sidebar badges.
+              className="shrink-0 rounded-full!"
+              data-markdown-ignore
             />
-          </div>
+          )}
+        </div>
+        {/* Page actions sit in their own row under the title (Clerk's layout),
+            so the title keeps the full width and the row reads at any size. */}
+        <div className="flex flex-row flex-wrap items-center gap-2 pb-1" data-markdown-ignore>
+          {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
+          <PageActions
+            markdownUrl={withMarkdownPath(page.url)}
+            canCopy={!page.url.startsWith("/rest-api/endpoints")}
+          />
         </div>
         <DocsDescription>{page.data.description}</DocsDescription>
         <DocsBody>

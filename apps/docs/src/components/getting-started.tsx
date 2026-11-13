@@ -7,19 +7,9 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  ArrowDown,
-  ArrowRight,
-  Check,
-  ChevronDown,
-  Copy,
-  Sparkles,
-  Terminal,
-  X,
-} from "lucide-react";
+import { ArrowDown, ArrowRight, Check, Copy, Sparkles, Terminal, X } from "lucide-react";
 import posthog from "posthog-js";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
-import { buttonVariants } from "@prisma-docs/ui/components/button";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { withDocsBasePath } from "@/lib/urls";
 import { PrismRay } from "@/components/chrome/prism-ray";
@@ -49,6 +39,42 @@ function InlineCode({ text }: { text: string }) {
     </>
   );
 }
+
+// Row and dialog controls, following Eclipse's Button guidance: one filled
+// button per view at most (the dialog's own Copy prompt), bordered or bare
+// controls everywhere else, and text-styled navigation in ink rather than
+// the theme's cyan. Hovers match the header's `quiet-hover`: instant in,
+// 120ms out, a faint ink tint and no colour change.
+const crisp =
+  "transition-colors duration-[120ms] ease-out hover:duration-0 motion-reduce:transition-none";
+const focusRing = "outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/20";
+/** Bordered pill for a row's main action. */
+const outlinePill = cn(
+  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-stroke-neutral px-3 text-sm font-medium text-fd-foreground hover:bg-fd-foreground/5 [&_svg]:size-3.5",
+  crisp,
+  focusRing,
+);
+/** The one filled (ink) button, inside the prompt dialog. */
+const inkPill = cn(
+  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-background-neutral-reverse-strong px-3 text-sm font-medium text-foreground-neutral-reverse hover:bg-background-neutral-reverse-strong/85 [&_svg]:size-3.5",
+  crisp,
+  focusRing,
+);
+/** Bare text control (View), tinted on hover like the header icons. */
+const barePill = cn(
+  "quiet-hover inline-flex h-8 shrink-0 items-center rounded-full px-3 text-sm",
+  focusRing,
+);
+/** Text navigation (guide links): Eclipse's `link` style, ink with an underline on hover. */
+const inkLink = cn(
+  "inline-flex shrink-0 items-center gap-1.5 rounded-sm text-sm font-medium text-fd-foreground/70 underline-offset-4 hover:text-fd-foreground hover:underline [&_svg]:size-3.5",
+  crisp,
+  focusRing,
+);
+const closeButton = cn("quiet-hover inline-flex items-center rounded-full p-1.5", focusRing);
+/** Icon tile on a row: brand cyan, matching the icon tiles elsewhere on the page. */
+const rowIconTile =
+  "flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4";
 
 /**
  * Native-dialog modal for reading a full prompt. Overlays the page, so
@@ -88,22 +114,11 @@ function PromptModal({
     >
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <span className="grow text-sm font-medium">{title}</span>
-        <button
-          className={cn(buttonVariants({ color: "primary", size: "sm", className: "gap-2" }))}
-          onClick={onCopy}
-        >
-          {checked ? (
-            <Check className="size-3.5" aria-hidden="true" />
-          ) : (
-            <Copy className="size-3.5" aria-hidden="true" />
-          )}
+        <button className={inkPill} onClick={onCopy}>
+          {checked ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           Copy prompt
         </button>
-        <button
-          aria-label="Close"
-          onClick={onClose}
-          className="inline-flex items-center rounded-lg p-1.5 text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
-        >
+        <button aria-label="Close" onClick={onClose} className={closeButton}>
           <X className="size-4" aria-hidden="true" />
         </button>
       </div>
@@ -144,42 +159,27 @@ export function AgentPrompt({
   return (
     <div className="not-prose my-4 rounded-xl border bg-fd-card">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-        <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4"
-          aria-hidden="true"
-        >
+        <span className={rowIconTile} aria-hidden="true">
           {icon ?? <Sparkles />}
         </span>
         <span className="grow text-sm font-medium">{title}</span>
         {guideHref && (
-          <a
-            href={withDocsBasePath(guideHref)}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-fd-primary hover:underline"
-          >
+          <a href={withDocsBasePath(guideHref)} className={inkLink}>
             {guideTitle}
-            <ArrowRight className="size-3.5" aria-hidden="true" />
+            <ArrowRight aria-hidden="true" />
           </a>
         )}
+        {/* View opens a dialog rather than expanding the row, so no chevron. */}
         <button
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground",
-          )}
+          className={barePill}
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
         >
-          <ChevronDown className="size-3.5" aria-hidden="true" />
           View
         </button>
-        <button
-          className={cn(buttonVariants({ color: "primary", size: "sm", className: "gap-2" }))}
-          onClick={onCopy}
-        >
-          {checked ? (
-            <Check className="size-3.5" aria-hidden="true" />
-          ) : (
-            <Copy className="size-3.5" aria-hidden="true" />
-          )}
+        <button className={outlinePill} onClick={onCopy}>
+          {checked ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           Copy prompt
         </button>
       </div>
@@ -227,10 +227,7 @@ export function ModalRow({
   return (
     <div className="not-prose my-4 rounded-xl border bg-fd-card">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-        <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4"
-          aria-hidden="true"
-        >
+        <span className={rowIconTile} aria-hidden="true">
           {icon ?? <Sparkles />}
         </span>
         <span className="min-w-0 grow">
@@ -240,12 +237,11 @@ export function ModalRow({
           )}
         </span>
         <button
-          className={cn(buttonVariants({ color: "secondary", size: "sm", className: "gap-2" }))}
+          className={outlinePill}
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
         >
-          <ChevronDown className="size-3.5" aria-hidden="true" />
           View
         </button>
       </div>
@@ -259,15 +255,11 @@ export function ModalRow({
       >
         <div className="flex items-center gap-3 border-b px-4 py-3">
           <span className="grow text-sm font-medium">{modalTitle ?? title}</span>
-          <button
-            aria-label="Close"
-            onClick={() => setOpen(false)}
-            className="inline-flex items-center rounded-lg p-1.5 text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
-          >
+          <button aria-label="Close" onClick={() => setOpen(false)} className={closeButton}>
             <X className="size-4" aria-hidden="true" />
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-4 py-2 text-sm leading-6 text-fd-foreground/80 [&>p]:my-3 [&>p_a]:font-medium [&>p_a]:text-fd-primary [&>p_a]:underline [&>p_a]:decoration-fd-primary/40 [&>p_a]:underline-offset-4 hover:[&>p_a]:decoration-fd-primary">
+        <div className="max-h-[70vh] overflow-y-auto px-4 py-2 text-sm leading-6 text-fd-foreground/80 [&>p]:my-3 [&>p_a]:font-medium [&>p_a]:text-fd-foreground [&>p_a]:underline [&>p_a]:decoration-fd-foreground/30 [&>p_a]:underline-offset-4 hover:[&>p_a]:decoration-fd-foreground">
           {children}
         </div>
       </dialog>
@@ -405,11 +397,11 @@ export function IconLink({
   return (
     <a
       href={withDocsBasePath(href)}
-      className="spectrum-ring-hover group flex items-center gap-3 rounded-xl border bg-fd-card p-3 transition-colors hover:bg-fd-accent"
+      className="group flex items-center gap-3 rounded-xl border bg-fd-card p-3 transition-colors duration-200 hover:border-fd-foreground/15 hover:bg-fd-muted/40"
     >
       <IconTile src={src} darkSrc={darkSrc} invertDark={invertDark} mono={mono} icon={icon} />
       <span className="min-w-0">
-        <span className="spectrum-text-hover flex items-center gap-2 text-sm font-medium text-fd-foreground">
+        <span className="flex items-center gap-2 text-sm font-medium text-fd-foreground">
           <span className="truncate">{title}</span>
           {badge && (
             <span className="inline-flex shrink-0 items-center rounded-full border border-fd-primary/30 bg-fd-primary/10 px-2 py-0.5 text-[0.6875rem] font-medium leading-4 text-fd-primary">
@@ -526,15 +518,16 @@ export function WorkflowStage({
     <section className="relative isolate flex flex-col rounded-2xl border bg-gradient-to-br from-fd-primary/[0.06] via-fd-card to-fd-card p-5 sm:p-6">
       {/* The card's own gradient is translucent toward its top-left corner, so
           the tight ring bleeds into the panel — kept subtle in light, where it
-          reads as tint; dark gets the fuller glassy glow. */}
+          reads as tint. Dark is held just as low: on a dark ground the spectrum
+          blooms much harder and washes out the panel text. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-px -z-10 rounded-2xl opacity-20 blur-[18px] dark:opacity-40"
+        className="pointer-events-none absolute -inset-px -z-10 rounded-2xl opacity-12 blur-[18px] dark:opacity-12"
         style={{ background: halo }}
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-3 -z-10 rounded-3xl opacity-15 blur-[44px] dark:opacity-25"
+        className="pointer-events-none absolute -inset-3 -z-10 rounded-3xl opacity-8 blur-[44px] dark:opacity-6"
         style={{ background: halo }}
       />
       <h2 id={id} className="scroll-m-24 text-lg font-semibold text-fd-foreground">
@@ -573,11 +566,11 @@ export function WorkflowLink({
   return (
     <a
       href={withDocsBasePath(href)}
-      className="spectrum-ring-hover group flex items-start gap-3.5 rounded-xl border bg-fd-background/80 p-3.5 shadow-sm transition-colors hover:bg-fd-accent"
+      className="group flex items-start gap-3.5 rounded-xl border bg-fd-background/80 p-3.5 shadow-sm transition-colors duration-200 hover:border-fd-foreground/15 hover:bg-fd-muted/40"
     >
       <IconTile src={src} invertDark={invertDark} icon={icon} />
       <span className="min-w-0 grow">
-        <span className="spectrum-text-hover flex flex-wrap items-center gap-2 text-sm font-semibold text-fd-foreground">
+        <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-fd-foreground">
           {title}
           {badge && (
             <span className="inline-flex shrink-0 items-center rounded-full border border-fd-primary/30 bg-fd-primary/10 px-2 py-0.5 text-[0.6875rem] font-medium leading-4 text-fd-primary">
@@ -590,11 +583,11 @@ export function WorkflowLink({
       {/* The whole tile is the link; this label just makes the destination
           explicit. A span, not a nested anchor. */}
       <span
-        className="inline-flex shrink-0 items-center gap-1 self-center text-xs font-medium text-fd-primary group-hover:underline"
+        className="inline-flex shrink-0 items-center gap-1 self-center text-xs font-medium text-fd-primary"
         aria-hidden="true"
       >
         docs
-        <ArrowRight className="size-3" />
+        <ArrowRight className="size-3 transition-transform duration-200 group-hover:translate-x-0.5" />
       </span>
     </a>
   );

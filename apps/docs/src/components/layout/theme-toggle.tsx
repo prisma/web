@@ -6,12 +6,18 @@ import { ComponentProps, useEffect, useState } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
 const itemVariants = cva(
-  "size-6.5 rounded-full p-1.5 text-fd-muted-foreground transition-colors duration-300 motion-reduce:transition-none",
+  // No outline on click; keyboard focus gets a quiet neutral ring instead.
+  "size-6.5 rounded-full p-1.5 text-fd-muted-foreground outline-none transition-[color,background-color,box-shadow] duration-300 focus-visible:ring-2 focus-visible:ring-fd-foreground/20 motion-reduce:transition-none",
   {
     variants: {
       active: {
-        true: "bg-fd-accent text-fd-accent-foreground",
-        false: "text-fd-muted-foreground hover:text-fd-foreground",
+        // Selected: the raised segment, as quiet as it can be while still
+        // reading, the same for light, dark and system. Its fill and shadow
+        // come from `--segment-selected*` (global.css), which the light and
+        // dark theme blocks set: white with a whisper of shadow on light, a
+        // faint ink lift on dark.
+        true: "bg-(--segment-selected) text-fd-foreground shadow-(--segment-selected-shadow)",
+        false: "quiet-hover",
       },
     },
   },
@@ -33,8 +39,10 @@ export function ThemeToggle({
     setMounted(true);
   }, []);
 
+  // A segmented control: a barely tinted track the selected segment sits
+  // raised on, whichever of the three it is.
   const container = cn(
-    "inline-flex items-center rounded-full border border-stroke-neutral p-1",
+    "inline-flex items-center rounded-full border border-stroke-neutral bg-fd-foreground/[0.03] p-1",
     className,
   );
 
