@@ -4,6 +4,7 @@ import posthog from "posthog-js";
 import { useCopyButton } from "fumadocs-ui/utils/use-copy-button";
 import { ArrowUpRight, Check, ChevronDown, Copy, FileText, Heart, Zap } from "lucide-react";
 import { cn } from "@prisma-docs/ui/lib/cn";
+import { destinationHrefs, type DestinationTool } from "@/lib/page-destinations";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,16 +102,14 @@ function useCopyMarkdown(markdownUrl: string) {
 type Destination = {
   title: string;
   description?: string;
-  tool: string;
+  tool: DestinationTool | "markdown";
   href: string;
   icon: ReactNode;
 };
 
 /**
- * Where the page can be handed off, grouped as Clerk does. Each link pre-fills
- * a prompt that points the tool at the page's Markdown rendition. Link formats
- * follow each product's documented prompt URL (and Clerk's live docs).
- * Lovable's `autosubmit` is left off so nothing runs before the reader looks.
+ * Where the page can be handed off, grouped as Clerk does. The hand-off URLs
+ * come from `lib/page-destinations.ts`, where their formats are tested.
  */
 function useDestinations(markdownUrl: string) {
   // The prompt needs the absolute Markdown URL, and the server has no origin,
@@ -119,14 +118,12 @@ function useDestinations(markdownUrl: string) {
   useEffect(() => setOrigin(window.location.origin), []);
 
   return useMemo(() => {
-    const url = origin ? new URL(markdownUrl, origin).toString() : markdownUrl;
-    const q = `Read ${url}, I want to ask questions about it.`;
-    const query = (key: string) => new URLSearchParams({ [key]: q }).toString();
+    const href = destinationHrefs(markdownUrl, origin);
 
     const chatgpt: Destination = {
       title: "Open in ChatGPT",
       tool: "chatgpt",
-      href: `https://chatgpt.com/?${new URLSearchParams({ hints: "search", q })}`,
+      href: href.chatgpt,
       icon: <BrandIcon d={icons.chatgpt} />,
     };
 
@@ -141,13 +138,13 @@ function useDestinations(markdownUrl: string) {
             // waits for the user to confirm; the description sets that expectation.
             description: "Claude shows the prompt first",
             tool: "claude",
-            href: `https://claude.ai/new?${query("q")}`,
+            href: href.claude,
             icon: <BrandIcon d={icons.claude} />,
           },
           {
             title: "Open in Perplexity",
             tool: "perplexity",
-            href: `https://www.perplexity.ai/?${query("q")}`,
+            href: href.perplexity,
             icon: <BrandIcon d={icons.perplexity} />,
           },
         ],
@@ -158,14 +155,14 @@ function useDestinations(markdownUrl: string) {
           {
             title: "Open in Cursor",
             tool: "cursor",
-            href: `https://cursor.com/link/prompt?${query("text")}`,
+            href: href.cursor,
             icon: <BrandIcon d={icons.cursor} />,
           },
           {
             title: "Open in Zed",
             description: "Needs Zed installed",
             tool: "zed",
-            href: `zed://agent?${query("prompt")}`,
+            href: href.zed,
             icon: <BrandIcon d={icons.zed} />,
           },
         ],
@@ -173,22 +170,17 @@ function useDestinations(markdownUrl: string) {
       {
         label: "App builders",
         items: [
-          {
-            title: "Open in v0",
-            tool: "v0",
-            href: `https://v0.app/chat?${query("q")}`,
-            icon: <BrandIcon d={icons.v0} />,
-          },
+          { title: "Open in v0", tool: "v0", href: href.v0, icon: <BrandIcon d={icons.v0} /> },
           {
             title: "Open in Bolt",
             tool: "bolt",
-            href: `https://bolt.new/?${query("prompt")}`,
+            href: href.bolt,
             icon: <Zap aria-hidden="true" />,
           },
           {
             title: "Open in Lovable",
             tool: "lovable",
-            href: `https://lovable.dev/#prompt=${encodeURIComponent(q)}`,
+            href: href.lovable,
             icon: <Heart aria-hidden="true" />,
           },
         ],
