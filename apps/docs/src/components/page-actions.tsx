@@ -72,31 +72,37 @@ export function CopyPromptButton({ fullPrompt }: { fullPrompt: string }) {
 
 function useCopyMarkdown(markdownUrl: string) {
   const [isLoading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [checked, onClick] = useCopyButton(async () => {
     const cached = cache.get(markdownUrl);
-    if (cached) {
-      await navigator.clipboard.writeText(cached);
-      posthog.capture("docs:copy_markdown", { page_path: window.location.pathname });
-      return;
-    }
-
-    setLoading(true);
     try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "text/plain": fetch(markdownUrl).then(async (res) => {
-            const content = await res.text();
-            cache.set(markdownUrl, content);
-            return content;
+      if (cached) {
+        await navigator.clipboard.writeText(cached);
+      } else {
+        setLoading(true);
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            // The write starts inside the click's user gesture (Safari needs
+            // this) and the fetch streams in as the item's content.
+            "text/plain": fetch(markdownUrl).then(async (res) => {
+              if (!res.ok) throw new Error(`${res.status} ${markdownUrl}`);
+              const content = await res.text();
+              cache.set(markdownUrl, content);
+              return content;
+            }),
           }),
-        }),
-      ]);
+        ]);
+      }
+      setFailed(false);
       posthog.capture("docs:copy_markdown", { page_path: window.location.pathname });
+    } catch (error) {
+      console.warn("Copy as Markdown failed", error);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
   });
-  return { isLoading, checked, onClick };
+  return { isLoading, failed, checked, onClick };
 }
 
 type Destination = {
@@ -217,7 +223,7 @@ export function PageActions({
             onClick={copy.onClick}
           >
             {copy.checked ? <Check aria-hidden="true" /> : <BrandIcon d={icons.markdown} />}
-            Copy as Markdown
+            {copy.failed ? "Copy failed — try again" : "Copy as Markdown"}
           </button>
         </span>
       )}
