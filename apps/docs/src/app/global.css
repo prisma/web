@@ -36,11 +36,13 @@ h6 {
   letter-spacing: normal;
 }
 
-/* Inter's brand body weight. `@prisma/eclipse` sets this in @layer base, but
-   `fumadocs-ui/css/preset.css` is imported after it and also writes `body` in
-   the same layer, so it is restated unlayered here to survive that. */
+/* Body weight for the docs. `@prisma/eclipse` sets 380 in @layer base (Inter
+   reads darker than SF at 400 in UI), and `fumadocs-ui/css/preset.css` also
+   writes `body` in that layer, so the docs restate it unlayered here. The docs
+   use the regular 400: long-form reading at 380 looked faint, worst in dark
+   mode, and readers found it hard to read. */
 body {
-  font-weight: 380;
+  font-weight: 400;
 }
 
 /* `.stretch-display` (from `@prisma-docs/ui`, out of scope for this rebrand)
@@ -586,12 +588,21 @@ header &[data-search-full] {
   --shell-ground: var(--color-paper); /* #f9faf5 */
   --shell-sheet: var(--color-background-default); /* #ffffff */
   --shell-sheet-shadow: 0 1px 2px rgba(21, 21, 21, 0.04), 0 16px 40px -16px rgba(21, 21, 21, 0.12);
+  /* Selected segment of the navbar theme toggle: white, lifted by a whisper
+     of shadow. */
+  --segment-selected: #ffffff;
+  --segment-selected-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.04);
 }
 
 .dark {
   --shell-ground: var(--color-background-default); /* #0f0f0f */
   --shell-sheet: var(--color-background-neutral-weaker); /* #141414 */
   --shell-sheet-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
+  /* On near-black a drop shadow does not read, so the segment is a lift in
+     ink with a faint inner hairline for its edge. */
+  --segment-selected: color-mix(in srgb, var(--color-fd-foreground) 18%, transparent);
+  --segment-selected-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--color-fd-foreground) 10%, transparent);
 }
 
 /* `position: relative` anchors PaperGround's ray layer to the grid;
@@ -631,3 +642,141 @@ header &[data-search-full] {
    .spectrum-text-hover, .spectrum-text-active, .spectrum-thumb and the
    --gradient-spectrum-cool token) moved to the shared eclipse globals.css so
    the blog's InlineTOC gets the identical treatment. */
+
+/* Sidebar rows: quiet at rest, crisp on hover. This replaces the eclipse
+   class's spectrum hover text, which read too loud on every row the pointer
+   crossed. Rows rest a step below full ink; hover brings the label and icon
+   to full ink over a faint tint of the same ink, so it works on the paper
+   ground and in dark alike. The hover lands instantly and only the exit
+   fades. The selected row is full ink and keeps its spectrum ring (a ::after
+   layer, untouched here). Element selectors outrank the eclipse rules
+   regardless of stylesheet order.
+
+   The eclipse class also sets `background-clip: text` for its gradient,
+   which would clip the tint to the glyphs and hide it, so both go. */
+a.sidebar-prism-item,
+button.sidebar-prism-item {
+  color: color-mix(in srgb, var(--color-fd-foreground) 70%, transparent);
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  transition:
+    color 0.12s ease-out,
+    background-color 0.12s ease-out;
+}
+
+a.sidebar-prism-item svg,
+button.sidebar-prism-item svg {
+  color: inherit;
+}
+
+a.sidebar-prism-item:hover,
+button.sidebar-prism-item:hover,
+a.sidebar-prism-item[data-active="true"] {
+  color: var(--color-fd-foreground);
+}
+
+a.sidebar-prism-item:hover,
+button.sidebar-prism-item:hover {
+  background-color: color-mix(in srgb, var(--color-fd-foreground) 5%, transparent);
+  transition: none;
+}
+
+/* Current page: full ink at medium weight on a soft, still ink tint (the
+   hover tint, a step stronger), instead of a decorative mark. The eclipse
+   class's ::after (an animated spectrum ring, later a spectrum dot) is
+   switched off so the selection reads through the text and surface alone,
+   the same in light and dark. */
+a.sidebar-prism-item::after,
+button.sidebar-prism-item::after {
+  display: none;
+}
+
+a.sidebar-prism-item[data-active="true"] {
+  font-weight: 500;
+  background-color: color-mix(in srgb, var(--color-fd-foreground) 6%, transparent);
+}
+
+/* The same quiet, crisp hover for the header and page-action controls:
+   label a step below ink at rest, full ink plus a faint ink tint on hover,
+   landing instantly and fading out. The tint is an inset shadow rather than
+   a background so it layers over whatever resting fill the control has (the
+   paper pill, the transparent icons) without knowing it. Unlayered, so it
+   outranks the Tailwind colour utilities on these elements. */
+.quiet-hover {
+  color: color-mix(in srgb, var(--color-fd-foreground) 70%, transparent);
+  transition:
+    color 0.12s ease-out,
+    box-shadow 0.12s ease-out;
+}
+
+.quiet-hover:hover {
+  color: var(--color-fd-foreground);
+  /* Tailwind's ring layers come first so a keyboard-focused control keeps its
+     `focus-visible:ring-*` indicator while hovered; this rule is unlayered
+     and would otherwise replace them outright. */
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    inset 0 0 0 100vmax color-mix(in srgb, var(--color-fd-foreground) 5%, transparent);
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiet-hover,
+  a.sidebar-prism-item,
+  button.sidebar-prism-item {
+    transition: none;
+  }
+}
+
+/* Inline code in prose: a hairline chip instead of Fumadocs' boxed default.
+   The default (a visible grey fill, 3px padding, code at 13px in 16px prose)
+   made every command and flag read as a small padded box, and inline code
+   was most of the bordered elements on reference pages. This keeps the 1px
+   edge but takes it and the fill to near-invisible, hugs the word, and sets
+   code closer to text size so it sits in the line. Both colours derive from
+   the foreground, so dark mode needs no second rule. Unlayered and with the
+   same selector as fumadocs-ui's typography rule, so it wins on order; the
+   :where() guard keeps it off code blocks and not-prose components. */
+.prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  border: 1px solid color-mix(in srgb, var(--color-fd-foreground) 9%, transparent);
+  background: color-mix(in srgb, var(--color-fd-foreground) 2.5%, transparent);
+  padding: 0.05em 0.25em;
+  border-radius: 4px;
+  /* Relative to the surrounding text, floored at the old 13px so code in
+     smaller text (14px table cells, captions) never shrinks below before. */
+  font-size: max(0.875em, 0.8125rem);
+}
+
+/* On the near-black sheet a 9% edge all but disappears; 12% keeps the chip
+   faintly outlined. Light mode stays at 9%. */
+.dark .prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  border-color: color-mix(in srgb, var(--color-fd-foreground) 12%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Reading type for docs prose. Readers found long pages hard to read: 16px
+   body at ~88 characters a line, 8px between list items, 14px in callouts.
+   Body text goes to 17px with the same 1.75 ratio, keeping the full column
+   width, and paragraphs and list items get more room. The :where() guard keeps this
+   off not-prose components (the landing page's own layouts). */
+.prose :where(p, li):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+.prose > p:not(:where([class~="not-prose"])) {
+  margin-bottom: 1.5rem;
+}
+
+.prose :where(li + li):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 0.625rem;
+}
+
+/* Callouts (Eclipse Alert, role="alert") read as asides: a half step under
+   the body instead of the previous 14px. */
+.prose [role="alert"] :where(p, li) {
+  font-size: 0.96875rem;
+  line-height: 1.7;
+}

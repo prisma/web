@@ -2,7 +2,7 @@
 title: "Prisma Postgres vs Neon Pricing 2026: Per-Plan Tables and Worked Examples"
 slug: "prisma-postgres-vs-neon-pricing-2026"
 date: "2026-06-24"
-updatedAt: "2026-10-19"
+updatedAt: "2026-11-09"
 authors:
   - "Martin Janse van Rensburg"
 metaTitle: "Prisma Postgres vs Neon Pricing 2026: Tables + Worked Examples"
@@ -14,7 +14,7 @@ tags:
   - "education"
 ---
 
-[Prisma Postgres](https://www.prisma.io/docs/postgres) and [Neon](https://neon.com) are both serverless Postgres providers, and each is one of the main alternatives to the other. If you're trying to decide which is cheaper, the answer is a little annoying: they don't bill for the same thing, so it depends. This post gives you the side-by-side summary first, then per-plan detail with exact unit prices, then five worked cost examples with reproducible math, and finally a worksheet you can apply to your own workload.
+[Prisma Postgres](https://www.prisma.io/docs/postgres) and [Neon](https://neon.com) are both [serverless Postgres](/serverless-postgres) providers, and each is one of the main alternatives to the other. If you're trying to decide which is cheaper, the answer is a little annoying: they don't bill for the same thing, so it depends. This post gives you the side-by-side summary first, then per-plan detail with exact unit prices, then five worked cost examples with reproducible math, and finally a worksheet you can apply to your own workload.
 
 > **They don't bill for the same thing.** Prisma Postgres charges for _how much you ask the database to do_ (operations). Neon charges for _how long the database stays awake_ (compute-hours) plus storage. That's the core reason a line-by-line comparison isn't straightforward. The right answer depends on your usage shape.
 >
@@ -190,7 +190,7 @@ Monthly cost     ≈ $14.67
 
 This is where Neon's autosuspend model has a clear advantage. Because the database is genuinely idle for 20 hours a day, Neon only charges for the 4 active hours. Prisma Postgres still charges per operation regardless of the time dimension, so the 25.9M monthly operations in the active window accumulate significant overage. If your total monthly operation count were lower (say, lighter traffic during those 4 hours), the Starter plan might work, but at 20 RPS with 3 queries/request the overage adds up fast.
 
-From the Prisma perspective: operation-based pricing is predictable in a different direction. You can cap spend by limiting total operations via spend controls, which makes budgeting deterministic regardless of when those operations happen.
+From the Prisma perspective: operation-based pricing is predictable in a different direction. You can set a spend limit in the Console that stops queries to the workspace's databases when usage charges reach it, regardless of when those operations happen.
 
 ## Worked example 4: user-facing app with idle periods and latency-sensitive users
 
@@ -327,7 +327,7 @@ It depends on the shape of your usage, not the headline numbers. The worked exam
 - **Bursty active windows:** Neon's autosuspend gives it an edge when the database is genuinely idle most of the day.
 - **Idle periods with latency-sensitive users:** the shape operation billing is built for. Neon has to run always-on (about $77/month per CU) to avoid cold starts in front of users, while moderate query counts stay inside Prisma's plan allowances (example 4: $33 vs $78 at 1 CU; an app that truly fits 0.25 CU inverts it).
 - **Analytics / long-running queries:** roughly at parity at short job lengths, then Prisma's flat operation count wins as jobs lengthen, since Neon's compute cost scales with duration. Check Prisma's timeout limits before assuming it's the right fit.
-- **Predictability and budget controls:** Prisma Postgres's operation-based model is easier to estimate in advance, and spend limits make cost caps deterministic.
+- **Predictability and budget controls:** Prisma Postgres's operation-based model is easier to estimate in advance, and a spend limit you set in the Console stops queries to the workspace's databases when usage charges reach it.
 
 One thing the tables leave out: the database is usually one line item in a larger stack. Prisma bundles ORM, Postgres, and app [Compute](https://www.prisma.io/docs/compute) into one platform and one bill, which can simplify total infrastructure cost if you're comparing whole stacks rather than databases alone.
 
@@ -339,7 +339,7 @@ Don't trust a summary over your own math. Plug your real traffic into the calcul
 
 <Accordions type="single">
   <Accordion title="Is Prisma Postgres a good alternative to Neon?">
-For most workloads, yes: both are serverless Postgres with generous free tiers, and the choice comes down to billing shape. Prisma Postgres fits user-facing apps with idle periods where operations billing and spend caps matter, and fleets of many small databases (account-wide metering across up to 1,000 databases). Neon fits mostly-idle and bursty workloads (scale-to-zero) and very high query volumes on always-on compute. Migration between them is standard Postgres; Prisma publishes a [switch-from-Neon guide](https://www.prisma.io/docs/guides/switch-to-prisma-postgres/from-neon), and this page is published by Prisma, so check the math yourself.
+For most workloads, yes: both are serverless Postgres with generous free tiers, and the choice comes down to billing shape. Prisma Postgres fits user-facing apps with idle periods where operations billing and spend limits matter, and fleets of many small databases (workspace-wide metering across up to 1,000 databases). Neon fits mostly-idle and bursty workloads (scale-to-zero) and very high query volumes on always-on compute. Migration between them is standard Postgres; Prisma publishes a [switch-from-Neon guide](https://www.prisma.io/docs/guides/switch-to-prisma-postgres/from-neon), and this page is published by Prisma, so check the math yourself.
   </Accordion>
   <Accordion title="What counts as an operation in Prisma Postgres?">
 An operation is a single Prisma ORM query: one call to a method like `prisma.user.findMany()`, `prisma.post.create()`, or `prisma.$queryRaw()`. The count doesn't increase based on how long the query takes or how many SQL statements Prisma generates internally under the hood. If your request handler calls five Prisma client methods, that's five operations, regardless of compute time. You can find the full definition in the [Prisma Postgres FAQ](https://www.prisma.io/docs/postgres/faq).
@@ -354,3 +354,7 @@ Prisma Postgres includes egress for free on all plans. Neon's Launch and Scale p
 Neon extra branches are billed at $1.50/branch-month, prorated hourly. If you create a branch for a pull request and delete it after 12 hours (out of a 30-day month), you'd pay approximately $1.50 × (12/720) = $0.025 for that branch. The instant restore history window (PITR) is billed separately from your live data storage at $0.20/GB-month. Both appear as distinct line items on the Neon invoice. If you're running many preview environments or CI branches, the branch cost can add up: 20 active branches at any given time = $30/month in branch fees before compute.
   </Accordion>
 </Accordions>
+
+## Update history
+
+- 2026-11-09: Worked example 3 and the "So which is cheaper?" summary now say what a spend limit does: it stops queries to the workspace's databases when usage charges reach it. The FAQ says "spend limits" instead of "spend caps". Source: Prisma's [billing docs](https://www.prisma.io/docs/console/more/billing#cap-usage-charges-with-a-spending-limit), checked 2026-11-09.

@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { normalizeProcessedMarkdown } from "../src/lib/llm-markdown";
 
 const rawComponentPattern =
-  /<(?:APIPage|CodeBlockTabs|CodeBlockTab|Tabs|Tab|Cards|Card|Accordions|Accordion|Youtube|Button|SharedContent|Steps|Step)\b/;
+  /<(?:APIPage|CodeBlockTabs|CodeBlockTab|Tabs|Tab|Cards|Card|Accordions|Accordion|Youtube|Button|SharedContent|Steps|Step|DeployCallout|CommandRows|CommandRow|SetupTabs|SetupPath|SetupPrompt|DocsIndex|IndexLink)\b/;
 
 type SnapshotCase = {
   name: string;
@@ -146,6 +146,76 @@ pnpm add @prisma/client
 ### Install
 
 Run the command.`,
+  },
+  {
+    name: "DeployCallout",
+    input: `<DeployCallout title="Deploy with one command" command="npx prisma deploy" href="/prisma-compute/deploy">
+  Ships everything your app declares to production. Use \`--environment\` for an isolated copy.
+</DeployCallout>`,
+    expected: `**Deploy with one command**
+
+\`\`\`bash
+npx prisma deploy
+\`\`\`
+
+Ships everything your app declares to production. Use \`--environment\` for an isolated copy.
+
+See the [Deploy guide](/prisma-compute/deploy).`,
+  },
+  {
+    name: "CommandRows",
+    input: `<CommandRows>
+  <CommandRow label="New project" command="npx create-prisma@stable" href="/v7/prisma-orm/quickstart/prisma-postgres" linkLabel="5-min quickstart" />
+  <CommandRow label="Existing project" command="npx prisma@prev init" href="/v7/getting-started" linkLabel="Setup paths" />
+</CommandRows>`,
+    expected: `- **New project:** \`npx create-prisma@stable\` ([5-min quickstart](/v7/prisma-orm/quickstart/prisma-postgres))
+- **Existing project:** \`npx prisma@prev init\` ([Setup paths](/v7/getting-started))`,
+  },
+  {
+    name: "SetupTabs",
+    input: `<SetupTabs>
+
+<SetupPath label="Postgres only" guideHref="/postgres/npx-create-db" guideTitle="create-db guide">
+
+Create a Prisma Postgres database with \`npx create-db\`.
+
+Using Kysely? Follow the [Kysely quickstart](/prisma-postgres/quickstart/kysely).
+
+<SetupPrompt>
+
+\`\`\`text
+Create a Prisma Postgres database for this project.
+
+1. Run \`npx create-db@latest\`.
+\`\`\`
+
+</SetupPrompt>
+
+</SetupPath>
+
+</SetupTabs>`,
+    expected: `**Postgres only**
+
+Create a Prisma Postgres database with \`npx create-db\`.
+
+Using Kysely? Follow the [Kysely quickstart](/prisma-postgres/quickstart/kysely).
+
+Follow the guide: [create-db guide](/postgres/npx-create-db)
+
+\`\`\`text
+Create a Prisma Postgres database for this project.
+
+1. Run \`npx create-db@latest\`.
+\`\`\``,
+  },
+  {
+    name: "DocsIndex",
+    input: `<DocsIndex>
+  <IndexLink href="/orm" title="Prisma ORM" description="Prisma ORM 8 and 7 docs" icon={<Boxes />} />
+  <IndexLink href="/cli" title="CLI reference" description="Every command and flag" icon={<Terminal />} />
+</DocsIndex>`,
+    expected: `- [Prisma ORM](/orm): Prisma ORM 8 and 7 docs
+- [CLI reference](/cli): Every command and flag`,
   },
 ];
 

@@ -1,6 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
-import { buttonVariants } from "../../../ui/button";
 import { Edit, Text } from "lucide-react";
 import { T } from "@fuma-translate/react";
 import {
@@ -187,19 +186,17 @@ export function EditOnGitHub(props: ComponentProps<"a">) {
       target="_blank"
       rel="noreferrer noopener"
       {...props}
+      // A quiet text link in the page's closing line, beside the date: muted
+      // at rest, ink on hover. The page actions under the title stay pills.
       className={cn(
-        buttonVariants({
-          color: "secondary",
-          size: "sm",
-          className: "gap-1.5 not-prose",
-        }),
+        "not-prose inline-flex items-center gap-1.5 rounded-sm text-sm text-fd-muted-foreground transition-colors duration-[120ms] ease-out outline-none hover:text-fd-foreground hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none",
         props.className,
       )}
     >
       {props.children ?? (
         <>
-          <Edit className="size-3.5" />
-          <T text="Edit on GitHub" note="edit page" />
+          <Edit className="size-3.5" aria-hidden="true" />
+          <T text="Edit this page on GitHub" note="edit page" />
         </>
       )}
     </a>

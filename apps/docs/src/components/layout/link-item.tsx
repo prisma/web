@@ -84,6 +84,8 @@ export interface ButtonItemType extends WithHref, Filterable {
   icon?: ReactNode;
   text: ReactNode;
   /**
+   * Renders the quieter, bordered pill. Leave false for the one primary
+   * CTA, which gets the solid ink pill.
    * @defaultValue false
    */
   secondary?: boolean;

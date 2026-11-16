@@ -2,7 +2,7 @@
 title: "Backend with TypeScript, PostgreSQL & Prisma: CI & Deployment"
 slug: "backend-prisma-typescript-orm-with-postgresql-deployment-bbba1ps7kip5"
 date: "2020-09-17"
-updatedAt: "2026-07-03"
+updatedAt: "2026-11-11"
 authors:
   - "Daniel Norman"
 metaTitle: "TypeScript, PostgreSQL, Prisma | Continuous Integration & Deployment"
@@ -14,7 +14,9 @@ series: backend-prisma-typescript-orm-with-postgresql
 seriesIndex: 4
 ---
 
-> **Update (July 2026):** This article was updated for Prisma ORM 7. Continuous integration still runs on GitHub Actions, but deployment now targets [Prisma Compute](https://www.prisma.io/compute), which runs your app next to your Prisma Postgres database, instead of Heroku. All commands work with Prisma ORM 7 and Node.js 20 or later.
+> **Update (July 2026):** This article was updated for Prisma ORM 7. Continuous integration still runs on GitHub Actions, but deployment now targets [Prisma Compute](https://www.prisma.io/compute), which runs your app next to your Prisma Postgres database, instead of Heroku. The app and its tests work with Prisma ORM 7 and Node.js 20 or later.
+>
+> **Update (November 2026):** The deploy section now uses [Prisma Composer](https://www.prisma.io/docs/composer) and `prisma deploy`, which replaced the beta-era `app deploy` command. The deploy tooling runs on the Prisma 8 CLI in its own `deploy/` folder, so the app itself stays on Prisma ORM 7.
 
 In this fourth and final part of the series, you'll configure continuous integration (CI) with GitHub Actions to run the tests, and deploy the backend to Prisma Compute.
 
@@ -50,7 +52,8 @@ This article continues from [part 3](/backend-prisma-typescript-orm-with-postgre
 
 - The `grading-app` project from the previous parts, pushed to a GitHub repository.
 - A free [Prisma Data Platform](https://console.prisma.io) account (the same one you used to create your Prisma Postgres database).
-- Node.js 20 or later.
+- Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer. The app and its tests run on Node.js 20, but the deploy tooling needs the newer versions.
+- [Bun](https://bun.sh), which builds the file Compute runs.
 
 ## Continuous integration and continuous deployment
 
@@ -123,94 +126,196 @@ The `services` block starts a PostgreSQL container that lives for the duration o
 
 With CI in place, you'll deploy the backend to Prisma Compute using the Prisma CLI.
 
-### Prepare the app to read the port
+Deploys to Compute are declared with [Prisma Composer](https://www.prisma.io/docs/composer): a small module names your services, and `prisma deploy` ships what it describes. Composer runs on the Prisma 8 CLI, while the app in this series uses Prisma ORM 7. To keep the two apart, the deploy declaration goes in its own `deploy/` folder with its own `package.json`. Your app code, schema, migrations, and root `prisma.config.ts` stay as they are.
 
-Compute assigns your app a port at runtime. Make the server read it from the environment, falling back to `3000` locally. Update `src/index.ts`:
+### Set up the deploy folder
 
-```ts
-import { serve } from "@hono/node-server";
+From the project root, create the folder and install the Composer packages and the Prisma CLI in it:
+
+```sh
+mkdir deploy && cd deploy
+npm init -y
+npm pkg set type=module
+npm install @prisma/composer @prisma/composer-prisma-cloud
+npm install prisma --save-dev
+```
+
+The `prisma` package installed here is Prisma 8, the version npm installs by default. The root project keeps `prisma@7.9.1`, so `npx prisma` runs the Prisma 8 CLI inside `deploy/` and the Prisma ORM 7 CLI everywhere else. Commit `deploy/package-lock.json` along with the files you create below.
+
+### Declare the app with Composer
+
+A `service.ts` declares the service and points at the file your build produces:
+
+```ts title="deploy/service.ts"
+import node from "@prisma/composer/node";
+import { compute } from "@prisma/composer-prisma-cloud";
+
+export default compute({
+  name: "api",
+  deps: {},
+  build: node({ module: import.meta.url, entry: "../dist/server.mjs" }),
+});
+```
+
+The root module is the app. It provisions the service:
+
+```ts title="deploy/module.ts"
+import { module } from "@prisma/composer";
+import apiService from "./service.ts";
+
+export default module("grading-app", ({ provision }) => {
+  provision(apiService);
+});
+```
+
+The deploy config is the `composer` section of a `prisma.config.ts` next to the module. This file is separate from the `prisma.config.ts` at the project root, which still configures Prisma ORM 7:
+
+```ts title="deploy/prisma.config.ts"
+import { defineConfig as composer } from "@prisma/composer/config";
+import { nodeBuild } from "@prisma/composer/node/control";
+import { prismaCloud, prismaState } from "@prisma/composer-prisma-cloud/control";
+import { definePrismaConfig } from "prisma/config";
+
+export default definePrismaConfig({
+  composer: composer({
+    entry: "./module.ts",
+    extensions: [prismaCloud({ region: "us-east-1" }), nodeBuild()],
+    state: prismaState(),
+  }),
+});
+```
+
+The region is where the first deploy creates the project. A project that already exists keeps its region. The [deploy quickstart](https://www.prisma.io/docs/prisma-compute/deploy) explains each of these files in more depth.
+
+### Add an entry point for Compute
+
+Compute runs your app on Bun. The server reads its port from `service.port()` and binds `0.0.0.0` so external traffic can reach it. Keep `src/index.ts` as it is for local development, and add a second entry that serves the same Hono app:
+
+```ts title="src/server.ts"
 import app from "./app";
+import service from "../deploy/service.ts";
 
-serve(
-  {
-    fetch: app.fetch,
-    port: Number(process.env.PORT) || 3000,
-  },
-  (info) => {
-    console.log(`Server is running on http://localhost:${info.port}`);
-  },
-);
+Bun.serve({ port: service.port(), hostname: "0.0.0.0", fetch: app.fetch });
 ```
 
-### Authenticate the CLI
+### Read the connection string from `POSTGRES_URL`
 
-Sign in once so the CLI can deploy on your behalf:
+Compute reserves the name `DATABASE_URL` for databases that a deploy creates itself. This project connects to the database you already have, so on Compute `DATABASE_URL` holds a placeholder and you can't set it yourself. Store the connection string under another name, and have the app prefer it. In `src/lib/prisma.ts`, change the line that reads the URL:
+
+```ts title="src/lib/prisma.ts"
+const databaseUrl = process.env.POSTGRES_URL ?? process.env.DATABASE_URL;
+```
+
+Locally and in CI, `POSTGRES_URL` isn't set, so the app keeps reading `DATABASE_URL`.
+
+### Build and create the project
+
+`prisma deploy` ships what you built. It doesn't run the build. The build targets Bun, so [install Bun](https://bun.sh) if you haven't. From the project root, add a `build` script that generates Prisma Client and bundles the Compute entry into one file:
 
 ```sh
-npx @prisma/cli@latest auth login
+npm pkg set scripts.build="prisma generate && bun build --target=bun src/server.ts --outfile dist/server.mjs"
+npm run build
 ```
 
-This opens the browser and stores a local session that later commands reuse.
+The client is generated into `generated/prisma`, which isn't committed, so the script creates it before bundling. That matters later, when the deploy workflow runs the same script on a fresh checkout. Add `dist` to your `.gitignore`.
 
-### Deploy
-
-From the project directory, deploy the app. The CLI auto-detects that this is a Hono app, builds it, and returns a live URL:
+Now switch to the `deploy/` folder, sign in, and run the first deploy:
 
 ```sh
-npx @prisma/cli@latest app deploy
+cd deploy
+npx prisma auth login
+npx prisma deploy
 ```
 
-Your app connects to the same Prisma Postgres database you've used throughout the series, so there's no separate database to provision. (If you wanted Compute to provision a fresh database as part of the deploy, you'd add the `--db` flag.)
+`auth login` opens the browser and stores a local session that later commands reuse. The deploy creates the `grading-app` project with its `api` service and prints the live URL. If your workspace already has a project named `grading-app` that this module didn't create, the deploy stops with `HostedStateBootstrapError`. In that case, change the name in `deploy/module.ts` to a unique one, deploy again, and use that name in place of `grading-app` in the commands below.
+
+The status route already responds, but the routes that query the database fail until the project has its environment variables. `deploy` also doesn't link your directory to the project it created, and the `project env` and `git` commands act on the linked project. Link it now:
+
+```sh
+npx prisma project link grading-app
+```
+
+### Setting environment variables
+
+The backend needs three runtime variables: `POSTGRES_URL` (the connection string of the Prisma Postgres database you've used throughout the series), `JWT_SECRET` (used to sign JWTs), and `RESEND_API_KEY` (used to send login emails).
+
+> **Note:** If you used the Docker alternative in part 1, its `localhost` connection string won't work here. On Compute, `localhost` is the Compute instance, not your machine. Create a hosted database with `npx create-db` as described in part 1, apply your migrations to it by running `DATABASE_URL="postgres://..." npx prisma migrate deploy` from the project root, and use its connection string below.
+
+Still in `deploy/`, set the variables for the production environment:
+
+```sh
+npx prisma project env add POSTGRES_URL="your-connection-string" --role production
+npx prisma project env add JWT_SECRET=your-secret --role production
+npx prisma project env add RESEND_API_KEY=your-key --role production
+```
+
+> **Note:** Generate a strong `JWT_SECRET` with: `node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"`.
+
+Values resolve at deploy time, so deploy again to give the running service its variables:
+
+```sh
+npx prisma deploy
+```
+
+Your app connects to the same Prisma Postgres database you've used throughout the series, so there's no separate database to provision and your data is already there.
 
 **Checkpoint:** When the deploy finishes, the CLI prints your live URL. Open it and confirm the status route responds:
 
 ```sh
-npx @prisma/cli@latest app open
+npx prisma service open grading-app.api
 ```
 
-Visiting the root should return `{"up":true}`.
-
-> **Note (optional):** For reproducible deploys you can commit a typed `prisma.compute.ts` config. It's not required, since `app deploy` auto-detects the framework, and it needs the `@prisma/compute-sdk` package:
->
-> ```ts
-> import { defineComputeConfig } from "@prisma/compute-sdk/config";
->
-> export default defineComputeConfig({
->   app: {
->     framework: "hono",
->     entry: "src/index.ts",
->     httpPort: 3000,
->   },
-> });
-> ```
->
-> Fields you set become defaults for `app deploy`; explicit flags override them. See the [Prisma Compute docs](https://www.prisma.io/docs/compute) for details.
-
-### Setting environment variables
-
-The backend needs two runtime secrets from part 3: `JWT_SECRET` (used to sign JWTs) and `RESEND_API_KEY` (used to send login emails). `DATABASE_URL` is managed for you by the platform. Set the secrets for the production environment:
-
-```sh
-npx @prisma/cli@latest project env add JWT_SECRET=your-secret --role production
-npx @prisma/cli@latest project env add RESEND_API_KEY=your-key --role production
-```
-
-> **Note:** Generate a strong `JWT_SECRET` with: `node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"`. Use `--role preview` to set values for preview deployments.
+Visiting the root should return `{"up":true}`. The login flow at the end of this article confirms that the app reaches the database.
 
 ### Deploying automatically on every push
 
-To make deployment continuous, connect the repository to Prisma Compute's Git integration:
+To make deployment continuous, connect the repository to the project and add a deploy workflow. Connect first, from `deploy/`:
 
 ```sh
-npx @prisma/cli@latest git connect
+npx prisma git connect
 ```
 
-Once connected, every push to your default branch deploys automatically, and pushes to other branches get their own preview URL. This is the modern equivalent of the deploy-on-push pipeline, with the CLI handling the build and release instead of a custom workflow job. Your GitHub Actions workflow stays focused on running the tests.
+The connection lets the repository's GitHub Actions runs sign in to your workspace, so the workflow needs no secrets. It doesn't deploy anything by itself. Deploys come from a workflow that runs [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action). Create `.github/workflows/prisma-deploy.yml`:
+
+```yaml title=".github/workflows/prisma-deploy.yml"
+name: prisma-deploy
+
+on:
+  push:
+
+concurrency:
+  group: prisma-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci
+      - uses: prisma/cloud-deploy-action@v1
+        with:
+          working-directory: deploy
+          build-command: npm --prefix .. run build
+```
+
+The `npm ci` step installs the app's dependencies at the root. The action then works inside `deploy/`: it installs the Composer packages, runs the root `build` script, and runs the same `prisma deploy` you ran by hand.
+
+Once the workflow is committed, every push to your default branch deploys to production, and every other branch gets its own preview with its own URL. Previews read preview-scoped variables, so set those with `--role preview` and point `POSTGRES_URL` at a database that isn't your production one. [Deploy on push](https://www.prisma.io/docs/compute/deploy-on-push) covers previews in detail. Your `grading-app` workflow stays focused on running the tests.
 
 To stream the deployed app's logs while you debug:
 
 ```sh
-npx @prisma/cli@latest app logs
+npx prisma service logs grading-app.api --follow
 ```
 
 ## Testing the login flow in production

@@ -98,6 +98,8 @@ In the above snippet, `your-database-connection-string` is a placeholder that yo
 DATABASE_URL="postgresql://admin:mypassword42@somehost.aws.com:5432/mydb"
 ```
 
+Use a development database in `.dev.vars`, not your production one: the Prisma CLI commands below that use `dotenv -e .dev.vars` read this file, so `prisma migrate dev` runs against it. If the file already has a `DATABASE_URL` line for another database, comment that line out instead of deleting it. `dotenv` does not replace a variable that is already set, so if your shell exports `DATABASE_URL`, run `unset DATABASE_URL` first (in PowerShell, `Remove-Item Env:\DATABASE_URL`). Cloudflare D1 does not use `prisma migrate dev`: in development, generate the SQL with `prisma migrate diff` and apply it with `wrangler d1 execute --local` only, as the [Cloudflare D1 guide](/guides/v7/deployment/cloudflare-d1#5-set-up-database-migrations) shows. The guide's `--remote` command changes your deployed D1 database, so keep it for deployment.
+
 Note that the `.dev.vars` file is not compatible with `.env` files which are typically used by Prisma ORM.
 
 This means that you need to make sure that Prisma ORM gets access to the environment variable when needed, e.g. when running a Prisma CLI command like `prisma migrate dev`.
@@ -135,6 +137,8 @@ The command is interactive and will ask you to enter the value for the `DATABASE
 This command requires you to be authenticated, and will ask you to log in to your Cloudflare account in case you are not.
 
 :::
+
+If your production database is not the one in `.dev.vars`, apply your migrations to it before you deploy the Worker: run [`prisma migrate deploy`](/orm/v7/prisma-migrate/workflows/development-and-production#production-and-testing-environments) with `DATABASE_URL` set to its connection string on the command, not in `.dev.vars`. For Cloudflare D1, apply migrations with Wrangler instead, as shown in [Set up database migrations](/guides/v7/deployment/cloudflare-d1#5-set-up-database-migrations).
 
 ### Size limits on free accounts
 

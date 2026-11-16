@@ -70,7 +70,7 @@ const SOURCES = [
       { label: "Vercel pricing", href: "https://vercel.com/pricing" },
       { label: "Vercel Pro plan", href: "https://vercel.com/docs/plans/pro-plan" },
       { label: "Neon pricing", href: "https://neon.com/pricing" },
-      { label: "Neon + Vercel", href: "https://neon.com/docs/guides/vercel-native-integration" },
+      { label: "Neon + Vercel", href: "https://neon.com/docs/guides/vercel-managed-integration" },
       { label: "Drizzle", href: "https://orm.drizzle.team" },
       { label: "Drizzle on Neon", href: "https://orm.drizzle.team/docs/get-started/neon-new" },
       {
@@ -213,7 +213,7 @@ function buildVercelNeonDrizzlePage(minutes: number) {
                 Neon
               </a>{" "}
               is the database: serverless Postgres with branching and scale-to-zero, billed by
-              compute.
+              compute and storage.
             </p>
             <p>
               <a href="https://vercel.com" className={INLINE}>
@@ -305,7 +305,7 @@ function buildVercelNeonDrizzlePage(minutes: number) {
           }))}
           note={
             <>
-              Prisma Postgres and Prisma Compute share one set of plans. Neon and Vercel price
+              Prisma Postgres and Prisma Compute are on one bill. Neon and Vercel price
               separately. Prisma ORM is free and open source, and always will be. Prisma Postgres
               Free is $0 a month for 200,000 operations, 2 GB of storage, and 50 databases. No
               credit card required. The{" "}

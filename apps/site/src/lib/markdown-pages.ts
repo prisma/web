@@ -103,7 +103,7 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
     path: "/postgres",
     title: "Prisma Postgres | Serverless PostgreSQL database for TypeScript apps",
     description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+      "Prisma Postgres is a serverless cloud PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing.",
     h1: productH1(postgresContent),
     subheadline: productSubheadline(postgresContent),
     renderBody: () => renderProductMarkdown({ content: postgresContent }),

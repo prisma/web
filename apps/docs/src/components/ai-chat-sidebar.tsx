@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { MessagesSquareIcon } from "lucide-react";
+import { SparklesIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { buttonVariants } from "@/components/ui/button";
@@ -27,6 +27,12 @@ const AIChatContent = dynamic(() => import("./ai-chat-content"), {
 
 interface AIChatSidebarProps {
   exampleQuestions?: string[];
+  /**
+   * Render the header's "Ask AI" buttons. The docs navbar turns them off:
+   * Ask AI is reached from search ("Search or ask AI…", Tab) and ⌘I, while
+   * this component still mounts the chat panel and the shortcut.
+   */
+  showTrigger?: boolean;
 }
 
 export const AIChatSidebar = ({
@@ -35,6 +41,7 @@ export const AIChatSidebar = ({
     "How do I use Prisma with Next.js?",
     "How do I deploy Prisma to Railway?",
   ],
+  showTrigger = true,
 }: AIChatSidebarProps) => {
   const { isOpen, setIsOpen } = useAIChatContext();
   const [hasOpened, setHasOpened] = useState(false);
@@ -73,40 +80,42 @@ export const AIChatSidebar = ({
 
   return (
     <Drawer open={isMobile ? isOpen : false} onOpenChange={isMobile ? setIsOpen : undefined}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "hidden shrink-0 shadow-none md:inline-flex items-center gap-2 h-8 group cursor-pointer",
-          // Pill hit area, matching the header's other controls.
-          "rounded-full border-stroke-neutral px-3",
-        )}
-      >
-        <MessagesSquareIcon className="size-4 text-fd-muted-foreground group-hover:text-fd-accent-foreground" />
-        <span>Ask AI</span>
-        <div className="ms-auto inline-flex gap-0.5">
-          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">
-            {isMac ? "⌘" : "Ctrl"}
-          </kbd>
-          <kbd className="rounded-md border bg-fd-background px-1.5 text-fd-muted-foreground group-hover:text-fd-accent-foreground">
-            I
-          </kbd>
-        </div>
-      </button>
-
-      <div className="md:hidden">
-        <DrawerTrigger asChild>
+      {showTrigger && (
+        <>
           <button
+            onClick={() => setIsOpen(!isOpen)}
             className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "shadow-none inline-flex items-center gap-1.5 rounded-full border-stroke-neutral px-3",
+              buttonVariants({ variant: "outline" }),
+              "quiet-hover hover:bg-transparent hidden shrink-0 md:inline-flex items-center gap-2 h-8 cursor-pointer",
+              // Pill hit area, matching the header's other controls.
+              "rounded-full border-stroke-neutral px-3",
             )}
           >
-            <MessagesSquareIcon className="size-3.5 text-fd-muted-foreground" />
+            <SparklesIcon className="size-4" />
             <span>Ask AI</span>
+            <div className="ms-auto inline-flex gap-0.5">
+              <kbd className="rounded-md border bg-fd-background px-1.5">
+                {isMac ? "⌘" : "Ctrl"}
+              </kbd>
+              <kbd className="rounded-md border bg-fd-background px-1.5">I</kbd>
+            </div>
           </button>
-        </DrawerTrigger>
-      </div>
+
+          <div className="md:hidden">
+            <DrawerTrigger asChild>
+              <button
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "quiet-hover hover:bg-transparent inline-flex items-center gap-1.5 rounded-full border-stroke-neutral px-3",
+                )}
+              >
+                <SparklesIcon className="size-3.5" />
+                <span>Ask AI</span>
+              </button>
+            </DrawerTrigger>
+          </div>
+        </>
+      )}
       {(isOpen || hasOpened) && (
         <AIChatContent
           exampleQuestions={exampleQuestions}

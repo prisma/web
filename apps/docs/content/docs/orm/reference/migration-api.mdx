@@ -550,13 +550,22 @@ override get operations() {
 | `createCollection(name, options?)` | `options`: `validator`, `validationLevel`, `validationAction`, `capped`, `size`, `max`, `timeseries`, `collation`, `changeStreamPreAndPostImages`, `clusteredIndex` | additive |
 | `dropCollection(name)` | | destructive |
 | `createIndex(collection, keys, options?)` | `keys`: a list of `{ field, direction }`; `options`: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, `default_language`, `language_override`, `wildcardProjection` | additive |
-| `dropIndex(collection, keys)` | the same `keys` the index was created with | destructive |
+| `dropIndex(collection, keys, options?)` | the same `keys` the index was created with; `options`: the index's `name` and every other option it has | destructive |
 | `setValidation(collection, schema, options?)` | `schema`: a JSON Schema object; `options`: `validationLevel` (`'strict'` or `'moderate'`) and `validationAction` (`'error'` or `'warn'`) | destructive |
 | `collMod(collection, options, meta?)` | `options`: `validator`, `validationLevel`, `validationAction`, `changeStreamPreAndPostImages: { enabled }`; `meta`: `id`, `label`, `operationClass` | destructive, unless you pass `meta: { operationClass: 'additive' }` |
 | `validatedCollection(name, schema, indexes)` | creates the collection with `schema` as its validator and one index per `{ keys, unique? }` entry, with `keys` as in `createIndex`. Returns a list of operations, so spread it: `...validatedCollection(...)` | additive |
 | `dataTransform(name, options)` | `options`: `run`, `check?`, `invariantId?` | data |
 
 `direction` is `1`, `-1`, `'text'`, `'2dsphere'`, `'2d'`, or `'hashed'`.
+
+`migration plan` writes each index's name into `createIndex` and `dropIndex`, and MongoDB creates and drops the index by that name:
+
+```ts title="migration.ts (excerpt)"
+createIndex('users', [{ field: 'email', direction: 1 }], { name: 'email_1', unique: true }),
+dropIndex('users', [{ field: 'legacy', direction: 1 }], { name: 'legacy_1', unique: true }),
+```
+
+A call without `name` uses the name after the keys and their directions, such as `email_1`, so a `migration.ts` written before index names were recorded keeps working. Before it runs, `dropIndex` checks that the collection has an index with that name, those keys, and exactly the options you pass, so list every option the index has, as `migration plan` writes them: `dropIndex('users', keys, { name: 'legacy_1' })` fails for a unique index. A `dropIndex` without options checks the keys and the name after them, such as `email_1`, and no other option. To drop an index with another name, pass its `name` and every other option it has. The id of an index operation names the index, as in `index.users.create(email_1)`.
 
 `dataTransform` on MongoDB takes no contract argument, and its `check` is an object whose `source` is a callback returning a query for the documents that still need the change. Its other two fields, `filter` and `expect`, are optional and you can leave them out. [Editing a migration](/orm/migrations/editing-a-migration#the-same-pattern-on-mongodb) shows a filled-in example.
 

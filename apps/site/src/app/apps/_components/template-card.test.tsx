@@ -21,7 +21,6 @@ function template(overrides: Partial<GalleryTemplate>): GalleryTemplate {
       href: "https://github.com/mdobaid311",
       logo: null,
     },
-    category: "app",
     useCase: "Booking",
     stack: [],
     publishedAt: null,

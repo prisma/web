@@ -25,7 +25,13 @@ export function HipaaCompliantMark({ className }: MarkProps) {
       aria-hidden
     >
       {/* Caduceus — winged staff with twin serpents */}
-      <g stroke={MARK_GREY} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <g
+        stroke={MARK_GREY}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      >
         <path d="M18 8.5 C14 6.5 10.5 7.5 9 10.5 C10.5 9 14 9.2 16.5 11" />
         <path d="M18 8.5 C22 6.5 25.5 7.5 27 10.5 C25.5 9 22 9.2 19.5 11" />
         <path d="M18 7.5 V36" />
@@ -166,11 +172,7 @@ export function GdprMark({ className }: MarkProps) {
       aria-hidden
     >
       {stars.map(({ cx, cy, key }) => (
-        <path
-          key={key}
-          d={starPath(cx, cy, 2.1)}
-          fill={MARK_GREY}
-        />
+        <path key={key} d={starPath(cx, cy, 2.1)} fill={MARK_GREY} />
       ))}
       <text
         x="22"
@@ -192,7 +194,7 @@ function starPath(cx: number, cy: number, r: number) {
   const pts: string[] = [];
   for (let i = 0; i < 5; i++) {
     const a = ((i * 72 - 90) * Math.PI) / 180;
-    const b = (((i * 72 + 36) - 90) * Math.PI) / 180;
+    const b = ((i * 72 + 36 - 90) * Math.PI) / 180;
     const x1 = cx + Math.cos(a) * r;
     const y1 = cy + Math.sin(a) * r;
     const x2 = cx + Math.cos(b) * (r * 0.4);

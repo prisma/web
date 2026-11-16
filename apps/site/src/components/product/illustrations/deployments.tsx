@@ -108,7 +108,7 @@ export function Deployments() {
         <div className="flex items-end gap-4 border-t border-border/60 pt-3.5">
           <p className="flex min-w-0 flex-1 items-center gap-2 font-mono text-[0.6875rem]">
             <span className="text-prism-cyan-500">$</span>
-            <span className="text-foreground">prisma deploy module.ts</span>
+            <span className="text-foreground">prisma deploy</span>
             <CheckBold className="size-3 shrink-0 text-prism-cyan-500" />
             <Bar className="w-10" />
           </p>

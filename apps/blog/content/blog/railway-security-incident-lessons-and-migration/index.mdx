@@ -2,7 +2,7 @@
 title: "Railway's security incident: How to secure your Prisma Postgres database, and what to do next"
 slug: "railway-security-incident-lessons-and-migration"
 date: "2026-10-23"
-updatedAt: "2026-11-03"
+updatedAt: "2026-11-09"
 authors:
   - "Ankur Datta"
 tags:
@@ -168,7 +168,7 @@ If you only wanted to move the database, you're done, and your application can k
 
 If your application is a supported TypeScript HTTP service, you can also run it on Prisma Compute. For an existing application, [Prisma Composer](https://www.prisma.io/docs/composer) describes your services, dependencies, and configuration.
 
-The idea is to add the configuration Compute needs to build and run your application: a `service.ts` declaration, a `module.ts` entry point, and Composer configuration in `prisma.config.ts`. Your server code changes too: it uses the port Compute provides and receives its database connection through a configured secret. The [Composer porting guide](https://www.prisma.io/docs/composer/porting-an-app) walks through those changes.
+The idea is to add the configuration Compute needs to build and run your application: a `service.ts` declaration, a `module.ts` entry point, and a `composer` section in `prisma.config.ts` whose `entry` names `./module.ts`. Your server code changes too: it uses the port Compute provides and receives its database connection through a configured secret. The [Composer porting guide](https://www.prisma.io/docs/composer/porting-an-app) walks through those changes.
 
 Once your application is configured, create a project for the service, add the database connection string as a secret, and deploy:
 
@@ -183,7 +183,7 @@ npx prisma@latest project env add POSTGRES_URL --role production
 
 npm run build
 
-npx prisma@latest deploy module.ts
+npx prisma@latest deploy
 ```
 
 I used `POSTGRES_URL` because Composer reserves names such as `DATABASE_URL` and `DATABASE_URL_POOLED` for databases it manages. Deploy the application into its own project rather than the database's; deploying into the database's project hit a Composer bootstrap error in my test.
@@ -209,3 +209,4 @@ If anything about your database looks wrong, email [support@prisma.io](mailto:su
 ## Update history
 
 - 2026-11-03: removed a status line about Prisma Composer from the deployment step, which now says that your server code changes too. The Railway PostgreSQL step now says that Regenerate redeploys running services that reference the password, and what still needs the new password by hand. It also now separates a standalone database, which restarts, from a high availability cluster, which doesn't. Sources: Prisma's Composer porting guide, Railway's Database View docs and 2026-10-30 changelog, checked 2026-11-02.
+- 2026-11-09: the deployment step runs `npx prisma@latest deploy` without `module.ts` and says the `composer` section of `prisma.config.ts` names the entry, because since `prisma@8.0.0-rc.28` the CLI reads the entry from there and a file name on the command line fails with `CLI.INVALID_ARGUMENTS`. Source: Prisma's [`deploy` reference](https://www.prisma.io/docs/cli/deploy) and [changelog](https://www.prisma.io/changelog/2026-10-30), checked 2026-11-09.

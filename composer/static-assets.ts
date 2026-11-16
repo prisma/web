@@ -8,6 +8,8 @@ export type StaticAsset = {
   contentType: string;
   current: boolean;
   expiresAt?: number;
+  /** Build-time compressed bytes; the identity SHA remains the content version. */
+  brotliBytes?: number;
 };
 
 export type StaticAssets = {

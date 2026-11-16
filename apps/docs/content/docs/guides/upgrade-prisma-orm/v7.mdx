@@ -1,6 +1,6 @@
 ---
 title: Upgrade to v7
-description: Guide for upgrading to Prisma ORM v7
+description: 'Use when an app on Prisma ORM 6 or earlier is moving to Prisma ORM 7 and staying there; to go to Prisma 8, start at Upgrade to Prisma 8'
 url: /guides/upgrade-prisma-orm/v7
 metaTitle: 'Upgrade to Prisma ORM 7'
 metaDescription: 'Guide on how to upgrade to Prisma ORM 7'
@@ -9,9 +9,9 @@ metaDescription: 'Guide on how to upgrade to Prisma ORM 7'
 
 Prisma ORM v7 introduces **breaking changes** when you upgrade from an earlier Prisma ORM version. This guide explains how this upgrade might affect your application and gives instructions on how to handle any changes.
 
-:::note[Upgrading to Prisma ORM 8?]
+:::note[Not for an upgrade to Prisma 8]
 
-Prisma ORM 8 is a [release candidate](/orm/release-status). If you are moving a Prisma ORM 7 project to Prisma ORM 8, use the [PostgreSQL](/guides/upgrade-prisma-orm/postgresql) or [MongoDB](/guides/upgrade-prisma-orm/mongodb) upgrade guide instead.
+This guide is for apps staying on Prisma ORM 7. To go to Prisma 8, a [release candidate](/orm/release-status), see [Upgrade to Prisma 8](/guides/upgrade-prisma-orm). On PostgreSQL, a Prisma ORM 6 app does not need to pass through Prisma ORM 7 first.
 
 :::
 
@@ -167,6 +167,14 @@ const prisma = new PrismaClient({
 
 #### After
 
+Install the driver adapter for your database. For PostgreSQL, that is `@prisma/adapter-pg`:
+
+```npm
+npm install @prisma/adapter-pg@7
+```
+
+Then pass the adapter to `PrismaClient`:
+
 ```ts
 import { PrismaClient } from "./generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -177,7 +185,15 @@ const adapter = new PrismaPg({
 export const prisma = new PrismaClient({ adapter });
 ```
 
-If you are using SQLite, you can use the `@prisma/adapter-better-sqlite3`:
+If you are using SQLite, install `@prisma/adapter-better-sqlite3`:
+
+```npm
+npm install @prisma/adapter-better-sqlite3@7
+```
+
+With pnpm 10 or later, allow the `better-sqlite3` build script to run, as pnpm's [`approve-builds`](https://pnpm.io/cli/approve-builds) page describes for your pnpm version and workspace layout. The script installs the native binding that the adapter loads, and pnpm does not run the build scripts of dependencies until you approve them.
+
+Then pass it to `PrismaClient`:
 
 ```ts
 import { PrismaClient } from "./generated/prisma/client";
@@ -298,6 +314,8 @@ export default defineConfig({
   },
 });
 ```
+
+To try the upgraded project against a database, see [Verify the upgrade](#verify-the-upgrade).
 
 ### Metrics removed
 
@@ -505,3 +523,19 @@ We've removed a small selection of Prisma-specific environment variables.
 - `PRISMA_CLIENT_NO_RETRY`
 - `PRISMA_MIGRATE_SKIP_GENERATE`
 - `PRISMA_MIGRATE_SKIP_SEED`
+
+## Verify the upgrade
+
+Finish the upgrade by applying your schema and running your tests against a database. If the database in `.env` cannot be reached from where you are working, Prisma CLI commands fail with `P1001` and your tests fail with a connection error such as `ECONNREFUSED`. In that case, or to keep your own database out of the check, use a temporary database. For a PostgreSQL project, [`npx create-db`](/postgres/npx-create-db) creates a temporary [Prisma Postgres](/postgres) database without an account. The temporary database is deleted after 24 hours unless you claim it with a free Prisma account, using the claim URL the command prints.
+
+The commands below write nothing to `.env`. `--url` overrides the datasource URL from the Prisma config file for that command, whichever variable the config reads, and needs Prisma ORM 7.2.0 or later. `${TEST_DATABASE_URL:?}` stops the command if the variable is empty, because `db push` ignores an empty `--url` and connects to the database from the config. The last line sets `DATABASE_URL` for the test command only. By default, `dotenv` does not replace a variable that is already set, so your client uses this value in place of the one in `.env`. If your client reads another variable, set that one on the last line.
+
+```bash
+TEST_DATABASE_URL="$(npx -y create-db@latest --quiet)" &&
+npx prisma db push --url "${TEST_DATABASE_URL:?}" &&
+DATABASE_URL="$TEST_DATABASE_URL" npm test
+```
+
+`db push` creates the tables from your Prisma schema and does not run the files in `prisma/migrations`. It prints the host it connects to, which is `db.prisma.io` for the temporary database, and then `Your database is now in sync with your Prisma schema.`
+
+Replace `npm test` with your own test command. To use another empty database, such as a local one, set `TEST_DATABASE_URL` to its connection string in place of the `create-db` call.

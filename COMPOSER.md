@@ -16,6 +16,10 @@ flowchart LR
   gateway -->|"/eclipse and /eclipse-static"| eclipse[Eclipse]
 ```
 
+The [November cutover remediation and operations runbook](COMPUTE_CUTOVER_REMEDIATION.md)
+tracks the audit findings, required production integration settings, optional
+CDN purge, public-host verification and rollback procedure.
+
 ## Local development
 
 Use Node 22.18+, 24.11+, or 26+, and the repository's pnpm version:
@@ -192,7 +196,7 @@ only when selected with `COMPOSER_INTEGRATIONS`, a comma-separated list:
 | `mixedbread` | Site, docs, blog | `MIXEDBREAD_API_KEY` |
 | `brevo` | Site, docs, blog | `BREVO_API_KEY` |
 | `extensions` | Site | `GITHUB_EXTENSIONS_TOKEN` |
-| `linear` | Docs | `GITHUB_WEBHOOK_SECRET`, `BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK`, `LINEAR_API_KEY` |
+| `linear` | Docs | `GITHUB_WEBHOOK_SECRET`, `BOT_TOKEN_GITHUB_PR_LINEAR_WEBHOOK`, `LINEAR_API_KEY`, `LINEAR_TEAM_ID` |
 
 For local development, copy `.env.example` to `.env`, set e.g.
 `COMPOSER_INTEGRATIONS=mixedbread,brevo`, and supply the corresponding keys.
@@ -202,10 +206,11 @@ so external integration calls require real values.
 
 `composer/integrations.ts` binds only enabled credentials used by each website.
 Deploy preflight requires every bound `envSecret`, even for optional input
-fields. The default empty selection lets a new project deploy before credentials
-are configured. Enabling an integration requires its real secrets in the target
+fields. An empty selection lets a new preview deploy before credentials are configured.
+The production workflow requires `mixedbread` and the public PostHog key so it
+cannot silently ship working pages with broken search or analytics. Enabling an integration requires its real secrets in the target
 project's Preview or Production environment; no cloud placeholders are created.
-Optional input fields cover extension repository settings, the Linear team, canonical
+Optional input fields cover extension repository settings, canonical
 URL, and Agent Front settings. Add explicit `envParam`/`envSecret` bindings for
 the integrations you want when configuring the production workspace. Optional
 Agent Front credentials are not bound by default. `NEXT_PUBLIC_*` values,
@@ -245,9 +250,10 @@ environment is `prisma-production`; branch previews use
 `prisma-preview/<branch-name>`. A repository-level variable applies to both, so
 all selected secrets must exist in both scopes when using that option.
 
-Public PostHog build values come from the existing `NEXT_PUBLIC_POSTHOG_KEY`
-and `NEXT_PUBLIC_POSTHOG_HOST` GitHub secrets, with same-named repository
-variables as a fallback. These are Next build inputs, separate from runtime
+The public PostHog build key comes from the existing `NEXT_PUBLIC_POSTHOG_KEY`
+GitHub secret, with the same-named variable as a fallback. The public proxy host
+is pinned in shared code to `https://proxyhog.prisma-data.net`, aligned with CSP. These are Next build inputs,
+separate from runtime
 `envSecret` bindings. Consent providers must also support the deployed hostname;
 an unregistered preview domain can fail even when its scripts load successfully.
 
@@ -332,13 +338,20 @@ without retention enabled also keep the five-minute HTML window. The public
 `/_composer/static-assets.json` manifest and its digest-addressed file endpoints
 contain only public Next assets, with no server source or credentials.
 
-Only successful prerendered HTML or explicitly public MDX documents can opt in;
-other request-rendered/private pages, errors,
-cookie-setting responses, authorization and Next navigation requests cannot.
+Successful prerendered HTML or explicitly public MDX documents can opt in;
+other request-rendered/private pages, cookie-setting responses, authorization
+and Next navigation requests cannot. Prerendered public HTML 404s get only a
+15-second edge lifetime, and requests with cookies cannot opt into that policy.
+Missing Next static files return a small plain-text 404 without rendering an app.
 Cookies do not personalize these public documents. Query parameters stay in the
 CDN's full cache key, so tracked visits can reuse their own public HTML entry
-without conflating search/filter URLs. `_rsc` variants remain excluded. APIs,
-Markdown retains its upstream policy. RSC/navigation requests receive
+without conflating search/filter URLs. Mutable sitemap/RSS XML, robots, LLM text
+and public Markdown get a 60-second edge lifetime plus 300 seconds SWR; browsers
+revalidate. Browser HTML does not acquire a per-browser User-Agent cache key.
+The apps still negotiate Markdown by UA: UA-only Markdown is no-store, while
+explicit `Accept: text/markdown` uses the stable document Vary schema. Cached
+HTML remains a valid fallback for UA-only agents. APIs and `_rsc` variants remain
+excluded. RSC/navigation requests receive
 `CDN-Cache-Control: no-store` at the gateway until deployment-aware navigation
 caching is available; a generic CDN must not store Next’s default one-year TTL.
 The public-file inventory is generated from all five apps' `public` directories;
@@ -348,6 +361,9 @@ the roughly 442 KB inventory. The gateway supplies content validators instead
 of Next's size/mtime tags, which can miss same-size edits when archive timestamps
 are fixed. Identity files have strong ETags; encoded files have weak validators.
 Conditional reads and If-Range use the content digest, without buffering bodies.
+Impossible single byte ranges are rejected before reaching Bun/Next. Public Next
+static text is Brotli-compressed on the builder and streamed by the gateway when
+accepted; identity files remain available for ranges and retention downloads.
 
 Docs and blog article routes deliberately render repository MDX on demand to fit
 the file budget. Their Composer-only `X-Composer-Public-Document` response marker

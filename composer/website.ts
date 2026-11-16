@@ -24,7 +24,7 @@ const input = type({
   "NEXT_PUBLIC_PRISMA_URL?": "string",
   "EXTENSIONS_REPO?": "string",
   "EXTENSIONS_BASE_BRANCH?": "string",
-  "LINEAR_TEAM_ID?": "string",
+  "LINEAR_TEAM_ID?": secretString(),
   "ORA_DOMAIN_ID?": "string",
   "ORA_POLICY_URL?": "string",
   "ORA_EDGE?": "string",

@@ -25,7 +25,7 @@ The first non-blank line of every contract file is `// use prisma-8`, because `c
 // use prisma-8
 
 types {
-  ShortName = VarChar(35)
+  ShortName = String(storage: varchar, length: 35)
 }
 
 type Address {
@@ -133,7 +133,41 @@ Set `contract` to a glob, such as `"./src/prisma/**/*.prisma"`, to write the con
 
 ## Models and fields
 
-Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`. On PostgreSQL, plain `String` is a `text` column, `Int` is `int4`, and `DateTime` is `timestamptz(3)`. You can also use one of these PostgreSQL types as the field type: `VarChar`, `Char`, `Numeric`, `Uuid`, `Inet`, `SmallInt`, `Real`, `Bit`, `VarBit`, `Xml`, `Oid`, `Money`, or one of the date and time types below. Their arguments are optional: `VarChar(35)`, `Char(2)`, `Bit(8)`, and `VarBit(64)` set a length, `Numeric(10, 2)` sets a precision and scale, and `TimestamptzTemporal(3)` or `DateTime(precision: 6)` sets how many digits of a second are kept. Write each argument as a whole number without quotes: `VarChar("35")` and `VarChar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Xml` reads and writes text and has no equality, so no filter can compare it. `Oid` reads a whole number from 0 to 4294967295. `Money` reads a decimal string with two fraction digits, such as `"-1234.56"`, whatever the database's locale.
+Models declare fields with a type, an optional `?` marker, and attributes. [Scalar fields](/orm/data-modeling#scalar-fields) lists the types a field can hold, among them `String`, `Int`, `Boolean`, `Decimal`, `DateTime`, `Json`, and `Bytes`.
+
+On PostgreSQL, `Int`, `BigInt`, `Float`, `Decimal`, `String`, `Boolean` and `Bytes` are convenience types, named for what the field means. Each becomes one explicit type, which is named after the database type and sets the column and the kind of value your code reads. Written bare, each gives the type in the first row for it below. For `Int`, `BigInt`, `Float` and `String`, the `storage` argument chooses another column. `Decimal`, `Boolean` and `Bytes` have only the one column shown. `as` chooses what your code reads from a `BigInt`:
+
+| Written | Becomes | Column | Your code reads |
+| --- | --- | --- | --- |
+| `Int` | `Int4` | `int4` | a `number` |
+| `Int(storage: int2)` | `Int2` | `int2` | a `number` |
+| `BigInt` | `Int8BigInt` | `int8` | a `bigint` |
+| `BigInt(as: number)` | `Int8Number` | `int8` | a `number`; a read or write outside the safe integer range fails |
+| `BigInt(storage: numeric)` | `NumericBigInt` | `numeric` | a `bigint` of any size |
+| `Float` | `Float8` | `float8` | a `number` |
+| `Float(storage: float4)` | `Float4` | `float4` | a `number` |
+| `Decimal` | `NumericString` | `numeric` | a decimal string |
+| `String` | `Text` | `text` | a `string` |
+| `String(storage: varchar)` | `Varchar` | `varchar` | a `string` |
+| `String(storage: char)` | `Char` | `char` | a `string` |
+| `Boolean` | `Bool` | `bool` | a `boolean` |
+| `Bytes` | `Bytea` | `bytea` | a `Uint8Array` |
+
+`Decimal` also takes `precision` and `scale`, and `String` with `storage: varchar` or `storage: char` takes `length`, as in `Decimal(precision: 10, scale: 2)` and `String(storage: varchar, length: 35)`. Write these three by name, because a positional argument fills `storage` first: `Decimal(10, 2)` is refused at `storage`. `String(length: 35)` is refused too, because a bare `String` is a `text` column, which has no length. The contract stores only the explicit type, so you can also write the explicit type itself, such as `Int2`, `Varchar(35)` or `NumericString(10, 2)`.
+
+You can also use one of these PostgreSQL types as the field type: `Uuid`, `Inet`, `Bit`, `Varbit`, `Xml`, `Oid`, `Money`, or one of the date and time types below. `Bit(8)` and `Varbit(64)` set a length, and `TimestamptzTemporal(3)` or `DateTime(precision: 6)` sets how many digits of a second are kept. Write each length, precision and scale as a whole number without quotes: `Varchar("35")` and `Varchar(35.0)` are refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. `Xml` reads and writes text and has no equality, so no filter can compare it. `Oid` reads a whole number from 0 to 4294967295. `Money` reads a decimal string with two fraction digits, such as `"-1234.56"`, whatever the database's locale.
+
+The names `SmallInt`, `BigIntNumber`, `Numeric`, `UnboundedInt`, `Real`, `VarChar` and `VarBit` are deprecated. They still work and give the same contract, but `contract emit` and the editor report the warning `PSL_DEPRECATED_SCALAR_NAME` where one is written, and they will be removed. Write the convenience type that gives the same type instead. `VarBit` has no convenience type, so write the explicit type `Varbit`:
+
+| Deprecated | Write instead |
+| --- | --- |
+| `SmallInt` | `Int(storage: int2)` |
+| `BigIntNumber` | `BigInt(as: number)` |
+| `Numeric(10, 2)` | `Decimal(precision: 10, scale: 2)` |
+| `UnboundedInt` | `BigInt(storage: numeric)` |
+| `Real` | `Float(storage: float4)` |
+| `VarChar(12)` | `String(storage: varchar, length: 12)` |
+| `VarBit(16)` | `Varbit(16)` |
 
 On PostgreSQL, a date or time field is written with one of four types named for what the field means. Each becomes one explicit type, which names the column and the kind of value your code reads. At their defaults they need no `Temporal`:
 
@@ -193,19 +227,19 @@ model Post {
 }
 ```
 
-Each function makes a value for the field's type: `uuid()` works on `String`, `VarChar(n)`, `Char(n)`, and `Uuid`, and `now()` works on every PostgreSQL date and time type, `Date`, `Time`, and `Timetz` included. The database does not fill these columns, so a row written by raw SQL or another application gets no value. A field may have both a database `@default` and an `@onCreate(...)`: `createdAt DateTime @default(now()) @onCreate(now())` takes its time from your application when Prisma ORM creates the row, and from the database for other inserts. On an optional field, `@onCreate(...)` fills the field when you leave it out, and an explicit `null` is stored as `null`.
+Each function makes a value for the field's type: `uuid()` works on `String`, `Varchar(n)`, `Char(n)`, and `Uuid`, and `now()` works on every PostgreSQL date and time type, `Date`, `Time`, and `Timetz` included. The database does not fill these columns, so a row written by raw SQL or another application gets no value. A field may have both a database `@default` and an `@onCreate(...)`: `createdAt DateTime @default(now()) @onCreate(now())` takes its time from your application when Prisma ORM creates the row, and from the database for other inserts. On an optional field, `@onCreate(...)` fills the field when you leave it out, and an explicit `null` is stored as `null`.
 
 `@onUpdate(...)` alone generates nothing on create. If a required field has `@onUpdate(...)` and no `@onCreate(...)` or `@default`, you must pass a value for it in ORM `create` and `upsert`. To have it generated on create too, add `@onCreate(...)`.
 
 `@default(uuid())` and the other functions that generate a value are refused in `@default` with `PSL_GENERATOR_IN_DEFAULT`, which names the `@onCreate(...)` to write. `@default(now())` and `@default(autoincrement())` stay: they are database defaults.
 
-An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The value a function writes must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `VarChar(5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a bare `VarChar` has no limit.
+An argument a function does not take, such as `uuid(5)`, `cuid(1)`, or `nanoid(300)`, is refused with `PSL_INVALID_GENERATOR_ARGUMENT`, and `cuid()` needs its version, `cuid(2)`. An argument written with a fraction, such as `nanoid(8.0)`, or in quotes, is refused with `PSL_VALUE_TYPE_INCOMPATIBLE`. The value a function writes must also fit its column: `uuid()` writes 36 characters, `ksuid()` 27, `ulid()` 26, `cuid(2)` 24, `nanoid()` 21, and `nanoid(n)` `n`, so `String(storage: varchar, length: 5) @onCreate(uuid())` is refused when you run `contract emit`. A bare `Char` holds one character, and a `varchar` without a length has no limit.
 
 For the column of a generated identifier, write its type alias. `UuidString`, `Ulid`, `Nanoid`, `Cuid2` and `Ksuid` are `Char(36)`, `Char(26)`, `Char(21)`, `Char(24)` and `Char(27)`, as in `id Ulid @id @onCreate(ulid())`. The alias sets only the column, so the field writes `@id` and `@onCreate(...)` itself, and a foreign key that holds the identifier uses the alias alone, as in `authorId Ulid`. On SQLite, write the aliases in the `sql` namespace, such as `sql.Ulid`, and a fixed-length text column as `sql.Char(n)`. On PostgreSQL a new schema can store a UUID in the native `Uuid` column instead, as `id Uuid @id @onCreate(uuid(7))`.
 
 :::note[Upgrading from before `8.0.0-rc.21`]
 
-Field presets, such as `id.ulid()`, `nanoid({ size: 12 })`, `json()` and `temporal.updatedAt()`, are removed. `prisma contract emit` refuses each one with `PSL_UNRESOLVED_REFERENCE`, and the message gives the exact rewrite, such as `Ulid @id @onCreate(ulid())`, `Char(12)`, `Jsonb` or `temporal.UpdatedAt`. Each rewrite stores the same contract as the preset did before `8.0.0-rc.22`. Since `8.0.0-rc.22`, `temporal.UpdatedAt` is a `timestamptz(3)` column read as a `Date`, where `temporal.updatedAt()` read a `Temporal.Instant`, so follow the `8.0.0-rc.22` upgrade instructions for those fields.
+Field presets, such as `id.ulid()`, `nanoid({ size: 12 })`, `json()` and `temporal.updatedAt()`, are removed. `prisma contract emit` refuses each one with `PSL_UNRESOLVED_REFERENCE`, and the message gives the exact rewrite, such as `Ulid @id @onCreate(ulid())`, `Char(12)`, `Jsonb` or `temporal.UpdatedAt`. Each rewrite stores the same contract as the preset did before `8.0.0-rc.22`. Since `8.0.0-rc.22`, `temporal.UpdatedAt` is a `timestamptz(3)` column read as a `Date`, where `temporal.updatedAt()` read a `Temporal.Instant`, so follow the upgrade instructions for those fields that came out with that release.
 
 :::
 
@@ -267,7 +301,7 @@ model Account {
 - A fixed date, time, or interval is a tagged literal named after the column's PostgreSQL type: `timestamptz` for `DateTime` and the other `timestamptz` types, and `timestamp`, `date`, `time`, `timetz`, and `interval` for the types of those names, as in ``@default(interval`P1D`)``. A `timestamptz` default is a point in time with a UTC offset, such as ``timestamptz`2024-01-01T00:00:00Z` ``, and a `timestamp` default has no offset, such as ``timestamp`2024-01-01 00:00:00` ``. A quoted string on one of these fields is refused, and the message shows the tagged literal to write.
 - A `Bytes` default is a `bytea` tagged literal holding the bytes as hexadecimal after `\x`, as `payload` shows. Base64 text is not accepted.
 - On SQLite, a `DateTime` default uses the `datetime` tag, as in ``@default(datetime`2024-01-01T00:00:00Z`)``, and a `Bytes` default the `blob` tag, which holds hexadecimal digits, as in ``@default(blob`68656c6c6f`)``.
-- Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `VarChar(n)` or `Char(n)` takes, a number a `Numeric(p, s)` would round, more digits of a second than a `TimestamptzTemporal(3)` keeps, digits below a millisecond on a field read as a JavaScript `Date`, which cannot hold them (also on MySQL's `DateTime`), an integer outside the range of `Int` or `SmallInt`, or text that is not a UUID on a `Uuid` field.
+- Each default, and each member of an `enum`, is checked by the column's type, so a value the column cannot hold unchanged is refused: more characters than a `varchar(n)` or `char(n)` column takes, a number a `numeric(p, s)` column would round, more digits of a second than a `TimestamptzTemporal(3)` keeps, digits below a millisecond on a field read as a JavaScript `Date`, which cannot hold them (also on MySQL's `DateTime`), an integer outside the range of `Int` or `Int(storage: int2)`, or text that is not a UUID on a `Uuid` field.
 - A date or time default that the field's type does not hold makes `contract emit` fail with `PSL_INVALID_DEFAULT_LITERAL`, and the message shows a text the field takes. That includes an offset on a `timestamp`, `date`, or `time` default, a missing offset on a `timestamptz` or `timetz` default, more than six digits after the decimal point (three on SQLite), and a date or time that does not exist, such as `2024-02-30`. The CLI checks these defaults on Node.js 24 too, which has no built-in `Temporal`.
 - On a field typed with an `enum` block, the default is the member's name without quotes, as in `@default(Low)`. On a `pg.enum(...)` field, it is the value the member stores, in quotes, as in `@default("admin")`. [Enums](#enums) covers both.
 - Any other SQL expression is a `sql` tagged literal, and it goes into the column default exactly as written. Write the current time as `now()` and a sequence as `autoincrement()`, not as `` sql`now()` `` or `` sql`autoincrement()` ``, which are refused.
@@ -401,11 +435,11 @@ The `types` block gives a database column type a name you can reuse on many fiel
 
 ```prisma
 types {
-  ShortName = VarChar(35)
+  ShortName = String(storage: varchar, length: 35)
 }
 ```
 
-Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. You do not have to name a type: a field can use the native PostgreSQL type directly, such as `VarChar(35)`, `Numeric(10, 2)`, `Uuid`, or `TimestamptzTemporal`.
+Fields then use `ShortName` like any built-in type. The name keeps the column decision in one place: a `varchar(35)` column rather than `text`. You do not have to name a type: a field can use the type directly, such as `String(storage: varchar, length: 35)`, `Decimal(precision: 10, scale: 2)`, `Uuid`, or `TimestamptzTemporal`.
 
 A named type is shorthand: the contract stores the column type, not the name.
 
@@ -413,7 +447,7 @@ A named type can also set `@default`, `@onCreate` and `@onUpdate`, and every fie
 
 ```prisma
 types {
-  Slug      = VarChar(64)
+  Slug      = String(storage: varchar, length: 64)
   UpdatedAt = TimestampString(3) @onCreate(now()) @onUpdate(now())
 }
 
@@ -431,15 +465,15 @@ model Post {
 
 Prisma ORM provides two named types you do not declare: `temporal.CreatedAt`, set to the current time on create, and `temporal.UpdatedAt`, set on create and on every update. Write them without parentheses, as `createdAt` does above. On PostgreSQL they store a `timestamptz(3)` column that your code reads as a JavaScript `Date`. They take no arguments. For a string, a `Temporal` value or a precision, write the type and the attributes yourself, such as `DateTime(as: string) @onCreate(now()) @onUpdate(now())`, as `UpdatedAt` above does.
 
-Three types cover big integers, and they differ in what your code receives:
+Each form of `BigInt` gives your code a different kind of value:
 
 | Type | Column | In your code |
 | --- | --- | --- |
 | `BigInt` | `bigint` | a JavaScript `bigint` |
-| `BigIntNumber` | `bigint` | a JavaScript `number`; a read or write outside the safe integer range fails |
-| `UnboundedInt` | `numeric` | a JavaScript `bigint` of any size |
+| `BigInt(as: number)` | `bigint` | a JavaScript `number`; a read or write outside the safe integer range fails |
+| `BigInt(storage: numeric)` | `numeric` | a JavaScript `bigint` of any size |
 
-In Prisma ORM 8 the native type is the field's type, so `String @db.VarChar(35)` from Prisma ORM 7 becomes `VarChar(35)`, and the `@db.` attributes are gone. The `types` block works on PostgreSQL, SQLite and MongoDB. On MongoDB a named type cannot set `@default`, because MongoDB has no database defaults; [MongoDB data modeling](/orm/data-modeling/mongodb#named-types) covers the differences.
+In Prisma ORM 8 the field's type sets the column, so `String @db.VarChar(35)` from Prisma ORM 7 becomes `String(storage: varchar, length: 35)`, and the `@db.` attributes are gone. The `types` block works on PostgreSQL, SQLite and MongoDB. On MongoDB a named type cannot set `@default`, because MongoDB has no database defaults; [MongoDB data modeling](/orm/data-modeling/mongodb#named-types) covers the differences.
 
 ## Enums
 
@@ -676,11 +710,31 @@ model User {
 }
 ```
 
-`sort(field, Asc)` or `sort(field, Desc)` in the field list sets a field's direction; this form is MongoDB only. Since `8.0.0-rc.17` the earlier `field(sort: Desc)` form is refused. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), `default_language` and `languageOverride` for a `type: "text"` index, `include` or `exclude` for a wildcard index, and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options. There is no `name:` on MongoDB; MongoDB names the index from its keys.
+`sort(field, Asc)` or `sort(field, Desc)` in the field list sets a field's direction; this form is MongoDB only. Since `8.0.0-rc.17` the earlier `field(sort: Desc)` form is refused. The keys in `weights` are field names, quoted. The named arguments are `type` (`"text"`, `"2dsphere"`, `"2d"`, or `"hashed"`), `sparse`, `expireAfterSeconds`, `filter` (a partial filter expression, written as a JSON string), `default_language` and `languageOverride` for a `type: "text"` index, `include` or `exclude` for a wildcard index, and the collation options `collationLocale`, `collationStrength`, `collationCaseLevel`, `collationCaseFirst`, `collationNumericOrdering`, `collationAlternate`, `collationMaxVariable`, `collationBackwards`, and `collationNormalization`. `@@textIndex` takes `weights`, `language`, `languageOverride`, `filter`, and the same collation options.
+
+Every index in the contract has the name MongoDB stores it under, and migrations create and drop each index by that name. An index without a name is named after its keys and their directions, such as `email_1`, or `createdAt_-1_authorId_1` for `createdAt` descending and `authorId` ascending. That is the name MongoDB gives an index created without one. To choose the name, write `map:` on `@@index`, `@@unique`, `@@textIndex` or `@unique`:
+
+```prisma title="src/prisma/contract.prisma"
+model User {
+  id    ObjectId @id @map("_id")
+  email String   @unique
+
+  @@index([email], sparse: true, map: "email_sparse")
+  @@map("users")
+}
+```
+
+Without the `map:`, both indexes in this model would be named `email_1`, and MongoDB cannot hold two indexes with one name, so `contract emit` refuses the second with `PSL_INVALID_INDEX`. Two indexes on the same field in two variants of one base need a `map:` each for the same reason, such as `@@index([title], map: "bug_title")` on `Bug` and `@@index([title], map: "feature_title")` on `Feature`. An empty `map:` is refused.
+
+:::note[Upgrading a MongoDB project from before `8.0.0-rc.23`]
+
+Index names are new in the contract, so every MongoDB contract with an index gets a new storage hash. An index without a name is named after its keys, such as `email_1`, which is the name earlier releases gave it in the database, so the database does not change. Earlier releases matched an index by its keys alone, so an index created under another name, such as by hand, also passed. It now fails `db verify` and `db sign`. Before you emit, list the names MongoDB holds, such as with `db.users.getIndexes()` in `mongosh`, and give each index whose name differs that name with `map:`, or with `name` in TypeScript. If two databases that share the contract hold one index under different names, one `map:` cannot match both, and MongoDB cannot rename an index: in one of them, drop the index and create it again under the contract's name, such as with `dropIndex` and `createIndex` in `mongosh`. Then run `npx prisma contract emit`, then run the `mongo-index-names` script from the [upgrade instructions](https://github.com/prisma/orm/blob/v8.0.0-rc.23/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.22-to-8.0.0-rc.23/) to add the names to the contract copies under `migrations/snapshots/`. Then run `npx prisma db sign`, or plan a migration, which has no operations, and apply it with `npx prisma db migrate --advance-ref db`. A script or test that matches an index operation id, such as `index.users.create(email:1)`, now matches the name, as in `index.users.create(email_1)`.
+
+:::
 
 A wildcard index covers every field under a path, which is how you index documents whose keys you do not know in advance. Write `wildcard()` in the field list to cover the whole document, or `wildcard(meta)` to cover the fields under `meta`; the key becomes `$**` or `meta.$**`. `include` and `exclude` are lists of field names, quoted, that narrow what the index covers; give one or the other, and only with `wildcard()`. An index can hold one `wildcard()`, and it cannot be an `@@unique`, take `expireAfterSeconds`, or set a `type:` such as `"hashed"`.
 
-`contract emit` refuses, with `PSL_INVALID_INDEX`, any other index MongoDB would refuse, such as a `type: "hashed"` index on several fields, collation options without `collationLocale`, or a second text index in one collection. Two indexes in one collection with the same fields and options become one index, counting an option set to `false` as left out. So does a plain index beside a unique index on the same fields with otherwise the same options, such as `@unique` and `@@index([email])` on one field: the contract keeps the unique index, which serves every query the plain one would. Indexes on the same fields with a different collation, partial filter or other option stay separate. A TypeScript contract follows the same rules, as [the MongoDB builder](/orm/contract-authoring/typescript-schema-builder#how-definecontract-works) describes.
+`contract emit` refuses, with `PSL_INVALID_INDEX`, any other index MongoDB would refuse, such as a `type: "hashed"` index on several fields, collation options without `collationLocale`, or a second text index in one collection. Two indexes in one collection with the same fields, options and name become one index, counting an option set to `false` as left out. So does a plain index beside a unique index on the same fields with otherwise the same options, such as `@unique` and `@@index([email])` on one field: the contract keeps the unique index, which serves every query the plain one would. Indexes on the same fields with a different collation, partial filter or other option stay separate, so give one of them a name with `map:`. Two identical indexes with different names are refused with `PSL_INVALID_INDEX`, because MongoDB cannot hold one index twice: remove one, or give both the same name, which merges them. A TypeScript contract follows the same rules, as [the MongoDB builder](/orm/contract-authoring/typescript-schema-builder#how-definecontract-works) describes.
 
 ## Base models and variants
 
@@ -709,11 +763,11 @@ Field and model names are written bare, as `type` and `Task` are, while table na
 
 The discriminator field must be required and hold one value, so it cannot be optional (`?`) or a list (`[]`); since `8.0.0-rc.20` this holds on every database. It must also have a text type:
 
-- on PostgreSQL, `String`, `Char(n)` or `VarChar(n)`;
+- on PostgreSQL, `String`, `Char(n)` or `Varchar(n)`;
 - on SQLite, `String` or `sql.String(n)`, SQLite's text type with a length;
 - on MongoDB, `String`.
 
-A [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. On PostgreSQL and SQLite, your code reads the discriminator field as one of its variants' values, such as `'bug' | 'feature'`, not as any `string`. On PostgreSQL, a table whose control policy is managed also gets a check on the discriminator column, named `<table>_<column>_check_<hash>`, that accepts only those values. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be the value a member stores, such as `"bug"` for `Bug = "bug"`, or `contract emit` lists the values you can write. A `@@base` value the field's type refuses, such as one longer than a `VarChar(5)` holds, is `PSL_VALUE_REFUSED`.
+A [named type](#named-types) for one of these, such as `Kind = String` on MongoDB, can type a discriminator too. On PostgreSQL and SQLite, your code reads the discriminator field as one of its variants' values, such as `'bug' | 'feature'`, not as any `string`. On PostgreSQL, a table whose control policy is managed also gets a check on the discriminator column, named `<table>_<column>_check_<hash>`, that accepts only those values. A field that breaks a rule is refused at `@@discriminator` with `PSL_INVALID_ATTRIBUTE_ARGUMENT`, as in `must be required, but it is optional. Remove the "?"`. When a text `enum` types the discriminator field, each `@@base` value must be the value a member stores, such as `"bug"` for `Bug = "bug"`, or `contract emit` lists the values you can write. A `@@base` value the field's type refuses, such as one longer than a `Varchar(5)` holds, is `PSL_VALUE_REFUSED`.
 
 A variant can be in a different `namespace` block from its base, on PostgreSQL a different schema. Name the base with its namespace, as in `@@base(a.Task, "chore")`. In `contract.json`, the base model lists its variants by discriminator value, each naming the variant model and its namespace: `"variants": { "bug": { "model": "Bug", "namespace": "public" } }`.
 
@@ -767,7 +821,7 @@ namespace extensions {
 }
 ```
 
-`migration plan` and `db update` create a declared extension that the database lacks, with `CREATE EXTENSION IF NOT EXISTS`, before the tables that use its types. Removing a declaration plans a `DROP EXTENSION`, which is destructive, so both commands ask first. `db verify` reports a declared extension that is not installed, and `db sign` accepts a database only when it has every declared extension. The contract records no extension version, because hosts offer different ones. `contract infer` writes an `extension` block for every installed extension except `plpgsql` and those a configured pack declares. An extension's name is unique across the database, so declaring one name in two namespaces is refused. An extension pack such as pgvector, PostGIS or ParadeDB declares its own extension, so you do not declare it again. A TypeScript contract declares an extension with `extension('pg_trgm')` in its `entities` list, as [the TypeScript builder](/orm/contract-authoring/typescript-schema-builder) shows.
+`migration plan` and `db update` create a declared extension that the database lacks, with `CREATE EXTENSION IF NOT EXISTS`, before the tables that use its types. Removing a declaration plans a `DROP EXTENSION`, which is destructive, so both commands ask first. `db verify` reports a declared extension that is not installed, and `db sign` accepts a database only when it has every declared extension. The contract records no extension version, because hosts offer different ones. `contract infer` writes an `extension` block for every installed extension except `plpgsql` and those a configured pack declares. An extension's name is unique across the database, so declaring one name in two namespaces is refused. An extension pack such as pgvector, PostGIS, ParadeDB or citext declares its own extension, so a project that composes the pack does not declare it: `contract emit` refuses such a declaration with `PSL_ENTITY_DECLARED_BY_PACK`, and `migration plan` and `db update` refuse it as a conflict. A pack declares its extension outside any schema, so `db sign` and `db verify` accept the extension in any schema on the connection's search path, such as the `extensions` schema Supabase uses. A TypeScript contract declares an extension with `extension('pg_trgm')` in its `entities` list, as [the TypeScript builder](/orm/contract-authoring/typescript-schema-builder) shows.
 
 ## Starting from an existing database
 

@@ -64,6 +64,12 @@ export const commonQueries: LLMsLink[] = [
       "Scaffold an app with a Prisma Postgres database, run it locally, and deploy it to Prisma Compute. Lists what the Free plan includes.",
   },
   {
+    title: "Create a temporary Postgres database without an account",
+    href: "/postgres/npx-create-db",
+    description:
+      "Run npx create-db@latest to get a Prisma Postgres connection string. The database is deleted after 24 hours unless you claim it.",
+  },
+  {
     title: "Start a new Prisma ORM project",
     href: "/getting-started",
     description:

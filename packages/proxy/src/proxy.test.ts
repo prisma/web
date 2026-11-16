@@ -595,6 +595,26 @@ test("Vercel configs are case-sensitive and exported overrides remain explicit",
   ]);
   assert.equal((await relaxed(request("/Old"))).status, 308);
 });
+
+test("Next redirect delegates do not capture a child page differing only in case", async () => {
+  const mixed = "/blog/fullstack-remix-prisma-mongodb-1-7D0BfTXBmB6r";
+  const root = site("root", "/");
+  root.routing = vercel(
+    {},
+    {
+      nextjs: { redirects: [{ source: mixed, regex: `^${mixed}/?$`, destination: "/docs/guide" }] },
+    },
+  );
+  const handler = proxy([root, site("blog", "/blog")], async (url) =>
+    url.hostname === "root.test"
+      ? new Response(null, { status: 308, headers: { location: "/docs/guide" } })
+      : new Response("live blog post"),
+  );
+  const post = await handler(request(mixed.toLowerCase()));
+  assert.equal(post.status, 200);
+  assert.equal(await post.text(), "live blog post");
+  assert.equal((await handler(request(mixed))).status, 308);
+});
 test("service selection does not fall back to root when the forwarded path is outside the child's mount", async () => {
   const handler = proxy([
     site("root", "/", {

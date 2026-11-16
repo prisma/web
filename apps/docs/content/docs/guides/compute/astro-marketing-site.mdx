@@ -205,9 +205,16 @@ import { compute } from "@prisma/composer-prisma-cloud";
 export default compute({
   name: "web",
   deps: {},
-  build: node({ module: import.meta.url, dir: "./dist", entry: "server/entry.mjs" }),
+  build: node({
+    module: import.meta.url,
+    dir: "./dist",
+    entry: "server/entry.mjs",
+    dependencies: "external",
+  }),
 });
 ```
+
+Keep `dependencies: "external"`. The Astro build leaves some packages as imports instead of bundling them into `dist/server/`, and this option ships those packages from `node_modules` with the deploy. Without it, the deploy succeeds and every request returns a 502.
 
 The root module is the app. Its name becomes the project name on Compute:
 
@@ -335,6 +342,8 @@ The deploy reuses the project and keeps the URL. Fetch it again and you get the 
 
 **`ASSEMBLE.BUILD_FAILED`: no built entry at `dist/server/entry.mjs`.** Either the Node adapter is missing, so the build only wrote HTML files, or you ran `dev` or `deploy` before `npm run build`. Add the adapter (step 3), build, and run the command again. Composer never runs your build for you, so always build before `deploy`; otherwise it ships whatever is already in `dist/`.
 
+**The deploy succeeds, then every route returns a 502.** The server crashed on start because a package it imports was not shipped. Run `npx prisma service logs marketing-site.web --project marketing-site` and look for `Cannot find module` or `Cannot find package`. Add `dependencies: "external"` to `node({...})` in `service.ts` (step 4), build, and deploy again. `prisma dev` does not catch this, because the local server still reads packages from your project's `node_modules`.
+
 **Setting `output: "server"`.** You don't need it for a marketing site. It renders every page per request instead of serving prebuilt HTML. Leave `output` at its static default, and opt a single page into request-time rendering with `export const prerender = false` when you need one.
 
 ## Use with your agent
@@ -349,7 +358,7 @@ Build a static Astro marketing site and deploy it to Prisma Compute. Follow http
 1. Scaffold: `npm create astro@latest -- marketing-site --template minimal --install --no-git --yes`, then work in `marketing-site`.
 2. Build the pages I describe (default: a shared layout in `src/layouts/Base.astro` plus home, pricing, and about pages). Keep every page static; do not set `output: "server"`.
 3. Run `npx astro add node --yes` so `astro.config.mjs` uses `node({ mode: "standalone" })`. Run `npm run build` and confirm `dist/server/entry.mjs` exists.
-4. Install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and `prisma` as a dev dependency. Add `service.ts`, `module.ts`, and `prisma.config.ts` exactly as the guide shows, and add `/.alchemy` and `/.prisma-composer` to `.gitignore`.
+4. Install `@prisma/composer` and `@prisma/composer-prisma-cloud`, and `prisma` as a dev dependency. Add `service.ts`, `module.ts`, and `prisma.config.ts` exactly as the guide shows, including `dependencies: "external"` in `service.ts`, and add `/.alchemy` and `/.prisma-composer` to `.gitignore`.
 5. Run `npx prisma dev --detach`, curl each page under `$(npx prisma dev url marketing-site.web)` and confirm a 200, then run `npx prisma dev stop`.
 6. Deploy: check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Then run `npm run build` followed by `npx prisma deploy`, and curl the printed URL to confirm the home page renders.
 ```

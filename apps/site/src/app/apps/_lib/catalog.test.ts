@@ -1,14 +1,13 @@
+import { securityHeaders } from "../../../../../../packages/ui/security-headers.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  CATEGORY_ORDER,
   authorBadge,
   enrichTemplates,
   filterTemplates,
   frameworkMeta,
   frameworkOptions,
-  groupByCategory,
   ogCardPathFor,
   sortTemplates,
   templatePage,
@@ -84,7 +83,6 @@ test("legacy manifest entries take their framework from the registry", () => {
 
 test("unknown templates still render with fallbacks", () => {
   const unknown = byId("remix-run-blog");
-  assert.equal(unknown.category, "app");
   assert.equal(unknown.framework.label, "Remix Run");
   assert.equal(unknown.framework.logo, undefined);
   assert.equal(unknown.preview, null);
@@ -243,9 +241,47 @@ test("room booking uses its scheduler screenshot instead of the framework fallba
   assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
 });
 
+test("resource discovery uses its catalog screenshot, page copy and licence", () => {
+  const [shelf] = enrichTemplates(
+    [
+      {
+        id: "scalable-indexing-platform-template",
+        name: "Resource Discovery",
+        description: "Next.js searchable resource directory.",
+        path: "compute/scalable-indexing-platform-template",
+        framework: "nextjs",
+        author: { name: "Anas Ibn Belal", url: "https://github.com/anas20023" },
+      },
+    ],
+    NOW,
+  );
+  assert.equal(shelf.preview, "/apps/previews/scalable-indexing-platform-template.png");
+  assert.equal(shelf.useCase, "Resource directory");
+  assert.equal(shelf.pagePath, "/apps/scalable-indexing-platform-template");
+  assert.equal(shelf.author.name, "Anas Ibn Belal", "the manifest author wins");
+  assert.deepEqual(authorBadge(shelf.author), {
+    kind: "photo",
+    src: "https://github.com/anas20023.png",
+  });
+  const png = readFileSync(
+    new URL(
+      "../../../../public/apps/previews/scalable-indexing-platform-template.png",
+      import.meta.url,
+    ),
+  );
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+
+  const page = templatePage(shelf);
+  assert.ok(page.description.length <= 160, `meta description is ${page.description.length} chars`);
+  assert.notEqual(page.ogTitle, page.title);
+  assert.equal(page.highlights.length, 4);
+  assert.equal(page.demoUrl, "https://shelf.anasi.me/");
+  assert.equal(page.license.label, "MIT");
+  assert.match(page.license.href, /scalable-indexing-platform-template\/LICENSE$/);
+});
+
 test("the site image policy allows GitHub profile photos to load", () => {
-  const config = readFileSync(new URL("../../../../next.config.mjs", import.meta.url), "utf8");
-  const policy = config.match(/const ContentSecurityPolicy = `([\s\S]*?)`;/)?.[1] ?? "";
+  const policy = securityHeaders.find(({ key }) => key === "Content-Security-Policy")?.value ?? "";
   const imgSrc = policy.match(/img-src[\s\S]*?;/)?.[0] ?? "";
   assert.match(imgSrc, /https:\/\/github\.com(?:\s|\/)/);
   assert.match(imgSrc, /https:\/\/avatars\.githubusercontent\.com/);
@@ -301,24 +337,13 @@ test("sorting never mutates the input", () => {
   );
 });
 
-test("filters combine category and framework", () => {
+test("filters narrow by framework and never throw on an empty result", () => {
+  assert.deepEqual(filterTemplates(catalog, { framework: "all" }).length, catalog.length);
   assert.deepEqual(
-    filterTemplates(catalog, { category: "app", framework: "all" }).map((t) => t.id),
-    ["hono", "nextjs", "tanstack-start", "remix-run-blog"],
-  );
-  assert.deepEqual(
-    filterTemplates(catalog, { category: "starter", framework: "all" }).map((t) => t.id),
-    ["personal-site"],
-  );
-  assert.deepEqual(
-    filterTemplates(catalog, { category: "all", framework: "nextjs" }).map((t) => t.id),
+    filterTemplates(catalog, { framework: "nextjs" }).map((t) => t.id),
     ["nextjs"],
   );
-  assert.deepEqual(
-    filterTemplates(catalog, { category: "starter", framework: "nextjs" }),
-    [],
-    "a framework with no template in the category yields no results rather than throwing",
-  );
+  assert.deepEqual(filterTemplates(catalog, { framework: "sveltekit" }), []);
 });
 
 test("framework options list only frameworks present, in featured order, with counts", () => {
@@ -331,20 +356,6 @@ test("framework options list only frameworks present, in featured order, with co
   assert.ok(
     !options.some((o) => o.framework.id === "nestjs"),
     "registry-only frameworks are not offered as filters",
-  );
-});
-
-test("category groups follow CATEGORY_ORDER and skip empty groups", () => {
-  const groups = groupByCategory(catalog);
-  assert.deepEqual(
-    groups.map((g) => g.category),
-    [...CATEGORY_ORDER],
-  );
-  assert.deepEqual(
-    groupByCategory(filterTemplates(catalog, { category: "all", framework: "astro" })).map(
-      (g) => g.category,
-    ),
-    ["starter"],
   );
 });
 
