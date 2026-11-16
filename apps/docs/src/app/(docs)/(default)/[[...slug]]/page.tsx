@@ -66,7 +66,24 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         // consumer of the page tree's `description`, and keeping it on the
         // client meant shipping every page's description in the RSC payload
         // of every page. Same two cards, same subtitles.
-        footer={{ items: getPageFooterItems(source.pageTree, page.url) }}
+        //
+        // The landing page sends readers down chosen paths, so it has no
+        // previous / next links (its "next" would just be the next sidebar
+        // entry). Every page closes with one quiet line: edit link and date.
+        footer={{
+          items: page.slugs.length === 0 ? {} : getPageFooterItems(source.pageTree, page.url),
+          children: (
+            <div
+              className="mt-6 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t pt-5"
+              data-markdown-ignore
+            >
+              <EditOnGitHub
+                href={`https://github.com/prisma/docs/edit/main/apps/docs/content/docs/${page.path}`}
+              />
+              {lastModified && <PageLastUpdate date={lastModified} />}
+            </div>
+          ),
+        }}
       >
         <div className="flex flex-row flex-wrap items-center gap-3 pt-2">
           <DocsTitle>{page.data.title}</DocsTitle>
@@ -104,15 +121,6 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             })}
           />
         </DocsBody>
-        <div
-          className="flex flex-row flex-wrap items-center justify-between gap-4 border-t pt-6 text-sm"
-          data-markdown-ignore
-        >
-          <EditOnGitHub
-            href={`https://github.com/prisma/docs/edit/main/apps/docs/content/docs/${page.path}`}
-          />
-          {lastModified && <PageLastUpdate date={lastModified} />}
-        </div>
       </DocsPage>
     </>
   );

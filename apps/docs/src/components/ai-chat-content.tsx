@@ -12,7 +12,7 @@ import {
   ChevronRightIcon,
   ExternalLinkIcon,
   FileTextIcon,
-  MessagesSquareIcon,
+  SparklesIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
   Trash2,
@@ -33,6 +33,8 @@ import {
   type ChatMessage,
   type StoredSource,
 } from "@/hooks/use-chat-persistence";
+import { useSetAtom } from "jotai";
+import { takeChatPromptAtom, useAIChatContext } from "@/hooks/use-ai-chat";
 
 import {
   Conversation,
@@ -204,6 +206,30 @@ const ChatInner = ({
     saveMessages(messages);
   }, [conversation, saveMessages]);
 
+  // A question handed over from search ("Ask AI: …" / Tab in the search
+  // dialog) waits in the shared prompt atom until the chat is mounted and free.
+  // This component is mounted twice on phones (desktop panel and drawer), so
+  // the prompt is taken from the store, not cleared with a state setter: the
+  // second instance's effect then finds it empty and submits nothing.
+  const { prompt: pendingPrompt } = useAIChatContext();
+  const takePendingPrompt = useSetAtom(takeChatPromptAtom);
+  // Wait while an earlier answer is preparing as well as generating:
+  // submitQuery rejects a question in either state, so taking the prompt then
+  // would lose it.
+  useEffect(() => {
+    if (!pendingPrompt.trim() || isPersistenceLoading || isGeneratingAnswer || isPreparingAnswer)
+      return;
+    const question = takePendingPrompt().trim();
+    if (question) submitQuery(question);
+  }, [
+    pendingPrompt,
+    isPersistenceLoading,
+    isGeneratingAnswer,
+    isPreparingAnswer,
+    takePendingPrompt,
+    submitQuery,
+  ]);
+
   const handleSubmit = (value: string) => {
     if (!isGeneratingAnswer) {
       submitQuery(value);
@@ -297,8 +323,8 @@ const ChatInner = ({
           {showEmptyState ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
               <div className="flex flex-col items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-square-high bg-fd-primary/10">
-                  <MessagesSquareIcon className="size-6 text-fd-primary" />
+                <div className="flex size-12 items-center justify-center rounded-square-high border bg-fd-background">
+                  <SparklesIcon className="size-6 text-fd-foreground/70" aria-hidden="true" />
                 </div>
                 <div>
                   <h3 className="font-medium text-fd-foreground">How can I help?</h3>

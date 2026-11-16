@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
 import Link from "fumadocs-core/link";
 import { cn } from "@prisma-docs/ui/lib/cn";
 import { useTranslations } from "@fuma-translate/react";
@@ -248,13 +248,14 @@ export function PageLastUpdate({
   const [date, setDate] = useState("");
 
   useEffect(() => {
-    // to the timezone of client
-    setDate(value.toLocaleDateString());
+    // In the reader's timezone, written out ("9 November 2026") so it never
+    // reads as month-first or day-first ("09/11/2026").
+    setDate(value.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
   }, [value]);
 
   return (
     <p {...props} className={cn("text-sm text-fd-muted-foreground", props.className)}>
-      {t("Last updated on")} {date}
+      {t("Updated")} {date}
     </p>
   );
 }
@@ -291,46 +292,56 @@ export function PageFooter({ items, children, className, ...props }: FooterProps
 
   return (
     <>
-      <div
-        className={cn(
-          "@container grid gap-4",
-          previous && next ? "grid-cols-2" : "grid-cols-1",
-          className,
-        )}
-        {...props}
-      >
-        {previous && <FooterItem item={previous} index={0} />}
-        {next && <FooterItem item={next} index={1} />}
-      </div>
+      {(previous || next) && (
+        // Two columns whether or not both links exist, so "next" always sits
+        // on the right and "previous" on the left; one column on phones.
+        <div className={cn("@container grid gap-x-8 sm:grid-cols-2", className)} {...props}>
+          {previous ? <FooterItem item={previous} index={0} /> : <span className="max-sm:hidden" />}
+          {next && <FooterItem item={next} index={1} />}
+        </div>
+      )}
       {children}
     </>
   );
 }
 
+/**
+ * Previous / next page: a plain link on a hairline (the same treatment as the
+ * landing page's docs index), not a filled card. Hover underlines the title
+ * and nudges the arrow; no colour fill.
+ */
 function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
   const t = useTranslations({ note: "pagination" });
-  const Icon = index === 0 ? ChevronLeft : ChevronRight;
+  const Icon = index === 0 ? ArrowLeft : ArrowRight;
 
   return (
     <Link
       href={item.url}
       className={cn(
-        "flex flex-col gap-2 rounded-square border p-4 text-sm transition-colors duration-300 hover:bg-fd-accent/80 hover:text-fd-accent-foreground motion-reduce:transition-none @max-lg:col-span-full",
-        index === 1 && "text-end",
+        "group block rounded-sm border-t pt-4 pb-5 outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60",
+        index === 1 && "sm:text-end",
       )}
     >
-      <div
+      <span
         className={cn(
-          "inline-flex items-center gap-1.5 font-medium",
-          index === 1 && "flex-row-reverse",
+          "inline-flex items-center gap-1.5 text-[0.9375rem] font-semibold leading-6 text-fd-foreground",
+          index === 0 && "flex-row-reverse",
         )}
       >
-        <Icon className="-mx-1 size-4 shrink-0 rtl:rotate-180" />
-        <p>{item.name}</p>
-      </div>
-      <p className="text-fd-muted-foreground truncate">
+        <span className="decoration-fd-foreground/35 underline-offset-4 group-hover:underline">
+          {item.name}
+        </span>
+        <Icon
+          aria-hidden="true"
+          className={cn(
+            "size-3.5 shrink-0 transition-transform duration-150 motion-reduce:transition-none rtl:rotate-180",
+            index === 0 ? "group-hover:-translate-x-0.5" : "group-hover:translate-x-0.5",
+          )}
+        />
+      </span>
+      <span className="mt-1 block truncate text-sm leading-6 text-fd-muted-foreground">
         {item.description ?? (index === 0 ? t("Previous Page") : t("Next Page"))}
-      </p>
+      </span>
     </Link>
   );
 }

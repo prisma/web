@@ -36,11 +36,13 @@ h6 {
   letter-spacing: normal;
 }
 
-/* Inter's brand body weight. `@prisma/eclipse` sets this in @layer base, but
-   `fumadocs-ui/css/preset.css` is imported after it and also writes `body` in
-   the same layer, so it is restated unlayered here to survive that. */
+/* Body weight for the docs. `@prisma/eclipse` sets 380 in @layer base (Inter
+   reads darker than SF at 400 in UI), and `fumadocs-ui/css/preset.css` also
+   writes `body` in that layer, so the docs restate it unlayered here. The docs
+   use the regular 400: long-form reading at 380 looked faint, worst in dark
+   mode, and readers found it hard to read. */
 body {
-  font-weight: 380;
+  font-weight: 400;
 }
 
 /* `.stretch-display` (from `@prisma-docs/ui`, out of scope for this rebrand)
@@ -680,39 +682,19 @@ button.sidebar-prism-item:hover {
   transition: none;
 }
 
-/* Current page: a small, still spectrum dot hung just left of the row,
-   instead of the eclipse class's animated ring, which pulled the eye off the
-   article. The ::after that drew the ring is reset (no mask, padding or
-   animation) and reshaped into the dot; a conic sweep so all the spectrum
-   colours show at 6px. It sits just outside the row's box, 8px from the
-   label, in the sidebar's 16px scroll padding, so labels and icons never
-   move. */
+/* Current page: full ink at medium weight on a soft, still ink tint (the
+   hover tint, a step stronger), instead of a decorative mark. The eclipse
+   class's ::after (an animated spectrum ring, later a spectrum dot) is
+   switched off so the selection reads through the text and surface alone,
+   the same in light and dark. */
 a.sidebar-prism-item::after,
 button.sidebar-prism-item::after {
-  inset: 50% auto auto -0.375rem;
-  width: 6px;
-  height: 6px;
-  padding: 0;
-  border-radius: 9999px;
-  background-image: conic-gradient(
-    var(--color-prism-cyan-400),
-    var(--color-prism-yellow-300),
-    var(--color-spectrum-orange),
-    var(--color-spectrum-scarlet),
-    var(--color-spectrum-pink),
-    var(--color-prism-cyan-400)
-  );
-  background-size: auto;
-  -webkit-mask: none;
-  mask: none;
-  transform: translateY(-50%);
-  animation: none;
-  transition: none;
+  display: none;
 }
 
-a.sidebar-prism-item[data-active="true"]::after {
-  opacity: 1;
-  animation: none;
+a.sidebar-prism-item[data-active="true"] {
+  font-weight: 500;
+  background-color: color-mix(in srgb, var(--color-fd-foreground) 6%, transparent);
 }
 
 /* The same quiet, crisp hover for the header and page-action controls:
@@ -746,4 +728,55 @@ a.sidebar-prism-item[data-active="true"]::after {
   button.sidebar-prism-item {
     transition: none;
   }
+}
+
+/* Inline code in prose: a hairline chip instead of Fumadocs' boxed default.
+   The default (a visible grey fill, 3px padding, code at 13px in 16px prose)
+   made every command and flag read as a small padded box, and inline code
+   was most of the bordered elements on reference pages. This keeps the 1px
+   edge but takes it and the fill to near-invisible, hugs the word, and sets
+   code closer to text size so it sits in the line. Both colours derive from
+   the foreground, so dark mode needs no second rule. Unlayered and with the
+   same selector as fumadocs-ui's typography rule, so it wins on order; the
+   :where() guard keeps it off code blocks and not-prose components. */
+.prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  border: 1px solid color-mix(in srgb, var(--color-fd-foreground) 9%, transparent);
+  background: color-mix(in srgb, var(--color-fd-foreground) 2.5%, transparent);
+  padding: 0.05em 0.25em;
+  border-radius: 4px;
+  /* Relative to the surrounding text, floored at the old 13px so code in
+     smaller text (14px table cells, captions) never shrinks below before. */
+  font-size: max(0.875em, 0.8125rem);
+}
+
+/* On the near-black sheet a 9% edge all but disappears; 12% keeps the chip
+   faintly outlined. Light mode stays at 9%. */
+.dark .prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  border-color: color-mix(in srgb, var(--color-fd-foreground) 12%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Reading type for docs prose. Readers found long pages hard to read: 16px
+   body at ~88 characters a line, 8px between list items, 14px in callouts.
+   Body text goes to 17px with the same 1.75 ratio, keeping the full column
+   width, and paragraphs and list items get more room. The :where() guard keeps this
+   off not-prose components (the landing page's own layouts). */
+.prose :where(p, li):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+.prose > p:not(:where([class~="not-prose"])) {
+  margin-bottom: 1.5rem;
+}
+
+.prose :where(li + li):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 0.625rem;
+}
+
+/* Callouts (Eclipse Alert, role="alert") read as asides: a half step under
+   the body instead of the previous 14px. */
+.prose [role="alert"] :where(p, li) {
+  font-size: 0.96875rem;
+  line-height: 1.7;
 }
