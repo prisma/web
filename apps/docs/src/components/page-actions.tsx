@@ -310,9 +310,9 @@ const listRow =
 
 /**
  * The same actions as a quiet vertical list, for the top of the "On this
- * page" column (Supabase-style): the assistants and editors most readers
- * use (ChatGPT, Claude, Cursor, Perplexity), then Copy as Markdown, each one
- * row. The rest stay one click away in
+ * page" column (Supabase-style): one "Open in" row of marks for the
+ * assistants and editors most readers use (ChatGPT, Claude, Cursor,
+ * Perplexity), then Copy as Markdown. The rest stay one click away in
  * a "More" menu. Below xl, where that column is hidden, the page keeps the
  * pill row under the summary instead.
  */
@@ -351,20 +351,25 @@ export function PageActionsList({
           Copy prompt
         </button>
       )}
-      {featured.map((item) => (
-        <a
-          key={item.tool}
-          href={item.href}
-          target="_blank"
-          rel="noreferrer noopener"
-          className={listRow}
-          onClick={() => track(item.tool)}
-          title={item.description}
-        >
-          {item.icon}
-          {item.title}
-        </a>
-      ))}
+      {/* One row of marks, not a row per tool: the four most-used hand-offs,
+          named on hover and for screen readers. */}
+      <div className="flex h-8 items-center gap-1 text-sm text-fd-muted-foreground">
+        <span className="me-2">Open in</span>
+        {featured.map((item) => (
+          <a
+            key={item.tool}
+            href={item.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label={item.title}
+            title={item.description ? `${item.title} (${item.description})` : item.title}
+            onClick={() => track(item.tool)}
+            className="inline-flex size-7 items-center justify-center rounded-md text-fd-muted-foreground transition-colors duration-[120ms] ease-out outline-none hover:bg-fd-foreground/5 hover:text-fd-foreground hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none [&_svg]:size-3.5"
+          >
+            {item.icon}
+          </a>
+        ))}
+      </div>
       {canCopy && (
         <button className={listRow} disabled={copy.isLoading} onClick={copy.onClick}>
           {copy.checked ? <Check aria-hidden="true" /> : <BrandIcon d={icons.markdown} />}

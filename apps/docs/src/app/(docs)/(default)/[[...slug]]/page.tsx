@@ -65,7 +65,13 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       <DocsPage
         // The page's path above the title (section › group › folder), as
         // quiet links: where the page sits, and a way back up.
-        breadcrumb={{ includeRoot: true, includeSeparator: true }}
+        // Not on the docs home, where the path would only say "Getting
+        // started › Start" above "Get started with Prisma".
+        breadcrumb={{
+          enabled: page.slugs.length > 0,
+          includeRoot: true,
+          includeSeparator: true,
+        }}
         tableOfContent={{
           style: "normal",
           // Page actions as a quiet list at the top of the right column
