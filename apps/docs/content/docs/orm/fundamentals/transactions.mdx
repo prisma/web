@@ -61,16 +61,26 @@ Do not open a second transaction inside the helper, because calling `db.transact
 
 ### Options and isolation level
 
-`db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options; see [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet). Every transaction runs at the database's default isolation level, `READ COMMITTED` on PostgreSQL, and you cannot ask for another level yet. If you need one, set it yourself as the first statement in the callback:
+`db.transaction(...)` takes a second argument with an isolation level and a time limit in milliseconds. Set defaults for every call with the client's `transactionOptions`, and override them on one call:
 
 ```typescript
-await db.transaction(async (tx) => {
-  await tx.execute(db.raw.sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`.affectedCount().build());
-  // your writes
+import postgres, { IsolationLevel } from "@prisma/orm-postgres/runtime";
+
+const db = postgres({
+  contract,
+  url: process.env.DATABASE_URL!,
+  transactionOptions: { isolationLevel: IsolationLevel.RepeatableRead, timeout: 5000 },
 });
+
+await db.transaction(
+  async (tx) => {
+    // your writes
+  },
+  { isolationLevel: IsolationLevel.Serializable },
+);
 ```
 
-There is no transaction timeout either, so a transaction stays open for as long as your callback runs. If you need a limit, set PostgreSQL's `idle_in_transaction_session_timeout` on the connection (`transaction_timeout` on PostgreSQL 17 and later).
+Without an isolation level, a transaction runs at the database's default, `READ COMMITTED` on PostgreSQL. Without a timeout, a transaction stays open for as long as your callback runs; `timeout: null` on a call turns off the client's default. A transaction that runs out of time rejects with `RUNTIME.TRANSACTION_TIMEOUT`, and its connection is destroyed rather than reused. There is no `maxWait` option. The [transactions reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) has the details.
 
 ## Roll back on errors
 
