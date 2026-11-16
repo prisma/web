@@ -72,7 +72,7 @@ Before it runs anything, `db migrate` checks that the database's marker names a 
 
 ## When no migration reaches the target
 
-When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that `contract emit` last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error, and what tells them apart is whether you passed `--to`. A less common cause is a migration history that has split into two branches, which [The automatic baseline](/cli/migration-plan#the-automatic-baseline) describes.
+When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that `contract emit` last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error, and what tells them apart is the target: the contract you just emitted in the first, an earlier migration in the second. A less common cause is a migration history that has split into two branches, which [The automatic baseline](/cli/migration-plan#the-automatic-baseline) describes.
 
 ### You changed the contract and did not plan a migration
 
@@ -115,11 +115,11 @@ npx prisma migration plan --name init
 npx prisma db migrate --db "$DATABASE_URL"
 ```
 
-If the database already has your tables, do not apply that first migration, because it creates every table from nothing. Run [`db sign`](/cli/db-sign) first, so that the database records which contract it matches, as [`migration plan`](/cli/migration-plan) explains.
+If the database already has your tables, do not apply that first migration, because it creates every table from nothing. Run [`db sign`](/cli/db-sign) first, so that the database records which contract it matches. Then run the two commands above. `db migrate` does not apply the first migration to a database that `db sign` has recorded, and applies only the migrations after it, as [The automatic baseline](/cli/migration-plan#the-automatic-baseline) explains.
 
 ### In a script
 
-With `--json`, the `error` object of the result has a `meta` object that holds `kind`, `spaceId`, `fromHash`, and `targetHash`. `kind` is `neverPlanned` when the project has no migrations, and then there is no `fromHash`. In the other two cases it is `pathUnreachable`, so a script cannot tell those two apart from `kind`; it knows which one it is in from whether it passed `--to`. `spaceId` is `app` for your own contract.
+With `--json`, the `error` object of the result has a `meta` object that holds `kind`, `spaceId`, `fromHash`, and `targetHash`. `kind` is `neverPlanned` when the project has no migrations, and then there is no `fromHash`. In the other two cases it is `pathUnreachable`, so a script cannot tell those two apart from `kind`; it knows which one it is in from its own target, the newly emitted contract or an earlier state. `spaceId` is `app` for your own contract.
 
 ## When an apply fails [#when-an-apply-fails]
 
