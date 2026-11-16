@@ -254,6 +254,17 @@ Create a Prisma Postgres database for this project.
 - but convert this`,
   },
   {
+    name: "Fence close needs a bare marker",
+    input: `> \`\`\`text
+> \`\`\`not-a-close
+> * literal
+> \`\`\``,
+    expected: `> \`\`\`text
+> \`\`\`not-a-close
+> * literal
+> \`\`\``,
+  },
+  {
     name: "Steps with a numbered heading",
     input: `<Steps>
 

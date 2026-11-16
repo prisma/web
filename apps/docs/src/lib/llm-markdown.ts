@@ -577,10 +577,18 @@ function unifyBullets(markdown: string) {
   return markdown
     .split("\n")
     .map((line) => {
-      const marker = /^[ \t>]*(`{3,}|~{3,})/.exec(line)?.[1];
-      if (marker) {
-        if (fence === null) fence = marker;
-        else if (marker[0] === fence[0] && marker.length >= fence.length) fence = null;
+      const match = /^[ \t>]*(`{3,}|~{3,})(.*)$/.exec(line);
+      if (match) {
+        const [, marker, rest] = match;
+        if (fence === null) {
+          fence = marker;
+          return line;
+        }
+        // A closing fence uses the opening's character, is at least as
+        // long, and has nothing after it but spaces or tabs.
+        if (marker[0] === fence[0] && marker.length >= fence.length && /^[ \t]*$/.test(rest)) {
+          fence = null;
+        }
         return line;
       }
       if (fence !== null) return line;
