@@ -612,10 +612,17 @@ export function normalizeProcessedMarkdown(
       (_match, content: string) => {
         let step = 0;
         return content.replace(
-          /^([ \t]*)(### )?(?!\d+\.\s)(.+?)[ \t]*\[#([^\]\n]+)\][ \t]*$/gm,
+          /^([ \t]*)(### )?(.+?)[ \t]*\[#([^\]\n]+)\][ \t]*$/gm,
           (line, indent: string, hashes: string | undefined, text: string, anchor: string) => {
             const isStep = hashes !== undefined || options?.headingDepths?.get(anchor) === 3;
             if (!isStep || text.startsWith("#")) return line;
+            // A heading that already carries its number keeps it and moves
+            // the count on, so the next unnumbered step follows it.
+            const existing = /^(\d+)\.\s/.exec(text);
+            if (existing) {
+              step = Number(existing[1]);
+              return line;
+            }
             return `${indent}${hashes ?? ""}${++step}. ${text} [#${anchor}]`;
           },
         );

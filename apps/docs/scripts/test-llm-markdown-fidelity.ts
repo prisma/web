@@ -241,6 +241,27 @@ Create a Prisma Postgres database for this project.
 \`\`\``,
   },
   {
+    name: "Steps with a numbered heading",
+    input: `<Steps>
+
+### 1. Install [#install]
+
+Add it.
+
+### Configure [#configure]
+
+Set it up.
+
+</Steps>`,
+    expected: `### 1. Install [#install]
+
+Add it.
+
+### 2. Configure [#configure]
+
+Set it up.`,
+  },
+  {
     name: "Steps",
     input: `<Steps>
 
