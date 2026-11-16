@@ -9,7 +9,7 @@ import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { CopyPromptButton, PageActions } from "@/components/page-actions";
+import { CopyPromptButton, PageActions, PageActionsList } from "@/components/page-actions";
 import { getPromptContent } from "@/lib/get-prompt-content";
 import { getPageFooterItems } from "@/lib/page-footer-items";
 import { cn } from "@prisma-docs/ui/lib/cn";
@@ -68,6 +68,19 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         breadcrumb={{ includeRoot: true, includeSeparator: true }}
         tableOfContent={{
           style: "normal",
+          // Page actions as a quiet list at the top of the right column
+          // (Supabase-style), so the title area stays calm. Below xl that
+          // column is hidden and the pill row under the summary takes over.
+          header: (
+            <div className="mb-5 border-b pb-4" data-markdown-ignore>
+              <PageActionsList
+                markdownUrl={withMarkdownPath(page.url)}
+                absoluteMarkdownUrl={new URL(withMarkdownPath(page.url), getBaseUrl()).toString()}
+                canCopy={!page.url.startsWith("/rest-api/endpoints")}
+                fullPrompt={promptContent?.fullPrompt}
+              />
+            </div>
+          ),
         }}
         toc={content.toc}
         full={page.data.full}
@@ -118,11 +131,21 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             />
           )}
         </div>
-        <DocsDescription className="-mt-1 mb-0">{page.data.description}</DocsDescription>
+        <DocsDescription className={cn("-mt-1 mb-0", !page.data.full && "xl:mb-3")}>
+          {page.data.description}
+        </DocsDescription>
         {/* Page actions sit in their own row under the summary, so the title
             reads straight into what the page is about; the row keeps the full
             width at any size, with room before the article starts. */}
-        <div className="flex flex-row flex-wrap items-center gap-2 pb-4" data-markdown-ignore>
+        <div
+          className={cn(
+            "flex flex-row flex-wrap items-center gap-2 pb-4",
+            // In the right column from xl up, except on full-width pages,
+            // which have no right column.
+            !page.data.full && "xl:hidden",
+          )}
+          data-markdown-ignore
+        >
           {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
           <PageActions
             markdownUrl={withMarkdownPath(page.url)}
