@@ -4,31 +4,58 @@ This is the working list of changes to the Prisma ORM 8 documentation, built fro
 
 Item numbers (A1, B11, C9, D4) are stable identifiers used in the audit files and the PRs; some are out of sequence because items were added as they were found. "J1" to "J12" are the reader jobs defined in `journeys.md`. Source paths are in `prisma/orm` at rc.9 unless they start with `create-prisma`.
 
-Status as of 2026-09-30.
+Status as of 2026-11-17. The per-item notes below carry the history; this section is the summary, checked against `main` on that date.
 
 ## Where things stand
 
-**Shipped.** Section B, all 35 corrections: prisma/web #8236, #8237, #8238. The naming pass: #8246 and #8275. C1 and C4 as #8245, which also puts "Coming from Prisma 7" at the top of the ORM sidebar (A2). C5 and C20 as #8278 and #8280. C21 over every ORM section: fundamentals #8251, the client reference #8260, the rest of the reference #8267, contract authoring #8271, data modeling #8279, migrations #8281 (which also adds C25), middleware #8292, extensions #8294; backed by the reader-review skill (#8247) and a prose checker that runs in CI (#8290). A7 as #8242 and #8244. C13, C14, and C16 as #8306 (every construct run against rc.11); C15 needed no page changes. C11 and C12 as #8310, where C11 took a different shape from its spec: the CI job is the one command `db migrate --to <ref>`, because `db migrate` refuses a database whose marker is outside the migration history before it runs anything. The migrations decisions as #8307 and the migrations cutting round as #8309. Every command after installation runs the installed CLI as `npx prisma` (#8312); `db.runtime().close()` became `db.close()` on ten guides (#8310). A linter fails CI on a stale pinned version (#8305).
+Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` and `@prisma/orm-mongo` 8.0.0-rc.24, `@prisma/cli-engine` 0.10.0.
 
-**Kept current with releases.** rc.10 (#8261, #8262), rc.11 (#8277), and rc.12 (#8317), with rc.12's follow-ups: the `module` settings the upgrade guide recommends (#8319), what a CommonJS project changes after `orm init` (#8329), the default table name change and every page re-run against the release (#8326), and a third reader round (#8328). Scaffold commands pass `--no-deploy` so `npm create prisma` does not deploy before the page says to (#8331). The error reference sync, broken from 2026-09-18 by codes without a dot, works again (#8327). The rc.13 sync is open as #8336 and merges when rc.13 is published.
+| Section | Items | Done | Open |
+| --- | --- | --- | --- |
+| A. Restructure | 8 | 8 | 0, with one follow-up (A3) |
+| B. Corrections | 35 | 35 | 0 |
+| C. New pages | 24 | 21 | C10, C23, and C17 (in review) |
+| E. Gaps found later | 25 | 14 | E13, E15 to E20, E22 to E25 |
+| D. ORM and tooling | 37 | 10 | 27, for the ORM team to schedule |
 
-**In review.** Section E as prisma/web#8348 (2026-09-29). The command names in prisma/orm's `error-reference.md` (part of D17) as prisma/orm#30527. The docs change that prisma/orm#30475 needs, as draft prisma/web#8349: it merges after a published release contains #30475 and its re-check list passes.
+### Done
 
-**Shipped on the ORM side.** D1, D2 (prisma/orm#30251, rc.10), D3 (create-prisma#96), D6, and D14 (prisma/orm#30250, #30264, #30283). D16 is no longer needed. D4, D5, and D11 are partly fixed; see each item.
+- **A, the restructure: all six slices merged on 2026-09-30.** The Quickstart group by starting point, with C2 and C3 (prisma/web#8350). `/orm` rebuilt and the four starting points on the docs root (#8351, A1 and A5). Agent prompts after the human steps on the entry pages and the twelve framework and runtime guides (#8352, A3). Core concepts rewritten from the mental model (#8354, A6). The two error references link each other (#8353, A8). A2, A4, and A7 landed earlier.
+- **B: all 35 corrections** (#8236, #8237, #8238).
+- **C, new pages.** C1 and C4 (#8245). C2 and C3 (#8350). C5 and C20 (#8278, #8280). C6 Types (#8650). C7 Advanced PostgreSQL (#8574). C8 Money and decimals (#8648). C9 Vercel guide and the shutdown example (#8646). C11 and C12 (#8310). C13, C14, C16 (#8306); C15 needed no change. C18 Supported versions (#8572). C19 PostGIS, ParadeDB, arktype-json (#8651). C21 plain-language pass over every ORM section. C22 A database on your machine (#8575). C25 (#8281).
+- **E: E1 to E12 as #8348**, and the docs for prisma/orm#30475 as #8349 (merged 2026-10-07 after the fix shipped). E14 and E21 are also done on `main`.
+- **Kept current with releases:** every ORM release candidate from rc.10 to rc.23, and the CLI up to rc.33.
+- **ORM side shipped:** D1, D2, D3, D6, D14, D16 (not needed), D36 (prisma-cli#379), prisma/orm#30475 (which closes D25, D27, and D28; its review and fixes are in the transcript of 2026-10-05), prisma/orm#30527 (the command names in D17), prisma/orm#30520 (the CLI half of D10), and prisma/orm#30960 (`formatter` in the config helpers).
 
-**Partly done.** A1: `/prisma-orm` has pages for create-prisma, the quickstart, from scratch, and an existing project, but the sidebar groups them by tool, the empty-database and Prisma 7 starting states have no door, and `/orm` is unchanged. A6: `orm/core-concepts.mdx` is prose but not written from `mental-model.md`; the item lists what it lacks. C2, C3, C6, C7, C8, C10, C17, C18: the facts are on existing pages, but the page each item asks for does not exist; each item says what is left.
+### In review
 
-**Not started.** A3, A5, A8. C9's Vercel page and shutdown example, C19, C22, C23. On the ORM side: D7, D8, D9 (prisma/orm#30370 is open), D10 (prisma/orm#30301 and #30308 are open), D12, D13, D15, D17, D18, and the Node 24.0 to 24.10 range.
+- **prisma/web#8853** (2026-11-17): the `formatter` section on `cli/configuration.mdx`, which completes C17, and "When no migration reaches the target" on `cli/db-migrate.mdx`. It also fixes the error-reference generator, which let one relative link through and failed the link check on `main`.
+- **prisma/web#8850** (another agent): the ORM 8.0.0-rc.24 sync. It has merge conflicts on 2026-11-17.
+
+### Open in the docs
+
+1. **Version sync.** `pnpm lint:versions` reports 22 stale references on `main`: `prisma` 8.0.0-rc.33 where rc.34 is out, and `@prisma/cli-engine` 0.9.0 where 0.10.0 is out. #8850 covers the ORM packages only.
+2. **C10, the Supabase page.** Waits on Ankur's draft prisma/web#8131, last updated 2026-10-26.
+3. **C23, example repositories in `prisma/prisma-examples`.** The shape is decided; nobody owns it.
+4. **A3 follow-up.** The prompt section still comes before the human steps on the guides under `guides/database`, `guides/deployment`, `guides/integrations`, and `guides/switch-to-prisma-orm`, on `composer/porting-an-app.mdx` and the full-stack tutorial, and as `## Prompt your coding agent` on 21 pages under `orm/`.
+5. **Small gaps, section E.** E13 (the contract reference table sits on a concept page), E15, E16, E17, E18, E19 (about 50 reader marks on the migration pages), E20 (`prisma/prisma` names), E22 (reader-review hits on the framework and runtime guides; still failing the staccato check), E23 (`/getting-started` duplicates the Quickstart group), E24 (`cli/db-update.mdx` does not say `db update` signs the database), E25 (two quickstart pages still have "Quickstart" in `metaTitle`).
+6. **Reader pass on three guides.** `from-drizzle.mdx`, `ai-sdk.mdx`, and `nestjs.mdx` fail the plain-language and staccato checks (the C9 follow-up).
+
+### Open on the ORM side
+
+For the ORM team to schedule; none blocks a page. D4 (client APIs), D5 and D22 (`contract infer` reads only `public`), D7, D8, D9 (prisma/orm#30370), D10 (the runtime half), D11, D12, D13, D15, D17 (four of five claims), D18, D19, D20, D21, D23, D24, D26, D29, D30, D31, D32, D33, D34, D35, and D37 (new on 2026-11-17: the `MIGRATION.PATH_UNREACHABLE` error suggests a `migration plan` command that fails).
 
 ## Recommended order for the open work
 
-Proposed on 2026-09-28, for discussion.
+Proposed on 2026-11-17.
 
-1. **Section E** in one pull request: small, verified gaps on the migration pages and the CLI reference, plus the D17 lines in prisma/orm's `docs/reference/error-reference.md` that the site's error reference is generated from.
-2. **The restructure** (A1, A5, A3, A6, A8) as one piece of work, with C2 and C3 as two of its four doors.
-3. **C18 and C7**, now that both are decided; C1's "not in Prisma ORM 8 yet" list changes only when D4's APIs are built.
-4. **The remaining new pages**: C22, C9, C8, C6, C10 (with draft #8131), C19, C17, and C23.
-5. **ORM side**, in order of how badly each hurts a reader: D10, D9, D15, D13, D12, D7, D18, D11, D5's `public`-only inference, D17, the Node range, and D31 (rewrite the intro of `docs/reference/error-reference.md` in prisma/orm and prisma/prisma-cli for readers, so the site's generator stops patching it; the file itself stays, because the hosted page is generated from it and the repository's CI checks new codes against it).
+1. **Merge prisma/web#8853.** It also repairs the link check for every other docs pull request.
+2. **The version sync** to `prisma` 8.0.0-rc.34 and `@prisma/cli-engine` 0.10.0, after or together with #8850.
+3. **The small docs gaps in one or two pull requests:** E24, E25, E20, and E13 first, because each is a few lines; then E15 to E19 on the migration pages as one reader pass.
+4. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides) as one pass over the guides.
+5. **E23**, `/getting-started`.
+6. **D37 in prisma/orm**, because the docs currently warn readers off a command the CLI prints. Then the D items in the order the ORM team prefers.
+7. **C23** when it has an owner, and **C10** when #8131 is ready.
 
 ## Decisions needed, and from whom
 
