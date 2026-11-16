@@ -186,17 +186,17 @@ export function EditOnGitHub(props: ComponentProps<"a">) {
       target="_blank"
       rel="noreferrer noopener"
       {...props}
-      // The same hairline pill as the page actions under the title: no fill,
-      // label a step below ink at rest, full ink plus a faint tint on hover.
+      // A quiet text link in the page's closing line, beside the date: muted
+      // at rest, ink on hover. The page actions under the title stay pills.
       className={cn(
-        "not-prose quiet-hover inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke-neutral px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60",
+        "not-prose inline-flex items-center gap-1.5 rounded-sm text-sm text-fd-muted-foreground transition-colors duration-[120ms] ease-out outline-none hover:text-fd-foreground hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none",
         props.className,
       )}
     >
       {props.children ?? (
         <>
-          <Edit className="size-3.5" />
-          <T text="Edit on GitHub" note="edit page" />
+          <Edit className="size-3.5" aria-hidden="true" />
+          <T text="Edit this page on GitHub" note="edit page" />
         </>
       )}
     </a>
