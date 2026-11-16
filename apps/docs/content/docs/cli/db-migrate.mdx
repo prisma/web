@@ -72,7 +72,7 @@ Before it runs anything, `db migrate` checks that the database's marker names a 
 
 ## When no migration reaches the target
 
-When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that `contract emit` last wrote, or the state that `--to` names. The fix depends on which of three cases you are in. The first two print the same error, and what tells them apart is whether you passed `--to`.
+When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that `contract emit` last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error, and what tells them apart is whether you passed `--to`. A less common cause is a migration history that has split into two branches, which [The automatic baseline](/cli/migration-plan#the-automatic-baseline) describes.
 
 ### You changed the contract and did not plan a migration
 
@@ -84,7 +84,7 @@ You edited the contract, ran `contract emit`, and then ran `db migrate`. The tar
 → Plan the missing edge: prisma migration plan --from <current hash> --to <target hash> --name <slug>
 ```
 
-Do not run the `migration plan` command the error suggests. Its `--to` only finds a state that some migration already ends at, and no migration ends at your new contract yet, so it fails with `MIGRATION.REF_NOT_FOUND`. Run the command without `--to`, with the current hash from the error and a name for the migration, then apply the result:
+Do not run the [`migration plan`](/cli/migration-plan) command the error suggests. Its `--to` only finds a state that some migration already ends at, and no migration ends at your new contract yet, so it fails with `MIGRATION.REF_NOT_FOUND`. Run the command without `--to`, with the current hash from the error and a name for the migration, then apply the result:
 
 ```npm
 npx prisma migration plan --from <current hash> --name add-phone
@@ -102,16 +102,20 @@ npx prisma migration plan --from <current hash> --to <target hash> --name undo-p
 npx prisma db migrate --to <target hash> --db "$DATABASE_URL"
 ```
 
-The new migration usually drops columns or tables, and the data in them. `migration plan` asks you to confirm each drop. In a script it stops instead, and names the flag to pass, such as `--delete User.phone`. It writes the migration to a new directory under `migrations/app/`, so read the `migration.ts` there before you apply it. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) covers going back in more detail.
+The new migration usually drops columns or tables, and the data in them. `migration plan` asks you to confirm each drop. In a script it stops instead, and names the flag to pass, such as `--delete User.phone`. It writes the migration to a new directory under `migrations/app/`, so read the `migration.ts` there before you apply it.
+
+After you go back, your emitted contract is still the later one. A plain `db migrate` then applies the later migrations again, so keep passing `--to` until you have changed the contract and run `contract emit`. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) covers going back in more detail.
 
 ### The project has no migrations yet
 
-When `migrations/app/` holds no migration, the error reads `No on-disk migrations for contract space "app"`, and the fix is to plan the first migration and apply it:
+When `migrations/app/` holds no migration, the error reads `No on-disk migrations for contract space "app"`, and on a new, empty database the fix is to plan the first migration and apply it:
 
 ```npm
 npx prisma migration plan --name init
 npx prisma db migrate --db "$DATABASE_URL"
 ```
+
+If the database already has your tables, do not apply that first migration, because it creates every table from nothing. Run [`db sign`](/cli/db-sign) first, so that the database records which contract it matches, as [`migration plan`](/cli/migration-plan) explains.
 
 ### In a script
 
