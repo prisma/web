@@ -195,12 +195,13 @@ You can also interpolate a query from the [SQL query builder](/orm/reference/sql
 ```ts
 const copies = post
   .innerJoin(user, (f, fns) => fns.eq(f.user.id, f.post.userId))
-  .select((f) => ({ title: f.post.title, body: f.post.body, userId: f.post.userId }))
+  .select((f) => ({ title: f.post.title, userId: f.post.userId }))
   .where((f, fns) => fns.eq(f.user.email, fromEmail));
 
 const plan = db.raw.sql`
-  INSERT INTO "post" (title, body, "userId")
-  ${copies}
+  INSERT INTO "post" (id, title, "userId")
+  SELECT gen_random_uuid(), c.title, c."userId"
+  FROM (${copies}) AS c
   RETURNING id, title
 `
   .returnsRow({ id: post.columns.id, title: post.columns.title })
