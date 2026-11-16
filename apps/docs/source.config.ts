@@ -73,6 +73,10 @@ export const docs = defineDocs({
       // Visually hides the docs sidebar on landing pages; the pages stay in
       // navigation, search, sitemap, and llms.txt.
       hideSidebar: z.boolean().optional(),
+      // A short name for the sidebar (and the page path and previous / next
+      // links) when the title is too long to fit there on one line. The
+      // page's own title, search entry and metadata keep the full title.
+      sidebarTitle: z.string().optional(),
     }),
     postprocess: {
       includeProcessedMarkdown: true,

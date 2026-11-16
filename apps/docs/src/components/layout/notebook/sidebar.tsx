@@ -256,16 +256,30 @@ function PageTreeFolder({ item, children }: { item: PageTree.Folder; children: R
       {item.index ? (
         <SidebarFolderLink href={item.index.url} external={item.index.external}>
           {item.icon}
-          {item.name}
+          <ItemLabel name={item.name} />
         </SidebarFolderLink>
       ) : (
         <SidebarFolderTrigger>
           {item.icon}
-          {item.name}
+          <ItemLabel name={item.name} />
         </SidebarFolderTrigger>
       )}
       <SidebarFolderContent>{children}</SidebarFolderContent>
     </SidebarFolder>
+  );
+}
+
+/**
+ * A sidebar label on one line: long names end in an ellipsis instead of
+ * wrapping, with the full name on hover. Pages too long for the sidebar set
+ * a short `sidebarTitle` (source.ts); this is the safety net for the rest
+ * (generated REST endpoint pages, older version trees).
+ */
+function ItemLabel({ name }: { name: ReactNode }) {
+  return (
+    <span className="min-w-0 truncate" title={typeof name === "string" ? name : undefined}>
+      {name}
+    </span>
   );
 }
 
@@ -302,7 +316,7 @@ export function SidebarPageTree(
         if (Item) return <Item key={item.url} item={item} />;
         return (
           <SidebarItem key={item.url} href={item.url} external={item.external} icon={item.icon}>
-            {item.name}
+            <ItemLabel name={item.name} />
           </SidebarItem>
         );
       });
