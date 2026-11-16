@@ -342,7 +342,7 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
       {/* No "Previous Page" / "Next Page" filler: without a description the
           title and arrow say enough. */}
       {item.description && (
-        <span className="mt-1 block truncate text-sm leading-6 text-fd-muted-foreground">
+        <span className="mt-1 block text-sm leading-6 text-pretty text-fd-muted-foreground">
           {item.description}
         </span>
       )}
