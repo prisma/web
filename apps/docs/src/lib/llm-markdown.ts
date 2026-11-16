@@ -766,7 +766,14 @@ export function normalizeProcessedMarkdown(
   // placeholders at this point.
   const withHeadings = restoreHeadingMarkers(withoutJsxComponents, options?.headingDepths);
   const protectedInline = protectInlineCode(withHeadings);
-  const unescaped = protectedInline.restore(protectedInline.markdown.replace(/\\([_{}])/g, "$1"));
+  const unescaped = protectedInline.restore(
+    protectedInline.markdown
+      .replace(/\\([_{}])/g, "$1")
+      // One bullet marker throughout: remark-stringify writes "*" for MDX
+      // lists while the component formatters write "-". Fences are still
+      // placeholders here, so code is untouched; "* * *" rules are skipped.
+      .replace(/^([ \t>]*)\* (?![* \t]*$)/gm, "$1- "),
+  );
 
   return protectedCode
     .restore(unescaped)

@@ -220,6 +220,27 @@ Create a Prisma Postgres database for this project.
 - [CLI reference](/cli): Every command and flag`,
   },
   {
+    name: "Bullet markers",
+    input: `* [Model your data](/orm/data-modeling): describe your models.
+* **Bold** first word.
+  * Nested item.
+
+* * *
+
+\`\`\`text
+* stays as written in code
+\`\`\``,
+    expected: `- [Model your data](/orm/data-modeling): describe your models.
+- **Bold** first word.
+  - Nested item.
+
+* * *
+
+\`\`\`text
+* stays as written in code
+\`\`\``,
+  },
+  {
     name: "Steps",
     input: `<Steps>
 
