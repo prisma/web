@@ -1,0 +1,277 @@
+---
+title: Full-text search with ParadeDB
+description: Rank search results by relevance in Prisma Postgres with ParadeDB's pg_search extension and a BM25 index, from SQL or Prisma ORM.
+url: /postgres/database/paradedb
+metaTitle: ParadeDB full-text search on Prisma Postgres
+metaDescription: 'Enable ParadeDB pg_search on Prisma Postgres, create a BM25 index, and run ranked, phrase, and fuzzy searches from SQL, Prisma ORM 8, or Prisma ORM 7.'
+---
+
+Prisma Postgres includes `pg_search`, the PostgreSQL extension from [ParadeDB](https://www.paradedb.com). It adds a BM25 index, which ranks matching rows by how well they match a search query, the way a search engine orders its results. On this page you enable the extension, index the text columns you want to search, and run ranked searches from SQL or from Prisma ORM.
+
+## Check the `pg_search` version first
+
+{/* cspell:ignore migratoin */}
+
+ParadeDB's current documentation and its `paradedb/paradedb:latest` Docker image describe `pg_search` 0.20 and later, but Prisma Postgres runs 0.17. An example copied from ParadeDB's documentation may fail on Prisma Postgres, so use the `@@@` operator and the `paradedb.*` functions shown on this page.
+
+The newer releases added search operators (`|||`, `&&&`, `###`, `===`) and functions in a `pdb` schema, such as `pdb.score`, which are not available on Prisma Postgres yet. A query that uses them fails with `operator does not exist: text ||| unknown` or `schema "pdb" does not exist`.
+
+To see which version your database offers, run:
+
+```sql
+SELECT name, default_version, installed_version
+FROM pg_available_extensions
+WHERE name = 'pg_search';
+```
+
+```text no-copy
+   name    | default_version | installed_version
+-----------+-----------------+-------------------
+ pg_search | 0.17.12         |
+```
+
+`installed_version` stays empty until you run `CREATE EXTENSION` in the next section.
+
+## Prerequisites
+
+- A Prisma Postgres database and its connection string. To get one without an account, run `npx create-db@latest`; see [`npx create-db`](/postgres/npx-create-db).
+- A way to run SQL against it, such as `psql`, a GUI client like TablePlus, or a migration file.
+
+## Search with SQL
+
+The steps in this section work from any PostgreSQL client. They use an `Article` table with a `title` and a `body`.
+
+### 1. Enable the extension
+
+Install `pg_search` in your database, which also creates the `paradedb` schema that holds the search functions.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_search;
+```
+
+### 2. Create a table and a BM25 index
+
+A BM25 index covers every column you want to search, plus a key column that identifies each row. Name the key column in `key_field` and put it first inside `USING bm25 (...)`. Usually it is the primary key.
+
+```sql
+CREATE TABLE "Article" (
+  id    serial PRIMARY KEY,
+  title text NOT NULL,
+  body  text NOT NULL
+);
+
+INSERT INTO "Article" (title, body) VALUES
+  ('Prisma ORM 8 is here', 'A new query builder and a migration graph'),
+  ('Migrations explained', 'How the migration graph tracks every migration you apply'),
+  ('Running shoes', 'Lightweight running shoes for the road');
+
+CREATE INDEX article_search ON "Article"
+USING bm25 (id, title, body)
+WITH (key_field = 'id');
+```
+
+PostgreSQL keeps the index up to date as you insert, update, and delete rows, so a new row is searchable as soon as its transaction commits.
+
+### 3. Search a column
+
+`column @@@ 'query'` matches the rows whose column contains the words in the query. Matching ignores case.
+
+```sql
+SELECT id, title FROM "Article" WHERE body @@@ 'migration graph';
+```
+
+```text no-copy
+ id |        title
+----+----------------------
+  1 | Prisma ORM 8 is here
+  2 | Migrations explained
+```
+
+By default a row matches when it contains any word of the query. The query string accepts the following syntax:
+
+| Query | Matches rows whose column contains |
+| --- | --- |
+| `'migration graph'` | `migration` or `graph` |
+| `'+running +road'` | both `running` and `road` |
+| `'"migration graph"'` | the words `migration graph` next to each other, in that order |
+| `'migration AND road'` | both words, written with `AND` instead of `+` |
+
+Search matches whole words only, so `'migrations'` does not match a row that contains only `migration`.
+
+To search several columns, combine conditions with `OR`:
+
+```sql
+SELECT id, title FROM "Article" WHERE title @@@ 'migrations' OR body @@@ 'shoes';
+```
+
+### 4. Rank results by relevance
+
+`paradedb.score(key)` returns each matching row's BM25 score, higher for a better match. Pass it the key column and sort by it:
+
+```sql
+SELECT id, title, paradedb.score(id) AS score
+FROM "Article"
+WHERE body @@@ 'migration graph'
+ORDER BY score DESC
+LIMIT 10;
+```
+
+```text no-copy
+ id |        title         |   score
+----+----------------------+------------
+  2 | Migrations explained |  1.0549045
+  1 | Prisma ORM 8 is here | 0.92357993
+```
+
+The second article ranks first because its body mentions `migration` twice.
+
+### 5. Use the query functions for fuzzy and exact searches
+
+For searches the query string does not cover, write `key @@@ paradedb.<function>(...)`. With these functions, the left side of `@@@` is the key column, and the column you search is the function's first argument, written as a string.
+
+```sql
+-- Allow up to two typos per word
+SELECT id FROM "Article"
+WHERE id @@@ paradedb.match('body', 'migratoin', distance => 2);
+
+-- Words next to each other, in order
+SELECT id FROM "Article"
+WHERE id @@@ paradedb.phrase('body', ARRAY['migration', 'graph']);
+
+-- One word exactly as it is stored in the index, so write it in lowercase
+SELECT id FROM "Article"
+WHERE id @@@ paradedb.term('body', 'migration');
+```
+
+To show the reader where a row matched, `paradedb.snippet(column)` returns the matching text with each hit wrapped in `<b>` tags:
+
+```sql
+SELECT id, paradedb.snippet(body) FROM "Article" WHERE body @@@ 'shoes';
+```
+
+```text no-copy
+ id |                     snippet
+----+-------------------------------------------------
+  3 | Lightweight running <b>shoes</b> for the road
+```
+
+## Use ParadeDB with Prisma ORM 8
+
+With the experimental `@prisma/orm-extension-paradedb` package, Prisma ORM 8 declares the BM25 index in your contract, the TypeScript file that describes your tables, and installs `pg_search` through a migration. First set up the project as the [ParadeDB extension page](/orm/extensions/paradedb) describes: it covers installing the package and declaring the index. Then make the two Prisma Postgres changes below.
+
+### Add the `paradedb` schema to the search path
+
+Without this change, `npx prisma db init` installs the extension and creates the index, but `npx prisma db verify`, which checks that the database matches your contract, fails afterwards, and so does `npx prisma db sign`. The reason is that `pg_search` 0.17 always installs into a schema called `paradedb`, while `db verify` expects the extension in a schema on the connection's search path, the list of schemas PostgreSQL looks in. On Prisma Postgres that list holds only `public` and the system schema `pg_catalog`:
+
+```text no-copy
+✘ mismatch: database/pg_search. extension "pg_search" is installed in schema "paradedb",
+  which is not on the search path (pg_catalog, public).
+```
+
+Add the schema to the database's search path once, from any SQL client. A Prisma Postgres database is named `postgres`, as the end of its connection string shows:
+
+```sql
+ALTER DATABASE postgres SET search_path = "$user", public, paradedb;
+```
+
+The setting applies only to connections opened after the change. To confirm it, run `db verify` again:
+
+```bash
+npx prisma db verify
+```
+
+```text no-copy
+✔ Database marker and schema match contract
+```
+
+### Search with the operations Prisma Postgres supports
+
+On `pg_search` 0.17, `paradeDbMatch` works as the [ParadeDB extension page](/orm/extensions/paradedb#search) describes. The other operations fail, and this table lists what to use instead:
+
+| Operation | On Prisma Postgres | Instead |
+| --- | --- | --- |
+| `paradeDbMatch(query)` | Works | |
+| `paradeDbMatchAny(query)` | Fails | `paradeDbMatch(query)`, which also matches any word |
+| `paradeDbMatchAll(query)` | Fails | `paradeDbMatch('+word +word')` |
+| `paradeDbPhrase(query)` | Fails | `paradeDbMatch('"word word"')` |
+| `paradeDbTerm(word)` | Fails | `fns.raw` with `paradedb.term`, shown below |
+| `paradeDbScore(key)` | Fails | `fns.raw` with `paradedb.score`, shown below |
+| `paradeDbFuzzy`, `paradeDbBoost`, and the proximity operations | Fail | `fns.raw` with `paradedb.match(..., distance => n)` for fuzzy matching |
+
+`paradeDbMatch` accepts the same query string syntax as `@@@` in SQL, so phrase and must-contain searches work through it:
+
+```ts
+const articles = await db.orm.public.Article.where((a) =>
+  a.body.paradeDbMatch('"migration graph"'),
+).all();
+```
+
+To rank results, write the query with the [SQL query builder](/orm/reference/sql-query-builder) and compute the score with a [raw fragment](/orm/reference/raw-queries), `fns.raw`, that calls `paradedb.score`:
+
+```ts
+const plan = db.sql.public.Article.select('id', 'title')
+  .select('score', (f, fns) => fns.raw`paradedb.score(${f.id})`.returns('pg/float4@1'))
+  .where((f, fns) => fns.paradeDbMatch(f.body, 'migration graph'))
+  .orderBy((f, fns) => fns.raw`paradedb.score(${f.id})`.returns('pg/float4@1'), { direction: 'desc' })
+  .limit(10)
+  .build();
+
+const ranked = await db.query(plan).toArray();
+```
+
+```js no-copy
+[
+  { id: 2, title: 'Migrations explained', score: 1.0549045 },
+  { id: 1, title: 'Prisma ORM 8 is here', score: 0.92357993 },
+]
+```
+
+`.returns('pg/float4@1')` tells Prisma ORM that the fragment returns a floating-point number. The score expression appears in both `select` and `orderBy` because each call builds its own fragment.
+
+Fuzzy and exact-word searches use the `paradedb.match` and `paradedb.term` functions from step 5 the same way, inside `where`. Interpolate the search text with `${...}` so Prisma ORM sends it as a query parameter:
+
+```ts
+const fuzzy = db.sql.public.Article.select('id', 'title')
+  .where((f, fns) => fns.raw`${f.id} @@@ paradedb.match('body', ${'migratoin'}, distance => 2)`.returns('pg/bool@1'))
+  .build();
+
+const exact = db.sql.public.Article.select('id', 'title')
+  .where((f, fns) => fns.raw`${f.id} @@@ paradedb.term('body', ${'migration'})`.returns('pg/bool@1'))
+  .build();
+
+const rows = await db.query(fuzzy).toArray();
+```
+
+## Use ParadeDB with Prisma ORM 7
+
+Prisma ORM 7 has no BM25 index type, so you create the index in SQL and search with [raw queries](/orm/v7/prisma-client/using-raw-sql). Generate the migration for your `Article` model with `npx prisma migrate dev --create-only`, add the `CREATE EXTENSION` and `CREATE INDEX` statements from steps 1 and 2 to the end of its `migration.sql`, and apply it with `npx prisma migrate dev`. [Customizing migrations](/orm/v7/prisma-migrate/workflows/customizing-migrations) walks through the same flow.
+
+Search with `$queryRaw`:
+
+```ts
+const query = 'migration graph';
+const articles = await prisma.$queryRaw`
+  SELECT id, title, paradedb.score(id) AS score
+  FROM "Article"
+  WHERE body @@@ ${query}
+  ORDER BY score DESC
+  LIMIT 10
+`;
+```
+
+Prisma Migrate does not know about BM25 indexes, so when it compares your schema with the database, it plans `DROP INDEX "article_search";` next to your real changes. Create each later migration with `--create-only` as well, and delete that statement from its `migration.sql` before you apply it.
+
+## Develop locally
+
+The local Prisma Postgres database that `npx prisma dev` starts does not include `pg_search`. To search on your machine, run ParadeDB's Docker image at the version Prisma Postgres runs, so a query that works locally also works in production:
+
+```bash
+docker run --name paradedb -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d paradedb/paradedb:0.17.12-pg17
+```
+
+Connect to it with `postgresql://postgres:postgres@localhost:5432/postgres`, then run the same setup as on Prisma Postgres: the `CREATE EXTENSION` statement or your migrations, plus the search path change if you use Prisma ORM 8. Avoid the `latest` tag, because it runs a newer `pg_search` that accepts syntax Prisma Postgres rejects; see [Check the `pg_search` version first](#check-the-pg_search-version-first).
+
+## Next steps
+
+- [Extensions](/postgres/database/postgres-extensions) lists every extension Prisma Postgres supports.
+- [ParadeDB](/orm/extensions/paradedb) covers the Prisma ORM 8 extension's setup and contract declaration.
