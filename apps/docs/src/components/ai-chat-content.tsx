@@ -33,7 +33,8 @@ import {
   type ChatMessage,
   type StoredSource,
 } from "@/hooks/use-chat-persistence";
-import { useAIChatContext } from "@/hooks/use-ai-chat";
+import { useSetAtom } from "jotai";
+import { takeChatPromptAtom, useAIChatContext } from "@/hooks/use-ai-chat";
 
 import {
   Conversation,
@@ -207,13 +208,16 @@ const ChatInner = ({
 
   // A question handed over from search ("Ask AI: …" / Tab in the search
   // dialog) waits in the shared prompt atom until the chat is mounted and free.
-  const { prompt: pendingPrompt, setPrompt: setPendingPrompt } = useAIChatContext();
+  // This component is mounted twice on phones (desktop panel and drawer), so
+  // the prompt is taken from the store, not cleared with a state setter: the
+  // second instance's effect then finds it empty and submits nothing.
+  const { prompt: pendingPrompt } = useAIChatContext();
+  const takePendingPrompt = useSetAtom(takeChatPromptAtom);
   useEffect(() => {
-    const question = pendingPrompt.trim();
-    if (!question || isPersistenceLoading || isGeneratingAnswer) return;
-    setPendingPrompt("");
-    submitQuery(question);
-  }, [pendingPrompt, isPersistenceLoading, isGeneratingAnswer, setPendingPrompt, submitQuery]);
+    if (!pendingPrompt.trim() || isPersistenceLoading || isGeneratingAnswer) return;
+    const question = takePendingPrompt().trim();
+    if (question) submitQuery(question);
+  }, [pendingPrompt, isPersistenceLoading, isGeneratingAnswer, takePendingPrompt, submitQuery]);
 
   const handleSubmit = (value: string) => {
     if (!isGeneratingAnswer) {
