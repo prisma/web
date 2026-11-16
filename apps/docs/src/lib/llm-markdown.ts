@@ -602,6 +602,25 @@ export function normalizeProcessedMarkdown(
     .replace(/<Step\b([^>]*)>([\s\S]*?)<\/Step>/g, (_match, attrs: string, content: string) =>
       formatSectionComponent(attrs, content, "Step"),
     )
+    .replace(
+      // The docs' <Steps> (src/components/steps.tsx) numbers its h3 steps in
+      // CSS, so the headings carry no "1."; agents get the numbers back. The
+      // processed markdown writes headings as "Text [#anchor]" lines (the
+      // `###` is restored later from the toc), so a step is a line whose
+      // anchor sits at depth 3, or one already written as `### `.
+      /<Steps>([\s\S]*?)<\/Steps>/g,
+      (_match, content: string) => {
+        let step = 0;
+        return content.replace(
+          /^([ \t]*)(### )?(?!\d+\.\s)(.+?)[ \t]*\[#([^\]\n]+)\][ \t]*$/gm,
+          (line, indent: string, hashes: string | undefined, text: string, anchor: string) => {
+            const isStep = hashes !== undefined || options?.headingDepths?.get(anchor) === 3;
+            if (!isStep || text.startsWith("#")) return line;
+            return `${indent}${hashes ?? ""}${++step}. ${text} [#${anchor}]`;
+          },
+        );
+      },
+    )
     .replace(/<\/?Steps[^>]*>/g, "")
     .replace(/<SharedContent\b[^>]*>([\s\S]*?)<\/SharedContent>/g, (_match, content: string) =>
       trimComponentContent(content),

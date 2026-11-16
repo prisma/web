@@ -8,6 +8,8 @@ type SnapshotCase = {
   name: string;
   input: string;
   expected: string;
+  /** anchor → toc depth, as getLLMText passes it for real pages */
+  headingDepths?: Record<string, number>;
 };
 
 const snapshots: SnapshotCase[] = [
@@ -217,6 +219,28 @@ Create a Prisma Postgres database for this project.
     expected: `- [Prisma ORM](/orm): Prisma ORM 8 and 7 docs
 - [CLI reference](/cli): Every command and flag`,
   },
+  {
+    name: "Steps",
+    input: `<Steps>
+
+  ### Get a database [#1-get-a-database]
+
+Create one.
+
+Run the app [#2-run-the-app]
+
+Start it.
+
+</Steps>`,
+    headingDepths: { "1-get-a-database": 3, "2-run-the-app": 3 },
+    expected: `### 1. Get a database [#1-get-a-database]
+
+Create one.
+
+### 2. Run the app [#2-run-the-app]
+
+Start it.`,
+  },
 ];
 
 function stripFencedCodeBlocks(markdown: string) {
@@ -224,7 +248,11 @@ function stripFencedCodeBlocks(markdown: string) {
 }
 
 for (const snapshot of snapshots) {
-  const actual = normalizeProcessedMarkdown(snapshot.input);
+  const actual = normalizeProcessedMarkdown(snapshot.input, {
+    headingDepths: snapshot.headingDepths
+      ? new Map(Object.entries(snapshot.headingDepths))
+      : undefined,
+  });
   assert.equal(actual, snapshot.expected, snapshot.name);
   assert.equal(
     rawComponentPattern.test(stripFencedCodeBlocks(actual)),

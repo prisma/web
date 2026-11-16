@@ -57,6 +57,9 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       <TechArticleSchema page={{ ...page, data: content }} />
       <BreadcrumbSchema page={page} />
       <DocsPage
+        // The page's path above the title (section › group › folder), as
+        // quiet links: where the page sits, and a way back up.
+        breadcrumb={{ includeRoot: true, includeSeparator: true }}
         tableOfContent={{
           style: "normal",
         }}
@@ -103,9 +106,11 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             />
           )}
         </div>
-        {/* Page actions sit in their own row under the title (Clerk's layout),
-            so the title keeps the full width and the row reads at any size. */}
-        <div className="flex flex-row flex-wrap items-center gap-2 pb-1" data-markdown-ignore>
+        <DocsDescription className="-mt-1 mb-0">{page.data.description}</DocsDescription>
+        {/* Page actions sit in their own row under the summary, so the title
+            reads straight into what the page is about; the row keeps the full
+            width at any size, with room before the article starts. */}
+        <div className="flex flex-row flex-wrap items-center gap-2 pb-4" data-markdown-ignore>
           {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
           <PageActions
             markdownUrl={withMarkdownPath(page.url)}
@@ -113,7 +118,6 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             canCopy={!page.url.startsWith("/rest-api/endpoints")}
           />
         </div>
-        <DocsDescription>{page.data.description}</DocsDescription>
         <DocsBody>
           <MDX
             components={getMDXComponents({

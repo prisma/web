@@ -24,6 +24,7 @@ import {
   WorkflowStage,
 } from "@/components/getting-started";
 import { BucketIcon } from "@/components/icons/bucket";
+import { Steps } from "@/components/steps";
 import { withDocsBasePath } from "@/lib/urls";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
@@ -145,6 +146,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     SetupPath,
     SetupPrompt,
     SetupTabs,
+    Steps,
     TechIcon,
     WorkflowGrid,
     WorkflowHero,

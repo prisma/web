@@ -21,6 +21,7 @@ import type * as PageTree from "fumadocs-core/page-tree";
 import { usePathname } from "fumadocs-core/framework";
 import { type BreadcrumbOptions, getBreadcrumbItemsFromPath } from "fumadocs-core/breadcrumb";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
+import { sentenceCase } from "@/lib/sentence-case";
 import { getPageTitleText } from "@/lib/page-title";
 import { getVersionedSidebarTree } from "@/lib/versioned-sidebar-tree";
 import { isActive } from "../../../../lib/urls";
@@ -348,6 +349,11 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
 
 export type BreadcrumbProps = BreadcrumbOptions & ComponentProps<"div">;
 
+function breadcrumbLabel(name: ReactNode) {
+  const label = formatBreadcrumbName(name);
+  return typeof label === "string" ? sentenceCase(label) : label;
+}
+
 export function PageBreadcrumb({
   includeRoot,
   includeSeparator,
@@ -372,7 +378,12 @@ export function PageBreadcrumb({
       className={cn("flex items-center gap-1.5 text-sm text-fd-muted-foreground", props.className)}
     >
       {items.map((item, i) => {
-        const className = cn("truncate", i === items.length - 1 && "text-fd-primary font-medium");
+        // The path above the title (Supabase-style): quiet links with
+        // chevrons, the nearest group a step darker. Ink, not the theme cyan.
+        const className = cn(
+          "truncate",
+          i === items.length - 1 && "font-medium text-fd-foreground/75",
+        );
 
         return (
           <Fragment key={i}>
@@ -380,12 +391,12 @@ export function PageBreadcrumb({
             {item.url ? (
               <Link
                 href={item.url}
-                className={cn(className, "transition-opacity hover:opacity-80")}
+                className={cn(className, "transition-colors hover:text-fd-foreground")}
               >
-                {formatBreadcrumbName(item.name)}
+                {breadcrumbLabel(item.name)}
               </Link>
             ) : (
-              <span className={className}>{formatBreadcrumbName(item.name)}</span>
+              <span className={className}>{breadcrumbLabel(item.name)}</span>
             )}
           </Fragment>
         );
