@@ -268,7 +268,7 @@ export function transform(target, markdown) {
 
   // Repo-relative links point at files that only exist in the source repo.
   const blobBase = `https://github.com/${target.sourceRepo}/blob/main/docs/reference/`;
-  body = body.replace(/\]\((\.\.?\/[^)]+)\)/g, (_, linkTarget) => {
+  body = body.replace(/\]\((\.\.?\/[^)]+|[\w-][^):\s]*\.md(?:#[^)]*)?)\)/g, (_, linkTarget) => {
     const url = new URL(linkTarget, `${blobBase}error-reference.md`);
     return `](${url.href})`;
   });
