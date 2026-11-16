@@ -241,6 +241,19 @@ Create a Prisma Postgres database for this project.
 \`\`\``,
   },
   {
+    name: "Bullets in a blockquoted fence",
+    input: `> \`\`\`text
+> * keep this literal
+> \`\`\`
+
+* but convert this`,
+    expected: `> \`\`\`text
+> * keep this literal
+> \`\`\`
+
+- but convert this`,
+  },
+  {
     name: "Steps with a numbered heading",
     input: `<Steps>
 

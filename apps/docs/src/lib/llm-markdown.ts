@@ -566,6 +566,29 @@ export function protectInlineCode(markdown: string) {
   };
 }
 
+/**
+ * One bullet marker throughout: remark-stringify writes "*" for MDX lists
+ * while the component formatters write "-". Lines inside a code fence are
+ * left alone, including fences inside a blockquote ("> ```"), which
+ * protectFencedCodeBlocks does not cover; "* * *" rules are skipped too.
+ */
+function unifyBullets(markdown: string) {
+  let fence: string | null = null;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      const marker = /^[ \t>]*(`{3,}|~{3,})/.exec(line)?.[1];
+      if (marker) {
+        if (fence === null) fence = marker;
+        else if (marker[0] === fence[0] && marker.length >= fence.length) fence = null;
+        return line;
+      }
+      if (fence !== null) return line;
+      return line.replace(/^([ \t>]*)\* (?![* \t]*$)/, "$1- ");
+    })
+    .join("\n");
+}
+
 export function normalizeProcessedMarkdown(
   markdown: string,
   options?: { headingDepths?: ReadonlyMap<string, number> },
@@ -772,15 +795,10 @@ export function normalizeProcessedMarkdown(
   // literal backslashes in code spans survive; fenced blocks are already
   // placeholders at this point.
   const withHeadings = restoreHeadingMarkers(withoutJsxComponents, options?.headingDepths);
-  const protectedInline = protectInlineCode(withHeadings);
-  const unescaped = protectedInline.restore(
-    protectedInline.markdown
-      .replace(/\\([_{}])/g, "$1")
-      // One bullet marker throughout: remark-stringify writes "*" for MDX
-      // lists while the component formatters write "-". Fences are still
-      // placeholders here, so code is untouched; "* * *" rules are skipped.
-      .replace(/^([ \t>]*)\* (?![* \t]*$)/gm, "$1- "),
-  );
+  // Bullets are unified before inline-code protection, which would otherwise
+  // swallow a "```" fence line as a code span and hide it from unifyBullets.
+  const protectedInline = protectInlineCode(unifyBullets(withHeadings));
+  const unescaped = protectedInline.restore(protectedInline.markdown.replace(/\\([_{}])/g, "$1"));
 
   return protectedCode
     .restore(unescaped)
