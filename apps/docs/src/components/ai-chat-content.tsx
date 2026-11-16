@@ -213,11 +213,22 @@ const ChatInner = ({
   // second instance's effect then finds it empty and submits nothing.
   const { prompt: pendingPrompt } = useAIChatContext();
   const takePendingPrompt = useSetAtom(takeChatPromptAtom);
+  // Wait while an earlier answer is preparing as well as generating:
+  // submitQuery rejects a question in either state, so taking the prompt then
+  // would lose it.
   useEffect(() => {
-    if (!pendingPrompt.trim() || isPersistenceLoading || isGeneratingAnswer) return;
+    if (!pendingPrompt.trim() || isPersistenceLoading || isGeneratingAnswer || isPreparingAnswer)
+      return;
     const question = takePendingPrompt().trim();
     if (question) submitQuery(question);
-  }, [pendingPrompt, isPersistenceLoading, isGeneratingAnswer, takePendingPrompt, submitQuery]);
+  }, [
+    pendingPrompt,
+    isPersistenceLoading,
+    isGeneratingAnswer,
+    isPreparingAnswer,
+    takePendingPrompt,
+    submitQuery,
+  ]);
 
   const handleSubmit = (value: string) => {
     if (!isGeneratingAnswer) {
