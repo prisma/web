@@ -47,12 +47,12 @@ export const links: LinkItemType[] = [
 export const docsLinks: LinkItemType[] = [];
 
 export const authLinks: LinkItemType[] = [
-  // Login is the secondary pill; Sign up is the one primary CTA. No hardcoded
+  // Log in is a plain text link; Sign up is the one primary CTA. No hardcoded
   // UTM parameters: they would override the visitor's own, which useUtmHref
   // propagates onto these links instead.
   {
     type: "button",
-    text: "Login",
+    text: "Log in",
     url: "https://console.prisma.io/login",
     active: "none",
     on: "nav",
@@ -60,7 +60,7 @@ export const authLinks: LinkItemType[] = [
   },
   // Below `lg` the desktop bar has no room for a second pill: it would squeeze
   // the section crumb ("Query Insights", "Local Development") into an ellipsis.
-  // There the bar keeps Login only; the mobile drawer lists both buttons. From
+  // There the bar keeps Log in only; the mobile drawer lists both buttons. From
   // `lg` up the longest crumbs still clip: below 1054px with the bar docked and
   // below 1094px once it floats on scroll, because floating makes it 40px narrower.
   {

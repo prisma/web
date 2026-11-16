@@ -88,3 +88,43 @@ export function ThemeToggle({
     </div>
   );
 }
+
+const cycleOrder = ["light", "dark", "system"] as const;
+type ThemeChoice = (typeof cycleOrder)[number];
+const cycleIcon = { light: Sun, dark: Moon, system: Airplay } as const;
+
+/**
+ * The navbar's theme control: one quiet icon showing the current choice
+ * (light, dark or system) that steps to the next on click. The three-way
+ * segmented ThemeToggle stays in the mobile drawer, where it has room.
+ */
+export function ThemeCycleToggle({ className, ...props }: ComponentProps<"button">) {
+  const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const current: ThemeChoice =
+    mounted && cycleOrder.includes(theme as ThemeChoice) ? (theme as ThemeChoice) : "system";
+  const next = cycleOrder[(cycleOrder.indexOf(current) + 1) % cycleOrder.length];
+  const Icon = cycleIcon[current];
+
+  return (
+    <button
+      type="button"
+      data-theme-toggle=""
+      aria-label={`Theme: ${current}. Switch to ${next}`}
+      title={`Theme: ${current}`}
+      {...props}
+      className={cn(
+        "quiet-hover inline-flex size-8 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60",
+        className,
+      )}
+      onClick={() => setTheme(next)}
+    >
+      <Icon className="size-4" fill="currentColor" aria-hidden="true" />
+    </button>
+  );
+}

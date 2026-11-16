@@ -336,13 +336,6 @@ function formatWorkflowLink(attrs: string, content: string) {
   return `- **${label}**${badge ? ` (${badge})` : ""}${text ? `: ${text}` : ""}`;
 }
 
-function formatCliCallout(attrs: string, content: string) {
-  const href = getAttribute(attrs, "href");
-  const linkLabel = getAttribute(attrs, "linkLabel") ?? "CLI reference";
-  const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
-  return [text, href ? `See the [${linkLabel}](${href}).` : ""].filter(Boolean).join(" ");
-}
-
 function formatIconLink(attrs: string, _content: string) {
   const title = getAttribute(attrs, "title") ?? "Link";
   const href = getAttribute(attrs, "href");
@@ -653,8 +646,60 @@ export function normalizeProcessedMarkdown(
       },
     )
     .replace(
-      /<CliCallout\b([^>]*)>([\s\S]*?)<\/CliCallout>/g,
-      (_match, attrs: string, content: string) => formatCliCallout(attrs, content),
+      /<DeployCallout\b([^>]*)>([\s\S]*?)<\/DeployCallout>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title");
+        const command = getAttribute(attrs, "command");
+        const href = getAttribute(attrs, "href");
+        const linkLabel = getAttribute(attrs, "linkLabel") ?? "Deploy guide";
+        const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
+        return [
+          title ? `**${title}**` : "",
+          command ? "```bash\n" + command + "\n```" : "",
+          text,
+          href ? `See the [${linkLabel}](${href}).` : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+      },
+    )
+    .replace(
+      // Each row becomes "- **Label:** `command` ([guide](href))".
+      /<CommandRows\b[^>]*>([\s\S]*?)<\/CommandRows>/g,
+      (_match, content: string) =>
+        [...content.matchAll(/<CommandRow\b([^>]*?)\/>/g)]
+          .map(([, attrs]) => {
+            const label = getAttribute(attrs, "label");
+            const command = getAttribute(attrs, "command");
+            const href = getAttribute(attrs, "href");
+            const linkLabel = getAttribute(attrs, "linkLabel");
+            const guide = href && linkLabel ? ` ([${linkLabel}](${href}))` : "";
+            return `- **${label}:** \`${command}\`${guide}`;
+          })
+          .join("\n"),
+    )
+    .replace(/<\/?SetupTabs[^>]*>/g, "")
+    .replace(/<\/?SetupPrompt[^>]*>/g, "")
+    .replace(
+      // A tab becomes a bold label, its text, the guide link, then the prompt
+      // (shown here in full: on the page it is copied rather than displayed).
+      /<SetupPath\b([^>]*)>([\s\S]*?)<\/SetupPath>/g,
+      (_match, attrs: string, content: string) => {
+        const label = getAttribute(attrs, "label");
+        const guideHref = getAttribute(attrs, "guideHref");
+        const guideTitle = getAttribute(attrs, "guideTitle") ?? "Guide";
+        const [text, ...prompt] = trimComponentContent(content).split(
+          /\n\n(?=\S*LLM_FENCED_CODE_BLOCK)/,
+        );
+        return [
+          label ? `**${label}**` : "",
+          text,
+          guideHref ? `Follow the guide: [${guideTitle}](${guideHref})` : "",
+          ...prompt,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+      },
     )
     .replace(
       // Same brace-tolerant attrs matcher as AgentPrompt: ModalRow takes
@@ -675,14 +720,18 @@ export function normalizeProcessedMarkdown(
   const withoutJsxComponents = replaceComponentBlocks(
     replaceComponentBlocks(
       replaceComponentBlocks(
-        replaceComponentBlocks(componentMarkdown, "Card", formatCard)
-          .replace(/<\/?Cards[^>]*>/g, "")
-          .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
-          .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
-        "WorkflowLink",
-        formatWorkflowLink,
-      ),
-      "IconLink",
+        replaceComponentBlocks(
+          replaceComponentBlocks(componentMarkdown, "Card", formatCard)
+            .replace(/<\/?Cards[^>]*>/g, "")
+            .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
+            .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
+          "WorkflowLink",
+          formatWorkflowLink,
+        ),
+        "IconLink",
+        formatIconLink,
+      ).replace(/<\/?DocsIndex[^>]*>/g, ""),
+      "IndexLink",
       formatIconLink,
     ),
     "Button",

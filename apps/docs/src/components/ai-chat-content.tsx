@@ -12,7 +12,7 @@ import {
   ChevronRightIcon,
   ExternalLinkIcon,
   FileTextIcon,
-  MessagesSquareIcon,
+  SparklesIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
   Trash2,
@@ -33,6 +33,7 @@ import {
   type ChatMessage,
   type StoredSource,
 } from "@/hooks/use-chat-persistence";
+import { useAIChatContext } from "@/hooks/use-ai-chat";
 
 import {
   Conversation,
@@ -204,6 +205,16 @@ const ChatInner = ({
     saveMessages(messages);
   }, [conversation, saveMessages]);
 
+  // A question handed over from search ("Ask AI: …" / Tab in the search
+  // dialog) waits in the shared prompt atom until the chat is mounted and free.
+  const { prompt: pendingPrompt, setPrompt: setPendingPrompt } = useAIChatContext();
+  useEffect(() => {
+    const question = pendingPrompt.trim();
+    if (!question || isPersistenceLoading || isGeneratingAnswer) return;
+    setPendingPrompt("");
+    submitQuery(question);
+  }, [pendingPrompt, isPersistenceLoading, isGeneratingAnswer, setPendingPrompt, submitQuery]);
+
   const handleSubmit = (value: string) => {
     if (!isGeneratingAnswer) {
       submitQuery(value);
@@ -297,8 +308,8 @@ const ChatInner = ({
           {showEmptyState ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 text-center">
               <div className="flex flex-col items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-square-high bg-fd-primary/10">
-                  <MessagesSquareIcon className="size-6 text-fd-primary" />
+                <div className="flex size-12 items-center justify-center rounded-square-high border bg-fd-background">
+                  <SparklesIcon className="size-6 text-fd-foreground/70" aria-hidden="true" />
                 </div>
                 <div>
                   <h3 className="font-medium text-fd-foreground">How can I help?</h3>
