@@ -693,7 +693,13 @@ export function DeployCallout({
   });
 
   return (
-    <aside className="relative isolate overflow-hidden rounded-xl border bg-fd-card px-5 py-5 sm:px-6">
+    // data-markdown-ignore: the interactive panel (copy button, "Copied")
+    // stays out of the HTML/markdown parity comparison; llm-markdown.ts emits
+    // its markdown fallback (title, command block, note, guide link).
+    <aside
+      data-markdown-ignore
+      className="relative isolate overflow-hidden rounded-xl border bg-fd-card px-5 py-5 sm:px-6"
+    >
       {/* The brand's panel idiom (spectral wash collecting along the bottom
           edge), kept very faint: a surface quality, not a glow, so it never
           competes with the glass prism. */}
@@ -780,7 +786,13 @@ export function DeployCallout({
  * llms output can render them as a list (see llm-markdown.ts).
  */
 export function CommandRows({ children }: { children: ReactNode }) {
-  return <div className="@container flex flex-col divide-y border-y">{children}</div>;
+  // data-markdown-ignore: copy buttons and "Copied" are human-only; the
+  // markdown fallback is a list of label, command and guide (llm-markdown.ts).
+  return (
+    <div data-markdown-ignore className="@container flex flex-col divide-y border-y">
+      {children}
+    </div>
+  );
 }
 
 export function CommandRow({
@@ -893,7 +905,10 @@ export function SetupTabs({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="not-prose">
+    // data-markdown-ignore: tabs, "Copy agent prompt" and "View prompt" are
+    // human-only controls; llm-markdown.ts emits every path with its text,
+    // guide and full prompt. The prompts stay mounted in the HTML.
+    <div data-markdown-ignore className="not-prose">
       {/* One row on every width: it scrolls sideways on phones rather than
           wrapping into a second row of tabs. */}
       <div
