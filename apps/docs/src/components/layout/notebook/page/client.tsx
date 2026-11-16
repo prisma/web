@@ -312,7 +312,6 @@ export function PageFooter({ items, children, className, ...props }: FooterProps
  * and nudges the arrow; no colour fill.
  */
 function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
-  const t = useTranslations({ note: "pagination" });
   const Icon = index === 0 ? ArrowLeft : ArrowRight;
 
   return (
@@ -340,9 +339,13 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
           )}
         />
       </span>
-      <span className="mt-1 block truncate text-sm leading-6 text-fd-muted-foreground">
-        {item.description ?? (index === 0 ? t("Previous Page") : t("Next Page"))}
-      </span>
+      {/* No "Previous Page" / "Next Page" filler: without a description the
+          title and arrow say enough. */}
+      {item.description && (
+        <span className="mt-1 block truncate text-sm leading-6 text-fd-muted-foreground">
+          {item.description}
+        </span>
+      )}
     </Link>
   );
 }

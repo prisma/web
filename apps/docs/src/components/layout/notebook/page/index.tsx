@@ -142,11 +142,15 @@ export function DocsPage({
             </PageTOCPopoverContent>
           </PageTOCPopover>
         ))}
+      {/* role="main": the page's main landmark (the layout has no <main>),
+          and the skip link's target, focusable by script only. */}
       <article
         id="nd-page"
+        role="main"
+        tabIndex={-1}
         data-full={full}
         className={cn(
-          "flex flex-col [grid-area:main] px-4 py-6 gap-4 md:px-6 md:pt-8 xl:px-8 xl:pt-14 *:max-w-225",
+          "flex flex-col [grid-area:main] px-4 py-6 gap-4 outline-none md:px-6 md:pt-8 xl:px-8 xl:pt-14 *:max-w-225",
           full && "*:max-w-321.25",
           className,
         )}

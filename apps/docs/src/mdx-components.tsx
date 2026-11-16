@@ -186,7 +186,11 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
       };
 
       return (
+        // role="note": a callout is an aside, not a live alert; Eclipse's
+        // Alert defaults to role="alert", which screen readers announce
+        // as urgent the moment the page loads.
         <Alert
+          role="note"
           variant={variantMap[type] || "ppg"}
           icon={icon}
           // Roomier vertical rhythm: admonition prose was rendering cramped

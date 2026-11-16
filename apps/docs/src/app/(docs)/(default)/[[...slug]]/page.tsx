@@ -12,6 +12,7 @@ import { createRelativeLink } from "fumadocs-ui/mdx";
 import { CopyPromptButton, PageActions } from "@/components/page-actions";
 import { getPromptContent } from "@/lib/get-prompt-content";
 import { getPageFooterItems } from "@/lib/page-footer-items";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import {
   DocsBody,
   DocsDescription,
@@ -39,6 +40,11 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const promptContent = aiPromptSlug ? await getPromptContent(aiPromptSlug) : null;
   const hideSidebar = (page.data as { hideSidebar?: boolean }).hideSidebar;
   const pageVersion = getPageVersion(page.url);
+
+  // The landing page sends readers down chosen paths, so it has no
+  // previous / next links.
+  const footerItems = page.slugs.length === 0 ? {} : getPageFooterItems(source.pageTree, page.url);
+  const hasFooterNav = Boolean(footerItems.previous || footerItems.next);
 
   return (
     <>
@@ -74,10 +80,16 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         // previous / next links (its "next" would just be the next sidebar
         // entry). Every page closes with one quiet line: edit link and date.
         footer={{
-          items: page.slugs.length === 0 ? {} : getPageFooterItems(source.pageTree, page.url),
+          items: footerItems,
           children: (
             <div
-              className="mt-6 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t pt-5"
+              // One hairline, not two: under previous / next the links' own
+              // top rules already close the article, so the line only draws
+              // its rule when there are none (the landing page).
+              className={cn(
+                "mt-6 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2",
+                !hasFooterNav && "border-t pt-5",
+              )}
               data-markdown-ignore
             >
               <EditOnGitHub
