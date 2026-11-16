@@ -1,0 +1,126 @@
+---
+title: Codeless Sync
+description: Copy Stripe, QuickBooks, Xero, or Paddle billing data into Prisma Postgres tables and keep them up to date on a schedule
+url: /guides/integrations/codeless-sync
+metaTitle: How to sync Stripe billing data to Prisma Postgres with Codeless Sync
+metaDescription: Learn how to connect Prisma Postgres to Codeless Sync, copy Stripe customers into a table, check the rows with psql, and see how many operations a sync uses.
+---
+
+## Introduction
+
+In this guide you connect [Codeless Sync](https://codelesssync.com) to a Prisma Postgres database, copy your Stripe customers into a `stripe_customers` table, and count the rows with `psql`. Billing data in your own database can be joined with your app's tables and queried with any Postgres client.
+
+QuickBooks, Xero, and Paddle follow the same steps. Paddle uses its own API key in step 3, while QuickBooks and Xero connect with OAuth instead.
+
+## Prerequisites
+
+- A [Prisma Data Platform](https://console.prisma.io) account
+- A [Codeless Sync](https://codelesssync.com) account. The free plan covers manual syncs of up to 1,000 rows a month, which is enough for this guide.
+- A [Stripe](https://dashboard.stripe.com) account. Test mode data works.
+- [`psql`](https://www.postgresql.org/download/) installed, to check the rows in step 6
+
+## 1. Create a Prisma Postgres database
+
+Create a database to hold the billing tables. If you already use Prisma Postgres for an app that manages its schema with Prisma ORM migrations, create a separate database, because Codeless Sync creates its tables outside your migrations.
+
+1. Sign in to the [Prisma Console](https://console.prisma.io) and create a new database.
+2. Give it a name and choose a region. You can't change the region afterwards.
+
+## 2. Copy the pooled connection string
+
+Open the database in the Console and click **Connect to your database**. Leave **Connection pooling** switched on and copy the connection string. It uses the `pooled.db.prisma.io` host:
+
+```bash
+postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require
+```
+
+The pooled string is the one Prisma [recommends for application traffic](/postgres/database/connection-pooling), including background workers such as a scheduled sync. Keep the direct string (`db.prisma.io`) for `psql`, migrations, and `pg_dump`, which you use in step 6.
+
+Each time you generate a string, Prisma creates a new credential and keeps the old ones working. Generate one just for Codeless Sync, so you can delete it later without breaking your other apps.
+
+## 3. Create a restricted Stripe key
+
+Codeless Sync only reads from Stripe, so give it a key that can only read. In the Stripe Dashboard, go to **Developers** > **API keys** and create a restricted key with **Read** access to **Customers**. Restricted keys start with `rk_test_` or `rk_live_`.
+
+## 4. Connect Prisma Postgres to Codeless Sync
+
+Create a sync configuration that points at your database:
+
+1. In Codeless Sync, start a new sync configuration and choose **Stripe** with the **Customers** data type.
+2. On the database step, name the project, choose **Prisma Postgres** as the platform, paste the pooled connection string, and click **Test & Continue**.
+3. Paste the restricted Stripe key and click **Connect**.
+4. Click **Auto-create Table**. Codeless Sync creates a `stripe_customers` table in your Prisma Postgres database.
+5. Name the configuration and click **Create Sync Configuration**.
+
+![The Codeless Sync database step with Prisma Postgres selected as the platform](/img/guides/codeless-sync/database-step.png)
+
+If you see `Database authentication failed - check username and password`, part of the password was not copied. Generate a new connection string in the Console and paste it again.
+
+## 5. Run the first sync
+
+Open the configuration and click **Sync Now**. The run page shows the rows processed as each batch is written.
+
+![A completed Codeless Sync run showing 117 rows processed](/img/guides/codeless-sync/first-sync.png)
+
+## 6. Check the rows in Prisma Postgres
+
+Connect with `psql` using the direct connection string from the Console, then count the rows:
+
+```bash
+psql "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+```
+
+```sql
+SELECT count(*) FROM stripe_customers;
+```
+
+```text no-copy
+ count
+-------
+   117
+(1 row)
+```
+
+The count matches the rows processed on the run page, 117 in this test account. To browse the table without `psql`, see [Viewing data](/guides/postgres/viewing-data).
+
+## 7. Put the sync on a schedule
+
+A manual sync is enough to try it out. To keep the table current, open the configuration and add a schedule. Schedules need a paid Codeless Sync plan and run daily, weekly, or monthly, plus every 12 hours on the Business plan.
+
+## How many operations a sync uses
+
+Prisma Postgres bills [per operation](/postgres/faq), and each SQL statement counts as one operation. Codeless Sync writes one multi-row `INSERT ... ON CONFLICT DO UPDATE` statement per page of records, and most data types use pages of 100 rows. A sync therefore costs about one operation per 100 rows, plus a small fixed overhead for setup queries such as checking the table exists. If a whole batch fails, Codeless Sync retries its records one at a time, so that batch costs one operation per record.
+
+On a new database, the 117-row sync in this guide showed 13 operations in the Console that day. Two of them were the batched writes. The rest came from the connection test, creating the table, the schema checks, and the `psql` count in step 6. To see your own count, open the database's dashboard in the Console and hover over the daily bars in the usage chart.
+
+## Common gotchas
+
+- **Free plan out of operations**: when a Free plan database uses all of its operations, Prisma Postgres stops accepting reads and writes until the next month or until you upgrade, so syncs fail too. Paid plans charge for extra operations instead. See the [Prisma Postgres FAQ](/postgres/faq).
+- **No read-only credentials**: a Prisma Postgres credential has full access to its database. Codeless Sync creates and writes tables with `stripe_`, `quickbooks_`, `xero_`, and `paddle_` prefixes, but you can't limit the credential to them, which is another reason to give billing data its own database.
+
+## Use with your agent
+
+The steps in Codeless Sync and the Stripe Dashboard happen in a browser. Once the first sync has run, a coding agent can take over the query side. Copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+My Prisma Postgres database has a stripe_customers table that Codeless Sync keeps up to date, following https://www.prisma.io/docs/guides/integrations/codeless-sync.md.
+
+1. Ask me for the direct connection string (db.prisma.io) and store it as DATABASE_URL in .env. Do not commit it.
+2. Run `psql "$DATABASE_URL" -c "SELECT count(*) FROM stripe_customers;"` and show me the count.
+3. Run a query with psql that lists the 10 most recently created customers (the `created` column), and show me the result.
+```
+
+</AgentPrompt>
+
+Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills) for your coding agent. Prompts that map to this guide:
+
+- "Show me how many Stripe customers signed up each month from the stripe_customers table."
+- "Find Stripe customers in stripe_customers whose email matches a user in my users table."
+
+## Next steps
+
+- [Add Prisma ORM to an existing PostgreSQL database](/prisma-orm/add-to-existing-project/postgresql) to query the synced tables with typed queries.
+- [Connection pooling](/postgres/database/connection-pooling) for the limits on pooled and direct connections.
+- [Codeless Sync documentation](https://codelesssync.com/docs/guides/database-setup) for the other providers and data types.
