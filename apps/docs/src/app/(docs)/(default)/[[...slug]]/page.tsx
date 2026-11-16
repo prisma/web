@@ -137,7 +137,7 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             />
           )}
         </div>
-        <DocsDescription className={cn("-mt-1 mb-0", !page.data.full && "xl:mb-3")}>
+        <DocsDescription className={cn("mb-0", !page.data.full && "xl:mb-3")}>
           {page.data.description}
         </DocsDescription>
         {/* Page actions sit in their own row under the summary, so the title

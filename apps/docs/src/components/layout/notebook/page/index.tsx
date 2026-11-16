@@ -223,7 +223,16 @@ export function DocsDescription({ children, className, ...props }: ComponentProp
   if (children === undefined) return null;
 
   return (
-    <p {...props} className={cn("mb-2 text-lg text-fd-muted-foreground", className)}>
+    // The page's one-line summary, styled as an intro line rather than a
+    // faded paragraph: a step above the 17px body, in the body's warm ink at
+    // 72% (not the cool neutral grey), with balanced line breaks.
+    <p
+      {...props}
+      className={cn(
+        "mb-2 text-pretty text-[1.1875rem] leading-[1.55] text-fd-foreground/72",
+        className,
+      )}
+    >
       {children}
     </p>
   );
