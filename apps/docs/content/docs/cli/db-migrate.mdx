@@ -72,7 +72,7 @@ Before it runs anything, `db migrate` checks that the database's marker names a 
 
 ## When no migration reaches the target
 
-When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that [`contract emit`](/cli/contract-emit) last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error: if you did not pass `--to`, read the first case, and if you did, read the second. A less common cause is two migrations that start from the same state, so that the history has two branches. [The automatic baseline](/cli/migration-plan#the-automatic-baseline) says how `migration plan` can write that.
+When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that [`contract emit`](/cli/contract-emit) last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error: if you did not pass `--to`, read the first case, and if you did, read the second. A less common cause is two migrations that start from the same state, so that the history has two branches. [The automatic baseline](/cli/migration-plan#the-automatic-baseline) says how `migration plan` can write the second branch, and [A worked example](/orm/migrations/the-migration-graph#a-worked-example) shows how to join two branches.
 
 ### You changed the contract and did not plan a migration
 
@@ -116,7 +116,7 @@ npx prisma migration plan --name init
 npx prisma db migrate --db "$DATABASE_URL"
 ```
 
-If the database already has your tables, do not apply that first migration, because it creates every table from nothing. Sign the database first, then plan and apply:
+If the database already has your tables, do not apply that first migration, because it creates every table from nothing. Sign the database first, then plan and apply. `db migrate` skips the first migration on a signed database:
 
 ```npm
 npx prisma db sign --db "$DATABASE_URL"
@@ -124,9 +124,9 @@ npx prisma migration plan --name init
 npx prisma db migrate --db "$DATABASE_URL"
 ```
 
-[`db sign`](/cli/db-sign) records in the database which contract it matches. `db migrate` does not apply the first migration to a database signed this way, and applies only the migrations after it, as [The automatic baseline](/cli/migration-plan#the-automatic-baseline) explains. So here it reports `Already up to date`, while on a new, empty database the same migration creates the tables.
+[`db sign`](/cli/db-sign) records in the database which contract it matches. `db migrate` applies only the migrations after the first one to a database signed this way, as [The automatic baseline](/cli/migration-plan#the-automatic-baseline) explains. So here it reports `Already up to date`, while on a new, empty database the same migration creates the tables.
 
-`db sign` only signs a database whose tables match your contract. If they differ, it lists the differences, exits with code `4`, and signs nothing, so change the contract or the database until they match and sign again. [`contract infer`](/cli/contract-infer) writes a starter contract from the database. [When to use `db sign`](/cli/db-sign#when-to-use-it) says when signing is the right step.
+`db sign` only signs a database whose tables match your contract. If they differ, it lists the differences, exits with code `4`, and signs nothing, so change the contract or the database until they match and sign again. To start from the database's side, [`contract infer`](/cli/contract-infer) writes a starter contract from it. [When to use `db sign`](/cli/db-sign#when-to-use-it) says when signing is the right step.
 
 ### In a script
 
