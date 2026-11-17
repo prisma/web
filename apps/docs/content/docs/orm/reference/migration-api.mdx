@@ -8,7 +8,7 @@ metaDescription: 'Reference for what a Prisma ORM migration.ts can call: the Mig
 
 Each migration is its own folder inside `migrations/app/`, and the file you edit in it is `migration.ts`. `app` is the fixed name of the folder that holds your project's migrations; extension packages that ship their own migrations get folders of their own next to it.
 
-In Prisma ORM 8, `schema.prisma` is now `contract.prisma`, your contract: the same language and the same models. `npx prisma migration plan` writes `migration.ts` from a change to the contract, and saves a frozen copy of the contract for the migration to point at; when this page says a migration's start or end contract, it means one of those copies. You edit `migration.ts`, then run it with Node.js, and it writes `ops.json`, the SQL that will run, next to itself. [`npx prisma db migrate`](/cli/db-migrate) applies `ops.json` to the database.
+In Prisma ORM 8, `schema.prisma` is now `contract.prisma`, your contract: the same language and the same models. `npx prisma migration plan` writes `migration.ts` from a change to the contract. It also saves a copy of the contract in `migrations/snapshots/` for each contract state a migration starts or ends at, and later edits to your contract do not change those copies. When this page says a migration's start or end contract, it means one of those copies. You edit `migration.ts`, then run it with Node.js, and it writes `ops.json` next to itself. `ops.json` holds the operations that will run: SQL statements on PostgreSQL, and MongoDB commands on MongoDB. [`npx prisma db migrate`](/cli/db-migrate) applies `ops.json` to the database.
 
 This page lists everything `migration.ts` can call. For the editing workflow, with a worked backfill, read [Editing a migration](/orm/migrations/editing-a-migration).
 
@@ -207,7 +207,7 @@ There is no method that renames a column. [Raw SQL](#raw-sql) shows a column ren
 | --- | --- | --- | --- |
 | `createIndex` | `schema`, `table`, `index`, `columns` or `expression`, `extras?` | `CREATE INDEX "post_author_idx" ON "public"."post" ("authorId")` | additive |
 | `renameIndex` | `schema`, `table`, `from`, `to` | `ALTER INDEX "public"."post_author_idx" RENAME TO "post_author_id_idx"` | widening |
-| `dropIndex` | `schema`, `table`, `index` | `DROP INDEX "public"."post_author_id_idx"` | destructive |
+| `dropIndex` | `schema`, `table`, `index` | `DROP INDEX "public"."post_author_id_idx"` | widening |
 
 `createIndex` takes either `columns`, a list of column names, or `expression`, one SQL string that becomes everything between the parentheses, such as `'lower("title")'`. Everything else goes in `extras`:
 
@@ -492,7 +492,7 @@ import { Migration, MigrationCLI, placeholder, createCollection, dropCollection,
 
 The operations are plain functions rather than methods, so `operations` returns calls such as `createCollection('products')`, not `this.createCollection(...)`. `this.endContract.collection.products` is the `products` collection in the end contract, with its `validator`.
 
-A data transform's `run` callback returns a query object with three fields: the `collection`, a `command` such as `RawUpdateManyCommand`, and `meta`, which carries `storageHash`, the hash of the end contract. The check's `source` returns the same kind of object with an `AggregateCommand`. In this example both helpers are in the same `migration.ts` as the migration. The first helper is the query for the check, and it finds one document that has no `status`. The second helper sets `status` to `'active'` on every document that has none. `RawUpdateManyCommand` takes the collection name, a filter, and an update:
+A data transform's `run` callback returns a query object with three fields: the `collection`, a `command` such as `RawUpdateManyCommand`, and `meta`. In `meta`, pass `storageHash`, the hash of the end contract, and `target: 'mongo'`. `meta` also needs a `lane`. Prisma ORM records it but does not act on it, so any string works. Use `'mongo-raw'`, which Prisma ORM's own MongoDB migration operations use; the `'mongo-pipeline'` in the example below works the same way. The check's `source` returns the same kind of object with an `AggregateCommand`. In this example both helpers are in the same `migration.ts` as the migration. The first helper is the query for the check, and it finds one document that has no `status`. The second helper sets `status` to `'active'` on every document that has none. `RawUpdateManyCommand` takes the collection name, a filter, and an update:
 
 ```ts
 import {
@@ -552,13 +552,15 @@ override get operations() {
 | `createCollection(name, options?)` | `options`: `validator`, `validationLevel`, `validationAction`, `capped`, `size`, `max`, `timeseries`, `collation`, `changeStreamPreAndPostImages`, `clusteredIndex` | additive |
 | `dropCollection(name)` | | destructive |
 | `createIndex(collection, keys, options?)` | `keys`: a list of `{ field, direction }`; `options`: `unique`, `sparse`, `name`, `expireAfterSeconds`, `partialFilterExpression`, `collation`, `weights`, `default_language`, `language_override`, `wildcardProjection` | additive |
-| `dropIndex(collection, keys, options?)` | the same `keys` the index was created with; `options`: the index's `name` and every other option it has | destructive |
-| `setValidation(collection, schema, options?)` | `schema`: a JSON Schema object; `options`: `validationLevel` (`'strict'` or `'moderate'`) and `validationAction` (`'error'` or `'warn'`) | destructive |
-| `collMod(collection, options, meta?)` | `options`: `validator`, `validationLevel`, `validationAction`, `changeStreamPreAndPostImages: { enabled }`; `meta`: `id`, `label`, `operationClass` | destructive, unless you pass `meta: { operationClass: 'additive' }` |
+| `dropIndex(collection, keys, options?)` | the same `keys` the index was created with; `options`: the index's `name` and every other option it has | widening |
+| `setValidation(collection, schema, options?)` | `schema`: a JSON Schema object; `options`: `validationLevel` (`'strict'` or `'moderate'`), `validationAction` (`'error'` or `'warn'`), and `checkDocuments`, described below the table | widening |
+| `collMod(collection, options, meta?)` | `options`: `validator`, `validationLevel`, `validationAction`, `changeStreamPreAndPostImages: { enabled }`; `meta`: `id`, `label`, `operationClass`, `checkDocuments`, described below the table | widening, unless `meta.operationClass` says otherwise |
 | `validatedCollection(name, schema, indexes)` | creates the collection with `schema` as its validator and one index per `{ keys, unique? }` entry, with `keys` as in `createIndex`. Returns a list of operations, so spread it: `...validatedCollection(...)` | additive |
 | `dataTransform(name, options)` | `options`: `run`, `check?`, `invariantId?` | data |
 
 `direction` is `1`, `-1`, `'text'`, `'2dsphere'`, `'2d'`, or `'hashed'`.
+
+The optional `meta` of `collMod` describes the operation rather than the change. `id` names the operation in error messages, `label` is the text the CLI prints for it, and `operationClass` replaces its class, which is `'widening'` by default. `checkDocuments: true`, on `collMod`'s `meta` or in `setValidation`'s `options`, makes the operation first check that every document in the collection fits the new validator, and stop if one does not. `collMod` refuses `checkDocuments: true` when it sets no validator.
 
 `migration plan` writes each index's name into `createIndex` and `dropIndex`, and MongoDB creates and drops the index by that name:
 
@@ -569,7 +571,7 @@ dropIndex('users', [{ field: 'legacy', direction: 1 }], { name: 'legacy_1', uniq
 
 A call without `name` uses the name after the keys and their directions, such as `email_1`, so a `migration.ts` written before index names were recorded keeps working. Before it runs, `dropIndex` checks that the collection has an index with that name, those keys, and exactly the options you pass, so list every option the index has, as `migration plan` writes them: `dropIndex('users', keys, { name: 'legacy_1' })` fails for a unique index. A `dropIndex` without options checks the keys and the name after them, such as `email_1`, and no other option. To drop an index with another name, pass its `name` and every other option it has. The id of an index operation names the index, as in `index.users.create(email_1)`.
 
-`dataTransform` on MongoDB takes no contract argument, and its `check` is an object whose `source` is a callback returning a query for the documents that still need the change. Its other two fields, `filter` and `expect`, are optional and you can leave them out. [Editing a migration](/orm/migrations/editing-a-migration#the-same-pattern-on-mongodb) shows a filled-in example.
+`dataTransform` on MongoDB takes no contract argument, and its `check` is an object whose `source` is a callback returning a query for the documents that still need the change. Its other fields are optional, and you can leave them out. `expect` says what the check looks for before the transform runs. With `'exists'`, the default, it expects `source` to find documents that still need the change, and after the run it expects none. With `'notExists'`, it expects `source` to find no documents before the run, and at least one after it. `filter` is a filter expression, such as `new MongoExistsExpr('status', false)`, that limits which of the documents `source` returns count; by default every document counts. Leave out `invariantId` too, because only extension packages use it. [Editing a migration](/orm/migrations/editing-a-migration#the-same-pattern-on-mongodb) shows a filled-in example.
 
 ## See also
 

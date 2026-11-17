@@ -71,7 +71,7 @@ The first migration you plan after a rollback prints a warning when you do not p
 ⚠ The default origin ref 'db' points at 967cb9f63587c1d90f64716780f04eec22b263424e89f07139233fc2c3d710c4, which already has a migration leading to 866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484. Planning from it forks the migration graph; pass --from to choose the origin explicitly.
 ```
 
-Without `--from`, `migration plan` starts from the `db` ref, the file in `migrations/app/refs/` naming the contract state you last applied in development. After a rollback that state already has a migration starting from it, because the rollback ends at exactly the state `add_display_name` starts from. The migration is planned anyway, and it starts from the state the rollback ended at, so you can keep it. To plan without the warning, pass `--from` with the rollback's directory name:
+Without `--from`, `migration plan` starts from the `db` ref, the file in `migrations/app/refs/` naming the contract state you last applied in development. After a rollback that state already has a migration starting from it, because the rollback ends at exactly the state `add_display_name` starts from. The warning is expected here: the migration is planned anyway, it starts from the state the rollback ended at, and you can keep it. To plan without the warning, pass `--from` with the rollback's directory name. That names the same state as the `db` ref, so you get the same migration, without the warning:
 
 ```npm
 npx prisma migration plan --from 20260707T1010_rollback_display_name --name add_nickname
@@ -133,7 +133,7 @@ Before you decide what to do about drift, find out which contract state the data
 
 When a change was made by hand, you have to decide whether you want to keep it, and either answer gives you a way out:
 
-- **Undo it.** Change the tables back by hand until `npx prisma db verify --schema-only --strict` passes. The marker never changed, so there is nothing else you need to put right.
+- **Undo it.** Change the tables back by hand until `npx prisma db verify --schema-only --strict` passes. `--strict` makes the check also fail on tables, columns, and other objects that your contract does not declare, so it catches a column you added by hand. The marker never changed, so there is nothing else you need to put right.
 - **Keep it.** Add the change to your contract, run `npx prisma contract emit`, then plan and apply a migration as usual. `db migrate` skips the change you already made there.
 
 [`npx prisma db sign`](/cli/db-sign) fixes neither kind of drift, because it is for [baselining](/orm/migrations/the-migration-graph#baselines) a database that has no marker at all but whose tables already match your contract. For a database that Prisma ORM 7 migrated, follow [step 4 of the upgrade guide](/guides/upgrade-prisma-orm/postgresql-incremental#4-transfer-migration-ownership) instead.

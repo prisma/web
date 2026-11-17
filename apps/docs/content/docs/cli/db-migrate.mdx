@@ -6,11 +6,11 @@ metaTitle: db migrate | Prisma ORM CLI
 metaDescription: Learn how to apply pending Prisma ORM on-disk migrations with the db migrate command.
 ---
 
-`db migrate` applies pending on-disk migrations to advance the database. It walks every contract space and applies migrations in canonical order: extensions alphabetically, then the app. It applies only the migrations that exist on disk and never generates new operations.
+`db migrate` applies the migrations on disk that the database has not run yet, including the ones that extension packages ship. It runs the extensions' migrations first, in alphabetical order of extension, and then yours. It never writes a new migration; [`migration plan`](/cli/migration-plan) does that.
 
 Prisma ORM keeps one migration history for your own models, called the `app` space, in `migrations/app/`, and one for each [extension package](/orm/extensions/using-extensions) that ships its own migrations, such as pgvector. Each of these histories is a [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page).
 
-Use it from a controlled deployment step after reviewing migration packages.
+In development, run `npx prisma db migrate --advance-ref db`, so that your next `migration plan` starts from what you just applied. In CI and production, it replaces Prisma ORM 7's `migrate deploy`: run it from your deployment pipeline, without `--advance-ref`, after the migrations have been reviewed. Plain `db migrate` applies migrations until the database matches `contract.json`. If you name the state each environment should reach with a ref, such as `prod`, run `db migrate --to prod` instead, as [Applying to a target](#applying-to-a-target) shows.
 
 ## Usage
 
@@ -24,8 +24,8 @@ npx prisma db migrate --db "$DATABASE_URL"
 | --- | --- |
 | `--db <url>` | Connects to the database. |
 | `--to <contract>` | Applies migrations up to a target contract state. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
-| `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-apply marker after success. |
-| `--show` | Previews the migration route without applying (read-only). |
+| `--advance-ref <name>` | After a successful run, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Pass `--advance-ref db` in development. |
+| `--show` | Prints the migrations `db migrate` would run, and runs nothing. |
 | `--from <contract>` | Use it with `--show`, where it sets the starting state for the preview. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
@@ -38,6 +38,8 @@ A ref name is a name you gave a contract state with [`migration ref set`](/cli/m
 
 ## Recommended flow
 
+In a deployment, check the database before and after you apply:
+
 ```npm
 npx prisma migration status --db "$DATABASE_URL"
 npx prisma db migrate --db "$DATABASE_URL"
@@ -45,11 +47,11 @@ npx prisma migration status --db "$DATABASE_URL"
 npx prisma db verify --db "$DATABASE_URL"
 ```
 
-Run `migration status` before and after applying migrations to see what changed.
+`migration status` shows which migrations are pending before the run and that none are left after it, and `db verify` checks that the tables match your contract.
 
 ## Previewing the route
 
-`--show` prints the route `db migrate` would take without touching the database:
+`--show` prints the migrations `db migrate` would run, and changes nothing. It still reads the database's marker to find where to start, so it needs a connection, from `prisma.config.ts` or `--db`, unless you pass `--from`:
 
 ```npm
 npx prisma db migrate --show

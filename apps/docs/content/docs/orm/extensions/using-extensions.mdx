@@ -186,13 +186,13 @@ Every extension, whether Prisma wrote it or someone in the community did, is lis
 | [zod-json](https://www.prisma.io/extensions/zod-json) | Typed JSON columns described and enforced by a zod schema. | `prisma-orm-extension-zod-json` | PostgreSQL | [Omar Dulaimi](https://github.com/omar-dulaimi) |
 {/* extensions-catalog:end */}
 
-The database packages are in the table too.
+Besides extensions, the table lists the packages that add a whole database to Prisma ORM, such as `@prisma/orm-postgres`.
 
-The ones marked experimental work today, but their methods and options are still changing between releases. Each name in the table links to that extension's directory page, and from there to the package README. Middleware wraps queries rather than adding a database feature, so it is listed on [How middleware works](/orm/middleware/how-middleware-works) instead.
+The entries marked experimental work today, but their methods and options are still changing between releases. Each name in the table links to that extension's directory page, and from there to the package README. Middleware wraps queries rather than adding a database feature, so it is listed on [How middleware works](/orm/middleware/how-middleware-works) instead.
 
 :::note[Supabase does not follow the recipe above]
 
-Supabase publishes no `control` entry point. What the command line tools read is published at `@prisma/orm-extension-supabase/pack` instead, so the config imports that and passes it to the same `ormConfig(...)` call step 2 uses:
+In step 2, `prisma.config.ts` imports an extension from its `/control` path. Supabase has no `/control` path, so import `@prisma/orm-extension-supabase/pack` instead and pass it to the same `ormConfig(...)` call:
 
 ```ts title="prisma.config.ts"
 import { definePrismaConfig } from 'prisma/config';
@@ -225,7 +225,7 @@ export const db = await supabase({
 });
 ```
 
-`jwksUrl` is your project's JWKS endpoint, `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`, and it is the right option for a current Supabase project, because those sign their JWTs with ES256 keys. An older project that still signs with the shared HS256 secret passes `jwtSecret` instead of `jwksUrl`, and never both. `supabase status` prints a `JWT_SECRET` even for an ES256 project, so its presence does not tell you which one yours uses. A token signed the other way is rejected with an error whose `code` is `SUPABASE.JWT_INVALID`, and the message names the fix.
+Pass exactly one of two options, depending on how your Supabase project signs its JWTs. A current Supabase project signs them with ES256 keys, so pass `jwksUrl`, the address where your project publishes those keys: `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`. An older project that still signs with a shared HS256 secret passes that secret as `jwtSecret` instead. Do not decide by whether `supabase status` prints a `JWT_SECRET`, because it prints one for ES256 projects too. If you pass the wrong option, every token is rejected with an error whose `code` is `SUPABASE.JWT_INVALID`, and the message says which option to use.
 
 `supabase(...)` takes the options `postgres(...)` takes, so pgvector or another extension goes in its `extensions` array in the same way. That includes `cursor`, which streams rows from a server-side cursor, and `binding`, which takes `{ kind: 'url', url }` or `{ kind: 'pgPool', pool }`.
 
@@ -260,7 +260,7 @@ If you add your own methods to a model by subclassing `Collection`, as [Custom `
 
 `@prisma/orm-extension-supabase` has a contract of its own, which describes Supabase's `auth` and `storage` tables, check constraints included. Prisma read those tables from one Supabase version, supabase/postgres 17.6.1.106, and a Supabase project on another version can have a different set of check constraints. [`npx prisma db verify`](/cli/db-verify) compares your database with the extension's contract as well as with yours, and when a check constraint the extension describes is missing from your database, `db verify` lists it and fails. You cannot fix that with a migration, because Prisma ORM never changes Supabase's own tables. Instead, [open an issue on prisma/orm](https://github.com/prisma/orm/issues) with the output of `db verify` and your Supabase version, so the extension can be updated to match.
 
-[`npx prisma db sign`](/cli/db-sign) checks that a database matches your contract and then records in the database which contract it matches, and it records the extension's contract the same way. When an update to `@prisma/orm-extension-supabase` changes the extension's contract, that record no longer matches, and `npx prisma db verify` fails with `MIGRATION.CONTRACT_SPACE_VIOLATION` until you run `npx prisma db sign` again against every database you signed with the earlier version. The Prisma ORM release notes say when an update changes the extension's contract, for example for the change introduced in 8.0.0-rc.12. A change introduced in `8.0.0-rc.20` changed it again, so after you upgrade from a version before `8.0.0-rc.20`, run `npx prisma db sign` against every Supabase database. The database itself does not change. If you are also re-emitting your own contract with `npx prisma contract emit`, run that before `db sign`.
+Some updates to `@prisma/orm-extension-supabase` change the extension's contract, and the Prisma ORM release notes say when one does, as they did for the changes introduced in 8.0.0-rc.12 and introduced in `8.0.0-rc.20`. After such an update, run [`npx prisma db sign`](/cli/db-sign) again against every database you signed with the earlier version. Until you do, `npx prisma db verify` fails with `MIGRATION.CONTRACT_SPACE_VIOLATION`, because the database's record of which contracts it matches still names the old extension contract. So after you upgrade from a version before `8.0.0-rc.20`, run `npx prisma db sign` against every Supabase database. `db sign` only updates that record, and the tables do not change. If you are also re-emitting your own contract with `npx prisma contract emit`, run that before `db sign`.
 
 :::
 
