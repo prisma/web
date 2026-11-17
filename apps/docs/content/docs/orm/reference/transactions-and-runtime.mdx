@@ -60,6 +60,7 @@ Pass exactly one of `url`, `pg`, and `binding`.
 | `log` | An object with `info`, `warn`, and `error` methods, such as `console` | No | Where the client reports what it does not throw: a `'warn'` result from the lints or budgets middleware, the `verifyMarker` warning about a missing or mismatched contract marker, such as `CONTRACT.MARKER_MISSING`, and errors from middleware hooks it cannot pass to your code. Without `log`, these are not printed. `postgresServerless()`, `sqlite()` and `supabase()` take it too. |
 | `cursor` | `PostgresCursorOptions`, which is `{ batchSize?: number }` | No | Read through a server-side cursor in batches of `batchSize` rows, 100 when you leave `batchSize` out. Without `cursor`, reads are not batched. |
 | `mode` | `'strict'` or `'permissive'` | No | How middleware treats a rule violation. Defaults to `'strict'`. See [`mode`](#mode). |
+| `transactionOptions` | `{ isolationLevel?: IsolationLevel; timeout?: number \| null }` | No | Defaults for every [`db.transaction(...)`](#dbtransactioncallback) call: its isolation level and its time limit in milliseconds. Without it, transactions use the database's default level and have no time limit. |
 | `collections` | Object mapping model name to a collection class | No | Your own collection classes, used on `db.orm` and on every transaction's `tx.orm`. See [Custom collections](/orm/reference/orm-client#custom-collection-subclass). |
 
 The type of the options object is `PostgresOptions<Contract>`, exported from `@prisma/orm-postgres/runtime`.
@@ -418,7 +419,7 @@ Open a connection and return a runtime.
 
 | Return type | Example | Description |
 |---|---|---|
-| `Promise<MongoRuntime>` | `const runtime = await db.connect()` | The connected runtime (`query`, `execute`, and `close` only). |
+| `Promise<MongoRuntime>` | `const runtime = await db.connect()` | The connected runtime (`query`, `execute`, `prepare`, and `close` only). |
 
 ### `runtime()`
 
@@ -427,7 +428,7 @@ Get the runtime.
 #### Remarks
 
 - On MongoDB, `runtime()` returns a **`Promise<MongoRuntime>`**: you must `await` it. PostgreSQL's `runtime()` is synchronous, so write `await db.runtime()` on MongoDB and `db.runtime()` on PostgreSQL.
-- `MongoRuntime` has `query`, `execute`, and `close` only. It has no `connection()`, `prepare()`, or `telemetry()`. See [Transactions (MongoDB)](#transactions-mongodb) and [Execution options and results](#execution-options-and-results).
+- `MongoRuntime` has `query`, `execute`, `prepare`, and `close`, and no `connection()` or `telemetry()`. [Prepared statements (MongoDB)](#prepared-statements-mongodb) covers `prepare`, [Transactions (MongoDB)](#transactions-mongodb) says how to group writes, and [Execution options and results](#execution-options-and-results) covers what `query` and `execute` take and return.
 
 #### Return type
 
@@ -515,7 +516,10 @@ Run a callback inside a transaction. The transaction commits when the callback r
 #### Remarks
 
 - Query through `tx`, not `db`. `tx` has the client's query members: `orm`, `sql`, `raw`, `prepare`, `query`, `execute`, and `toSql`. `tx.orm` holds your models, with your [custom collection classes](/orm/reference/orm-client#custom-collection-subclass) if you passed any. Build queries with `tx.sql` or `tx.raw`, then run them with `tx.query(...)` to get rows back, or `tx.execute(...)` when the write returns no rows. `tx.execute(...)` resolves to `{ affectedRows }`, the number of rows the statement changed. Every call on `tx` uses the same transaction connection, and queries on `db` run outside the transaction.
-- `db.transaction(...)` takes the callback and nothing else. There are no `isolationLevel`, `timeout`, or `maxWait` options, and Prisma ORM offers no way to set the isolation level. Nothing retries a failed transaction for you. Write the retry loop yourself. A transaction has no time limit. PostgreSQL's `idle_in_transaction_session_timeout` ends one that sits idle between statements, and on PostgreSQL 17 and later `transaction_timeout` caps its total length. Set either in your connection string or server configuration. See the [fundamentals transactions guide](/orm/fundamentals/transactions#options-and-isolation-level).
+- `db.transaction(callback, options)` takes an optional second argument, `{ isolationLevel?, timeout? }`, and the client's `transactionOptions` option sets the same two as defaults for every `db.transaction(...)` call. A value passed to the call overrides the default; leaving it out, or passing `undefined`, keeps the default. Neither applies to the transactions the ORM opens for its own writes. There is no `maxWait` option. Nothing retries a failed transaction for you, so write the retry loop yourself, as [Write conflicts](/orm/fundamentals/transactions#write-conflicts) shows.
+- `isolationLevel` is `'ReadUncommitted'`, `'ReadCommitted'`, `'RepeatableRead'` or `'Serializable'`, or the same names on `IsolationLevel`, imported from `@prisma/orm-postgres/runtime`. PostgreSQL runs `ReadUncommitted` as `ReadCommitted`. Without a level, the database's default applies. `null`, a level the database does not support, or an unknown option is rejected before a connection is taken.
+- `timeout` is a whole number of milliseconds, from `1` to `2147483647`. There is no default timeout, and `timeout: null` on a call turns off the client's default. The clock starts after `BEGIN` and stops when the commit starts.
+- When a transaction runs out of time, the call rejects with an error whose `code` is `RUNTIME.TRANSACTION_TIMEOUT`, without waiting for your callback's code to finish, and none of the transaction's writes are committed. Prisma ORM destroys the connection instead of reusing it, so a client created from `url` or a `pg.Pool` takes a fresh connection for the next query, but a client created with one `pg.Client` must be created again. A query your callback runs on `tx` after that rejects with `RUNTIME.TRANSACTION_CLOSED`. The timeout does not stop JavaScript or side effects outside the database.
 - To put a time limit on the queries inside a transaction, pass a `signal` to each `tx.query(...)` and `tx.execute(...)` call, as the example below does. See [`RuntimeExecuteOptions`](#runtimeexecuteoptions).
 - `tx` has no `transaction()` method, so transactions do not nest. If a helper you call starts its own transaction, change it to take `tx` as a parameter instead. Type the helper's parameter as `PostgresTransactionContext<Contract>`, imported from `@prisma/orm-postgres/runtime`: `async function addTag(tx: PostgresTransactionContext<Contract>) { ... }`. `TransactionContext`, imported from `@prisma/orm-postgres/family-runtime`, has `query` and `execute` only, so a helper typed with it cannot use `tx.orm` or `tx.sql`.
 - `tx.sql` is a full SQL builder, keyed the same way as `db.sql`: use `tx.sql.public.<table>`, where `public` is the PostgreSQL schema.
@@ -529,6 +533,7 @@ Run a callback inside a transaction. The transaction commits when the callback r
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `callback` | `(tx) => Promise<R>` | Yes | The transactional work. `tx` exposes `orm`, `sql`, `raw`, `prepare`, `query`, `execute`, `toSql`, `enums`, and `nativeEnums`. |
+| `options` | `{ isolationLevel?: IsolationLevel; timeout?: number \| null }` | No | The isolation level and the time limit for this transaction. Each overrides the client's `transactionOptions`. |
 
 #### Return type
 
@@ -725,12 +730,44 @@ await connection.destroy();
 ## Transactions (MongoDB)
 
 :::note[MongoDB transactions are not available in Prisma ORM yet]
-There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()`, `prepare()`, or `telemetry()`: it has `query`, `execute`, and `close` and nothing else. Single-document write operations are atomic on their own, while multi-document transactions through Prisma ORM are planned, not shipped. To run one today, create your own `MongoClient`, pass it as the `mongoClient` option when you create the client, and group the writes in `session.withTransaction(...)`, as the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) shows. The reading rules under [`AsyncIterableResult`](#asynciterableresult) apply to MongoDB too.
+There is no `db.transaction(...)` on the MongoDB client, and the MongoDB runtime has no `connection()` or `telemetry()`: it has `query`, `execute`, `prepare`, and `close` and nothing else. Single-document write operations are atomic on their own, while multi-document transactions through Prisma ORM are planned, not shipped. To run one today, create your own `MongoClient`, pass it as the `mongoClient` option when you create the client, and group the writes in `session.withTransaction(...)`, as the [Fundamentals transactions guide](/orm/fundamentals/transactions#transactions-on-mongodb) shows. The reading rules under [`AsyncIterableResult`](#asynciterableresult) apply to MongoDB too.
 :::
+
+## Prepared statements (MongoDB)
+
+The `mongo()` client and the MongoDB runtime have `prepare(declaration, callback)`, for a query you build with `db.query` and run many times with different values. The callback runs once, at `prepare`, so the query is built once, and each run only fills in the values and sends the command. MongoDB has no prepared statements on the server, so this saves work in your application, not in the database.
+
+```typescript
+const byStatus = await db.prepare(
+  { status: "mongo/string@1", skip: "mongo/int32@1", take: "mongo/int32@1" },
+  (p) =>
+    db.query
+      .from("accounts")
+      .match((f) => f.status.eq(p.status))
+      .skip(p.skip)
+      .limit(p.take)
+      .build(),
+);
+
+const runtime = await db.runtime();
+const page = await byStatus.query(runtime, { status: "active", skip: 0, take: 20 }).toArray();
+
+const promote = await db.prepare({ from: "mongo/string@1", to: "mongo/string@1" }, (p) =>
+  db.query.from("accounts").match((f) => f.status.eq(p.from)).updateMany((f) => [f.status.set(p.to)]),
+);
+const { affectedRows } = await promote.execute(runtime, { from: "new", to: "active" });
+```
+
+- The declaration maps each parameter name to a type id, such as `mongo/string@1` or `mongo/objectId@1`. A parameter goes wherever a value goes in the query, and in `skip(...)` and `limit(...)`.
+- Run a prepared query with `query(runtime, params)`, passing `await db.runtime()`, not the client. A prepared update or delete also has `execute(runtime, params)`, which resolves to `{ affectedRows }`.
+- `db.prepare(...)` opens no connection.
+- An unknown type id, a declared parameter the query does not use, and a parameter in a raw command fail at `prepare`. A missing value fails when the query runs. An ORM write refuses a parameter with `ORM.ARGUMENT_INVALID`.
+- Prepared ORM queries, the `.prepared.all()` and `.prepared.first()` that [PostgreSQL has](#prepared-statements-postgresql), are not available on MongoDB yet.
+- `limit(0)` fails when the query is built, with `ORM.ARGUMENT_INVALID`, because MongoDB requires a positive `$limit`.
 
 ## Prepared statements (PostgreSQL)
 
-A prepared statement compiles a query once against a declaration of its parameters, then runs it repeatedly with different values. Prepared statements are not available on MongoDB.
+For a prepared statement, you declare the parameters, build the query once, and run it many times with different values. MongoDB has its own form, in [Prepared statements (MongoDB)](#prepared-statements-mongodb).
 
 ### `runtime.prepare(declaration, callback)`
 

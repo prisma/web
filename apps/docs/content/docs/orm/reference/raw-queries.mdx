@@ -190,9 +190,29 @@ const plan = db.raw.sql`
 `.returnsRow({ email: user.columns.email, postCount: authorsWithPosts.returns.postCount }).build();
 ```
 
+You can also interpolate a query from the [SQL query builder](/orm/reference/sql-query-builder), in `db.raw.sql` and in `fns.raw`: a `select` query, or an `insert`, `update` or `delete` after `.returning(...)`. Interpolate the builder query itself, without `.build()`. It goes into the statement as written, without parentheses, so add them where the SQL needs them, as in `FROM (${query}) AS t`. This lets the builder write the `SELECT` of an `INSERT ... SELECT` or a `WITH` query:
+
+```ts
+const copies = post
+  .innerJoin(user, (f, fns) => fns.eq(f.user.id, f.post.userId))
+  .select((f) => ({ title: f.post.title, userId: f.post.userId }))
+  .where((f, fns) => fns.eq(f.user.email, 'alice@prisma.io'));
+
+const plan = db.raw.sql`
+  INSERT INTO "post" (id, title, "userId")
+  SELECT gen_random_uuid(), c.title, c."userId"
+  FROM (${copies}) AS c
+  RETURNING id, title
+`
+  .returnsRow({ id: post.columns.id, title: post.columns.title })
+  .build();
+```
+
+A mutation without `.returning(...)` is refused, by TypeScript and with `RUNTIME.RAW_SQL_UNSUPPORTED_INTERPOLATION` when the template runs. MySQL has no `RETURNING`, so it refuses an interpolated mutation, and SQLite refuses a mutation inside a `WITH` query when the statement runs.
+
 ### Unsupported interpolation
 
-Interpolation accepts columns, expressions, `param(...)` values, raw queries that return rows, and the bare types `number`, `bigint`, `string`, `boolean`, and `Uint8Array`. Interpolating anything else, such as a `Date`, is rejected by TypeScript when you compile. In plain JavaScript the tagged template throws as soon as you call it, with an error whose `code` is `RUNTIME.RAW_SQL_UNSUPPORTED_INTERPOLATION` and this message:
+Interpolation accepts columns, expressions, `param(...)` values, raw queries that return rows, builder queries that return rows, and the bare types `number`, `bigint`, `string`, `boolean`, and `Uint8Array`. Interpolating anything else, such as a `Date`, is rejected by TypeScript when you compile. In plain JavaScript the tagged template throws as soon as you call it, with an error whose `code` is `RUNTIME.RAW_SQL_UNSUPPORTED_INTERPOLATION` and this message:
 
 ```
 unsupported JS value type for raw-SQL interpolation: wrap this value in `param(...)` with an explicit codec
