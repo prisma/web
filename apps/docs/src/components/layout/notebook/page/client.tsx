@@ -21,6 +21,7 @@ import type * as PageTree from "fumadocs-core/page-tree";
 import { usePathname } from "fumadocs-core/framework";
 import { type BreadcrumbOptions, getBreadcrumbItemsFromPath } from "fumadocs-core/breadcrumb";
 import { formatSlugDisplayName } from "@/lib/breadcrumb-utils";
+import { sentenceCase } from "@/lib/sentence-case";
 import { getPageTitleText } from "@/lib/page-title";
 import { getVersionedSidebarTree } from "@/lib/versioned-sidebar-tree";
 import { isActive } from "../../../../lib/urls";
@@ -311,7 +312,6 @@ export function PageFooter({ items, children, className, ...props }: FooterProps
  * and nudges the arrow; no colour fill.
  */
 function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
-  const t = useTranslations({ note: "pagination" });
   const Icon = index === 0 ? ArrowLeft : ArrowRight;
 
   return (
@@ -339,14 +339,23 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
           )}
         />
       </span>
-      <span className="mt-1 block truncate text-sm leading-6 text-fd-muted-foreground">
-        {item.description ?? (index === 0 ? t("Previous Page") : t("Next Page"))}
-      </span>
+      {/* No "Previous Page" / "Next Page" filler: without a description the
+          title and arrow say enough. */}
+      {item.description && (
+        <span className="mt-1 block text-sm leading-6 text-pretty text-fd-muted-foreground">
+          {item.description}
+        </span>
+      )}
     </Link>
   );
 }
 
 export type BreadcrumbProps = BreadcrumbOptions & ComponentProps<"div">;
+
+function breadcrumbLabel(name: ReactNode) {
+  const label = formatBreadcrumbName(name);
+  return typeof label === "string" ? sentenceCase(label) : label;
+}
 
 export function PageBreadcrumb({
   includeRoot,
@@ -372,7 +381,12 @@ export function PageBreadcrumb({
       className={cn("flex items-center gap-1.5 text-sm text-fd-muted-foreground", props.className)}
     >
       {items.map((item, i) => {
-        const className = cn("truncate", i === items.length - 1 && "text-fd-primary font-medium");
+        // The path above the title (Supabase-style): quiet links with
+        // chevrons, the nearest group a step darker. Ink, not the theme cyan.
+        const className = cn(
+          "truncate",
+          i === items.length - 1 && "font-medium text-fd-foreground/75",
+        );
 
         return (
           <Fragment key={i}>
@@ -380,12 +394,12 @@ export function PageBreadcrumb({
             {item.url ? (
               <Link
                 href={item.url}
-                className={cn(className, "transition-opacity hover:opacity-80")}
+                className={cn(className, "transition-colors hover:text-fd-foreground")}
               >
-                {formatBreadcrumbName(item.name)}
+                {breadcrumbLabel(item.name)}
               </Link>
             ) : (
-              <span className={className}>{formatBreadcrumbName(item.name)}</span>
+              <span className={className}>{breadcrumbLabel(item.name)}</span>
             )}
           </Fragment>
         );

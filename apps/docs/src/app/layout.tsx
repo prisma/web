@@ -139,6 +139,17 @@ export default function Layout({ children }: { children: ReactNode }) {
           {". A markdown version of every docs page is available by appending "}
           <code>.md</code> to its URL.
         </div>
+        {/* Skip link: the first tab stop, hidden until focused, so keyboard
+            readers can jump past the banner, header and sidebar (about 37
+            stops) straight to the page. After the llms.txt directive, which
+            must stay the first child of <body>. */}
+        <a
+          href="#nd-page"
+          data-markdown-ignore
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-100 focus:rounded-full focus:bg-fd-foreground focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-fd-background focus:outline-none focus:ring-2 focus:ring-fd-foreground/40"
+        >
+          Skip to content
+        </a>
         <Banner
           id="prisma-8-docs"
           height="3.25rem"
