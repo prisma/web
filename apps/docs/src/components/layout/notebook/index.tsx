@@ -59,7 +59,7 @@ export interface DocsLayoutProps extends BaseLayoutProps {
 
 interface SidebarOptions
   extends
-    ComponentProps<"aside">,
+    ComponentProps<"nav">,
     Pick<ComponentProps<typeof Sidebar>, "defaultOpenLevel" | "prefetch"> {
   components?: Partial<SidebarPageTreeComponents>;
 

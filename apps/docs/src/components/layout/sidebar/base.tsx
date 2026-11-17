@@ -199,7 +199,7 @@ export function SidebarDrawerOverlay(props: ComponentProps<"div">) {
   );
 }
 
-export function SidebarDrawerContent({ className, children, ...props }: ComponentProps<"aside">) {
+export function SidebarDrawerContent({ className, children, ...props }: ComponentProps<"nav">) {
   const { open, mode } = useSidebar();
   const [hidden, setHidden] = useState(!open);
 

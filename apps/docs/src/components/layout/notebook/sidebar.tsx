@@ -67,7 +67,7 @@ export function SidebarContent({
   className,
   children,
   ...props
-}: ComponentProps<"aside">) {
+}: ComponentProps<"nav">) {
   const ref = useRef<HTMLElement>(null);
 
   return (
