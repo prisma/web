@@ -398,7 +398,9 @@ function IconTile({
   return (
     <span
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-lg border bg-fd-background",
+        // The bare glyph, one title line tall: no tile behind it, so the
+        // card is the only container.
+        "flex size-6 shrink-0 items-center justify-center",
         className,
       )}
       aria-hidden="true"
@@ -500,6 +502,12 @@ export function IconLink({
   );
 }
 
+// The hero wash's fade: in from the top, and out at both sides.
+const HERO_WASH_MASK = [
+  "linear-gradient(to bottom, transparent, #000 5rem)",
+  "linear-gradient(to right, transparent, #000 8rem, #000 calc(100% - 8rem), transparent)",
+].join(",");
+
 /**
  * Full-width hero for the build-then-deploy overview. Children are the intro
  * paragraph(s), a WorkflowGrid, and a DeployCallout; the wrapper only supplies
@@ -514,11 +522,15 @@ export function WorkflowHero({ children }: { children: ReactNode }) {
         aria-hidden
         className="pointer-events-none absolute -inset-x-10 top-0 -bottom-8 -z-10 overflow-hidden"
         // The wash box stops at the hero's top and fades in over the first
-        // 5rem, so no glow reaches the title row and its buttons above, and
-        // the crop never shows as a hard edge (visible in dark mode).
+        // 5rem, so no glow reaches the title row and its buttons above. Its
+        // sides fade too: with no page card around the content to clip it,
+        // the box's own left and right edges would show as hard crops
+        // (visible in dark mode). The two masks intersect.
         style={{
-          maskImage: "linear-gradient(to bottom, transparent, #000 5rem)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 5rem)",
+          maskImage: HERO_WASH_MASK,
+          WebkitMaskImage: HERO_WASH_MASK,
+          maskComposite: "intersect",
+          WebkitMaskComposite: "source-in",
         }}
       >
         <div
@@ -599,9 +611,9 @@ export function WorkflowStage({
     .trim()
     .replace(/\s+/g, "-");
   return (
-    <section className="flex min-w-0 flex-col gap-2 @3xl:row-span-4 @3xl:grid @3xl:grid-rows-subgrid">
-      <header className="pb-2">
-        {/* Stage headings lead their cards by size: Sora at the brand's 500
+    <section className="flex min-w-0 flex-col gap-0 @3xl:row-span-4 @3xl:grid @3xl:grid-rows-subgrid">
+      <header className="pb-4">
+        {/* Stage headings lead their rows by size: Sora at the brand's 500
             heading weight (global.css), 22px against the 15px semibold tile
             titles, so "Build" and "Deploy" read as the organising idea. */}
         <h2 id={id} className="scroll-m-24 text-[1.375rem] leading-8 text-fd-foreground">
@@ -617,9 +629,11 @@ export function WorkflowStage({
 }
 
 /**
- * One product inside a WorkflowStage: a linked tile with an icon, title, and
- * a short description. The description is the element's children so it
- * survives into the .md / llms output.
+ * One product inside a WorkflowStage: a linked row (icon, title, short
+ * description) on the page itself, separated from its neighbours by a
+ * hairline rather than boxed as a card, so a stage reads as one list.
+ * The description is the element's children so it survives into the .md /
+ * llms output.
  */
 export function WorkflowLink({
   href,
@@ -641,7 +655,7 @@ export function WorkflowLink({
   return (
     <a
       href={withDocsBasePath(href)}
-      className="group flex items-start gap-3.5 rounded-xl border bg-fd-background p-4 transition-colors duration-200 hover:border-fd-foreground/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary"
+      className="group flex items-start gap-3.5 border-t border-fd-foreground/10 px-1 py-4 transition-colors duration-200 hover:bg-fd-foreground/[0.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary"
     >
       <IconTile src={src} invertDark={invertDark} icon={icon} neutral />
       {/* The whole tile is the link, so the text gets the full width: no
