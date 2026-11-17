@@ -152,7 +152,7 @@ model Post {
   content   String
   kind      String
   authorId  ObjectId
-  createdAt Date
+  createdAt DateTime
   author    User @relation(fields: [authorId], references: [id])
   @@discriminator(kind)
   @@index([authorId])
@@ -1326,6 +1326,8 @@ Update the matched row and return it, or `null` if none matches.
 
 - Take care on PostgreSQL: `update()` takes an object of field values only, and passing a function instead writes nothing, reports nothing, and returns `null`.
 - On PostgreSQL, `update()` can also relink related rows. `connect()` points the foreign key at a different row, and `disconnect()` removes a many-to-many link without deleting either row. An update with such a relation callback finds its row by the filter alone, so it throws an error whose `code` is `ORM.ARGUMENT_INVALID` on a collection with an `orderBy()`, `limit()`, `offset()`, `cursor()`, `distinct()`, or `distinctOn()`.
+- On PostgreSQL, a relation callback in `update()` can also change the related rows a filter matches: `where(...)` on the relation, then `updateAll({ ... })` or `deleteAll()`. This needs a to-many relation: on a to-one relation, such as `Post.user`, it throws an error whose `code` is `ORM.RELATION_MUTATION_UNSUPPORTED`. It changes only rows related to the row you are updating. On a many-to-many relation, those are the rows linked to it through the join table. There, `deleteAll()` deletes the related rows themselves, not only the links, so a tag that another post also uses is gone for that post too. It does not delete the join table's rows: the foreign key's delete action decides. A key that cascades removes them, and with a key that does not, the database rejects the delete and the whole update is rolled back. `where(...)` takes everything the model's own `where()` takes, and chained `where` calls combine with AND.
+- A relation callback in `create()` or `update()` can return an array of operations, which run in the order you list them. In `create()` the operations are `create` and `connect`. `update()` also takes `disconnect`, `updateAll` and `deleteAll`, which throw an error whose `code` is `ORM.RELATION_MUTATION_UNSUPPORTED` in `create()`. A to-one relation, such as `Post.user`, takes at most one operation: an array of two or more throws an error whose `code` is `ORM.RELATION_MUTATION_UNSUPPORTED`, before any statement runs. An empty array changes nothing. An array inside the array, or an element that is not an operation, throws an error whose `code` is `ORM.RELATION_MUTATION_INVALID`. The example under "Update and delete filtered related rows" below returns an array of two operations.
 - On PostgreSQL, `update()` changes the row `first()` would return, so `orderBy()`, `offset()`, `cursor()`, `distinct()`, and `distinctOn()` choose it. After `limit(0)` it changes nothing and returns `null`.
 - Returns `null` when no row matches. On PostgreSQL it also returns `null` when the object you pass is empty and has no keys at all. An object whose values already match the row is different: that update runs and returns the row.
 - On PostgreSQL, [`select()`](#select) and [`include()`](#include) before `.update()` choose which fields and relations come back on the returned row. They change nothing about what is written.
@@ -1369,6 +1371,17 @@ const updated = await db.orm.posts
 ```typescript
 const relinked = await db.orm.public.Post.where({ id: postId }).update({
   user: (user) => user.connect({ id: carolId }),
+});
+```
+
+##### Update and delete filtered related rows (PostgreSQL)
+
+```typescript
+const user = await db.orm.public.User.where({ id: userId }).update({
+  posts: (p) => [
+    p.where({ priority: 'low' }).updateAll({ priority: 'high' }),
+    p.where((post) => post.title.like('Draft%')).deleteAll(),
+  ],
 });
 ```
 
@@ -1904,7 +1917,7 @@ Comparison methods on a field.
 - PostgreSQL. Which comparison methods a field has depends on its type. Autocomplete shows which ones apply.
 - `isNull()` and `isNotNull()` are on every field.
 - `eq`, `neq`, `in`, and `notIn` are on a field whose values can be compared for equality.
-- `gt`, `lt`, `gte`, and `lte` are on a field whose values can be ordered.
+- `gt`, `lt`, `gte`, and `lte` are on a field whose values can be ordered. Each takes a value of the field's type, or another field of the same type, as in `(t) => t.title.gt(t.description)` on `Task`. The other field may be nullable, as `description` is. A row where either side is `NULL` matches none of them.
 - `like` and `ilike` are on a text field.
 - `String` fields and text-backed enums have all of them. A [native enum](#example-schema) field, typed `pg.enum(...)` in the contract, has all but `like` and `ilike`, because PostgreSQL has no pattern match for an `enum` type. `Int`, `BigInt`, `Float`, `Decimal`, `Uuid`, and `DateTime` fields also have all but `like` and `ilike`. A `Boolean` field has only the equality methods, `isNull()`, and `isNotNull()`. A `Json` field has only `isNull()` and `isNotNull()`.
 - `like()` matches a SQL pattern case-sensitively. `ilike()` matches the same pattern case-insensitively.
