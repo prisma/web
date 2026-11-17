@@ -23,16 +23,16 @@ npx prisma db migrate --db "$DATABASE_URL"
 | Option | What it does |
 | --- | --- |
 | `--db <url>` | Connects to the database. |
-| `--to <contract>` | Applies migrations up to a target contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
+| `--to <contract>` | Applies migrations up to a target contract state. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
 | `--advance-ref <name>` | Advances the named [ref](/cli/migration-ref) to the post-apply marker after success. |
 | `--show` | Previews the migration route without applying (read-only). |
-| `--from <contract>` | Use it with `--show`, where it sets the starting state for the preview. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
+| `--from <contract>` | Use it with `--show`, where it sets the starting state for the preview. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
 ### Contract references [#contract-references]
 
-A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. [Contract references each command accepts](/cli/migration-ref#contract-reference-forms) lists the forms for every command.
 
 `@contract` names the contract in `contract.json`, which `contract emit` writes. The database stores a marker, a row that says which contract state it matches. `@db` names that state, or the empty database when the database has no marker. `@empty` names the empty database, before any migration.
 
@@ -69,6 +69,68 @@ Manage refs with [`migration ref`](/cli/migration-ref).
 ## When the marker is outside your migrations
 
 Before it runs anything, `db migrate` checks that the database's marker names a contract state that one of your migrations starts or ends at, in every contract space. When it does not, the command fails with `MIGRATION.MARKER_MISMATCH` and changes nothing. The error's `why` says what moved the database there, such as a migration that is no longer on disk or a `db update`. Its next actions give two ways back, and neither resets the database: `db update` for a database whose migration history does not need to be kept, or new migrations for a database that changes only through migrations, such as production. [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) walks through both.
+
+## When no migration reaches the target
+
+When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that [`contract emit`](/cli/contract-emit) last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error: if you did not pass `--to`, read the first case, and if you did, read the second. A less common cause is two migrations that start from the same state, so that the history has two branches. [The automatic baseline](/cli/migration-plan#the-automatic-baseline) says how `migration plan` can write the second branch, and [A worked example](/orm/migrations/the-migration-graph#a-worked-example) shows how to join two branches.
+
+### You changed the contract and did not plan a migration
+
+You edited the contract, ran `contract emit`, and then ran `db migrate`. The target is your new contract, and no migration ends at it yet. The error gives the state the database is in as a hash, and it calls a migration an edge. These are its first lines:
+
+```text
+✘ [MIGRATION.PATH_UNREACHABLE] Current contract has no planned migration path
+  why: No migration edge connects the current state "<current hash>" to the target "<target hash>" in contract space "app".
+→ Plan the missing edge: prisma migration plan --from <current hash> --to <target hash> --name <slug>
+→ Apply it: prisma db migrate --to <target hash>
+```
+
+Do not run the commands as the error prints them. Its [`migration plan`](/cli/migration-plan) command fails with `MIGRATION.REF_NOT_FOUND`, because `--to` only accepts a contract that a migration already produces, and its `db migrate --to` command fails with `MIGRATION.PATH_UNREACHABLE` again until the migration is planned. Run `migration plan` without `--to`, with the current hash from the error and a name for the migration, then apply the result. The first seven characters of the hash are enough:
+
+```npm
+npx prisma migration plan --from <current hash> --name add-phone
+npx prisma db migrate --db "$DATABASE_URL"
+```
+
+Without `--to`, `migration plan` plans up to the contract you just emitted.
+
+### You passed `--to` with an earlier migration
+
+`db migrate` cannot run a migration backwards. To take the database back, you plan a new migration that undoes the later ones. The error is the same as above. Here the two commands it suggests work as printed, because a migration already produces each of the two states. Put `npx` in front of each:
+
+```npm
+npx prisma migration plan --from <current hash> --to <target hash> --name undo-phone
+npx prisma db migrate --to <target hash> --db "$DATABASE_URL"
+```
+
+The new migration usually drops columns or tables, and the data in them. `migration plan` asks you to confirm each drop. In a script it stops instead, and names the flag to pass to `migration plan`, such as `--delete User.phone`. It writes the migration to a new directory under `migrations/app/`, so read the `migration.ts` there before you apply it.
+
+After you go back, your emitted contract is still the later one. A plain `db migrate` then applies the later migrations again, so keep passing `--to <target hash>` until you have changed the contract to match and run `contract emit`. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) covers going back in more detail.
+
+### The project has no migrations yet
+
+When `migrations/app/` holds no migration, the error reads `No on-disk migrations for contract space "app"`, and on a new, empty database the fix is to plan the first migration and apply it:
+
+```npm
+npx prisma migration plan --name init
+npx prisma db migrate --db "$DATABASE_URL"
+```
+
+If the database already has your tables, do not apply that first migration, because it creates every table from nothing. Sign the database first, then plan and apply. `db migrate` skips the first migration on a signed database:
+
+```npm
+npx prisma db sign --db "$DATABASE_URL"
+npx prisma migration plan --name init
+npx prisma db migrate --db "$DATABASE_URL"
+```
+
+[`db sign`](/cli/db-sign) records in the database which contract it matches. `db migrate` applies only the migrations after the first one to a database signed this way, as [The automatic baseline](/cli/migration-plan#the-automatic-baseline) explains. So here it reports `Already up to date`, while on a new, empty database the same migration creates the tables.
+
+`db sign` only signs a database whose tables match your contract. If they differ, it lists the differences, exits with code `4`, and signs nothing, so change the contract or the database until they match and sign again. To start from the database's side, [`contract infer`](/cli/contract-infer) writes a starter contract from it. [When to use `db sign`](/cli/db-sign#when-to-use-it) says when signing is the right step.
+
+### In a script
+
+With `--json`, the `error` object of the result has a `meta` object that holds `kind`, `spaceId`, `fromHash`, and `targetHash`. `kind` is `neverPlanned` when the project has no migrations, and then there is no `fromHash`. In every other case it is `pathUnreachable`, so a script cannot tell those causes apart from `kind`. It can tell them apart by whether it passed `--to`. `spaceId` is `app` for your own contract.
 
 ## When an apply fails [#when-an-apply-fails]
 

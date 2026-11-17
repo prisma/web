@@ -68,7 +68,7 @@ export const EcosystemGrid = () => {
                             data-color-scheme="no-preference: light; light: light; dark: dark;"
                             data-icon="octicon-star"
                             data-show-count="true"
-                            aria-label="Star prisma/prisma on GitHub"
+                            aria-label={`Star ${box.githubRepo} on GitHub`}
                           />
                         </div>
                       </div>

@@ -46,6 +46,12 @@ export interface DocsPageProps {
   breadcrumb?: Partial<BreadcrumbOptions>;
 
   /**
+   * Page actions, shown at the right end of the breadcrumb row (the page's
+   * top-right corner), so the title keeps the full width beneath them.
+   */
+  actions?: ReactNode;
+
+  /**
    * Footer navigation, located under the page body.
    *
    * You can specify `footer.children` to add extra components under the footer.
@@ -92,6 +98,7 @@ export function DocsPage({
   breadcrumb: { enabled: breadcrumbEnabled = true, component: breadcrumb, ...breadcrumbProps } = {},
   footer: { enabled: footerEnabled, component: footerReplace, ...footerProps } = {},
   full = false,
+  actions,
   tableOfContentPopover: {
     enabled: tocPopoverEnabled,
     component: tocPopover,
@@ -155,7 +162,14 @@ export function DocsPage({
           className,
         )}
       >
-        {breadcrumbEnabled && (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />)}
+        {actions ? (
+          <div className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            {breadcrumbEnabled ? (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />) : <span />}
+            {actions}
+          </div>
+        ) : (
+          breadcrumbEnabled && (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />)
+        )}
         {children}
         {footerEnabled !== false && (footerReplace ?? <PageFooter {...footerProps} />)}
       </article>

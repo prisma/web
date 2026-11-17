@@ -85,7 +85,7 @@ export function LargeSearchToggle({
         <kbd
           // Sans, not mono: the ⌘ glyph in the mono face renders too small
           // to read at a glance.
-          className="inline-flex h-6 shrink-0 items-center rounded-full bg-fd-foreground/[0.06] px-2.5 font-sans text-xs font-medium text-fd-foreground/70"
+          className="inline-flex h-6 shrink-0 items-center rounded-full bg-fd-foreground/[0.06] px-2.5 font-sans text-xs font-medium text-fd-foreground/75"
           aria-hidden="true"
         >
           {/* One chip for the whole shortcut: "⌘K" on Mac, "Ctrl+K" where a

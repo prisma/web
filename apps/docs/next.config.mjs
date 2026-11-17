@@ -387,7 +387,7 @@ const config = {
       },
       // Nested Prisma 7 core-concepts pages only. `:path*` also matched the
       // Prisma 8 hub at /orm/core-concepts (core-concepts.mdx) and sent it to
-      // /orm/v7/core-concepts/, which has no index and 404s (prisma/prisma#30136).
+      // /orm/v7/core-concepts/, which has no index and 404s (prisma/orm#30136).
       {
         source: "/orm/core-concepts/:path+",
         destination: "/orm/v7/core-concepts/:path+",
