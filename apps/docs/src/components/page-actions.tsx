@@ -18,15 +18,16 @@ import {
 const cache = new Map<string, string>();
 
 /*
- * Page actions, after Clerk's docs: a row under the title with "Copy as
- * Markdown" and a split "Open in ChatGPT" button whose menu hands the page to
- * other assistants, editors and app builders. No page-level GitHub link: the
+ * Page actions: a compact "Copy" split button in the page's top-right
+ * corner. "Copy" copies the page as Markdown; its menu views the Markdown or
+ * hands the page to assistants, editors and app builders. No page-level GitHub link: the
  * navbar links the repo and "Edit on GitHub" sits at the foot of every page.
  *
  * Styling matches the header controls: hairline pills, label a step below ink
  * at rest, full ink plus a faint tint on hover (`quiet-hover`).
  */
-const pill = "inline-flex h-8 items-stretch rounded-full border border-stroke-neutral text-sm";
+/** The top-right split button: a hairline box with softly rounded corners. */
+const splitButton = "inline-flex h-8 items-stretch rounded-lg border border-stroke-neutral text-sm";
 const pillPart =
   "quiet-hover inline-flex items-center gap-1.5 font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60 disabled:opacity-60 [&_svg]:size-3.5 [&_svg]:shrink-0";
 
@@ -62,8 +63,8 @@ export function CopyPromptButton({ fullPrompt }: { fullPrompt: string }) {
   });
 
   return (
-    <span className={pill}>
-      <button className={cn(pillPart, "rounded-full px-3")} onClick={onClick}>
+    <span className={splitButton}>
+      <button className={cn(pillPart, "rounded-lg px-3")} onClick={onClick}>
         {checked ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
         Copy prompt
       </button>
@@ -210,73 +211,69 @@ export function PageActions({
   canCopy?: boolean;
 }) {
   const copy = useCopyMarkdown(markdownUrl);
-  const { chatgpt, groups } = useDestinations(absoluteMarkdownUrl);
+  const { groups } = useDestinations(absoluteMarkdownUrl);
 
+  // One compact split button in the page's top-right corner: "Copy" copies
+  // the page as Markdown; the chevron opens every other hand-off. On pages
+  // with nothing to copy, the chevron half stands alone as "Open".
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <span className={splitButton}>
       {canCopy && (
-        <span className={pill}>
+        <>
           <button
-            className={cn(pillPart, "rounded-full px-3")}
+            aria-label={copy.failed ? "Copy failed, try again" : "Copy page as Markdown"}
+            className={cn(pillPart, "rounded-s-lg px-3")}
             disabled={copy.isLoading}
             onClick={copy.onClick}
           >
-            {copy.checked ? <Check aria-hidden="true" /> : <BrandIcon d={icons.markdown} />}
-            {copy.failed ? "Copy failed — try again" : "Copy as Markdown"}
+            {copy.checked ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+            {copy.failed ? "Copy failed" : copy.checked ? "Copied" : "Copy"}
           </button>
-        </span>
+          <span aria-hidden="true" className="w-px bg-stroke-neutral" />
+        </>
       )}
-
-      <span className={pill}>
-        <a
-          href={chatgpt.href}
-          target="_blank"
-          rel="noreferrer noopener"
-          className={cn(pillPart, "rounded-s-full ps-3 pe-2.5")}
-          onClick={() => track(chatgpt.tool)}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="More ways to use this page"
+          className={cn(
+            pillPart,
+            canCopy ? "rounded-e-lg px-2" : "rounded-lg px-3",
+            "data-[state=open]:text-fd-foreground",
+          )}
         >
-          {chatgpt.icon}
-          {chatgpt.title}
-        </a>
-        <span aria-hidden="true" className="my-1.5 w-px bg-stroke-neutral" />
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            aria-label="More ways to open this page"
-            className={cn(pillPart, "rounded-e-full px-2 data-[state=open]:text-fd-foreground")}
-          >
-            <ChevronDown aria-hidden="true" />
-          </DropdownMenuTrigger>
-          {/* Same compact panel as the sidebar's version menu. */}
-          <DropdownMenuContent
-            align="start"
-            className="min-w-60 rounded-(--radius-square) border-stroke-neutral p-1 shadow-box-low"
-          >
-            {groups.map((group, i) => (
-              <Fragment key={group.label}>
-                {i > 0 && <DropdownMenuSeparator className="bg-stroke-neutral" />}
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="px-2 pt-1.5 pb-1 text-xs font-medium text-fd-muted-foreground">
-                    {group.label}
-                  </DropdownMenuLabel>
-                  {group.items.map((item) => (
-                    <DestinationItem key={item.tool} item={item} />
-                  ))}
-                </DropdownMenuGroup>
-              </Fragment>
-            ))}
-            <DropdownMenuSeparator className="bg-stroke-neutral" />
-            <DestinationItem
-              item={{
-                title: "View as Markdown",
-                tool: "markdown",
-                href: markdownUrl,
-                icon: <FileText aria-hidden="true" />,
-              }}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </span>
-    </div>
+          {!canCopy && "Open"}
+          <ChevronDown aria-hidden="true" />
+        </DropdownMenuTrigger>
+        {/* Same compact panel as the sidebar's version menu, opening leftward
+            from the corner. */}
+        <DropdownMenuContent
+          align="end"
+          className="min-w-60 rounded-(--radius-square) border-stroke-neutral p-1 shadow-box-low"
+        >
+          <DestinationItem
+            item={{
+              title: "View as Markdown",
+              tool: "markdown",
+              href: markdownUrl,
+              icon: <FileText aria-hidden="true" />,
+            }}
+          />
+          {groups.map((group) => (
+            <Fragment key={group.label}>
+              <DropdownMenuSeparator className="bg-stroke-neutral" />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="px-2 pt-1.5 pb-1 text-xs font-medium text-fd-muted-foreground">
+                  {group.label}
+                </DropdownMenuLabel>
+                {group.items.map((item) => (
+                  <DestinationItem key={item.tool} item={item} />
+                ))}
+              </DropdownMenuGroup>
+            </Fragment>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </span>
   );
 }
 
