@@ -76,7 +76,7 @@ export const postgresContent: ProductPageContent = {
     ],
   },
   problem: {
-    headline: "A database that ships with the rest of your stack",
+    headline: "Managed Postgres hosting that ships with the rest of your stack",
     // V4 ran two paragraphs here. The review found the first scroll was a wall
     // of prose that mostly restated the hero, so the second paragraph's point
     // now lives in the hero tour's captions and the platform section.
@@ -169,6 +169,11 @@ export const postgresContent: ProductPageContent = {
       question: "Is Prisma Postgres a cloud Postgres database?",
       answer:
         "Yes. Prisma Postgres is a fully managed cloud PostgreSQL database: there are no servers to run, databases are provisioned instantly, connection pooling is built in, and the Free plan includes 2 GB of storage. It works with any Postgres client and is built to pair with Prisma ORM for type-safe queries and Prisma Compute for deploying your app next to your database, so you get one cloud platform for the database, the ORM and app hosting.",
+    },
+    {
+      question: "Is Prisma Postgres managed PostgreSQL hosting (Postgres as a service)?",
+      answer:
+        "Yes. Prisma Postgres is fully managed PostgreSQL hosting: it runs, scales and secures the database, with daily [automatic backups](/docs/postgres/database/backups) on paid plans, so you never manage servers or connection pooling. It's built to work with the rest of your stack. Prisma ORM gives you type-safe queries and migrations out of the box, and Prisma Compute lets you deploy your app right next to your database, so your data, your queries and your app all live on one platform. You can start on the free plan, or create a temporary database in seconds with [`npx create-db`](/docs/postgres/npx-create-db), no account needed.",
     },
     {
       question: "What happens when I reach the Free plan limit?",
