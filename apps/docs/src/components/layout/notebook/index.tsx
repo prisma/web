@@ -30,7 +30,6 @@ import { LinkItem, type ButtonItemType, type LinkItemType } from "../link-item";
 import type { SidebarPageTreeComponents } from "../sidebar/page-tree";
 import { SidebarNav, SidebarNavHeader, SidebarViewProvider } from "./sidebar-nav";
 import { AIChatSidebar } from "@/components/ai-chat-sidebar";
-import { PaperGround } from "@/components/chrome/paper-ground";
 
 /**
  * The eclipse `ink` button, spelled out in classes because the navbar's links go
@@ -250,10 +249,6 @@ export function DocsLayout(props: DocsLayoutProps) {
           <Sidebar defaultOpenLevel={defaultOpenLevel} prefetch={prefetch}>
             <SidebarEnabledFromPageProvider layoutEnabled={sidebarEnabled}>
               <LayoutBody {...props.containerProps}>
-                {/* brand ground: grain over the paper + the prism ray crossing
-                    behind the reading sheet. First child so every painted grid
-                    surface (sheet, header, sidebar pills) stacks above it. */}
-                <PaperGround />
                 <SidebarEnabledGate>{sidebarEnabled ? sidebar() : null}</SidebarEnabledGate>
                 <DocsNavbar {...props} links={links} />
                 {props.children}

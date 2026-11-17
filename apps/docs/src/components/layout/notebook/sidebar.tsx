@@ -16,6 +16,7 @@ import { usePathname } from "fumadocs-core/framework";
 import { createLinkItemRenderer } from "../sidebar/link-item";
 import { mergeRefs } from "../../../lib/merge-refs";
 import { getVersionedSidebarTree } from "../../../lib/versioned-sidebar-tree";
+import { PaperGround } from "@/components/chrome/paper-ground";
 
 export const itemVariants = cva(
   // `rounded-square` (10px) is the brand's soft-pill geometry — the active item
@@ -101,6 +102,7 @@ export function SidebarContent({
             {...props}
             {...rest}
           >
+            <PaperGround />
             {children}
           </aside>
         </div>
