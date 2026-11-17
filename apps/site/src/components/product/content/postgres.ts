@@ -86,7 +86,7 @@ export const postgresContent: ProductPageContent = {
     outcomes: [
       { icon: "gitBranch", label: "A preview database per feature branch" },
       { icon: "shield", label: "Predictable pricing with spend limits" },
-      { icon: "swap", label: "Per-operation billing with spend limits" },
+      { icon: "bot", label: "Databases your coding agent can create" },
       { icon: "database", label: "Standard Postgres, no lock-in" },
     ],
   },
@@ -217,7 +217,7 @@ export const postgresContent: ProductPageContent = {
     },
   ],
   cta: {
-    headline: "Postgres that ships with the rest of your stack",
+    headline: "Start with the database. Add the rest when you need it.",
     body: "Prisma Postgres is the data half of a TypeScript platform. Use it on its own with any ORM and any host, or pair it with Compute and your app and database become one deploy and one config, with a preview and its own declared databases for each feature branch.",
     benefits: [
       "Free preview databases that come with your app's previews",
