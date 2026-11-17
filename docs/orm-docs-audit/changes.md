@@ -30,6 +30,7 @@ Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` a
 ### In review
 
 - **prisma/web#8853** (2026-11-17): the `formatter` section on `cli/configuration.mdx`, which completes C17, and "When no migration reaches the target" on `cli/db-migrate.mdx`. Approved; three more reader rounds ran on 2026-11-17.
+- **prisma/web#8855** (2026-11-17): E13, E15, E16, E18, E20, E24, and E25 in one pull request. E17 needed no change, because `main` already says what the next `migration plan` writes after `db sign`.
 
 ### Merged on 2026-11-17
 
@@ -40,7 +41,7 @@ Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` a
 1. **C10, the Supabase page.** Waits on Ankur's draft prisma/web#8131, last updated 2026-10-26.
 2. **C23, example repositories in `prisma/prisma-examples`.** The shape is decided; nobody owns it.
 3. **A3 follow-up.** The prompt section still comes before the human steps on the guides under `guides/database`, `guides/deployment`, `guides/integrations`, and `guides/switch-to-prisma-orm`, on `composer/porting-an-app.mdx` and the full-stack tutorial, and as `## Prompt your coding agent` on 21 pages under `orm/`.
-4. **Small gaps, section E.** E13 (the contract reference table sits on a concept page), E15, E16, E17, E18, E19 (about 50 reader marks on the migration pages), E20 (`prisma/prisma` names), E22 (reader-review hits on the framework and runtime guides; still failing the staccato check), E23 (`/getting-started` duplicates the Quickstart group), E24 (`cli/db-update.mdx` does not say `db update` signs the database), E25 (two quickstart pages still have "Quickstart" in `metaTitle`).
+4. **Small gaps, section E.** E19 (about 50 reader marks on the migration pages), E22 (reader-review hits on the framework and runtime guides; still failing the staccato check), E23 (`/getting-started` duplicates the Quickstart group). E13, E15, E16, E18, E20, E24, and E25 are in review in #8855, and E17 is already fixed on `main`.
 5. **Reader pass on three guides.** `from-drizzle.mdx`, `ai-sdk.mdx`, and `nestjs.mdx` fail the plain-language and staccato checks (the C9 follow-up).
 
 ### Open on the ORM side
@@ -52,7 +53,7 @@ For the ORM team to schedule; none blocks a page. D4 (client APIs), D5 and D22 (
 Proposed on 2026-11-17.
 
 1. **Merge prisma/web#8853.**
-2. **The small docs gaps in one or two pull requests:** E24, E25, E20, and E13 first, because each is a few lines; then E15 to E19 on the migration pages as one reader pass.
+2. **The small docs gaps in one or two pull requests:** merge #8855, then E19 on the migration pages as one reader pass.
 3. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides) as one pass over the guides.
 4. **E23**, `/getting-started`.
 5. **D37 in prisma/orm**, because the docs currently warn readers off a command the CLI prints. Then the D items in the order the ORM team prefers.
