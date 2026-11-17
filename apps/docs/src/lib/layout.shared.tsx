@@ -5,7 +5,6 @@ import logoLight from "../../public/logo/full-color.svg";
 import logoDark from "../../public/logo/full-color-white.svg";
 import logoMark from "../../public/logo/mark.svg";
 import { DiscordIcon } from "@/components/icons/discord";
-import { NavBreadcrumb } from "@/components/layout/nav-breadcrumb";
 import Link from "next/link";
 import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
 
@@ -106,7 +105,9 @@ export function baseOptions(): BaseLayoutProps {
               <span className="sr-only">Prisma home</span>
             </Link>
           </PrismaLogoMenu>
-          <span className="text-fd-muted-foreground" aria-hidden="true">
+          {/* A light, faint slash: it separates the two halves of the lockup
+              without drawing the eye. */}
+          <span className="font-light text-fd-foreground/30" aria-hidden="true">
             /
           </span>
           {/* The visible wordmark stays "docs"; the hidden text makes the
@@ -116,10 +117,14 @@ export function baseOptions(): BaseLayoutProps {
             aria-label="Prisma documentation home"
             className="group relative inline-block pl-3 -ml-3!"
           >
-            <span className="font-mono text-lg block translate-y-px">docs</span>
+            {/* The shared sub-brand lockup (handbook, eclipse): monospace, in the
+                wordmark's own black / white at medium weight so the two read
+                as one mark rather than a grey label beside it. */}
+            <span className="block translate-y-px font-mono text-lg font-medium text-black dark:text-white">
+              docs
+            </span>
             <span className="sr-only">Prisma documentation home</span>
           </Link>
-          <NavBreadcrumb />
         </>
       ),
       transparentMode: "none",

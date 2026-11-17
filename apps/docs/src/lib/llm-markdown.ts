@@ -566,6 +566,37 @@ export function protectInlineCode(markdown: string) {
   };
 }
 
+/**
+ * One bullet marker throughout: remark-stringify writes "*" for MDX lists
+ * while the component formatters write "-". Lines inside a code fence are
+ * left alone, including fences inside a blockquote ("> ```"), which
+ * protectFencedCodeBlocks does not cover; "* * *" rules are skipped too.
+ */
+function unifyBullets(markdown: string) {
+  let fence: string | null = null;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      const match = /^[ \t>]*(`{3,}|~{3,})(.*)$/.exec(line);
+      if (match) {
+        const [, marker, rest] = match;
+        if (fence === null) {
+          fence = marker;
+          return line;
+        }
+        // A closing fence uses the opening's character, is at least as
+        // long, and has nothing after it but spaces or tabs.
+        if (marker[0] === fence[0] && marker.length >= fence.length && /^[ \t]*$/.test(rest)) {
+          fence = null;
+        }
+        return line;
+      }
+      if (fence !== null) return line;
+      return line.replace(/^([ \t>]*)\* (?![* \t]*$)/, "$1- ");
+    })
+    .join("\n");
+}
+
 export function normalizeProcessedMarkdown(
   markdown: string,
   options?: { headingDepths?: ReadonlyMap<string, number> },
@@ -601,6 +632,32 @@ export function normalizeProcessedMarkdown(
     .replace(/<\/?Accordions[^>]*>/g, "")
     .replace(/<Step\b([^>]*)>([\s\S]*?)<\/Step>/g, (_match, attrs: string, content: string) =>
       formatSectionComponent(attrs, content, "Step"),
+    )
+    .replace(
+      // The docs' <Steps> (src/components/steps.tsx) numbers its h3 steps in
+      // CSS, so the headings carry no "1."; agents get the numbers back. The
+      // processed markdown writes headings as "Text [#anchor]" lines (the
+      // `###` is restored later from the toc), so a step is a line whose
+      // anchor sits at depth 3, or one already written as `### `.
+      /<Steps>([\s\S]*?)<\/Steps>/g,
+      (_match, content: string) => {
+        let step = 0;
+        return content.replace(
+          /^([ \t]*)(### )?(.+?)[ \t]*\[#([^\]\n]+)\][ \t]*$/gm,
+          (line, indent: string, hashes: string | undefined, text: string, anchor: string) => {
+            const isStep = hashes !== undefined || options?.headingDepths?.get(anchor) === 3;
+            if (!isStep || text.startsWith("#")) return line;
+            // A heading that already carries its number keeps it and moves
+            // the count on, so the next unnumbered step follows it.
+            const existing = /^(\d+)\.\s/.exec(text);
+            if (existing) {
+              step = Number(existing[1]);
+              return line;
+            }
+            return `${indent}${hashes ?? ""}${++step}. ${text} [#${anchor}]`;
+          },
+        );
+      },
     )
     .replace(/<\/?Steps[^>]*>/g, "")
     .replace(/<SharedContent\b[^>]*>([\s\S]*?)<\/SharedContent>/g, (_match, content: string) =>
@@ -746,7 +803,9 @@ export function normalizeProcessedMarkdown(
   // literal backslashes in code spans survive; fenced blocks are already
   // placeholders at this point.
   const withHeadings = restoreHeadingMarkers(withoutJsxComponents, options?.headingDepths);
-  const protectedInline = protectInlineCode(withHeadings);
+  // Bullets are unified before inline-code protection, which would otherwise
+  // swallow a "```" fence line as a code span and hide it from unifyBullets.
+  const protectedInline = protectInlineCode(unifyBullets(withHeadings));
   const unescaped = protectedInline.restore(protectedInline.markdown.replace(/\\([_{}])/g, "$1"));
 
   return protectedCode

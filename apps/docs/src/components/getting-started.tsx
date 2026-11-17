@@ -81,9 +81,9 @@ const inkLink = cn(
   focusRing,
 );
 const closeButton = cn("quiet-hover inline-flex items-center rounded-full p-1.5", focusRing);
-/** Icon tile on a row: brand cyan, matching the icon tiles elsewhere on the page. */
-const rowIconTile =
-  "flex size-9 shrink-0 items-center justify-center rounded-lg border bg-fd-background text-fd-primary [&_svg]:size-4";
+/** A row's icon, on its own in muted ink like the card icons: no bordered
+ *  tile, since the row is already a box inside the page panel. */
+const rowIconTile = "flex shrink-0 items-center text-fd-muted-foreground [&_svg]:size-4";
 
 /**
  * Native-dialog modal for reading a full prompt. Overlays the page, so

@@ -9,9 +9,10 @@ import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { CopyPromptButton, PageActions } from "@/components/page-actions";
+import { CopyPromptButton, PageActions, PageActionsList } from "@/components/page-actions";
 import { getPromptContent } from "@/lib/get-prompt-content";
 import { getPageFooterItems } from "@/lib/page-footer-items";
+import { cn } from "@prisma-docs/ui/lib/cn";
 import {
   DocsBody,
   DocsDescription,
@@ -40,6 +41,11 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
   const hideSidebar = (page.data as { hideSidebar?: boolean }).hideSidebar;
   const pageVersion = getPageVersion(page.url);
 
+  // The landing page sends readers down chosen paths, so it has no
+  // previous / next links.
+  const footerItems = page.slugs.length === 0 ? {} : getPageFooterItems(source.pageTree, page.url);
+  const hasFooterNav = Boolean(footerItems.previous || footerItems.next);
+
   return (
     <>
       {hideSidebar && (
@@ -57,8 +63,30 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
       <TechArticleSchema page={{ ...page, data: content }} />
       <BreadcrumbSchema page={page} />
       <DocsPage
+        // The page's path above the title (section › group › folder), as
+        // quiet links: where the page sits, and a way back up.
+        // Not on the docs home, where the path would only say "Getting
+        // started › Start" above "Get started with Prisma".
+        breadcrumb={{
+          enabled: page.slugs.length > 0,
+          includeRoot: true,
+          includeSeparator: true,
+        }}
         tableOfContent={{
           style: "normal",
+          // Page actions as a quiet list at the top of the right column
+          // (Supabase-style), so the title area stays calm. Below xl that
+          // column is hidden and the pill row under the summary takes over.
+          header: (
+            <div className="mb-5 border-b pb-4" data-markdown-ignore>
+              <PageActionsList
+                markdownUrl={withMarkdownPath(page.url)}
+                absoluteMarkdownUrl={new URL(withMarkdownPath(page.url), getBaseUrl()).toString()}
+                canCopy={!page.url.startsWith("/rest-api/endpoints")}
+                fullPrompt={promptContent?.fullPrompt}
+              />
+            </div>
+          ),
         }}
         toc={content.toc}
         full={page.data.full}
@@ -71,10 +99,16 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         // previous / next links (its "next" would just be the next sidebar
         // entry). Every page closes with one quiet line: edit link and date.
         footer={{
-          items: page.slugs.length === 0 ? {} : getPageFooterItems(source.pageTree, page.url),
+          items: footerItems,
           children: (
             <div
-              className="mt-6 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t pt-5"
+              // One hairline, not two: under previous / next the links' own
+              // top rules already close the article, so the line only draws
+              // its rule when there are none (the landing page).
+              className={cn(
+                "mt-6 flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2",
+                !hasFooterNav && "border-t pt-5",
+              )}
               data-markdown-ignore
             >
               <EditOnGitHub
@@ -103,9 +137,21 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             />
           )}
         </div>
-        {/* Page actions sit in their own row under the title (Clerk's layout),
-            so the title keeps the full width and the row reads at any size. */}
-        <div className="flex flex-row flex-wrap items-center gap-2 pb-1" data-markdown-ignore>
+        <DocsDescription className={cn("mb-0", !page.data.full && "xl:mb-3")}>
+          {page.data.description}
+        </DocsDescription>
+        {/* Page actions sit in their own row under the summary, so the title
+            reads straight into what the page is about; the row keeps the full
+            width at any size, with room before the article starts. */}
+        <div
+          className={cn(
+            "flex flex-row flex-wrap items-center gap-2 pb-4",
+            // In the right column from xl up, except on full-width pages,
+            // which have no right column.
+            !page.data.full && "xl:hidden",
+          )}
+          data-markdown-ignore
+        >
           {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
           <PageActions
             markdownUrl={withMarkdownPath(page.url)}
@@ -113,7 +159,6 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
             canCopy={!page.url.startsWith("/rest-api/endpoints")}
           />
         </div>
-        <DocsDescription>{page.data.description}</DocsDescription>
         <DocsBody>
           <MDX
             components={getMDXComponents({
