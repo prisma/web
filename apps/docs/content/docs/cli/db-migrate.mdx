@@ -72,7 +72,7 @@ Before it runs anything, `db migrate` checks that the database's marker names a 
 
 ## When no migration reaches the target
 
-When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that [`contract emit`](/cli/contract-emit) last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error: if you did not pass `--to`, read the first case, and if you did, read the second. A less common cause is a migration history that has split into two branches. The `migration plan` page says how that happens, under [The automatic baseline](/cli/migration-plan#the-automatic-baseline).
+When no sequence of the migrations on disk leads from the state the database is in to the target, `db migrate` fails with `MIGRATION.PATH_UNREACHABLE` and changes nothing. The target is the contract that [`contract emit`](/cli/contract-emit) last wrote, or the state that `--to` names. Three cases cause it most often, and each has its own fix. The first two print the same error: if you did not pass `--to`, read the first case, and if you did, read the second. A less common cause is two migrations that start from the same state, so that the history has two branches. [The automatic baseline](/cli/migration-plan#the-automatic-baseline) says how `migration plan` can write that.
 
 ### You changed the contract and did not plan a migration
 
@@ -85,7 +85,7 @@ You edited the contract, ran `contract emit`, and then ran `db migrate`. The tar
 → Apply it: prisma db migrate --to <target hash>
 ```
 
-Do not run the [`migration plan`](/cli/migration-plan) command the error suggests: its `--to` fails with `MIGRATION.REF_NOT_FOUND` for a contract that no migration ends at yet. Run the command without `--to`, with the current hash from the error and a name for the migration, then apply the result. The first seven characters of the hash are enough:
+Do not run the [`migration plan`](/cli/migration-plan) command the error suggests. It fails with `MIGRATION.REF_NOT_FOUND`, because `--to` only accepts a contract that a migration already produces. Run the command without `--to`, with the current hash from the error and a name for the migration, then apply the result. The first seven characters of the hash are enough:
 
 ```npm
 npx prisma migration plan --from <current hash> --name add-phone
@@ -96,7 +96,7 @@ Without `--to`, `migration plan` plans up to the contract you just emitted.
 
 ### You passed `--to` with an earlier migration
 
-`db migrate` cannot run a migration backwards. To take the database back, you plan a new migration that undoes the later ones. The error is the same as above. Here the two commands it suggests work as printed, because a migration already ends at each hash. Put `npx` in front of each:
+`db migrate` cannot run a migration backwards. To take the database back, you plan a new migration that undoes the later ones. The error is the same as above. Here the two commands it suggests work as printed, because a migration already produces each of the two states. Put `npx` in front of each:
 
 ```npm
 npx prisma migration plan --from <current hash> --to <target hash> --name undo-phone
@@ -105,7 +105,7 @@ npx prisma db migrate --to <target hash> --db "$DATABASE_URL"
 
 The new migration usually drops columns or tables, and the data in them. `migration plan` asks you to confirm each drop. In a script it stops instead, and names the flag to pass to `migration plan`, such as `--delete User.phone`. It writes the migration to a new directory under `migrations/app/`, so read the `migration.ts` there before you apply it.
 
-After you go back, your emitted contract is still the later one. A plain `db migrate` then applies the later migrations again, so keep passing `--to` until you have changed the contract to match and run `contract emit`. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) covers going back in more detail.
+After you go back, your emitted contract is still the later one. A plain `db migrate` then applies the later migrations again, so keep passing `--to <target hash>` until you have changed the contract to match and run `contract emit`. [Rollbacks and recovery](/orm/migrations/rollbacks-and-recovery) covers going back in more detail.
 
 ### The project has no migrations yet
 
@@ -124,13 +124,13 @@ npx prisma migration plan --name init
 npx prisma db migrate --db "$DATABASE_URL"
 ```
 
-[`db sign`](/cli/db-sign) records in the database which contract it matches. `db migrate` does not apply the first migration to a database signed this way, and applies only the migrations after it, as [The automatic baseline](/cli/migration-plan#the-automatic-baseline) explains.
+[`db sign`](/cli/db-sign) records in the database which contract it matches. `db migrate` does not apply the first migration to a database signed this way, and applies only the migrations after it, as [The automatic baseline](/cli/migration-plan#the-automatic-baseline) explains. So here it reports `Already up to date`, while on a new, empty database the same migration creates the tables.
 
-`db sign` only signs a database whose tables match your contract. If they differ, it lists the differences, exits with code `4`, and signs nothing, so change the contract or the database until they match and sign again. [When to use `db sign`](/cli/db-sign#when-to-use-it) says when signing is the right step.
+`db sign` only signs a database whose tables match your contract. If they differ, it lists the differences, exits with code `4`, and signs nothing, so change the contract or the database until they match and sign again. [`contract infer`](/cli/contract-infer) writes a starter contract from the database. [When to use `db sign`](/cli/db-sign#when-to-use-it) says when signing is the right step.
 
 ### In a script
 
-With `--json`, the `error` object of the result has a `meta` object that holds `kind`, `spaceId`, `fromHash`, and `targetHash`. `kind` is `neverPlanned` when the project has no migrations, and then there is no `fromHash`. In every other case it is `pathUnreachable`, so a script cannot tell those causes apart from `kind`; it knows the cause from whether it passed `--to`. `spaceId` is `app` for your own contract.
+With `--json`, the `error` object of the result has a `meta` object that holds `kind`, `spaceId`, `fromHash`, and `targetHash`. `kind` is `neverPlanned` when the project has no migrations, and then there is no `fromHash`. In every other case it is `pathUnreachable`, so a script cannot tell those causes apart from `kind`. It can tell them apart by whether it passed `--to`. `spaceId` is `app` for your own contract.
 
 ## When an apply fails [#when-an-apply-fails]
 

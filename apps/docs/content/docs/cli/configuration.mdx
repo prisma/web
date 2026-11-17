@@ -244,13 +244,15 @@ Re-run `contract emit` after changing extension packs, then update the matching 
 npx prisma contract format
 ```
 
-It formats every `.prisma` file that the `contract` setting matches, including a file that `contract emit` skips because it lacks the `// use prisma-8` first line. It always writes the files, because it has no mode that only checks them. If your contract is built in TypeScript and not in `.prisma` files, the command does nothing.
+It formats every `.prisma` file that the `contract` setting matches, including a file that `contract emit` skips because it lacks the [`// use prisma-8` first line](#split-the-schema-across-several-files). It always writes the files, because it has no mode that only checks them. If your contract is built in TypeScript and not in `.prisma` files, the command does nothing.
 
 To make CI fail on an unformatted file, format there and let Git report any change:
 
 ```bash
 npx prisma contract format && git diff --exit-code
 ```
+
+When that check fails, run `npx prisma contract format` on your machine and commit the result.
 
 By default the command indents with two spaces. To change the indentation or the line endings, add `formatter` to the `orm` section. Both fields are optional:
 
@@ -274,7 +276,7 @@ export default definePrismaConfig({
 | `indent` | The number of spaces for each level of indentation, as a whole number of 1 or more, or `"tab"` for one tab for each level. Default: `2`. |
 | `newline` | The line ending to write: `"LF"`, which macOS and Linux use, or `"CRLF"`, which Windows uses. Without it, the command writes the line ending of the operating system it runs on. |
 
-Set `newline` when anyone works on the project from Windows; `"LF"` is the usual choice. Without it, the command and the editor disagree there: `contract format` writes Windows line endings, but the [Prisma editor extension](/orm/contract-authoring/editor-support) writes `LF`, so every line of a file changes each time one of them formats a file the other last wrote. The editor extension reads `formatter` from `prisma.config.ts` too, so once `newline` is set, the command and the editor write the same line endings on every machine.
+Set `newline` when anyone works on the project from Windows; `"LF"` is the usual choice. Without it, on Windows `contract format` writes `CRLF` but the [Prisma editor extension](/orm/contract-authoring/editor-support) writes `LF`. Each one rewrites every line the other wrote, so Git shows the whole file as changed. The editor extension reads `formatter` from `prisma.config.ts` too, so once `newline` is set, the command and the editor write the same line endings on every machine.
 
 `formatter` needs `@prisma/orm-postgres` or `@prisma/orm-mongo` at `8.0.0-rc.24` or later. An earlier release ignores the setting without an error, and `contract format` still indents with two spaces. `npm ls @prisma/orm-postgres`, or the same command with `@prisma/orm-mongo`, prints the release you have.
 
