@@ -90,6 +90,25 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         }}
         toc={content.toc}
         full={page.data.full}
+        // Page actions in the page's top-right corner, on the breadcrumb row,
+        // so the title keeps the full width. From xl the right column's list
+        // takes over, except on full-width pages, which have no right column.
+        actions={
+          <div
+            className={cn(
+              "ms-auto flex flex-row flex-wrap items-center gap-2",
+              !page.data.full && "xl:hidden",
+            )}
+            data-markdown-ignore
+          >
+            {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
+            <PageActions
+              markdownUrl={withMarkdownPath(page.url)}
+              absoluteMarkdownUrl={new URL(withMarkdownPath(page.url), getBaseUrl()).toString()}
+              canCopy={!page.url.startsWith("/rest-api/endpoints")}
+            />
+          </div>
+        }
         // Resolved here rather than in the client footer: it is the only
         // consumer of the page tree's `description`, and keeping it on the
         // client meant shipping every page's description in the RSC payload
@@ -140,25 +159,6 @@ export default async function Page({ params }: { params: Promise<PageParams> }) 
         <DocsDescription className={cn("mb-0", !page.data.full && "xl:mb-3")}>
           {page.data.description}
         </DocsDescription>
-        {/* Page actions sit in their own row under the summary, so the title
-            reads straight into what the page is about; the row keeps the full
-            width at any size, with room before the article starts. */}
-        <div
-          className={cn(
-            "flex flex-row flex-wrap items-center gap-2 pb-4",
-            // In the right column from xl up, except on full-width pages,
-            // which have no right column.
-            !page.data.full && "xl:hidden",
-          )}
-          data-markdown-ignore
-        >
-          {promptContent && <CopyPromptButton fullPrompt={promptContent.fullPrompt} />}
-          <PageActions
-            markdownUrl={withMarkdownPath(page.url)}
-            absoluteMarkdownUrl={new URL(withMarkdownPath(page.url), getBaseUrl()).toString()}
-            canCopy={!page.url.startsWith("/rest-api/endpoints")}
-          />
-        </div>
         <DocsBody>
           <MDX
             components={getMDXComponents({
