@@ -88,7 +88,7 @@ Every operation carries an `operationClass`, which says what kind of change it m
 | Class | Meaning | Example |
 | --- | --- | --- |
 | `additive` | Adds something new | Add a column, create an index |
-| `widening` | Loosens a rule, or renames something without losing anything | Drop `NOT NULL`, rename an index |
+| `widening` | Loosens a rule, removes something that holds no rows or values, or renames something, without losing data | Drop `NOT NULL`, drop an index, rename an index |
 | `destructive` | Removes or changes something that exists, and can lose data | Drop a column, change a column's type |
 | `data` | Changes rows, not tables | A `dataTransform` |
 
@@ -166,11 +166,11 @@ A `migration.ts` written before `8.0.0-rc.18` passed an `options` object with `q
 | `addPrimaryKey` | `schema`, `table`, `constraint`, `columns` | `ALTER TABLE "public"."tag" ADD CONSTRAINT "tag_pkey" PRIMARY KEY ("id")` | additive |
 | `addUnique` | `schema`, `table`, `constraint`, `columns` | `ALTER TABLE "public"."user" ADD CONSTRAINT "user_name_key" UNIQUE ("name")` | additive |
 | `addForeignKey` | `schema`, `table`, `foreignKey` | `ALTER TABLE "public"."comment" ADD CONSTRAINT "comment_post_fkey" FOREIGN KEY ("postId") REFERENCES "public"."post" ("id") ON DELETE CASCADE` | additive |
-| `dropConstraint` | `schema`, `table`, `constraint`, `kind?` | `ALTER TABLE "public"."user" DROP CONSTRAINT "user_name_key"` | destructive |
+| `dropConstraint` | `schema`, `table`, `constraint`, `kind?` | `ALTER TABLE "public"."user" DROP CONSTRAINT "user_name_key"` | widening |
 | `addCheckConstraint` | `schema`, `table`, `constraint`, `expression` | `ALTER TABLE "public"."post" ADD CONSTRAINT "post_title_len" CHECK (length("title") > 0)` | additive |
 | `renameCheckConstraint` | `schema`, `table`, `from`, `to` | `ALTER TABLE "public"."post" RENAME CONSTRAINT "post_title_len" TO "post_title_nonempty"` | widening |
 | `renameConstraint` | `schema?`, `table`, `kind`, `from`, `to` | `ALTER TABLE "public"."user" RENAME CONSTRAINT "user_pkey" TO "account_pkey"` | widening |
-| `dropCheckConstraint` | `schema`, `table`, `constraint` | `ALTER TABLE "public"."post" DROP CONSTRAINT "post_title_nonempty"` | destructive |
+| `dropCheckConstraint` | `schema`, `table`, `constraint` | `ALTER TABLE "public"."post" DROP CONSTRAINT "post_title_nonempty"` | widening |
 
 In these calls, `constraint` is the name to give the constraint, or the name of the one to drop, and `columns` is the list of column names it covers:
 
@@ -238,7 +238,7 @@ There is no `CONCURRENTLY` option, because one `npx prisma db migrate` run is [o
 | --- | --- | --- | --- |
 | `createNativeEnumType` | `schema`, `typeName`, `members` | `CREATE TYPE "public"."role" AS ENUM ('admin', 'member')` | additive |
 | `addNativeEnumValue` | `schema`, `typeName`, `value` | `ALTER TYPE "public"."role" ADD VALUE 'guest'` | additive |
-| `dropNativeEnumType` | `schema`, `typeName` | `DROP TYPE "public"."role"` | destructive |
+| `dropNativeEnumType` | `schema`, `typeName` | `DROP TYPE "public"."role"` | widening |
 
 `members` and `value` are the enum's values as strings, and `addNativeEnumValue` adds one value per call, so call it once for each value you add:
 
@@ -254,7 +254,7 @@ this.addNativeEnumValue({ schema: 'public', typeName: 'role', value: 'guest' }),
 | `replaceStoredValue` | `schema?`, `table`, `column`, `from`, `to`, `many?`, `codecRef?` | `UPDATE "public"."task" SET "state" = $2 WHERE "state" = $1` | widening |
 | `removeStoredValue` | `schema?`, `table`, `column`, `value`, `many?`, `codecRef?`, `enumValue?` | `UPDATE "public"."task" SET "state" = NULL WHERE "state" = $1` | destructive |
 
-`migration plan` writes these calls when a member of an `enum` block stores a new value or is removed and no other member stores its value, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes. `replaceStoredValue` changes the stored value `from` to `to` in every row that holds it. `removeStoredValue` sets the column to `NULL` in every row that holds `value`; on a required column, its precheck fails while any row holds the value. With `many: true`, the column is a list, and the value is replaced in or removed from every list that holds it. Values are passed as parameters, in the form the column stores them. `codecRef` names the column's codec, and `enumValue` names the enum member, so that a failed check names it; `migration plan` fills in both.
+`migration plan` writes these calls when a member of an `enum` block stores a new value or is removed and no other member stores its value, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes. `replaceStoredValue` changes the stored value `from` to `to` in every row that holds it. `removeStoredValue` sets the column to `NULL` in every row that holds `value`; on a required column, its precheck fails while any row holds the value. With `many: true`, the column is a list, and the value is replaced in or removed from every list that holds it. Values are passed as parameters, in the form the column stores them. `codecRef` names how the column's values are stored and read, and `enumValue` names the enum member, so that a failed check names it; `migration plan` fills in both.
 
 To keep the rows when a member stores a new value, replace the planned `removeStoredValue` with a `replaceStoredValue` to the new value, then run `node migration.ts`:
 
@@ -267,10 +267,10 @@ this.replaceStoredValue({ schema: 'public', table: 'task', column: 'state', from
 | Method | Options | Runs | Class |
 | --- | --- | --- | --- |
 | `enableRowLevelSecurity` | `schema`, `table` | `ALTER TABLE "public"."post" ENABLE ROW LEVEL SECURITY` | additive |
-| `disableRowLevelSecurity` | `schema`, `table` | `ALTER TABLE "public"."post" DISABLE ROW LEVEL SECURITY` | destructive |
+| `disableRowLevelSecurity` | `schema`, `table` | `ALTER TABLE "public"."post" DISABLE ROW LEVEL SECURITY` | widening |
 | `createRlsPolicy` | `schema`, `table`, `policy` | `CREATE POLICY "post_read_all" ON "public"."post" AS PERMISSIVE FOR SELECT TO public USING (true)` | additive |
 | `renameRlsPolicy` | `schema`, `table`, `from`, `to` | `ALTER POLICY "post_read_all" ON "public"."post" RENAME TO "post_read_any"` | widening |
-| `dropRlsPolicy` | `schema`, `table`, `policy` | `DROP POLICY "post_read_any" ON "public"."post"` | destructive |
+| `dropRlsPolicy` | `schema`, `table`, `policy` | `DROP POLICY "post_read_any" ON "public"."post"` | widening |
 
 `policy` describes the policy in full:
 
