@@ -64,6 +64,11 @@ const config = {
         basePath: false,
       },
       {
+        source: "/composer/quickstart",
+        destination: "/composer/getting-started",
+        permanent: true,
+      },
+      {
         source: "/orm/latest",
         destination: "/orm",
         permanent: true,
