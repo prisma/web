@@ -16,6 +16,7 @@ import { usePathname } from "fumadocs-core/framework";
 import { createLinkItemRenderer } from "../sidebar/link-item";
 import { mergeRefs } from "../../../lib/merge-refs";
 import { getVersionedSidebarTree } from "../../../lib/versioned-sidebar-tree";
+import { PaperGround } from "@/components/chrome/paper-ground";
 
 export const itemVariants = cva(
   // `rounded-square` (10px) is the brand's soft-pill geometry — the active item
@@ -66,7 +67,7 @@ export function SidebarContent({
   className,
   children,
   ...props
-}: ComponentProps<"aside">) {
+}: ComponentProps<"nav">) {
   const ref = useRef<HTMLElement>(null);
 
   return (
@@ -80,7 +81,10 @@ export function SidebarContent({
           )}
         >
           {collapsed && <div className="absolute inset-s-0 inset-y-0 w-4" {...rest} />}
-          <aside
+          {/* A labelled nav, not an <aside>: the sidebar is the docs'
+              navigation, so screen readers can jump to it as a landmark. */}
+          <nav
+            aria-label="Docs"
             id="nd-sidebar"
             ref={mergeRefs(ref, refProp, asideRef)}
             data-collapsed={collapsed}
@@ -101,8 +105,9 @@ export function SidebarContent({
             {...props}
             {...rest}
           >
+            <PaperGround />
             {children}
-          </aside>
+          </nav>
         </div>
       )}
     </Base.SidebarContent>

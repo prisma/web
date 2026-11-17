@@ -341,6 +341,17 @@ export function SectionRow({
   );
 }
 
+/*
+ * One hover for every link row on the landing pages (Build / Deploy, the
+ * setup paths, Browse the docs): a soft tint over the whole row, and a cyan
+ * arrow sliding in beside the title, on hover and on keyboard focus. The
+ * framework tiles keep the tint only (IconGrid hides the arrow there).
+ */
+const hoverRow =
+  "group -mx-2 rounded-lg px-2 py-3 transition-colors duration-200 hover:bg-fd-foreground/[0.04]";
+const hoverArrow =
+  "size-3.5 shrink-0 -translate-x-1 text-fd-primary opacity-0 transition duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 motion-reduce:transition-none";
+
 /** Grid wrapper for IconLink items. */
 export function IconGrid({
   columns = 2,
@@ -357,16 +368,18 @@ export function IconGrid({
   children: ReactNode;
 }) {
   return (
-    // auto-rows-fr: every row as tall as the tallest card, so the cards in a
-    // grid are always one size even when a title wraps.
+    // Rows in columns, separated by space alone; tiles centre a logo over its
+    // name. auto-rows-fr: every row as tall as the tallest, so rows line up
+    // across columns even when a title wraps.
     <div
       className={cn(
-        "grid auto-rows-fr gap-4",
+        "grid auto-rows-fr",
+        tiles ? "gap-1" : "gap-x-8 gap-y-1",
         tiles ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2",
         columns === 3 && "lg:grid-cols-3",
         columns === 5 && "lg:grid-cols-5",
         tiles && [
-          "[&>a]:flex-col [&>a]:items-center [&>a]:justify-center [&>a]:gap-2 [&>a]:px-2 [&>a]:py-3.5 [&>a]:text-center",
+          "[&>a]:flex-col [&>a]:items-center [&>a]:justify-center [&>a]:gap-2 [&>a]:mx-0 [&>a]:px-2 [&>a]:py-3.5 [&>a]:text-center [&_[data-hover-arrow]]:hidden",
           "[&>a>span:first-child]:size-8 [&>a>span:first-child]:rounded-lg [&_img]:size-[18px]",
           "[&>a>span:last-child>span:first-child]:justify-center [&>a>span:last-child>span:first-child]:whitespace-nowrap [&>a>span:last-child>span:first-child]:text-sm [&>a>span:last-child>span:first-child]:leading-5",
         ],
@@ -398,7 +411,9 @@ function IconTile({
   return (
     <span
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-lg border bg-fd-background",
+        // The bare glyph, one title line tall: no tile behind it, so the
+        // card is the only container.
+        "flex size-6 shrink-0 items-center justify-center",
         className,
       )}
       aria-hidden="true"
@@ -464,13 +479,15 @@ export function IconLink({
   badge?: string;
 }) {
   return (
-    // The same card as the hero's WorkflowLink: page-colour fill, 16px
-    // padding, neutral glyph, 15px semibold title over a 14px muted line.
+    // A row on the page itself, with no box or rule of its own: spacing
+    // separates the rows (the section already has dividers above and below).
+    // Neutral glyph, 15px semibold title over a 14px muted line.
     // Text wraps rather than truncating; IconGrid keeps rows one height.
     <a
       href={withDocsBasePath(href)}
       className={cn(
-        "group flex gap-3.5 rounded-xl border bg-fd-background p-4 transition-colors duration-200 hover:border-fd-foreground/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary",
+        hoverRow,
+        "flex gap-3.5 no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary",
         description ? "items-start" : "items-center",
       )}
     >
@@ -491,6 +508,7 @@ export function IconLink({
               {badge}
             </span>
           )}
+          <ArrowRight data-hover-arrow className={hoverArrow} aria-hidden="true" />
         </span>
         {description && (
           <span className="block text-sm leading-6 text-fd-muted-foreground">{description}</span>
@@ -499,6 +517,12 @@ export function IconLink({
     </a>
   );
 }
+
+// The hero wash's fade: in from the top, and out at both sides.
+const HERO_WASH_MASK = [
+  "linear-gradient(to bottom, transparent, #000 5rem)",
+  "linear-gradient(to right, transparent, #000 8rem, #000 calc(100% - 8rem), transparent)",
+].join(",");
 
 /**
  * Full-width hero for the build-then-deploy overview. Children are the intro
@@ -514,11 +538,15 @@ export function WorkflowHero({ children }: { children: ReactNode }) {
         aria-hidden
         className="pointer-events-none absolute -inset-x-10 top-0 -bottom-8 -z-10 overflow-hidden"
         // The wash box stops at the hero's top and fades in over the first
-        // 5rem, so no glow reaches the title row and its buttons above, and
-        // the crop never shows as a hard edge (visible in dark mode).
+        // 5rem, so no glow reaches the title row and its buttons above. Its
+        // sides fade too: with no page card around the content to clip it,
+        // the box's own left and right edges would show as hard crops
+        // (visible in dark mode). The two masks intersect.
         style={{
-          maskImage: "linear-gradient(to bottom, transparent, #000 5rem)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 5rem)",
+          maskImage: HERO_WASH_MASK,
+          WebkitMaskImage: HERO_WASH_MASK,
+          maskComposite: "intersect",
+          WebkitMaskComposite: "source-in",
         }}
       >
         <div
@@ -599,9 +627,9 @@ export function WorkflowStage({
     .trim()
     .replace(/\s+/g, "-");
   return (
-    <section className="flex min-w-0 flex-col gap-2 @3xl:row-span-4 @3xl:grid @3xl:grid-rows-subgrid">
-      <header className="pb-2">
-        {/* Stage headings lead their cards by size: Sora at the brand's 500
+    <section className="flex min-w-0 flex-col gap-0 @3xl:row-span-4 @3xl:grid @3xl:grid-rows-subgrid">
+      <header className="pb-4">
+        {/* Stage headings lead their rows by size: Sora at the brand's 500
             heading weight (global.css), 22px against the 15px semibold tile
             titles, so "Build" and "Deploy" read as the organising idea. */}
         <h2 id={id} className="scroll-m-24 text-[1.375rem] leading-8 text-fd-foreground">
@@ -617,9 +645,11 @@ export function WorkflowStage({
 }
 
 /**
- * One product inside a WorkflowStage: a linked tile with an icon, title, and
- * a short description. The description is the element's children so it
- * survives into the .md / llms output.
+ * One product inside a WorkflowStage: a linked row (icon, title, short
+ * description) on the page itself, separated from its neighbours by space
+ * alone, with no box or rule, so a stage reads as one quiet list.
+ * The description is the element's children so it survives into the .md /
+ * llms output.
  */
 export function WorkflowLink({
   href,
@@ -641,7 +671,10 @@ export function WorkflowLink({
   return (
     <a
       href={withDocsBasePath(href)}
-      className="group flex items-start gap-3.5 rounded-xl border bg-fd-background p-4 transition-colors duration-200 hover:border-fd-foreground/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary"
+      className={cn(
+        hoverRow,
+        "flex items-start gap-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fd-primary",
+      )}
     >
       <IconTile src={src} invertDark={invertDark} icon={icon} neutral />
       {/* The whole tile is the link, so the text gets the full width: no
@@ -655,10 +688,7 @@ export function WorkflowLink({
               {badge}
             </span>
           )}
-          <ArrowRight
-            className="size-3.5 -translate-x-1 text-fd-primary opacity-0 transition duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100 motion-reduce:transition-none"
-            aria-hidden="true"
-          />
+          <ArrowRight data-hover-arrow className={hoverArrow} aria-hidden="true" />
         </span>
         <span className="mt-0.5 block text-sm leading-6 text-fd-muted-foreground">{children}</span>
       </span>
@@ -780,8 +810,8 @@ export function DeployCallout({
 /**
  * A short list of "situation → command → guide" rows, for a section whose
  * whole job is to hand over a command (Prisma ORM 7 on the landing page).
- * Rows sit between hairlines rather than in cards, so the commands carry the
- * weight. Each command is copyable and never wraps; the row stacks on small
+ * One hairline between rows, none above or below (the section dividers
+ * already frame it), so the commands carry the weight. Each command is copyable and never wraps; the row stacks on small
  * screens. The label, command, and guide are props, so the generated .md /
  * llms output can render them as a list (see llm-markdown.ts).
  */
@@ -789,7 +819,10 @@ export function CommandRows({ children }: { children: ReactNode }) {
   // data-markdown-ignore: copy buttons and "Copied" are human-only; the
   // markdown fallback is a list of label, command and guide (llm-markdown.ts).
   return (
-    <div data-markdown-ignore className="@container flex flex-col divide-y border-y">
+    <div
+      data-markdown-ignore
+      className="@container flex flex-col divide-y [&>*:first-child]:pt-0 [&>*:last-child]:pb-0"
+    >
       {children}
     </div>
   );
@@ -1074,14 +1107,14 @@ export function SetupPrompt({ children }: { children: ReactNode }) {
 }
 
 /**
- * The page's closing index: product docs and references as plain links on
- * hairlines rather than boxed cards. Three columns where there is room, two on
+ * The page's closing index: product docs and references as plain links,
+ * separated by space alone (no boxes, no rules). Three columns where there is room, two on
  * tablets, one on phones (by the column's own width).
  */
 export function DocsIndex({ children }: { children: ReactNode }) {
   return (
     <div className="@container not-prose">
-      <div className="grid gap-x-8 @md:grid-cols-2 @2xl:grid-cols-3">{children}</div>
+      <div className="grid gap-x-8 gap-y-2 @md:grid-cols-2 @2xl:grid-cols-3">{children}</div>
     </div>
   );
 }
@@ -1098,23 +1131,15 @@ export function IndexLink({
   icon?: ReactNode;
 }) {
   return (
-    <a
-      href={withDocsBasePath(href)}
-      className={cn("group block rounded-sm border-t pt-4 pb-5", focusRing)}
-    >
+    <a href={withDocsBasePath(href)} className={cn(hoverRow, "block", focusRing)}>
       <span className="flex items-center gap-2 text-[0.9375rem] font-semibold leading-6 text-fd-foreground">
         {icon && (
           <span className="inline-flex text-fd-muted-foreground [&_svg]:size-4" aria-hidden="true">
             {icon}
           </span>
         )}
-        <span className="underline-offset-4 decoration-fd-foreground/35 group-hover:underline">
-          {title}
-        </span>
-        <ArrowRight
-          aria-hidden="true"
-          className="size-3.5 -translate-x-1 opacity-0 transition-[opacity,transform] duration-150 group-hover:translate-x-0 group-hover:opacity-100 motion-reduce:transition-none"
-        />
+        {title}
+        <ArrowRight data-hover-arrow className={hoverArrow} aria-hidden="true" />
       </span>
       {description && (
         <span

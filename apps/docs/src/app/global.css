@@ -157,11 +157,33 @@ body {
   --sidebar-ring: var(--color-prism-cyan-400);
 }
 
-/* The sidebar lives directly on the paper ground (shell v2, end of file) —
-   no wall, no fill of its own. Active items carry their own sheet-white
-   pills instead. */
+/* The sidebar is the one panel in the shell: a faint ink tint with the
+   brand grain over it (PaperGround, light mode), inset from the edges, so
+   the reading column can sit on the bare ground. The collapsed
+   (hover-to-peek) sidebar keeps its own card styling, without the grain. */
 #nd-sidebar {
   background-color: transparent;
+}
+
+#nd-sidebar[data-collapsed="false"] {
+  isolation: isolate;
+  inset: 0.75rem auto 0.75rem 0.75rem;
+  width: calc(100% - 1rem);
+  overflow: hidden;
+  border-radius: 1rem;
+  background-color: color-mix(in srgb, var(--color-fd-foreground) 0.75%, transparent);
+}
+
+#nd-sidebar[data-collapsed="false"] > * {
+  width: 100%;
+}
+
+#nd-sidebar[data-collapsed="true"] > .brand-grain-picture {
+  display: none;
+}
+
+.dark #nd-sidebar[data-collapsed="false"] {
+  background-color: color-mix(in srgb, var(--color-fd-foreground) 4%, transparent);
 }
 
 header &[data-search-full] {
@@ -572,22 +594,13 @@ header &[data-search-full] {
 }
 
 /* ---------------------------------------------------------------------------
-   Shell v2 — "the reading sheet". The compositional layer of the rebrand:
-   site-redesign's pages put content on floating white panels over a warm,
-   grain-textured paper ground, with the triple-band prism ray crossing behind
-   them (see hero-home.tsx). The docs shell mirrors that at reading volume:
-   the app ground is paper (grain + ray render from PaperGround in the layout),
-   the article floats as a rounded sheet, and the sidebar/TOC sit directly on
-   the paper with no walls.
-
-   Ground and sheet are a mode-flipping pair: light keeps CF's paper ground
-   under a white sheet; dark inverts the depth cue instead (elevated surfaces
-   lighten), so the ground is the ink base and the sheet lifts one step off it.
+   Shell v2 — the reading ground. The marketing site carries the brand's
+   paper and grain; the docs keep reading surfaces clean instead: the article
+   sits on a plain ground (white, or ink in dark) with no sheet around it, and
+   the sidebar is the only panel.
 --------------------------------------------------------------------------- */
 :root {
-  --shell-ground: var(--color-paper); /* #f9faf5 */
-  --shell-sheet: var(--color-background-default); /* #ffffff */
-  --shell-sheet-shadow: 0 1px 2px rgba(21, 21, 21, 0.04), 0 16px 40px -16px rgba(21, 21, 21, 0.12);
+  --shell-ground: var(--color-background-default); /* #ffffff */
   /* Selected segment of the navbar theme toggle: white, lifted by a whisper
      of shadow. */
   --segment-selected: #ffffff;
@@ -596,8 +609,6 @@ header &[data-search-full] {
 
 .dark {
   --shell-ground: var(--color-background-default); /* #0f0f0f */
-  --shell-sheet: var(--color-background-neutral-weaker); /* #141414 */
-  --shell-sheet-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.8);
   /* On near-black a drop shadow does not read, so the segment is a lift in
      ink with a faint inner hairline for its edge. */
   --segment-selected: color-mix(in srgb, var(--color-fd-foreground) 18%, transparent);
@@ -605,23 +616,18 @@ header &[data-search-full] {
     color-mix(in srgb, var(--color-fd-foreground) 10%, transparent);
 }
 
-/* `position: relative` anchors PaperGround's ray layer to the grid;
-   `isolation: isolate` gives its negative-z layers a floor, so they paint
-   above this paper fill but under every in-flow surface (sheet, header,
-   sidebar pills) — light behind panels, never over content. */
+/* `isolation: isolate` keeps any negative-z decoration above
+   this ground fill but under every in-flow surface. */
 #nd-notebook-layout {
   position: relative;
   isolation: isolate;
   background-color: var(--shell-ground);
 }
 
-/* The reading sheet. Unlayered, so these margins/paddings outrank the
-   component's utility classes at equal specificity. */
+/* The reading column, on the ground itself: no sheet, border or shadow.
+   Unlayered, so these margins/paddings outrank the component's utility
+   classes at equal specificity. */
 #nd-page {
-  background-color: var(--shell-sheet);
-  border: 1px solid var(--color-stroke-neutral);
-  border-radius: 1.25rem;
-  box-shadow: var(--shell-sheet-shadow);
   margin: 0.5rem 0.5rem 2rem;
   padding: clamp(2rem, 3vw, 3.25rem) clamp(1.25rem, 4vw, 4rem) 4rem;
 }
@@ -694,7 +700,7 @@ button.sidebar-prism-item::after {
 
 a.sidebar-prism-item[data-active="true"] {
   font-weight: 500;
-  background-color: color-mix(in srgb, var(--color-fd-foreground) 6%, transparent);
+  background-color: color-mix(in srgb, var(--color-fd-foreground) 8%, transparent);
 }
 
 /* The same quiet, crisp hover for the header and page-action controls:
