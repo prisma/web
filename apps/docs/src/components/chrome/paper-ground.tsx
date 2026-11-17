@@ -13,7 +13,10 @@ export function PaperGround() {
         mixBlendMode: "multiply",
       }}
     >
-      <BrandGrain eager />
+      {/* Lazy, not eager: hidden ancestors (dark mode, the sidebar below md)
+          keep a lazy image from loading at all, so only light-mode desktop
+          readers fetch the texture, and never ahead of the page itself. */}
+      <BrandGrain />
     </div>
   );
 }

@@ -206,7 +206,8 @@ export function SidebarDrawerContent({ className, children, ...props }: Componen
   if (open && hidden) setHidden(false);
   if (mode !== "drawer") return;
   return (
-    <aside
+    <nav
+      aria-label="Docs"
       id="nd-sidebar-mobile"
       data-state={open ? "open" : "closed"}
       className={cn(hidden && "invisible", className)}
@@ -216,7 +217,7 @@ export function SidebarDrawerContent({ className, children, ...props }: Componen
       {...props}
     >
       {children}
-    </aside>
+    </nav>
   );
 }
 

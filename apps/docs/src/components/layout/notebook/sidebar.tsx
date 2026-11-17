@@ -81,7 +81,10 @@ export function SidebarContent({
           )}
         >
           {collapsed && <div className="absolute inset-s-0 inset-y-0 w-4" {...rest} />}
-          <aside
+          {/* A labelled nav, not an <aside>: the sidebar is the docs'
+              navigation, so screen readers can jump to it as a landmark. */}
+          <nav
+            aria-label="Docs"
             id="nd-sidebar"
             ref={mergeRefs(ref, refProp, asideRef)}
             data-collapsed={collapsed}
@@ -104,7 +107,7 @@ export function SidebarContent({
           >
             <PaperGround />
             {children}
-          </aside>
+          </nav>
         </div>
       )}
     </Base.SidebarContent>
