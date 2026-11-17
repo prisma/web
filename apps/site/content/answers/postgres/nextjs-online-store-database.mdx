@@ -1,0 +1,107 @@
+---
+title: "Which database should I use for a Next.js online store?"
+description: "Choose managed Postgres for a Next.js store, with durable orders, verified payment events, retry handling and separate product image storage."
+summary: "Use managed Postgres for a custom Next.js store's products, orders and payment references. [Prisma Postgres](/docs/postgres) is a strong fit when you want standard PostgreSQL clients and optional [Prisma Compute](/docs/compute) hosting for the storefront and server code in one project. Keep an existing Vercel deployment if it already works well. Choose the database around reliable order state and recovery, while a payment provider handles payment collection."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-28"
+updatedAt: "2026-10-29"
+readingTime: "6 min read"
+faq:
+  - question: "Should I store payment card details in Postgres?"
+    answer: "Use the payment provider's supported collection flow and store the references your application needs to reconcile payments and orders. A database choice does not make a custom card-handling implementation compliant with payment requirements. Keep unnecessary payment data out of the application."
+  - question: "Can I use Drizzle or node-postgres for the store?"
+    answer: "Yes. Prisma Postgres supports PostgreSQL clients, so the store can use Drizzle, node-postgres or Prisma ORM. Choosing Prisma Postgres does not require adopting Prisma ORM. Verify the client's connection settings in the deployed Next.js server runtime."
+  - question: "Where should product images go?"
+    answer: "Use durable object storage for image files and save their storage keys and product relationships in Postgres. Do not depend on the app server's local files surviving a deployment. Configure who may upload and read each object."
+  - question: "Does a successful checkout page prove an order is paid?"
+    answer: "No. A browser redirect is not the authority for payment state. Verify the payment provider's event and current payment details on the server, and make repeated processing safe before marking an order paid or fulfilling it."
+related:
+  - title: "Keeping customer and order writes consistent"
+    href: "/postgres/customer-order-transactions"
+  - title: "Preventing conflicting inventory changes"
+    href: "/compute/multi-user-inventory-app"
+  - title: "Choosing a separate test environment"
+    href: "/postgres/typescript-test-environment"
+cta:
+  title: "Give the store a durable order database"
+  description: "Connect your Next.js server to Prisma Postgres, then verify checkout retries and recovery with fictional orders."
+  label: "Follow the Next.js guide"
+  href: "/docs/guides/frameworks/nextjs"
+---
+
+A storefront can load successfully while its order processing is wrong. The important database test is what happens when a payment event arrives twice, the stock changes during checkout or the customer closes the tab before the confirmation page loads.
+
+We make Prisma Postgres and Prisma Compute. Provider and payment documentation linked here was checked on October 27, 2026. Prisma ORM is optional.
+
+## What does the store need to save?
+
+Keep products, order lines and payment references in durable server-side storage. Snapshot each order line's agreed unit price, currency and relevant product details at purchase, and retain the order total so historical purchases do not depend on today's catalog. Compute totals from trusted server data; a browser-supplied price is an input to reject or validate.
+
+Define order and payment states separately. An order can await payment, need manual review, be canceled or be fulfilled. A payment can be delayed, refunded or disputed. The payment provider is authoritative for its payment state; the application reconciles that evidence with its own order and fulfillment rules.
+
+Use database constraints and [transactions](/postgres/customer-order-transactions) for related writes. Database transactions do not atomically include a payment network or a shipment. Design reconciliation and a durable record of work that still needs to happen when an external operation fails.
+
+## Which managed Postgres option fits?
+
+The providers below are listed alphabetically, with the choice tied to the surrounding development workflow. Every option still requires order authorization, verified payment handling, reconciliation and fulfillment rules in the application.
+
+| Provider | Useful fit for a store | Setup checks for this choice |
+| --- | --- | --- |
+| [Neon](https://neon.com/docs/introduction/branching) | Database branches are important for testing catalog and schema changes. | Choose branch data carefully and keep test payments separate from live payments. |
+| Prisma Postgres | You want a managed SQL database and a TypeScript app/database declaration with Prisma Compute. | Verify declared resources, runtime and migrations. No point-in-time recovery; assess the snapshot limits below. |
+| [Supabase](https://supabase.com/docs/guides/getting-started) | Its authentication, storage and data API fit your store architecture. | Configure authorization policies and keep privileged checkout decisions on the server. |
+
+If the real need is a ready-made commerce backend with merchandising, tax and fulfillment workflows, evaluate that product category before building those systems around a database. Managed Postgres provides the data layer for a custom store.
+
+## How do I set up and verify the Prisma path?
+
+### 1. Connect the deployed Next.js server
+
+Follow the [Next.js setup guide](/docs/guides/frameworks/nextjs) and [connection documentation](/docs/postgres/database/connecting-to-your-database). Keep the database password and payment-provider secrets in server configuration, never a `NEXT_PUBLIC_` variable. Configure a separate test database and the payment provider's test environment before accepting real orders.
+
+Use Prisma Compute when you want the TypeScript app and a [declared database dependency](/docs/composer/databases) together. Composer's plain Postgres path lets you keep your client, with migrations your team manages. For a store already on Vercel, connect its server to Prisma Postgres and verify the actual checkout and webhook routes there.
+
+### 2. Test repeated payment evidence without charging anyone
+
+[Stripe's webhook guide](https://docs.stripe.com/webhooks) explains signature verification, retries and event ordering. Verify the event before using it, and check the relevant amount, currency and payment status against the intended order. Receiving an event identifier alone is insufficient.
+
+This SQL demonstration uses a disposable test database and fictional, already-verified payment evidence. Run the statement beginning `WITH accepted` twice inside the same transaction.
+
+```sql
+BEGIN;
+CREATE TEMP TABLE store_orders_demo (
+  id integer PRIMARY KEY,
+  payment_state text NOT NULL
+);
+CREATE TEMP TABLE store_events_demo (
+  event_id text PRIMARY KEY,
+  order_id integer NOT NULL REFERENCES store_orders_demo(id)
+);
+INSERT INTO store_orders_demo VALUES (1, 'pending');
+
+WITH accepted AS (
+  INSERT INTO store_events_demo VALUES ('event-demo-1', 1)
+  ON CONFLICT (event_id) DO NOTHING
+  RETURNING order_id
+)
+UPDATE store_orders_demo
+SET payment_state = 'paid'
+WHERE id IN (SELECT order_id FROM accepted)
+  AND payment_state = 'pending'
+RETURNING id, payment_state;
+```
+
+The first execution returns `1, paid`; the second returns no rows. Finish with `ROLLBACK;` to remove the demonstration. This tests deduplication of one event and a conditional state transition, not a complete payment handler. Different events can describe the same payment, and later refunds must follow their own valid transitions. Fulfillment also needs its own retry-safe record and reconciliation.
+
+### 3. Exercise the failures that change an order
+
+Test an invalid signature, a repeated event, events arriving out of order, a declined payment and a lost response. Check that retrying fulfillment does not ship the order twice. For limited stock, test two checkouts attempting the last item; the [inventory guide](/compute/multi-user-inventory-app) explains the database boundary.
+
+Put product images in [object storage](/docs/composer/object-storage), with file keys in Postgres, rather than relying on the app's local filesystem. Rehearse a [database restore](/docs/postgres/database/backups) and decide how restored order records will be reconciled with payments that already occurred.
+
+## When should I choose another setup?
+
+Choose another provider if the store requires point-in-time recovery today. Prisma Postgres uses daily snapshots on paid plans only on days with activity, and Free has no automatic snapshots. A restore can lose changes after the latest snapshot; a paid order needs a recovery and reconciliation procedure, not just a green deployment.
+
+Check [Prisma Compute's runtime limits](/docs/compute/limitations) before moving an existing store. Deployed apps run on Bun, there is no persistent writable filesystem and WebSocket servers are not supported. You can keep another app host while using Prisma Postgres for the store's data.

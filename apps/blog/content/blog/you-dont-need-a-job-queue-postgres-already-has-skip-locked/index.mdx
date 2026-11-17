@@ -18,7 +18,7 @@ prev: you-dont-need-a-vector-database-postgres-already-has-pgvector
 next: you-dont-need-elasticsearch-postgres-already-has-full-text-search
 ---
 
-Postgres can run a reliable background job queue, and the key is one clause: `FOR UPDATE SKIP LOCKED`. In this post, you'll build a queue with retries and concurrent workers on [Prisma Postgres](https://www.prisma.io/docs/postgres), a managed PostgreSQL service: one table, a handful of short queries, and no message broker to deploy, monitor, or pay for.
+Postgres can run a reliable background job queue, and the key is one clause: `FOR UPDATE SKIP LOCKED`. In this post, you'll build a queue with retries and concurrent workers on [Prisma Postgres](https://www.prisma.io/docs/postgres), a [managed PostgreSQL](https://www.prisma.io/dataguide/postgresql/5-ways-to-host-postgresql) service: one table, a handful of short queries, and no message broker to deploy, monitor, or pay for.
 
 This is the fourth post in the [Postgres features series](/series/postgres-features), after [Pub/Sub with `LISTEN` and `NOTIFY`](/you-dont-need-redis-postgres-already-has-pub-sub), [the bloom index](/postgres-bloom-index-the-overlooked-postgres-feature), and [pgvector](/you-dont-need-a-vector-database-postgres-already-has-pgvector).
 
@@ -401,13 +401,15 @@ The alternative holds the claim inside an open transaction for the length of the
 
 Either way, this queue delivers at least once, not exactly once; no recovery scheme escapes that. A crash after the work but before the `done` update, a janitor reset of a slow worker, even a connection blip between finishing a job and recording it: each can run a job's side effect twice. Write handlers so that running them twice is safe. For the welcome email that opened this post, that means a dedupe key: an `emails_sent` row written on success and checked before sending, or an idempotency key passed to the email provider, so a repeat run finds the work already done and skips it. The same move covers any side effect: give it a key, check the key first.
 
+In a booking app, commit the reservation and its notification job together, then let the worker retry delivery. The [booking app hosting guide](https://www.prisma.io/postgres/booking-app-hosting) covers the reservation rule and the deployment checks around that workflow.
+
 ## Where to run the worker
 
 The worker is an ordinary process that wants to stay alive, and platforms built around short-lived request handlers make that awkward. Two shapes work: a persistent loop, or a short-lived pass that wakes up, drains what's due, and exits.
 
 Any host that keeps a Node or Bun process alive can run the loop: a VM, a container platform, a Railway or Fly.io service. The queue doesn't care where the worker lives, because the queue state all lives in Postgres. On Prisma Postgres, give production workers the pooled connection string: every queue query in this post is a single atomic statement, which transaction pooling handles fine.
 
-[Prisma Compute](https://www.prisma.io/docs/compute), Prisma's TypeScript app hosting built to run alongside Prisma Postgres, is in public beta and focuses on HTTP apps, so it fits a request-triggered drain: its `waitUntil` primitive keeps an instance awake after the response goes out, letting a request handler enqueue a job and work through a bounded batch without a separate worker. The drain is best-effort (a deploy or restart can interrupt it mid-job), so this shape leans harder on idempotent handlers and on the janitor query, which you'd run at the top of each drain: unclaimed jobs simply wait for the next pass, while a job interrupted mid-processing waits out the janitor's timeout first. Drains also only happen when requests arrive (on a quiet app, a due retry sits until the next visitor), so this shape fits apps with steady traffic. For sporadic traffic or an always-on loop, pair your Compute app with any always-on host: the queue state stays in Prisma Postgres either way.
+[Prisma Compute](https://www.prisma.io/docs/compute), Prisma's TypeScript app hosting built to run alongside Prisma Postgres, focuses on HTTP apps, so it fits a request-triggered drain: its `waitUntil` primitive keeps an instance awake after the response goes out, letting a request handler enqueue a job and work through a bounded batch without a separate worker. The drain is best-effort (a deploy or restart can interrupt it mid-job), so this shape leans harder on idempotent handlers and on the janitor query, which you'd run at the top of each drain: unclaimed jobs simply wait for the next pass, while a job interrupted mid-processing waits out the janitor's timeout first. Drains also only happen when requests arrive (on a quiet app, a due retry sits until the next visitor), so this shape fits apps with steady traffic. For sporadic traffic or an always-on loop, pair your Compute app with any always-on host: the queue state stays in Prisma Postgres either way.
 
 If polling every few hundred milliseconds feels wasteful, combine this pattern with the series' Pub/Sub post: use `NOTIFY` to wake the worker the moment a job is enqueued, and keep a slow poll as the fallback. On Prisma Postgres, the listening connection must use the [direct connection string](https://www.prisma.io/docs/postgres/database/connecting-to-your-database), because notifications don't traverse the connection pooler. The table stays the source of truth; the notification is just the doorbell.
 
@@ -422,6 +424,8 @@ A Postgres queue has real limits, and it's worth knowing them before you hit the
 There's also a middle path: [pg-boss](https://github.com/timgit/pg-boss) is this exact pattern, `SKIP LOCKED` on a Postgres table, packaged as a library with retries, scheduling, and retention policies already written. If your queue needs outgrow a hand-rolled table but your throughput still fits in Postgres, reach for it before reaching for a broker.
 
 The rule of thumb: start with the database you already run. Move to a dedicated queue when you can name the limit you're hitting (vacuum pressure, fan-out, or a feature list), not before.
+
+For customer-facing exports, the [report-hosting guide](https://www.prisma.io/compute/customer-report-hosting) connects this worker design with authorized report queries, private file storage and recovery after an interrupted generation attempt.
 
 ## Frequently asked questions
 

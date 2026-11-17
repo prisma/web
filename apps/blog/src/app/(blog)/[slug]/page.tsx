@@ -1,8 +1,10 @@
+import { postModifiedDate } from "@/lib/post-dates";
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { formatTag, formatDate } from "@/lib/format";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { blog } from "@/lib/source";
+import { blog, isDraft } from "@/lib/source";
 import { InlineTOC, Separator } from "@prisma/eclipse";
 
 import { JsonLd } from "@prisma-docs/ui/components/json-ld";
@@ -119,10 +121,7 @@ function getBlogPostingJsonLd(page: ReturnType<typeof blog.getPage>): BlogPostin
     : [];
 
   const datePublished = toIsoDate(page.data.date);
-  const dateModified =
-    toIsoDate(page.data.updatedAt) ??
-    toIsoDate((page.data as { lastModified?: unknown }).lastModified) ??
-    datePublished;
+  const dateModified = postModifiedDate(page.data);
 
   const jsonLd: BlogPostingSchema = {
     "@context": "https://schema.org",
@@ -196,8 +195,9 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
   const params = await props.params;
   const page = getPageOrRedirect(params.slug);
 
-  const MDX = page.data.body;
-  const blogPostingJsonLd = getBlogPostingJsonLd(page);
+  const content = await pageContent(page.data);
+  const MDX = content.body;
+  const blogPostingJsonLd = getBlogPostingJsonLd({ ...page, data: content });
   const seriesContext = getSeriesContext(page);
   // Series posts get recommendations too. `getRelatedPosts` excludes the
   // current post's own series, so "Keep reading" points outside it and the
@@ -330,8 +330,10 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             larger gap and neither needed a style change. */}
         <KeepReading posts={relatedPosts} />
 
-        {/* Conversion CTA */}
-        <BlogCTA />
+        {/* Conversion CTA. A post can relabel it and point it at a tracked
+            Console URL through the `cta` frontmatter field instead of adding
+            a second button inside the article. */}
+        <BlogCTA {...(page.data.cta ?? {})} />
 
         {/* Share Container */}
         <BlogShare desc={page.data.metaDescription as string} />
@@ -350,7 +352,7 @@ export default async function Page(props: { params: Promise<{ slug: string }> })
             <Text className="size-4" />
             On this page
           </h3>
-          <InlineTOC items={page.data.toc as TOCItem[]} />
+          <InlineTOC items={content.toc as TOCItem[]} />
         </div>
       </div>
     </div>
@@ -380,8 +382,16 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // A draft renders at its URL for review but stays out of search results
+    // until it is published; its links are still followed.
+    ...(isDraft(page) && { robots: { index: false, follow: true } }),
     alternates: {
       canonical,
+      // The post's Markdown rendition, for agents that look for one before
+      // parsing the HTML. next.config.mjs sends the same URL in a Link header.
+      types: {
+        "text/markdown": withBlogBasePath(`${page.url}.md`),
+      },
     },
     openGraph: {
       siteName: "Prisma",
@@ -400,8 +410,7 @@ export async function generateMetadata({
   };
 }
 
-export function generateStaticParams(): { slug: string }[] {
-  return blog.getPages().map((page) => ({
-    slug: page.slugs[0],
-  }));
-}
+export const generateStaticParams =
+  process.env.COMPOSER_BUILD === "1"
+    ? undefined
+    : () => blog.getPages().map((page) => ({ slug: page.slugs[0] }));

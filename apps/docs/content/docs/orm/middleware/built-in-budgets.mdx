@@ -1,20 +1,22 @@
 ---
 title: 'Built-in: budgets'
-description: The budgets middleware caps row counts and reports queries that took too long.
+description: The budgets middleware stops queries that read too many rows or take too long.
 url: /orm/middleware/built-in-budgets
 metaTitle: 'Prisma ORM built-in middleware: budgets'
-metaDescription: 'Wire and configure the budgets middleware in Prisma ORM to cap row counts, report query latency, and understand the errors it raises.'
+metaDescription: 'Wire and configure the budgets middleware in Prisma ORM to cap row counts and query time, and understand the errors it raises.'
 ---
 
 The `budgets` middleware stops one careless query from reading far more of your data, or taking far more time, than you meant to give it. You give it a row limit and a time limit, and it checks the queries you send against both. When a query goes over either limit, your call fails with an error and you get no rows back.
 
 Before you register it, know that `budgets` rejects any `SELECT` from the ORM API or the SQL query builder that has no `LIMIT` on it, however few rows the table holds. A statement you wrote yourself with `db.raw.sql` is not checked this way. On the [ORM API](/orm/fundamentals/reading-data), the call that runs a query and gives you every matching row is `.all()`, so that means every `.all()` call with no `.limit(...)` earlier in the chain. A `.where(...).first()` call is fine, because `.first()` asks the database for one row.
 
-Those `.all()` calls start throwing the moment you add `budgets` to your client, and there is no warn-only setting to ease the change in. The `severities` options in the table below look like one, but they do nothing on a client you build with `postgres(...)`. So find your `.all()` calls and give them limits before you turn `budgets` on, and searching your source for the call is a good starting point:
+Those `.all()` calls start throwing the moment you add `budgets` to your client, so find them and give them limits before you turn `budgets` on. Searching your source for the call is a good starting point:
 
 ```bash
 grep -rn "\.all()" src scripts
 ```
+
+If you want to turn `budgets` on before every call has a limit, set the row check's severity to `'warn'` and create the client with `mode: 'permissive'`, as [Report instead of throwing](#report-instead-of-throwing) shows. A query with no limit then runs, and its warning goes to the client's `log` option, so you can add the limits as the warnings come in.
 
 The fix is a `.limit(...)` in the chain. A query that counts rows is never a problem, because a count that is not split into groups comes back as a single row. In the calls below, `db.orm` is the ORM API and `public` is the PostgreSQL schema your tables are in:
 
@@ -34,17 +36,18 @@ Register `budgets` in the `postgres(...)` call that creates your client, with th
 ```ts title="src/prisma/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
 import { budgets } from '@prisma/orm-postgres/family-runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
   middleware: [
     budgets({
       maxRows: 10_000,
       defaultTableRows: 10_000,
-      tableRows: { user: 10_000, post: 10_000 },
+      tableRows: { User: 10_000, Post: 10_000 },
       maxLatencyMs: 1_000,
     }),
   ],
@@ -55,7 +58,9 @@ The built-in middleware is imported from `@prisma/orm-postgres/family-runtime`, 
 
 The example sets `maxRows`, `defaultTableRows`, and `maxLatencyMs` to the values they already take by default, so that you can see where each one goes, and you can leave all three out. Set `maxRows` and `maxLatencyMs` to the largest number of rows and the longest time any single query in your app should ever need, because they are there to catch mistakes rather than to tune anything.
 
-The two numbers in `tableRows` are placeholders for how many rows your own tables really hold, so a `post` table with two million rows in it is written `tableRows: { post: 2_000_000 }`. A `count` from the database is enough to get each number, such as `select count(*) from "public"."user";` for the `user` table, and you can leave `tableRows` out altogether, in which case every table is assumed to hold `defaultTableRows` rows. Each key is the table name as it is in the database, which is the model name with a lowercase first letter, so the model `User` is keyed `user` and not `User` or `public.User`. If you renamed a table with `@@map` in your contract, use the name you mapped it to. If you misspell a table name, `budgets` silently uses `defaultTableRows` for that table and never warns you.
+Every `SELECT` needs a `LIMIT` anyway, but a limit can still be larger than `maxRows`. The check before the query knows how big a table is only from the number you give it in `tableRows`, so with a real number there, a query like that on a big table fails before it runs rather than part way through reading its rows, as [Common gotchas](#common-gotchas) shows. The two numbers in the example are placeholders for how many rows your own tables really hold, so a `Post` table with two million rows in it is written `tableRows: { Post: 2_000_000 }`. A `count` from the database is enough to get each number, such as `select count(*) from "public"."User";` for the `User` table, and you can leave `tableRows` out altogether, in which case every table is assumed to hold `defaultTableRows` rows.
+
+Each key is the table name as it is in the database: the model's `@@map` value, or the model name exactly as written when the model has no `@@map`. So the model `User` is keyed `User`, not `public.User`. `budgets` looks a table up by its name alone, so two tables with the same name in different PostgreSQL schemas share one key and one number. If you misspell a table name, `budgets` silently uses `defaultTableRows` for that table and never warns you.
 
 Passing `budgets` to a MongoDB client throws an error whose `code` is `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH` the first time that client is used, before any query of yours runs, and there is no MongoDB version of `budgets` to use instead.
 
@@ -69,10 +74,22 @@ Every option is optional, and the default in the table applies when you leave on
 | `defaultTableRows` | `number` | `10_000` | How many rows to assume a table has when it is not listed in `tableRows` |
 | `tableRows` | `Record<string, number>` | `{}` | How many rows to assume each table has, keyed by table name |
 | `maxLatencyMs` | `number` | `1_000` | The longest one query may take, in milliseconds |
-| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Nothing on a client you build with `postgres(...)`, where going over the row budget always throws |
-| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Nothing on a client you build with `postgres(...)`, where going over the time budget always throws |
+| `severities.rowCount` | `'warn' \| 'error'` | `'error'` | Whether going over the row budget throws or only reports, on a client created with `mode: 'permissive'` |
+| `severities.latency` | `'warn' \| 'error'` | `'warn'` | Whether going over the time budget throws or only reports, on a client created with `mode: 'permissive'` |
 
-`severities` has no effect on a client you build with `postgres(...)`, where both budgets always throw. You can leave it out.
+### Report instead of throwing [#report-instead-of-throwing]
+
+On a client created with the default `mode`, `'strict'`, both budgets always throw, whatever `severities` says. When you create the client with `mode: 'permissive'`, a check whose severity is `'warn'` passes the problem to `log.warn`, where `log` is the [`log` option](/orm/reference/transactions-and-runtime#postgresoptions) you pass to `postgres(...)`, such as `console`, and the query runs. [`mode`](/orm/reference/transactions-and-runtime#mode) in the client reference has the details. A check whose severity is `'error'` still throws. Without a `log` option, the report goes nowhere.
+
+```ts
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
+  url: process.env['DATABASE_URL']!,
+  middleware: [budgets({ severities: { rowCount: 'warn' } })],
+  mode: 'permissive',
+  log: console,
+});
+```
 
 ## How it enforces the budget
 
@@ -131,11 +148,12 @@ So for a job that genuinely has to read millions of rows, such as a nightly expo
 
 ```ts title="scripts/export/db.ts"
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from '../../src/prisma/contract.d';
 import contractJson from '../../src/prisma/contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const db = postgres({
+  contract: contractFromJson<Contract>(contractJson),
   url: process.env['DATABASE_URL']!,
 });
 ```
@@ -148,7 +166,22 @@ Import that `db` in your export script and nowhere else, so the rest of your app
 
 The check that runs before your query never asks the database how big your tables are. It only knows the numbers you gave it in `tableRows` and `defaultTableRows`, so when your real tables are much larger than those numbers, a query can get past that first check and then fail part way through reading rows, once the rows the database returns pass `maxRows`.
 
-Say `maxRows` is `10_000` and you listed `user` at 5,000 rows, but the table really holds 5 million. A query with `.limit(50_000)` on it is estimated at 5,000 rows, because `budgets` takes the smaller of your limit and the size you gave for the table, so it passes the first check. The database then starts sending 50,000 rows and the count check throws at row 10,001, part way through your read. A query that used to work failing with `source: 'observed'` is your sign to put a fresh count into `tableRows`.
+Say `maxRows` is `10_000` and you listed `User` at 5,000 rows, but the table really holds 5 million. A query with `.limit(50_000)` on it is estimated at 5,000 rows, because `budgets` takes the smaller of your limit and the size you gave for the table, so it passes the first check. The database then starts sending 50,000 rows and the count check throws at row 10,001, part way through your read.
+
+When a query that used to work starts failing with `source: 'observed'`, the table has grown past the number you gave for it in `tableRows`. Put a fresh count there, and the check before the query then stops that query with `source: 'ast'` before the database does any work, rather than part way through the read. The query is still over budget either way, because its limit is larger than `maxRows`. To make it run, raise `maxRows`, or lower its `.limit(...)` to `maxRows` or less and read the rest a page at a time with `.offset(...)`, as [Sort and paginate](/orm/fundamentals/reading-data#sort-and-paginate) describes:
+
+```ts title="scripts/export/read-users.ts"
+const pageSize = 10_000;
+for (let offset = 0; ; offset += pageSize) {
+  const page = await db.orm.public.User
+    .orderBy((u) => u.id.asc())
+    .limit(pageSize)
+    .offset(offset)
+    .all();
+  // handle this page of rows
+  if (page.length < pageSize) break;
+}
+```
 
 :::
 

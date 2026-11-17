@@ -19,8 +19,9 @@ export function VariantCompare() {
             Estimate usage before you upgrade
           </h2>
           <p className="mt-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            Estimate your usage before you upgrade, then set a spend limit so the bill can&apos;t
-            surprise you. The calculator recommends the right plan for where you are.
+            Estimate your usage before you upgrade, then set a spend limit that stops database
+            queries when usage charges reach it. The calculator recommends the right plan for where
+            you are.
           </p>
         </div>
 
@@ -129,7 +130,7 @@ export function VariantCompare() {
 
         <p className="mt-6 flex items-center gap-2.5 text-sm text-muted-foreground">
           <Shield className="size-4 shrink-0 text-prism-red-500" aria-hidden />
-          Every paid plan includes a hard spend limit, on by default.
+          Every paid plan includes a hard spend limit you set in the Console.
           {rec.custom && (
             <span className="font-semibold text-foreground">
               Usage beyond Business? Custom pricing is available — talk to us.

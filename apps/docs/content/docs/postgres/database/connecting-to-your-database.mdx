@@ -26,10 +26,10 @@ Both strings share the same credentials. The only difference is the hostname:
 
 ```bash title=".env"
 # Pooled — routes through the connection pooler
-DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/?sslmode=require"
+DATABASE_URL="postgres://USER:PASSWORD@pooled.db.prisma.io:5432/postgres?sslmode=require"
 
 # Direct — connects straight to the database
-DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
+DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
 | Part       | Description                                               |
@@ -39,6 +39,18 @@ DIRECT_URL="postgres://USER:PASSWORD@db.prisma.io:5432/?sslmode=require"
 | Host       | `pooled.db.prisma.io` (pooled) or `db.prisma.io` (direct) |
 | Port       | `5432`                                                    |
 | `sslmode`  | Always `require` - SSL is mandatory                       |
+
+## Access and permissions
+
+Clicking **Generate new connection string** creates a new password for the database, and Console shows it to you inside two connection strings, pooled and direct. This page calls that password a *credential*. Console lists credentials under **Connection strings** in the database's sidebar, and the CLI and the REST API call them *connections*.
+
+The `USER` part is the same in every credential for a database, and you can't change it. Only the `PASSWORD` differs between credentials.
+
+Every credential has the same full access to its database. You can't make a credential read-only or limit it to certain tables, schemas, or PostgreSQL roles.
+
+Generating a new credential doesn't remove the old ones. Give each app or service its own credential, so you can delete one app's password without breaking the others. Console names every credential it creates `console-connection-string`, and the **Connection strings** list tells them apart by the last four characters of each password. To give a credential your own name, create it with the REST API, which takes a `name` in [`POST /v1/connections`](/rest-api/endpoints/connections/post-connections).
+
+If you move a database from another PostgreSQL server, the roles from that server don't exist in Prisma Postgres. Restore with `pg_restore --no-owner --no-privileges` so the ownership and grant statements that name those roles are skipped, as shown in [Migrate a local Postgres database to Prisma Postgres](/postgres/import-from-existing-database).
 
 ## Which connection to use
 
@@ -126,7 +138,69 @@ Use the **direct** connection string with `psql`, `pg_dump`, `pg_restore`, and G
 psql "postgres://USER:PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
 ```
 
+The same direct string is where `pg_restore` loads an existing database; see [Migrate a local Postgres database to Prisma Postgres](/postgres/import-from-existing-database) for the three steps.
+
 For non-Prisma ORMs, see the getting-started guides for [Drizzle](/prisma-postgres/quickstart/drizzle-orm), [Kysely](/prisma-postgres/quickstart/kysely), or [TypeORM](/prisma-postgres/quickstart/typeorm).
+
+## Rotate or delete a credential
+
+If a password leaks, replace it: create a new credential, switch your app to it, and then delete the old one. Rotating isn't enough, because after a rotate the old password can keep working.
+
+### Replace a leaked password
+
+1. Create a new credential, as described in [Get your connection strings](#get-your-connection-strings).
+1. Put its pooled and direct connection strings in your app's environment variables and redeploy.
+1. Delete the old credential.
+1. Try the old connection string once. The attempt should fail:
+
+   ```bash
+   psql "postgres://USER:OLD_PASSWORD@db.prisma.io:5432/postgres?sslmode=require"
+   ```
+
+   If it still connects, contact [support@prisma.io](mailto:support@prisma.io).
+
+Sessions opened with the leaked password before the delete may keep running. If you think one could still be open, contact [support@prisma.io](mailto:support@prisma.io).
+
+### Delete a credential
+
+After a delete succeeds, nobody can sign in with that password. Database sessions that were already open when you deleted it may keep running. If a delete fails, nothing has changed: run it again, and if it keeps failing, contact [support@prisma.io](mailto:support@prisma.io).
+
+Delete a credential from Console, the CLI, or the REST API:
+
+- **Console**: open **Connection strings** in the database's sidebar and find the credential by the last four characters of its password. Delete it, and type its name to confirm, which is `console-connection-string` for credentials Console created.
+- **CLI**: sign in with `npx prisma auth login`. Find the database's id with `npx prisma postgres list`, list its credentials to find the one you want, then delete it. The CLI asks you to confirm the id.
+
+  ```npm
+  npx prisma postgres list
+  npx prisma postgres connection list <database-id>
+  npx prisma postgres connection delete <connection-id>
+  ```
+
+- **REST API**: [`GET /v1/connections`](/rest-api/endpoints/connections/get-connections) with the `databaseId` query parameter lists credentials and their ids, and [`DELETE /v1/connections/{id}`](/rest-api/endpoints/connections/delete-connections-by-id) deletes one. See [REST API](/rest-api) for the base URL and how to authenticate.
+
+See the [`postgres` CLI reference](/cli/postgres) for every command.
+
+### Rotate a credential
+
+Rotate gives a credential a new password. Prisma then tries to remove the old password, but if that fails you aren't told, so the old password can keep working. Use rotate for routine password changes, and delete the credential when you need to be sure the old password no longer works. Console has no rotate button. Rotate from the CLI or with [`POST /v1/connections/{id}/rotate`](/rest-api/endpoints/connections/post-connections-by-id-rotate):
+
+```npm
+npx prisma postgres connection rotate <connection-id>
+```
+
+The CLI shows the new connection string only this one time, so save it. The REST API returns both the pooled and the direct connection string, as `endpoints.pooled.connectionString` and `endpoints.direct.connectionString`. The two strings are identical except for the host, `pooled.db.prisma.io` or `db.prisma.io`, so if you have one you can write the other. Then put the new strings in your app's environment variables and redeploy.
+
+### Databases created through Vercel
+
+If you created the database through the Vercel Marketplace, Vercel created its first credential and stores it in your Vercel project's environment variables. Rotate that one from Vercel, as described in [Rotating your Prisma integration secrets in Vercel](/guides/postgres/vercel#rotating-your-prisma-integration-secrets-in-vercel). Because Vercel manages that password in your environment variables, rotating it from Vercel is the way to replace it, even after a leak. After a leak, also contact [support@prisma.io](mailto:support@prisma.io) to confirm the old password no longer works. A rotation in Vercel doesn't change the credentials you created in Console.
+
+## Regions and latency
+
+You choose a database's region when you create it, and you can't change it afterwards. The **Connect to your database** dialog in Console shows the region next to the database's name. For the list of regions, see [What regions is Prisma Postgres available in?](/postgres/faq#what-regions-is-prisma-postgres-available-in).
+
+Every query travels from your app to the database's region and back, so run your app in or near that region.
+
+To move a database to another region, create a new database in the target region. Stop your app from writing to the old database before you copy anything, because writes made after `pg_dump` starts are not copied. Then copy the data: run `pg_dump` with the old database's direct connection string, and `pg_restore` with the new database's direct connection string. The commands and flags are in [Migrate a local Postgres database to Prisma Postgres](/postgres/import-from-existing-database). The new database has its own credentials, so put its connection strings in your app's environment variables and redeploy. Let your app write again only once it is using the new database.
 
 ## Troubleshooting
 

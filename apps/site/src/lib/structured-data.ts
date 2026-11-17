@@ -1,5 +1,5 @@
 import { getBaseUrl } from "@/lib/url";
-import { SITE_HOME_DESCRIPTION, SITE_NAME } from "@/lib/site-metadata";
+import { SITE_NAME, SITE_ORGANIZATION_DESCRIPTION } from "@/lib/site-metadata";
 
 type FaqEntry = {
   question: string;
@@ -17,21 +17,34 @@ function absoluteUrl(pathOrUrl: string): string {
 }
 
 function toPlainText(value: string): string {
-  return value
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;quot;/g, '"')
-    .replace(/&amp;#39;|&amp;apos;/g, "'")
-    .replace(/&amp;nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    value
+      .replace(/<[^>]+>/g, " ")
+      // The product-page FAQ (lib/faq-answer.tsx) carries a tiny inline syntax
+      // the FAQPage JSON-LD must not inherit: links keep the anchor words, code
+      // chips keep their contents, both drop their markup. Fences keep the code.
+      .replace(/```(?:\w+)?\n?([\s\S]*?)```/g, " $1 ")
+      .replace(
+        /\[((?:[^[\]\\`]|`[^`]*`)+)\]\((?:\/[^\s)]*|#[^\s)]+|https?:\/\/[^\s)]+)\)(?:\{newtab\})?/g,
+        "$1",
+      )
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/&amp;quot;/g, '"')
+      .replace(/&amp;#39;|&amp;apos;/g, "'")
+      .replace(/&amp;nbsp;/g, " ")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 export function createSiteStructuredData() {
   const baseUrl = getBaseUrl();
-  const description = SITE_HOME_DESCRIPTION;
+  // Describes the organization and the site, not the homepage's product
+  // pitch; the meta description (SITE_HOME_DESCRIPTION) stays in layout.tsx.
+  const description = SITE_ORGANIZATION_DESCRIPTION;
 
   return {
     "@context": "https://schema.org",
@@ -95,6 +108,8 @@ export function createSoftwareApplicationStructuredData({
   operatingSystem = "Cross-platform",
   license,
   downloadUrl,
+  image,
+  author,
   offers,
 }: {
   path: string;
@@ -104,6 +119,10 @@ export function createSoftwareApplicationStructuredData({
   operatingSystem?: string;
   license?: string;
   downloadUrl?: string;
+  /** Screenshot path or URL. */
+  image?: string;
+  /** Who built it, when it is not Prisma. */
+  author?: { name: string; url: string };
   offers?: {
     "@type": "Offer";
     price: string;
@@ -126,6 +145,8 @@ export function createSoftwareApplicationStructuredData({
     operatingSystem,
     ...(license && { license }),
     ...(downloadUrl && { downloadUrl }),
+    ...(image && { image: absoluteUrl(image) }),
+    ...(author && { author: { "@type": "Person", name: author.name, url: author.url } }),
     offers: offers ?? {
       "@type": "Offer",
       price: "0",

@@ -1,13 +1,23 @@
 import { IconTile } from "@/components/brand/icon-tile";
 import { Reveal } from "@/components/motion/reveal";
+import { renderFaqAnswer } from "@/lib/faq-answer";
 import { PRODUCT_ICONS } from "./icons";
 import type { ProductPageContent } from "./types";
 
 // Problem → outcomes: name the friction, then the four states the product
 // unlocks. Copy carries this section; the tiles stay quiet.
-export function ProductProblem({ problem }: Pick<ProductPageContent, "problem">) {
+export function ProductProblem({
+  problem,
+  id,
+  afterBody,
+}: Pick<ProductPageContent, "problem"> & {
+  /** Deep link target. /postgres/free-postgresql-hosting uses "limits". */
+  id?: string;
+  /** Callout under the narrative, before the outcome tiles. */
+  afterBody?: React.ReactNode;
+}) {
   return (
-    <section className="bg-white px-4 py-24 sm:px-8 sm:py-32">
+    <section id={id} className={`bg-white px-4 py-24 sm:px-8 sm:py-32${id ? " scroll-mt-28" : ""}`}>
       <div className="mx-auto max-w-site">
         <div className="mx-auto max-w-3xl text-center max-md:text-left">
           <Reveal>
@@ -18,10 +28,13 @@ export function ProductProblem({ problem }: Pick<ProductPageContent, "problem">)
           <div className="mt-5 flex flex-col gap-4">
             {problem.body.map((copy, i) => (
               <Reveal key={i} delay={0.1 + i * 0.06}>
-                <p className="text-pretty text-lg leading-relaxed text-muted-foreground">{copy}</p>
+                <p className="text-pretty text-lg leading-relaxed text-muted-foreground">
+                  {renderFaqAnswer(copy)}
+                </p>
               </Reveal>
             ))}
           </div>
+          {afterBody ? <div className="mt-6 text-left">{afterBody}</div> : null}
         </div>
         <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {problem.outcomes.map(({ icon, label }, i) => {

@@ -1,0 +1,97 @@
+---
+title: "13. Make it work with real data"
+description: Save the information your product needs and check who can access it.
+toolSpecific: true
+---
+
+Your designer creates a request. Later, the client opens it on another device and responds. The designer comes back to read the answer. For that to work, the information needs to survive beyond the browser session where it was entered.
+
+A database gives the application a shared place to store and retrieve that information. In our Prisma build, we'll use Prisma Postgres for that role. If your starter already has a database, inspect and use the existing setup before adding another one.
+
+## Describe what needs to be remembered
+
+Start with the things in the flow. For our hypothetical product, there's a feedback request and a response to it. Each needs enough information for the product to show the right content to the right person.
+
+| Thing    | What it needs to remember                                           |
+| -------- | ------------------------------------------------------------------- |
+| Request  | Its identifier, designer, intended client, draft link, and question |
+| Response | The request it answers, who submitted it, and the answer            |
+
+An identifier lets the application distinguish one request from another, even if they ask the same question. Connecting the response to that identifier lets the designer see which request it answers.
+
+You also need a few rules. Can the client change a response after sending it? Can the designer change the question after someone answers? For this first trial, keep a shared request fixed and create a new one if the draft or question changes. That avoids making an old response appear to approve something the client hasn't seen.
+
+Write these decisions in the brief. They affect the product's behaviour, so the AI needs them when it implements the data model.
+
+## Connect the existing flow
+
+Prisma ORM lets application code work with the database. The [Prisma ORM quickstart](https://www.prisma.io/docs/prisma-postgres/quickstart/prisma-orm) describes the setup for Prisma Postgres. Use the configuration and commands appropriate to the versions already in your project.
+
+<ToolInstructions>
+  <ToolContent tool="chatgpt">
+    Return to the Work chat where you're building the product. Select the Prisma plugin and ask ChatGPT to check whether the application already has a database. Have it identify the workspace and database by name, without displaying connection strings.
+
+    Use the Prisma Postgres database declared by the starter. If the project needs a database added, confirm the Prisma project first. Ask ChatGPT to inspect the existing Composer connection and keep the application's configuration consistent with its Prisma Compute deployment.
+
+  </ToolContent>
+  <ToolContent tool="claude">
+    Return to the Claude Code project and ask it to inspect the existing database configuration. Check that the Prisma connection in this session can reach the workspace you chose during setup.
+
+    Have Claude Code identify the Prisma Postgres database declared by the starter and explain any missing configuration. Check both the cloud building session and the Prisma Compute deployment; each needs a working connection to its intended database.
+
+  </ToolContent>
+</ToolInstructions>
+
+Give the AI the data requirements and ask it to connect the screens you've already built:
+
+```text title="Connect the flow to saved data"
+Inspect the existing Prisma setup and use the current project
+conventions. Implement the request and response model in our brief.
+
+Connect request creation, the client request page, response
+submission, and the designer's response view to the database.
+Validate submitted values on the server as well as in the form.
+
+Explain any database changes before applying them. Preserve existing
+records. Show success only after the save succeeds, and preserve the
+user's input if it fails. Identify the access rules each action needs.
+
+List the project's required setup steps without displaying credentials.
+Then verify the complete flow with disposable sample data.
+```
+
+A database change needs to reach the database as well as the code. Ask the AI which project command applies that change, and read the result. An edited data definition alone doesn't demonstrate that saving works.
+
+## Decide who can see and change each record
+
+The designer should be able to create requests and read their responses. The client should be able to see and answer the request intended for them. An unrelated visitor shouldn't gain access by changing an identifier in the URL.
+
+An account can establish who someone is. The application still needs to check whether that person may perform the requested action. Hiding a button doesn't enforce that rule; the code handling the action must check access too.
+
+If you let clients open a request through a private link instead of signing in, decide exactly what someone with that link can see and do. The client may forward it to someone else. Use a reviewed access mechanism appropriate to the intended sharing, and test its limits before putting client work in the product.
+
+For the first trial, use sample design material and test identities while you check these rules. You can arrange access manually without building a full signup experience.
+
+## Prove that saving works
+
+Create a new request from the designer's view. In a separate browser session, open it using the account or private link you've chosen for the client. Submit a response, then return to the designer's view. Refresh both pages and check that the right content remains.
+
+Then try opening the same request without the required account or private link. Check that you can't read or change it. Use the application's normal interface to test, and ask the AI to add focused checks for the access rules behind it.
+
+Keep a note of anything that failed. We'll use that list in [Test it, fix it, and keep going](./testing.mdx) before sharing the product.
+
+<Checklist id="ch13-before-you-move-on">
+  <Check>
+    New requests and responses survive a refresh and work across separate
+    sessions.
+  </Check>
+  <Check>Each response is attached to the right request and draft.</Check>
+  <Check>
+    You've checked access for the designer, intended client, and an unrelated
+    visitor.
+  </Check>
+  <Check>
+    You know which database the application is using and how its structure is
+    updated.
+  </Check>
+</Checklist>

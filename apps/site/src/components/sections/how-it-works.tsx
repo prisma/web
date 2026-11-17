@@ -86,7 +86,7 @@ const STEPS = [
     body: (
       <>
         Add Prisma Postgres and Compute when you&apos;re ready to ship. Your app and database deploy
-        together on the same host, co-located by default.
+        together on one platform, in the same region, in one project.
       </>
     ),
   },

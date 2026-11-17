@@ -1,0 +1,102 @@
+name: Notify IndexNow after production deployment
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Published app to sync
+        type: choice
+        required: true
+        options: [site, docs, blog]
+      deployed_sha:
+        description: Successfully deployed main commit (defaults to current main)
+        type: string
+        required: false
+      full:
+        description: Resubmit all current URLs and notify removals
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexnow-production
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: >-
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      contains(fromJSON('["Production – site", "Production – docs", "Production – blog"]'), github.event.deployment.environment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Dispatch a branch-scoped notification after verifying deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYED_SHA: ${{ github.event.deployment.sha }}
+          DEPLOYMENT_ENVIRONMENT: ${{ github.event.deployment.environment }}
+        run: |
+          [[ "$DEPLOYED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$DEPLOYED_SHA" origin/main
+          case "$DEPLOYMENT_ENVIRONMENT" in
+            'Production – site') app=site ;;
+            'Production – docs') app=docs ;;
+            'Production – blog') app=blog ;;
+            *) exit 1 ;;
+          esac
+          gh workflow run indexnow.yml --ref main -f app="$app" -f deployed_sha="$DEPLOYED_SHA"
+  notify:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.deployed_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - name: Verify trusted production commit and select app
+        id: scope
+        env:
+          REQUESTED_APP: ${{ inputs.app }}
+        run: |
+          git merge-base --is-ancestor HEAD origin/main
+          app="$REQUESTED_APP"
+          case "$app" in site|docs|blog) ;; *) exit 1 ;; esac
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        id: checkpoint
+        with:
+          path: .indexnow-state
+          key: indexnow-v1-${{ steps.scope.outputs.app }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: indexnow-v1-${{ steps.scope.outputs.app }}-
+      - name: Test notification safeguards
+        run: node --test scripts/indexnow.test.mjs
+      - name: Notify changed published URLs
+        env:
+          APP: ${{ steps.scope.outputs.app }}
+          FULL_SYNC: ${{ inputs.full }}
+        run: |
+          args=("$APP" --submit)
+          if [ "$FULL_SYNC" = "true" ]; then args+=(--full); fi
+          node scripts/indexnow.mjs "${args[@]}"
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .indexnow-state
+          key: ${{ steps.checkpoint.outputs.cache-primary-key }}

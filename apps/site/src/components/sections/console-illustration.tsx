@@ -198,7 +198,7 @@ export function ConsoleIllustration() {
                 <span className="mt-3 flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-[0.6875rem] text-primary-foreground/90">
                   <span className="text-prism-cyan-400">$</span>
                   <span className="flex min-w-0 items-center">
-                    bunx @prisma/cli app deploy
+                    npx prisma deploy module.ts
                     <span
                       aria-hidden
                       className="ml-1 inline-block h-3 w-[0.4rem] shrink-0 bg-prism-cyan-400 animate-caret-blink motion-reduce:animate-none"

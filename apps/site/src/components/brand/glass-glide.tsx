@@ -23,7 +23,7 @@ export function GlassGlide({ children, className }: GlassGlideProps) {
       <span className="relative z-10">{children}</span>
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-[-0.35em] -z-10 w-[42%] animate-glass-glide max-md:hidden motion-reduce:hidden"
+        className="pointer-events-none absolute inset-y-[-0.35em] left-[-20%] -z-10 w-[42%] animate-glass-glide max-md:hidden motion-reduce:hidden"
       >
         {/* soft shadow beneath — gives the light physical presence */}
         <span className="absolute inset-x-[6%] inset-y-[18%] rounded-full bg-black/[0.07] blur-2xl" />

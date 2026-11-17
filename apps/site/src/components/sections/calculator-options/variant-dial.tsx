@@ -42,8 +42,8 @@ export function VariantDial() {
           Estimate usage before you upgrade
         </h2>
         <p className="mx-auto mt-5 max-w-[56ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-          Estimate your usage before you upgrade, then set a spend limit so the bill can&apos;t
-          surprise you. The calculator recommends the right plan for where you are.
+          Estimate your usage before you upgrade, then set a spend limit that stops database queries
+          when usage charges reach it. The calculator recommends the right plan for where you are.
         </p>
 
         {/* the number */}
@@ -64,7 +64,7 @@ export function VariantDial() {
           {best.storageOverage > 0 && ` + ${fmtUSD(best.storageOverage)} storage`}
           {" · "}
           <Shield className="inline size-3.5 -translate-y-px text-prism-red-500" aria-hidden />{" "}
-          spend limit on
+          spend limit you set
         </p>
 
         {/* the dial */}

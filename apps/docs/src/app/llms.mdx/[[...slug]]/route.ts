@@ -1,9 +1,33 @@
+import { AGENT_MARKDOWN_VARY } from "@/lib/agent-markdown";
+import { absoluteCanonicalUrl, canonicalLinkHeader, resolveCanonicalUrl } from "@/lib/canonical";
 import { getLLMText } from "@/lib/get-llm-text";
 import { getPageTitleText } from "@/lib/page-title";
 import { source } from "@/lib/source";
 import { getBaseUrl, withDocsBasePath } from "@/lib/urls";
 
 export const revalidate = false;
+
+/**
+ * Markdown is served as text/plain, not text/markdown.
+ *
+ * ChatGPT's URL fetcher rejects text/markdown with "400 Unsupported
+ * content-type" on every plan (verified 2026-09-28 with the Open in ChatGPT
+ * link and with the agent user-agent rewrite in src/proxy.ts, which sends
+ * ChatGPT-User to this route for ordinary docs URLs too). text/plain is read by
+ * every assistant we link to and by every browser, so nothing loses out.
+ */
+const MARKDOWN_CONTENT_TYPE = "text/plain; charset=utf-8";
+
+/**
+ * src/proxy.ts serves these bodies on the page's own URL too, picked by
+ * `Accept` or the agent's User-Agent, so every response here, the Markdown 404
+ * included, declares both. The route is static, so the `.md` URL gets the same
+ * value.
+ */
+const MARKDOWN_HEADERS = {
+  "Content-Type": MARKDOWN_CONTENT_TYPE,
+  Vary: AGENT_MARKDOWN_VARY,
+};
 
 const MAX_NEAREST_MATCH_SEGMENTS = 12;
 const MAX_NEAREST_MATCH_PATH_LENGTH = 240;
@@ -84,9 +108,7 @@ ${nearestLinks || "_No nearby documentation pages found._"}
 
   return new Response(content, {
     status: 404,
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-    },
+    headers: MARKDOWN_HEADERS,
   });
 }
 
@@ -96,11 +118,16 @@ export async function GET(_req: Request, { params }: RouteContext<"/llms.mdx/[[.
   if (!page) return getMarkdownNotFoundResponse(slug);
 
   const content = await getLLMText(page);
+  // The same canonical as the HTML page's `<link rel="canonical">`, including a
+  // `canonical` frontmatter override, so the `.md` URL is not indexed as a
+  // second copy of the page.
+  const canonical = absoluteCanonicalUrl(
+    resolveCanonicalUrl(page.url, (page.data as { canonical?: string }).canonical),
+    getBaseUrl(),
+  );
 
   return new Response(content, {
-    headers: {
-      "Content-Type": "text/markdown; charset=utf-8",
-    },
+    headers: { ...MARKDOWN_HEADERS, Link: canonicalLinkHeader(canonical) },
   });
 }
 

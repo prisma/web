@@ -13,7 +13,7 @@ const PRICING_FAQS: FaqItem[] = [
   {
     question: "What counts as an operation?",
     answer:
-      "An operation is a single action against your Prisma Postgres database — a create, read, update, or delete. A simple write and a complex query with multiple joins each count as one operation, and a cached read counts too.",
+      "An operation is a single action against your Prisma Postgres database — a create, read, update, or delete. A simple write and a complex query with multiple joins each count as one operation.",
   },
   {
     question: "Is Prisma ORM really free?",
@@ -23,7 +23,7 @@ const PRICING_FAQS: FaqItem[] = [
   {
     question: "What happens if I exceed my plan's operations?",
     answer:
-      "Overage rates kick in automatically at the per-million rate shown on your plan. You can set a spend limit on any paid plan to cap how much you're charged in a billing cycle.",
+      "Overage rates kick in automatically at the per-million rate shown on your plan. You can set a spend limit on any paid plan: it counts usage charges in a billing cycle, and queries to your workspace's databases stop when it is reached.",
   },
   {
     question: "Are there egress fees?",

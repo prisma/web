@@ -1,6 +1,6 @@
 import { createPageMetadata } from "@/lib/page-metadata";
 import { LegalPage } from "@/components/sections/legal-page";
-import { slaLastUpdated, slaSections } from "@/lib/legal/sla";
+import { slaEffectiveDate, slaSections } from "@/lib/legal/sla";
 
 export const metadata = createPageMetadata({
   title: "Service Level Agreement",
@@ -13,7 +13,7 @@ export default function SlaPage() {
   return (
     <LegalPage
       title="Service Level Agreement"
-      lastUpdated={slaLastUpdated}
+      effectiveDate={slaEffectiveDate}
       sections={slaSections}
     />
   );

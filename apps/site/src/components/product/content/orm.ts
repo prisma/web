@@ -41,6 +41,10 @@ export const ormContent: ProductPageContent = {
     // Keeps the review's "works across many databases" note visible in the
     // first screen, not just in the tour's last tab.
     microline: "Works with Postgres, MySQL, SQLite, MongoDB and more.",
+    related: {
+      label: "Compare Prisma ORM with Kysely",
+      href: "/compare/kysely",
+    },
     tour: [
       {
         label: "Schema",

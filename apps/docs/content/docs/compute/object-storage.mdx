@@ -14,7 +14,7 @@ Buckets speak the S3 API, so any S3 client or SDK works. Compute apps run on Bun
 
 ## How buckets fit a project
 
-- **A bucket belongs to a project.** It can be associated with a branch at creation, via `branchId` or `branchGitName`. Omit both and the bucket attaches to the project's default branch. Paired with [Compute branching](/compute/branching), a preview environment can carry its own files next to its own database.
+- **A bucket belongs to a project.** It can be associated with a branch at creation, via `branchId` or `branchGitName`. Omit both and the bucket attaches to the project's default branch. With [deploy on push](/compute/deploy-on-push), every pushed branch other than the default one gets a preview with its own services and, for databases declared in the [Prisma Composer](/composer) module, its own new database; production data is not copied. For its own files, the preview needs a bucket associated with its branch. A database or bucket the app reaches through an environment variable, such as `DATABASE_URL` or `S3_BUCKET`, is only as separate as that variable's preview-scoped value; see [Environments](/compute/branching).
 - **Access keys are minted per bucket** with a `read` or `read_write` role, enforced by the storage layer: a write with a `read` key is rejected with `AccessDenied`. The `secretAccessKey` is returned exactly once at mint time and is not retrievable afterward.
 - **Deleting a bucket removes its contents and keys in the same call**, even when it is not empty. There is no empty-the-bucket-first step, so treat deletion as destructive and confirm it deliberately.
 
@@ -77,10 +77,10 @@ Give each key the narrowest role that works: a deployment that only serves files
 Store the four values as [environment variables](/compute/environment-variables) so your deployed app can reach the bucket. Bun's S3 client reads these exact names by default, so the code below needs no explicit configuration:
 
 ```bash title="Set the bucket variables"
-npx prisma@latest project env add S3_ENDPOINT=<endpoint> --role production
-npx prisma@latest project env add S3_BUCKET=<bucketName> --role production
-npx prisma@latest project env add S3_ACCESS_KEY_ID=<accessKeyId> --role production
-npx prisma@latest project env add S3_SECRET_ACCESS_KEY=<secretAccessKey> --role production
+npx prisma project env add S3_ENDPOINT=<endpoint> --role production
+npx prisma project env add S3_BUCKET=<bucketName> --role production
+npx prisma project env add S3_ACCESS_KEY_ID=<accessKeyId> --role production
+npx prisma project env add S3_SECRET_ACCESS_KEY=<secretAccessKey> --role production
 ```
 
 Environment variables are scoped by role and branch, so production and previews can point at different buckets: repeat the commands with `--role preview` (or `--branch <name>`) and the credentials of a second, branch-associated bucket. Values resolve at deploy time, so set them before the deploy that should use them.
@@ -122,11 +122,12 @@ app.get("/files/:name", (c) => {
 export default app;
 ```
 
-Deploy it by committing and pushing: with a [connected GitHub repository](/compute/github), the push builds and deploys the branch. Watch the build and open the result:
+Deploy it as part of your [Composer](/composer) app, as the [deploy quickstart](/prisma-compute/deploy) sets it up: build, then run `deploy`. If you have [set up deploy on push](/compute/deploy-on-push), committing and pushing deploys it instead. Then check the result:
 
 ```bash title="Deploy"
-git push
-npx prisma@latest service show
+npm run build
+npx prisma deploy
+npx prisma service show
 ```
 
 ## 5. Verify
@@ -154,7 +155,7 @@ This succeeds even when the bucket still contains objects. That makes tearing do
 ## What to read next
 
 - [Environment variables](/compute/environment-variables): scope bucket credentials per branch.
-- [Branching](/compute/branching): give a preview environment its own bucket next to its own database.
+- [Environments](/compute/branching): give a preview its own bucket next to its own services and, for databases declared in the Composer module, its own new database; production data is not copied.
 - [Image Transformations](/compute/image-transformations): resize and serve images from a bucket with `Bun.s3` sources.
 - [REST API: buckets](/rest-api/endpoints/buckets/get-buckets): the full endpoint reference.
 - [Your AI agent needs file storage](https://www.prisma.io/blog/object-store-buckets): the launch post, with the full agent-driven lifecycle as one script.

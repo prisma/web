@@ -1,0 +1,184 @@
+diff --git a/lib/Prisma/ComputeArchive.d.ts b/lib/Prisma/ComputeArchive.d.ts
+index cbacd8cc733d6282f9a080c6d83bb6fa1bcb1536..9732ff523e149df8e751c1ddb297982a860dd339 100644
+--- a/lib/Prisma/ComputeArchive.d.ts
++++ b/lib/Prisma/ComputeArchive.d.ts
+@@ -31,9 +31,9 @@ export interface ComputeArchiveOptions {
+     requiredFiles?: readonly string[];
+     /**
+      * Maximum uncompressed bytes accepted across all archived files. Values
+-     * above the provider's 256 MiB hard ceiling are rejected.
++     * above the provider's 768 MiB hard ceiling are rejected.
+      *
+-     * @default 268435456 (256 MiB)
++     * @default 805306368 (768 MiB)
+      */
+     maxUncompressedBytes?: number;
+     /**
+diff --git a/lib/Prisma/ComputeArchive.js b/lib/Prisma/ComputeArchive.js
+index d3e36ae9bff535d5b2b7e94e37c362b11ba755c8..806ef5473c632ce42adb3fbda7509797173b1884 100644
+--- a/lib/Prisma/ComputeArchive.js
++++ b/lib/Prisma/ComputeArchive.js
+@@ -6,10 +6,10 @@ import { isPathWithin } from "../Util/isPathWithin.js";
+ import { isArchivedRegularFile, readDirectoryEntriesSecure, writeCompressedArchiveSecure, } from "./Internal/ArchivePlatform.js";
+ import { inspectArtifactFile, inspectVerifiedFile, readArtifactFile, } from "./Internal/ArtifactFile.js";
+ export const COMPUTE_MANIFEST_VERSION = "1";
+-const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
++const MAX_UNCOMPRESSED_BYTES = 768 * 1024 * 1024;
+ const MAX_FILE_BYTES = 128 * 1024 * 1024;
+ const MAX_ENTRIES = 50_000;
+-const MAX_COMPRESSED_BYTES = 256 * 1024 * 1024;
++const MAX_COMPRESSED_BYTES = 768 * 1024 * 1024;
+ const ALWAYS_IGNORED_PATTERNS = [
+     ".git",
+     "**/.git",
+diff --git a/lib/Prisma/ComputeBuild.js b/lib/Prisma/ComputeBuild.js
+index 58b8d1227fd668698344ce937b36c3e04dbfec09..fbf3eb0c14fc2c4ed85f612ec02a6dda3537bf74 100644
+--- a/lib/Prisma/ComputeBuild.js
++++ b/lib/Prisma/ComputeBuild.js
+@@ -17,7 +17,7 @@ const importNft = () => import("@vercel/nft").catch((cause) => {
+ const DEFAULT_BUILD_OUTPUT_LIMIT_BYTES = 1024 * 1024;
+ const DEFAULT_BUILD_TIMEOUT_SECONDS = 15 * 60;
+ const STAGING_MAX_ENTRIES = 50_000;
+-const STAGING_MAX_TOTAL_BYTES = 256 * 1024 * 1024;
++const STAGING_MAX_TOTAL_BYTES = 768 * 1024 * 1024;
+ const STAGING_MAX_FILE_BYTES = 128 * 1024 * 1024;
+ const STAGING_TIMEOUT_SECONDS = 2 * 60;
+ const PRISMA_MANAGEMENT_CREDENTIAL_ENV_NAMES = new Set([
+diff --git a/lib/Prisma/Deployment.js b/lib/Prisma/Deployment.js
+index 66b14b7d13bfd5a897fbb299c015d34880b3c39f..a2e800134637ae7d58a7884924fcb767a53b55ce 100644
+--- a/lib/Prisma/Deployment.js
++++ b/lib/Prisma/Deployment.js
+@@ -21,7 +21,7 @@ import { DEV_TIMESTAMP, attrOrString, devId, devProvider } from "./Internal/DevS
+ import { PrismaPaginationError } from "./Internal/Pagination.js";
+ import { tailDeploymentLogs } from "./PrismaLogs.js";
+ import { concreteIdsChanged, isInputObject, isPrismaDevId, resolveAppId, unresolvedAppIdOf, } from "./Refs.js";
+-export const MAX_DEPLOYMENT_ARTIFACT_BYTES = 256 * 1024 * 1024;
++export const MAX_DEPLOYMENT_ARTIFACT_BYTES = 768 * 1024 * 1024;
+ /**
+  * A Prisma deployment owned by an App.
+  *
+diff --git a/lib/Prisma/Internal/ArtifactUpload.js b/lib/Prisma/Internal/ArtifactUpload.js
+index a66085726bb9357de8b10bab2ef92ad9ca7bf7be..2e0f5bcfdaadadc4368868c187302212a721cae5 100644
+--- a/lib/Prisma/Internal/ArtifactUpload.js
++++ b/lib/Prisma/Internal/ArtifactUpload.js
+@@ -6,7 +6,7 @@ import * as Option from "effect/Option";
+ import * as Stream from "effect/Stream";
+ import { artifactFileStream } from "./ArtifactFile.js";
+ import { PrismaUploadClient } from "./HttpClient.js";
+-const ARTIFACT_UPLOAD_TIMEOUT = Duration.minutes(5);
++const ARTIFACT_UPLOAD_TIMEOUT = Duration.minutes(15);
+ const UPLOAD_ERROR_BODY_BYTES = 64 * 1024;
+ export const executeArtifactUpload = (uploadUrl, artifact, contentType) => Effect.gen(function* () {
+     // Prefer the Prisma-scoped upload client (node transport, provided by
+@@ -23,7 +23,7 @@ export const executeArtifactUpload = (uploadUrl, artifact, contentType) => Effec
+         }));
+     const responseOption = yield* http.execute(request).pipe(Effect.mapError(() => new Error("Prisma artifact upload transport failed before a response was received.")), Effect.timeoutOption(ARTIFACT_UPLOAD_TIMEOUT));
+     if (Option.isNone(responseOption)) {
+-        return yield* Effect.fail(new Error("Prisma artifact upload timed out after 5 minutes."));
++        return yield* Effect.fail(new Error("Prisma artifact upload timed out after 15 minutes."));
+     }
+     const response = responseOption.value;
+     if (response.status < 200 || response.status >= 300) {
+diff --git a/lib/Prisma/Website/Artifact.js b/lib/Prisma/Website/Artifact.js
+index d9463cd3d83395705653e87a6f2453f16a82d0b9..9ca5f7592aa0aea9ef8709a8722d1895b5f6fd15 100644
+--- a/lib/Prisma/Website/Artifact.js
++++ b/lib/Prisma/Website/Artifact.js
+@@ -13,7 +13,7 @@ import { packSiteExtraFiles } from "../../Website/packExtraFiles.js";
+ import { createComputeArchive } from "../ComputeArchive.js";
+ export const WebsiteArtifact = Resource("Prisma.WebsiteArtifact");
+ const MAX_ENTRIES = 50_000;
+-const MAX_BYTES = 256 * 1024 * 1024;
++const MAX_BYTES = 768 * 1024 * 1024;
+ const MAX_FILE_BYTES = 128 * 1024 * 1024;
+ const excluded = (relative) => relative
+     .split(/[\\/]/)
+diff --git a/src/Prisma/ComputeArchive.ts b/src/Prisma/ComputeArchive.ts
+index 91d4873b84f1dcf48e68d855290d479ae65b5b23..33f29f63a5aca8ad99f3ef2c78df922701b3ce91 100644
+--- a/src/Prisma/ComputeArchive.ts
++++ b/src/Prisma/ComputeArchive.ts
+@@ -19,10 +19,10 @@ import {
+ 
+ export const COMPUTE_MANIFEST_VERSION = "1";
+ 
+-const MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
++const MAX_UNCOMPRESSED_BYTES = 768 * 1024 * 1024;
+ const MAX_FILE_BYTES = 128 * 1024 * 1024;
+ const MAX_ENTRIES = 50_000;
+-const MAX_COMPRESSED_BYTES = 256 * 1024 * 1024;
++const MAX_COMPRESSED_BYTES = 768 * 1024 * 1024;
+ 
+ export interface ComputeArchiveOptions {
+   /**
+@@ -51,9 +51,9 @@ export interface ComputeArchiveOptions {
+   requiredFiles?: readonly string[];
+   /**
+    * Maximum uncompressed bytes accepted across all archived files. Values
+-   * above the provider's 256 MiB hard ceiling are rejected.
++   * above the provider's 768 MiB hard ceiling are rejected.
+    *
+-   * @default 268435456 (256 MiB)
++   * @default 805306368 (768 MiB)
+    */
+   maxUncompressedBytes?: number;
+   /**
+diff --git a/src/Prisma/ComputeBuild.ts b/src/Prisma/ComputeBuild.ts
+index 8efb92fc02e241ef6ab891eda37e737d92ea616d..40edf39246b68b96a676eb2efa31020bcdc4e9f3 100644
+--- a/src/Prisma/ComputeBuild.ts
++++ b/src/Prisma/ComputeBuild.ts
+@@ -195,7 +195,7 @@ export interface RunBuildCommandOptions {
+ const DEFAULT_BUILD_OUTPUT_LIMIT_BYTES = 1024 * 1024;
+ const DEFAULT_BUILD_TIMEOUT_SECONDS = 15 * 60;
+ const STAGING_MAX_ENTRIES = 50_000;
+-const STAGING_MAX_TOTAL_BYTES = 256 * 1024 * 1024;
++const STAGING_MAX_TOTAL_BYTES = 768 * 1024 * 1024;
+ const STAGING_MAX_FILE_BYTES = 128 * 1024 * 1024;
+ const STAGING_TIMEOUT_SECONDS = 2 * 60;
+ const PRISMA_MANAGEMENT_CREDENTIAL_ENV_NAMES = new Set([
+diff --git a/src/Prisma/Deployment.ts b/src/Prisma/Deployment.ts
+index 81634c30ec8e0c004d63037f168a3f57ab2c5df6..08837eee57304ee651d2321997550565c301970d 100644
+--- a/src/Prisma/Deployment.ts
++++ b/src/Prisma/Deployment.ts
+@@ -43,7 +43,7 @@ import {
+   unresolvedAppIdOf,
+ } from "./Refs.ts";
+ 
+-export const MAX_DEPLOYMENT_ARTIFACT_BYTES = 256 * 1024 * 1024;
++export const MAX_DEPLOYMENT_ARTIFACT_BYTES = 768 * 1024 * 1024;
+ 
+ export interface DeploymentProps {
+   /**
+diff --git a/src/Prisma/Internal/ArtifactUpload.ts b/src/Prisma/Internal/ArtifactUpload.ts
+index 1ab699e0cdcbe8f0d873591746986adcc01c26c0..0ac8cf775e0a6ab52f8a7dd49904fd69deadd3e9 100644
+--- a/src/Prisma/Internal/ArtifactUpload.ts
++++ b/src/Prisma/Internal/ArtifactUpload.ts
+@@ -8,7 +8,7 @@ import * as Stream from "effect/Stream";
+ import { artifactFileStream, type ArtifactFile } from "./ArtifactFile.ts";
+ import { PrismaUploadClient } from "./HttpClient.ts";
+ 
+-const ARTIFACT_UPLOAD_TIMEOUT = Duration.minutes(5);
++const ARTIFACT_UPLOAD_TIMEOUT = Duration.minutes(15);
+ const UPLOAD_ERROR_BODY_BYTES = 64 * 1024;
+ 
+ export const executeArtifactUpload = (
+@@ -38,7 +38,7 @@ export const executeArtifactUpload = (
+       Effect.timeoutOption(ARTIFACT_UPLOAD_TIMEOUT),
+     );
+     if (Option.isNone(responseOption)) {
+-      return yield* Effect.fail(new Error("Prisma artifact upload timed out after 5 minutes."));
++      return yield* Effect.fail(new Error("Prisma artifact upload timed out after 15 minutes."));
+     }
+     const response = responseOption.value;
+     if (response.status < 200 || response.status >= 300) {
+diff --git a/src/Prisma/Website/Artifact.ts b/src/Prisma/Website/Artifact.ts
+index 44877d1d1e3b48a29d01db3c93bc7496ab396700..e1d9f163ad422b89a3af7a03c83e64f693583c49 100644
+--- a/src/Prisma/Website/Artifact.ts
++++ b/src/Prisma/Website/Artifact.ts
+@@ -53,7 +53,7 @@ export interface WebsiteArtifact extends Resource<
+ export const WebsiteArtifact = Resource<WebsiteArtifact>("Prisma.WebsiteArtifact");
+ 
+ const MAX_ENTRIES = 50_000;
+-const MAX_BYTES = 256 * 1024 * 1024;
++const MAX_BYTES = 768 * 1024 * 1024;
+ const MAX_FILE_BYTES = 128 * 1024 * 1024;
+ const excluded = (relative: string) =>
+   relative

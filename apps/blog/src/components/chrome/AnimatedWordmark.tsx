@@ -10,10 +10,8 @@
 // 19's hoisted <style> (deduped by `href`, so N copies still emit one rule).
 // That also buys the reduced-motion guard for free — a media query instead of
 // a hook — and keeps the whole thing renderable on the server.
-import { withBlogBasePath } from "@/lib/url";
-
-const BLACK = "/logo/prisma-footer-black.svg";
-const COLOR = "/logo/prisma-footer-color.svg";
+import black from "../../../public/logo/prisma-footer-black.svg";
+import color from "../../../public/logo/prisma-footer-color.svg";
 
 // Reveal timing (seconds): sweep in from the right, hold, retreat, pause.
 // IN 1.0 + HOLD 4.5 + OUT 1.0 + GAP 1.2 = 7.7s cycle, so the keyframe stops
@@ -54,7 +52,7 @@ export function AnimatedWordmark() {
 
       {/* black letters — always visible */}
       <img
-        src={withBlogBasePath(BLACK)}
+        src={black.src}
         alt=""
         width={725}
         height={158}
@@ -64,7 +62,7 @@ export function AnimatedWordmark() {
 
       {/* colour (stripes + rays), clipped in from the right, looping */}
       <img
-        src={withBlogBasePath(COLOR)}
+        src={color.src}
         alt=""
         width={725}
         height={158}

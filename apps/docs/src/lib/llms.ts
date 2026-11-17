@@ -58,6 +58,18 @@ export const commonQueries: LLMsLink[] = [
       "Prisma changes frequently. Fetch this machine-readable changelog before implementing any Prisma feature to check for breaking changes, API updates, or new conventions.",
   },
   {
+    title: "Start a TypeScript app with Postgres on Prisma for free",
+    href: "/full-stack-tutorial",
+    description:
+      "Scaffold an app with a Prisma Postgres database, run it locally, and deploy it to Prisma Compute. Lists what the Free plan includes.",
+  },
+  {
+    title: "Create a temporary Postgres database without an account",
+    href: "/postgres/npx-create-db",
+    description:
+      "Run npx create-db@latest to get a Prisma Postgres connection string. The database is deleted after 24 hours unless you claim it.",
+  },
+  {
     title: "Start a new Prisma ORM project",
     href: "/getting-started",
     description:
@@ -163,7 +175,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "orm",
     title: "Prisma ORM",
     description:
-      "Current Prisma ORM (Prisma ORM 8) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma ORM 7 and legacy v6 trees).",
+      "Prisma ORM 8 (release candidate) docs: setup, contracts and data modeling, the ORM client, migrations, middleware, and references. A ground-up TypeScript rewrite that keeps the schema-first workflow while making it extensible, composable, and AI-agent friendly (excludes the Prisma ORM 7 and legacy v6 trees).",
     prefixes: ["/orm", "/prisma-orm", "/getting-started", "/full-stack-tutorial"],
     excludePrefixes: ["/orm/v6", "/orm/v7"],
   },
@@ -199,7 +211,7 @@ export const llmsSections: LLMsSection[] = [
     slug: "guides",
     title: "Guides",
     description:
-      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
+      "End-to-end guides for using Prisma ORM 8 and Prisma Postgres with popular frameworks, runtimes, deployment targets, and integrations, plus guides that build complete apps on Prisma Compute (the Prisma ORM 7 guides live in the Prisma ORM v7 section).",
     prefixes: ["/guides"],
     excludePrefixes: ["/guides/v7"],
   },
@@ -236,14 +248,14 @@ export const llmsSections: LLMsSection[] = [
     slug: "compute",
     title: "Prisma Compute",
     description:
-      "Prisma Compute: TypeScript app hosting that runs alongside Prisma Postgres, with database branches, isolated branch previews, and a CLI-first deploy workflow.",
+      "Prisma Compute: TypeScript app hosting that runs alongside Prisma Postgres, with isolated branch previews that can have their own databases, and a CLI-first deploy workflow.",
     prefixes: ["/compute"],
   },
   {
     slug: "composer",
     title: "Prisma Composer",
     description:
-      "Prisma Composer (Early Access): a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
+      "Prisma Composer: a TypeScript framework for multi-service apps. Declare services, databases, and typed dependencies, compose them into a Prisma App, and deploy to Prisma Compute and Prisma Postgres with one command.",
     prefixes: ["/composer"],
   },
   {
@@ -265,8 +277,8 @@ export const llmsSections: LLMsSection[] = [
   {
     slug: "mcp",
     title: "Prisma MCP",
-    description: "MCP server setup for Prisma Postgres and Prisma CLI workflows.",
-    prefixes: ["/ai/tools/mcp-server", "/cli/mcp"],
+    description: "MCP setup and tools for Prisma Postgres, Compute, Object Storage, and Composer.",
+    prefixes: ["/ai/tools/mcp-server", "/ai/mcp-tools", "/cli/mcp"],
   },
 ];
 

@@ -24,7 +24,7 @@ npx prisma@latest init
 
 ## Prerequisites
 
-- **Node.js 22.18 or newer.** Check with `node --version`. Composer hands your TypeScript entry file straight to Node. Node runs `.ts` files directly only from 22.18.0, the release that turns type stripping on by default. On any older version, including 22.17, Composer commands stop at `ERR_UNKNOWN_FILE_EXTENSION` naming your own entry file.
+- **Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer.** Check with `node --version`. Composer hands your TypeScript entry file straight to Node. Node runs `.ts` files directly only from 22.18.0, the release that turns type stripping on by default. On any older version, including 22.17, Composer commands stop at `ERR_UNKNOWN_FILE_EXTENSION` naming your own entry file.
 - **[Bun](https://bun.sh).** Prisma Compute runs Bun, so the server code targets it (`Bun.serve`). This guide also uses `bun build` to produce the built output.
 - **npm, pnpm, or Bun.** Bun workspaces need two extra direct dependencies; see the note in step 1.
 
@@ -38,12 +38,12 @@ Create a directory and install the two Composer packages, plus [arktype](https:/
 npm init -y
 npm pkg set type=module
 npm install @prisma/composer @prisma/composer-prisma-cloud arktype
-npm install -D typescript @types/bun
+npm install -D typescript @types/bun prisma
 ```
 
 `"type": "module"` matters: Composer loads your entry file as an ES module, and without it every Composer command stops at `COMPOSE.ENTRY_UNLOADABLE` ("Cannot use import statement outside a module").
 
-You do not need to pin `effect` yourself. `@prisma/composer` and `@prisma/composer-prisma-cloud` pin every `effect`-family package their deploy engine needs, so a fresh install resolves a single copy. `DEPS.EFFECT_VERSION_CONFLICT` only appears when something in your dependency tree, your own `effect` pin or another dependency's, hoists a different `effect` where the deploy engine resolves it; see [When a deploy stops on an effect version conflict](/composer/deploying#when-a-deploy-stops-on-an-effect-version-conflict).
+You do not need to pin `effect` yourself. `@prisma/composer` and `@prisma/composer-prisma-cloud` pin every `effect`-family package their deploy engine needs, so a fresh install resolves a single copy. A conflict only appears when something in your dependency tree, your own `effect` pin or another dependency's, hoists a different `effect` where the deploy engine resolves it. The CLI then cannot evaluate `prisma.config.ts` and stops with `CLI.CONFIG_UNREADABLE`; see [When prisma.config.ts fails on an effect version conflict](/composer/deploying#when-prismaconfigts-fails-on-an-effect-version-conflict).
 
 :::note[Bun workspaces]
 
@@ -81,7 +81,7 @@ This is what you are about to create:
 ```text no-copy
 my-app/
 ├── module.ts                  # the root module: the app itself
-├── prisma-composer.config.ts  # deploy config (read only by the CLI)
+├── prisma.config.ts           # deploy config: the composer section (read only by the CLI)
 └── src/
     ├── quotes/
     │   ├── contract.ts        # the quotes service's public API, as types
@@ -197,18 +197,46 @@ export default module('my-app', ({ provision }) => {
 });
 ```
 
-Next to it goes the deploy config. Only the Composer CLI reads this file; your app code never imports it:
+Next to it goes `prisma.config.ts`, the one config file the Prisma CLI reads. The deploy config is its `composer` section: the entry module whose default export is the app, the extensions that deploy your app, and the store that keeps deploy state. Only the CLI reads this file; your app code never imports it.
 
-```ts title="prisma-composer.config.ts"
-import { defineConfig } from '@prisma/composer/config';
+If you ran `prisma init` for the agent skill, `prisma.config.ts` already exists with a `skills` section. Add the `composer` key to its `definePrismaConfig` call and keep `skills`; the `postinstall` hook `init` added reads it. The file then looks like this, with your own agents in `skills`:
+
+```ts title="prisma.config.ts"
+import { defineConfig as composer } from '@prisma/composer/config';
 import { nodeBuild } from '@prisma/composer/node/control';
 import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control';
+import { definePrismaConfig } from 'prisma/config';
 
-export default defineConfig({
-  extensions: [prismaCloud(), nodeBuild()],
-  state: prismaState(),
+export default definePrismaConfig({
+  skills: {
+    agents: ['claude'],
+  },
+  composer: composer({
+    entry: './module.ts',
+    extensions: [prismaCloud(), nodeBuild()],
+    state: prismaState(),
+  }),
 });
 ```
+
+Otherwise create the file with the `composer` section alone:
+
+```ts title="prisma.config.ts"
+import { defineConfig as composer } from '@prisma/composer/config';
+import { nodeBuild } from '@prisma/composer/node/control';
+import { prismaCloud, prismaState } from '@prisma/composer-prisma-cloud/control';
+import { definePrismaConfig } from 'prisma/config';
+
+export default definePrismaConfig({
+  composer: composer({
+    entry: './module.ts',
+    extensions: [prismaCloud(), nodeBuild()],
+    state: prismaState(),
+  }),
+});
+```
+
+The commands find `prisma.config.ts` from the directory you run them in, so run them from the app's root. When you add a database, its `orm` section goes in this same file.
 
 ## 5. Build
 
@@ -234,49 +262,61 @@ npx tsc --noEmit
 
 ## 6. Run it locally
 
-One command brings the whole app up on your machine, both services wired together, with no cloud credentials:
+With the build from step 5 in place, one command brings the whole app up on your machine, both services wired together, with no cloud credentials:
 
 ```npm
-npx prisma@latest dev module.ts
+npx prisma dev
 ```
 
-It runs the same pipeline a deploy runs, against local stand-ins for Prisma Compute and Prisma Postgres, and prints each service's local URL:
+It runs the same pipeline a deploy runs, against local stand-ins for Prisma Compute and Prisma Postgres, and prints each service's local URL once every service accepts connections:
 
 ```text no-copy
 dev: ready
-gateway: http://localhost:3001
-quotes: http://localhost:3000
+my-app.gateway: http://localhost:3001
+my-app.quotes: http://localhost:3000
 ```
 
-Verify it works by calling the gateway:
+Each service gets the lowest free port from 3000 up, so your ports can differ if another program already uses 3000 or 3001. `dev` keeps running in this terminal.
+
+Verify it works by calling the gateway. Open a second terminal in the same directory and ask `dev url` where the gateway answers, then call it:
 
 ```bash
-curl localhost:3001
+curl "$(npx prisma dev url my-app.gateway)"
 ```
 
 ```text no-copy
+✔ The service my-app.gateway is running at http://localhost:3001
 Make it work, make it right, make it fast.
 ```
 
-That response traveled over one typed RPC hop: the gateway received your request, called `quotes.random({})` through its injected client, and returned the result.
+The first line comes from `dev url`, which says what it found; only the bare URL is passed to `curl`. The second line is the gateway's response, one of the two quotes at random. That response traveled over one typed RPC hop: the gateway received your request, called `quotes.random({})` through its injected client, and returned the result.
 
-`dev` keeps running, watches your built output, and restarts a service when its build changes (run `npm run build` in another terminal and the affected service restarts). `Ctrl-C` stops it. Your local data stays, so the next start is warm. See [Local development](/composer/local-development) for logs, `--fresh`, and what persists.
+`npx prisma dev url my-app.gateway` prints only the gateway's URL, so the command works whichever port the gateway got. If it fails with `DEV.NOT_RUNNING`, the first terminal's `dev` is no longer running; start it again. `dev url` is in `prisma` since `8.0.0-rc.24`. On an older version, call the URL that `dev` printed, for example `curl http://localhost:3001`.
 
-Now try the quotes service directly:
+Now try the quotes service directly, from the same second terminal:
 
 ```bash
-curl -X POST localhost:3000/rpc/random -H 'content-type: application/json' -d '{}'
+curl -i -X POST "$(npx prisma dev url my-app.quotes)/rpc/random" -H 'content-type: application/json' -d '{}'
+```
+
+```text no-copy
+✔ The service my-app.quotes is running at http://localhost:3000
+HTTP/1.1 401 Unauthorized
+...
+{"error":"Unauthorized: missing or invalid service key"}
 ```
 
 You get `401 Unauthorized`. That is deliberate: Composer mints a **service key** for each dependency edge and the quotes service accepts only calls from the gateway. Neither service's code mentions a key. See [Services and contracts](/composer/services-and-contracts#calls-are-authenticated-for-you) for how this works.
+
+`dev` watches your built output and restarts a service when its build changes, so run `npm run build` in the second terminal and the affected service restarts. Press `Ctrl-C` in the first terminal to stop the app. Your local data and ports stay, so the next start is warm. See [Local development](/composer/local-development) for logs, running the app in the background, `--fresh`, and what persists.
 
 ## 7. Deploy it (optional)
 
 Local dev needed no account. Deploying the same app to [Prisma Compute](/compute) needs a signed-in session:
 
 ```npm
-npx prisma@latest auth login
-npx prisma@latest deploy module.ts
+npx prisma auth login
+npx prisma deploy
 ```
 
 (In CI, where the browser sign-in is not an option, set `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` from the [Prisma Console](https://console.prisma.io) instead; see [Deploying](/composer/deploying#credentials).)
@@ -285,13 +325,13 @@ A new project needs a region, so give it one before the first deploy, in the dep
 
 The CLI creates a project named `my-app` in your workspace (a project this module deployed before is reused; one whose hosted state the CLI cannot verify stops the deploy with `HostedStateBootstrapError`, so pass `--name <unique-name>` in that case), provisions both services on Prisma Compute, points the gateway's `quotes` dependency at the deployed quotes service, and starts everything. The deploy finishes by printing what it made: your module names, the platform resource each became, and the public URLs. Open the gateway's URL and you get a quote.
 
-Re-deploying is idempotent. For an isolated copy of the whole app, deploy a stage:
+Re-deploying is idempotent. For an isolated copy of the whole app, deploy another environment:
 
 ```npm
-npx prisma@latest deploy module.ts --stage demo
+npx prisma deploy --environment demo
 ```
 
-Tearing a stage down is the `destroy` operation of the [control API](/cli/deploy#the-control-api). That operation does not read your `auth login` session: it needs `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` in the environment, the same service-token credentials CI uses. Without them, delete the stage's branch in the [Console](https://console.prisma.io) instead. See [Deploying](/composer/deploying) for stages, CI, and teardown in full.
+Tearing an environment down is the `destroy` operation of the [control API](/cli/deploy#the-control-api). That operation does not read your `auth login` session: it needs `PRISMA_SERVICE_TOKEN` and `PRISMA_WORKSPACE_ID` in the environment, the same service-token credentials CI uses. Without them, delete the environment's branch in the [Console](https://console.prisma.io) instead. See [Deploying](/composer/deploying) for environments, CI, and teardown in full.
 
 ## Where to go next
 

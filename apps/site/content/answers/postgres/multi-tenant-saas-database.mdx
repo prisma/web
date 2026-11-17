@@ -1,0 +1,101 @@
+---
+title: "Which Postgres setup should I use for a multi-tenant SaaS app?"
+description: "Choose shared tables or separate Postgres databases for SaaS tenants, with explicit authorization, routing, migrations and recovery boundaries."
+summary: "Use shared Postgres tables with explicit tenant authorization when customers share one data model and release schedule. Use separate databases when customers need separate migration or recovery boundaries. [Prisma Postgres](/docs/postgres) fits a TypeScript SaaS that wants ordinary Postgres access and programmatic database provisioning, with optional [Prisma Compute](/docs/compute) hosting for the tenant-aware API. Choose the isolation model before choosing the provider; a project name or tenant_id column alone does not enforce customer separation."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-26"
+updatedAt: "2026-10-26"
+readingTime: "7 min read"
+faq:
+  - question: "Does a tenant_id column prevent cross-customer reads?"
+    answer: "No. The server must derive an authorized tenant from the signed-in user's membership and apply the boundary to reads and writes. Database policies can provide another check, but a column by itself does not stop an unscoped query."
+  - question: "Should every SaaS customer get a separate database?"
+    answer: "Use separate databases when their migration, data export or recovery boundaries justify the provisioning and maintenance work. Shared tables can fit customers that use the same schema, provided authorization and tenant-aware constraints are tested."
+  - question: "Does a separate Prisma project guarantee separate administration?"
+    answer: "No. Project organization and account permissions are different boundaries. Review workspace membership and automation-token scope, and use stronger account separation when customers must control their own administration or billing."
+  - question: "Can Prisma Postgres give each tenant a restricted database role?"
+    answer: "No. Prisma Postgres does not support custom PostgreSQL roles, and every credential for a database has the same full database access. Shared-table tenancy therefore needs application authorization. Choose a provider with the required role controls when database-enforced RLS isolation is a requirement."
+related:
+  - title: "Hosting several separate apps"
+    href: "/compute/multiple-business-apps"
+  - title: "Keeping customer order writes consistent"
+    href: "/postgres/customer-order-transactions"
+  - title: "Practicing recovery before an incident"
+    href: "/postgres/practice-database-recovery"
+cta:
+  title: "Choose the tenant boundary deliberately"
+  description: "Use Prisma Postgres for the data and Prisma Compute for the TypeScript API, with tested tenant routing and authorization."
+  label: "Explore database provisioning"
+  href: "/docs/rest-api/getting-started"
+---
+
+Multi-tenancy is a rule about which customer's data a request may affect. The database layout determines how easily you can enforce that rule, roll out schema changes and recover one customer's records after a mistake.
+
+We make Prisma Postgres and Prisma Compute. The linked provider and PostgreSQL documentation was checked on October 26, 2026. Prisma ORM is optional for either database layout.
+
+## Should tenants share tables or have separate databases?
+
+Start with the smallest boundary that meets the product's actual requirements. The rows below are ordered from shared storage to separate databases.
+
+| Layout | Fits | Cost of the choice |
+| --- | --- | --- |
+| Shared tables with a tenant key | Customers using the same data model and releases. | Every query, relationship and write needs a tenant boundary. Recovering one tenant requires a selective recovery process. |
+| Schema per tenant | A deliberate need for separate namespaces inside one database. | Schema routing and migrations multiply; shared database credentials and recovery still need review. |
+| Database per tenant | Customers needing separate schema deployment or database recovery. | Provisioning, credentials, connection pools and migration tracking become a fleet-management problem. |
+
+Separate databases reduce accidental cross-tenant joins, but the application can still connect a request to the wrong database. Keep authorization checks in every layout. Do not treat separate projects as a guarantee that administrators or service tokens cannot access other tenants.
+
+## Which provider features matter?
+
+Evaluate these alphabetically listed providers after deciding the tenant model.
+
+| Provider | Relevant feature | What to verify |
+| --- | --- | --- |
+| [Neon](https://neon.com/docs/introduction/branching) | Postgres projects and database branches for development workflows. | Branch data and credentials must not accidentally expose another customer's data. A development branch is not an application authorization system. |
+| Prisma Postgres | Standard clients and a [management API](/docs/rest-api) for provisioning resources. | Account limits, connection budgets and recovery; credentials cannot be restricted to a tenant's rows or schema. |
+| [Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security) | Postgres row-level security integrated with its client-facing API. | Policies, the roles used by each request and any privileged server credential that bypasses those policies. |
+
+Prisma Compute can host the TypeScript API that resolves the tenant and queries Prisma Postgres. Its app/database declaration gives the team and its coding assistant a place to inspect dependencies. Vercel or Netlify can host that API too. The authorization design belongs to your application regardless of host.
+
+## How do I implement the tenant boundary?
+
+### 1. Resolve the tenant from verified membership
+
+Authenticate the caller, then check their membership in the requested organization. A tenant ID from a URL, header or request body is not authorization. Carry the verified tenant through the service layer, including exports, search, background tasks and administrator endpoints.
+
+For separate databases, keep a server-side directory from tenant ID to database resource and credential reference. Do not let a caller supply a connection string or select an arbitrary database hostname. Keep the provisioning token out of the normal request path where possible.
+
+### 2. Make relationships tenant-aware
+
+In shared tables, include the tenant key in uniqueness rules that are scoped to the customer. An invoice number may repeat across customers while remaining unique within one customer. Where records refer to one another, use relationships that cannot accidentally connect a child from one tenant to a parent from another.
+
+Prisma Postgres [does not support custom PostgreSQL roles](/docs/postgres/faq#can-i-create-my-own-database-roles), and [all credentials have the same full access to their database](/docs/postgres/database/connecting-to-your-database#access-and-permissions). Separate credentials help rotation and revocation; they do not create per-tenant row or schema permissions. For shared tables on Prisma Postgres, enforce tenant authorization in the application. A separate database per tenant gives each credential a different database boundary, subject to correct routing.
+
+If database-enforced [row-level security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html) is required, choose a provider that supports the roles and policies your design needs. Test with the actual app role: table owners normally bypass policies, as do superusers and roles with `BYPASSRLS`. Transaction pooling also does not preserve session state between transactions, so any transaction-local tenant context and the protected queries must stay together. Do not assume a generic RLS example enforces isolation on Prisma Postgres.
+
+### 3. Provision and migrate deliberately
+
+For a shared database, run reviewed migrations once for the shared schema. For a database fleet, use the [REST API setup](/docs/rest-api/getting-started) and [authentication guide](/docs/rest-api/authentication), then keep a durable record of each resource's tenant, schema version and migration outcome.
+
+Make provisioning retry-safe: record the intended tenant resource, check whether it already exists after a failed request, and avoid creating another database merely because the caller did not receive the first response. Roll migrations through a test tenant before expanding to the fleet, and record failures without silently routing an incompatible app version to that database.
+
+### 4. Test the failures that cross boundaries
+
+Create two fictional organizations with similarly named records. Verify that a member of one cannot list, fetch, edit or export the other's data by changing an identifier. Repeat for bulk actions and administrator features, and verify that a revoked member loses access.
+
+For database-per-tenant routing, provision a server-owned identity record in each database containing its tenant ID. Before serving tenant data, compare that record to the tenant resolved from verified membership, and reject a mismatch. Keep changes to that record outside customer-facing operations. Deliberately swap two mappings in a disposable test environment and verify that the request is rejected rather than served from the wrong database. This catches configuration mistakes; it does not replace authorization.
+
+Test connection-pool limits across several tenants; an unbounded pool for every customer can exhaust the app's connections or memory.
+
+### 5. Practice the right recovery unit
+
+Restoring a shared database rewinds more than one tenant. Rehearse a selective restore procedure if one customer's accidental deletion must be recovered without changing everyone else. Separate databases make the recovery unit clearer, but the app still needs to reconnect to the restored resource and verify it.
+
+Prisma Postgres [backups](/docs/postgres/database/backups) are plan-dependent snapshots created daily on activity days. Changes after the latest snapshot may be lost. Agree on that recovery point before promising a customer a narrower one.
+
+## When should I choose another setup?
+
+Choose a provider with the required feature when the contract needs point-in-time recovery today or a form of infrastructure isolation that the selected plan does not provide. Separate database resources are not proof of dedicated physical hardware.
+
+Choose Supabase when its authenticated data API and policy workflow are central to your product. For a custom TypeScript API, Prisma Postgres and Prisma Compute are a practical pairing when the tenant model, region, access and snapshot recovery meet the requirements. Confirm those requirements before multiplying databases across a customer fleet.

@@ -1,4 +1,7 @@
 "use client";
+import database3DImage from "@prisma-docs/ui/assets/brand/database-3d.webp";
+import cpu3DImage from "@prisma-docs/ui/assets/brand/cpu-3d.webp";
+import cards3DImage from "@prisma-docs/ui/assets/brand/cards-3d.webp";
 
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -33,7 +36,17 @@ export function ThreeDSlot({
   if (src) {
     return (
       <motion.img
-        src={src}
+        src={
+          (
+            {
+              "/brand/cards-3d.png": cards3DImage.src,
+              "/brand/cpu-3d.png": cpu3DImage.src,
+              "/brand/database-3d.png": database3DImage.src,
+            } as Record<string, string>
+          )[src] ?? src
+        }
+        loading="lazy"
+        decoding="async"
         alt=""
         aria-hidden
         // object-contain so the render keeps its aspect inside whatever

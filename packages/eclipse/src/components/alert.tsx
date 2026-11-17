@@ -9,6 +9,7 @@ const alertVariants = cva(
     variants: {
       variant: {
         ppg: "bg-background-ppg text-foreground-ppg border-none [&>svg]:text-foreground-ppg",
+        note: "bg-background-neutral-weak text-foreground-neutral border-stroke-neutral [&>svg]:text-foreground-neutral [&>i]:text-foreground-neutral [&_a]:text-foreground-neutral [&_a]:underline [&_a]:underline-offset-4 [&_a]:decoration-black/30",
         error:
           "bg-background-error border-none text-foreground-error [&>svg]:text-foreground-error",
         success:
@@ -35,7 +36,9 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     return (
       <div ref={ref} role="alert" className={cn(alertVariants({ variant }), className)} {...props}>
         {IconComponent}
-        <div className="[&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">{children}</div>
+        <div className="min-w-0 [&>*]:first:mt-0 [&>*]:last:mb-0 [& strong]:text-inherit">
+          {children}
+        </div>
       </div>
     );
   },

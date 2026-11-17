@@ -1,14 +1,16 @@
 ---
-title: Branching
-description: Branches are isolated environments that map to your Git branches, so preview work never touches production.
+title: "Environments: production, staging and preview branches"
+description: "Host a test version next to production on Prisma Compute: once deploy on push is set up, every pushed branch other than the default one gets a preview with its own services and, for databases the Composer module declares, its own new database; production data is not copied, and a branch you keep works as staging. If the app reads DATABASE_URL instead, a preview is only as separate as that variable's preview-scoped value."
 url: /compute/branching
-metaTitle: Branching | Prisma Compute
-metaDescription: How production and preview branches work in Prisma Compute, how the CLI picks a branch, and how branches are created and cleaned up.
+metaTitle: "Environments: production, staging and preview branches | Prisma Compute"
+metaDescription: "Host a test version next to production on Prisma Compute: once deploy on push is set up, every pushed branch other than the default one gets a preview with its own services and, for databases the Composer module declares, its own new database; production data is not copied, and a branch you keep works as staging."
 ---
 
-A branch is an isolated environment for one line of work. Every branch in a project owns its own services, deployments, and any databases created on it, so preview deploys never share Compute resources with production. One caveat: a database your app reaches through a `DATABASE_URL` environment variable is only as isolated as that variable's value. Give previews their own preview-scoped `DATABASE_URL`. See [Environment variables](/compute/environment-variables) for details.
+A branch is an isolated environment for one line of work, such as a preview of a feature or a long-lived staging environment. Production is a branch too: the first one in the project. To test a new version without replacing production, see [Host a test version without replacing production](/compute/deploy-on-push#host-a-test-version-without-replacing-production).
 
-A platform branch usually matches a Git branch name, but in Prisma it is a real resource that owns its own services and databases:
+Every branch in a project owns its own services, deployments, and any databases created on it, so preview deploys never share Compute resources with production. One caveat: a database your app reaches through a `DATABASE_URL` environment variable is only as isolated as that variable's value. Give previews their own preview-scoped `DATABASE_URL`. See [Environment variables](/compute/environment-variables) for details.
+
+A platform branch usually matches a Git branch name, but in Prisma it is a real resource that owns its own services and any databases created on it:
 
 <ConceptAnimation name="compute-model" />
 
@@ -16,10 +18,25 @@ A platform branch usually matches a Git branch name, but in Prisma it is a real 
 
 Every branch has a role:
 
-- The **first branch** in a project is your production branch, usually `main`. It's protected and durable: pushes to your default Git branch deploy to it, and automated cleanup never touches it.
-- **Every other branch** is a preview by default: disposable resources for testing changes before they merge.
+- The **first branch** in a project is your production branch, usually `main`. It's protected and durable: with [deploy on push](/compute/deploy-on-push) set up, pushes to your default Git branch deploy to it, and automated cleanup never touches it.
+- **Every other branch** is a preview by default: disposable resources for testing changes before they merge. A preview branch you keep instead of deleting, such as `staging`, is a long-lived staging environment; see [A long-lived staging environment](/compute/deploy-on-push#a-long-lived-staging-environment).
 
 To learn more, see the [Deployments docs](/compute/deployments).
+
+## Preview vs staging environments
+
+With [deploy on push](/compute/deploy-on-push) set up, a staging environment is a preview branch you keep. The table compares it with a preview and with production:
+
+|                      | Preview                                                                                                                               | Staging                                                          | Production                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------ |
+| **Git branch**       | Any pushed branch other than the default one                                                                                          | A branch you keep, such as `staging`                             | The default branch, usually `main`         |
+| **What a push does** | Deploys or updates that branch's preview                                                                                              | Updates the same environment in place                            | Deploys production                         |
+| **Database**         | For databases declared in the [Prisma Composer](/composer) module, its own new database; production data is not copied                | Same as a preview                                                | The production database                    |
+| **Variables**        | Preview-scoped values                                                                                                                 | Preview-scoped values plus branch overrides (`--branch staging`) | Production values                          |
+| **URL**              | Generated, printed in the deploy report                                                                                               | Generated, printed in the deploy report                          | Generated; custom domains attach here only |
+| **Teardown**         | Deleting the Git branch removes it                                                                                                    | Deleting the Git branch removes it                               | Automated cleanup never touches it         |
+
+If the app reads `DATABASE_URL`, a preview or staging environment is only as separate as that value. Without GitHub, `npx prisma deploy --environment staging` creates a staging environment from your terminal or another CI system; see [Deploying](/composer/deploying#environments).
 
 ## How the CLI picks a branch
 
@@ -32,25 +49,25 @@ Commands that take a branch resolve it in this order:
 Inside a Git repo, running `service list` from `feature/search` targets the `feature/search` branch automatically. To target a branch explicitly:
 
 ```npm
-npx prisma@latest service list --branch feature/search
+npx prisma service list --branch feature/search
 ```
 
 Inspect platform branches:
 
 ```npm
-npx prisma@latest branch list
+npx prisma branch list
 ```
 
 Listing branches doesn't expand the services and databases inside them. Use the `service` and `postgres` commands to inspect those.
 
 ## Creating branches
 
-You rarely create branches manually. They are created automatically:
+You rarely create branches by hand, because they are created automatically:
 
 - **From GitHub**: when a repo is connected, creating a Git branch creates the matching platform branch, and your repository's [deploy workflow](/compute/deploy-on-push) deploys each push to it as a preview. To set this up, see the [GitHub integration docs](/compute/github).
-- **From the CLI**: commands that target a branch that doesn't exist yet, such as `service create --branch feature/search` or a [Composer stage deploy](/composer/deploying), create it.
+- **From the CLI**: commands that target a branch that doesn't exist yet, such as `service create --branch feature/search` or a [Composer deploy to another environment](/composer/deploying), create it.
 
-Connecting GitHub doesn't create branches retroactively. It aligns your default branch with the repo's default branch and wires up automation for future events.
+Connecting GitHub doesn't create branches retroactively. It aligns your default branch with the repo's default branch and sets up automation for future events.
 
 ## Cleaning up
 
@@ -59,5 +76,5 @@ When GitHub is connected, deleting a Git branch tears down the matching platform
 ## Next steps
 
 - [Environment variables](/compute/environment-variables): preview values and per-branch overrides.
-- [Deploy on push](/compute/deploy-on-push): a preview environment for every branch you push.
+- [Deploy on push](/compute/deploy-on-push): a preview environment for every branch you push other than the default one.
 - [GitHub integration](/compute/github): keep platform branches in sync with your repo.

@@ -1,3 +1,4 @@
+import { getComparisonMarkdownPages } from "./markdown/comparisons";
 import { computeContent } from "@/components/product/content/compute";
 import { ormContent, ormFeedback, ormMigrations } from "@/components/product/content/orm";
 import { postgresContent } from "@/components/product/content/postgres";
@@ -13,10 +14,24 @@ import {
 } from "./markdown/enterprise";
 import { HOME_H1, HOME_SUBHEADLINE, renderHomeMarkdown } from "./markdown/home";
 import { MCP_H1, MCP_SUBHEADLINE, renderMcpMarkdown } from "./markdown/mcp";
+import {
+  PAGE_DESCRIPTION as MCP_PAGE_DESCRIPTION,
+  PAGE_TITLE as MCP_PAGE_TITLE,
+} from "@/app/mcp/mcp-content";
 import { PRICING_H1, PRICING_SUBHEADLINE, renderPricingMarkdown } from "./markdown/pricing";
 import { productH1, productSubheadline, renderProductMarkdown } from "./markdown/product";
 import { STACK_H1, STACK_SUBHEADLINE, renderStackMarkdown } from "./markdown/stack";
 import { STUDIO_H1, STUDIO_SUBHEADLINE, renderStudioMarkdown } from "./markdown/studio";
+import {
+  FREE_POSTGRES_MARKDOWN_H1,
+  FREE_POSTGRES_MARKDOWN_SUBHEADLINE,
+  renderFreePostgresqlDatabaseMarkdown,
+} from "./markdown/free-postgresql-database";
+import {
+  FREE_POSTGRES_DESCRIPTION,
+  FREE_POSTGRES_LAST_MODIFIED,
+  FREE_POSTGRES_TITLE,
+} from "@/app/postgres/free-postgresql-hosting/_content";
 import { SITE_HOME_DESCRIPTION, SITE_HOME_TITLE } from "@/lib/site-metadata";
 import { getBaseUrl } from "@/lib/url";
 
@@ -41,9 +56,14 @@ export type MarkdownPage = {
   subheadline: string;
   /** Everything after the subheadline. */
   renderBody: () => string;
+  /** Human-readable check month, printed at the top of the Markdown. */
+  checked?: string;
+  /** ISO date the page was last checked, independent of git. */
+  dateModified?: string;
 };
 
 export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
+  ...getComparisonMarkdownPages(),
   "/": {
     path: "/",
     title: SITE_HOME_TITLE,
@@ -81,21 +101,23 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   },
   "/postgres": {
     path: "/postgres",
-    title: "Prisma Postgres | Serverless PostgreSQL for TypeScript Apps",
+    title: "Prisma Postgres | Serverless PostgreSQL database for TypeScript apps",
     description:
-      "Prisma Postgres is a production-ready serverless PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing, already wired to your stack.",
+      "Prisma Postgres is a serverless cloud PostgreSQL database with instant setup, built-in connection pooling, automated backups, and usage-based pricing.",
     h1: productH1(postgresContent),
     subheadline: productSubheadline(postgresContent),
     renderBody: () => renderProductMarkdown({ content: postgresContent }),
   },
   "/compute": {
     path: "/compute",
-    title: "Prisma Compute | Deploy TypeScript Apps and AI Agents on Bun",
+    title: "Prisma Compute | Host TypeScript apps (Node.js, Bun or Next.js) next to Postgres",
+    // The meta description, verbatim from app/compute/page.tsx.
     description:
-      "Prisma Compute deploys TypeScript apps, APIs, and AI agents from your repo as long-lived Bun processes next to Prisma Postgres, with long-running requests and streaming. One platform for your app and its database.",
+      "Prisma Compute is a platform-as-a-service (PaaS) for TypeScript apps (Node.js, Bun or Next.js) that runs them next to Prisma Postgres. Generally available since August 2026. Free plan, no credit card. Any Postgres client works; Prisma ORM is optional.",
     h1: productH1(computeContent),
     subheadline: productSubheadline(computeContent),
-    // /compute is the template minus the testimonials section.
+    // /compute is the template minus the testimonials section, plus the
+    // comparison links and FAQ its content object carries.
     renderBody: () => renderProductMarkdown({ content: computeContent, testimonials: false }),
   },
   "/pricing": {
@@ -136,12 +158,21 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   },
   "/mcp": {
     path: "/mcp",
-    title: "Prisma MCP Server — AI-Powered Database Management",
-    description:
-      "Manage Prisma Postgres databases with natural language in AI tools like Cursor, Claude Code, ChatGPT, and VS Code.",
+    title: MCP_PAGE_TITLE,
+    description: MCP_PAGE_DESCRIPTION,
     h1: MCP_H1,
     subheadline: MCP_SUBHEADLINE,
     renderBody: renderMcpMarkdown,
+  },
+  "/postgres/free-postgresql-hosting": {
+    path: "/postgres/free-postgresql-hosting",
+    title: FREE_POSTGRES_TITLE,
+    description: FREE_POSTGRES_DESCRIPTION,
+    h1: FREE_POSTGRES_MARKDOWN_H1,
+    subheadline: FREE_POSTGRES_MARKDOWN_SUBHEADLINE,
+    renderBody: renderFreePostgresqlDatabaseMarkdown,
+    checked: "November 2026",
+    dateModified: FREE_POSTGRES_LAST_MODIFIED,
   },
 };
 
@@ -162,12 +193,19 @@ export function getMarkdownPage(path: string): MarkdownPage | undefined {
 export function renderMarkdownDocument(page: MarkdownPage, baseUrl = getBaseUrl()): string {
   const llmsTxtUrl = new URL("/llms.txt", baseUrl).toString();
   const markdownPath = getMarkdownUrlPath(page.path);
+  const titleLead = /[.!?]$/.test(page.title) ? page.title : `${page.title}.`;
+  const freshness = [
+    page.checked ? `Checked ${page.checked}.` : "",
+    page.dateModified ? `dateModified: ${page.dateModified}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return `# ${page.h1} (${page.path})
 
-> ${page.title}. For the complete Prisma website index, see [llms.txt](${llmsTxtUrl}). A Markdown version of any listed page is available at its \`.md\` URL — this one is \`${markdownPath}\`.
+> ${titleLead} For the complete Prisma website index, see [llms.txt](${llmsTxtUrl}). A Markdown version of any listed page is available at its \`.md\` URL — this one is \`${markdownPath}\`.
 
-${page.description}
+${freshness ? `${freshness}\n\n` : ""}${page.description}
 
 ${page.subheadline}
 

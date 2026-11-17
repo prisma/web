@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 /**
  * Agent-readiness guard.
  *
@@ -176,7 +177,7 @@ for (const page of indexPages) {
   // If a toc anchor appears in the output, the line carrying it must be a real
   // markdown heading — otherwise agents see prose and the afdocs parity check
   // strips list-like heading text ("## 1. Set up …") on the markdown side.
-  for (const item of page.data.toc ?? []) {
+  for (const item of (await pageContent(page.data)).toc ?? []) {
     if (typeof item.url !== "string" || !item.url.startsWith("#")) continue;
     const anchorRef = `[${item.url}]`;
     const anchorLine = lines.find((line) => line.includes(anchorRef));

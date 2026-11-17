@@ -1,0 +1,113 @@
+---
+title: "Which managed Postgres fits an internal tool or admin dashboard?"
+description: "Choose Postgres for a TypeScript admin tool by staff permissions, reporting queries, audit records and recovery, with practical setup checks."
+summary: "Use managed Postgres behind an authenticated server for a custom internal tool. [Prisma Postgres](/docs/postgres) with [Prisma Compute](/docs/compute) fits a small TypeScript team that wants the dashboard and its database declared together, with a visual editor for inspecting data. Choose a provider with restricted database roles when staff or reporting tools need direct read-only SQL access, or Supabase when its authentication and data API are part of the application you want to build."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-28"
+updatedAt: "2026-10-29"
+readingTime: "6 min read"
+faq:
+  - question: "Is Prisma Studio a replacement for an admin application?"
+    answer: "Prisma Studio is a visual database editor that works with or without Prisma ORM. A custom admin application still needs business-specific permissions, approvals, validation and audit records. Decide who may edit raw data before granting access to a database editor."
+  - question: "Can I give a reporting tool a read-only Prisma Postgres password?"
+    answer: "Prisma Postgres currently has no custom database roles, and its credentials have full access to their database. A second password is useful for rotation, but does not make a reporting connection read-only. Use an application API or a database provider with the role restrictions you require."
+  - question: "Does an internal dashboard need a database for every employee?"
+    answer: "Usually the server uses one shared application database while employees have separate application identities and permissions. Development and testing should use separate databases. An employee login and a database credential serve different purposes."
+  - question: "Can my existing Next.js dashboard stay on Vercel?"
+    answer: "Yes. The server-side dashboard can connect to Prisma Postgres using a supported PostgreSQL client. Keep credentials on the server, place it near the database and configure production and preview environments separately. Prisma ORM is optional."
+related:
+  - title: "Hosting a shared staff inventory app"
+    href: "/compute/multi-user-inventory-app"
+  - title: "Postgres for a small team"
+    href: "/postgres/postgres-for-small-teams"
+  - title: "Investigating slow database queries"
+    href: "/postgres/managed-postgres-query-monitoring"
+cta:
+  title: "Put the admin workflow behind a shared server"
+  description: "Start with Prisma Postgres and add Prisma Compute when you want the dashboard and its database in one project."
+  label: "Explore Prisma Postgres"
+  href: "/docs/postgres"
+---
+
+An internal tool often starts as a screen that lists records. The consequential part arrives when someone can approve a refund, change an address or export a customer list. Choose the database around those actions and the people allowed to perform them.
+
+We make Prisma Postgres and Prisma Compute. The official sources linked here were checked on October 27, 2026. Prisma ORM is optional.
+
+## What does the dashboard need from Postgres?
+
+Separate application permissions from database administration. A staff member may be allowed to approve an expense through a validated endpoint without being allowed to run arbitrary SQL or change the schema. The server should authenticate the person, check the action and record who changed what.
+
+Also identify how the data arrives. A custom operational tool may own its tables; an analytics dashboard may only need a copy or an API over another system's data. A managed database does not import that other system, implement approvals or establish an audit policy for you.
+
+List the largest reports, their frequency and the acceptable delay in their results. A report that scans years of transactions can contend with operational requests. Test it on realistic fictional data and inspect how Postgres executes its queries before letting an assistant add a refresh loop to every browser tab.
+
+## Which provider fits the access model?
+
+The alphabetically listed options differ in the permissions and backend work surrounding ordinary SQL.
+
+| Provider | Useful fit | What to verify |
+| --- | --- | --- |
+| [Neon](https://neon.com/docs/manage/roles) | You need Postgres roles for reporting tools or staff who connect with SQL clients. | Create a suitably restricted SQL role and inspect its grants; Console-created roles receive broad privileges. |
+| Prisma Postgres | You want a custom TypeScript dashboard, managed connections and optional app hosting on Prisma Compute. | The server owns staff authorization. Prisma Postgres credentials all have full database access. |
+| [Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security) | You want its authentication and data API as part of the dashboard. | Configure and test row-level security for the paths exposed to clients. |
+
+[Prisma Studio](/docs/studio) gives the team a visual way to inspect and edit tables, including without Prisma ORM. Grant access only to people who should be able to inspect and edit those tables. A business workflow with approval rules belongs in the app, where a validated action can update the record and write its audit entry together.
+
+## How do I set up a custom tool with Prisma?
+
+### 1. Choose the application boundary
+
+Choose one path before creating the database: use [Composer's database declaration](/docs/composer/databases) with Prisma Compute, or connect a database you create separately to an existing server.
+
+For the Prisma Compute path, Composer provisions the declared database; it does not automatically adopt a database you separately created in the Console.
+
+For an existing server, such as an established Vercel deployment, use the [Prisma Console](https://console.prisma.io/) to create the intended project and a development database. Connect that server using the [connection guide](/docs/postgres/database/connecting-to-your-database): ordinary application traffic uses a pooled connection, while migrations and administrative tools use the direct connection.
+
+Keep the database URL in server configuration so staff browsers receive application responses, not the database password.
+
+### 2. Make an administrative change auditable
+
+In a disposable test database, run this transaction as one unit. The names and values are fictional, and the final rollback removes the demonstration tables.
+
+```sql
+BEGIN;
+CREATE TEMP TABLE admin_requests_demo (
+  id integer PRIMARY KEY,
+  status text NOT NULL
+);
+CREATE TEMP TABLE admin_audit_demo (
+  request_id integer NOT NULL,
+  actor_id text NOT NULL,
+  action text NOT NULL
+);
+INSERT INTO admin_requests_demo VALUES (1, 'pending');
+
+WITH changed AS (
+  UPDATE admin_requests_demo
+  SET status = 'approved'
+  WHERE id = 1 AND status = 'pending'
+  RETURNING id
+)
+INSERT INTO admin_audit_demo
+SELECT id, 'operator-demo', 'approve' FROM changed;
+
+SELECT r.status, a.actor_id, a.action
+FROM admin_requests_demo r
+JOIN admin_audit_demo a ON a.request_id = r.id;
+ROLLBACK;
+```
+
+The query returns one row: `approved`, `operator-demo`, `approve`. This demonstrates an atomic change and audit insert. It does not authenticate a staff member: in the application, bind the actor from a verified server session, check their permission and use parameterized values. Restrict who can alter audit records, and use a separate audit system if the business requires tamper-resistant records.
+
+### 3. Test a denied action as carefully as a successful one
+
+Create a staff account that may view a request but may not approve it. Call the server endpoint directly, bypassing the hidden button, and verify that neither the request nor its audit history changes. Repeat with an expired login and an identifier belonging to a different customer.
+
+Have the assistant propose a migration and its target database before applying it. A preview reset must not affect the staff tool's live records. Test the largest report alongside a normal update, then choose a [backup and recovery procedure](/docs/postgres/database/backups) that matches the consequences of losing recent changes.
+
+## When should I choose another setup?
+
+Choose a provider with restricted database roles when direct read-only SQL access is a requirement. Prisma Postgres currently [does not support custom roles](/docs/postgres/faq#can-i-create-my-own-database-roles), and another credential does not reduce its permissions.
+
+Keep heavy reporting separate from operational traffic when their workloads interfere. If the requirement calls for a dedicated reporting replica, verify that the chosen provider supports one; do not assume a second connection creates it. Prisma Postgres uses plan-dependent snapshots and has no point-in-time recovery today, so choose another provider when that recovery requirement is essential.

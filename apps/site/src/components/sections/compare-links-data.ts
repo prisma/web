@@ -1,0 +1,90 @@
+/**
+ * The hand-picked "Compare Prisma" reading list shown on /postgres, /compute
+ * and /pricing (sections/compare-links.tsx) and repeated in their Markdown
+ * renditions (lib/markdown/compare-links.ts). Plain data, no JSX, so the
+ * Markdown modules and their node tests can import it.
+ *
+ * The slugs are stable: each post keeps its URL when its title changes, so
+ * update the label here when a title moves, never the href.
+ */
+export type CompareLink = {
+  label: string;
+  href: string;
+  /** One line on what the page decides, no numbers: those live on the page. */
+  description: string;
+};
+
+/**
+ * The one-line intro above the list on /pricing. The list is shared between
+ * pages; the sentence above it is not, so each page writes its own (the
+ * /postgres and /compute ones live in product/content/). Only the positioning
+ * sentence may repeat verbatim across pages.
+ */
+export const PRICING_COMPARE_INTRO =
+  "Weighing the bill against other hosts and Postgres providers? These posts set the plans side by side, with the situations where another platform is the better pick.";
+
+export const COMPARE_PRISMA_LINKS: CompareLink[] = [
+  {
+    label: "App hosting platforms with managed Postgres compared (2026)",
+    href: "/blog/app-hosting-platforms-with-managed-postgres-2026",
+    description:
+      "Prisma Compute, Railway, Render, Fly.io, Supabase, Neon and Vercel compared for an app next to managed Postgres.",
+  },
+  {
+    label: "Where to host a TypeScript frontend, a Node API and Postgres",
+    href: "/blog/where-to-host-typescript-frontend-node-api-postgres",
+    description:
+      "Hosting a TypeScript frontend, a Node API and their Postgres database from one GitHub repository.",
+  },
+  {
+    label: "Choosing hosting and Postgres after your first 100 paying users",
+    href: "/blog/choosing-hosting-and-postgres-after-your-first-100-users",
+    description: "What to run the app and the database on once real users arrive.",
+  },
+  {
+    label: "Prisma Postgres vs Neon",
+    href: "/compare/neon",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Neon Functions, Auth, Object Storage, and AI Gateway.",
+  },
+  {
+    label: "Prisma Postgres vs PlanetScale",
+    href: "/compare/planetscale",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or database-first SKUs, Metal, and Neki.",
+  },
+  {
+    label: "Prisma Postgres vs Supabase",
+    href: "/compare/supabase",
+    description:
+      "Managed PostgreSQL compared: optional Prisma ORM and Prisma Compute in one project, or Auth, Storage, Realtime, and Edge Functions.",
+  },
+  {
+    label: "Prisma vs Vercel + Neon + Drizzle",
+    href: "/compare/vercel-neon-drizzle",
+    description:
+      "One TypeScript platform compared with a host, a database, and an ORM from three providers.",
+  },
+  {
+    label: "Neon vs Prisma Postgres for hosting and the database in one place",
+    href: "/blog/neon-vs-prisma-postgres-app-hosting-in-one-place",
+    description: "Neon alternatives when the app and its database should live in one project.",
+  },
+  {
+    label: "Netlify alternatives for a full-stack TypeScript app with Postgres",
+    href: "/blog/prisma-vs-netlify",
+    description: "Where to move a TypeScript app with Postgres when Netlify stops fitting.",
+  },
+  {
+    label: "Move a local Postgres database online (2026)",
+    href: "/blog/from-local-to-production-with-prisma-postgres",
+    description:
+      "Prisma Postgres, Neon, Render, Railway and Supabase compared for taking a laptop Postgres database online with pg_dump and pg_restore.",
+  },
+  {
+    label: "Migrate a local Postgres database to Prisma Postgres",
+    href: "/docs/postgres/import-from-existing-database",
+    description:
+      "The docs guide for copying a local PostgreSQL database into Prisma Postgres with pg_dump and pg_restore over the direct connection.",
+  },
+];

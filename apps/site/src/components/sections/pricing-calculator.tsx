@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Marker } from "@/components/brand/marker";
 import { RoleKicker } from "@/components/brand/role-kicker";
+import { SpectrumRing } from "@/components/brand/spectrum-ring";
 import { CheckBold, XCircle } from "@/components/icons/forma";
 import { Reveal } from "@/components/motion/reveal";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,7 @@ import { RangeInput } from "./calculator-options/controls";
 // matches exactly and its card lights up. The log scale snaps to two
 // significant digits and every preset value is two-sig-digit.
 export function PricingCalculator() {
-  const [ops, setOps] = useState(100_000);
+  const [ops, setOps] = useState(200_000);
   const [gb, setGb] = useState(0.5);
 
   const priced = priceAllPlans(ops, gb);
@@ -53,15 +54,17 @@ export function PricingCalculator() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
-            Estimate your usage before you upgrade, then set a spend limit so the bill can&apos;t
-            surprise you. The calculator recommends the right plan for where you are.
+            Estimate your usage before you upgrade, then set a spend limit that stops database
+            queries when usage charges reach it. The calculator recommends the right plan for where
+            you are.
           </p>
         </Reveal>
 
         {/* quick-start presets, compact — name and usage only, as on the live
             calculator. The V2 blurbs stay on PRESETS in calc.ts. */}
         <Reveal delay={0.15}>
-          <div className="mt-7 grid gap-3 sm:grid-cols-3">
+          <p className="mt-7 text-xs text-muted-foreground">Example usage, not plan limits</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
             {PRESETS.map((p) => (
               <button
                 key={p.id}
@@ -129,8 +132,8 @@ export function PricingCalculator() {
               <div className="mt-auto flex items-center gap-2.5 border-t border-black/[0.06] pt-5">
                 <CheckBold className="size-4 shrink-0 text-prism-cyan-500" aria-hidden />
                 <p className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">Data transfer</span> — unlimited,
-                  included free
+                  <span className="font-semibold text-foreground">Database data transfer</span> —
+                  unlimited, included free
                 </p>
               </div>
             </div>
@@ -144,10 +147,10 @@ export function PricingCalculator() {
                 <Reveal key={e.plan.id} delay={0.25 + i * 0.05} className="flex-1">
                   <div
                     className={cn(
-                      "flex h-full flex-col justify-center rounded-2xl border px-5 py-4",
+                      "relative flex h-full flex-col justify-center rounded-2xl border px-5 py-4",
                       !e.eligible && "opacity-60",
                       isRec
-                        ? "spectrum-border spectrum-border-on border-transparent bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
+                        ? "border-transparent bg-white shadow-[0_1px_2px_rgba(21,21,21,0.04),0_24px_48px_-24px_rgba(21,21,21,0.25)]"
                         : "border-black/[0.06] bg-paper",
                     )}
                   >
@@ -170,6 +173,7 @@ export function PricingCalculator() {
                     <p className="mt-2 text-pretty text-xs leading-relaxed text-muted-foreground">
                       {planTerms(e.plan)}
                     </p>
+                    {isRec && <SpectrumRing />}
                   </div>
                 </Reveal>
               );
@@ -180,7 +184,8 @@ export function PricingCalculator() {
         <Reveal delay={0.45}>
           <p className="mt-4 flex items-start gap-2.5 text-sm leading-relaxed text-muted-foreground">
             <XCircle className="mt-0.5 size-4 shrink-0 text-prism-red-500" aria-hidden />
-            Hard spend limit, on by default — never a surprise bill.
+            Hard spend limit on every paid plan, set in the Console — database queries stop when it
+            is reached.
           </p>
         </Reveal>
       </div>

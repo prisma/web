@@ -28,3 +28,14 @@ export function absoluteCanonicalUrl(canonical: string, baseUrl: string): string
   if (/^https?:\/\//i.test(canonical)) return canonical;
   return `${baseUrl.replace(/\/$/, "")}${canonical}`;
 }
+
+/**
+ * `Link` header value that points a Markdown rendition at its HTML page's
+ * canonical, so the `.md` URL and the Markdown served on the page's own URL are
+ * read as the same document as the HTML. apps/site's Markdown route sends the
+ * same `rel="canonical"` link. The docs-wide `rel="llms-txt"` link comes from
+ * next.config.mjs and is not repeated here.
+ */
+export function canonicalLinkHeader(canonicalUrl: string): string {
+  return `<${canonicalUrl}>; rel="canonical"`;
+}

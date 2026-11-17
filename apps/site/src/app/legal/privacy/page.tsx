@@ -1,6 +1,6 @@
 import { createPageMetadata } from "@/lib/page-metadata";
 import { LegalPage } from "@/components/sections/legal-page";
-import { privacyLastUpdated, privacySections } from "@/lib/legal/privacy";
+import { privacyEffectiveDate, privacySections } from "@/lib/legal/privacy";
 
 export const metadata = createPageMetadata({
   title: "Privacy Policy",
@@ -12,6 +12,10 @@ export const metadata = createPageMetadata({
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated={privacyLastUpdated} sections={privacySections} />
+    <LegalPage
+      title="Privacy Policy"
+      effectiveDate={privacyEffectiveDate}
+      sections={privacySections}
+    />
   );
 }

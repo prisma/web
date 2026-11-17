@@ -11,7 +11,8 @@ This is a **Turborepo** monorepo with pnpm workspaces (`apps/*` and `packages/*`
 │   ├── site/                 # Prisma marketing site and multi-zone host (port 3000)
 │   ├── docs/                 # Prisma documentation site (Next.js 16 + Fumadocs, port 3001)
 │   ├── blog/                 # Prisma blog (Next.js + Fumadocs, port 3002)
-│   └── eclipse/              # Eclipse design system showcase (Next.js + Fumadocs, port 3003)
+│   ├── eclipse/              # Eclipse design system showcase (Next.js + Fumadocs, port 3003)
+│   └── handbook/             # Builders Handbook (Next.js + Fumadocs, port 3004)
 ├── packages/
 │   ├── ui/                   # Shared UI components (@prisma-docs/ui, no build step)
 │   └── eclipse/              # Eclipse design system (@prisma/eclipse, published, builds to dist/)
@@ -20,8 +21,9 @@ This is a **Turborepo** monorepo with pnpm workspaces (`apps/*` and `packages/*`
 └── package.json
 ```
 
-**Apps** - each pins its own dev port in its `dev` script, so `pnpm dev` at the root starts all
-four side by side.
+**Apps** - each pins its own dev port in its `dev` script, so `pnpm dev:turbo` at the root starts all
+five side by side. `pnpm dev` builds the Composer stack and runs it behind the local gateway; see
+[COMPOSER.md](../COMPOSER.md).
 
 - **`site`** (apps/site, port 3000) - The prisma.io marketing site and the root zone of the
   multi-zone setup. It has no `basePath`, serves its assets from `/site-static`, and owns the
@@ -35,6 +37,11 @@ four side by side.
   design system, from MDX in `content/design-system/`. It is a static export
   (`output: "export"`, unoptimized images) and has no `basePath`, so it is not one of the zones
   the site app rewrites into.
+
+- **`handbook`** (apps/handbook, port 3004) - The Builders Handbook: MDX chapters in
+  `content/handbook/`, served under `basePath: "/handbook"` with assets at `/handbook-static`.
+  Content is dictated by Shane and structured by Claude; `apps/handbook/AUTHORING.md` is binding.
+  Not yet forwarded by the site app's rewrites.
 
 **Packages:**
 
@@ -50,7 +57,7 @@ straight at `src/`, so apps consume it as source. `packages/eclipse` is the oppo
 style, and font exports all resolve into `dist/`, so it must be built before anything that imports
 it. (Both packages also export a `./postcss.config` from the package root, which needs no build.)
 Turbo's `build` and `dev` tasks both declare `dependsOn: ["^build"]`, which is what makes
-`pnpm build` and `pnpm dev` build it first; all four apps also list `@prisma/eclipse` in
+`pnpm build` and `pnpm dev:turbo` build it first; all four apps also list `@prisma/eclipse` in
 `transpilePackages`.
 
 ## Commands
@@ -59,7 +66,8 @@ Run from the root:
 
 ```bash
 pnpm install           # Install all dependencies
-pnpm dev               # Start all apps in dev mode
+pnpm dev:turbo         # Start all apps in dev mode (Turbo, HMR)
+pnpm dev               # Build the Composer stack and run it behind the local gateway
 pnpm build             # Build all packages and apps
 pnpm check             # Format (oxfmt) and lint (oxlint) with auto-fix
 pnpm types:check       # Type check all packages

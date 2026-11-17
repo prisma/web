@@ -2,14 +2,22 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Youtube } from "@prisma-docs/ui/components/youtube";
 import { APIPage } from "@/components/api-page";
 import { ConceptAnimation } from "@/components/concept-animation";
+import { DatabaseCodeTabs } from "@/components/database-code-tabs";
 import { DeployButtonGenerator } from "@/components/deploy-button-generator";
 import {
   AgentPrompt,
-  CliCallout,
+  CommandRow,
+  CommandRows,
+  DeployCallout,
+  DocsIndex,
   IconGrid,
   IconLink,
+  IndexLink,
   ModalRow,
   SectionRow,
+  SetupPath,
+  SetupPrompt,
+  SetupTabs,
   WorkflowGrid,
   WorkflowHero,
   WorkflowLink,
@@ -24,7 +32,6 @@ import { ImageZoom } from "fumadocs-ui/components/image-zoom";
 import * as icons from "lucide-react";
 import {
   CodeBlock,
-  CodeBlockTabs,
   CodeBlockTabsList,
   CodeBlockTabsTrigger,
   CodeBlockTab,
@@ -114,7 +121,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ...components,
     // Eclipse CodeBlock tab components - globally available for code blocks
     Button,
-    CodeBlockTabs,
+    CodeBlockTabs: DatabaseCodeTabs,
     CodeBlockTabsList,
     CodeBlockTabsTrigger,
     CodeBlockTab,
@@ -124,13 +131,20 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     AgentPrompt,
     // Same custom bucket the sidebar's Storage entry uses (lucide has none).
     Bucket: BucketIcon,
-    CliCallout,
+    CommandRow,
+    CommandRows,
+    DeployCallout,
+    DocsIndex,
+    IndexLink,
     ConceptAnimation,
     DeployButtonGenerator,
     IconGrid,
     IconLink,
     ModalRow,
     SectionRow,
+    SetupPath,
+    SetupPrompt,
+    SetupTabs,
     TechIcon,
     WorkflowGrid,
     WorkflowHero,
@@ -158,13 +172,13 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CalloutTitle: ({ children }: any) => <div className="mb-3 font-semibold">{children}</div>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, className, ...props }: any) => {
-      const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {
+      const variantMap: Record<string, "ppg" | "note" | "error" | "success" | "warning"> = {
         ppg: "ppg",
         error: "error",
         success: "success",
         warning: "warning",
-        info: "ppg",
-        note: "ppg",
+        info: "note",
+        note: "note",
         tip: "success",
         danger: "error",
       };

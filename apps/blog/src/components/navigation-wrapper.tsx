@@ -11,8 +11,13 @@ interface NavigationWrapperProps {
 
 // UTM propagation, lifted verbatim out of @prisma-docs/ui's WebNavigation so
 // swapping in the blog-local CF header does not change a single outbound URL.
-// Outbound links only ever carry UTMs the visitor arrived with — no defaults
-// are added (matching the site-wide drop of default console-CTA UTMs).
+// Outbound links only ever carry UTMs the visitor arrived with — no default
+// UTMs are added (matching the site-wide drop of default console-CTA UTMs).
+// Visitors with no attribution at all still get `ref=prisma.io/blog/<slug>`
+// on console links, stamped at click time by the document-level UtmPersistence
+// listener; see `syncFallbackRef` in @prisma-docs/ui for why that is `ref` and
+// not a UTM.
+/** Appends the visitor's own `utm_*` params to an internal or absolute link. */
 function buildHref(base: string, utm?: UtmParams) {
   if (!utm) return base;
   const isAbsolute = base.startsWith("http");
@@ -25,6 +30,7 @@ function buildHref(base: string, utm?: UtmParams) {
   return isAbsolute ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
 }
 
+/** Builds a Console login or sign-up link carrying only the visitor's own `utm_*` params. */
 function buildConsoleHref(pathname: "/login" | "/sign-up", utm?: UtmParams) {
   if (!utm) return `https://console.prisma.io${pathname}`;
 
@@ -39,6 +45,7 @@ function buildConsoleHref(pathname: "/login" | "/sign-up", utm?: UtmParams) {
   return href.toString();
 }
 
+/** Blog header with nav, logo, and Console links that preserve the visitor's UTMs. */
 export function NavigationWrapper({ links }: NavigationWrapperProps) {
   const [mounted, setMounted] = useState(false);
 

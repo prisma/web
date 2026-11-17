@@ -15,14 +15,14 @@ Every command, file, and output below was run end to end against a live PostgreS
 
 :::note[Using Prisma ORM 7?]
 
-Prisma ORM 8 is the current release. Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/bun-workspaces](/guides/v7/deployment/bun-workspaces).
+Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/bun-workspaces](/guides/v7/deployment/bun-workspaces).
 
 :::
 
 ## Prerequisites
 
 - [Bun](https://bun.sh/docs/installation) 1.1 or later (`bun --version`)
-- [Node.js](https://nodejs.org) 24 or later: Bun runs the scripts, and Next.js runs on Node.js
+- [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended): Bun runs the scripts, and Next.js runs on Node.js
 - A PostgreSQL connection string, or nothing at all: `bunx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
 ## Use with your agent
@@ -37,7 +37,7 @@ Create a Bun workspaces monorepo with a shared Prisma ORM database package and a
 1. Create `my-monorepo` with a root `package.json` that sets `"workspaces": ["apps/*", "packages/*"]`, then create `apps/` and `packages/database/`. Give `packages/database` a `package.json` with `"name": "database"`, `"private": true`, `"type": "module"` and `"main": "index.ts"`.
 2. In `packages/database`, run `bunx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `bunx prisma@latest init` there so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db@latest` and show me the claim URL it prints. Write it as `DATABASE_URL` into `packages/database/.env`.
 3. Add package scripts to `packages/database`: `db:init` (`prisma db init`), `db:update` (`prisma db update`), `db:seed` (`bun src/prisma/seed.ts`). Run `bun run db:init` there.
-4. Create `packages/database/index.ts` that re-exports `db` from `./src/prisma/db`, and `packages/database/src/prisma/seed.ts` that upserts three users with `db.orm.public.User.upsert({ create, update: {}, conflictOn: { email } })` and ends with `await db.runtime().close()`, following https://www.prisma.io/docs/guides/deployment/bun-workspaces.md. Run `bun run db:seed`.
+4. Create `packages/database/index.ts` that re-exports `db` from `./src/prisma/db`, and `packages/database/src/prisma/seed.ts` that upserts three users with `db.orm.public.User.upsert({ create, update: {}, conflictOn: { email } })` and ends with `await db.close()`, following https://www.prisma.io/docs/guides/deployment/bun-workspaces.md. Run `bun run db:seed`.
 5. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update` and `seed` that use `bun run --filter <package> <script>`.
 6. In `apps/`, run `bun create next-app@latest web --yes`, delete `apps/web/.git`, add `"database": "workspace:*"` to its dependencies, copy `packages/database/.env` to `apps/web/.env`, and run `bun install` from the root.
 7. Replace `apps/web/app/page.tsx` with a server component that exports `dynamic = "force-dynamic"` and lists users from `db.orm.public.User.select("id", "name", "email").all()`.
@@ -114,11 +114,14 @@ The generated client reads `DATABASE_URL` from the environment and loads `.env` 
 ```ts title="packages/database/src/prisma/db.ts"
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
+import { contractFromJson } from '@prisma/orm-postgres/static';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
-export const db = postgres<Contract>({
-  contractJson,
+export const contract = contractFromJson<Contract>(contractJson);
+
+export const db = postgres({
+  contract,
   url: process.env['DATABASE_URL']!,
 });
 ```
@@ -127,7 +130,7 @@ There is no driver adapter and no engine to configure: the runtime talks to Post
 
 ### 2.2. Set the connection string and add scripts
 
-Create `.env` in the database package. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `bunx create-db@latest`; it prints a connection string and a claim URL you can open to keep the database.
+Create `.env` in the database package. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `bunx create-db@latest`; it prints a connection string and a claim URL; claim it with a free Prisma account to keep the database.
 
 ```bash title="packages/database/.env"
 DATABASE_URL="postgres://user:password@localhost:5432/mydb"
@@ -172,7 +175,7 @@ export type { Contract } from "./src/prisma/contract.d";
 
 ### 2.5. Seed the database
 
-Create the seed script. `upsert` with `conflictOn` makes it safe to run more than once, and `await db.runtime().close()` at the end lets the process exit instead of waiting on the connection pool:
+Create the seed script. `upsert` with `conflictOn` makes it safe to run more than once, and `await db.close()` at the end lets the process exit instead of waiting on the connection pool:
 
 ```ts title="packages/database/src/prisma/seed.ts"
 import { db } from "./db";
@@ -192,7 +195,7 @@ for (const user of users) {
 }
 
 console.log(`Seeded ${users.length} users.`);
-await db.runtime().close();
+await db.close();
 ```
 
 Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`, where `public` is the default schema.
@@ -409,7 +412,7 @@ model User {
   bio       String? // [!code ++]
   posts     Post[]
   createdAt TimestamptzString @default(now())
-  updatedAt temporal.updatedAtString()
+  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
 }
 ```
 
@@ -436,7 +439,7 @@ If the app fails with `CONTRACT.MARKER_READ_FAILED` and `Postgres driver not con
 
 :::warning
 
-`db update` refuses to apply an operation that destroys data, such as dropping a column, without consent. Interactively it asks you to type the database name; in a script or CI job, pass `--confirm <database name>`.
+`db update` refuses to apply an operation that loses data, such as dropping a column, until you answer for it. Interactively it asks about each model or field; in a script or CI job, pass `--delete <Model>` or `--delete <Model.field>` to let the data go, or `--rename <old>:<new>` to keep it. See [Renames and data loss](/cli/db-update#renames-and-data-loss).
 
 :::
 
@@ -446,7 +449,7 @@ Without `export const dynamic = "force-dynamic"`, Next.js prerenders the page at
 
 :::
 
-Do not call `db.runtime().close()` in a server component or route handler. The client in `packages/database` is a module-level singleton whose connection pool is shared across requests; close it only in short-lived scripts such as the seed.
+Do not call `db.close()` in a server component or route handler. The client in `packages/database` is a module-level singleton whose connection pool is shared across requests; close it only in short-lived scripts such as the seed.
 
 ## Prompt your coding agent
 

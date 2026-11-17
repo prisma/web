@@ -1,3 +1,4 @@
+import { pageContent } from "@prisma-docs/ui/lib/page-content";
 import { type FileObject, printErrors, scanURLs, validateFiles } from "next-validate-link";
 import type { InferPageType } from "fumadocs-core/source";
 
@@ -9,12 +10,14 @@ register("fumadocs-mdx/node/loader", import.meta.url);
 
 const { source } = await import("@/lib/source");
 
-const pages = source.getPages().map((page) => {
-  return {
-    value: { slug: page.slugs },
-    hashes: getHeadings(page),
-  };
-});
+const pages = await Promise.all(
+  source.getPages().map(async (page) => {
+    return {
+      value: { slug: page.slugs },
+      hashes: await getHeadings(page),
+    };
+  }),
+);
 
 // const ormLatestAliasPages = source
 //   .getPages()
@@ -53,7 +56,7 @@ async function checkLinks() {
   // next-validate-link resolves `#fragment` only on links that carry a path,
   // so a same-page bookmark left behind by a renamed heading passes silently
   // (audit finding 3.4). Check those ourselves before handing over.
-  const samePageErrors = checkSamePageFragments();
+  const samePageErrors = await checkSamePageFragments();
 
   printErrors(
     await validateFiles(files, {
@@ -86,7 +89,7 @@ interface FragmentError {
   fragment: string;
 }
 
-function checkSamePageFragments(): FragmentError[] {
+async function checkSamePageFragments(): Promise<FragmentError[]> {
   const errors: FragmentError[] = [];
 
   for (const page of source.getPages()) {
@@ -95,7 +98,7 @@ function checkSamePageFragments(): FragmentError[] {
     // The table of contents carries the ids fumadocs actually renders; the
     // anchors parsed from the file cover headings nested in MDX components,
     // which never reach the toc.
-    const anchors = new Set([...getHeadings(page), ...collectPageAnchors(raw).keys()]);
+    const anchors = new Set([...(await getHeadings(page)), ...collectPageAnchors(raw).keys()]);
     const lines = content.split("\n");
 
     lines.forEach((line, index) => {
@@ -114,8 +117,9 @@ function checkSamePageFragments(): FragmentError[] {
   return errors;
 }
 
-function getHeadings({ data }: InferPageType<typeof source>): string[] {
-  return data.toc.map((item) => item.url.slice(1));
+async function getHeadings({ data }: InferPageType<typeof source>): Promise<string[]> {
+  const content = await pageContent(data);
+  return content.toc.map((item) => item.url.slice(1));
 }
 
 function getFiles() {

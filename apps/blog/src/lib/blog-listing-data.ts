@@ -9,7 +9,7 @@
  */
 import { notFound } from "next/navigation";
 
-import { blog } from "./source";
+import { blog, getPageTime, getPublishedPages, sortPagesNewestFirst } from "./source";
 import { getSeriesMetadata, seriesRegistry } from "./series-registry";
 import { withBlogBasePath, withBlogBasePathForImageSrc } from "./url";
 import { isRoutableTag } from "./blog-listing";
@@ -18,21 +18,15 @@ import type { SeriesShelfItem } from "@/components/SeriesShelf";
 
 type BlogPage = ReturnType<typeof blog.getPages>[number];
 
-function getTime(page: BlogPage): number {
-  const date = (page.data as { date?: Date | string }).date;
-  const time =
-    date instanceof Date ? date.getTime() : new Date((date as unknown as string) ?? "").getTime();
-  return Number.isNaN(time) ? 0 : time;
-}
-
 /**
- * Every post, newest first, with pinned posts hoisted to the front.
+ * Every published post (drafts are left out), newest first, with pinned posts
+ * hoisted to the front.
  *
  * The date sort is stable, so pinned posts keep their newest-first order among
  * themselves and the latest pinned post takes the featured slot.
  */
 function getOrderedPages(): BlogPage[] {
-  const sortedByDate = [...blog.getPages()].sort((a, b) => getTime(b) - getTime(a));
+  const sortedByDate = sortPagesNewestFirst(getPublishedPages());
   const isPinned = (post: BlogPage): boolean => (post.data as { pinned?: boolean }).pinned === true;
   return [...sortedByDate.filter(isPinned), ...sortedByDate.filter((post) => !isPinned(post))];
 }
@@ -50,7 +44,7 @@ function toItem(post: BlogPage): BlogCardItem {
     tags?: string[];
   };
 
-  const time = getTime(post);
+  const time = getPageTime(post);
 
   let updatedAtISO: string | null = null;
   if (data.updatedAt) {
@@ -105,7 +99,7 @@ export function getItemsForTag(items: BlogCardItem[], tag: string): BlogCardItem
 /** Series that have at least one post, featured first. Powers the home shelf. */
 export function getSeriesShelfItems(): SeriesShelfItem[] {
   const seriesCounts = new Map<string, number>();
-  for (const post of blog.getPages()) {
+  for (const post of getPublishedPages()) {
     const seriesKey = (post.data as { series?: string }).series;
     if (typeof seriesKey === "string") {
       seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) ?? 0) + 1);

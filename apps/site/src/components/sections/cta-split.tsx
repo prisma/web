@@ -46,7 +46,7 @@ function PostgresAbstraction() {
   return (
     <div
       aria-hidden
-      className="h-full select-none bg-[url('/brand/feature-postgres.jpg')] bg-cover bg-[position:50%_55%] p-8"
+      className="h-full select-none brand-postgres bg-cover bg-[position:50%_55%] p-8"
     >
       <div
         className={cn(
@@ -138,7 +138,7 @@ function ComputeAbstraction() {
   return (
     <div
       aria-hidden
-      className="h-full select-none bg-[url('/brand/feature-compute.jpg')] bg-cover bg-[position:20%_90%] p-8"
+      className="h-full select-none brand-compute bg-cover bg-[position:20%_90%] p-8"
     >
       <div
         className={cn(
@@ -247,10 +247,7 @@ function ComputeAbstraction() {
 // reserved client slot on the ray, generate confirmed below.
 function OrmAbstraction() {
   return (
-    <div
-      aria-hidden
-      className="h-full select-none bg-[url('/brand/feature-orm.jpg')] bg-cover bg-[position:0%_65%] p-8"
-    >
+    <div aria-hidden className="h-full select-none brand-orm bg-cover bg-[position:0%_65%] p-8">
       <div
         className={cn(
           "relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card",

@@ -1,0 +1,108 @@
+---
+title: "Where should I host my exported Bolt or Lovable app?"
+description: "Choose hosting for a Bolt or Lovable export by its actual runtime, preserve backend services first, and plan any move to managed Postgres separately."
+summary: "Choose hosting from the exported app's actual runtime and backend dependencies. [Prisma Compute](/docs/compute) with [Prisma Postgres](/docs/postgres) fits a TypeScript server that owns its database queries and should deploy with its database in one project. Vercel or Netlify can suit an exported frontend or a supported full-stack framework. If the app already uses Supabase authentication, storage or browser database APIs, keep that backend for the first deployment and plan a separate migration when you need one."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-29"
+updatedAt: "2026-10-29"
+readingTime: "7 min read"
+faq:
+  - question: "Does exporting the repository move my app's database too?"
+    answer: "No. A code export and a backend migration are separate operations. Inventory the database, users, files, functions and secrets, then follow the builder's current migration instructions for the services you intend to move. Test against a copy before changing production connections."
+  - question: "Are all Lovable exports static React apps?"
+    answer: "No. Lovable documents TanStack Start for newer apps and React with Vite for older apps. Inspect your repository's framework, build output and server functions. An app with a server part needs a compatible runtime or adapter; uploading static files alone cannot run that server."
+  - question: "Can I replace the Supabase URL with a Prisma Postgres URL?"
+    answer: "No. A Supabase SDK URL identifies backend APIs, while a Postgres connection string gives a server direct database access. Moving to Prisma Postgres can require server-side queries, authorization and replacements for authentication, storage, functions or realtime features the application uses. Prisma ORM is optional."
+  - question: "Can the frontend stay on Vercel or Netlify while I use Prisma Postgres?"
+    answer: "Yes. Put database access in the host's supported server functions or in a separate API, and keep the database connection string there. A static browser bundle must call an authorized backend rather than contain the Postgres password."
+related:
+  - title: "Putting a local TypeScript app online"
+    href: "/compute/share-localhost-app"
+  - title: "Making app data survive a restart"
+    href: "/postgres/app-data-lost-after-restart"
+  - title: "Moving an existing Node app to hosted Postgres"
+    href: "/postgres/node-postgres-hosting"
+cta:
+  title: "Host the TypeScript server and Postgres together"
+  description: "Keep your application code, declare its service and database dependencies, and rehearse the deployment with test data."
+  label: "Port an existing app to Prisma"
+  href: "/docs/composer/porting-an-app"
+---
+
+An exported customer portal might contain a frontend, server routes and calls to a managed backend. Getting its repository onto another host is one task. Moving the customer accounts, documents and data that those calls depend on is another.
+
+We make Prisma Compute and Prisma Postgres. The official sources linked here were checked on October 29, 2026. Bolt and Lovable both provide their own publishing workflows; keeping a working deployment there is a reasonable choice when source ownership is your main concern and you do not need to change hosts.
+
+## What did the builder actually export?
+
+Inspect the repository before choosing a deployment preset. Read its package scripts, framework configuration, server entry points, environment-variable names and backend SDK imports. Have your assistant list the services each feature calls, rather than describe the project only as a React app.
+
+[Lovable's external-hosting guide](https://docs.lovable.dev/tips-tricks/external-deployment-hosting) distinguishes newer TanStack Start apps from older React and Vite apps. The former include a server part; the latter can build to static frontend files. A static-file deployment cannot execute server functions simply because the landing page loads.
+
+[Bolt's Git integration](https://support.bolt.new/integrations/git) provides a source-control path, and its [project-management guide](https://support.bolt.new/managing-projects/projects-files) covers downloading a project. Check the exported application rather than assuming that every Bolt project has the same framework or database arrangement.
+
+Make a short inventory for your app:
+
+| Part | Evidence to inspect | Deployment consequence |
+| --- | --- | --- |
+| Browser frontend | Its build output, routing and public configuration. | Static output needs hosting and route handling; server-rendered output also needs a server runtime. |
+| Server code | API routes, server functions, webhooks and private keys. | Deploy these to a compatible runtime and recreate their server-side secrets. |
+| Backend services | Database SDK calls, auth redirects, file buckets, functions and realtime subscriptions. | Preserve those services or implement and test their replacements. |
+| Customer data | Tables, user accounts, uploaded objects and relationships between them. | Follow an explicit data migration and cutover procedure. Git history does not contain these records. |
+
+## Which hosting setup should I choose?
+
+The hosts below are ordered alphabetically. Keep the existing backend during an initial frontend move when that avoids changing two systems at once.
+
+| App host | Useful fit | What you manage |
+| --- | --- | --- |
+| [Netlify](https://docs.netlify.com/build/frameworks/overview/) | A frontend or full-stack framework supported by its deployment adapter. | Build settings, the framework's server support, environment variables, route behavior and the connection to the existing backend or a separate API. |
+| Prisma Compute | You want a TypeScript application server and its Postgres dependency declared together, with CLI-driven deployment and inspection. | The Composer declaration, a build compatible with Bun, application authorization, migrations and any backend services you replace. No WebSocket servers or persistent writable filesystem. See [limitations](/docs/compute/limitations). |
+| [Vercel](https://vercel.com/docs/frameworks) | An exported app whose framework matches its supported build and server deployment path. | Framework configuration, server execution limits, environment variables, authentication callbacks and the database or backend connection. |
+
+Prisma's integration is useful once your team owns the server's business logic: the service and database dependency live in the same declaration, so an assistant can inspect their relationship while deploying or debugging. [Composer's plain Postgres path](/docs/composer/databases) supports the database client you already use; Prisma ORM is optional.
+
+There is also a smaller move: export the source for version control and [keep hosting with Lovable](https://docs.lovable.dev/tips-tricks/deployment-hosting-ownership) or [Bolt](https://support.bolt.new/bolt-cloud/hosting). Changing hosts is worthwhile when it solves a specific deployment, runtime or operational need.
+
+## How do I move the app without breaking the backend?
+
+### 1. Establish a working export
+
+Export or sync the repository, keep its lockfile, and run its documented production build in a clean local checkout as a validation step. Inspect the output and start procedure. For server-rendered apps, follow the framework's deployment adapter rather than treating the build output as a directory of static pages.
+
+### 2. Recreate configuration deliberately
+
+Set the public backend configuration before the new host runs its deployment build. For example, a Vite app embeds values such as `VITE_SUPABASE_URL` in the browser bundle at build time; changing those values requires rebuilding and redeploying. Recreate private secrets in the new server environment. Builder-managed secrets are not something to recover from Git. Keep database passwords, payment secrets and privileged backend keys out of browser bundles and public build variables.
+
+A Supabase publishable key is designed for browser use with the appropriate authorization policies; it is different from a database password or privileged service key. Check the app's policies and server checks instead of treating every variable with a public prefix as an administrative credential.
+
+Update authentication redirect URLs for the preview and eventual production domains. Build and deploy the configured preview, then test a nested route by opening it directly, a server-rendered page if present, and a real server operation. Verify sign-in, sign-out, password reset, document access and an unauthorized access attempt. These checks catch broken routes and backend connections while confirming that the frontend move has not widened access to customer records.
+
+### 3. Decide whether the database needs to move
+
+Keep a working backend initially if the app uses its authentication, storage, data API or realtime behavior. [Bolt's advanced database settings](https://support.bolt.new/bolt-cloud/database/advanced) describe claiming a Bolt database into Supabase; connecting a different database is a distinct action and can replace the existing connection. Read the current procedure before changing it.
+
+For Lovable Cloud, follow its [backend migration sequence](https://docs.lovable.dev/tips-tricks/external-deployment-hosting#host-backend-and-data-on-a-managed-provider-supabase-example). Inventory what the export contains and what you must configure separately. Do not equate a copy of application tables with a completed migration of users, files and functions.
+
+## When does moving to Prisma Postgres make sense?
+
+Move to Prisma Postgres when you want managed PostgreSQL behind a server you control, and you have accounted for the backend features the application currently uses. Prisma Compute can host that TypeScript server alongside its declared database. The browser calls your authorized server API; the server queries Postgres.
+
+That can be a clear arrangement for an order portal: authenticate the customer, derive their account on the server, then query only that account's orders. Keep uploaded documents in [object storage](/docs/composer/object-storage), with object references in Postgres. A browser SDK pointed at a hosted backend cannot be converted to this arrangement by substituting a database URL.
+
+Choose between a [Composer database declaration](/docs/composer/databases), which provisions its resource, and connecting a separately created database through its own configuration. With a plain Postgres dependency, your team manages migrations. For an existing database, rehearse the [Prisma Postgres import procedure](/docs/postgres/import-from-existing-database) against a test target first.
+
+Check extensions, schema compatibility, ownership and grants, row counts and relationships. Prisma Postgres credentials have [full access to the database](/docs/postgres/database/connecting-to-your-database#access-and-permissions), and the source database's roles do not carry over as an authorization system. If your application depends on Supabase's browser data API and RLS context, preserve that backend or redesign and test the access path before switching.
+
+## How should I switch production traffic?
+
+Choose a maintenance window or a tested synchronization process so writes during the copy are accounted for. Copy and verify the final data and file objects, configure the production server secrets and auth callbacks, then change traffic only after the preview checks pass. Keep a rollback plan that accounts for writes made after the switch; pointing the domain back does not move those new records to the old database.
+
+Price the actual arrangement: application hosting, database usage, storage and any retained builder backend. Use [Prisma pricing](/pricing), [Netlify pricing](https://www.netlify.com/pricing/) and [Vercel pricing](https://vercel.com/pricing) to check the chosen plans rather than assuming that a code export removes every existing bill.
+
+## When is Prisma the wrong choice?
+
+Keep the current backend if you need its auth, storage, realtime or browser APIs and are not ready to replace them. Prisma Postgres alone does not supply those application services. Choose another runtime if a dependency cannot run under Bun, and another hosting arrangement for a WebSocket server or persistent local filesystem. Those are [Compute limitations](/docs/compute/limitations), not build settings an assistant can wish away.
+
+For valuable customer data, check [backup and recovery behavior](/docs/postgres/database/backups) before cutting over. Paid Prisma plans provide daily snapshots on days with database activity; point-in-time recovery is not available. Choose a provider with the recovery guarantees your business requires if losing changes since a snapshot is unacceptable.

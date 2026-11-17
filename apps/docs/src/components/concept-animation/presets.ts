@@ -27,7 +27,7 @@ export const CONCEPT_PRESETS = {
       {
         title: "1. First deploy",
         code:
-          "$ [[npx prisma@latest deploy module.ts]]\n" +
+          "$ [[npx prisma@latest deploy]]\n" +
           "  │\n" +
           "  ▼\n" +
           "project: my-app\n" +
@@ -38,14 +38,14 @@ export const CONCEPT_PRESETS = {
       {
         title: "2. Preview branch",
         code:
-          "$ [[npx prisma@latest deploy module.ts --stage feature/login]]\n" +
+          "$ [[npx prisma@latest deploy --environment feature/login]]\n" +
           "  │\n" +
           "  ▼\n" +
           "project: my-app\n" +
           "├─ branch: main           (production)  → service + database\n" +
           "└─ branch: feature/login  (preview)     → service + database  [[← new copy]]",
         caption:
-          "Deploy with --stage and Compute provisions a full copy of the infrastructure as a preview branch: feature/login gets its own service, database, and URL. Production stays untouched.",
+          "Deploy with --environment and Compute provisions a full copy of the infrastructure as a preview branch: feature/login gets its own service, database, and URL. Production stays untouched.",
       },
       {
         title: "3. Connect GitHub",

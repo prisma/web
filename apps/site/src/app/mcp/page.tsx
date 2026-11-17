@@ -19,8 +19,7 @@ import {
 const mcpStructuredData = createSoftwareApplicationStructuredData({
   path: "/mcp",
   name: "Prisma MCP Server",
-  description:
-    "AI-powered database management via Model Context Protocol. Manage databases with natural language in Claude, Codex, Cursor, Warp, ChatGPT and other AI agents.",
+  description: PAGE_DESCRIPTION,
 });
 
 export const metadata = createPageMetadata({

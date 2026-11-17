@@ -12,11 +12,11 @@ Every example imports `db`. In a new project run `npm create prisma@latest -- my
 
 This page uses `db.orm`, which holds your models. The rest of `db` is `db.sql` for the SQL query builder, `db.raw.sql` for raw SQL, and `db.transaction` for running several writes together.
 
-On PostgreSQL the path to a model is `db.orm.<schema>.<ModelName>`, so the `User` model is `db.orm.public.User`. `public` is the PostgreSQL schema; you type it. It is `public` unless the model sits in a `namespace` block (shown under [Example schema](#example-schema)). On MongoDB there is no schema segment, and the path is `db.orm.<collectionName>`, so the model below is `db.orm.users`. The collection name is the model's `@@map(...)`, or the model name with a lowercase first letter.
+On PostgreSQL the path to a model is `db.orm.<schema>.<ModelName>`, so the `User` model is `db.orm.public.User`. `public` is the PostgreSQL schema that holds the model's table, and the path always includes the schema name. The schema is `public` unless you put the model inside a `namespace` block, as [Example schema](#example-schema) shows. On MongoDB there is no schema segment, and the path is `db.orm.<collectionName>`, where the collection name is the model's `@@map(...)` value, or the model name when there is no `@@map`. The MongoDB `User` model in the example schema maps to `users`, so it is `db.orm.users`.
 
 ## Example schema
 
-Examples use this contract. In Prisma ORM 8 the schema file is `contract.prisma` instead of `schema.prisma`; the docs call it your contract. `@default(cuid(2))` means Prisma ORM generates the `id` for you, so you never pass one:
+The examples on this page use the contract below. In Prisma ORM 8 the schema file is `contract.prisma` instead of `schema.prisma`, and the docs call it your contract. `@onCreate(cuid(2))` means Prisma ORM generates the `id` for you, so you never pass one:
 
 <details>
 
@@ -24,7 +24,7 @@ Examples use this contract. In Prisma ORM 8 the schema file is `contract.prisma`
 
 ```prisma tab="PostgreSQL"
 model User {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
@@ -32,7 +32,7 @@ model User {
 }
 
 model Post {
-  id        String   @id @default(cuid(2))
+  id        String   @id @onCreate(cuid(2))
   title     String
   content   String?
   published Boolean
@@ -56,7 +56,7 @@ model Post {
   id        ObjectId @id @map("_id")
   title     String
   content   String?
-  published Boolean
+  published Bool
   tags      String[]
   author    User     @relation(fields: [authorId], references: [id])
   authorId  ObjectId
@@ -72,7 +72,7 @@ To put models in another PostgreSQL schema, wrap them in a `namespace` block:
 ```prisma
 namespace billing {
   model Invoice {
-    id     String @id @default(cuid(2))
+    id     String @id @onCreate(cuid(2))
     amount Int
   }
 }
@@ -102,10 +102,10 @@ const user = await db.orm.users.create({
   name: "Jane",
   createdAt: new Date(),
 });
-// user._id is filled in by the server
+// user.id is filled in by the server
 ```
 
-The returned record is complete, so you can use the generated values right away (PostgreSQL shown; on MongoDB the key is `_id`):
+The returned record is complete, so you can use the generated values right away (PostgreSQL shown):
 
 ```js no-copy
 { id: 'cuid20000000000000000003', email: 'jane@prisma.io', name: 'Jane', createdAt: 2026-07-06T09:09:56.119Z }
@@ -141,9 +141,9 @@ On MongoDB the driver throws its own error, and a duplicate key gives you an err
 
 :::note
 
-MongoDB contracts do not support `@default`, so pass timestamp fields such as `createdAt` yourself, while on PostgreSQL the database fills them in.
+MongoDB contracts do not support `@default`. For a timestamp, type the field `temporal.CreatedAt` or `temporal.UpdatedAt` and a client created by `mongo()` fills it in, as [Field types](/orm/data-modeling/mongodb#field-types) shows. Pass any other value yourself.
 
-`@map("_id")` renames the id field to `_id` everywhere, so the returned document has an `_id` key and not an `id` key.
+`@map("_id")` stores the id field as the document's `_id`, and the returned document still has an `id` key, the field's name in the contract.
 
 :::
 
@@ -210,13 +210,13 @@ The callback returns an array, so you can apply several operations in one update
 
 `set` and `unset` work on any field, while `inc` and `mul` are on number fields only. `push`, `pull`, `addToSet`, and `pop` are for array fields, and you call them the same way: `p.tags.push("news")`. These field operations are MongoDB only: PostgreSQL has no callback form of `update`, so on PostgreSQL you pass an object. See [Field update operations](/orm/reference/orm-client#field-update-operations) in the reference.
 
-There is no `increment` on PostgreSQL, so to add to a number in place, write the update as raw SQL. For a `views Int` column added to `Post`, `db.raw.sql` writes a raw statement, `.affectedCount()` says you want the row count back as `{ affectedRows }`, `.build()` finishes it, and `db.runtime().execute(...)` runs it; [Advanced queries](/orm/fundamentals/advanced-queries) explains raw SQL:
+There is no `increment` on PostgreSQL, so to add to a number in place, write the update as raw SQL. For a `views Int` column added to `Post`, `db.raw.sql` writes a raw statement, `.affectedCount()` says you want the row count back as `{ affectedRows }`, `.build()` finishes it, and `db.execute(...)` runs it; [Advanced queries](/orm/fundamentals/advanced-queries) explains raw SQL:
 
 ```typescript
-const query = db.raw.sql`UPDATE post SET views = views + 1 WHERE id = ${postId}`
+const query = db.raw.sql`UPDATE "Post" SET views = views + 1 WHERE id = ${postId}`
   .affectedCount()
   .build();
-const { affectedRows } = await db.runtime().execute(query);
+const { affectedRows } = await db.execute(query);
 ```
 
 ## Delete one record
@@ -296,9 +296,24 @@ const deletedCount = await db.orm.public.Post.where((p) => p.title.ilike("draft%
 
 The `AndCount` methods return a plain number, so if three posts match, `updatedCount` is `3`, not an object.
 
+To insert many records and skip the ones that would break a unique constraint, pass `{ onConflict: "skip" }` as the second argument to `createAll` or `createAndCount`. That skips a record that breaks any unique constraint on the table. To skip only the records that clash on one constraint, add `conflictOn` to the same object with the names of that constraint's fields, as in `createAll(users, { onConflict: "skip", conflictOn: ["email"] })`. A record that clashes on any other unique constraint is not skipped, so the database rejects the insert and the call throws a unique-constraint error. Here `conflictOn` takes field names, while in [`.upsert(...)`](#upsert-a-record) it takes the fields and their values. This replaces Prisma ORM 7's `skipDuplicates`, and it works on PostgreSQL and SQLite. On MongoDB, `createAll` and `createAndCount` take only the records, with no second argument. `createAll` returns only the records the database wrote, and `createAndCount` counts only those. [`createAll()`](/orm/reference/orm-client#createall) in the reference covers the details.
+
 `.where((p) => p.title.ilike("draft%"))` is the callback form of a filter, for conditions an object cannot express. Its argument gives you one entry per field, and each field carries the comparisons you can apply to it. [Reading data](/orm/fundamentals/reading-data) covers the filters you can write.
 
 The bulk methods work the same on MongoDB, on the collection: `db.orm.posts`. Pass `createdAt` in every object you give `createAll`, as with `create`.
+
+### Update or delete a limited number of rows [#update-or-delete-a-limited-number-of-rows]
+
+`updateAll`, `updateAndCount`, `deleteAll`, and `deleteAndCount` change every record the filter matches. They cannot apply `.limit(...)`, `.offset(...)`, `.cursor(...)`, `.distinct(...)`, or `.distinctOn(...)`, so on PostgreSQL a chain with one of these throws an error whose `code` is `ORM.ARGUMENT_INVALID`. An `.orderBy(...)` is accepted there, and it changes nothing. On MongoDB, a write rejects `.orderBy(...)`, `.limit(...)`, and `.offset(...)` with `ORM.OPERATION_UNSUPPORTED`. To change only some of the matches, read their IDs first, then filter on those IDs:
+
+```typescript title="Delete ten of the matching posts"
+const ids = (
+  await db.orm.public.Post.where({ published: false }).select("id").limit(10).all()
+).map((p) => p.id);
+await db.orm.public.Post.where((p) => p.id.in(ids)).deleteAll();
+```
+
+On PostgreSQL, `.update(...)` and `.delete()` change the record `.first()` would return, so an `.orderBy(...)` before them chooses which one. After `.limit(0)` they change nothing and return `null`.
 
 ## Return rows or counts
 
@@ -377,7 +392,7 @@ You called `.update(...)` or `.delete()` straight on the model:
 await db.orm.public.User.delete();
 ```
 
-Both need a `.where(...)` first, and the call does not type-check without one. If you truly mean every record, pass an empty filter, which adds no condition and so matches everything. `.delete()` needs a `.where(...)` for the same reason, and `.where({})` satisfies it there too:
+Both need a `.where(...)` first, and the call does not type-check without one. A filter applied on only some code paths does not count either: after `const posts = search ? db.orm.public.Post.where({ title: search }) : db.orm.public.Post`, `posts.deleteAll()` does not type-check, because `posts` may have no filter. Make the write inside the branch that filters. If you truly mean every record, pass an empty filter, which adds no condition and so matches everything. `.delete()` needs a `.where(...)` for the same reason, and `.where({})` satisfies it there too:
 
 ```typescript
 await db.orm.public.User.where({}).deleteAll();

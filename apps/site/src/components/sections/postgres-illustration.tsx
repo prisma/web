@@ -1,5 +1,7 @@
 "use client";
 
+import database3DImage from "@prisma-docs/ui/assets/brand/database-3d.webp";
+
 import { useRef } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { GitBranch } from "@/components/icons/forma";
@@ -51,7 +53,7 @@ export function PostgresIllustration() {
           filter doesn't touch the card content */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[url('/brand/feature-postgres.jpg')] bg-cover bg-[position:50%_55%] [filter:saturate(1.45)_contrast(1.04)]"
+        className="absolute inset-0 brand-postgres bg-cover bg-[position:50%_55%] [filter:saturate(1.45)_contrast(1.04)]"
       />
       <div className="relative flex w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-[0_8px_24px_-12px_rgba(21,21,21,0.16)]">
         <div className="relative flex items-center justify-between px-4 pt-3 font-mono text-[0.625rem] uppercase tracking-[0.08em] text-black">
@@ -86,7 +88,9 @@ export function PostgresIllustration() {
           </motion.div>
           {/* the database itself — floats gently */}
           <motion.img
-            src="/brand/database-3d.png"
+            src={database3DImage.src}
+            loading="lazy"
+            decoding="async"
             alt=""
             className="relative w-36 drop-shadow-[0_18px_28px_rgba(21,21,21,0.22)]"
             initial={false}

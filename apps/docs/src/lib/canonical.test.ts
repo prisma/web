@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { absoluteCanonicalUrl, resolveCanonicalUrl } from "./canonical";
+import { absoluteCanonicalUrl, canonicalLinkHeader, resolveCanonicalUrl } from "./canonical";
 
 test("pages are self-canonical without frontmatter", () => {
   assert.equal(
@@ -58,5 +59,29 @@ test("absoluteCanonicalUrl leaves an absolute canonical alone", () => {
       "https://docs-preview.vercel.app",
     ),
     "https://www.prisma.io/docs/orm/v7/more/troubleshooting/nuxt",
+  );
+});
+
+test("canonicalLinkHeader has the same shape as apps/site's Markdown route", () => {
+  assert.equal(
+    canonicalLinkHeader("https://www.prisma.io/docs/compute/faq"),
+    '<https://www.prisma.io/docs/compute/faq>; rel="canonical"',
+  );
+});
+
+test("the Markdown route sends the page's canonical in a Link header", () => {
+  // The route reads the MDX collection, which node:test cannot load, so this
+  // reads its source, as markdown-route-vary.test.ts does.
+  const routeSource = readFileSync(
+    new URL("../app/llms.mdx/[[...slug]]/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    routeSource,
+    /resolveCanonicalUrl\(page\.url, \(page\.data as \{ canonical\?: string \}\)\.canonical\)/,
+  );
+  assert.match(
+    routeSource,
+    /headers: \{ \.\.\.MARKDOWN_HEADERS, Link: canonicalLinkHeader\(canonical\) \}/,
   );
 });

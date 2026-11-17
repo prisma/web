@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const cocLastUpdated = "7th of August, 2026";
+export const cocEffectiveDate = "7th of August, 2026";
 
 export const cocDescription =
   "All attendees, speakers, sponsors, and volunteers at our events and conferences are required to agree to the following code of conduct.";

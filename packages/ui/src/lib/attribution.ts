@@ -20,6 +20,7 @@ const CLICK_ID_SOURCES: Record<string, string> = {
   gclid: "google_ads",
   wbraid: "google_ads",
   gbraid: "google_ads",
+  oppref: "openai_ads",
   msclkid: "microsoft_ads",
   fbclid: "meta_ads",
   li_fat_id: "linkedin_ads",

@@ -10,7 +10,7 @@ const STEPS: StepSource[] = [
     lang: "bash",
     source: "npx create-db@latest --json",
     caption:
-      "create-db spawns a temporary Prisma Postgres database, no account required. It is deleted after 24 hours unless you open the claim URL. Copy the connection string into .env.",
+      "create-db spawns a temporary Prisma Postgres database, no account required. It is deleted after 24 hours unless you open the claim URL and claim it with a free Prisma account to keep it. Copy the connection string into .env.",
     output: [
       "{",
       '  "connectionString": "postgres://…@db.prisma.io:5432/postgres",',

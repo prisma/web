@@ -11,6 +11,8 @@ Produce a _skeleton_ for a Prisma blog post — frontmatter, section headings, a
 
 This skill produces content only. It does **not** check out, branch, commit, push, or open pull requests against the blog repository. The operator owns that workflow: they prepare the checkout, place the skeleton into it, and push and open the pull request following the repo's contribution process.
 
+If the operator wants a page that answers one specific developer question (a comparison, an alternatives page, a "best X" roundup, a use-case guide or a troubleshooting fix), use the `content-write-answer-page` skill instead. Those pages live outside the blog, and that skill also handles their publishing steps.
+
 The blog is owned by DevRel but contributed to by everyone, so do not assume the operator is on the DevRel team or familiar with the blog repository. Treat first-time contributors as the default case.
 
 ## Assets
@@ -146,7 +148,7 @@ End by giving the operator, in a short block:
 - The path to the post file (within their checkout).
 - The author profile path, if one was scaffolded.
 - A reminder that the repository workflow is theirs: create a feature branch, commit the skeleton (and author profile), push, and open the pull request following the blog repo's contribution process. The pull request should be opened as a **draft** until the post is fleshed out.
-- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for search engines and AI answer engines, then complete Step 10 before opening any PR."_
+- A clear next-step instruction: _"Edit the post to flesh out each section, keep it consistent with positioning and free of AI slop (see Writing quality), run the `content-seo-geo` skill in this repo to optimize the finished draft for readers and search, then complete Step 10 before opening any PR."_
 
 Do not claim the post is "done" or "ready" — it is a skeleton handed back to the operator.
 

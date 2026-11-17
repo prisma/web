@@ -19,7 +19,10 @@
 
 /** CookieYes category key for analytics cookies. */
 const ANALYTICS_CATEGORY = "analytics";
+/** CookieYes category key for advertising cookies (ad pixels, click ids). */
+const ADVERTISEMENT_CATEGORY = "advertisement";
 
+export type ConsentCategory = typeof ANALYTICS_CATEGORY | typeof ADVERTISEMENT_CATEGORY;
 export type AnalyticsConsentStatus = "granted" | "denied" | "pending";
 
 type CkyConsent = {
@@ -42,19 +45,52 @@ declare global {
  * - `"pending"`: SSR, CookieYes not loaded yet, or no banner interaction yet.
  */
 export function getAnalyticsConsentStatus(): AnalyticsConsentStatus {
+  return getConsentStatus(ANALYTICS_CATEGORY);
+}
+
+/**
+ * The visitor's stored decision for one CookieYes category; same tri-state as
+ * analytics. Before the CookieYes script has loaded (it is loaded lazily), the
+ * decision is read from the `cookieyes-consent` cookie it stored last time, so
+ * a returning visitor's first page view is not lost to "pending".
+ */
+export function getConsentStatus(category: ConsentCategory): AnalyticsConsentStatus {
   if (typeof window === "undefined") return "pending";
   try {
     const consent = window.getCkyConsent?.();
-    if (!consent || !consent.isUserActionCompleted) return "pending";
-    return consent.categories?.[ANALYTICS_CATEGORY] ? "granted" : "denied";
+    if (!consent) return readStoredConsentStatus(category);
+    if (!consent.isUserActionCompleted) return "pending";
+    return consent.categories?.[category] ? "granted" : "denied";
   } catch {
     return "pending";
   }
 }
 
+/** Reads the decision CookieYes persisted in its own cookie: `action:yes` plus `<category>:yes|no`. */
+export function readStoredConsentStatus(
+  category: ConsentCategory,
+  cookie: string = typeof document === "undefined" ? "" : document.cookie,
+): AnalyticsConsentStatus {
+  const match = cookie.match(/(?:^|;\s*)cookieyes-consent=([^;]*)/);
+  if (!match?.[1]) return "pending";
+  const fields = new Map<string, string>();
+  for (const entry of match[1].split(",")) {
+    const [key, value] = entry.split(":");
+    if (!key || value === undefined) return "pending";
+    fields.set(key, value);
+  }
+  if (fields.get("action") !== "yes") return "pending";
+  return fields.get(category) === "yes" ? "granted" : "denied";
+}
+
 /** True when CookieYes has a stored decision granting analytics consent. */
 export function hasAnalyticsConsent(): boolean {
   return getAnalyticsConsentStatus() === "granted";
+}
+
+/** True when CookieYes has a stored decision granting advertising consent. */
+export function hasAdvertisingConsent(): boolean {
+  return getConsentStatus(ADVERTISEMENT_CATEGORY) === "granted";
 }
 
 /**
@@ -69,14 +105,31 @@ export function hasAnalyticsConsent(): boolean {
  * Safe no-op during SSR.
  */
 export function onAnalyticsConsentChange(onChange: (status: AnalyticsConsentStatus) => void): void {
-  if (typeof document === "undefined") return;
+  onConsentChange(ANALYTICS_CATEGORY, onChange);
+}
 
-  document.addEventListener("cookieyes_consent_update", (event) => {
+/**
+ * `onAnalyticsConsentChange` for any category. Returns an unsubscribe
+ * function so React effects can clean up; a no-op function during SSR.
+ */
+export function onConsentChange(
+  category: ConsentCategory,
+  onChange: (status: AnalyticsConsentStatus) => void,
+): () => void {
+  if (typeof document === "undefined") return () => {};
+
+  const onUpdate = (event: Event) => {
     const accepted = (event as CustomEvent<{ accepted?: string[] }>).detail?.accepted ?? [];
-    onChange(accepted.includes(ANALYTICS_CATEGORY) ? "granted" : "denied");
-  });
+    onChange(accepted.includes(category) ? "granted" : "denied");
+  };
+  const onLoad = () => {
+    onChange(getConsentStatus(category));
+  };
 
-  document.addEventListener("cookieyes_banner_load", () => {
-    onChange(getAnalyticsConsentStatus());
-  });
+  document.addEventListener("cookieyes_consent_update", onUpdate);
+  document.addEventListener("cookieyes_banner_load", onLoad);
+  return () => {
+    document.removeEventListener("cookieyes_consent_update", onUpdate);
+    document.removeEventListener("cookieyes_banner_load", onLoad);
+  };
 }

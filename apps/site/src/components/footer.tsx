@@ -1,76 +1,74 @@
 import Link from "next/link";
-import { Github, Linkedin, Mail, XSocial } from "@/components/icons/forma";
+import { Bluesky, Github, Linkedin, Mail, XSocial, Youtube } from "@/components/icons/forma";
 import { AnimatedWordmark } from "@/components/brand/animated-wordmark";
 import { SiteLink } from "@/components/site-link";
 import { siteConfig } from "@/lib/config";
 import { GooglePreferredSourceButton } from "@prisma-docs/ui/components/google-preferred-source";
 
-// Light reference-style footer (Fincrest): brand block with contact + social
-// icons on the left, link columns (including a Social Media column) on the
-// right, quiet bottom bar with the legal links, and the giant ghost wordmark
-// rising out of the page's bottom edge.
+// Light reference-style footer (Fincrest): brand block on the left (logo,
+// email, Google link, copyright), link columns on the right, and the giant
+// ghost wordmark rising out of the page's bottom edge.
+// The brand stack uses the same 12px step between the logo, email, Google
+// link, and copyright as the column links. Columns stay on 12px inside a
+// group, 32px between groups, and 48px before the columns and the wordmark.
 // TODO: hello@prisma.io is a placeholder contact — confirm with the client.
 
 const COLUMNS = [
   { title: "Product", items: siteConfig.footer.product },
   { title: "Company", items: siteConfig.footer.company },
   { title: "Resources", items: siteConfig.footer.resources },
+  { title: "Legal & Trust", items: siteConfig.footer.legalTrust },
 ] as const;
+
+const contactLinkClass =
+  "inline-flex items-center gap-2.5 text-sm leading-5 text-muted-foreground transition-colors hover:text-foreground";
 
 const SOCIALS = [
   { label: "Twitter", href: siteConfig.social.twitter, Icon: XSocial },
   { label: "LinkedIn", href: siteConfig.social.linkedin, Icon: Linkedin },
   { label: "GitHub", href: siteConfig.social.github, Icon: Github },
+  { label: "YouTube", href: siteConfig.social.youtube, Icon: Youtube },
+  { label: "Bluesky", href: siteConfig.social.bluesky, Icon: Bluesky },
 ] as const;
 
 export function Footer() {
   return (
     <footer className="overflow-hidden bg-white pt-16">
       <div className="mx-auto max-w-[96rem] px-6 sm:px-10">
-        <div className="grid gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
-          <div className="max-w-xs">
+        <div className="grid items-start gap-12 lg:grid-cols-[1.1fr_2.4fr] lg:gap-20">
+          <div className="flex max-w-xs flex-col items-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo/full-color.svg" alt={siteConfig.name} className="h-7 w-auto" />
-            <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
-              {siteConfig.description}
-            </p>
-            <a
-              href="mailto:hello@prisma.io"
-              className="mt-5 inline-flex items-center gap-2 border-b border-foreground/25 pb-0.5 text-sm text-foreground transition-colors hover:border-foreground"
-            >
-              <Mail className="size-4" aria-hidden />
-              hello@prisma.io
-            </a>
-            <div className="mt-8 flex items-center gap-4">
-              {SOCIALS.map(({ label, href, Icon }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-foreground/70 transition-colors hover:text-foreground"
-                >
-                  <Icon className="size-5" aria-hidden />
-                </Link>
-              ))}
-            </div>
-            <GooglePreferredSourceButton
-              className="mt-8 border-black/10 bg-white text-foreground hover:bg-black/[0.04]"
-              data-attr="footer-google-preferred-source"
+            <img
+              src="/logo/full-color.svg"
+              alt={siteConfig.name}
+              className="h-7 w-auto self-start"
             />
+            <div className="mt-3 flex flex-col items-start gap-3">
+              <a href="mailto:hello@prisma.io" className={contactLinkClass}>
+                <Mail className="size-4 shrink-0" aria-hidden />
+                hello@prisma.io
+              </a>
+              <GooglePreferredSourceButton
+                monochrome
+                className={`${contactLinkClass} rounded-none border-0 bg-transparent p-0 font-normal shadow-none hover:bg-transparent`}
+                data-attr="footer-google-preferred-source"
+              />
+            </div>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">
+              &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
+          <div className="grid grid-cols-2 items-start gap-x-8 gap-y-8 sm:grid-cols-4 xl:grid-cols-5">
             {COLUMNS.map(({ title, items }) => (
               <div key={title}>
-                <h3 className="mb-4 text-sm font-semibold text-foreground">{title}</h3>
-                <ul className="space-y-3">
+                <h3 className="mb-3 text-sm font-semibold leading-5 text-foreground">{title}</h3>
+                <ul className="space-y-3 text-sm leading-5">
                   {items.map((item) => (
                     <li key={item.href}>
                       <SiteLink
                         href={item.href}
-                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        className="block text-sm leading-5 text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {item.label}
                       </SiteLink>
@@ -81,15 +79,15 @@ export function Footer() {
             ))}
 
             <div>
-              <h3 className="mb-4 text-sm font-semibold text-foreground">Social Media</h3>
-              <ul className="space-y-3">
+              <h3 className="mb-3 text-sm font-semibold leading-5 text-foreground">Social Media</h3>
+              <ul className="space-y-3 text-sm leading-5">
                 {SOCIALS.map(({ label, href, Icon }) => (
                   <li key={label}>
                     <Link
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      className="flex items-center gap-2.5 text-sm leading-5 text-muted-foreground transition-colors hover:text-foreground"
                     >
                       <Icon className="size-4" aria-hidden />
                       {label}
@@ -101,27 +99,10 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-16 grid items-center gap-4 border-t border-black/[0.06] py-6 md:grid-cols-3">
-          <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
-          </p>
-          <div className="flex flex-wrap items-center gap-6 md:justify-center">
-            {siteConfig.footer.legal.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
         {/* the giant footer wordmark — kept inside the page's max-width so it
             never grows wider than the rest of the content; the letters span
             the content width and the rays bleed off past the right. */}
-        <div className="pointer-events-none relative mt-10 pb-6">
+        <div className="pointer-events-none relative mt-12 pb-6">
           <div className="w-[116.1%]">
             <AnimatedWordmark />
           </div>

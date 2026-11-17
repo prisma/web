@@ -10,6 +10,7 @@ import { BadgeProvider, SidebarBadgeItem } from "@/components/sidebar-badge-prov
 import { getOrmVersions } from "@/lib/version";
 import { getClientPageTree } from "@/lib/client-page-tree";
 import { VersionSwitcher } from "@/components/version-switcher";
+import { DatabaseSwitcher } from "@/components/database-switcher";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const { nav, ...base } = baseOptions();
@@ -30,7 +31,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
         nav={{ ...nav }}
         sidebar={{
           collapsible: false,
-          banner: <VersionSwitcher versions={ormVersions} availablePathnames={pageUrls} />,
+          banner: (
+            <div className="flex flex-col gap-3">
+              <VersionSwitcher versions={ormVersions} availablePathnames={pageUrls} />
+              <DatabaseSwitcher />
+            </div>
+          ),
           components: { Item: SidebarBadgeItem },
           footer: ({ className, ...props }: ComponentProps<"div">) => (
             <div className={cn("flex flex-col p-4 pt-2 gap-3", className)} {...props}>

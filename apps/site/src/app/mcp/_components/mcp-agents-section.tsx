@@ -21,8 +21,7 @@ export function McpAgentsSection({ agents }: { agents: readonly McpAgent[] }) {
               Works with your AI agent
             </h2>
             <p className="max-w-[52ch] text-pretty text-[0.9375rem] leading-relaxed text-muted-foreground">
-              Works with any AI agent, whether you prefer to use a remote or a local server,
-              we&apos;ve got you.
+              Connect from an AI tool that supports remote MCP servers with OAuth sign-in.
             </p>
           </div>
 

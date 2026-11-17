@@ -117,9 +117,12 @@ export function SidebarDrawer({
   return (
     <>
       <Base.SidebarDrawerOverlay className="fixed z-40 inset-0 backdrop-blur-xs data-[state=open]:animate-fd-fade-in data-[state=closed]:animate-fd-fade-out" />
+      {/* Starts under the banner, like the header: the banner stacks above this
+          layout (`isolation: isolate`), so a full-height drawer had its close
+          button covered by the banner's own. */}
       <Base.SidebarDrawerContent
         className={cn(
-          "fixed text-[0.9375rem] flex flex-col shadow-lg border-s inset-e-0 inset-y-0 w-[85%] max-w-[380px] z-40 bg-fd-background data-[state=open]:animate-fd-sidebar-in data-[state=closed]:animate-fd-sidebar-out",
+          "fixed text-[0.9375rem] flex flex-col shadow-lg border-s inset-e-0 top-(--fd-docs-row-1) bottom-0 w-[85%] max-w-[380px] z-40 bg-fd-background data-[state=open]:animate-fd-sidebar-in data-[state=closed]:animate-fd-sidebar-out",
           className,
         )}
         {...props}

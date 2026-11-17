@@ -1,4 +1,8 @@
-import { getAgentMarkdownRewritePathname, getAgentMarkdownSignal } from "@/lib/agent-markdown";
+import {
+  AGENT_MARKDOWN_VARY,
+  getAgentMarkdownRewritePathname,
+  getAgentMarkdownSignal,
+} from "@/lib/agent-markdown";
 import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
@@ -26,6 +30,11 @@ export function proxy(request: NextRequest) {
     },
   });
   response.headers.set("x-prisma-agent-markdown", signal);
+  // A CDN 304 for this URL carries this `Vary`, not the Markdown route's (which
+  // only a 200 carries), so both name the two request headers the rendition is
+  // picked by. Append, never set: Next's own RSC `Vary` must survive. See
+  // `AGENT_MARKDOWN_VARY`.
+  response.headers.append("Vary", AGENT_MARKDOWN_VARY);
 
   return response;
 }
@@ -78,7 +87,7 @@ export const config = {
           type: "header",
           key: "user-agent",
           value:
-            ".*([cC][hH][aA][tT][gG][pP][tT]-[uU][sS][eE][rR]|[gG][pP][tT][bB][oO][tT]|[cC][lL][aA][uU][dD][eE][bB][oO][tT]|[cC][lL][aA][uU][dD][eE]-[uU][sS][eE][rR]|[pP][eE][rR][pP][lL][eE][xX][iI][tT][yY][bB][oO][tT]|[cC][uU][rR][sS][oO][rR]).*",
+            ".*([cC][hH][aA][tT][gG][pP][tT]-[uU][sS][eE][rR]|[gG][pP][tT][bB][oO][tT]|[cC][lL][aA][uU][dD][eE][bB][oO][tT]|[cC][lL][aA][uU][dD][eE]-[uU][sS][eE][rR]|[pP][eE][rR][pP][lL][eE][xX][iI][tT][yY][bB][oO][tT]|[cC][uU][rR][sS][oO][rR]|[pP][eE][rR][pP][lL][eE][xX][iI][tT][yY]-[uU][sS][eE][rR]|[mM][iI][sS][tT][rR][aA][lL][aA][iI]-[uU][sS][eE][rR]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][fF][eE][tT][cC][hH][eE][rR]|[gG][oO][oO][gG][lL][eE]-[gG][eE][mM][iI][nN][iI]-[cC][lL][iI]).*",
         },
       ],
     },

@@ -28,7 +28,8 @@ function legacyListingPatterns(): string[] {
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = getBaseUrl();
-  const disallow = ["/api/", "/_next/", "/og/"].map(withBlogBasePath);
+  // Social crawlers need OG images; their responses carry noindex instead.
+  const disallow = ["/api/", "/_next/"].map(withBlogBasePath);
   const legacyDisallow = ["/dataguide/intro/example", "/dataguide/dummy", "/cloud"];
 
   return {

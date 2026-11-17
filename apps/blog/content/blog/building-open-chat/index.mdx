@@ -17,6 +17,8 @@ series: prisma-compute
 seriesIndex: 7
 ---
 
+> **Update (November 2026):** The `bunx @prisma/cli app deploy --app …` invocations in the Compute section below were the beta-era flow. Apps are now declared with [Prisma Composer](https://www.prisma.io/docs/composer) and deployed with `npx prisma deploy`. The [deploy quickstart](https://www.prisma.io/docs/prisma-compute/deploy) covers the current flow.
+
 One small thing has annoyed me in every AI chat app I've used: you ask a long question, the answer starts streaming, and then you close the tab, or your wifi blips, or the phone locks, and the tail is gone. Reopen the chat and the message is truncated or missing. The tokens were on screen and nowhere else, so when the screen went away, so did they.
 
 I wanted the opposite: a chat app where the answer is safe the instant it exists, and the screen is only a view of it. So I built one. It's called **Open Chat**, it's live at [oss.chat](https://oss.chat), and it's open source at [prisma/open-chat](https://github.com/prisma/open-chat).
@@ -33,6 +35,8 @@ There's an animated [guided tour at oss.chat/tour](https://oss.chat/tour) if you
 ![Open Chat running locally: a streaming markdown answer, a chat sidebar, and a guest session with no sign-up required](/building-open-chat/imgs/app.png)
 
 ## The one rule: nothing on screen that isn't already durable
+
+For chat between users, the [realtime chat database guide](https://www.prisma.io/postgres/realtime-chat-database) covers room authorization, message retries and the distinction between saved history and realtime delivery.
 
 Most chat apps stream tokens to the browser and save the finished message afterwards, and that ordering is the bug: if the message only becomes real _after_ the stream ends, anything that interrupts the stream loses data.
 
@@ -142,9 +146,11 @@ That typed Postgres data comes from [Prisma 8](/prisma-next-early-access-write-y
 
 **What it enables:** one query language for two kinds of data. The chat list, the credit balance, and the live token stream all read the same way, so there's no glue layer and no second state manager to keep in sync.
 
+For a relational feedback feature alongside conversation history, see [storing assistant feedback in Postgres](https://www.prisma.io/postgres/ai-assistant-feedback). It keeps each user's current vote attached to a saved answer.
+
 ## Prisma Compute: two apps, one project, one command each
 
-The part that surprised me: production is this exact repo, deployed twice (the chat server and the Durable Streams service) side by side in one [Prisma Compute](/launching-prisma-compute-public-beta) project, next to the [Prisma Postgres](https://www.prisma.io/postgres) database they share.
+The part that surprised me: production is this exact repo, deployed twice (the chat server and the Durable Streams service) side by side in one [Prisma Compute](https://www.prisma.io/compute) project, next to the [Prisma Postgres](https://www.prisma.io/postgres) database they share.
 
 ![The whole production setup in the Prisma Console: the open-chat project on its main branch, with the Streams app, the open-chat app, and the primary database](/building-open-chat/imgs/tour-console.webp)
 
@@ -173,6 +179,10 @@ The thing I didn't expect: once the log is the source of truth, features that ar
 
 Each of these reuses a pattern that already existed instead of inventing a new one. That's the real dividend of picking "the log is the source of truth" on day one.
 
+If you extend an assistant with business actions, see [hosting server-side tool calls](https://www.prisma.io/compute/ai-business-api-tool-calls) for the boundary between a model suggestion, user authorization and an external API request.
+
+For a Next.js app selling subscriptions, the [Stripe hosting guide](https://www.prisma.io/compute/nextjs-stripe-subscriptions) explains how to keep webhook receipts, subscription state and access decisions consistent across retries and releases.
+
 ## Try it, then read it
 
 Everything above is live. Go [open a chat at oss.chat](https://oss.chat). You get a guest budget immediately, no sign-up. Then try the thing that started all of this: ask for a long answer, close the tab mid-stream, and reopen it. The reply finishes where it left off.
@@ -183,4 +193,6 @@ Then read the code. The whole app is about 6,000 lines and built to be read. The
 
 I set out to fix one tiny annoyance: a chat that drops its tail when you look away. What I ended up with is a small demonstration that durable, resumable streaming doesn't have to be exotic infrastructure. It can be an append-only log, a typed database, a live query, and one deploy command. Never dropping a token turned out to be the easy path, as long as you let the log be the truth.
 
-The reason it stayed simple is that the app, the streaming service, and the database all live in one place. That's what [Prisma Compute](/launching-prisma-compute-public-beta) and [Prisma Postgres](https://www.prisma.io/postgres) are for: your app runs next to your data, deploys in one command, and is free to try on the Free plan. If you want the rest of the story, see how we [launched Compute](/launching-prisma-compute-public-beta), why it [runs on Bun's Rust rewrite](/bun-rust-rewrite-prisma-compute), and how it handles [image transformations](/image-transformations-with-bun-on-prisma-compute) and [custom domains](/prisma-compute-custom-domains). Come build with us in [#prisma-compute](https://pris.ly/discord-compute) on Discord.
+The reason it stayed simple is that the app, the streaming service, and the database all live in one place. That's what [Prisma Compute](https://www.prisma.io/compute) and [Prisma Postgres](https://www.prisma.io/postgres) are for: your app runs next to your data, deploys in one command, and is free to try on the Free plan. If you want the rest of the story, see how we [launched Compute](/launching-prisma-compute-public-beta), why it [runs on Bun's Rust rewrite](/bun-rust-rewrite-prisma-compute), and how it handles [image transformations](/image-transformations-with-bun-on-prisma-compute) and [custom domains](/prisma-compute-custom-domains). Come build with us in [#prisma-compute](https://pris.ly/discord-compute) on Discord.
+
+For a simpler relational model that saves conversations and completed messages in Postgres, see [hosting a TypeScript AI assistant with conversation history](https://www.prisma.io/compute/ai-assistant-conversation-history). The guide explains where final-message storage differs from an event log that persists streaming output.

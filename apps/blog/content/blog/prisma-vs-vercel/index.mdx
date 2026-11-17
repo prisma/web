@@ -2,6 +2,7 @@
 title: "Prisma vs Vercel: where should you build your next TypeScript app?"
 slug: "prisma-vs-vercel"
 date: "2026-09-16"
+updatedAt: "2026-11-09"
 authors:
   - "Shane Neubauer"
 metaTitle: "Prisma vs Vercel for TypeScript apps: which platform?"
@@ -26,10 +27,10 @@ Prisma's hosting runs on Bun in one region, gives each request 60 seconds to sta
 
 "Prisma" here means more than the ORM:
 
-- [Prisma ORM 8](https://www.prisma.io/docs/orm) is the typed data layer. It is a release candidate, with general availability expected in October 2026, and it runs on any host, including Vercel.
+- [Prisma ORM 8](https://www.prisma.io/docs/orm) is the typed data layer, and it runs on any host, including Vercel.
 - [Prisma Postgres](https://www.prisma.io/docs/postgres) is the managed database.
 - [Prisma Compute](https://www.prisma.io/docs/compute) hosts TypeScript services.
-- [Prisma Composer](https://www.prisma.io/docs/composer), in early access, declares how services and databases connect and deploys them to Compute and Prisma Postgres.
+- [Prisma Composer](https://www.prisma.io/docs/composer) declares how services and databases connect and deploys them to Compute and Prisma Postgres.
 
 This post compares the three hosting products with Vercel. The last section covers running Prisma ORM and Prisma Postgres on Vercel.
 
@@ -41,28 +42,28 @@ Choose Prisma if:
 - You want every Git branch to be a full environment with its own services and variables. You are willing to create its database with one command or a Composer deploy.
 - Your services run on Bun, or can, and one region is enough.
 - You do not want to pay per seat. Vercel charges $20 a month per additional team member; Prisma charges a plan fee plus usage.
-- You accept pre-release tooling. Prisma ORM 8 is a release candidate and Composer is in early access.
+- Your app can do without the Prisma ORM 7 features that ORM 8 does not have yet, such as filtering inside JSON columns, atomic `increment`, and most nested writes. Composer types its databases with ORM 8, so check [what is not available yet](https://www.prisma.io/docs/orm/coming-from-prisma-orm-7#not-available-yet) before you move an existing app.
 
 Choose Vercel if:
 
 - You use Next.js features that Vercel provides at the platform level, such as its caching layer and on-demand image optimization. Compute runs Next.js, but you build an [image route](https://www.prisma.io/docs/compute/image-transformations) yourself.
 - Your code runs on Node.js, or your backend is not TypeScript. Vercel Services runs a Next.js frontend beside a Python backend in one project.
-- You need WebSocket servers. Vercel Functions serve them in public beta; Compute does not support them.
+- You need WebSocket servers. Vercel Functions serve them on all plans (generally available since 2026-10-20); Compute does not support them.
 - A request needs more than 60 seconds before it starts responding. Vercel Functions allow 300 seconds by default and 800 on Pro.
 - You want preview databases that start as a copy of production. Vercel's Neon integration creates one for every preview.
 
 | | Prisma | Vercel |
 | --- | --- | --- |
-| Hosting | TypeScript services on Prisma Compute, on Bun, one region each | Framework deployments and Vercel Functions; Services groups several apps |
+| Hosting | TypeScript services on Prisma Compute, on Bun, one region each | Framework deployments and Vercel Functions, including OCI container images with [Container Runtime](https://vercel.com/docs/functions/runtimes/container) (beta, all plans) |
 | Managed Postgres | Prisma Postgres, usable from any client | Marketplace providers, including Prisma Postgres and Neon |
 | Typed data access | Prisma ORM 8 or any client | Any ORM or client, including Prisma ORM |
 | Service-to-service calls | Composer binds each dependency to a typed contract and checks it at compile time | Service bindings (beta) inject a URL; types are yours to add |
 | Previews | One environment per Git branch, deleted with the branch | One preview URL per Git branch |
-| Preview databases | One per branch, created by you or by a Composer stage deploy, no production data | Provider-specific; Neon copies production per branch |
-| Long-running work | 60 seconds to first byte, then `waitUntil`; no WebSockets | 300 to 800 seconds, 30 minutes in beta; WebSockets in beta |
+| Preview databases | One per branch, created by you or by a Composer deploy of the branch, no production data | Provider-specific; Neon copies production per branch |
+| Long-running work | 60 seconds to first byte, then `waitUntil`; no WebSockets | Continuous background workers from container images with [Daemons](https://vercel.com/docs/daemons) (public beta since [2026-10-15](https://vercel.com/changelog/vercel-daemons-is-now-in-public-beta), all plans); production only during beta, no inbound HTTP |
 | Billing | Plan fee plus requests, memory, CPU, and bandwidth | Plan fee plus compute, delivery, builds, and seats |
 
-Sources for the table: the [Compute limitations](https://www.prisma.io/docs/compute/limitations) page and Vercel's [Services](https://vercel.com/docs/services), [function duration](https://vercel.com/docs/functions/configuring-functions/duration), [WebSocket changelog](https://vercel.com/changelog/websocket-support-is-now-in-public-beta), and [Fluid compute pricing](https://vercel.com/docs/functions/usage-and-pricing) pages.
+Sources for the table: the [Compute limitations](https://www.prisma.io/docs/compute/limitations) page and Vercel's [Services](https://vercel.com/docs/services), [function duration](https://vercel.com/docs/functions/configuring-functions/duration), [WebSocket changelog](https://vercel.com/changelog/websocket-support-is-now-generally-available), and [Fluid compute pricing](https://vercel.com/docs/functions/usage-and-pricing) pages.
 
 ## What each platform sets up for you
 
@@ -74,7 +75,7 @@ A [service binding](https://vercel.com/docs/services/bindings), in beta at the t
 
 **On Prisma**, Composer works at the level of services:
 
-1. **Declare each service** in TypeScript, together with what it depends on: other services, a Prisma Postgres database, a cron schedule, or object storage.
+1. **Declare each service** in TypeScript, together with what it depends on: other services, a Prisma Postgres database, or object storage.
 2. **Give each service a contract**, meaning typed request and response schemas written with arktype, zod, or any Standard Schema validator.
 3. **Declare the contracts a service calls** as its dependencies. At runtime the service receives a typed client for each one.
 4. **Wire everything in a root module.** TypeScript checks the wiring, so binding a dependency to a service with a different contract, or leaving out a handler the contract requires, is a compile error.
@@ -114,19 +115,19 @@ The root module adds a second check. If it binds `storefront` to a service that 
 
 Databases are declared the same way. A service lists a `postgres()` dependency typed by your **data contract**, the `contract.prisma` schema file that replaced `schema.prisma` in ORM 8. The module that owns the database provisions it. The [deploy applies the database's migrations](https://www.prisma.io/docs/composer/databases) before the service starts, and it refuses to connect a service to a database whose schema does not match the contract the service was compiled against.
 
-You do not need any of this to start. A single service deploys to Prisma Compute from a Git push without Composer, and you can add Composer when a second service or a scheduled job appears.
+You do not need contracts or several services to start, but a Git push deploys through Composer. A GitHub Actions workflow using [prisma/cloud-deploy-action](https://github.com/prisma/cloud-deploy-action) runs `prisma deploy` on a Composer module (`module.ts` by default), so even a single service needs a one-service module to deploy on push. The [porting guide](https://www.prisma.io/docs/composer/porting-an-app) shows what that involves: a `service.ts`, a `module.ts` and, for a Node.js or Bun server, three changes to the server, with a separate section for a Next.js app. When a second service appears, add it to the module.
 
 ## Previews and their databases
 
-Both platforms give every branch a running preview. They differ in what sits behind it, and that decides how much setup you do before a preview is useful.
+Both platforms give every branch other than the production branch a running preview. They differ in what sits behind it, and that decides how much setup you do before a preview is useful.
 
-**On Prisma**, a Git branch maps to a [platform branch](https://www.prisma.io/docs/compute/branching) with its own services, environment variables, and any databases created on it. Deleting the Git branch deletes all of that. *The database is not created for you unless you use Composer.* For a single service:
+**On Prisma**, a Git branch maps to a [platform branch](https://www.prisma.io/docs/compute/branching) with its own services, environment variables, and any databases created on it. Deleting the Git branch deletes all of that. *The database is not created for you unless your Composer module declares it.* For a service that reads `DATABASE_URL` instead:
 
 1. Create a database on the branch: `npx prisma@latest postgres create preview-db`.
 2. Point the branch at it: `npx prisma@latest project env add DATABASE_URL=<printed-url> --branch feature/search`.
 3. Seed it if the feature needs realistic rows, because it starts empty.
 
-A Composer stage deploy, `npx prisma@latest deploy module.ts --stage <branch>`, replaces the first two steps. It creates the databases the module declares and runs their migrations, but the databases still start empty.
+Declaring the database in the module replaces the first two steps. The deploy that the action runs for each pushed branch other than the default one, to an environment named after the branch, creates the databases the module declares and runs their migrations, but the databases still start empty. From a terminal, `npx prisma@latest deploy --environment <branch>` does the same.
 
 A preview uses whatever `DATABASE_URL` it was given, so a preview that inherits the production value *writes to production*. Keep production and preview values in separate scopes, as the [environment variables docs](https://www.prisma.io/docs/compute/environment-variables) describe.
 
@@ -136,7 +137,7 @@ A preview uses whatever `DATABASE_URL` it was given, so a preview that inherits 
 
 For testing against production-shaped data, this is the more convenient setup, because there is nothing to seed and nothing to point.
 
-The [Prisma Postgres listing](https://vercel.com/marketplace/prisma) sets a single `DATABASE_URL` for the project, and you scope previews away from it with Vercel's per-environment variables.
+The [Prisma Postgres integration](https://vercel.com/marketplace/prisma) sets `DATABASE_URL`, `POSTGRES_URL`, `PRISMA_DATABASE_URL`, and `DATABASE_URL_POOLED` for the project, and you scope previews away from them with Vercel's per-environment variables. If a project has no `DATABASE_URL_POOLED`, its database was created before the integration started setting it on 2026-10-29; the [Vercel guide](https://www.prisma.io/docs/guides/postgres/vercel#use-the-pooled-connection-string-for-application-traffic) shows how to add it.
 
 Schema changes travel the same way on both platforms: as migration files in Git that a deploy applies. Prisma ORM 8 helps when two branches change the schema at the same time:
 
@@ -165,7 +166,7 @@ Compute does not require Prisma ORM, so an app on ORM 6 runs unchanged. The migr
 
 Vercel Functions run on **Node.js** as well as Bun, and the [Next.js integration](https://vercel.com/docs/frameworks/full-stack/nextjs) supplies caching and on-demand image optimization without application code.
 
-Vercel Functions run for 300 seconds by default and up to 800 seconds on Pro, with a 30-minute extended duration in beta, and they serve WebSocket connections in public beta. If your app holds long connections or runs multi-minute requests, Vercel supports that directly. On Compute, that work has to move into short requests or a Composer cron schedule.
+Vercel Functions run for 300 seconds by default and up to 800 seconds on Pro, with a 30-minute extended duration in beta, and they serve WebSocket connections, generally available since 2026-10-20. If your app holds long connections or runs multi-minute requests, Vercel supports that directly. On Compute, a response has to start within 60 seconds and can then keep streaming; work that runs past the response goes into `waitUntil`.
 
 ## What you pay for
 
@@ -183,7 +184,7 @@ Prisma Compute charges a plan fee plus four usage meters and nothing for deploym
 | Builds and previews | Not billed | $0.007 per build minute on paid teams |
 | Seats | Not billed | $20 a month per extra seat |
 
-Prisma Postgres has [its own pricing](https://www.prisma.io/pricing), as does any Marketplace database on Vercel. One exception to scale-to-zero on Prisma: Composer's cron scheduler keeps one instance awake per deployed app or stage so that it can fire on time. The [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing) post prices a full month meter by meter.
+Prisma Postgres has [its own pricing](https://www.prisma.io/pricing), as does any Marketplace database on Vercel. The [Prisma Compute vs Vercel pricing](https://www.prisma.io/blog/prisma-compute-vs-vercel-pricing) post prices a full month meter by meter.
 
 ## Using Prisma ORM and Prisma Postgres on Vercel
 
@@ -198,7 +199,7 @@ To run migrations, add `npx prisma@latest db migrate --db "$DATABASE_URL"` to yo
 For a TypeScript app, mostly. Prisma Compute hosts the app and Prisma Postgres holds the data. It does not replace Vercel's platform-level Next.js caching and image optimization, and Compute has no WebSockets, no multi-region deployment, and a 60-second limit before a request must start responding.
   </Accordion>
   <Accordion title="Does Prisma give each preview its own database?">
-Yes, if you create it. Each Git branch is an isolated environment, but you provision the database with the CLI or a Composer stage deploy, and it starts without production data. A preview-scoped or branch-scoped `DATABASE_URL` keeps the preview off production.
+Yes, if you create it. Each Git branch is an isolated environment, but you provision the database with the CLI or a Composer deploy of the branch, and it starts without production data. A preview-scoped or branch-scoped `DATABASE_URL` keeps the preview off production.
   </Accordion>
   <Accordion title="What is the migration graph in Prisma ORM 8?">
 A record of which schema version each migration starts from and produces. After two branches merge, the ORM can plan a path from each database's current version to the merged schema. It is an ORM feature and works on any host, including Vercel.
@@ -210,6 +211,11 @@ Yes. The Prisma Postgres Marketplace integration provisions a database and sets 
 
 ## Which one to pick
 
-**Pick Prisma** if your backend is several TypeScript services that share Postgres and you can live with Bun, one region, and pre-release tooling. The compiler then checks the wiring between those services, and the deploy creates it. Start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), which runs two services locally without an account.
+**Pick Prisma** if your backend is several TypeScript services that share Postgres and you can live with Bun and one region. The compiler then checks the wiring between those services, and the deploy creates it. Start with the [Composer getting-started guide](https://www.prisma.io/docs/composer/getting-started), which runs two services locally without an account.
 
 **Stay on Vercel** if your app leans on Vercel's Next.js features, needs Node.js, WebSockets, or long requests, or if you want previews that arrive with production data. The [Vercel guide](https://www.prisma.io/docs/guides/postgres/vercel) brings Prisma ORM 8 and Prisma Postgres there.
+
+## Update history
+
+- 2026-11-09: "Previews and their databases" now gives the terminal command as `npx prisma@latest deploy --environment <branch>`, without `module.ts`, because `--environment` replaced `--stage` and the CLI reads the entry from the `composer` section of `prisma.config.ts`; the comparison table and the FAQ on preview databases say "a Composer deploy of the branch" in place of "a Composer stage deploy". Source: Prisma's [`deploy` reference](https://www.prisma.io/docs/cli/deploy), checked 2026-11-09.
+- 2026-11-03: "Previews and their databases" now says the Prisma Postgres integration sets `DATABASE_URL`, `POSTGRES_URL`, `PRISMA_DATABASE_URL`, and `DATABASE_URL_POOLED` instead of only `DATABASE_URL`, and that a project with no `DATABASE_URL_POOLED` has a database created before 2026-10-29. No other facts changed.

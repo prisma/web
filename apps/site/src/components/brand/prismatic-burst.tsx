@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Renderer, Program, Mesh, Triangle, Texture } from "ogl";
+import { observeAnimationActivity } from "@/lib/animation-activity";
 
 const vertexShader = `#version 300 es
 in vec2 position;
@@ -233,12 +234,13 @@ export default function PrismaticBurst({
   const pausedRef = useRef(paused);
   const gradTexRef = useRef<Texture | null>(null);
   const hoverDampRef = useRef(hoverDampness);
-  const isVisibleRef = useRef(true);
+  const drawRef = useRef<(() => void) | null>(null);
   const meshRef = useRef<Mesh | null>(null);
   const triRef = useRef<Triangle | null>(null);
 
   useEffect(() => {
     pausedRef.current = paused;
+    drawRef.current?.();
   }, [paused]);
   useEffect(() => {
     hoverDampRef.current = hoverDampness;
@@ -249,7 +251,13 @@ export default function PrismaticBurst({
     if (!container) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const renderer = new Renderer({ dpr, alpha: false, antialias: false });
+    let renderer: Renderer;
+    try {
+      renderer = new Renderer({ dpr, alpha: false, antialias: false });
+    } catch {
+      // The fill is decorative; buttons remain usable without WebGL.
+      return;
+    }
     rendererRef.current = renderer;
 
     const gl = renderer.gl;
@@ -300,11 +308,13 @@ export default function PrismaticBurst({
     triRef.current = triangle;
     meshRef.current = mesh;
 
+    let draw = () => {};
     const resize = () => {
       const w = container.clientWidth || 1;
       const h = container.clientHeight || 1;
       renderer.setSize(w, h);
       program.uniforms.uResolution.value = [gl.drawingBufferWidth, gl.drawingBufferHeight];
+      draw();
     };
 
     let ro: ResizeObserver | null = null;
@@ -324,31 +334,17 @@ export default function PrismaticBurst({
     };
     container.addEventListener("pointermove", onPointer, { passive: true });
 
-    let io: IntersectionObserver | null = null;
-    if (typeof IntersectionObserver !== "undefined") {
-      io = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]) isVisibleRef.current = entries[0].isIntersecting;
-        },
-        { root: null, threshold: 0.01 },
-      );
-      io.observe(container);
-    }
-
     let raf = 0;
+    let visible = false;
     let last = performance.now();
     let accumTime = 0;
 
     const update = (now: number) => {
+      raf = 0;
+      if (!visible) return;
       const dt = Math.max(0, now - last) * 0.001;
       last = now;
-      const visible = isVisibleRef.current && !document.hidden;
       if (!pausedRef.current) accumTime += dt;
-
-      if (!visible) {
-        raf = requestAnimationFrame(update);
-        return;
-      }
 
       const tau = 0.02 + Math.max(0, Math.min(1, hoverDampRef.current)) * 0.5;
       const alpha = 1 - Math.exp(-dt / tau);
@@ -361,26 +357,40 @@ export default function PrismaticBurst({
       program.uniforms.uTime.value = accumTime;
 
       renderer.render({ scene: meshRef.current as Mesh });
-      raf = requestAnimationFrame(update);
+      if (!pausedRef.current) raf = requestAnimationFrame(update);
     };
-    raf = requestAnimationFrame(update);
+    draw = () => {
+      if (!raf && visible) {
+        last = performance.now();
+        raf = requestAnimationFrame(update);
+      }
+    };
+    drawRef.current = draw;
+    const stopActivity = observeAnimationActivity(container, (active) => {
+      visible = active;
+      cancelAnimationFrame(raf);
+      raf = 0;
+      if (active) draw();
+    });
 
     return () => {
       cancelAnimationFrame(raf);
       container.removeEventListener("pointermove", onPointer);
       ro?.disconnect();
       if (!ro) window.removeEventListener("resize", resize);
-      io?.disconnect();
+      stopActivity();
       try {
         container.removeChild(gl.canvas);
       } catch {
         /* already removed */
       }
       try {
-        const glCtx = rendererRef.current?.gl;
-        if (glCtx && gradTexRef.current?.texture) {
-          glCtx.deleteTexture(gradTexRef.current.texture);
-        }
+        gl.deleteTexture(gradientTex.texture);
+        triangle.remove();
+        program.remove();
+        gl.deleteShader(program.vertexShader);
+        gl.deleteShader(program.fragmentShader);
+        gl.getExtension("WEBGL_lose_context")?.loseContext();
       } catch {
         /* ignore */
       }
@@ -389,6 +399,7 @@ export default function PrismaticBurst({
       gradTexRef.current = null;
       meshRef.current = null;
       triRef.current = null;
+      drawRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -448,6 +459,7 @@ export default function PrismaticBurst({
       count = 0;
     }
     program.uniforms.uColorCount.value = count;
+    drawRef.current?.();
   }, [intensity, speed, animationType, colors, distort, offset, rayCount]);
 
   return <div className="relative h-full w-full overflow-hidden" ref={containerRef} />;

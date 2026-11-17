@@ -1,4 +1,4 @@
-import { blog } from "./source";
+import { getPublishedPages } from "./source";
 import { toBlogCardItem, type BlogPage } from "./post-card-item";
 import { rankRelated, type RelatedCandidate } from "./related-posts-ranking";
 import type { BlogCardItem } from "@/components/BlogGrid";
@@ -18,11 +18,11 @@ function toCandidate(page: BlogPage): RelatedCandidate & { page: BlogPage } {
 /**
  * Returns up to `limit` posts to recommend after the given post, as cards.
  *
- * The current post and anything in its series are excluded; every other post is
- * eligible. Returns an empty array when no other posts exist.
+ * The current post, anything in its series and drafts are excluded; every other
+ * post is eligible. Returns an empty array when no other posts exist.
  */
 export function getRelatedPosts(current: BlogPage, limit = 2): BlogCardItem[] {
-  const candidates = blog.getPages().map(toCandidate);
+  const candidates = getPublishedPages().map(toCandidate);
   return rankRelated(toCandidate(current), candidates, limit).map((entry) =>
     toBlogCardItem(entry.page),
   );

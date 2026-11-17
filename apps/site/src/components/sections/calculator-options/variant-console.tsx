@@ -22,8 +22,9 @@ export function VariantConsole() {
             Estimate usage before you upgrade
           </h2>
           <p className="mx-auto mt-5 max-w-[56ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-            Estimate your usage before you upgrade, then set a spend limit so the bill can&apos;t
-            surprise you. The calculator recommends the right plan for where you are.
+            Estimate your usage before you upgrade, then set a spend limit that stops database
+            queries when usage charges reach it. The calculator recommends the right plan for where
+            you are.
           </p>
         </div>
 
@@ -129,7 +130,7 @@ export function VariantConsole() {
                   </p>
                   <p>
                     spend-limit{"   "}
-                    <span className="text-prism-cyan-300">on by default</span>
+                    <span className="text-prism-cyan-300">set in the Console</span>
                   </p>
                   {rec.custom && (
                     <p>

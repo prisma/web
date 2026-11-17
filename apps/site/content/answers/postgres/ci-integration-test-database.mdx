@@ -1,0 +1,114 @@
+---
+title: "Which Postgres setup should I use for integration tests in CI?"
+description: "Compare temporary hosted Postgres, database branches and runner-local service containers for isolated, repeatable CI integration tests."
+summary: "Use a fresh, isolated Postgres database for each independently changing CI task, apply the repository's migrations and seed fictional data before testing. [Prisma Postgres](/docs/postgres) is a useful hosted choice when your runner or coding agent cannot run containers: create-db can provision a temporary database without an account. Prefer a runner-local Postgres service when you need no external database dependency, or Neon when testing against database branches is already part of your workflow."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-26"
+updatedAt: "2026-10-26"
+readingTime: "6 min read"
+faq:
+  - question: "Does CI need Prisma ORM to test against Prisma Postgres?"
+    answer: "No. Prisma Postgres works with PostgreSQL clients and other ORMs. Run the application's own migrations, seeds and test runner against its isolated database, using the connection type required by each tool."
+  - question: "Can several parallel test workers share one database?"
+    answer: "Only when the tests intentionally isolate their data and schema changes. Workers that reset or migrate the same tables can interfere with each other. Use separate databases or a tested isolation scheme, and limit provisioning concurrency to the provider's rate limits."
+  - question: "What happens if a CI job does not clean up a create-db database?"
+    answer: "An unclaimed create-db database expires after 24 hours by default, or after the shorter lifetime requested with --ttl. Expiration is not immediate cleanup. Keep test data fictional and account for failed or cancelled jobs when designing the lifecycle."
+  - question: "Should a pull request from a fork receive production database secrets?"
+    answer: "No. Run untrusted contributions without production credentials or management tokens. Keep privileged provisioning and production deployment in trusted workflows; a test database should not become a route to the production account."
+related:
+  - title: "Keeping AI changes away from customer data"
+    href: "/postgres/typescript-test-environment"
+  - title: "Deploying migrations safely"
+    href: "/postgres/production-database-migrations"
+  - title: "Checking a deployment handoff"
+    href: "/compute/deployment-handoff-checks"
+cta:
+  title: "Give CI a disposable database"
+  description: "Use temporary Prisma Postgres databases for isolated tests and keep production credentials outside the test job."
+  label: "Read create-db setup"
+  href: "/docs/postgres/npx-create-db"
+---
+
+A test that passes only against a developer's long-lived database is missing part of the deployment test. CI should prove that the checked-in migrations can create the expected schema and that the application behaves correctly against it.
+
+We make Prisma Postgres and Prisma Compute. The linked provider and GitHub documentation was checked on October 26, 2026. This guide compares database lifecycles, rather than prescribing a particular test runner or ORM.
+
+## Which database lifecycle fits the job?
+
+The options are alphabetical by provider or service name. Hosted databases need network access from the runner; a local service needs a runner that supports containers.
+
+| Option | Useful fit | Work you still own |
+| --- | --- | --- |
+| [GitHub Actions Postgres service](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers) | Tests that should run next to a disposable database on a Linux runner. | Pin the Postgres version, wait for readiness and configure container networking. |
+| [Neon branches](https://neon.com/docs/introduction/branching) | A workflow that needs a separate database branch for a change. | Protect copied data, select the correct parent and manage branch cleanup. |
+| Prisma Postgres with [create-db](/docs/postgres/npx-create-db) | Agents and CI environments that can reach hosted Postgres but cannot start containers. | Apply migrations, control parallel provisioning and respect the database's expiry. |
+
+Use a clean database when you want to catch missing migrations. A branch containing existing data is useful for testing a migration against realistic table shapes and volume, but it does not prove an empty install works. Avoid copying customer records into CI; synthetic fixtures are easier to share and reproduce.
+
+## How do I set up temporary Prisma Postgres for CI?
+
+### 1. Choose a task boundary and lifetime
+
+Use one scratch database for the CI task that owns the schema. Tests within that task can reuse it when their cleanup is deliberate. Do not create a database for every test assertion, and do not let two jobs reset the same shared database.
+
+With Node.js 20.5 or newer, create-db can return machine-readable provisioning output and accept a one-hour lifetime. Its output includes `success`, `connectionString`, `claimUrl` and `deletionDate`; identifiers and credentials vary. Treat both the connection string and claim URL as sensitive. For a real workflow, pin the CLI version you have tested instead of silently upgrading it on every run.
+
+### 2. Pass credentials without putting them in the logs
+
+The wrapper below runs in a Bash step on GitHub Actions. First define the repository's `db:migrate:ci`, `db:seed:ci` and `test:integration` npm scripts: they must run your migration tool, fictional seed and integration suite, reading the supplied `DATABASE_URL`. This wrapper connects those existing scripts to a fresh database; it does not generate the app's migrations or tests.
+
+```sh
+set +x
+set -eu
+umask 077
+provisioning_file="$(mktemp)"
+trap 'rm -f "$provisioning_file"' EXIT
+npx --yes create-db@latest --json --ttl 1h > "$provisioning_file"
+
+node --input-type=module - "$provisioning_file" <<'NODE'
+import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+
+const db = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+if (db.success !== true || typeof db.connectionString !== 'string' ||
+    typeof db.claimUrl !== 'string') {
+  throw new Error('Database provisioning did not return the required fields');
+}
+if (process.env.GITHUB_ACTIONS === 'true') {
+  console.log(`::add-mask::${db.connectionString}`);
+  console.log(`::add-mask::${db.claimUrl}`);
+}
+const env = { ...process.env, DATABASE_URL: db.connectionString };
+for (const script of ['db:migrate:ci', 'db:seed:ci', 'test:integration']) {
+  const result = spawnSync('npm', ['run', script], { env, stdio: 'inherit' });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
+NODE
+```
+
+The temporary JSON file is private to the job and removed when the shell exits. The Node process passes the URL to its child commands without writing it to the repository. GitHub masks the registered values in later logs, but scripts must still avoid printing credentials or exporting them in artifacts. For another CI system, replace the masking step with that system's secret registration before running child commands. Expect provisioning to return JSON and successful child scripts to exit zero; application output depends on your scripts.
+
+The [connection guide](/docs/postgres/database/connecting-to-your-database) distinguishes pooled app traffic from direct migration connections. Preserve the connection string supplied for the temporary database and follow the client's requirements; do not guess a new hostname by editing a secret.
+
+### 3. Build the schema from the repository
+
+Run the app's checked-in migration command, then seed fictional data. Fail the job if either step fails. Run the integration suite only after the schema is ready, and make its exit status decide the job result.
+
+A useful fixture has a known customer and an order that the API can read. Test a rejected write as well as a successful one. Re-run the suite against another empty database periodically: a reused development schema can hide a missing migration file.
+
+### 4. Keep failure and cancellation paths explicit
+
+Record the task identifier and expiration time without recording credentials. An unclaimed database expires after the requested lifetime; it does not disappear when the job finishes. If using account-owned databases or branches, configure a trusted cleanup job and a way to find resources left behind by cancellation.
+
+Database creation is rate-limited per IP address. A large test matrix can share an egress IP, so bound provisioning concurrency and handle provisioning failures separately from failed application assertions. A short expiry must still leave enough time for the suite and any authorized debugging.
+
+## Where does app hosting fit?
+
+CI does not have to run on the app's production host. An app on [Prisma Compute](/docs/compute), Vercel or Netlify can use the same migration and test commands against the scratch database. If you also deploy a preview, explicitly bind its database to that test resource rather than reusing the production URL.
+
+Prisma Compute and Composer can describe an app's database dependency together, while this guide's scratch database is supplied by the CI task. Decide which process owns provisioning so a job does not create one database and deploy the app against another.
+
+## When should I choose another setup?
+
+Use a runner-local service when tests need a specific Postgres version or extension unavailable on the hosted service, or when CI must run without an external database connection. Use account-owned resources with reviewed access controls when you need a stable database beyond the temporary lifetime. create-db is a disposable test option, not a production recovery or customer-data storage strategy.

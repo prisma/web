@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Marker } from "@/components/brand/marker";
 import {
   AppWindow,
@@ -48,7 +49,15 @@ const HALO =
 // comparison table.
 const YES = "yes";
 
-type Row = { label: string; values: [string, string, string, string] };
+type CellLink = { token: string; href: string };
+type Row = {
+  label: string;
+  values: [string, string, string, string];
+  /** Optional per-column list of inline link spans. Keyed by column index
+      (0-3), each entry splices a next/link in for the first match of each
+      token inside the plain cell string. */
+  cellLinks?: Partial<Record<0 | 1 | 2 | 3, CellLink[]>>;
+};
 
 type Group = {
   label: string;
@@ -57,6 +66,9 @@ type Group = {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
   rows: Row[];
+  /** An optional link shown at the right of the group header, for a group
+      whose label alone leaves the reader with nowhere to go next. */
+  note?: { text: string; href: string };
 };
 
 // Monthly price is plan-level, not a Postgres feature, so it sits above the
@@ -68,7 +80,7 @@ const PLAN_ROW: Row = {
   values: ["$0", "$10", "$49", "$129"],
 };
 
-const GROUPS: Group[] = [
+export const GROUPS: Group[] = [
   {
     label: "Prisma Postgres",
     icon: Database,
@@ -84,7 +96,7 @@ const GROUPS: Group[] = [
       },
       {
         label: "Storage included",
-        values: ["500 MB", "10 GB", "50 GB", "100 GB"],
+        values: ["2 GB", "10 GB", "50 GB", "100 GB"],
       },
       {
         label: "Storage overage",
@@ -95,7 +107,9 @@ const GROUPS: Group[] = [
         label: "Data transfer",
         values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
       },
-      { label: "Spend limits", values: ["—", YES, YES, YES] },
+      // Free has a spend limit too: it is fixed at $0 and the plan needs no card,
+      // so "Every plan includes: Spend limits" (pricing-includes.tsx) holds.
+      { label: "Spend limits", values: ["Fixed at $0, no card required", YES, YES, YES] },
     ],
   },
   {
@@ -159,14 +173,29 @@ const GROUPS: Group[] = [
         label: "Connection idle timeout",
         values: ["60 minutes", "60 minutes", "60 minutes", "60 minutes"],
       },
-      { label: "Auto-scaling", values: [YES, YES, YES, YES] },
+      // Was "Auto-scaling: Included", carried over from the Accelerate
+      // connection pool. The Prisma Postgres pool has fixed per-plan limits
+      // and runs PgBouncer "in transactional pool mode"
+      // (docs/postgres/database/connection-pooling, checked 2026-10-22).
+      {
+        label: "Pool mode",
+        values: ["Transaction", "Transaction", "Transaction", "Transaction"],
+      },
       {
         label: "Operation response size",
         values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
       },
+      // "Pooled connections enforce a 10-minute query timeout ... a direct
+      // connection where no timeout is enforced"
+      // (docs/postgres/database/connection-pooling, checked 2026-10-22).
       {
         label: "Operation duration (db queries)",
-        values: ["Unlimited", "Unlimited", "Unlimited", "Unlimited"],
+        values: [
+          "10 min pooled, unlimited direct",
+          "10 min pooled, unlimited direct",
+          "10 min pooled, unlimited direct",
+          "10 min pooled, unlimited direct",
+        ],
       },
       {
         label: "Operation duration (interactive)",
@@ -177,9 +206,13 @@ const GROUPS: Group[] = [
   {
     // Accelerate limits restored 2026-08-25 — table only, not the plan cards
     // (see the header note). Values are the old site's last published figures.
-    label: "Accelerate (global cache)",
+    // Accelerate retires on December 1, 2026 and bills until then, so the rows
+    // stay, the label carries the date, and the header links to the switch
+    // guide at /docs/postgres/database/switch-from-accelerate.
+    label: "Accelerate cache (retires December 1, 2026)",
     icon: Layers,
     color: "text-prism-cyan-500",
+    note: { text: "How to switch", href: "/docs/postgres/database/switch-from-accelerate" },
     rows: [
       {
         label: "Operations included",
@@ -251,7 +284,13 @@ const GROUPS: Group[] = [
       },
       {
         label: "Compliance",
-        values: ["GDPR", "GDPR", "GDPR, HIPAA", "GDPR, HIPAA, SOC 2, ISO 27001"],
+        values: ["GDPR", "GDPR", "GDPR", "GDPR, HIPAA, SOC 2, ISO 27001"],
+        // Business-column HIPAA deep-links to /postgres/hipaa; the Cell
+        // renderer swaps the plain string for a mix of text and a next/link
+        // for the HIPAA token (the only cell on this page that opts in).
+        cellLinks: {
+          3: [{ token: "HIPAA", href: "/postgres/hipaa" }],
+        },
       },
       { label: "Prisma ORM", values: ["Free", "Free", "Free", "Free"] },
     ],
@@ -262,7 +301,15 @@ const PLAN_NAMES = ["Free", "Starter", "Pro", "Business"];
 // Starter carries "Most popular" on the cards, so it reads as the lit column here too.
 const HIGHLIGHT = 1;
 
-function Cell({ value, highlight }: { value: string; highlight: boolean }) {
+function Cell({
+  value,
+  highlight,
+  links,
+}: {
+  value: string;
+  highlight: boolean;
+  links?: CellLink[];
+}) {
   if (value === YES) {
     return <CheckBold className="size-4 text-prism-cyan-500" aria-label="Included" />;
   }
@@ -277,9 +324,31 @@ function Cell({ value, highlight }: { value: string; highlight: boolean }) {
             : "text-foreground",
       )}
     >
-      {value}
+      {links && links.length > 0 ? renderCellWithLinks(value, links) : value}
     </span>
   );
+}
+
+// Splice next/link spans into a plain cell string for the first occurrence of
+// each token, in token order. The pricing cells are static strings and only
+// the Business Compliance cell opts in today, so a left-to-right pass is
+// enough.
+function renderCellWithLinks(value: string, links: CellLink[]) {
+  const nodes: React.ReactNode[] = [];
+  let cursor = 0;
+  links.forEach(({ token, href }, i) => {
+    const index = value.indexOf(token, cursor);
+    if (index === -1) return;
+    if (index > cursor) nodes.push(value.slice(cursor, index));
+    nodes.push(
+      <Link key={`${href}-${i}`} href={href} className="underline-offset-4 hover:underline">
+        {token}
+      </Link>,
+    );
+    cursor = index + token.length;
+  });
+  if (cursor < value.length) nodes.push(value.slice(cursor));
+  return <>{nodes}</>;
 }
 
 // One row of the mobile feature-first pivot — uniform rows collapse to a
@@ -294,7 +363,7 @@ function MobileRow({ row }: { row: Row }) {
         <div className="flex items-start justify-between gap-4">
           <dt className="text-sm leading-relaxed text-muted-foreground">{row.label}</dt>
           <dd className="shrink-0 text-right">
-            <Cell value={row.values[0]} highlight />
+            <Cell value={row.values[0]} highlight links={row.cellLinks?.[0]} />
           </dd>
         </div>
       ) : (
@@ -315,7 +384,11 @@ function MobileRow({ row }: { row: Row }) {
                   {PLAN_NAMES[i]}
                 </p>
                 <div className="mt-1">
-                  <Cell value={v} highlight={i === HIGHLIGHT} />
+                  <Cell
+                    value={v}
+                    highlight={i === HIGHLIGHT}
+                    links={row.cellLinks?.[i as 0 | 1 | 2 | 3]}
+                  />
                 </div>
               </div>
             ))}
@@ -338,7 +411,7 @@ function DesktopRow({ row }: { row: Row }) {
       </th>
       {row.values.map((v, i) => (
         <td key={i} className="px-5 py-3.5 align-top">
-          <Cell value={v} highlight={i === HIGHLIGHT} />
+          <Cell value={v} highlight={i === HIGHLIGHT} links={row.cellLinks?.[i as 0 | 1 | 2 | 3]} />
         </td>
       ))}
     </tr>
@@ -416,6 +489,14 @@ export function PricingSpecTable() {
                 <p className="flex items-center gap-2.5 bg-foreground/[0.03] px-5 py-3 text-sm font-semibold text-foreground">
                   <group.icon className={cn("size-4 shrink-0", group.color)} />
                   {group.label}
+                  {group.note && (
+                    <a
+                      href={group.note.href}
+                      className="ml-auto shrink-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
+                    >
+                      {group.note.text}
+                    </a>
+                  )}
                 </p>
                 <dl>
                   {group.rows.map((row) => (
@@ -489,6 +570,14 @@ export function PricingSpecTable() {
                       <span className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
                         <group.icon className={cn("size-4 shrink-0", group.color)} />
                         {group.label}
+                        {group.note && (
+                          <a
+                            href={group.note.href}
+                            className="ml-auto shrink-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
+                          >
+                            {group.note.text}
+                          </a>
+                        )}
                       </span>
                     </th>
                   </tr>

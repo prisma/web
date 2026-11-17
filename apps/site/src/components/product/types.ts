@@ -56,12 +56,25 @@ export type ProductPageContent = {
      * restated by the section under the hero.
      */
     subheadline: string;
-    /** Exactly three specific benefits. Sit under the CTA, not above it. */
-    benefits: [string, string, string];
+    /**
+     * Exactly three specific benefits. Sit under the CTA, not above it.
+     * Omit them when a custom visual already shows those steps. Pages that
+     * pass the three still render the same list.
+     */
+    benefits?: [string, string, string];
     primaryCta: Cta;
     secondaryCta: Cta;
     /** Reassurance directly under the CTA — price, licence or reach. */
     microline?: string;
+    /** When set, the microline is a text link with this href. */
+    microlineHref?: string;
+    /**
+     * Anchor text inside the microline. Defaults to the full microline.
+     * Located with `indexOf`, so it can sit anywhere in the line.
+     */
+    microlineLink?: string;
+    /** Optional in-page link under the microline, for a related comparison. */
+    related?: { label: string; href: string };
     /**
      * The tour beside the copy (product-tour.tsx). Four stops. Pages still
      * carrying a single still frame fall back to `illustration`.
@@ -104,6 +117,29 @@ export type ProductPageContent = {
      */
     body: string;
   };
+  /**
+   * The shared "Compare Prisma" reading list (sections/compare-links.tsx),
+   * rendered after the platform section, with this page's own one-sentence
+   * intro above it: the list repeats across pages, the sentence does not.
+   * Added 2026-09-30 for /postgres. /compute carries it too and renders it
+   * from app/compute/page.tsx, since that page does not go through ProductPage.
+   */
+  compare?: { intro: string };
+  /**
+   * A visible FAQ (sections/faq.tsx) after the platform section, in the words
+   * people ask answer engines. Plain strings; the section recognises a tiny
+   * inline syntax (`[text](/path)` for links, backticks for inline code) so
+   * answers can carry real links and code chips without JSX in a .ts content
+   * file. See `lib/faq-answer.tsx`.
+   *
+   * The Markdown rendition prints the raw strings. A FAQPage JSON-LD block is
+   * added page-by-page where the SEO brief asks for it (see
+   * `app/postgres/page.tsx`), generated from the same strings with the inline
+   * markup stripped back to plain text, so visible and structured copy cannot
+   * drift. /compute still ships without a FAQ schema; add one there only when
+   * its brief asks for it.
+   */
+  faq?: { question: string; answer: string }[];
   cta: {
     /**
      * The closer is deliberately per-page. Review feedback flagged all three

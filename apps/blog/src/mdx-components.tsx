@@ -89,13 +89,13 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CalloutTitle: ({ children }: any) => <>{children}</>,
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, ...props }: any) => {
-      const variantMap: Record<string, "ppg" | "error" | "success" | "warning"> = {
+      const variantMap: Record<string, "ppg" | "note" | "error" | "success" | "warning"> = {
         ppg: "ppg",
         error: "error",
         success: "success",
         warning: "warning",
-        info: "ppg",
-        note: "ppg",
+        info: "note",
+        note: "note",
         tip: "success",
         danger: "error",
       };

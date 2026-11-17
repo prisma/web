@@ -1,24 +1,70 @@
+import { handleAgentFront } from "@/agent-front";
 import {
+  AGENT_MARKDOWN_VARY,
   getAgentMarkdownRewritePathname,
   getAgentMarkdownSignal,
   isMcpProtocolRequest,
 } from "@/lib/agent-markdown";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
 /**
- * Serves the Markdown rendition of a marketing page to agents that ask for it,
- * mirroring apps/docs/src/proxy.ts, and marks the HTML variant `Vary: Accept`
- * for everyone else.
+ * Three jobs, in this order.
  *
- * The matcher below is the containment boundary: it enumerates exactly the
- * nine pages that have a rendition, so this can never run on `/docs/*`,
- * `/blog/*`, `/api/*`, `/_next/*`, `/site-static/*`, `/llms.mdx/*` or any path
- * with a file extension. It deliberately carries no `has` condition, because
- * the no-signal branch has work to do: `Vary: Accept` has to reach the HTML
- * response, and Next overwrites the `Vary` it gets from `headers()` in
- * next.config.mjs with its own RSC value, so a middleware append is the only
- * place it survives. The `Link` header still comes from next.config.mjs.
+ * 1. A permanent redirect from a `/blog` URL carrying `?from_theconsensus` to
+ *    the same URL without it (see `blogLinkTagRedirect`).
+ * 2. Agent Front (`src/agent-front.ts`, ora's generated file, which strips
+ *    query strings and fragments from reported referers)
+ *    reports each page request to ora after the response has been sent, so the
+ *    Agent traffic page can tell agents from people. It answers a request
+ *    itself only for `/__ora/status`, or once Autopilot is switched on in the
+ *    ora Portal; otherwise it returns null and the request carries on.
+ * 3. The Markdown rendition of a marketing page, product guide or Data Guide
+ *    page for agents that ask for it, mirroring apps/docs/src/proxy.ts and
+ *    apps/blog's posts, with a `Vary` append on both variants (see
+ *    `agentMarkdown`).
+ *
+ * The site app is the root zone, and a proxy runs before `rewrites()`, so this
+ * one file sees `/docs/*` and `/blog/*` on their way to the docs and blog
+ * zones. That is what lets a single Agent Front install cover all of
+ * www.prisma.io, and it is also why the third job needs a boundary.
  */
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const redirected = blogLinkTagRedirect(request);
+  if (redirected) return redirected;
+
+  // Prisma owns /mcp, including during an Ora policy outage.
+  if (request.nextUrl.pathname === "/mcp" || request.nextUrl.pathname === "/mcp/") {
+    return agentMarkdown(request);
+  }
+
+  const answered = await handleAgentFront(request, event);
+  if (answered) return answered;
+
+  return agentMarkdown(request);
+}
+
+const BLOG_LINK_TAG = "from_theconsensus";
+
+/**
+ * The tag changes nothing on the page, so a tagged URL is the same post at a
+ * second address. This lives here and not in `redirects()` because a
+ * next.config redirect passes the request's query on to its destination, so it
+ * cannot remove a parameter. Any other query value stays on the redirect.
+ *
+ * The Composer gateway sends `/blog` straight to the blog server, without this
+ * proxy, so there a tagged URL keeps answering 200 with its canonical link.
+ */
+function blogLinkTagRedirect(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+  if (!searchParams.has(BLOG_LINK_TAG)) return null;
+  if (pathname !== "/blog" && !pathname.startsWith("/blog/")) return null;
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+
+  const url = request.nextUrl.clone();
+  url.searchParams.delete(BLOG_LINK_TAG);
+  return NextResponse.redirect(url, 308);
+}
+
 function withVaryAccept(response: NextResponse) {
   // Append, never set: Next's own `Vary` carries the RSC negotiation headers
   // and dropping them would poison the router cache.
@@ -27,17 +73,47 @@ function withVaryAccept(response: NextResponse) {
   return response;
 }
 
-export function proxy(request: NextRequest) {
+/**
+ * The request headers the rewrite below sets for the Markdown routes. A client
+ * can send them too, so a request the proxy does not rewrite loses them: the
+ * Data Guide route reads `x-prisma-agent-markdown` to tell a rewritten HTML URL
+ * from a `.md` URL.
+ */
+const AGENT_MARKDOWN_REQUEST_HEADERS = ["x-prisma-agent-markdown", "x-prisma-agent-markdown-path"];
+
+function passThrough(request: NextRequest) {
+  if (!AGENT_MARKDOWN_REQUEST_HEADERS.some((name) => request.headers.has(name))) {
+    return NextResponse.next();
+  }
+  const headers = new Headers(request.headers);
+  for (const name of AGENT_MARKDOWN_REQUEST_HEADERS) headers.delete(name);
+  return NextResponse.next({ request: { headers } });
+}
+
+function agentMarkdown(request: NextRequest) {
+  // The containment boundary. The matcher used to be it, naming the nine pages
+  // that have a rendition and nothing else; now that the proxy runs on every
+  // page for Agent Front, this line is what keeps the rest of the function off
+  // `/docs/*`, `/blog/*`, `/api/*`, `/llms.mdx/*` and any path with a file
+  // extension. Those get a bare `next()`, exactly as if the proxy had not run,
+  // less any client-sent copy of the rewrite's request headers.
+  const rewritePathname = getAgentMarkdownRewritePathname(request.nextUrl.pathname);
+  if (!rewritePathname) return passThrough(request);
+
   // Markdown negotiation is a read. Anything else on these paths — notably an
   // MCP initialize POST to /mcp — belongs to whatever normally handles it.
-  if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
-  if (isMcpProtocolRequest(request.headers)) return withVaryAccept(NextResponse.next());
+  if (request.method !== "GET" && request.method !== "HEAD") return passThrough(request);
+  if (isMcpProtocolRequest(request.headers)) return withVaryAccept(passThrough(request));
 
+  // The no-signal branch has work to do: it appends `Vary: Accept` for the
+  // HTML variant. Next overwrites the `Vary` it gets from `headers()` in
+  // next.config.mjs with its own RSC value, so this append is the only place
+  // the value is set. It does not reach a 200 on Vercel (that carries only
+  // Next's RSC `Vary`), but it is what a CDN 304 for the page carries (see
+  // the note on the rewrite below). The `Link` header still comes from
+  // next.config.mjs.
   const signal = getAgentMarkdownSignal(request.headers);
-  if (!signal) return withVaryAccept(NextResponse.next());
-
-  const rewritePathname = getAgentMarkdownRewritePathname(request.nextUrl.pathname);
-  if (!rewritePathname) return withVaryAccept(NextResponse.next());
+  if (!signal) return withVaryAccept(passThrough(request));
 
   const url = request.nextUrl.clone();
   url.pathname = rewritePathname;
@@ -57,22 +133,53 @@ export function proxy(request: NextRequest) {
     },
   });
   response.headers.set("x-prisma-agent-markdown", signal);
-  response.headers.append("Vary", "Accept");
+  // The Markdown variant is chosen by `Accept` or by the agent's User-Agent, so
+  // it varies on both: a shared cache must not hand it to a browser that sends
+  // the same `Accept`. The HTML variant appends `Vary: Accept` only; an agent
+  // served cached HTML still gets a correct page, and keying every page's HTML
+  // on User-Agent would split shared caches per browser build.
+  //
+  // On Vercel the two response paths differ (measured on www.prisma.io,
+  // 2026-10-19). On a 200 the Markdown route's own `Vary` wins and this one is
+  // dropped, so the route sends the same value (`AGENT_MARKDOWN_VARY`). On a
+  // CDN 304 (a conditional GET whose `If-None-Match` matches) it is the other
+  // way round: the client gets this proxy's `Vary` and not the route's. So
+  // both have to say `Accept, User-Agent`. Under `next start` the two merge.
+  response.headers.append("Vary", AGENT_MARKDOWN_VARY);
 
   return response;
 }
 
 /**
- * Next extracts `matcher` statically at build time, so the page list has to be
- * an inline literal — it cannot be derived from `AGENT_MARKDOWN_PATHS`, and it
- * cannot even reference a const declared in this file.
- * `src/lib/agent-markdown.test.ts` reads the alternation back out of this
- * source and asserts it still matches `AGENT_MARKDOWN_PATHS`.
+ * Every page request, and nothing the proxy could not use.
  *
- * Nine literal paths is the whole surface this runs on: no `/docs/*`, no
- * `/blog/*`, no `/api/*`, no `/_next/*`, no `/site-static/*`, no `/llms.mdx/*`,
- * and nothing with a file extension can match either source.
+ * Agent Front's own matcher is `/((?!_next/static|_next/image|favicon.ico).*)`.
+ * This one is narrower in three ways, none of which costs it a reported event:
+ *
+ * - The three zones serve their assets from `/site-static`, `/docs-static` and
+ *   `/blog-static`, not `/_next/static`, so those prefixes are excluded too.
+ *   Without them every script, stylesheet and font would wake the proxy up.
+ * - Paths ending in one of the extensions in `ASSET_EXTENSIONS` in
+ *   `src/agent-front.ts` are excluded, because `shouldRecord` there drops them
+ *   anyway. `src/lib/proxy-matcher.test.ts` keeps the two lists in step.
+ * - Requests carrying the `rsc` header are excluded. Those are the App
+ *   Router's own fetches for soft navigations and `<Link>` prefetches, and
+ *   Agent Front does not count them: `isPageView` only counts a browser
+ *   request whose `sec-fetch-dest` is a document.
+ *
+ * What is left still includes everything ora may manage under Autopilot
+ * (`/robots.txt`, `/llms.txt`, `/agents.md`, `/openapi.json`, `/.well-known/*`,
+ * `*.md`) and `/__ora/status`.
+ *
+ * Next reads `config` by static analysis, so this has to be an inline literal.
  */
 export const config = {
-  matcher: ["/", "/:page(orm|postgres|compute|pricing|studio|stack|enterprise|mcp)"],
+  matcher: [
+    {
+      source:
+        "/((?!_next/static|_next/image|site-static|docs-static|blog-static|.*\\.(?:js|mjs|css|map|png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|eot|mp4|webm|mp3|wav)$).*)",
+      missing: [{ type: "header", key: "rsc" }],
+    },
+  ],
 };
+

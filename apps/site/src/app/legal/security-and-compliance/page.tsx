@@ -14,7 +14,14 @@ export const metadata = createPageMetadata({
 
 // Compliance claims sourced from the pricing spec table (plan availability)
 // and the partner terms; the Trust Center carries the authoritative reports.
-const STANDARDS = [
+type Standard = {
+  name: string;
+  description: string;
+  href?: string;
+  hrefLabel?: string;
+};
+
+const STANDARDS: Standard[] = [
   {
     name: "SOC 2 Type II",
     description:
@@ -33,7 +40,9 @@ const STANDARDS = [
   {
     name: "HIPAA",
     description:
-      "Support for workloads with protected health information. Available from the Pro plan.",
+      "Support for workloads with protected health information, with a signed Business Associate Agreement. Available on the Business plan at $129 a month.",
+    href: "/postgres/hipaa",
+    hrefLabel: "HIPAA on the Business plan",
   },
 ];
 
@@ -72,6 +81,18 @@ export default function SecurityCompliancePage() {
                 <h3 className="text-base font-semibold">{standard.name}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {standard.description}
+                  {standard.href ? (
+                    <>
+                      {" "}
+                      <Link
+                        href={standard.href}
+                        className="font-semibold text-prism-cyan-700 hover:underline"
+                      >
+                        {standard.hrefLabel ?? "Learn more"}
+                      </Link>
+                      .
+                    </>
+                  ) : null}
                 </p>
               </div>
             ))}

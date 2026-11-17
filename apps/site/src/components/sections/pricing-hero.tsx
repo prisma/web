@@ -20,7 +20,7 @@ import { Texture } from "@/components/brand/texture";
 //    the explanation still lands, just after the prices rather than before them.
 //    That inversion is the point of the ask.
 //  - The three checkmarks. "Free tier, no credit card required" is on the Free
-//    card, "One bill, one platform" and the 5x claim are both in
+//    card, "One bill, one platform" and the cost comparison are both in
 //    PricingComparison.
 //  - The two CTAs. Every plan card has its own, and CtaBurst closes the page.
 //

@@ -114,7 +114,7 @@ export const plans: Record<PricingPlanKey, PricingPlan> = {
     subtitle: "Perfect for that weekend idea",
     points: [
       "<b>200,000</b> operations<span>*</span> included",
-      "<b>500 MB</b> storage",
+      "<b>2 GB</b> storage",
       "<b>50</b> databases",
       "No credit card required",
     ],
@@ -302,14 +302,23 @@ export const comparisonSections: Array<{
       ["Connection limit (direct)", "10", "10", "50", "100"],
       ["Connection limit (pooled)", "10", "100", "500", "1000"],
       ["Connection idle timeout", "60 minutes", "60 minutes", "60 minutes", "60 minutes"],
-      ["Auto-scaling", "✓", "✓", "✓", "✓"],
+      ["Pool mode", "transaction", "transaction", "transaction", "transaction"],
       ["Operation response size", "unlimited", "unlimited", "unlimited", "unlimited"],
-      ["Operation duration for db queries", "unlimited", "unlimited", "unlimited", "unlimited"],
+      [
+        "Operation duration for db queries",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+        "10 min pooled, unlimited direct",
+      ],
       ["Operation duration for interactive", "unlimited", "unlimited", "unlimited", "unlimited"],
     ],
   },
   {
-    title: "Global Cache",
+    // Accelerate, and its cache with it, retires on December 1, 2026 and bills
+    // until then, so the rows stay; the title carries the date. The switch
+    // guide is /docs/postgres/database/switch-from-accelerate.
+    title: "Accelerate cache (retires December 1, 2026)",
     rows: [
       [
         "Cache tag invalidations",
@@ -339,7 +348,7 @@ export const comparisonSections: Array<{
     title: "Platform",
     rows: [
       ["Support", "Community", "Community", "Standard", "Premium"],
-      ["Compliance", "GDPR", "GDPR", "GDPR / HIPAA", "GDPR / HIPAA / SOC2 / ISO:27001"],
+      ["Compliance", "GDPR", "GDPR", "GDPR", "GDPR / HIPAA / SOC2 / ISO:27001"],
     ],
   },
 ];

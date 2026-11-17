@@ -35,4 +35,4 @@ Run from `apps/docs`:
 2. `pnpm audit:redirects:strict` after adding redirects.
 3. `pnpm lint:agent-ready` after touching sections, llms surfaces, or the OpenAPI explorer.
 4. `pnpm types:check` and `pnpm build` for code changes.
-5. `pnpm lint:versions` after pinning a Prisma package version. Every pin in the current docs must be the package's `latest` on npm; write "since `8.0.0-rc.10`" or use an "Added in" column for history.
+5. `pnpm lint:versions` after pinning a Prisma package version. Every pin in the current docs must be the package's `latest` on npm, except `@prisma/cli-engine`, which must be the version that `prisma@latest` depends on; write "since `8.0.0-rc.10`" or use an "Added in" column for history.

@@ -1,210 +1,40 @@
+import { securityHeaders } from "../../packages/ui/security-headers.mjs";
+import { composerNextConfig, composerPublicDocumentHeaders } from "../../composer/next-config.mjs";
 import { createMDX } from "fumadocs-mdx/next";
+import { writePublicImageVersions } from "./scripts/public-image-versions.ts";
+import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants.js";
 
 const withMDX = createMDX();
 
-const ContentSecurityPolicy = `
-  default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval'
-    https://ingest.promptwatch.com
-    https://cdn-cookieyes.com
-    https://cdn.tolt.io
-    https://unpkg.com
-    https://cdn.jsdelivr.net
-    https://www.youtube.com
-    https://www.youtube-nocookie.com
-    https://tally.so
-    https://va.vercel-scripts.com
-    https://www.googletagmanager.com
-    https://widget.kapa.ai
-    https://www.google.com
-    https://www.gstatic.com
-    https://metrics.kapa.ai
-    https://proxyhog.prisma-data.net
-    https://cdn.cr-relay.com
-    https://app.enzuzo.com/
-    https://static.ads-twitter.com
-    https://snap.licdn.com
-    https://vercel.live
-    https://58qr5yci46.execute-api.us-east-1.amazonaws.com
-    https://analytics.twitter.com
-    https://t.co
-    https://static.ads-twitter.com
-    https://px.ads.linkedin.com
-    https://snap.licdn.com
-    https://region1.google-analytics.com
-    https://googleads.g.doubleclick.net
-    https://pagead2.googlesyndication.com
-    https://googleads.g.doubleclick.net
-    https://td.doubleclick.net
-    https://*.fontawesome.com
-    https://raw.githubusercontent.com
-    https://hcaptcha.com
-    https://*.hcaptcha.com;
+/**
+ * `Link` headers that point agents at the blog's Markdown, the way apps/docs
+ * and apps/site point at theirs. Every page names /blog/llms.txt, and a post
+ * also names its own `.md` rendition. When two rules set `Link` on the same
+ * path, Next.js keeps the later one, so the post rule repeats the llms.txt
+ * entry.
+ */
+const llmsTxtHeader = {
+  key: "Link",
+  value: '</blog/llms.txt>; rel="llms-txt"',
+};
 
-  style-src 'self' 'unsafe-inline'
-    https://fonts.googleapis.com
-    https://cdn.tolt.io
-    https://vercel.live
-    https://proxyhog.prisma-data.net
-    https://hcaptcha.com
-    https://*.hcaptcha.com;
-
-  font-src 'self' data:
-    https://fonts.gstatic.com
-    https://vercel.live https://assets.vercel.com
-    https://*.fontawesome.com;
-
-  img-src 'self' data:
-    https://www.googletagmanager.com
-    https://cdn.sanity.io
-    https://prismalens.vercel.app
-    https://api.producthunt.com
-    https://www.google.com
-    https://www.google.com/s2/favicons
-    https://*.gstatic.com
-    https://pbs.twimg.com/
-    https://cdn.tolt.io
-    https://cdn-cookieyes.com
-    https://website-prisma.vercel.app
-    https://www.cursor.com/
-    https://cursor.com/
-    https://analytics.twitter.com
-    https://t.co
-    https://static.ads-twitter.com
-    https://px.ads.linkedin.com
-    https://snap.licdn.com
-    https://pagead2.googlesyndication.com
-    https://googleads.g.doubleclick.net
-    https://vercel.live https://vercel.com data: blob:
-    https://td.doubleclick.net
-    https://raw.githubusercontent.com
-    https://*.google-analytics.com
-    https://stats.g.doubleclick.net;
-
-  connect-src 'self'
-    https://ingest.promptwatch.com
-    https://api.github.com
-    https://p2zxqf70.api.sanity.io
-    https://www.youtube.com
-    https://cdn.jsdelivr.net
-    https://accelerate-analytics-exporter.prisma-data.net
-    https://www.prisma-status.com
-    https://api.rippling.com
-    https://api.producthunt.com
-    https://*.tally.so
-    https://va.vercel-scripts.com
-    https://www.googletagmanager.com
-    https://www.google.com
-    https://www.gstatic.com
-    https://kapa-widget-proxy-la7dkmplpq-uc.a.run.app
-    https://metrics.kapa.ai
-    https://cdn-cookieyes.com
-    https://log.cookieyes.com
-    https://*.algolia.net
-    https://*.algolianet.com
-    https://proxyhog.prisma-data.net
-    https://directory.cookieyes.com
-    https://api.cr-relay.com
-    https://pagead2.googlesyndication.com
-    https://px.ads.linkedin.com
-    https://internal-t.posthog.com
-    https://vercel.live wss://ws-us3.pusher.com
-    https://react-tweet.vercel.app
-    https://cdn.tolt.io
-    https://58qr5yci46.execute-api.us-east-1.amazonaws.com
-    https://analytics.twitter.com
-    https://t.co
-    https://static.ads-twitter.com
-    https://px.ads.linkedin.com
-    https://snap.licdn.com
-    https://region1.google-analytics.com
-    https://googleads.g.doubleclick.net
-    https://pagead2.googlesyndication.com
-    https://googleads.g.doubleclick.net
-    https://td.doubleclick.net
-    https://raw.githubusercontent.com
-    https://www.google-analytics.com
-    https://unpkg.com
-    https://proxy.kapa.ai
-    https://hcaptcha.com
-    https://*.hcaptcha.com
-    https://ka-p.fontawesome.com
-    https://*.analytics.google.com
-    https://stats.g.doubleclick.net
-    https://*.google-analytics.com;
-
-  media-src 'self'
-    https://*.prisma.io
-    https://unpkg.com
-    https://cdn.jsdelivr.net
-    https://www.youtube.com;
-
-  frame-src 'self'
-    https://www.youtube.com
-    https://youtube.com
-    https://youtube-nocookie.com
-    https://tally.so
-    https://*.tally.so
-    https://www.googletagmanager.com
-    https://www.google.com
-    https://www.gstatic.com
-    https://vercel.live/
-    https://pagead2.googlesyndication.com
-    https://googleads.g.doubleclick.net
-    https://td.doubleclick.net
-    https://calculator.prisma.io/
-    https://ppg-pricing-calculator.vercel.app
-    https://hcaptcha.com
-    https://*.hcaptcha.com;
-
-
-  child-src 'self'
-    https://www.youtube.com
-    https://youtube.com
-    https://youtube-nocookie.com
-    https://tally.so
-    https://*.tally.so
-    https://www.googletagmanager.com
-    https://www.google.com
-    https://www.gstatic.com;
-
-  worker-src 'self';
-
-  object-src 'none';
-
-  base-uri 'self';
-
-  form-action 'self';
-
-  frame-ancestors 'self';
-`;
-
-const securityHeaders = [
+const postMarkdownHeaders = [
+  ...composerPublicDocumentHeaders,
   {
-    key: "Accept-Encoding",
-    value: "gzip, compress, br, zstd",
-  },
-  {
-    key: "X-Frame-Options",
-    value: "SAMEORIGIN",
-  },
-  {
-    key: "X-Content-Type-Options",
-    value: "nosniff",
-  },
-  {
-    key: "Content-Security-Policy",
-    value: ContentSecurityPolicy.replace(/\s{2,}/g, " ").trim(),
-  },
-  {
-    key: "Referrer-Policy",
-    value: "strict-origin-when-cross-origin",
-  },
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
+    key: "Link",
+    value:
+      '</blog/:slug.md>; rel="alternate"; type="text/markdown", </blog/llms.txt>; rel="llms-txt"',
   },
 ];
+
+/**
+ * A post URL: one path segment of letters, digits, `-` and `_` that is not one
+ * of the blog's other routes. Keep it in step with `getPostSlug` and
+ * `RESERVED_SEGMENTS` in src/lib/agent-markdown.ts; post-markdown-headers.test.ts
+ * checks that the two agree.
+ */
+export const POST_HEADER_SOURCE =
+  "/:slug((?!(?:api|author|blog-static|llms|monitoring|og|page|series|sitemap|tag)$)[A-Za-z0-9_-]+)";
 
 const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0.1,192.168.1.48")
   .split(",")
@@ -213,6 +43,8 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "localhost,127.0.0
 
 /** @type {import('next').NextConfig} */
 const config = {
+  poweredByHeader: false,
+  ...composerNextConfig,
   reactCompiler: true,
   async redirects() {
     const tagSlugs = [
@@ -251,6 +83,91 @@ const config = {
         destination: "/",
         permanent: true,
       },
+      // Recovered dead slugs. Exact series URLs only, so live /blog/series/* pages stay.
+      {
+        source: "/graphqlgen-fj3s0ssc1jsx",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      {
+        source: "/series/what-is-nexus-wsobadcm7oju",
+        destination:
+          "/introducing-graphql-nexus-code-first-graphql-server-development-ll6s1yy5cxl5",
+        permanent: true,
+      },
+      {
+        source: "/experimental-graphql-106b07424435",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      {
+        source: "/prisma-2-is-coming-soon-mwwfhevie993",
+        destination: "/announcing-prisma-2-n0v98rzc8br1",
+        permanent: true,
+      },
+      {
+        source: "/series/modern-backend-bdes2ps5kibb",
+        destination: "/backend-prisma-typescript-orm-with-postgresql-data-modeling-tsjs1ps7kip1",
+        permanent: true,
+      },
+      {
+        source: "/series/e2e-typesafety-graphql-react-yiw81oBkun",
+        destination: "/e2e-type-safety-graphql-react-1-I2GxIfxkSZ",
+        permanent: true,
+      },
+      {
+        source: "/how-prisma-orm-became-the-mostdownloaded-orm-for-node-js",
+        destination: "/how-prisma-orm-became-the-most-downloaded-orm-for-node-js",
+        permanent: true,
+      },
+      {
+        source:
+          "/graphql-server-basics-demystifying-the-info-argumentin-graphql-resolvers-6f26249f613a",
+        destination:
+          "/graphql-server-basics-demystifying-the-info-argument-in-graphql-resolvers-6f26249f613a",
+        permanent: true,
+      },
+      // Stray ] in an inbound URL. Next.js matches the decoded path; keep the
+      // encoded form too in case the request is not decoded first.
+      {
+        source: "/graphql-server-basics-the-network-layer-51d97d21861]",
+        destination: "/graphql-server-basics-the-network-layer-51d97d21861",
+        permanent: true,
+      },
+      {
+        source: "/graphql-server-basics-the-network-layer-51d97d21861%5D",
+        destination: "/graphql-server-basics-the-network-layer-51d97d21861",
+        permanent: true,
+      },
+      { source: "/prisma-7", destination: "/announcing-prisma-orm-7-0-0", permanent: true },
+      { source: "/trpc-a-new-way-to-build-apis-tRPC-yQvVq00oF", destination: "/", permanent: true },
+      {
+        source: "/vscode-thieghu7shoo",
+        destination: "/vscode-extension-prisma-rust-webassembly",
+        permanent: true,
+      },
+      {
+        source: "/reusing-and-composing-graphql-apis-with-graphql-bindings-80a4aa37cff5",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      {
+        source: "/prisma-client-beta-ahph4o1umail",
+        destination: "/prisma-client-preview-ahph4o1umail",
+        permanent: true,
+      },
+      {
+        source: "/performance-release-aeduv0rei0ji",
+        destination: "/prisma-orm-without-rust-latest-performance-benchmarks",
+        permanent: true,
+      },
+      {
+        source:
+          "/graphql-binding-2-0-improved-api-schema-transforms-automatic-codegen-5934cd039db1",
+        destination: "/prisma-and-graphql-mfl5y2r7t49c",
+        permanent: true,
+      },
+      { source: "/state-of-databases-2024", destination: "/", permanent: true },
       {
         source: "/the-database-should-not-become-the-product",
         destination: "/how-xeito-builds-features-not-database-infrastructure-with-prisma",
@@ -349,16 +266,30 @@ const config = {
   images: { unoptimized: true },
   transpilePackages: ["@prisma/eclipse"],
   experimental: {
+    ...composerNextConfig.experimental,
     globalNotFound: true,
   },
   async headers() {
     return [
       {
+        // Next adds /blog; social crawlers can fetch cards without indexing them.
+        source: "/og/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
+      {
         source: "/:path*",
-        headers: securityHeaders,
+        headers: [...securityHeaders, llmsTxtHeader],
+      },
+      {
+        source: POST_HEADER_SOURCE,
+        headers: postMarkdownHeaders,
       },
     ];
   },
 };
 
-export default withMDX(config);
+export default async function nextConfig(phase) {
+  if (phase === PHASE_PRODUCTION_BUILD || phase === PHASE_DEVELOPMENT_SERVER)
+    await writePublicImageVersions();
+  return withMDX(config);
+}

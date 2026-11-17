@@ -1,0 +1,155 @@
+---
+title: "Custom domain not working but the hosting URL works: what do I need to configure?"
+description: "Fix a custom domain that fails while the host's own URL works: DNS records, apex domains, conflicting records, TLS certificates and app settings."
+summary: "If the host's generated URL works, the app is running and the problem sits between your domain and the host. Check four things in order: the domain is added in the host's settings, DNS has the exact record the host asked for (a CNAME for a subdomain, an A record or a flattened CNAME at the root domain), the host has issued a TLS certificate for the name, and the app no longer refers to the old URL in its base URL, OAuth redirects, CORS origins or cookies. On [Prisma Compute](/docs/compute), a custom domain is one CNAME on a production app, and Prisma Compute verifies the DNS record and provisions the certificate."
+author: "Gregory Boch"
+authorUrl: "https://github.com/gregory-boch-prisma"
+date: "2026-10-19"
+updatedAt: "2026-10-19"
+readingTime: "7 min read"
+faq:
+  - question: "How long does a DNS change take to work?"
+    answer: "A new record is often visible within minutes, but a resolver that cached the old answer keeps it until that record's TTL runs out, and a nameserver change can take up to 24 to 48 hours. Query a public resolver such as `dig @1.1.1.1 app.example.com` to see what the internet sees, rather than relying on your own browser, which may have cached the old result."
+  - question: "Can I put a CNAME on my root domain?"
+    answer: "Not as a plain CNAME. RFC 1034 says no other data should be present at a name that has a CNAME, and the root domain always carries NS records. Use the A record your host gives you, or a DNS provider that offers ALIAS, ANAME or CNAME flattening. Prisma Compute needs one of those CNAME-like records at the root; a subdomain such as `www` or `app` takes a normal CNAME."
+  - question: "Why does HTTPS fail on my domain when the host's URL has HTTPS?"
+    answer: "A certificate covers specific hostnames. The host's certificate for its generated URL does not cover your domain, so the host has to issue a new one for your name, and it can only do that once DNS points at it. Check the domain status in the host's dashboard or CLI. A CAA record that does not allow the host's certificate authority, or a proxy in front of the host, can also block issuance."
+  - question: "Do I need to redeploy after changing the app's URL settings?"
+    answer: "Usually, yes. Many frameworks read environment variables when the app builds or starts. On Prisma Compute, environment variable values resolve at deploy time, and changing one does not trigger a redeploy, so deploy again after you update a base URL or allowed origin."
+related:
+  - title: "Prisma Compute custom domains documentation"
+    href: "/docs/compute/domains"
+  - title: "Publishing an app to send a client an HTTPS link"
+    href: "/compute/share-app-with-client"
+  - title: "How custom domains on Prisma Compute work"
+    href: "/blog/prisma-compute-custom-domains"
+cta:
+  title: "Put your Prisma Compute app on your own domain"
+  description: "Add the domain with the Prisma CLI, create the CNAME record it prints, and let Prisma Compute verify DNS and issue the certificate."
+  label: "Set up a custom domain"
+  href: "/docs/compute/domains"
+---
+
+When the generated URL (`your-app.example-host.com`) works and your own domain does not, the app itself is running. A request to your domain fails before it reaches the app, or it reaches the app with a name the app does not expect. The fix is configuration in three places: the host's domain settings, your DNS provider and the app itself.
+
+We make Prisma Compute and Prisma Postgres. The other providers' documentation linked on this page was checked on October 19, 2026.
+
+## Which layer is failing?
+
+What the browser shows on your domain points to the layer to fix. Run the checks against your own hostname.
+
+| What you see on your domain | Likely cause | Check |
+| --- | --- | --- |
+| "Site can't be reached", `NXDOMAIN` | No DNS record, or a typo in its name | `dig +short app.example.com` returns nothing |
+| A registrar parking page or an old site | An old record still answers, or the new one hasn't propagated | `dig +short app.example.com` returns an address you don't recognize |
+| A 404 page or error page from the host | DNS points at the host, but the domain isn't added to your app | The domain is missing or unverified in the host's settings |
+| A certificate warning | No certificate has been issued for your domain yet | The domain status in the host's dashboard or CLI |
+| "Too many redirects" | A proxy and the app redirect between HTTP and HTTPS | The proxy's TLS mode and the app's redirect rules |
+| The page loads, but login, API calls or sessions fail | The app still uses the old URL | Base URL, OAuth redirect URIs, CORS origins, cookie domain |
+
+## Why it happens
+
+A hosting platform serves many apps from shared infrastructure and decides which app gets a request from the hostname in that request. Your domain only reaches your app when three things line up. DNS has to send the name to the host, the host has to know the name belongs to your app, and the host needs a TLS certificate issued for that exact name. The generated URL already has all three, which is why it works.
+
+The fourth gap is inside the app. Code and settings written while the app lived at the generated URL often hard-code that URL. Redirects, OAuth callbacks, API calls from the browser and cookies then keep pointing at the old name.
+
+## How to fix it
+
+These steps work on any host. Replace `app.example.com` with your hostname and use the record values your host gives you.
+
+### 1. Add the domain in the host's settings
+
+DNS alone does not attach a domain to an app. Add the exact hostname in the host's domain settings, and add `example.com` and `www.example.com` separately if you want both. [Vercel's troubleshooting guide](https://vercel.com/docs/domains/troubleshooting) starts with the same question: is the domain added to the project? Some hosts check DNS before they accept the domain, so the order of steps 1 and 2 depends on the host.
+
+### 2. Create the record the host asks for
+
+For a subdomain such as `app.example.com` or `www.example.com`, create a CNAME record whose value is the target the host shows. For the root domain, `example.com`, a plain CNAME isn't allowed: [RFC 1034](https://www.rfc-editor.org/rfc/rfc1034.txt) says that when a CNAME is present at a name, no other data should be, and the root always has NS records. Use the A record the host provides, or a DNS provider that offers a CNAME-like record at the root, such as Cloudflare's [CNAME flattening](https://developers.cloudflare.com/dns/cname-flattening/) or an ALIAS or ANAME record.
+
+Two mistakes are common. On providers whose Name field expects only the label (`app`), entering the full hostname creates `app.example.com.example.com`. And a retyped target with a typo, or with a trailing period dropped that the host included on purpose, can point somewhere other than the host: paste the value exactly as the host shows it. [Vercel's guide](https://vercel.com/docs/domains/troubleshooting#absolute-cname-records) covers the trailing period under absolute CNAME records.
+
+### 3. Remove conflicting records and check what resolvers see
+
+Delete old A, AAAA or CNAME records on the same name, such as a registrar's parking page or a previous host. Then check the answer from public resolvers instead of your own machine:
+
+```sh
+dig +short CNAME app.example.com
+dig +short A example.com
+dig @1.1.1.1 +short app.example.com
+dig @8.8.8.8 +short app.example.com
+```
+
+If the answers don't match what the host expects, the problem is still DNS. Resolvers keep an old answer until its TTL expires. [Vercel's guide](https://vercel.com/docs/domains/troubleshooting) recommends lowering the old record's TTL before a switch, and notes that nameserver changes can take up to 24 to 48 hours.
+
+### 4. Let the certificate issue, then test HTTPS
+
+Most hosts request a certificate for your domain automatically once DNS points at them. With the common [HTTP-01 challenge](https://letsencrypt.org/docs/challenge-types/), the certificate authority fetches a file from your domain, so issuance can't finish until step 3 is done. Check what the server returns:
+
+```sh
+curl -sSI http://app.example.com
+curl -sSI https://app.example.com
+```
+
+If HTTP answers and HTTPS fails, the certificate isn't there yet. Two settings often block it:
+
+- **CAA records.** A CAA record lists the certificate authorities allowed to issue for your domain. If you have CAA records, they must allow the authority your host uses. [Let's Encrypt's CAA page](https://letsencrypt.org/docs/caa/) explains the format, and `dig +short CAA example.com` shows yours.
+- **A proxy in front of the host.** When Cloudflare proxies a record, lookups return [Cloudflare's addresses](https://developers.cloudflare.com/dns/proxy-status/) instead of your host's target, so a host that checks the record or serves the HTTP challenge may not see it. Set the record to DNS only, or follow your host's proxy instructions. If you keep the proxy, Cloudflare's Flexible mode sends plain HTTP to the host, and an app that redirects HTTP to HTTPS then [loops](https://developers.cloudflare.com/ssl/troubleshooting/too-many-redirects/). Use Full (strict) once the host has a certificate.
+
+### 5. Update the app's own settings
+
+When the domain loads but parts of the app fail, search the code and environment for the generated hostname and change:
+
+- **The base URL.** Environment variables such as `APP_URL` or `NEXT_PUBLIC_SITE_URL` that build links, redirects and API calls.
+- **OAuth redirect URIs.** Identity providers only redirect to URIs registered with them. Google returns `redirect_uri_mismatch` when the URI [doesn't match an authorized redirect URI](https://developers.google.com/identity/protocols/oauth2/web-server) for the client. Add the new callback URL in each provider's console.
+- **CORS origins.** An API on another hostname must list the new origin in `Access-Control-Allow-Origin`, and requests with credentials need the exact origin rather than `*` ([MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS)).
+- **Cookies.** If the app sets cookies with `Domain` set to the old hostname, browsers [reject them](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie) when the response comes from your domain. Omit `Domain` for a host-only cookie, or set it to your domain.
+- **Host checks and redirects.** If your server or framework checks the `Host` header against an allowlist, add the new name. Pick one canonical hostname, for example `www` or the root, and redirect the other to it.
+
+Redeploy after changing environment variables. Many builds read them only when the app builds or starts.
+
+## Custom domains on Prisma Compute
+
+A [custom domain](/docs/compute/domains) on Prisma Compute attaches to a production app that has a promoted, running deployment. It uses one CNAME record that points at `switchboard.{region}.prisma.build`, the routing layer in front of the app. Prisma Compute verifies the DNS record, provisions the TLS certificate and terminates TLS, so there is no certificate to upload. The flow runs from the Prisma CLI:
+
+1. Register the domain. Registration checks DNS first, so a run before the record exists fails with `DOMAIN_DNS_NOT_CONFIGURED` and prints the record name and value to create:
+
+   ```sh
+   npx prisma service domain add app.example.com --service web
+   ```
+
+2. Create the printed CNAME record at your DNS provider. The CLI prints the full hostname as the record name; enter only the label (`app`) if your provider expects a relative name.
+
+3. Once the record has propagated, run the same `add` command again. TLS provisioning starts, and `wait` polls until the domain is active, for up to 15 minutes:
+
+   ```sh
+   npx prisma service domain wait app.example.com --service web
+   ```
+
+4. If the domain stays in `pending_dns` or `provisioning_tls`, or ends in `failed`, inspect it, then retry stuck provisioning:
+
+   ```sh
+   npx prisma service domain show app.example.com --service web
+   npx prisma service domain retry app.example.com --service web
+   ```
+
+`show` prints the state, certificate details and any DNS hints. `retry` returns `DOMAIN_RETRY_NOT_ELIGIBLE` when the domain isn't in a retryable state.
+
+The record has to resolve to the Switchboard target. The [launch post on custom domains](/blog/prisma-compute-custom-domains) says validation accepts "either the expected CNAME target or the underlying regional records associated with that target." A record proxied through Cloudflare answers with [Cloudflare's anycast addresses](https://developers.cloudflare.com/dns/proxy-status/) instead, so if you use Cloudflare DNS, set the record to DNS only (gray cloud). Keeping the proxy, the other option in step 4, isn't documented for Prisma Compute.
+
+Steps 3 and 5 of the general fix still apply, as does the CAA check in step 4: remove conflicting records, keep CAA records compatible with certificate issuance, and give the app's base URL, OAuth callbacks and cookies the new name. Environment variable values on Prisma Compute resolve at deploy time, so deploy again after you change them. Prisma Compute doesn't require Prisma ORM or Prisma Postgres, so this applies to any app you deploy there.
+
+The limits on the [Domains page](/docs/compute/domains) and [Known limitations](/docs/compute/limitations) decide whether this setup fits:
+
+- Custom domains attach to production apps only. Preview apps keep their generated URLs.
+- DNS uses CNAME records only. A root domain needs a DNS provider with ALIAS, ANAME or CNAME flattening. Without one, put the app on a subdomain such as `www` or `app`.
+- Wildcard hostnames such as `*.example.com` are rejected.
+- Each service can have up to 3 custom domains.
+
+## How to prevent it
+
+Lower the TTL on the existing record a day before you switch hosts, so a mistake rolls back quickly. Keep the generated URL working: it is the control that tells you whether a failure is in the app or in the domain setup. Keep the canonical URL in one environment variable rather than in code, and register OAuth callbacks for every hostname you serve before you move traffic.
+
+## When this fix doesn't apply
+
+If the generated URL fails too, the problem is in the app or the deployment, not the domain. Check the deploy logs first. If the domain works for you but not for some visitors, compare resolvers and networks before changing records, because a cached answer or a network that filters traffic can explain it.
+
+Some setups need a feature a host may not offer: a wildcard domain for many tenants, a custom domain on a preview environment, or an A record at the root because your DNS provider has no CNAME flattening. Prisma Compute supports none of these today, as [the Domains page](/docs/compute/domains) lists, so choose a host that does if you need one of them.

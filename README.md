@@ -8,8 +8,10 @@ This repository is a **pnpm monorepo** containing the Prisma documentation, blog
 
 | Path | Description |
 |------|--------------|
+| `apps/site` | Main Prisma website |
 | `apps/docs` | Prisma documentation site (Next.js + Fumadocs) |
 | `apps/blog` | Prisma blog |
+| `apps/handbook` | Builders Handbook (Next.js + Fumadocs), chapters written by Shane, see `apps/handbook/AUTHORING.md` |
 | `apps/eclipse` | Eclipse design system documentation |
 | `packages/eclipse` | Eclipse design system component library (`@prisma/eclipse`) |
 | `packages/ui` | Shared UI components and utilities (`@prisma-docs/ui`) |
@@ -30,12 +32,14 @@ pnpm install
 pnpm dev
 ```
 
-This starts all apps via Turbo:
+This builds and runs the combined Composer app locally. Open the **gateway URL**
+printed by Composer; it serves the site at `/`, docs at `/docs`, blog at `/blog`,
+handbook at `/handbook`, and Eclipse at `/eclipse`. No cloud credentials are needed.
+See [COMPOSER.md](COMPOSER.md) for resource budgets, configuration, and the build loop,
+and [COMPOSER_FINDINGS.md](COMPOSER_FINDINGS.md) for the findings from this port.
 
-- **Site** — http://localhost:3000  
-- **Docs** — http://localhost:3001  
-- **Blog** — http://localhost:3002  
-- **Eclipse** — http://localhost:3003  
+For the original Next.js HMR workflow, run `pnpm dev:turbo`. Its individual app ports
+remain 3000 (site), 3001 (docs), 3002 (blog), 3003 (Eclipse), and 3004 (handbook).
 
 To run a single app:
 
@@ -43,6 +47,7 @@ To run a single app:
 pnpm --filter docs dev      # docs only
 pnpm --filter blog dev      # blog only
 pnpm --filter eclipse dev   # eclipse design system docs only
+pnpm --filter handbook dev  # builders handbook only
 ```
 
 ## Build

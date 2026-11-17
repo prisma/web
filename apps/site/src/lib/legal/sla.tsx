@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const slaLastUpdated = "March 11, 2024";
+export const slaEffectiveDate = "October 12, 2026";
 
 type SlaSection = {
   title: string;
@@ -13,9 +13,9 @@ export const slaSections: SlaSection[] = [
     content: (
       <>
         <p>
-          Prisma commits to maintaining 99.95% monthly uptime for paid plan subscribers. The company
-          strives to ensure reliable service access, though this guarantee applies only to Pro,
-          Business, and Enterprise users.
+          Prisma commits to maintaining a Monthly Uptime Percentage of at least 99.95% for each
+          Covered Service. This commitment applies only to subscribers on the Pro, Business, and
+          Enterprise plans.
         </p>
         <p>
           Free Tier and Starter Plan participants are excluded from service credits and uptime
@@ -30,6 +30,11 @@ export const slaSections: SlaSection[] = [
       <>
         <p>Key definitions used throughout this agreement:</p>
         <ul>
+          <li>
+            <b>Covered Services:</b> The commercially available Prisma Services that have reached
+            general availability. Beta Services, as defined in the Terms of Service, are not Covered
+            Services.
+          </li>
           <li>
             <b>Monthly Uptime Percentage:</b> Continuous 5-minute downtime periods divided by total
             monthly 5-minute periods.
@@ -94,7 +99,9 @@ export const slaSections: SlaSection[] = [
         </ul>
         <p>
           Free Tier users receive no uptime guarantees. Starter Plan users lack SLA coverage. Early
-          Access or Preview feature users are excluded from SLA protections.
+          Access or Preview feature users are excluded from SLA protections. Services that are not
+          Covered Services, including Beta Services as defined in the Terms of Service, are excluded
+          from all SLA commitments.
         </p>
       </>
     ),

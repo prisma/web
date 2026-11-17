@@ -6,14 +6,14 @@ metaTitle: migration status | Prisma ORM CLI
 metaDescription: Learn how to inspect the Prisma ORM migration path and pending migrations.
 ---
 
-`migration status` shows which migrations are pending between the database marker and the target contract.
+The database stores a marker, a row that says which version of your contract it currently matches. `migration status` compares that marker with a target version and lists the migrations in between. The target is the contract you last ran `contract emit` on, unless `--to` names another.
 
 Use it before and after [`db migrate`](/cli/db-migrate), and when debugging why an environment is not at the expected contract state.
 
 ## Usage
 
 ```npm
-npx prisma@latest migration status --db "$DATABASE_URL"
+npx prisma migration status --db "$DATABASE_URL"
 ```
 
 ## Options
@@ -21,27 +21,80 @@ npx prisma@latest migration status --db "$DATABASE_URL"
 | Option | What it does |
 | --- | --- |
 | `--db <url>` | Connects to the database. |
-| `--space <id>` | Narrows output to a single contract space. |
-| `--to <contract>` | Sets the target contract reference (hash, prefix, ref name, migration directory name, `<dir>^`, or `./path`). |
-| `--from <contract>` | Sets the origin contract reference. With `--from`, the command computes the path offline and does not need a database. |
-| `--legend` | Prints a key for the tree glyphs and lane colors. |
+| `--space <id>` | Narrows output to a single [contract space](#contract-spaces), named by its directory under `migrations/`. |
+| `--to <contract>` | Sets the target contract state. Accepts a [contract reference](/orm/migrations/the-migration-graph#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
+| `--from <contract>` | Sets the origin contract state, and accepts the same forms as `--to`. With `--from`, the command computes the path offline and does not need a database. It needs one when `--from` or `--to` is `@db`, because it then reads the marker from the database. |
+| `--legend` | Prints a key to the symbols in the rows (`○`, the arrows, `✓`, `⧗`, `∅`) and to the labels. |
 | `--ascii` | Uses ASCII glyphs (pipe-friendly). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
 
+### Contract spaces [#contract-spaces]
+
+Prisma ORM keeps one migration history for your own models, called the `app` space, in `migrations/app/`, and one for each [extension package](/orm/extensions/using-extensions) that ships its own migrations, such as pgvector. Each of these histories is a [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page). Pass `--space app` to see only your own migrations.
+
+### Contract references [#contract-references]
+
+A ref name is a name you gave a contract state with [`migration ref set`](/cli/migration-ref), such as `prod`. `<dir>^` is a migration directory name followed by `^`, and it names the contract state before that migration, while the directory name alone names the state after it. `@contract` names the contract in `contract.json`, which `contract emit` writes. `@db` names the contract state that the database's marker records. `@empty` names the empty database, before any migration. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms for every command.
+
 ## Examples
 
 ```npm
-npx prisma@latest migration status --db "$DATABASE_URL"
-npx prisma@latest migration status --to production
-npx prisma@latest migration status --from abc123 --to production
-npx prisma@latest migration status --ascii
+npx prisma migration status --db "$DATABASE_URL"
+npx prisma migration status --to production
+npx prisma migration status --from abc123 --to production
+npx prisma migration status --ascii
 ```
 
 ## Reading the result
 
-With `--db`, status compares the on-disk migration packages to what has been applied in the database. With `--from`, it computes the path offline instead, without a database.
+### Sample output
 
-The `migration` group has three more read-only views: `migration graph` for topology, `migration log` for executed history, and `migration list` for on-disk enumeration. Run each with `--help` for details.
+When you do not pass `--db`, the command connects to `db.connection` in `prisma.config.ts`. With one migration applied and one pending, `npx prisma migration status` prints:
+
+```text
+│  migrations:  migrations
+│  database:    postgresql://****@localhost:54329/gaps
+
+○   a4c3fa7  @contract
+│↑  20260929T1558_add_user_phone  91e7f9f → a4c3fa7  1 ops  ⧗ pending
+○   91e7f9f  @db (db)
+│↑  20260929T1558_baseline              ∅ → 91e7f9f  6 ops  ✓ applied
+○   ∅
+
+⚠ 1 pending — run `prisma db migrate --to a4c3fa7fc3b2`
+```
+
+Read the drawing from the bottom up, because the earliest state is the bottom row. `∅` is the empty database, before any migration. `@contract` marks the contract in `contract.json`. `@db` marks the contract state that the database's marker records. `(db)` is the `db` [ref](/cli/migration-ref), the file `migrations/app/refs/db.json`, which records the contract state your development database is at. [`db init`](/cli/db-init) writes that file, and so does `db migrate --advance-ref db`. In this output `@db` and `(db)` are on the same row, because the marker and the `db` ref name the same state. [Check before, preview, then apply](/orm/migrations/applying-a-migration#check-before-preview-then-apply) explains each row and each label in more detail.
+
+The last line suggests the command to run next. It names the pending state by the first 12 characters of its hash, `a4c3fa7fc3b2`, which is the same hash the drawing shortens to 7 characters, `a4c3fa7`.
+
+With `--db`, status reads the marker from the database and compares it with the target. With `--from`, it starts from the state you name instead. It then needs no database, unless `--from` or `--to` is `@db`.
+
+### Warnings
+
+When the command warns with `MIGRATION.MARKER_NOT_IN_HISTORY`, the marker in the database records a contract state that is not in your migration history. This is one kind of drift, and the next `db migrate` on that database fails with `MIGRATION.MARKER_MISMATCH`. To fix it, see [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it).
+
+### Data lines
+
+The drawing goes to standard error. Without `--json`, standard output gets one line per migration on disk, with these fields separated by tabs: `space`, `name`, `from`, `to`, the number of operations, and `status`. `status` is `applied`, `pending`, or empty when the migration is not on the way to the target. [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the rules data lines follow.
+
+```bash
+npx prisma migration status --db "$DATABASE_URL" | awk -F'\t' '$6 == "pending" { print $2 }'
+```
+
+### JSON output
+
+With `--json`, the command prints one `"kind": "result"` line. Inside its `envelope`:
+
+- `result.summary` is the sentence the human output ends with, such as `Up to date` or a count of pending migrations.
+- `result.spaces[].migrations[]` lists each migration on disk with a `status`: `pending` (on the way to the target, not yet applied), `applied` (on the way to the target, already applied), or `null` (not on the way to the target).
+- `diagnostics[]`, beside `result` rather than inside it, lists each problem found. Each entry has a `code`, for example `MIGRATION.MARKER_NOT_IN_HISTORY`, a `summary`, and a `severity`, which this command always sets to `warn`.
+
+The exit code is 0 even when `diagnostics` is not empty. A non-zero exit code means the command itself failed, for example with `MIGRATION.REF_NOT_FOUND` when `--to` names a ref that does not exist.
+
+## Related commands
+
+The `migration` group has three more read-only views: `migration graph` draws the chain of migrations, `migration log` lists what has run, and `migration list` lists the migrations on disk. Run each with `--help` for details.
 
 Use [`db verify`](/cli/db-verify) after applying migrations to check the final database shape against the emitted contract.

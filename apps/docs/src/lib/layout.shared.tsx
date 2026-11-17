@@ -7,6 +7,7 @@ import logoMark from "../../public/logo/mark.svg";
 import { DiscordIcon } from "@/components/icons/discord";
 import { NavBreadcrumb } from "@/components/layout/nav-breadcrumb";
 import Link from "next/link";
+import { PrismaLogoMenu } from "@prisma-docs/ui/components/prisma-logo-menu";
 
 // The full-colour lockup (prism mark + wordmark) from the redesign. Two files
 // rather than one recoloured file: the wordmark is solid black in the light
@@ -46,13 +47,29 @@ export const links: LinkItemType[] = [
 export const docsLinks: LinkItemType[] = [];
 
 export const authLinks: LinkItemType[] = [
+  // Log in is a plain text link; Sign up is the one primary CTA. No hardcoded
+  // UTM parameters: they would override the visitor's own, which useUtmHref
+  // propagates onto these links instead.
   {
     type: "button",
-    text: "Login",
-    url: "https://console.prisma.io/login?utm_source=docs&utm_medium=login",
+    text: "Log in",
+    url: "https://console.prisma.io/login",
     active: "none",
     on: "nav",
     secondary: true,
+  },
+  // Below `lg` the desktop bar has no room for a second pill: it would squeeze
+  // the section crumb ("Query Insights", "Local Development") into an ellipsis.
+  // There the bar keeps Log in only; the mobile drawer lists both buttons. From
+  // `lg` up the longest crumbs still clip: below 1054px with the bar docked and
+  // below 1094px once it floats on scroll, because floating makes it 40px narrower.
+  {
+    type: "button",
+    text: "Sign up",
+    url: "https://console.prisma.io/sign-up",
+    active: "none",
+    on: "nav",
+    navbarClassName: "max-lg:hidden",
   },
 ];
 
@@ -65,24 +82,30 @@ export function baseOptions(): BaseLayoutProps {
               below `lg` the lockup swaps for the square mark, which costs ~28px
               instead of ~110px, so the crumb keeps `docs / <section>` at every
               width instead of truncating the section name. `lg:contents` so the
-              two lockup files still lay out as direct children of the link.
-              An image-only anchor reads as an empty link to crawlers, so the
-              link carries both an aria-label (for assistive tech) and a
-              visually hidden text node (for text-only crawlers). */}
-          <Link
-            href="https://www.prisma.io"
-            aria-label="Prisma home"
-            className="mb-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
-          >
-            <span className="max-lg:hidden lg:contents">{logo}</span>
-            <Image
-              alt="Prisma"
-              src={logoMark}
-              aria-hidden
-              className="h-7 w-auto shrink-0 lg:hidden"
-            />
-            <span className="sr-only">Prisma home</span>
-          </Link>
+              two lockup files still lay out as direct children of the link,
+              and `shrink-0` so a full bar clips the crumb instead of squashing
+              the logo out of proportion. An image-only anchor reads as an
+              empty link to crawlers, so the link carries both an aria-label
+              (for assistive tech) and a visually hidden text node (for
+              text-only crawlers). */}
+          {/* Right-clicking the logo opens the shared brand menu (the same one
+              the site and blog headers use). */}
+          <PrismaLogoMenu section="docs">
+            <Link
+              href="https://www.prisma.io"
+              aria-label="Prisma home"
+              className="mb-0 shrink-0 hover:mb-1 transition-[margin] duration-300 motion-reduce:transition-none"
+            >
+              <span className="max-lg:hidden lg:contents">{logo}</span>
+              <Image
+                alt="Prisma"
+                src={logoMark}
+                aria-hidden
+                className="h-7 w-auto shrink-0 lg:hidden"
+              />
+              <span className="sr-only">Prisma home</span>
+            </Link>
+          </PrismaLogoMenu>
           <span className="text-fd-muted-foreground" aria-hidden="true">
             /
           </span>

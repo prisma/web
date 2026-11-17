@@ -1,0 +1,110 @@
+---
+title: "Which database should I use for a TypeScript realtime chat app?"
+description: "Choose a chat database by durable messages, room permissions, realtime delivery and reconnect behavior. Compare Prisma Postgres and Supabase."
+summary: "Use Postgres for durable chat history and an explicit delivery mechanism for new messages. [Prisma Postgres](/docs/postgres) fits a custom TypeScript backend when you want to control room permissions, message storage and delivery, with optional [Prisma Compute](/docs/compute) hosting for HTTP services. Choose Supabase when its integrated Realtime service, authentication and data API match the chat you want to build."
+author: "Søren Bramer Schmidt"
+authorUrl: "https://github.com/sorenbs"
+date: "2026-10-28"
+updatedAt: "2026-10-29"
+readingTime: "6 min read"
+faq:
+  - question: "Does saving a message in Postgres deliver it to connected users?"
+    answer: "A database commit persists the message; your app still needs a delivery path and authorized recipients. Prisma Postgres is the database layer, so add an appropriate HTTP update mechanism or a separate realtime service. Test reconnects against saved history."
+  - question: "Can Prisma Compute host my WebSocket server?"
+    answer: "Prisma Compute currently does not support WebSocket servers. Use a compatible HTTP delivery design or another host for the WebSocket service. That service can still use Prisma Postgres for durable message history."
+  - question: "Should typing indicators and online presence be permanent messages?"
+    answer: "Usually typing and presence are temporary state with expiry rules, while sent messages need durable storage. Decide what your app must retain and avoid turning every presence heartbeat into a permanent chat record."
+  - question: "Can I keep my current TypeScript database library?"
+    answer: "Yes. Prisma Postgres works with PostgreSQL clients, including node-postgres, Drizzle and Prisma ORM. Prisma ORM is optional. Test the chosen connection configuration from the deployed chat backend."
+related:
+  - title: "Hosting an AI assistant with saved conversations"
+    href: "/compute/ai-assistant-conversation-history"
+  - title: "Choosing a host for WebSocket connections"
+    href: "/compute/websocket-connections-dropping"
+  - title: "Designing a multi-tenant SaaS database"
+    href: "/postgres/multi-tenant-saas-database"
+cta:
+  title: "Start with messages you can recover"
+  description: "Use Prisma Postgres for durable history and choose the delivery layer around your chat's actual transport requirements."
+  label: "Connect to Prisma Postgres"
+  href: "/docs/postgres/database/connecting-to-your-database"
+---
+
+For a support chat, a user should be able to close the browser, return later and read the conversation. A typing indicator can expire. Treating those two kinds of state differently makes the database decision clearer.
+
+We make Prisma Postgres and Prisma Compute. Official sources linked below were checked on October 27, 2026. This guide concerns chat between users; [AI response streaming and conversation history](/compute/ai-assistant-conversation-history) have additional generation and interruption concerns.
+
+## What does the database need to guarantee?
+
+Store the room, sender, message identifier, content and relevant timestamps. The server must check room membership on reads and writes, including history queries and attachments. An unguessable room ID does not replace authorization.
+
+Give a send attempt a stable client-generated identifier so a retry can refer to the same intended message. A lost response should not necessarily produce a second message. Define edit, deletion and retention behavior separately, including what another connected client sees after a moderator removes content.
+
+Delivery has its own failure modes. A client can disconnect between a database commit and a notification. Reload a bounded portion of saved history on reconnect and reconcile message identifiers; design pagination and gap recovery for the app's ordering model. A notification stream alone is not the complete conversation.
+
+## Which backend approach fits the chat?
+
+The alphabetically listed options differ in how much of the delivery layer you want to build.
+
+| Database approach | Useful fit | Responsibility to plan |
+| --- | --- | --- |
+| Prisma Postgres with your TypeScript backend | You want control over message storage, access checks and the delivery service, with any supported Postgres client. | Build and operate the update path, reconnect behavior, presence and moderation. |
+| [Supabase Realtime](https://supabase.com/docs/guides/realtime) with Supabase Postgres | You want integrated Broadcast, Presence and database-change subscriptions. | Configure authorization, persistence and client recovery; a realtime feature does not remove these application rules. |
+
+Supabase's [Realtime repository](https://github.com/supabase/realtime) explicitly notes that delivery of every message is not guaranteed. Persist important messages and reconcile after reconnect regardless of the provider.
+
+Prisma Compute is useful for the HTTP parts of a custom backend near Prisma Postgres. If the application uses WebSockets, choose a host that supports that server, such as [Render](https://render.com/docs/websocket), or a suitable managed realtime service. Prisma Postgres can remain the data store. Do not choose the database on the assumption that every app host has the same transport support.
+
+## How do I build and verify the Prisma path?
+
+### 1. Establish the server and database connection
+
+Create a development database and follow the [Postgres connection guide](/docs/postgres/database/connecting-to-your-database). Keep its URL in the server. Browsers call authenticated endpoints rather than connecting with the database credential.
+
+Use [Composer's database dependency](/docs/composer/databases) if you want an HTTP backend and its database declared together on Prisma Compute. The plain Postgres path works with your existing client; your team manages its migrations. A separately hosted WebSocket server needs its own server-side connection configuration.
+
+### 2. Test a repeated send before adding live delivery
+
+Run this example in a disposable test database. It checks message deduplication, using fictional values, and rolls back its temporary table.
+
+```sql
+BEGIN;
+CREATE TEMP TABLE chat_messages_demo (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  room_id integer NOT NULL,
+  client_message_id text NOT NULL,
+  sender_id text NOT NULL,
+  body text NOT NULL,
+  UNIQUE (room_id, client_message_id)
+);
+
+INSERT INTO chat_messages_demo (room_id, client_message_id, sender_id, body)
+VALUES (10, 'send-demo-1', 'alice-demo', 'Is the order ready?')
+ON CONFLICT (room_id, client_message_id) DO NOTHING;
+INSERT INTO chat_messages_demo (room_id, client_message_id, sender_id, body)
+VALUES (10, 'send-demo-1', 'alice-demo', 'Is the order ready?')
+ON CONFLICT (room_id, client_message_id) DO NOTHING;
+
+SELECT count(*) AS saved_messages FROM chat_messages_demo;
+ROLLBACK;
+```
+
+A count of `1` confirms that the repeated identifier produced one saved message. In the real endpoint, obtain the sender from the verified session, confirm membership, bind parameters and reject a retry that reuses an identifier for different content. Choose the identifier's uniqueness scope to match the app, and do not rely on an identity sequence alone to prove commit ordering or gap-free delivery.
+
+### 3. Verify membership and reconnects through the app
+
+For a small support inbox on Prisma Compute, an HTTP polling design is a concrete starting point. Expose authenticated message routes in your framework, for example a [Hono API](/docs/guides/frameworks/hono): a POST saves an authorized message before returning success, and a GET returns a bounded recent history for an authorized room. The visible chat polls that GET at an interval your latency and budget can support, stops when the room closes and reloads history after reconnecting. Reconcile messages by their stable identifiers and provide pagination for older history. This design trades update latency and repeated reads against implementation work; choose a managed realtime service or a WebSocket host when that trade-off does not fit.
+
+Create two private rooms and a user who belongs to one. Confirm that this user cannot read or send to the other room by changing an identifier. Revoke membership while the user is connected and verify that later polling requests are rejected. If you choose a subscription service instead, test both subscription authorization and revocation of an existing subscription.
+
+Send a message, disconnect the recipient before notification, reconnect and verify that the saved message appears once. Repeat across an app deployment. Store durable messages before reporting them as saved; show pending or failed sends in the UI instead of silently discarding them.
+
+### 4. Measure the delivery design
+
+Measure latency and database operations with realistic room sizes and activity. Polling on every open tab can create substantial reads, while typing indicators can create unnecessary writes. Keep presence expiry, fan-out and retention explicit, then choose [database recovery](/docs/postgres/database/backups) for the messages that matter.
+
+## When should I choose another setup?
+
+Choose Supabase when its integrated realtime and authentication features replace work you do not want to build. Choose a WebSocket-capable host when the server already depends on that transport: Prisma Compute currently has no WebSocket server support. HTTP streaming does not provide a WebSocket server, and running code in memory does not guarantee continuity through restarts.
+
+Prisma Postgres [credentials have full access to their database](/docs/postgres/database/connecting-to-your-database#access-and-permissions). A separate password is not a restricted role for a public chat client. Keep authorization on the server, or choose a provider with the direct-client access controls your architecture requires.

@@ -1,4 +1,5 @@
 import type * as PageTree from "fumadocs-core/page-tree";
+import { withoutHiddenPages } from "./hidden-pages";
 import {
   LATEST_VERSION,
   getCliVersionFromPathname,
@@ -359,6 +360,10 @@ function getCliSidebarTree(tree: TreeRootNode, version: Version): TreeRootNode {
 }
 
 export function getVersionedSidebarTree(tree: PageTree.Root, route?: string | string[]) {
+  return selectVersion(withoutHiddenPages(tree), route);
+}
+
+function selectVersion(tree: PageTree.Root, route?: string | string[]) {
   const gettingStartedVersion =
     typeof route === "string" ? getGettingStartedVersionFromPathname(route) : null;
 
