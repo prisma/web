@@ -29,17 +29,19 @@ Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` a
 
 ### In review
 
-- **prisma/web#8853** (2026-11-17): the `formatter` section on `cli/configuration.mdx`, which completes C17, and "When no migration reaches the target" on `cli/db-migrate.mdx`. It also fixes the error-reference generator, which let one relative link through and failed the link check on `main`.
-- **prisma/web#8850** (another agent): the ORM 8.0.0-rc.24 sync. It has merge conflicts on 2026-11-17.
+- **prisma/web#8853** (2026-11-17): the `formatter` section on `cli/configuration.mdx`, which completes C17, and "When no migration reaches the target" on `cli/db-migrate.mdx`. Approved; three more reader rounds ran on 2026-11-17.
+
+### Merged on 2026-11-17
+
+- **prisma/web#8850**: the ORM 8.0.0-rc.24 sync, with every version reference brought to `prisma` 8.0.0-rc.34, the ORM packages 8.0.0-rc.24, and `@prisma/cli-engine` 0.10.0. It also carries the error-reference generator fix that repaired the link check on `main`. Two reader rounds ran on its changed passages. Marks it left open, because the facts are not in the sources read: no list of MongoDB type ids for prepared queries, what the temporary value for a new required MongoDB field is, and what to write in place of the MongoDB `--convert` placeholder.
 
 ### Open in the docs
 
-1. **Version sync.** `pnpm lint:versions` reports 22 stale references on `main`: `prisma` 8.0.0-rc.33 where rc.34 is out, and `@prisma/cli-engine` 0.9.0 where 0.10.0 is out. #8850 covers the ORM packages only.
-2. **C10, the Supabase page.** Waits on Ankur's draft prisma/web#8131, last updated 2026-10-26.
-3. **C23, example repositories in `prisma/prisma-examples`.** The shape is decided; nobody owns it.
-4. **A3 follow-up.** The prompt section still comes before the human steps on the guides under `guides/database`, `guides/deployment`, `guides/integrations`, and `guides/switch-to-prisma-orm`, on `composer/porting-an-app.mdx` and the full-stack tutorial, and as `## Prompt your coding agent` on 21 pages under `orm/`.
-5. **Small gaps, section E.** E13 (the contract reference table sits on a concept page), E15, E16, E17, E18, E19 (about 50 reader marks on the migration pages), E20 (`prisma/prisma` names), E22 (reader-review hits on the framework and runtime guides; still failing the staccato check), E23 (`/getting-started` duplicates the Quickstart group), E24 (`cli/db-update.mdx` does not say `db update` signs the database), E25 (two quickstart pages still have "Quickstart" in `metaTitle`).
-6. **Reader pass on three guides.** `from-drizzle.mdx`, `ai-sdk.mdx`, and `nestjs.mdx` fail the plain-language and staccato checks (the C9 follow-up).
+1. **C10, the Supabase page.** Waits on Ankur's draft prisma/web#8131, last updated 2026-10-26.
+2. **C23, example repositories in `prisma/prisma-examples`.** The shape is decided; nobody owns it.
+3. **A3 follow-up.** The prompt section still comes before the human steps on the guides under `guides/database`, `guides/deployment`, `guides/integrations`, and `guides/switch-to-prisma-orm`, on `composer/porting-an-app.mdx` and the full-stack tutorial, and as `## Prompt your coding agent` on 21 pages under `orm/`.
+4. **Small gaps, section E.** E13 (the contract reference table sits on a concept page), E15, E16, E17, E18, E19 (about 50 reader marks on the migration pages), E20 (`prisma/prisma` names), E22 (reader-review hits on the framework and runtime guides; still failing the staccato check), E23 (`/getting-started` duplicates the Quickstart group), E24 (`cli/db-update.mdx` does not say `db update` signs the database), E25 (two quickstart pages still have "Quickstart" in `metaTitle`).
+5. **Reader pass on three guides.** `from-drizzle.mdx`, `ai-sdk.mdx`, and `nestjs.mdx` fail the plain-language and staccato checks (the C9 follow-up).
 
 ### Open on the ORM side
 
@@ -49,13 +51,12 @@ For the ORM team to schedule; none blocks a page. D4 (client APIs), D5 and D22 (
 
 Proposed on 2026-11-17.
 
-1. **Merge prisma/web#8853.** It also repairs the link check for every other docs pull request.
-2. **The version sync** to `prisma` 8.0.0-rc.34 and `@prisma/cli-engine` 0.10.0, after or together with #8850.
-3. **The small docs gaps in one or two pull requests:** E24, E25, E20, and E13 first, because each is a few lines; then E15 to E19 on the migration pages as one reader pass.
-4. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides) as one pass over the guides.
-5. **E23**, `/getting-started`.
-6. **D37 in prisma/orm**, because the docs currently warn readers off a command the CLI prints. Then the D items in the order the ORM team prefers.
-7. **C23** when it has an owner, and **C10** when #8131 is ready.
+1. **Merge prisma/web#8853.**
+2. **The small docs gaps in one or two pull requests:** E24, E25, E20, and E13 first, because each is a few lines; then E15 to E19 on the migration pages as one reader pass.
+3. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides) as one pass over the guides.
+4. **E23**, `/getting-started`.
+5. **D37 in prisma/orm**, because the docs currently warn readers off a command the CLI prints. Then the D items in the order the ORM team prefers.
+6. **C23** when it has an owner, and **C10** when #8131 is ready.
 
 ## Decisions needed, and from whom
 
