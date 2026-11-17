@@ -96,7 +96,9 @@ A [variant](/orm/contract-authoring/psl-syntax#base-models-and-variants) whose d
 
 On MongoDB, `--rename` of a value object field or of a variant whose discriminator value changes is refused, and so is `--convert` of a variant.
 
-On MongoDB, a field type change that can lose values is asked about, as on SQL, and answered with `--delete`, which casts the stored values with `$convert`; `db update` writes no `migration.ts`, so a change that needs your own conversion is planned with `migration plan --convert` instead. A new required field is filled with a temporary value in the documents that lack it. A new required field under a unique index gets no temporary value, because every document would get the same one. On a collection that has documents, building the unique index then stops the apply, and the error names `--backfill`: plan that change with `migration plan --backfill` instead. A validator change checks the documents first and stops with `MIGRATION.PRECHECK_FAILED` while one does not fit; fix those documents, then run `db update` again. See [how migrations work](/orm/migrations/how-migrations-work#the-same-model-for-sql-and-mongodb). Since `8.0.0-rc.24`.
+On MongoDB, a field type change that can lose values is asked about, as on SQL. Answer with `--delete` and the field, as in `--delete User.age`, which keeps the field and casts its stored values with `$convert`. To write the conversion yourself, use `migration plan --convert` instead, because `db update` writes no migration for you to edit.
+
+A new required field on MongoDB is filled with a temporary value in the documents that lack it. The exception is a new required field that a unique index covers: it gets no temporary value, because every document would get the same one, so on a collection that has documents the apply stops. Plan that change with `migration plan --backfill` instead, as the error says. A change to a collection's validator checks the documents first and stops with `MIGRATION.PRECHECK_FAILED` while one does not fit; fix those documents, then run `db update` again. See [how migrations work](/orm/migrations/how-migrations-work#the-same-model-for-sql-and-mongodb). This paragraph and the one before it apply since `8.0.0-rc.24`.
 
 On MongoDB, a model rename renames its collection and keeps its documents, indexes and validator, and a field rename renames the field in every document that holds it. `--rename` and `--delete` name fields by their names in the schema, not by the names they are stored under. Removing a field from a model removes it from every document that holds it, so the update asks about it: answer with `--delete <Model>.<field>`, or with `--rename`. Without a stored contract, the field is named by its collection, as in `--delete profiles.nickname`.
 
@@ -121,7 +123,7 @@ Use `--dry-run` before applying changes in shared environments.
 npx prisma db update --db "$DATABASE_URL" --dry-run --json | jq 'select(.kind == "result") | .envelope.result.dataLoss'
 ```
 
-The planner's warnings are in the result's `plannerWarnings`, a list of objects with `kind`, `summary` and `why`, as in `migration plan --json`. Before `8.0.0-rc.24`, `db update` and `db init` listed them under `warnings`.
+Warnings about the planned change are in the result's `plannerWarnings`, a list of objects with `kind`, `summary` and `why`, as in `migration plan --json`. Before `8.0.0-rc.24`, `db update` and `db init` listed them under `warnings`.
 
 [Global flags](/cli/global-flags#data-lines-of-prisma-orm-commands) lists the data lines of the other commands.
 

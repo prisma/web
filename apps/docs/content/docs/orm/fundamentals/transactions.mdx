@@ -56,12 +56,13 @@ await db.transaction(async (tx) => {
 });
 ```
 
-Prisma ORM does not export a type for `tx`, so add this line to `src/prisma/db.ts`: `export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];`, then import `Tx` wherever a helper needs it.
+To type the helper's parameter, add this line to `src/prisma/db.ts`: `export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];`, then import `Tx` wherever a helper needs it. The package also exports a type for this, `PostgresTransactionContext<Contract>` from `@prisma/orm-postgres/runtime`, which the [reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) describes.
+
 Do not open a second transaction inside the helper, because calling `db.transaction(...)` again inside a callback does not nest: the inner call is a separate transaction that commits or rolls back on its own, and the outer one cannot roll it back. Pass `tx` down instead.
 
 ### Options and isolation level
 
-`db.transaction(...)` takes a second argument with an isolation level and a time limit in milliseconds. Set defaults for every call with the client's `transactionOptions`, and override them on one call:
+`db.transaction(...)` takes a second argument with an isolation level and a time limit in milliseconds. Set defaults for every call with `transactionOptions`, where you create the client in `src/prisma/db.ts`, and override them on one call:
 
 ```typescript
 import postgres, { IsolationLevel } from "@prisma/orm-postgres/runtime";
@@ -80,7 +81,7 @@ await db.transaction(
 );
 ```
 
-Without an isolation level, a transaction runs at the database's default, `READ COMMITTED` on PostgreSQL. Without a timeout, a transaction stays open for as long as your callback runs; `timeout: null` on a call turns off the client's default. A transaction that runs out of time rejects with `RUNTIME.TRANSACTION_TIMEOUT`, and its connection is destroyed rather than reused. There is no `maxWait` option. The [transactions reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) has the details.
+Without an isolation level, a transaction runs at the database's default, `READ COMMITTED` on PostgreSQL. Without a timeout, a transaction stays open for as long as your callback runs; `timeout: null` on a call turns off the client's default. When a transaction runs out of time, the call rejects with an error whose `code` is `RUNTIME.TRANSACTION_TIMEOUT`, and none of its writes are committed. There is no `maxWait` option. The [transactions reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) has the details.
 
 ## Roll back on errors
 
