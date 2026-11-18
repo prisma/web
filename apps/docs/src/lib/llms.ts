@@ -70,10 +70,10 @@ export const commonQueries: LLMsLink[] = [
       "Run npx create-db@latest to get a Prisma Postgres connection string. The database is deleted after 24 hours unless you claim it.",
   },
   {
-    title: "Start a new Prisma ORM project",
+    title: "Choose a Prisma ORM setup path",
     href: "/getting-started",
     description:
-      "Choose a Prisma ORM quickstart for a new project or add Prisma ORM to an existing app.",
+      "Pick the Prisma ORM quickstart for where you are starting from: a new app, an app with no database yet, a database you already have, or a Prisma 6 or 7 app.",
   },
   {
     title: "Use Prisma ORM 7",
