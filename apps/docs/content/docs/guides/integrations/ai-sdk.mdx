@@ -73,7 +73,7 @@ model Message {
 }
 ```
 
-A few things to note:
+The contract follows the way AI SDK names and stores messages:
 
 - `Session.id` and `Message.id` have no default. AI SDK generates a chat id on the client and stable message ids on the server, and you store those.
 - `MessageRole` is a Prisma ORM enum: it is stored as `text` and enforced with a `CHECK` constraint. The values match AI SDK's `role` strings, so you can save `message.role` as is.
@@ -167,8 +167,8 @@ export async function loadChat(id: string): Promise<UIMessage[]> {
 
 How it works:
 
-- Model access is namespace-qualified on PostgreSQL: `db.orm.public.Session`, not `db.session`. `db.transaction` hands you a `tx` with the same `orm` surface, and everything inside it commits together or not at all.
-- `upsert` takes `create`, `update`, and `conflictOn`. AI SDK sends the whole conversation with every request, so upserting each message by its id keeps saves idempotent: messages that already exist are left alone, and the new user and assistant messages are inserted.
+- On PostgreSQL, you reach a model through the database schema it is in: `db.orm.public.Session`, not `db.session`. `db.transaction` gives you a `tx` with the same `orm` models as `db`, and everything you run through `tx` commits together or not at all.
+- `upsert` takes `create`, `update`, and `conflictOn`. AI SDK sends the whole conversation with every request, so upserting each message by its id makes every save safe to repeat: messages that already exist are left alone, and the new user and assistant messages are inserted.
 - `message.parts` is typed by AI SDK as an array of part objects. The `as JsonValue` cast tells Prisma ORM to store it in the `Json` column; the reverse cast in `loadChat` hands it back to AI SDK as `UIMessage["parts"]`.
 - `.select("id", "role", "parts")` narrows the returned row type to the fields the UI needs, and `.orderBy((m) => m.position.asc())` restores conversation order.
 
@@ -329,7 +329,7 @@ export default function Chat({ id }: { id: string }) {
 }
 ```
 
-The template does not include Tailwind, so add a few rules to the end of `src/app/globals.css` for the bubbles and the input:
+The template does not include Tailwind, so add these rules to the end of `src/app/globals.css` for the bubbles and the input:
 
 ```css title="src/app/globals.css"
 .chat {
@@ -389,7 +389,7 @@ npm run dev
 ✓ Ready in 5.5s
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The page redirects to `/?chat=<id>`, and the first request compiles the app, so it takes a few seconds. Send a message, wait for the reply, then reload the page: both messages come back from the database.
+When you open [http://localhost:3000](http://localhost:3000), the page redirects to `/?chat=<id>`, and the first request takes a few seconds because it compiles the app. Send a message, wait for the reply, then reload the page: both messages come back from the database.
 
 You can also read a session directly from the API. Replace the id with the one in your address bar. The session below was captured with AI SDK's mock language model instead of a live OpenAI call, which is why the assistant text reads the way it does; the persistence path is the same:
 
@@ -465,7 +465,7 @@ Build a Next.js chat app with AI SDK that stores chat sessions and messages with
 The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add a `title` field to `Session` and a `PATCH /api/sessions/:id` route that updates it."
-- "Add a `GET /api/sessions` route that lists sessions with their message count, using `include` with a `count()` reducer."
+- "Add a `GET /api/sessions` route that lists sessions with their message count, using `include` with `count()`."
 - "Add a `DELETE /api/sessions/:id` route and confirm the cascade removes the session's messages."
 
 ## Next steps
