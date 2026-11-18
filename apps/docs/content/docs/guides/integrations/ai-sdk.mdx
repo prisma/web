@@ -36,7 +36,7 @@ cd ai-sdk-prisma
 
 Answer the prompts for contract authoring style (this guide uses PSL), package manager, and agent skills. The scaffold installs dependencies and emits the contract your queries are type-checked against.
 
-Next, set the database connection for the CLI steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`; it prints a connection string and a claim URL; claim it with a free Prisma account to keep the database. Export the variable in the shell you work in; the Prisma CLI reads the environment variable, not `.env`:
+Next, set the database connection for the CLI steps. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `npx create-db@latest`, which prints a connection string and a claim URL. Claim the database with a free Prisma account if you want to keep it. Export the variable in the shell you work in; the Prisma CLI reads the environment variable, not `.env`:
 
 ```bash
 export DATABASE_URL="<your connection string>"
@@ -167,9 +167,9 @@ export async function loadChat(id: string): Promise<UIMessage[]> {
 
 How it works:
 
-- On PostgreSQL, you reach a model through the database schema it is in: `db.orm.public.Session`, not `db.session`. `db.transaction` gives you a `tx` with the same `orm` models as `db`, and everything you run through `tx` commits together or not at all.
-- `upsert` takes `create`, `update`, and `conflictOn`. AI SDK sends the whole conversation with every request, so upserting each message by its id makes every save safe to repeat: messages that already exist are left alone, and the new user and assistant messages are inserted.
-- `message.parts` is typed by AI SDK as an array of part objects. The `as JsonValue` cast tells Prisma ORM to store it in the `Json` column; the reverse cast in `loadChat` hands it back to AI SDK as `UIMessage["parts"]`.
+- On PostgreSQL, you reach a model through the database schema it is in, which is `public` by default: `db.orm.public.Session`, not `db.session`. `db.transaction` gives you a `tx` with the same `orm` models as `db`, and everything you run through `tx` commits together or not at all.
+- `upsert` takes `create`, `update`, and `conflictOn`. AI SDK sends the whole conversation with every request, so upserting each message by its id makes every save safe to repeat: a message that already exists is updated in place instead of saved twice, and the new user and assistant messages are inserted.
+- `message.parts` is typed by AI SDK as an array of part objects. The `as JsonValue` cast tells Prisma ORM to store it in the `Json` column; the reverse cast in `loadChat` gives it back to AI SDK as `UIMessage["parts"]`.
 - `.select("id", "role", "parts")` narrows the returned row type to the fields the UI needs, and `.orderBy((m) => m.position.asc())` restores conversation order.
 
 ## 5. Create the chat route handler

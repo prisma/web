@@ -37,9 +37,9 @@ The steps are the same for any app that uses Drizzle, whether it serves a REST A
 4. Emit the contract and sign the database.
 5. Replace Drizzle queries with Prisma ORM queries.
 
-You can adopt Prisma ORM gradually, because both ORMs can talk to the same database while you migrate, so you can move one route at a time and ship in between.
+You can adopt Prisma ORM gradually: both ORMs can talk to the same database while you migrate, so you can move one route at a time and ship in between.
 
-If you migrated to Prisma ORM 7 before, you will notice what is missing: there is no `prisma init`, no `db pull`, no baseline migration, no `prisma generate`, and no driver adapter package. The contract you emit is checked in, the runtime is typed from it directly, and `db sign` replaces the baseline migration.
+If you migrated to Prisma ORM 7 before, you will notice what is missing: `prisma init` no longer sets up Prisma ORM (`prisma orm init` does), and there is no `db pull`, no baseline migration, no `prisma generate`, and no driver adapter package. The contract you emit is checked in, the runtime is typed from it directly, and `db sign` replaces the baseline migration.
 
 ## The sample app
 
@@ -312,7 +312,7 @@ Here is how each part of the Drizzle schema came through:
 
 ## 3. Review the contract
 
-The inferred contract is a starting point, so make two edits before you emit, and check how timestamps come back.
+The inferred contract is a starting point, so make two edits before you emit (3.1 and 3.3) and check how timestamps come back (3.2).
 
 ### 3.1. Singularize the model names
 
@@ -324,9 +324,9 @@ Rename the models to singular PascalCase and keep every `@@map`, so the table na
 
 ### 3.3. Add direct many-to-many fields
 
-Add `categories Category[]` to `Post` and `posts Post[]` to `Category`, next to the existing `postsToCategories` lists. The model for the join table stays, and the two new fields resolve through it, so `Post` can include its categories directly. This is a contract-only change: the storage hash stays the same and no migration is needed.
+Add `categories Category[]` to `Post` and `posts Post[]` to `Category`, next to the existing `postsToCategories` lists. The model for the join table stays, and Prisma ORM uses it to connect the two new fields, so `Post` can include its categories directly. This is a contract-only change: the storage hash stays the same and no migration is needed.
 
-After the three edits the contract looks like this:
+After the two edits the contract looks like this:
 
 ```prisma title="src/prisma/contract.prisma"
 // use prisma-8
