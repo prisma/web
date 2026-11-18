@@ -10,7 +10,7 @@ metaDescription: 'Add Prisma ORM and Prisma Postgres to a React Router framework
 
 This guide shows you how to use Prisma ORM in a [React Router](https://reactrouter.com/) app running in framework mode. There is no `create-prisma` template for React Router, so you start from `create-react-router` and add Prisma ORM to the existing project with `orm init`. You then define a contract for users and posts, seed the database, read it from route loaders, and write to it from a form action.
 
-`create-react-router@latest` scaffolds React Router 8. The route APIs this guide uses (`loader`, `action`, `routes.ts`, and the generated `Route` types) are the same in React Router 7, and the finished app was run on both majors.
+`create-react-router@latest` scaffolds React Router 8, but the route APIs this guide uses (`loader`, `action`, `routes.ts`, and the generated `Route` types) are the same in React Router 7, and the finished app was run on both versions.
 
 Every command, page, and response below was run end to end against a local PostgreSQL database.
 
@@ -270,7 +270,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 }
 ```
 
-Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. `select` narrows the columns and `all()` runs the query. The `Route.ComponentProps` type carries the loader's return type into the component, so `users` is typed without any annotation.
+On PostgreSQL, you reach a model through the database schema it is in: `db.orm.public.User` is the `User` model in the `public` schema. `select` narrows the columns and `all()` runs the query. The `Route.ComponentProps` type carries the loader's return type into the component, so `users` is typed without any annotation.
 
 The template's `app/welcome` directory is no longer imported; delete it.
 
@@ -285,7 +285,7 @@ npm run dev
   ➜  Network: use --host to expose
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The page lists Alice and Bob.
+When you open [http://localhost:5173](http://localhost:5173), the page lists Alice and Bob.
 
 :::note
 
@@ -295,7 +295,7 @@ If your editor reports an error on `import type { Route } from "./+types/home"`,
 
 ## 4. Add a posts list page
 
-Create `app/routes/posts/home.tsx`. The loader includes each post's author so the page can show the name:
+Create `app/routes/posts/home.tsx`, whose loader includes each post's author so the page can show the name:
 
 ```tsx title="app/routes/posts/home.tsx"
 import type { Route } from "./+types/home";
@@ -345,7 +345,7 @@ Open [http://localhost:5173/posts](http://localhost:5173/posts): three posts, ea
 
 ## 5. Add a post detail page
 
-Create `app/routes/posts/post.tsx`. The loader reads the post by primary key and throws a 404 when there is none:
+Create `app/routes/posts/post.tsx`, whose loader reads the post by primary key and throws a 404 when there is none:
 
 ```tsx title="app/routes/posts/post.tsx"
 import type { Route } from "./+types/post";
@@ -390,11 +390,11 @@ export default [
 ] satisfies RouteConfig;
 ```
 
-Open [http://localhost:5173/posts/1](http://localhost:5173/posts/1) and [http://localhost:5173/posts/2](http://localhost:5173/posts/2). Then try [http://localhost:5173/posts/999](http://localhost:5173/posts/999): the template's root `ErrorBoundary` renders the 404.
+Open [http://localhost:5173/posts/1](http://localhost:5173/posts/1) and [http://localhost:5173/posts/2](http://localhost:5173/posts/2) to see each post. When you then try [http://localhost:5173/posts/999](http://localhost:5173/posts/999), the template's root `ErrorBoundary` renders the 404.
 
 ## 6. Add a create page with an action
 
-Create `app/routes/posts/new.tsx`. The `action` receives the form submission, inserts the post, and redirects to its detail page:
+Create `app/routes/posts/new.tsx`, whose `action` receives the form submission, inserts the post, and redirects to its detail page:
 
 ```tsx title="app/routes/posts/new.tsx"
 import type { Route } from "./+types/new";
@@ -460,7 +460,7 @@ export default function NewPost({ actionData }: Route.ComponentProps) {
 
 `create` returns the inserted row with its generated `id`, `published: false` default, and timestamps, so the redirect target is known without another query. The post is attributed to user `1` (Alice from the seed) to keep the example short; a real app takes the author from the session.
 
-Register the route. React Router ranks static segments above dynamic ones, so `/posts/new` reaches this route and not `posts/:postId`, whichever order you list them in:
+Add the route to `app/routes.ts`, before or after `posts/:postId`: React Router ranks static segments above dynamic ones, so `/posts/new` always reaches this route, whichever order you list them in:
 
 ```tsx title="app/routes.ts"
 export default [
