@@ -41,6 +41,16 @@ Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` a
 4. **Small gaps, section E.** E19 (about 50 reader marks on the migration pages), E22 (reader-review hits on the framework and runtime guides; still failing the staccato check), E23 (`/getting-started` duplicates the Quickstart group).
 5. **Reader pass on three guides.** `from-drizzle.mdx`, `ai-sdk.mdx`, and `nestjs.mdx` fail the plain-language and staccato checks (the C9 follow-up).
 
+### In review, opened 2026-11-18
+
+- **prisma/web#8863, E19.** The written-down reader marks on the migration and CLI pages, on 16 pages. It also corrects three facts: the MongoDB quickstart's `MONGODB_URL` (the scaffold reads only `DATABASE_URL`), nine operation classes in the Migration API reference, and the `db sign` advice for databases other than development. Most of the older marks were recorded only as a count per page and cannot be recovered. Left open by its reader rounds: whether the MongoDB quickstart's second `migration plan` fails because `npm run migrate` does not update the `db` ref (needs a MongoDB server); exit code 2 of `db sign` meaning two things; the production drift procedure on the rollbacks page, which needs numbered steps; `<dir>^` quoted on some pages and not on others.
+- **prisma/web#8864, the upgrade guide work from the Prisma 8 GA plan** (`planning/plan.md` on the `planning/prisma-8-ga` branch of prisma/orm). The route-by-route guide keeps `schema.prisma` through `prisma7Schema(...)` to the end; both PostgreSQL guides and "Coming from Prisma ORM 7" cover extension packs, `@ignore` and `@@ignore`, and cursor pagination starting after the cursor row. It adds a redirect from `/composer/quickstart`. Found on the way: the all-at-once guide pins `prisma@8.0.0-rc.27` and `@prisma/orm-postgres@8.0.0-rc.20` for Compute, where the datasource `extensions` list is ignored and `@db.Citext` cannot be read; `orm init --from-prisma7-schema` refuses a schema that needs an extension pack; the example repository `prisma/prisma8-and-7-example` still uses a separate contract file.
+- **prisma/orm#31083, the GA plan's docs work inside prisma/orm.** The shipped `prisma-8` skill names only published packages (TML-3440) and a lint check enforces it, the self-join example compiles (TML-3365), the skill stops promising set operations and window functions in the SQL builder, the data-transform guidance of prisma/orm#30495 is carried over, and the stale reference documents and 33 port records match the code.
+
+### The GA plan's eleven docs gaps from the getting-started eval, re-checked 2026-11-18
+
+Seven are fixed on main by the Composer docs rewrite. `/docs/composer/quickstart` returning 404 is fixed in #8864. Three remain, all on Composer pages that the open prisma/web#8671 also edits: no example of a plain HTTP service with a GET and a POST route; no full signatures for `compute()`, `provision()`, `postgres()` and `rawPostgres()`; the Composer landing page links two of its thirteen pages.
+
 ### Open on the ORM side
 
 For the ORM team to schedule; none blocks a page. D4 (client APIs), D5 and D22 (`contract infer` reads only `public`), D7, D8, D9 (prisma/orm#30370), D10 (the runtime half), D11, D12, D13, D15, D17 (four of five claims), D18, D19, D20, D21, D23, D24, D26, D29, D30, D31, D32, D33, D34, D35, and D37 (new on 2026-11-17: the `MIGRATION.PATH_UNREACHABLE` error suggests a `migration plan` command that fails).
@@ -49,7 +59,7 @@ For the ORM team to schedule; none blocks a page. D4 (client APIs), D5 and D22 (
 
 Proposed on 2026-11-17.
 
-1. **E19**, the older reader marks on the migration pages, as one reader pass.
+1. **E19** is in review as prisma/web#8863.
 2. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides) as one pass over the guides.
 3. **E23**, `/getting-started`.
 4. **D37 in prisma/orm**, because the docs currently warn readers off a command the CLI prints. Then the D items in the order the ORM team prefers.
