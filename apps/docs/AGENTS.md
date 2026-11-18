@@ -13,7 +13,7 @@ Classify every docs page as one of three kinds before writing or moving content:
 1. Reference material lives under `content/docs/cli/`, `content/docs/rest-api/`, or a section's `---Reference---` meta.json block. Never document flags, parameters, or endpoints in full inside a concept or guide page; link to the reference page instead.
 2. A product section may keep a thin `cli-reference.mdx` pointer page that links into `cli/*`. `content/docs/compute/cli-reference.mdx` is the canonical example. Full command references live in `cli/`; the Prisma 7 CLI is under `cli/v7/`.
 3. The section is named "REST API" (folder `rest-api`). Do not reintroduce "Management API" in titles, nav, prose, or new URLs. Code identifiers (`@prisma/management-api-sdk`, `createManagementApiClient`) keep their names.
-4. Sidebar grouping (Build/Deploy/Manage/Reference) is UI config in `src/lib/sidebar-sections.ts`, not content structure. Do not add grouping separators to the root `content/docs/meta.json`.
+4. Sidebar grouping (Build/Deploy/Manage/Reference) is UI config in `src/lib/sidebar-sections.tsx`, not content structure. Do not add grouping separators to the root `content/docs/meta.json`.
 
 ## Moving or renaming pages
 
