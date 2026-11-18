@@ -25,29 +25,6 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended): Bun runs the scripts, and Next.js runs on Node.js
 - A PostgreSQL connection string, or nothing at all: `bunx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Create a Bun workspaces monorepo with a shared Prisma ORM database package and a Next.js app that queries it.
-
-1. Create `my-monorepo` with a root `package.json` that sets `"workspaces": ["apps/*", "packages/*"]`, then create `apps/` and `packages/database/`. Give `packages/database` a `package.json` with `"name": "database"`, `"private": true`, `"type": "module"` and `"main": "index.ts"`.
-2. In `packages/database`, run `bunx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `bunx prisma@latest init` there so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db@latest` and show me the claim URL it prints. Write it as `DATABASE_URL` into `packages/database/.env`.
-3. Add package scripts to `packages/database`: `db:init` (`prisma db init`), `db:update` (`prisma db update`), `db:seed` (`bun src/prisma/seed.ts`). Run `bun run db:init` there.
-4. Create `packages/database/index.ts` that re-exports `db` from `./src/prisma/db`, and `packages/database/src/prisma/seed.ts` that upserts three users with `db.orm.public.User.upsert({ create, update: {}, conflictOn: { email } })` and ends with `await db.close()`, following https://www.prisma.io/docs/guides/deployment/bun-workspaces.md. Run `bun run db:seed`.
-5. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update` and `seed` that use `bun run --filter <package> <script>`.
-6. In `apps/`, run `bun create next-app@latest web --yes`, delete `apps/web/.git`, add `"database": "workspace:*"` to its dependencies, copy `packages/database/.env` to `apps/web/.env`, and run `bun install` from the root.
-7. Replace `apps/web/app/page.tsx` with a server component that exports `dynamic = "force-dynamic"` and lists users from `db.orm.public.User.select("id", "name", "email").all()`.
-8. Start `bun run dev` from the root in the background, wait until it reports ready, verify `curl http://localhost:3000` returns the seeded users, then stop the dev server.
-
-Use the installed Prisma ORM skills.
-```
-
-</AgentPrompt>
-
 ## 1. Set up the workspace
 
 Create a directory for the monorepo and a root `package.json` that declares where the apps and shared packages live:
@@ -130,7 +107,7 @@ There is no driver adapter and no engine to configure: the runtime talks to Post
 
 ### 2.2. Set the connection string and add scripts
 
-Create `.env` in the database package. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `bunx create-db@latest`; it prints a connection string and a claim URL; claim it with a free Prisma account to keep the database.
+Create `.env` in the database package. Use your own PostgreSQL connection string, or create a Prisma Postgres database with `bunx create-db@latest`, which prints a connection string and a claim URL. Claim the database with a free Prisma account if you want to keep it.
 
 ```bash title="packages/database/.env"
 DATABASE_URL="postgres://user:password@localhost:5432/mydb"
@@ -198,7 +175,7 @@ console.log(`Seeded ${users.length} users.`);
 await db.close();
 ```
 
-Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`, where `public` is the default schema.
+On PostgreSQL, you reach a model through the database schema it is in: `db.orm.public.User` is the `User` model in `public`, the default schema.
 
 Run it:
 
@@ -451,9 +428,30 @@ Without `export const dynamic = "force-dynamic"`, Next.js prerenders the page at
 
 Do not call `db.close()` in a server component or route handler. The client in `packages/database` is a module-level singleton whose connection pool is shared across requests; close it only in short-lived scripts such as the seed.
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`bunx prisma@latest init`](/cli/init) once inside `packages/database` to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. It adds a `postinstall` script that re-syncs the skills after every `bun install`. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Create a Bun workspaces monorepo with a shared Prisma ORM database package and a Next.js app that queries it.
+
+1. Create `my-monorepo` with a root `package.json` that sets `"workspaces": ["apps/*", "packages/*"]`, then create `apps/` and `packages/database/`. Give `packages/database` a `package.json` with `"name": "database"`, `"private": true`, `"type": "module"` and `"main": "index.ts"`.
+2. In `packages/database`, run `bunx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `bunx prisma@latest init` there so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `bunx create-db@latest` and show me the claim URL it prints. Write it as `DATABASE_URL` into `packages/database/.env`.
+3. Add package scripts to `packages/database`: `db:init` (`prisma db init`), `db:update` (`prisma db update`), `db:seed` (`bun src/prisma/seed.ts`). Run `bun run db:init` there.
+4. Create `packages/database/index.ts` that re-exports `db` from `./src/prisma/db`, and `packages/database/src/prisma/seed.ts` that upserts three users with `db.orm.public.User.upsert({ create, update: {}, conflictOn: { email } })` and ends with `await db.close()`, following https://www.prisma.io/docs/guides/deployment/bun-workspaces.md. Run `bun run db:seed`.
+5. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update` and `seed` that use `bun run --filter <package> <script>`.
+6. In `apps/`, run `bun create next-app@latest web --yes`, delete `apps/web/.git`, add `"database": "workspace:*"` to its dependencies, copy `packages/database/.env` to `apps/web/.env`, and run `bun install` from the root.
+7. Replace `apps/web/app/page.tsx` with a server component that exports `dynamic = "force-dynamic"` and lists users from `db.orm.public.User.select("id", "name", "email").all()`.
+8. Start `bun run dev` from the root in the background, wait until it reports ready, verify `curl http://localhost:3000` returns the seeded users, then stop the dev server.
+
+Use the installed Prisma ORM skills.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`bunx prisma@latest init`](/cli/init) in its second step. If you followed the steps by hand, run it once yourself inside `packages/database`: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. It adds a `postinstall` script that re-syncs the skills after every `bun install`. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add a `packages/database/src/prisma/reset.ts` script that deletes all posts and users."
 - "Add a `/users/[id]` page in `apps/web` that loads one user with their posts from the shared `database` package."

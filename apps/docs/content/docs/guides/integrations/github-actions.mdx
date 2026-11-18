@@ -30,24 +30,6 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 - A GitHub repository
 - `jq`, to read the CLI's JSON output (GitHub-hosted runners have it preinstalled)
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Set up per-pull-request Prisma Postgres databases for this project with GitHub Actions and Prisma ORM.
-
-1. Add Prisma ORM to the project with `npx prisma@latest orm init --yes --target postgres --authoring psl` (run it after a lockfile exists), then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Define User and Post models in `src/prisma/contract.prisma`, run `npx prisma contract emit`, then `npx prisma migration plan --name init` and `npx prisma db migrate` against the DATABASE_URL I give you (or one from `npx create-db@latest`).
-2. Write `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, skips when users already exist (use `.aggregate((a) => ({ total: a.count() }))`, not `.count()`), and ends with `await db.close()`. Add a `seed` script and verify `npm run seed` works twice.
-3. Check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Create a dedicated platform project with `npx prisma project create <name>` and show me the project id.
-4. Write `.github/workflows/prisma-postgres-preview.yml` following https://www.prisma.io/docs/guides/integrations/github-actions.md: a provision job that finds or creates a database named after the pull request with `npx prisma postgres list|create --project "$PRISMA_PROJECT_ID" --json`, reads `.envelope.result.connectionString` with jq, runs `db migrate --db`, `db verify --db`, and `npm run seed`, then comments on the pull request; and a cleanup job that deletes the database with `postgres delete <id> --confirm <id>` when the pull request closes. Always pass `--project`; the CLI does not read PRISMA_PROJECT_ID from the environment for these commands.
-5. Tell me which GitHub secrets to add: PRISMA_SERVICE_TOKEN, PRISMA_WORKSPACE_ID, PRISMA_PROJECT_ID.
-```
-
-</AgentPrompt>
-
 ## 1. Set up the project
 
 Create a project and make it an ES module:
@@ -167,10 +149,10 @@ to:         0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
 app space:  migrations/app/20260910T1549_init
 ```
 
-`migration plan` is offline: it writes a migration directory under `migrations/app/` and prints a DDL preview, and it does not touch the database. Apply it to your development database:
+`migration plan` is offline: it writes a migration directory under `migrations/app/` and prints a DDL preview, and it does not touch the database. Apply it to your development database. `--advance-ref db` records which contract your development database is at, so the next `migration plan` knows where to start:
 
 ```npm
-npx prisma db migrate
+npx prisma db migrate --advance-ref db
 ```
 
 ```text no-copy
@@ -184,9 +166,11 @@ App space
 ├─ Create index "Post_authorId_idx_e47547ed" on "Post"
 ├─ Add foreign key "Post_authorId_fkey" on "Post"
 └─ marker 0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
+
+✔ Advanced ref "db" → 0c3a18eb65d5a5027c444cf0626d843cdb41dfd5fe8e66d6fce8d2eab460c971
 ```
 
-Commit the `migrations/` directory, and whenever you change the contract, run `contract emit`, `migration plan --name <change>`, and `db migrate` again; the pull request's database then receives exactly the migrations the pull request adds. See [How migrations work](/orm/migrations/how-migrations-work) for the full loop.
+Commit the `migrations/` directory, and whenever you change the contract, run `contract emit`, `migration plan --name <change>`, and `db migrate --advance-ref db` again; the pull request's database then receives exactly the migrations the pull request adds. See [How migrations work](/orm/migrations/how-migrations-work) for the full loop.
 
 ### 2.5. Seed the database
 
@@ -754,9 +738,25 @@ Use `--json` in every CI step that needs a value back. The `--json` stream ends 
 
 :::
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. `init` and `orm init` are different commands. `orm init` sets up Prisma ORM in a project, and you ran it in [step 2.1](#21-initialize-prisma-orm). `init` installs the agent skills and does not set up Prisma ORM. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Set up per-pull-request Prisma Postgres databases for this project with GitHub Actions and Prisma ORM.
+
+1. Add Prisma ORM to the project with `npx prisma@latest orm init --yes --target postgres --authoring psl` (run it after a lockfile exists), then run `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them. Define User and Post models in `src/prisma/contract.prisma`, run `npx prisma contract emit`, then `npx prisma migration plan --name init` and `npx prisma db migrate --advance-ref db` against the DATABASE_URL I give you (or one from `npx create-db@latest`).
+2. Write `src/prisma/seed.ts` that creates two users with posts through `db.orm.public.User.create` and `db.orm.public.Post.create`, skips when users already exist (use `.aggregate((a) => ({ total: a.count() }))`, not `.count()`), and ends with `await db.close()`. Add a `seed` script and verify `npm run seed` works twice.
+3. Check `npx prisma auth whoami`; if I am not signed in, stop and ask me to run `npx prisma auth login`. Create a dedicated platform project with `npx prisma project create <name>` and show me the project id.
+4. Write `.github/workflows/prisma-postgres-preview.yml` following https://www.prisma.io/docs/guides/integrations/github-actions.md: a provision job that finds or creates a database named after the pull request with `npx prisma postgres list|create --project "$PRISMA_PROJECT_ID" --json`, reads `.envelope.result.connectionString` with jq, runs `db migrate --db`, `db verify --db`, and `npm run seed`, then comments on the pull request; and a cleanup job that deletes the database with `postgres delete <id> --confirm <id>` when the pull request closes. Always pass `--project`; the CLI does not read PRISMA_PROJECT_ID from the environment for these commands.
+5. Tell me which GitHub secrets to add: PRISMA_SERVICE_TOKEN, PRISMA_WORKSPACE_ID, PRISMA_PROJECT_ID.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. `init` and `orm init` are different commands. `orm init` sets up Prisma ORM in a project, and you ran it in [step 2.1](#21-initialize-prisma-orm). `init` installs the agent skills and does not set up Prisma ORM. Prompts you can give your agent after this guide:
 
 - "Using the Prisma ORM skills, add a `Comment` model to the contract, plan a migration for it, and update the seed script."
 - "Add a test job to the preview workflow that runs `npm test` against the provisioned database after the seed step."

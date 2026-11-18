@@ -27,25 +27,6 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up/workers-and-pages) for the deploy step
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Add Prisma ORM to a new Cloudflare Worker, query PostgreSQL from it, and prepare it for deployment.
-
-1. Scaffold: `npm create cloudflare@latest prisma-cloudflare-worker -- --type=hello-world --lang=ts --git --no-deploy --no-agents`. In `prisma-cloudflare-worker`, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them.
-2. Add `"compatibility_flags": ["nodejs_compat"]` to `wrangler.jsonc`. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`; both the Prisma CLI and `wrangler dev` read that file.
-3. Run `npx prisma db init` to create the tables from `src/prisma/contract.prisma`.
-4. Replace `src/index.ts` following https://www.prisma.io/docs/guides/deployment/cloudflare-workers.md: turn the emitted JSON into `const contract = contractFromJson<Contract>(contractJson)` (from `@prisma/orm-postgres/static`) once at module level, without exporting it, and create one `postgres({ contract, url: env.DATABASE_URL })` client per request inside `fetch`, run the queries, and close it with `ctx.waitUntil(db.close())`. Do not import the module-level client from `src/prisma/db.ts` in the Worker; a connection shared across requests hangs the second request. Run `npx wrangler types` so `Env` includes `DATABASE_URL`.
-5. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:8787` twice returns a created user and a growing count, then stop the dev server.
-6. Deploy: check `npx wrangler whoami`; if I am not logged in, stop and ask me to run `npx wrangler login`. Then run `npx wrangler secret put DATABASE_URL` with the production connection string and `npm run deploy`, and verify the live URL.
-```
-
-</AgentPrompt>
-
 ## 1. Create a Worker
 
 Scaffold a TypeScript "Hello World" Worker:
@@ -266,6 +247,14 @@ npx wrangler secret put DATABASE_URL
 
 Paste the connection string when prompted. In production, the database must accept TCP connections with TLS from Cloudflare's network. A Prisma Postgres direct connection string (`postgres://...@db.prisma.io:5432/postgres?sslmode=require`) works as is and pools connections on the database side, so a Worker creating one client per request stays within the connection limit.
 
+If the production database is not the one in your `.env`, its tables do not exist yet. Create them before you deploy. Set `PRODUCTION_DATABASE_URL` in your shell to the same connection string you stored as the secret, then run:
+
+```npm
+npx prisma db init --db "$PRODUCTION_DATABASE_URL"
+```
+
+`db init` only adds what is missing, so against a database that already has the tables it creates none. It also records in the database which contract the database matches, which later `db migrate` runs start from.
+
 ### 4.2. Deploy the Worker
 
 ```npm
@@ -353,9 +342,26 @@ Reads load the whole result into memory unless you pass a `cursor` option. Leave
 
 :::
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Add Prisma ORM to a new Cloudflare Worker, query PostgreSQL from it, and prepare it for deployment.
+
+1. Scaffold: `npm create cloudflare@latest prisma-cloudflare-worker -- --type=hello-world --lang=ts --git --no-deploy --no-agents`. In `prisma-cloudflare-worker`, run `npx prisma@latest orm init --yes --target postgres --authoring psl`, then `npx prisma@latest init` so the Prisma agent skills are installed and stay current, and use them.
+2. Add `"compatibility_flags": ["nodejs_compat"]` to `wrangler.jsonc`. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it to `.env` as `DATABASE_URL`; both the Prisma CLI and `wrangler dev` read that file.
+3. Run `npx prisma db init` to create the tables from `src/prisma/contract.prisma`.
+4. Replace `src/index.ts` following https://www.prisma.io/docs/guides/deployment/cloudflare-workers.md: turn the emitted JSON into `const contract = contractFromJson<Contract>(contractJson)` (from `@prisma/orm-postgres/static`) once at module level, without exporting it, and create one `postgres({ contract, url: env.DATABASE_URL })` client per request inside `fetch`, run the queries, and close it with `ctx.waitUntil(db.close())`. Do not import the module-level client from `src/prisma/db.ts` in the Worker; a connection shared across requests hangs the second request. Run `npx wrangler types` so `Env` includes `DATABASE_URL`.
+5. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:8787` twice returns a created user and a growing count, then stop the dev server.
+6. Deploy: check `npx wrangler whoami`; if I am not logged in, stop and ask me to run `npx wrangler login`. Then run `npx wrangler secret put DATABASE_URL` with the production connection string. If the production database is not the one in `.env`, ask me to set `PRODUCTION_DATABASE_URL` in the shell to that connection string, then create its tables with `npx prisma db init --db "$PRODUCTION_DATABASE_URL"`. Then run `npm run deploy` and verify the live URL.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add a `GET /users` route to the Worker that returns all users as JSON."
 - "Add a `POST /users` route that creates a user from the request body and returns 201."
