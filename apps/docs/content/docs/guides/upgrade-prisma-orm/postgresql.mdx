@@ -129,7 +129,16 @@ export default definePrismaConfig({
 
 `prisma7Schema(...)` reads a Prisma ORM 7 schema, and it reads a Prisma ORM 6 schema unchanged too: the `generator client { provider = "prisma-client-js" }` block and `url = env("DATABASE_URL")` in the datasource stay as they are, and Prisma 8 ignores them. `output: "src/prisma"` writes the emitted contract inside `src/`, where `tsc` compiles it.
 
-[Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists how each date and time type reads, and the parts of a schema Prisma 8 cannot read, such as `view` blocks. If your schema uses PostgreSQL extensions such as `pgvector` or `citext`, that section also shows the packs to add to the config.
+[Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists how each date and time type reads, and the parts of a schema Prisma 8 cannot read, such as `view` blocks.
+
+A field marked `@ignore` and a model marked `@@ignore` stay out of the Prisma 8 client, as they stayed out of your old client: queries neither return nor write an ignored field, and an ignored model has no `db.orm.public.<Model>`. [Raw SQL](/orm/reference/raw-queries) still reaches them. Their columns and tables stay in the database, and you do nothing for them: adding or removing `@ignore` later does not change the database.
+
+If the `datasource` block lists PostgreSQL extensions, as in `extensions = [citext, pg_trgm]`, or a field uses `@db.Citext`, two limits of the versions installed in step 1.1 apply:
+
+- Prisma 8 does not read the `extensions` list. Your existing database keeps its extensions, but the baseline in step 3 does not create them, so in a new, empty database run `CREATE EXTENSION` for each one, such as `CREATE EXTENSION IF NOT EXISTS pg_trgm;`, before `npx prisma db migrate`.
+- Prisma 8 cannot read a `@db.Citext` field: `contract emit` stops with `PSL.PRISMA7_NATIVE_TYPE_UNSUPPORTED`.
+
+Later releases read the `extensions` list and `@db.Citext` fields, as [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) shows, but Prisma Compute does not deploy them yet. So an app with a `@db.Citext` field cannot both upgrade and deploy on Compute today. If you do not deploy on Compute, install `prisma@latest` and `@prisma/orm-postgres@latest` in step 1.1 instead of the pinned versions. Then add an extension pack, an npm package that adds an extension's column types, for each of `citext`, `vector` and `postgis` in your list. A `@db.Citext` field needs the citext pack even when your list does not name `citext` or there is no list. Add the packs to the config as in [step 2.3 of the route-by-route guide](/guides/upgrade-prisma-orm/postgresql-incremental#23-add-the-packs-for-postgresql-extensions), and pass them to the client you create in step 5.1, as the route-by-route guide's [step 3.1](/guides/upgrade-prisma-orm/postgresql-incremental#31-instantiate-both-clients) shows.
 
 If you use a coding agent, install the [agent skills](/cli/skills) that ship inside the Prisma 8 packages, matched to their versions:
 
@@ -220,7 +229,7 @@ Every Prisma 8 package is published as ES modules, and your code imports the emi
 }
 ```
 
-Keep `package.json` without `"type": "module"`, and your relative imports stay as they are, without extensions. Keep `include` limited to `src` as well, so `tsc` does not compile `prisma.config.ts` into `dist/`. If your app runs through `tsx` or a bundler, or `package.json` has `"type": "module"`, [Set up tsconfig.json](/guides/upgrade-prisma-orm/postgresql-incremental#26-set-up-tsconfigjson-for-the-prisma-orm-8-client) gives the settings for each case.
+Keep `package.json` without `"type": "module"`, and your relative imports stay as they are, without extensions. Keep `include` limited to `src` as well, so `tsc` does not compile `prisma.config.ts` into `dist/`. If your app runs through `tsx` or a bundler, or `package.json` has `"type": "module"`, [Set up tsconfig.json](/guides/upgrade-prisma-orm/postgresql-incremental#25-set-up-tsconfigjson-for-the-prisma-orm-8-client) gives the settings for each case.
 
 ## 5. Rewrite your queries
 
@@ -301,6 +310,13 @@ const created = await db.orm.public.Post.create({
 // deleteMany, returning the number of deleted rows
 const deleted = await db.orm.public.Vote.where({ postId, voterId }).deleteAndCount();
 
+// cursor pagination: the page starts after the cursor row
+const nextPage = await db.orm.public.Post.where({ boardId: board.id })
+  .orderBy((p) => p.id.asc())
+  .cursor({ id: lastId })
+  .limit(20)
+  .all();
+
 // count
 const { total } = await db.orm.public.Post.where({ boardId: board.id }).aggregate((agg) => ({
   total: agg.count(),
@@ -349,6 +365,14 @@ const created = await prisma.post.create({
 
 const deleted = (await prisma.vote.deleteMany({ where: { postId, voterId } })).count;
 
+const nextPage = await prisma.post.findMany({
+  where: { boardId: board.id },
+  orderBy: { id: "asc" },
+  cursor: { id: lastId },
+  skip: 1,
+  take: 20,
+});
+
 const total = await prisma.post.count({ where: { boardId: board.id } });
 
 await prisma.$queryRaw`SELECT 1`;
@@ -356,10 +380,11 @@ await prisma.$queryRaw`SELECT 1`;
 const STATUSES = Object.values(PostStatus);
 ```
 
-Five differences catch most rewrites:
+Six differences catch most rewrites:
 
 - **A count lands on the relation's own key.** `include("votes", (votes) => votes.count())` puts the number in `post.votes`, where Prisma ORM 6 and 7 put it in `post._count.votes`. Update the views and response code that read `_count`. `tsc` does not check templates such as EJS views, so they still compile while they read `_count.*`.
 - **`whereUnique` takes only the primary key here.** A schema read through `prisma7Schema(...)` keeps each `@unique` and `@@unique` as the unique index Prisma ORM 6 and 7 created, and `whereUnique` accepts only a primary key or a unique constraint. Look rows up by those fields with `.where({ ... }).first()`, which runs the same query.
+- **The cursor row is left out.** In Prisma ORM 6 and 7, a page that starts at `cursor` includes the cursor row itself unless you add `skip: 1`. `.cursor(...)` starts after the cursor row, so drop `skip: 1`. If a query had no `skip: 1`, its pages now start one row later.
 - **Enums come from the client.** An `enum` in a Prisma ORM 6 or 7 schema is a PostgreSQL enum type, so its values are in `db.nativeEnums.public.<Enum>.values`. Fields of that type still read and write the same strings.
 - **At `@prisma/orm-postgres@8.0.0-rc.20`, a `DateTime` field reads as a string**, such as `"2026-11-06 09:10:48.497"`: the stored UTC time, without an offset. Code that calls a `Date` method on it, such as `post.createdAt.toISOString()` in a template, fails. Use the string, or convert it with `new Date(value.replace(" ", "T") + "Z")`. Templates that `tsc` does not check still compile while they call it. Later releases read the field as a `Date` again, so check this when you upgrade.
 - **At the same version, `@default(now())` is filled by the database.** A `@default(now())` field you leave out of `.create(...)` gets its value from the database's `now()`, which for a `timestamp` column is the database's local time. Prisma ORM 6 and 7 sent the UTC time instead. Run `SHOW timezone` on your database: if it prints anything other than `UTC`, new rows store local time where old rows store UTC. Decide how to handle it before you ship, for example by setting the database's time zone with `ALTER DATABASE <name> SET timezone TO 'UTC'`, or by passing the field yourself in `.create(...)`.

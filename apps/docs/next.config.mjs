@@ -218,6 +218,7 @@ const config = {
       { source: "/guides/next", destination: "/guides", permanent: true },
       { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
+      { source: "/composer/quickstart", destination: "/composer/getting-started", permanent: true },
       { source: "/prisma-orm/release-status", destination: "/orm/release-status", permanent: true },
       {
         source: "/prisma-orm/supported-databases",
