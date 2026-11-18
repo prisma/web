@@ -120,7 +120,7 @@ const MIN_LITERAL_HEADINGS: Record<AgentMarkdownPath, number> = {
   "/postgres": 1,
   "/compute": 1,
   "/pricing": 5,
-  "/studio": 3,
+  "/studio": 5,
   "/stack": 1,
   "/enterprise": 3,
   "/mcp": 4,

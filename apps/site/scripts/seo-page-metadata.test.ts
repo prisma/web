@@ -98,10 +98,15 @@ const PAGES: PageCopy[] = [
       "Get help with Prisma. Search for answers, report bugs, request features, or contact the Prisma support team.",
   },
   {
+    // Rewritten 2026-11-18 as part of the Studio SEO redesign (the page
+    // ranked only for the brand term). Title answers "postgres gui" and
+    // "visual database editor" alongside the primary "prisma studio"
+    // query; the description names the three surfaces (npx, VS Code,
+    // Prisma Console) and the databases the docs support.
     path: "/studio",
-    title: "Prisma Studio | Visual Database Browser and Editor",
+    title: "Prisma Studio | Free Postgres GUI to View and Edit Data",
     description:
-      "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
+      "Prisma Studio is a free Postgres GUI for viewing and editing database data. Open it locally with npx prisma studio, in VS Code, or in the Prisma Console. Works with PostgreSQL, MySQL and SQLite, with or without Prisma ORM.",
     llmsBlock: true,
   },
   {
