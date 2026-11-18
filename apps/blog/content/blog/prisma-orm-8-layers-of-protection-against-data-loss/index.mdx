@@ -1,0 +1,205 @@
+---
+title: "How Prisma ORM 8 Catches Destructive Database Changes Before Production"
+slug: "prisma-orm-8-layers-of-protection-against-data-loss"
+date: "2026-11-18"
+authors:
+  - "Ankur Datta"
+metaTitle: "How Prisma ORM 8 Catches Destructive Database Changes Before Production"
+metaDescription: "Follow one column rename from a laptop to production and see the five places Prisma ORM 8 can stop it from deleting data, and what each check does not cover."
+draft: true
+tags:
+  - "orm"
+series: prisma-8
+seriesIndex: 18
+---
+
+*One column rename, followed from a laptop to production, and the five places Prisma ORM 8 can stop it from deleting data.*
+
+Renaming a column is a one-line edit. In your schema, `username` becomes `handle`, the types update, the tests pass, and the diff looks like the least risky change of the week.
+
+Your tooling may see something else. A schema diff cannot tell a rename from a removal followed by an addition, so the obvious plan is to drop `username` and add `handle`. On your laptop that costs three rows of seed data. In production it deletes every customer's username, and a deployment pipeline will run it without hesitating.
+
+[Prisma ORM 8](https://www.prisma.io/docs/orm) is designed so that avoiding this does not depend on one person noticing one warning. A destructive change has to pass several independent checks between your editor and your production database, and each check catches a different kind of mistake. This post follows that rename through all of them, using output from a real project on PostgreSQL.
+
+:::note[Versions]
+Prisma ORM 8 is a release candidate. Everything here runs on the current release except database policies, which need a version of `@prisma/orm-postgres` newer than `8.0.0-rc.24`.
+:::
+
+## Why is one warning not enough?
+
+Every safeguard has a blind spot. A warning at planning time does not help when nobody reads the plan. Code review does not help when the file that runs differs from the file that was reviewed. A team rule such as "never push schema changes straight to production" does not help the new teammate, or the coding agent, that never heard it.
+
+Prisma ORM 8 therefore puts its checks at different stages and gives them different owners: the planner, the reviewer, the migration files, the database, and the runner. The stages overlap on purpose, so a mistake that slips past one still has to get past the next.
+
+## The planner asks what you meant
+
+The story starts in development, with the schema edit:
+
+```prisma
+model User {
+  id     Int    @id @default(autoincrement())
+  email  String @unique
+  handle String // was: username
+}
+```
+
+[`prisma db update`](https://www.prisma.io/docs/cli/db-update) is the quick path for a development database. It compares the database with your contract, the compiled form of your schema, and applies the difference without writing migration files. A dry run shows what it has in mind:
+
+```text
+$ npx prisma db update --dry-run
+
+App space
+├─ ⚠ Drop column "username" from "User"
+└─ Add column handle to User
+
+⚠ This migration contains destructive operations that may cause data loss.
+
+An apply asks about
+└─ Drop column "username" from "User": --delete User.username
+```
+
+That is the misreading from the introduction. What matters is the next step: Prisma will not act on it until someone says what the change means. Where nobody can answer, such as CI or an agent session, the command stops:
+
+```text
+$ npx prisma db update
+
+✘ [CLI.CONSENT_REQUIRED] "User.username" needs a statement, and the session is not interactive.
+  why: Drop column "username" from "User" would lose the values of field "User.username".
+→ Run the command again with --rename User.username:User.handle
+→ Run the command again with --delete User.username
+```
+
+The planner asks one question for each model or field that would lose data, and in a terminal it prompts for each answer. A blanket `--yes` does not count. I ran the same command with `--yes` and got the same refusal, because consent to lose data has to name the data.
+
+[`prisma migration plan`](https://www.prisma.io/docs/cli/migration-plan), which writes the migration you will ship, asks the same question. This time it has an answer:
+
+```text
+$ npx prisma migration plan --name rename_username_to_handle \
+    --rename User.username:User.handle
+
+✔ Planned 1 operation(s)
+
+migrations/app/20261118T1001_rename_username_to_handle
+└─ Rename column "User"."username" to "handle"
+
+ℹ DDL preview
+
+ALTER TABLE "public"."User" RENAME COLUMN "username" TO "handle";
+```
+
+Prisma ORM 7 also warned about data loss, but it generated the drop and the add, and left you to rewrite the SQL by hand. In Prisma ORM 8 the question comes before the migration exists.
+
+## Destructive operations are labeled for review
+
+The plan is a directory in your repository, and it goes through a pull request like any other code. Reviewable migration files are not new. What changed from Prisma ORM 7 is that every operation carries a class (`additive`, `widening`, `data`, or `destructive`), and the review commands put the dangerous one in front of you.
+
+Later in the same project I removed an unused `bio` column on purpose, planned with `--delete User.bio`. This is how [`prisma migration show`](https://www.prisma.io/docs/cli/migration-show) presents it:
+
+```text
+1 operation(s)
+└─ ⚠ Drop column "bio" from "User"
+
+⚠ This migration contains destructive operations that may cause data loss.
+```
+
+This stage carries more weight than it may seem. `db migrate` asks no questions when it applies a migration, because the consent was given when the migration was planned. Review is the last moment a person looks at a deliberate drop, so read `migration show` before you merge.
+
+## Edited migration files are caught
+
+A review only helps if the files do not change afterwards. Each migration records a hash of its compiled operations and metadata, and Prisma recomputes it before use. To test this, I edited the compiled operations of the rename so that they dropped the column instead:
+
+```text
+$ npx prisma migration check
+
+✘ [MIGRATION.CHECK_HASH_MISMATCH] migrations/app/20261118T1001_rename_username_to_handle/migration.json:
+  Stored hash 440a30f1… does not match recomputed hash e2d750b2…
+```
+
+(The CLI prints that message on one line.)
+
+`migration check` needs no database, so it fits in CI. `db migrate` refuses the same edited migration by itself, so a deploy job is protected even without the extra step.
+
+One gap remains. The hash covers the compiled files that Prisma runs, not the `migration.ts` you edit. If you change `migration.ts` and recompile, review the compiled result as well.
+
+## Development and production get different rules
+
+`db update` was the right tool on my development database. It would be the wrong tool in production, where it would change the schema with no migration and no review. Until now, "only migrations touch production" was a convention that lived in people's heads.
+
+Database policies turn that convention into something the database records about itself. You declare the rule in a ref, a small file in your repository that names the schema state an environment should be at. For production that is `migrations/app/refs/production.json`:
+
+```json
+{
+  "hash": "4948…c862",
+  "invariants": [],
+  "policies": { "change": ["migrate"] }
+}
+```
+
+`migrate` means applying reviewed migrations. The other strategy, `reconcile`, is what `db update` does. A database with no recorded policy permits both, so existing projects behave as before.
+
+Declaring the rule does not change the database. The database keeps its own copy of the policy in its marker, the record of which schema state it is at. The next deploy notices that the two differ and stops:
+
+```text
+$ npx prisma db migrate --to production --db "$PRODUCTION_DATABASE_URL"
+
+✘ [MIGRATION.POLICY_MISMATCH] The ref's policies differ from the database's
+  why: production declares change: migrate; the database has change: migrate, reconcile.
+→ Make the ref match the database, or have whoever owns the database apply the ref's policies.
+```
+
+Whoever owns the database applies it with an explicit flag:
+
+```text
+$ npx prisma db migrate --to production --permit-policy-change --db "$PRODUCTION_DATABASE_URL"
+
+✔ Policies updated: change: migrate
+```
+
+From then on, the Prisma CLI reads the policy from the database and refuses the shortcut, from any checkout:
+
+```text
+$ npx prisma db update --db "$PRODUCTION_DATABASE_URL"
+
+✘ [MIGRATION.CHANGE_POLICY_FORBIDS] This database's change policy permits only migrations
+  why: The marker records change: migrate, so db update may not move it.
+→ Author a migration with prisma migration plan, then apply it with prisma db migrate --db <url>.
+```
+
+The check also works in the other direction. When I edited the ref to add `reconcile` back and deployed, I got `POLICY_MISMATCH` again. Loosening a policy needs the same explicit consent as tightening it.
+
+A second policy, data protection, describes whether a database may lose data or widen who can read or write its rows, with three levels each: forbidden, with consent, and permitted. Today it is recorded and compared, but not enforced. I set `data-loss-forbidden` on a test database, and a reviewed migration that drops a column still ran. Treat it as a statement of intent for now, not as protection.
+
+## The runner checks the database before each step
+
+The last check happens during the apply. `db migrate` first reads the marker and refuses to start if that state is not in your migration history. Then every operation checks its own preconditions. In a staging database I renamed the column by hand to `user_name`, behind Prisma's back, and deployed:
+
+```text
+✘ [MIGRATION.PRECHECK_FAILED] Operation renameColumn.User.username failed during precheck: ensure column "username" exists
+  why: […] the database has no column "username" on "User". The failed apply changed nothing.
+```
+
+On PostgreSQL the whole run is one transaction, and the marker moves only after the database has been verified against the contract. MongoDB has no transaction around a run, so it applies operations one at a time and resumes where it stopped.
+
+When a database does get stuck, the recovery never involves wiping it. Prisma ORM 8 has no command that resets a database you connect to, and no error message suggests dropping one.
+
+## What changes when an agent writes your migrations?
+
+An agent goes through the same checks, only faster, and a few details were designed with that in mind. `--yes` cannot consent to data loss. Errors name the safe next step. No error offers `--permit-policy-change` unless you already passed it, because an agent that has run out of ideas tends to try whatever the error message suggests. There is no reset to reach for.
+
+The limits matter as much. Policies stop mistakes, not deliberate workarounds. An agent that holds production credentials can still run raw SQL, an older CLI does not read the policy, and anyone can pass the flag together with an edited ref. Keep production credentials out of the agent's environment, and keep the flag for the person who owns the database.
+
+A rename is also only safe for the data. Application instances that still read `username` will fail during the rollout, and Prisma does not check for that. Staging the change across two releases is still your job.
+
+## A safer workflow, end to end
+
+| Check | Where you meet it | What it catches |
+|---|---|---|
+| The planner's question | `db update`, `migration plan` | A drop that should be a rename, data loss nobody decided on |
+| Labeled review | `migration show`, the pull request | A destructive operation in a migration |
+| File integrity | `migration check`, `db migrate` | Migration files edited after review |
+| The database's policy | `db update`, `db migrate --to production` | The unreviewed path to production |
+| The runner's prechecks | `db migrate` | Drift, a step that fails partway |
+
+No single check here is clever, and none of them makes data loss impossible. A reviewed `--delete` still deletes. What they give you is five separate chances, at five different moments, for the tool to stop and ask the question you forgot to ask yourself.
+
+To try it, start with [How migrations work](https://www.prisma.io/docs/orm/migrations/how-migrations-work) and [Applying a migration](https://www.prisma.io/docs/orm/migrations/applying-a-migration), keep [Rollbacks and recovery](https://www.prisma.io/docs/orm/migrations/rollbacks-and-recovery) nearby, and read the [design record for database policies](https://github.com/prisma/orm/blob/main/docs/architecture%20docs/adrs/ADR%20320%20-%20Databases%20record%20a%20change%20policy%20and%20a%20data%20protection%20policy.md) for the reasoning behind them. It describes the full design, including the data protection enforcement that has not shipped yet. For the agent angle in more depth, see [Don't Let Your AI Agent Delete Your Production Database](/stop-your-ai-agent-dropping-your-database).
