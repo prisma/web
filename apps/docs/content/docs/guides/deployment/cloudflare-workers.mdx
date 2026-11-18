@@ -247,6 +247,14 @@ npx wrangler secret put DATABASE_URL
 
 Paste the connection string when prompted. In production, the database must accept TCP connections with TLS from Cloudflare's network. A Prisma Postgres direct connection string (`postgres://...@db.prisma.io:5432/postgres?sslmode=require`) works as is and pools connections on the database side, so a Worker creating one client per request stays within the connection limit.
 
+If the production database is not the one in your `.env`, its tables do not exist yet. Create them before you deploy:
+
+```npm
+npx prisma db init --db "$PRODUCTION_DATABASE_URL"
+```
+
+`db init` only adds what is missing, so running it against a database that already has the tables changes nothing.
+
 ### 4.2. Deploy the Worker
 
 ```npm
@@ -348,7 +356,7 @@ Add Prisma ORM to a new Cloudflare Worker, query PostgreSQL from it, and prepare
 3. Run `npx prisma db init` to create the tables from `src/prisma/contract.prisma`.
 4. Replace `src/index.ts` following https://www.prisma.io/docs/guides/deployment/cloudflare-workers.md: turn the emitted JSON into `const contract = contractFromJson<Contract>(contractJson)` (from `@prisma/orm-postgres/static`) once at module level, without exporting it, and create one `postgres({ contract, url: env.DATABASE_URL })` client per request inside `fetch`, run the queries, and close it with `ctx.waitUntil(db.close())`. Do not import the module-level client from `src/prisma/db.ts` in the Worker; a connection shared across requests hangs the second request. Run `npx wrangler types` so `Env` includes `DATABASE_URL`.
 5. Start `npm run dev` in the background, wait until it reports ready, verify `curl http://localhost:8787` twice returns a created user and a growing count, then stop the dev server.
-6. Deploy: check `npx wrangler whoami`; if I am not logged in, stop and ask me to run `npx wrangler login`. Then run `npx wrangler secret put DATABASE_URL` with the production connection string and `npm run deploy`, and verify the live URL.
+6. Deploy: check `npx wrangler whoami`; if I am not logged in, stop and ask me to run `npx wrangler login`. Then run `npx wrangler secret put DATABASE_URL` with the production connection string. If the production database is not the one in `.env`, create its tables with `npx prisma db init --db "$PRODUCTION_DATABASE_URL"`. Then run `npm run deploy` and verify the live URL.
 ```
 
 </AgentPrompt>
