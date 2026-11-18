@@ -85,7 +85,7 @@ model Product {
 import { db } from "./prisma/db";
 import { MongoFieldFilter } from "@prisma/orm-mongo/query-ast/execution";
 
-await db.orm.products.create({ name: "Notebook", price: "129.99" });
+const product = await db.orm.products.create({ name: "Notebook", price: "129.99" });
 
 const sale = await db.orm.products
   .where(MongoFieldFilter.gte("price", "100"))
@@ -98,7 +98,7 @@ See [`MongoFieldFilter`](/orm/reference/orm-client#mongofieldfilter) for every f
 
 **`inc()` and `mul()`.** The update builder offers `inc` and `mul` on numeric scalar fields. They take a JavaScript `number`, which can lose precision before the value reaches MongoDB, so prefer `set()` with decimal text when the new value must stay exact. When `inc` or `mul` fits your case, the same field-operations form as other MongoDB updates applies; see [`inc()` and `mul()` (MongoDB)](/orm/reference/orm-client#inc-and-mul-mongodb).
 
-**Pipeline builder.** ORM reads return decimal text. Once a [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) stage reshapes rows, such as after `group()`, later results follow the driver and are not re-encoded through the ORM field codecs. Treat accumulator output on a `Decimal128` field as a BSON decimal value from the MongoDB driver until you map it yourself. Filters in `match()` take ordinary JavaScript values and encode them like ORM `where()` does, so compare a `Decimal128` field with decimal text or with a value the field's codec accepts; see [Pipeline builder `match()`](/orm/reference/pipeline-builder#match) and [`MongoFieldFilter`](/orm/reference/orm-client#mongofieldfilter).
+**Pipeline builder.** ORM reads return decimal text. Once a [pipeline builder](/orm/fundamentals/advanced-queries#mongodb-pipeline-builder) stage reshapes rows, such as after `group()`, later results follow the driver and are not re-encoded through the ORM field codecs. Treat accumulator output on a `Decimal128` field as a BSON decimal value from the MongoDB driver until you map it yourself. In [`match()`](/orm/reference/pipeline-builder#match), each filter value is sent as you give it, the same rule as for `ObjectId` filters in the pipeline reference, not with the conversions ORM `where()` applies to scalar fields. After a stage returns raw driver shapes, compare a `Decimal128` field to a value in the form the pipeline actually carries, or filter earlier in the pipeline before types change. For equality on documents the ORM still decodes, prefer `where({ price: "19.99" })` or [`MongoFieldFilter`](/orm/reference/orm-client#mongofieldfilter) instead of assuming decimal text works in every `match()` predicate.
 
 `DateTime(as: temporal)` reads an instant as a `Temporal.Instant`, `DateTime(as: string)` as text such as `"2024-01-01T00:00:00.000Z"`, and `Date(as: temporal)` and `Time(as: temporal)` read a `Temporal.PlainDate` and a `Temporal.PlainTime`. The `temporal` forms need the `temporal-polyfill` package, a peer dependency of `@prisma/orm-mongo` that npm, pnpm and bun install for you; with Yarn, or npm with `legacy-peer-deps`, add it to your dependencies yourself.
 
