@@ -24,7 +24,7 @@ Classify every docs page as one of three kinds before writing or moving content:
 
 ## Generated content
 
-1. `content/docs/rest-api/endpoints/` and `public/prisma-rest-api.postman_collection.json` are generated. Never hand-edit; run `pnpm generate:rest-api-docs`.
+1. `content/docs/rest-api/endpoints/`, `public/prisma-rest-api.postman_collection.json`, and `public/bruno/prisma-rest-api/` are generated. Never hand-edit; run `pnpm generate:rest-api-docs`.
 2. The generator prepends redirects to `vercel.json` for endpoints that disappear from the OpenAPI spec; review them after each run.
 
 ## Validation
