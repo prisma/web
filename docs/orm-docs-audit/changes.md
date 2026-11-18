@@ -37,11 +37,11 @@ Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` a
 
 1. **C10, the Supabase page.** Waits on Ankur's draft prisma/web#8131, last updated 2026-10-26.
 2. **C23, example repositories in `prisma/prisma-examples`.** The shape is decided; nobody owns it.
-3. **A3 follow-up.** The prompt section still comes before the human steps on the guides under `guides/database`, `guides/deployment`, `guides/integrations`, and `guides/switch-to-prisma-orm`, on `composer/porting-an-app.mdx` and the full-stack tutorial, and as `## Prompt your coding agent` on 21 pages under `orm/`.
-4. **Small gaps, section E.** E19 (about 50 reader marks on the migration pages), E22 (reader-review hits on the framework and runtime guides; still failing the staccato check), E23 (`/getting-started` duplicates the Quickstart group).
-5. **Reader pass on three guides.** `from-drizzle.mdx`, `ai-sdk.mdx`, and `nestjs.mdx` fail the plain-language and staccato checks (the C9 follow-up).
+3. **Three Composer gaps from the getting-started eval**, listed below. They wait on prisma/web#8671.
 
-### In review, opened 2026-11-18
+The A3 follow-up, E19, E22, E23 and the reader pass on three guides are done; see "Merged on 2026-11-18".
+
+### Merged on 2026-11-18
 
 - **prisma/web#8863, E19.** The written-down reader marks on the migration and CLI pages, on 16 pages. It also corrects three facts: the MongoDB quickstart's `MONGODB_URL` (the scaffold reads only `DATABASE_URL`), nine operation classes in the Migration API reference, and the `db sign` advice for databases other than development. Most of the older marks were recorded only as a count per page and cannot be recovered. Left open by its reader rounds: whether the MongoDB quickstart's second `migration plan` fails because `npm run migrate` does not update the `db` ref (needs a MongoDB server); exit code 2 of `db sign` meaning two things; the production drift procedure on the rollbacks page, which needs numbered steps; `<dir>^` quoted on some pages and not on others. Following the MongoDB quickstart step by step against a real MongoDB server found that the scaffold's `npm run migrate` does not update the `db` ref, so the second `migration plan` fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. The quickstart and the `create-prisma` page now apply with `npm run migrate -- --advance-ref db` and emit before each plan. Remove the flag from both pages when prisma/orm#30370 ships.
 - **prisma/web#8864, the upgrade guide work from the Prisma 8 GA plan** (`planning/plan.md` on the `planning/prisma-8-ga` branch of prisma/orm). The route-by-route guide keeps `schema.prisma` through `prisma7Schema(...)` to the end; both PostgreSQL guides and "Coming from Prisma ORM 7" cover extension packs, `@ignore` and `@@ignore`, and cursor pagination starting after the cursor row. It adds a redirect from `/composer/quickstart`. Found on the way: the all-at-once guide pins `prisma@8.0.0-rc.27` and `@prisma/orm-postgres@8.0.0-rc.20` for Compute, where the datasource `extensions` list is ignored and `@db.Citext` cannot be read; `orm init --from-prisma7-schema` refuses a schema that needs an extension pack; the example repository `prisma/prisma8-and-7-example` still uses a separate contract file.
@@ -60,9 +60,9 @@ For the ORM team to schedule; none blocks a page. D4 (client APIs), D5 and D22 (
 
 Proposed on 2026-11-17.
 
-1. **E19** is in review as prisma/web#8863.
-2. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides) as one pass over the guides.
-3. **E23**, `/getting-started`.
+1. **E19**: done, merged as prisma/web#8863.
+2. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides): done, merged as prisma/web#8865.
+3. **E23**, `/getting-started`: done, merged as prisma/web#8865.
 4. **D37 in prisma/orm**, because the docs currently warn readers off a command the CLI prints. Then the D items in the order the ORM team prefers.
 5. **C23** when it has an owner, and **C10** when #8131 is ready.
 
