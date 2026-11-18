@@ -148,7 +148,9 @@ export function PricingPlans() {
             )}
           >
             {plan.popular && (
-              <Marker className="absolute -top-3 left-1/2 -translate-x-1/2">Most popular</Marker>
+              <Marker className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+                Most popular
+              </Marker>
             )}
             <p className="text-sm font-semibold text-foreground">{plan.name}</p>
             <p className="mt-4 font-heading text-4xl font-medium tracking-tight text-foreground">
