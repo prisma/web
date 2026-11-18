@@ -27,28 +27,29 @@ You need Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, o
 npm create prisma@latest -- --provider mongodb --no-deploy
 ```
 
-The command preselects MongoDB and prompts you for the project name, the template, the contract authoring style (PSL or TypeScript), your package manager, and whether to install agent skills. If you would rather add Prisma ORM to a project by hand, without the generated template, follow [Set up Prisma ORM from scratch](/prisma-orm/from-scratch), which uses PostgreSQL.
+The command preselects MongoDB and prompts you for the project name, the template, the language you write your contract in (the contract is what Prisma ORM 7 called the schema, and you write it in Prisma Schema Language, as in `schema.prisma`, or in TypeScript), your package manager, and whether to install agent skills. If you would rather add Prisma ORM to a project by hand, without the generated template, follow [Set up Prisma ORM from scratch](/prisma-orm/from-scratch), which uses PostgreSQL.
 
-Setup gives you the app template, a starter contract, `prisma-8.md`, project-level Prisma ORM skills for your coding agent, and package scripts for the database steps below. Answer no at the skills prompt, or pass `--skills none`, to skip the agent skill files; to remove them later, see [`skills sync`](/cli/skills) and the [`skills` config section](/cli/configuration#agent-skills). Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
-
-A standalone `mongod` is enough to work through this quickstart. A replica set is only needed for transactions and change streams, and MongoDB Atlas already gives you one. The connection string the scaffold writes assumes a single-node replica set named `rs0` on port 27017, so either run one locally or edit the string to point at your standalone server. If you use a standalone `mongod`, remove `replicaSet=rs0` from the connection strings below (keep `directConnection=true`); a URL that names a replica set only connects to a server that belongs to one.
+Setup gives you the app template, a starter contract, `prisma-8.md` (a short quick reference for writing your first typed query), project-level Prisma ORM skills for your coding agent, and package scripts for the database steps below. Answer no at the skills prompt, or pass `--skills none`, to skip the agent skill files; to remove them later, see [`skills sync`](/cli/skills) and the [`skills` config section](/cli/configuration#agent-skills). Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
 
 ## 1. Set the database connection
 
-The scaffold writes a `.env` with a local replica-set connection string:
+Run the remaining steps in the new project directory, such as `cd my-app` for a project named `my-app`. The scaffold writes a `.env` there with a local connection string:
 
 ```text title=".env"
 DATABASE_URL="mongodb://localhost:27017/mydb?replicaSet=rs0&directConnection=true"
 ```
 
-The generated scripts read environment variables directly rather than `.env`, and the CLI and the app use different variable names: the CLI commands read `MONGODB_URL`, and the app reads `DATABASE_URL`. Export both in the shell you work in:
+Nothing in the generated project loads `.env`, so export `DATABASE_URL` in the shell you work in. Both the `prisma` commands and the app read it from there:
 
 ```bash
-export MONGODB_URL="mongodb://localhost:27017/mydb?replicaSet=rs0&directConnection=true"
-export DATABASE_URL="$MONGODB_URL"
+export DATABASE_URL="mongodb://localhost:27017/mydb?replicaSet=rs0&directConnection=true"
 ```
 
-If you use MongoDB Atlas, use the connection string from your Atlas cluster instead. If you have no MongoDB server yet, [A database on your machine](/prisma-orm/local-database#mongodb) shows how to run one in Docker.
+The setup output also asks you to set `MONGODB_URL`. That variable is only for running or deploying the app with Prisma Composer, and this quickstart does not need it.
+
+The string names a replica set, `rs0`, but because it also sets `directConnection=true`, it connects to a standalone `mongod` on port 27017 as well, so you can use it as it is with either. A standalone server is enough for this quickstart, because a replica set is only needed for transactions and change streams.
+
+If you use MongoDB Atlas, which is already a replica set, use the connection string from your Atlas cluster instead. If you have no MongoDB server yet, [A database on your machine](/prisma-orm/local-database#mongodb) shows how to run one in Docker.
 
 ## 2. Create the migration plan
 
@@ -62,13 +63,15 @@ The output reports the planned operations: creating the `users` and `posts` coll
 
 ## 3. Apply the migration
 
-Apply the planned migration to MongoDB.
+Apply the planned migration to MongoDB:
 
 ```npm
-npm run migrate
+npm run migrate -- --advance-ref db
 ```
 
-The output ends with a summary like `Applied 3 operation(s) across 1 contract space`. If it fails with a connection error, confirm `MONGODB_URL` is exported in this shell and points at a running MongoDB deployment; if the string still names `replicaSet=rs0`, that replica set has to exist.
+`--advance-ref db` writes `migrations/app/refs/db.json`, the `db` ref, which records the contract state your development database is now at. Your next `migration plan` starts from it. Without it, the next `npm run migration:plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`, because migrations exist but nothing says which one your database has.
+
+The output includes `Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)` and ends with a line starting `Advanced ref "db"`. If it fails with a connection error, confirm `DATABASE_URL` is exported in this shell and points at a running MongoDB server.
 
 The `1 contract space` in the summary is the migration history for your own models. Prisma ORM calls it the `app` [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page), and its migrations are in `migrations/app/`.
 
@@ -84,6 +87,6 @@ Use the URL or terminal output shown by your template. You should see the seeded
 
 ## Next steps
 
-- Open `src/prisma/contract.prisma` or `src/prisma/contract.ts` and change the starter model.
+- Open `src/prisma/contract.prisma` or `src/prisma/contract.ts` and change the starter model. Then run `npm run contract:emit`, `npm run migration:plan -- --name <name>`, and `npm run migrate -- --advance-ref db`. Without `contract:emit`, `migration plan` reads the contract from before your change and reports `No changes detected`.
 - If you already have an app, follow [Add Prisma ORM and MongoDB to an existing app](/prisma-orm/quickstart/existing-app/mongodb) when its database is empty, or [Add Prisma ORM to an existing MongoDB database](/prisma-orm/add-to-existing-project/mongodb) when the database already has collections.
 - Read the [Prisma ORM overview](/orm) when you want the concepts behind contracts, query APIs, and migrations.
