@@ -27,24 +27,6 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 - A Drizzle project that talks to a PostgreSQL database, and its connection string in `DATABASE_URL`
 - Basic familiarity with Drizzle and Next.js
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Migrate this Drizzle project to Prisma ORM without changing the database.
-
-1. Run `npx prisma@latest orm init --target postgres` in the project root, choose PSL and the default schema path. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Keep the existing `DATABASE_URL` in `.env`; Drizzle and Prisma ORM use the same connection string format.
-2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
-3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. All three must succeed before you touch application code.
-4. Replace the Drizzle queries one route at a time following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-drizzle.md: import `db` from `src/prisma/db.ts`, use `db.orm.public.<Model>` with `.include(...)`, `.create(...)`, `.where(...).update(...)` and `.where(...).delete(...)`. Run each route with curl before and after, and show me the responses.
-5. When no file imports `drizzle-orm` any more, remove `src/db/`, `drizzle.config.ts` and the Drizzle packages, and confirm `next build` passes.
-```
-
-</AgentPrompt>
-
 ## Overview of the migration process
 
 The steps are the same for any app that uses Drizzle, whether it serves a REST API, a GraphQL API or server-rendered pages:
@@ -812,9 +794,25 @@ If you edit the contract after signing, `db verify` fails with `CONTRACT.MARKER_
 - In a long-running server, do not call `db.close()` in route handlers; the connection pool is shared across requests. Close it only on [process shutdown](/orm/reference/transactions-and-runtime#close), and never in a Next.js route.
 - Bare `.update()` and `.delete()` need a `.where(...)` and touch one row. Use `.updateAll(...)` and `.deleteAll()` for many rows.
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Migrate this Drizzle project to Prisma ORM without changing the database.
+
+1. Run `npx prisma@latest orm init --target postgres` in the project root, choose PSL and the default schema path. Then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Keep the existing `DATABASE_URL` in `.env`; Drizzle and Prisma ORM use the same connection string format.
+2. Run `npx prisma contract infer --output ./src/prisma/contract.prisma` to read the live schema into `src/prisma/contract.prisma`. Review it with me: singularize the model names (keep the `@@map` attributes so the table names do not change), and for each many-to-many join model add a direct list field on both sides (for example `categories Category[]` on `Post` and `posts Post[]` on `Category`).
+3. Run `npx prisma contract emit`, then `npx prisma db sign`, then `npx prisma db verify`. All three must succeed before you touch application code.
+4. Replace the Drizzle queries one route at a time following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-drizzle.md: import `db` from `src/prisma/db.ts`, use `db.orm.public.<Model>` with `.include(...)`, `.create(...)`, `.where(...).update(...)` and `.where(...).delete(...)`. Run each route with curl before and after, and show me the responses.
+5. When no file imports `drizzle-orm` any more, remove `src/db/`, `drizzle.config.ts` and the Drizzle packages, and confirm `next build` passes.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, migrate `src/app/api/categories/route.ts` from Drizzle to `db.orm.public.Category` and run it with curl."
 - "Rename the inferred models in `src/prisma/contract.prisma` to singular names and keep every `@@map`, then emit and verify."
