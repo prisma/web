@@ -130,7 +130,7 @@ export const STUDIO_TOUR = {
       label: "Migrations",
       title: "See what every migration changed",
       description:
-        "Step through applied Prisma ORM 8 migrations on PostgreSQL. Each opens as a visual diff of what it added, changed or removed, and destructive changes are flagged.",
+        "Step through applied Prisma ORM 8 migrations on PostgreSQL and the SQL each one ran, with destructive changes flagged. Migrations recorded with a schema snapshot also open as a visual diff of what they added, changed or removed.",
       imageSrc: "/illustrations/studio/tour/migrations.png",
       imageAlt:
         "Prisma Studio Migrations timeline with Add Attachments open as a schema diff of the new Attachment table",
