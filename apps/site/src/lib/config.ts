@@ -31,6 +31,7 @@ export const siteConfig = {
   ],
   stack: { label: "Explore the stack", href: "/stack" },
   nav: [
+    { label: "Studio", href: "/studio" },
     { label: "Pricing", href: "/pricing" },
     { label: "Customers", href: "/customers" },
     { label: "Docs", href: "/docs" },
@@ -41,6 +42,7 @@ export const siteConfig = {
       { label: "Postgres", href: "/postgres" },
       { label: "Compute", href: "/compute" },
       { label: "ORM", href: "/orm" },
+      { label: "Studio", href: "/studio" },
       { label: "Stack", href: "/stack" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },

@@ -131,9 +131,9 @@ export const markdownPages: Record<AgentMarkdownPath, MarkdownPage> = {
   },
   "/studio": {
     path: "/studio",
-    title: "Prisma Studio | Visual Database Browser and Editor",
+    title: "Prisma Studio | Free Postgres GUI to View and Edit Data",
     description:
-      "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
+      "Prisma Studio is a free Postgres GUI for viewing and editing database data. Open it locally with npx prisma studio, in VS Code, or in the Prisma Console. Works with PostgreSQL, MySQL and SQLite, with or without Prisma ORM.",
     h1: STUDIO_H1,
     subheadline: STUDIO_SUBHEADLINE,
     renderBody: renderStudioMarkdown,
