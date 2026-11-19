@@ -99,9 +99,9 @@ const PAGES: PageCopy[] = [
   },
   {
     path: "/studio",
-    title: "Prisma Studio | Visual Database Browser and Editor",
+    title: "Prisma Studio | Free Postgres GUI to View and Edit Data",
     description:
-      "Explore, edit, and understand your data with a visual database browser for Prisma, locally or in Prisma Console.",
+      "Prisma Studio is a free visual editor for PostgreSQL, MySQL and SQLite. Browse and edit rows, run SQL and map your schema, locally or in Prisma Console.",
     llmsBlock: true,
   },
   {

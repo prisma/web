@@ -23,6 +23,8 @@ export type CompareTableProps = {
   /** Header over the row labels. Omit with unlabelled choose rows. */
   corner?: string;
   columns: readonly string[];
+  /** Optional mark shown before each column name, in column order. Decorative. */
+  columnIcons?: readonly ReactNode[];
   rows: readonly CompareTableRow[];
   minWidth: string;
 };
@@ -32,7 +34,14 @@ export type CompareTableProps = {
  * a card with `data-label` on every cell. The Markdown serializer reads these
  * props directly, so it never renders this component.
  */
-export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: CompareTableProps) {
+export function CompareTable({
+  labelledBy,
+  corner,
+  columns,
+  columnIcons,
+  rows,
+  minWidth,
+}: CompareTableProps) {
   const labelled = Boolean(corner);
   const columnWidth = `${(labelled ? 78 : 100) / columns.length}%`;
   return (
@@ -52,9 +61,16 @@ export function CompareTable({ labelledBy, corner, columns, rows, minWidth }: Co
                 {corner}
               </th>
             ) : null}
-            {columns.map((column) => (
+            {columns.map((column, index) => (
               <th key={column} scope="col" className={TH_COL} style={{ width: columnWidth }}>
-                {column}
+                {columnIcons?.[index] ? (
+                  <span className="inline-flex items-center gap-2.5">
+                    {columnIcons[index]}
+                    {column}
+                  </span>
+                ) : (
+                  column
+                )}
               </th>
             ))}
           </tr>
