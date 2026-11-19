@@ -112,7 +112,8 @@ export function CommandBox({ tabs, className }: { tabs: CommandTab[]; className?
             </code>
           ))}
         </div>
-        <CopyCommand text={command} className="mt-0.5" />
+        {/* Keyed on the command, so switching tabs resets the "Copied" state. */}
+        <CopyCommand key={command} text={command} className="mt-0.5" />
       </div>
     </div>
   );
