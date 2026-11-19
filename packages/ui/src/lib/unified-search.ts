@@ -42,7 +42,7 @@ function sourceOfUrl(url: string): Exclude<Source, "all"> {
 }
 function ormVersionFromUrl(url: string): string | undefined {
   if (!url.startsWith("/docs/orm/")) return undefined;
-  const match = url.match(/^\/docs\/orm\/(v\d+)\//);
+  const match = url.match(/^\/docs\/orm\/(v\d+)/);
   return match ? `[ORM ${match[1]}]` : '[ORM Latest]';
 }
 function resultFromChunk(item: Chunk): SortedResult | undefined {
@@ -92,7 +92,7 @@ export function createUnifiedSearch(getClient: () => Mixedbread) {
     const response = await getClient().stores.search({
       query,
       store_identifiers:
-        source === "all" ? [stores.website, stores.docs, stores.blog] : [stores[source]],
+        source === "all" ? [stores.docs] : [stores[source]],
       top_k: 20,
       search_options: { ...(source !== "blog" ? { rerank: true } : {}), return_metadata: true },
     });
@@ -157,6 +157,7 @@ export function createUnifiedSearch(getClient: () => Mixedbread) {
 
 let client: Mixedbread | undefined;
 export const { GET, searchPages } = createUnifiedSearch(() => {
+  console.log(`Mixedbread search client initializing: [${process.env.MIXEDBREAD_API_KEY?.slice(0, 4)}…]`);
   if (!process.env.MIXEDBREAD_API_KEY) throw new Error("MIXEDBREAD_API_KEY is required");
   return (client ??= new Mixedbread({ apiKey: process.env.MIXEDBREAD_API_KEY }));
 });
