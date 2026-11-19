@@ -42,7 +42,7 @@ function sourceOfUrl(url: string): Exclude<Source, "all"> {
 }
 function ormVersionFromUrl(url: string): string | undefined {
   if (!url.startsWith("/docs/orm/")) return undefined;
-  const match = url.match(/^\/docs\/orm\/(v\d+)\//);
+  const match = url.match(/^\/docs\/orm\/(v\d+)/);
   return match ? `[ORM ${match[1]}]` : '[ORM Latest]';
 }
 function resultFromChunk(item: Chunk): SortedResult | undefined {
