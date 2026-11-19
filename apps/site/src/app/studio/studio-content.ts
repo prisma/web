@@ -15,11 +15,17 @@ export const STUDIO_VSCODE_URL =
 // project folder (QUICK_ACCESS.local.note). See
 // apps/docs/content/docs/studio/prisma-next.mdx.
 export const OPEN_STUDIO_COMMAND = 'npx prisma@prev studio --url "postgresql://..."';
-/** The seeded starter, one step per line; the command box copies it as one && chain. */
+/**
+ * The seeded starter, one step per line; the command box copies it as one &&
+ * chain. The starter pins Prisma 7.0.0, whose own `prisma studio` opens an
+ * older Studio, so the last step uses the newest Prisma 7 CLI (`prev`), which
+ * reads the starter's config and opens the current generation. Drop the tag
+ * once prisma-examples bumps its pin.
+ */
 export const TRY_STUDIO_STEPS = [
   "npx try-prisma@latest --template orm/starter",
   "cd hello-prisma",
-  "npx prisma studio",
+  "npx prisma@prev studio",
 ] as const;
 
 // Hero copy follows the 2026-11 SEO review: the primary query is "prisma

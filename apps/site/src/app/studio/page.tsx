@@ -27,9 +27,10 @@ import {
 
 // Rebuilt in the 2026 redesign language: the shared ProductHero, paper surfaces,
 // hairline borders, one accent (yellow: Studio ships with Prisma Postgres).
-// Every screenshot is the current Studio, captured from one local instance and
-// shown in the same light browser frame: hero, then the two ways in, then the
-// feature tour.
+// Every screenshot is captured from one local instance of the latest Studio
+// and shown in the same light browser frame: hero, feature tour and embed. The
+// released CLI (`prisma@prev`) can trail that build by a version, so small UI
+// details, such as the logo, may differ from what a visitor's command opens.
 
 const studioStructuredData = createSoftwareApplicationStructuredData({
   path: "/studio",
