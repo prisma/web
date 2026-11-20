@@ -280,21 +280,23 @@ Each slice is one pull request. Fix every finding in the named file, including i
 - **F8. The CLI pages, the skills pages and the two error references.** `cli.md`. `orm/reference/error-reference.mdx` is generated from `main` of prisma/orm, not from the release: it lists 11 codes rc.24 never raises, describes a `--permit-policy-change` flag no released CLI accepts, and lacks 4 codes the release raises. The fix is in the sync workflow. `ai/tools/skills.mdx` lists Codex and Windsurf; the agents are claude, cursor, agents and devin. `cli/skills.mdx` says only deliberately installed packages are skill sources, but `@prisma/composer` arrives with `prisma`. On `/cli`, the adoption steps write the inferred contract where the generated config does not read it. No page says what telemetry collects, although the CLI's first-run notice sends users to the docs for it. The CLI error reference lacks 13 Composer codes.
 - **F9. Pages that do not exist.** The "Missing" section of `reverse.md` and of each area file. No page shows how to set up SQLite, MySQL or MariaDB, and there is no client reference for them. No page tells a reader how to move from one release candidate to the next. `prisma lsp` is documented nowhere. The `turborepo` template of `create-prisma` is documented nowhere. The guides overview does not list the Vercel, React Router, SolidStart and incremental-upgrade guides. Decide the shape of each page with Will before writing: this slice adds pages, the others correct them.
 
-### Status of the slices, 2026-11-20
+### Status of the slices, 2026-11-21
 
 | Slice | Pull request | State |
 | --- | --- | --- |
-| F1 migrations | prisma/web#8881 | Open, reviewed twice |
-| F2 getting-started pages | prisma/web#8880 | Open, reviewed twice |
-| F3 framework guides | prisma/web#8888 | Open, reviewed twice |
-| F4 deployment guides | prisma/web#8885 | Open, reviewed twice |
-| F5 upgrade and switch guides | prisma/web#8883 | Open, reviewed twice |
-| F6 contract pages | prisma/web#8882 | Open, reviewed twice |
-| F7 client and builder pages | prisma/web#8886 | Open, reviewed three times |
-| F8 CLI and error references | prisma/web#8884 | Open, reviewed twice |
+| F1 migrations | prisma/web#8881 | Merged 2026-11-20 |
+| F2 getting-started pages | prisma/web#8880 | Merged 2026-11-20 |
+| F3 framework guides | prisma/web#8888 | Merged 2026-11-20 |
+| F4 deployment guides | prisma/web#8885 | Merged 2026-11-20 |
+| F5 upgrade and switch guides | prisma/web#8883 | Merged 2026-11-20 |
+| F6 contract pages | prisma/web#8882 | Merged 2026-11-20 |
+| F7 client and builder pages | prisma/web#8886 | Merged 2026-11-20 |
+| F8 CLI and error references | prisma/web#8884 | Merged 2026-11-20 |
 | F9 pages that do not exist | not started | Needs the shape of each page decided first |
 
 ### Open: does Prisma Compute deploy SvelteKit?
+
+Will, 2026-11-21: run the real deploy. In progress.
 
 The SvelteKit guide covers local use only, and the docs root says "SvelteKit and Deno stop at a local run for now". The sources suggest SvelteKit can be deployed, but nobody ran a real deploy, so the guide makes no claim. One real deploy settles it; if it works, the guide gets a deploy section and three lines on `(index)/index.mdx` and `(index)/prisma-orm/index.mdx` change.
 
