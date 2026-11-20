@@ -280,6 +280,70 @@ Each slice is one pull request. Fix every finding in the named file, including i
 - **F8. The CLI pages, the skills pages and the two error references.** `cli.md`. `orm/reference/error-reference.mdx` is generated from `main` of prisma/orm, not from the release: it lists 11 codes rc.24 never raises, describes a `--permit-policy-change` flag no released CLI accepts, and lacks 4 codes the release raises. The fix is in the sync workflow. `ai/tools/skills.mdx` lists Codex and Windsurf; the agents are claude, cursor, agents and devin. `cli/skills.mdx` says only deliberately installed packages are skill sources, but `@prisma/composer` arrives with `prisma`. On `/cli`, the adoption steps write the inferred contract where the generated config does not read it. No page says what telemetry collects, although the CLI's first-run notice sends users to the docs for it. The CLI error reference lacks 13 Composer codes.
 - **F9. Pages that do not exist.** The "Missing" section of `reverse.md` and of each area file. No page shows how to set up SQLite, MySQL or MariaDB, and there is no client reference for them. No page tells a reader how to move from one release candidate to the next. `prisma lsp` is documented nowhere. The `turborepo` template of `create-prisma` is documented nowhere. The guides overview does not list the Vercel, React Router, SolidStart and incremental-upgrade guides. Decide the shape of each page with Will before writing: this slice adds pages, the others correct them.
 
+### Status of the slices, 2026-11-20
+
+| Slice | Pull request | State |
+| --- | --- | --- |
+| F1 migrations | prisma/web#8881 | Open, reviewed twice |
+| F2 getting-started pages | prisma/web#8880 | Open, reviewed twice |
+| F3 framework guides | not opened | Reviewed twice; waits on a decision about a real SvelteKit deploy |
+| F4 deployment guides | prisma/web#8885 | Open, reviewed twice |
+| F5 upgrade and switch guides | prisma/web#8883 | Open, reviewed twice |
+| F6 contract pages | prisma/web#8882 | Open, reviewed twice |
+| F7 client and builder pages | not opened | Third review round |
+| F8 CLI and error references | prisma/web#8884 | Open, reviewed twice |
+| F9 pages that do not exist | not started | Needs the shape of each page decided first |
+
+### Found while fixing the slices, for other repositories
+
+None of these is fixed. Each was reproduced by an implementer or a reviewer on `prisma` 8.0.0-rc.34, the ORM packages at rc.24, or `create-prisma` 0.14.8.
+
+**create-prisma**
+
+- 0.14.8 pins `prisma` 8.0.0-rc.33, `@prisma/orm-postgres` 8.0.0-rc.23 and `@prisma/composer` 0.38.0, not the current releases. `@prisma/composer-prisma-cloud` pins `@prisma/orm-postgres` to exactly rc.23, so no scaffold can install an rc.24 extension pack; a plain `npm install @prisma/orm-extension-paradedb` fails with `ERESOLVE`.
+- The scaffold commits a first migration but no `db` ref. In a checkout where `db:init` never ran, the first `migration:plan` fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. It could write `migrations/app/refs/db.json` pointing at the first migration. `dev:composer` never writes the ref either.
+- The generated `db.ts` takes Composer's client with `.client` and catches every error. With an extension configured, Composer's client throws `RUNTIME.MISSING_EXTENSION_PACK`, `db.ts` falls back to a client with no `DATABASE_URL`, and the first query fails with `DRIVER.NOT_CONNECTED`, which names neither cause. `service.load().database.clientWith({ extensions })` works.
+- With `DATABASE_URL` unset, the first query fails with "Postgres driver not connected", which does not mention `DATABASE_URL`.
+- The Next.js template pins `next` 16.4.2, a version with published advisories. In an agent shell its `npm run build` stops with a `SecurityFatalError` that prints instructions addressed to AI agents.
+- The MongoDB README tells users to set `MONGODB_URL`; the generated `db.ts` reads `DATABASE_URL`.
+- The svelte template's `tsconfig.json` makes SvelteKit warn that `types` must include `$app/types`.
+
+**prisma/orm**
+
+- A `--backfill` plan passes the raw JSON import `endContract` to `this.dataTransform(...)`. Once the placeholders are filled in, that fails the type check and fails at run time with `RUNTIME.NAMESPACE_UNKNOWN`.
+- `migration status` suggests `prisma migration plan --name <name>` when there is no `db` ref; that command refuses with `MIGRATION.PLAN_ORIGIN_UNKNOWN`.
+- On MongoDB, a new required `DateTime` field planned without `--backfill` gets no fill and no warning; `db migrate` then stops with `MIGRATION.PRECHECK_FAILED`. The planner already warns for an `Int` field.
+- The cache middleware registers on a MongoDB client, but no public API lets a MongoDB read carry the cache annotation, so it caches nothing there. Its README still lists MongoDB.
+- No supported way exists to remove the Supabase extension from a project: the `supabase` row stays in `prisma_contract.marker` and `migrations/supabase/` stays in the project, so `db verify`, `db init` and `db update` fail with contract-space violations.
+- The arktype-json README passes the pack as `{ arktypeJson: pack }`, a key that fails with `RUNTIME.MISSING_EXTENSION_PACK`.
+- `@onCreate(nanoid())` and `@onCreate(uuid())` are refused on a MongoDB `String` field.
+- The TypeScript starter that `orm init` writes has a `belongsTo` with no foreign key, so `prisma contract print` refuses it. `orm init` also writes `contract.ts` into a `"type": "commonjs"` project, where the first `contract emit` fails.
+- `contract infer` without `--output` overwrites the contract source in a PSL project with only a warning.
+- The `prisma6Schema` README says a document written without an optional field reads with the field absent; at rc.24 it reads as `null`. The side-by-side steps `orm init` prints do not say that a fresh install stops generating the Prisma 6 client.
+- `docs/reference/error-reference.md` at `v8.0.0-rc.24` has entries for three codes nothing raises: `CLI.INIT_REINIT_NEEDS_FORCE`, `RUNTIME.EXECUTION_RESULT_MISSING`, `RUNTIME.MIDDLEWARE_RESULT_MISMATCH`.
+- The Vite plugin prints `Failed to load config module graph root` at startup on TanStack Start, and still emits the contract.
+- `db migrate` prints "across 1 contract space(s)"; `db init` and `db update` print "across 1 contract space".
+
+**prisma/prisma-cli**
+
+- `docs/reference/error-reference.md` lacks 13 codes that `@prisma/composer-cli` 0.39.0 raises: `CONFIG.SECTION_MISSING`, `DEV.ATTACH_FAILED`, `DEV.CONTAINER_FAILED`, `DEV.CONVERGE_FAILED`, `DEV.DEV_SERVER_UNAVAILABLE`, `DEV.DEV_SERVER_UNSUPPORTED`, `DEV.ENVIRONMENT_NAME_MISMATCH`, `DEV.PLATFORM_UNSUPPORTED`, `DEV.PREFLIGHT_FAILED`, `DEV.SERVICE_START_FAILED`, `DEV.STACK_WRITE_FAILED`, `DEV.TARGET_UNSUPPORTED`, `DEV.TEARDOWN_FAILED`. Its `list-error-codes.mjs` does not scan Composer.
+- The engine builds a `docsUrl` from the base URL of the command family that ran, so a shared `CLI.*` code raised by a Prisma ORM command links to the ORM error reference, which has no entry for it.
+- The telemetry notice and `prisma telemetry --help` link to `/docs/cli`, which says nothing about telemetry; the page is `/docs/cli/telemetry`.
+- The update check treats `CI=false` as CI; telemetry and prompts do not.
+- Running `prisma init` at a monorepo root does not stop the skills reminder inside member packages. The skill shipped in `prisma@8.0.0-rc.34` is stamped `8.0.0-rc.29-dev.175`, which raises `SKILLS.VERSION_CONFLICT`.
+- `orm init` picks its package manager by walking up for a lockfile, so a stray lockfile in a parent folder changes the choice.
+- After prisma/web#8884, the error reference sync builds from release tags. The `error-reference-updated` dispatch should be sent from the release workflows of prisma/orm and prisma/prisma-cli once the tag exists, not from pushes to `main`.
+
+**prisma/skills**
+
+- The `prisma-mongodb-upgrade` skill still runs `orm init --target mongodb`, which breaks the Prisma 6 CLI. It needs the side-by-side setup, the `PSL.PRISMA6_MONGO_*` refusals, `Int64Number` for a Prisma 6 `Int`, the document check before validators, and the `npm install` after uninstalling Prisma 6. The upgrade guide no longer recommends it; `ai/tools/skills.mdx` still lists it.
+
+**Other repositories and pages**
+
+- `prisma/prisma8-and-7-example` pins `prisma` 8.0.0-rc.15 and `@prisma/orm-postgres` 8.0.0-rc.11.
+- `guides/upgrade-prisma-orm/v7.mdx` and `ai/prompts/prisma-7.mdx` tell MongoDB users to stay on Prisma ORM 6, whose security patches ended on 19 November 2026. What to tell them is a product decision: MongoDB on Prisma ORM 8 is early access.
+- No deploy guide exists for a MongoDB app on Prisma ORM 8, and no client reference for MySQL and SQLite. Both belong to F9.
+
 ### For the ORM and CLI teams, found by the second audit
 
 - The shipped `prisma-8` skill says the default `onDelete` is `Restrict` (`skills/prisma-8/references/contract.md`). No action is stored, so PostgreSQL applies `NO ACTION`. The site is right.
