@@ -196,3 +196,14 @@ test("links inside code spans and fences keep the origin hosts", () => {
   );
   assert.doesNotMatch(mdx, /\]\(https:\/\/www\.prisma\.io\//);
 });
+
+test("links into the source repo and the generated-from comment use the release ref", () => {
+  const { mdx } = transform(
+    TARGETS.orm,
+    "# Error reference\n\nSee [conventions](./error-conventions.md).\n\n### PSL.INVALID_ATTRIBUTE\n",
+    "v8.0.0-rc.24",
+  );
+  assert.match(mdx, /blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-reference\.md/);
+  assert.match(mdx, /\(https:\/\/github\.com\/prisma\/orm\/blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-conventions\.md\)/);
+  assert.doesNotMatch(mdx, /blob\/main\//);
+});

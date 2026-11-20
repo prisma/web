@@ -24,37 +24,44 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout prisma/orm (main)
-        uses: actions/checkout@v4
-        with:
-          repository: prisma/orm
-          ref: main
-          path: prisma-src
-          persist-credentials: false
-
-      - name: Checkout prisma/prisma-cli (main)
-        uses: actions/checkout@v4
-        with:
-          repository: prisma/prisma-cli
-          ref: main
-          path: prisma-cli-src
-          persist-credentials: false
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24"
 
+      - name: Resolve the released versions
+        id: release
+        working-directory: apps/docs
+        run: |
+          echo "orm=$(node ./scripts/generate-error-reference.mjs --target orm --print-ref)" >> "$GITHUB_OUTPUT"
+          echo "cli=$(node ./scripts/generate-error-reference.mjs --target cli --print-ref)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout prisma/orm (latest release)
+        uses: actions/checkout@v4
+        with:
+          repository: prisma/orm
+          ref: ${{ steps.release.outputs.orm }}
+          path: prisma-src
+          persist-credentials: false
+
+      - name: Checkout prisma/prisma-cli (latest release)
+        uses: actions/checkout@v4
+        with:
+          repository: prisma/prisma-cli
+          ref: ${{ steps.release.outputs.cli }}
+          path: prisma-cli-src
+          persist-credentials: false
+
       - name: Generate ORM error reference page
         working-directory: apps/docs
-        run: node ./scripts/generate-error-reference.mjs --target orm --source ../../prisma-src/docs/reference/error-reference.md
+        run: node ./scripts/generate-error-reference.mjs --target orm --ref ${{ steps.release.outputs.orm }} --source ../../prisma-src/docs/reference/error-reference.md
 
       - name: Verify ORM page lists every known error code
         run: node prisma-src/scripts/list-error-codes.mjs --root prisma-src --verify apps/docs/content/docs/orm/reference/error-reference.mdx
 
       - name: Generate CLI error reference page
         working-directory: apps/docs
-        run: node ./scripts/generate-error-reference.mjs --target cli --source ../../prisma-cli-src/docs/reference/error-reference.md
+        run: node ./scripts/generate-error-reference.mjs --target cli --ref ${{ steps.release.outputs.cli }} --source ../../prisma-cli-src/docs/reference/error-reference.md
 
       - name: Verify CLI page lists every known error code
         run: node prisma-cli-src/scripts/list-error-codes.mjs --root prisma-cli-src --verify apps/docs/content/docs/cli/error-reference.mdx

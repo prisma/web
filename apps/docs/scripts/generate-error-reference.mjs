@@ -1,14 +1,21 @@
 // Generates a hosted error-reference page from a canonical
-// docs/reference/error-reference.md in a product repo (main branch).
+// docs/reference/error-reference.md in a product repo, at the tag of the
+// release users install. A page built from the repo's main branch would list
+// codes and flags that no published version has.
 //
 // Usage:
-//   node scripts/generate-error-reference.mjs [--target orm|cli] [--source <path-to-error-reference.md>]
+//   node scripts/generate-error-reference.mjs [--target orm|cli] [--ref <git-ref>] [--source <path-to-error-reference.md>]
+//   node scripts/generate-error-reference.mjs [--target orm|cli] --print-ref
 //
 // Targets:
 //   orm (default)  prisma/orm          -> content/docs/orm/reference/error-reference.mdx
 //   cli            prisma/prisma-cli   -> content/docs/cli/error-reference.mdx
 //
-// Without --source, the file is fetched from raw.githubusercontent.com.
+// The release is the `latest` version on npm of the target's npm package,
+// and its tag is `v<version>`. --print-ref prints that tag and exits, so the
+// sync workflow checks out the same ref it generates from. --ref overrides
+// it. Without --source, the file is fetched at the ref from
+// raw.githubusercontent.com.
 //
 // Every structured error carries (or can carry) a docsUrl pointing at its
 // code's entry on the hosted page — either as a fragment
@@ -95,10 +102,12 @@ const CLI_PAGE = "[CLI error reference](/cli/error-reference)";
 export const TARGETS = {
   orm: {
     sourceRepo: "prisma/orm",
+    npmPackage: "@prisma/orm-postgres",
     output: join(HERE, "../content/docs/orm/reference/error-reference.mdx"),
     applyNamingStandard: applyOrmNamingStandard,
     hostedIntro:
-      "When an error prints a `docsUrl`, that link opens the code's entry on this page. " +
+      "When an error prints a `docsUrl`, that link opens the code's entry on this page, except for " +
+      "some `CLI.*` codes, which the next paragraph describes. " +
       "This page is generated from the `prisma/orm` repository.",
     scope:
       "This page lists the codes from the Prisma ORM commands, which start with `prisma contract`, " +
@@ -109,6 +118,8 @@ export const TARGETS = {
       "runs through, for its arguments, for loading `prisma.config.ts`, for prompts, and for consent. " +
       `Those are on the ${CLI_PAGE} even when you ran a Prisma ORM command. ` +
       "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
+      "When a Prisma ORM command raises one of these codes, its `docsUrl` still points to this page, " +
+      "which has no entry for it, so the page opens at the top. " +
       "The `CLI.*` codes on this page are the ones the Prisma ORM commands raise themselves. " +
       "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
@@ -122,6 +133,7 @@ metaDescription: The structured error codes of the Prisma ORM commands, runtime,
   },
   cli: {
     sourceRepo: "prisma/prisma-cli",
+    npmPackage: "prisma",
     output: join(HERE, "../content/docs/cli/error-reference.mdx"),
     applyNamingStandard: applyCliNamingStandard,
     hostedIntro:
@@ -136,6 +148,7 @@ metaDescription: The structured error codes of the Prisma ORM commands, runtime,
       "`prisma` command runs through, for its arguments, for loading `prisma.config.ts`, for prompts, " +
       "and for consent. They are on this page even when you ran a Prisma ORM command. " +
       "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
+      `When a Prisma ORM command raises one of them, its \`docsUrl\` points to the ${ORM_PAGE} instead of this page. ` +
       `The Prisma ORM commands also raise \`CLI.*\` codes of their own, and those are on the ${ORM_PAGE}. ` +
       "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
@@ -157,10 +170,20 @@ function readFlag(name) {
   return value;
 }
 
-async function loadSource(target) {
+async function latestReleaseRef(target) {
+  const url = `https://registry.npmjs.org/${target.npmPackage}/latest`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+  const { version } = await response.json();
+  return `v${version}`;
+}
+
+async function loadSource(target, ref) {
   const path = readFlag("--source");
   if (path) return readFileSync(path, "utf8");
-  const url = `https://raw.githubusercontent.com/${target.sourceRepo}/main/docs/reference/error-reference.md`;
+  const url = `https://raw.githubusercontent.com/${target.sourceRepo}/${ref}/docs/reference/error-reference.md`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status}`);
@@ -248,7 +271,7 @@ function replaceNamespaceList(body, target) {
   return `${body.slice(0, at)}\n\n${target.sharedCliNamespace}${body.slice(at)}`;
 }
 
-export function transform(target, markdown) {
+export function transform(target, markdown, ref = "main") {
   assertMdxSafe(markdown);
 
   let body = markdown.replace(/^# Error reference\s*\n/, "");
@@ -268,7 +291,7 @@ export function transform(target, markdown) {
 
   // Repo-relative links point at files that only exist in the source repo:
   // "./x.md", "../x.md", and bare sibling files like "transaction-options.md#timeout".
-  const blobBase = `https://github.com/${target.sourceRepo}/blob/main/docs/reference/`;
+  const blobBase = `https://github.com/${target.sourceRepo}/blob/${ref}/docs/reference/`;
   body = body.replace(/\]\((\.\.?\/[^)]+|[\w-][^):\s]*\.md(?:#[^)]*)?)\)/g, (_, linkTarget) => {
     const url = new URL(linkTarget, `${blobBase}error-reference.md`);
     return `](${url.href})`;
@@ -309,7 +332,7 @@ export function transform(target, markdown) {
 
   const header = `${target.frontmatter}
 {/* Generated by scripts/generate-error-reference.mjs from
-    https://github.com/${target.sourceRepo}/blob/main/docs/reference/error-reference.md
+    https://github.com/${target.sourceRepo}/blob/${ref}/docs/reference/error-reference.md
     Do not edit by hand. The sync workflow overwrites changes. */}
 
 `;
@@ -325,7 +348,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       `Unknown --target ${JSON.stringify(targetName)}. Known: ${Object.keys(TARGETS).join(", ")}`,
     );
   }
-  const { mdx, codeCount, warnings } = transform(target, await loadSource(target));
+  const ref = readFlag("--ref") ?? (await latestReleaseRef(target));
+  if (process.argv.includes("--print-ref")) {
+    console.log(ref);
+    process.exit(0);
+  }
+  const { mdx, codeCount, warnings } = transform(target, await loadSource(target, ref), ref);
   for (const warning of warnings) console.warn(`Warning: ${warning}`);
   writeFileSync(target.output, mdx);
   console.log(`Wrote ${target.output} with ${codeCount} error codes.`);
