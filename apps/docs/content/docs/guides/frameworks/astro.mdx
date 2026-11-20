@@ -27,6 +27,8 @@ Answer the prompts, then export `DATABASE_URL` in your shell before running the 
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a Prisma Postgres database for you
 
+To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. A deploy does not create a MongoDB database for you: it reads your connection string from the `MONGODB_URL` environment variable.
+
 ## 1. Scaffold and enter the project
 
 ```npm
@@ -49,10 +51,18 @@ npm run db:init
 ```
 
 ```text no-copy
-"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+✔ Applied 5 operation(s) across 1 contract space
+
+App space
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
 ```
 
-If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat: when there is nothing left to do, it prints `✔ Database already matches contract across 1 contract space`.
 
 `db:init` applies your schema (`src/prisma/contract.prisma`) to the database and signs it. With TypeScript authoring (`--authoring typescript`) the schema is `src/prisma/contract.ts` and the emitted files land in `src/prisma/generated/`. Sample users are seeded automatically the first time the app queries the database.
 
@@ -64,11 +74,14 @@ npm run dev
 
 When you open [http://localhost:4321](http://localhost:4321), the page lists the seeded users, and `GET /api/users` returns them as JSON.
 
+To run the app the way Prisma Compute runs it, with no `DATABASE_URL` to set, run `npm run dev:composer` instead. It builds the app, starts a local Prisma Postgres database, applies the committed migrations to it, and prints the app's local URL.
+
 ## Where things live
 
 - `src/pages/index.astro`: queries users in the frontmatter and renders them
 - `src/pages/api/users.ts`: a JSON API route backed by the same query
-- `src/prisma/db.ts`: the Prisma ORM client both import
+- `src/prisma/users.ts`: the `listUsers` query helper both import
+- `src/prisma/db.ts`: the Prisma ORM client behind that helper
 
 On PostgreSQL, you reach a model through the database schema it is in: `db.orm.public.User` is the `User` model in the `public` schema. The [Prisma ORM overview](/orm) explains the contract that defines your models.
 
@@ -104,6 +117,24 @@ curl https://xyz.ewr.prisma.build/api/users
 
 The live URL's root page renders the same users server-side. For previews per Git branch and deploy on push, see [Deploy on push](/compute/deploy-on-push).
 
+## Change the schema
+
+The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, so every schema change needs a migration of its own. After you edit `src/prisma/contract.prisma`, for example to add a `bio String?` field to `User`, run:
+
+```npm
+npm run contract:emit
+npm run migration:plan -- --name add-user-bio
+npm run migrate -- --advance-ref db
+```
+
+`contract:emit` updates the files your queries are type-checked against. `migration:plan` writes the change as a new migration in `migrations/app/`, and `migrate` applies it to the database in `DATABASE_URL`. If you run the app with `npm run dev:composer` instead, you can skip `migrate`: it applies the new migration to its local database when it starts. The `--advance-ref db` flag updates `migrations/app/refs/db.json`, the file that tells the next `migration:plan` which migration your database is at. Without the flag, the next `migration:plan` starts from the older migration and plans your change a second time. [Generating a migration](/orm/migrations/generating-a-migration) explains the files `migration:plan` writes.
+
+Astro builds on Vite, so the [Vite plugin](/cli/contract-emit#run-it-automatically) can do the `contract:emit` step for you whenever the contract changes while the dev server runs: import `prismaVitePlugin` from `@prisma/orm-postgres/vite-plugin-contract-emit` and add `vite: { plugins: [prismaVitePlugin()] }` to `astro.config.mjs`.
+
+Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `npm run build` and `npx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
+
+If `migration:plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN` or `MIGRATION.HASH_NOT_IN_GRAPH`, it cannot tell which migration your database is at. That happens when you have not run `db:init` in this checkout, or when you changed the database with `db:update`, which makes the database match the schema without writing a migration. Pass the name of the newest directory in `migrations/app/` that your database already has, such as the first migration's directory: `npm run migration:plan -- --from 20261120T1008_init --name add-user-bio`.
+
 ## Use with your agent
 
 To delegate this guide to your coding agent, copy the prompt below and hand it over:
@@ -113,7 +144,7 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Create a new Astro app with Prisma ORM, seed it, and deploy it to Prisma Compute.
 
-1. Scaffold: `npm create prisma@latest -- my-astro-app --template astro --provider postgres --yes`. Then run `npx prisma@latest init` in `my-astro-app` so the Prisma agent skills are installed and stay current, and use them. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
+1. Scaffold: `npm create prisma@latest -- my-astro-app --template astro --provider postgres --yes`. The scaffold installs the Prisma agent skills. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell; the generated scripts read the environment variable, not `.env`.
 2. In `my-astro-app`, run `npm run db:init` with `DATABASE_URL` exported. The app seeds sample users on its first query, from `src/prisma/seed.ts`; there is no seed command to run.
 3. Start `npm run dev` in the background, wait until it reports ready, verify http://localhost:4321 lists the seeded users and `curl http://localhost:4321/api/users` returns them as JSON, then stop the dev server.
 4. Confirm `astro.config.mjs` still sets `output: "server"` and `adapter: node({ mode: "standalone" })` (the template sets both).
@@ -126,6 +157,5 @@ Use the installed Prisma ORM skills.
 
 ## Next steps
 
-- Change the schema in `src/prisma/contract.prisma`, then run `npm run contract:emit` and `npm run db:update`.
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
 - [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
