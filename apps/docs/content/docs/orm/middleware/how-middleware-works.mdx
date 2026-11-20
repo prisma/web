@@ -41,7 +41,7 @@ export const db = postgres({
 });
 ```
 
-`npm create prisma@latest` generates a `src/prisma/db.ts` that already builds this client, and the `middleware` option is what you add to it. The generated file builds the client itself only when the app is started with `DATABASE_URL` exported, as `npm run dev` does. With `npm run dev:composer` it takes its client from Composer through `service.load()` instead, and the `middleware` option in `db.ts` is never used.
+`npm create prisma@latest` generates a `src/prisma/db.ts` that already builds this client, and the `middleware` option is what you add to it. The generated file builds the client itself when the app runs without Prisma Composer, as it does with `npm run dev`. With `npm run dev:composer` it takes its client from Composer through `service.load()` instead, and the `middleware` option in `db.ts` is never used.
 
 The client itself, `postgres(...)`, comes from `@prisma/orm-postgres/runtime`. The built-in middleware and the `SqlMiddleware` type are imported from `@prisma/orm-postgres/family-runtime`, which works with any SQL database. `lints()` and `budgets()` both take an options object, and [lints](/orm/middleware/built-in-lints) and [budgets](/orm/middleware/built-in-budgets) list what goes in it.
 
@@ -284,7 +284,7 @@ Inside a transaction, the hooks run while the transaction's connection is still 
 {/* extensions-catalog:start tag=middleware source=official */}
 | Name | What it adds | Package | Databases | By |
 | --- | --- | --- | --- | --- |
-| [Cache middleware](https://www.prisma.io/extensions/middleware-cache) | Serve repeated reads from an in-memory or pluggable cache, opted in per query. | `@prisma/orm-extension-middleware-cache` | PostgreSQL, MongoDB | Prisma |
+| [Cache middleware](https://www.prisma.io/extensions/middleware-cache) | Serve repeated reads from an in-memory or pluggable cache, opted in per query. | `@prisma/orm-extension-middleware-cache` | PostgreSQL and the other SQL databases | Prisma |
 {/* extensions-catalog:end */}
 
 "Opted in per query" in that row means nothing is cached until you say so on one particular read, which you do by attaching `cacheAnnotation({})` to it. How long a cached entry lives is [set on the store](/orm/middleware/built-in-cache#options), not on the annotation. On the ORM API the annotation goes in a callback you pass after the arguments. That callback receives a `meta` object whose `annotate` method attaches the annotation to that one call:
@@ -309,7 +309,7 @@ If none of them do what you need, the [authoring guide](/orm/middleware/authorin
 Prisma ORM sorts the databases it supports into two families, SQL and MongoDB, and a middleware cannot always work on both. The `familyId` key next to `name` is where a middleware says which family it was written for, and a middleware that leaves `familyId` out runs on either.
 
 - `budgets` and `lints` declare `familyId: 'sql'`. They register on PostgreSQL and are rejected on MongoDB.
-- The cache declares no `familyId`. It never reads SQL, so it runs on PostgreSQL and on MongoDB.
+- The cache declares no `familyId`, so a MongoDB client accepts it too. It caches only reads that carry its annotation, and a MongoDB read has no way to carry one, so on MongoDB it stores and serves nothing.
 
 If you register a middleware against a database it was not written for, that client throws at its first query (or at `connect()`, if you call it), before anything reaches the database. The error's `code` is `RUNTIME.MIDDLEWARE_FAMILY_MISMATCH`.
 

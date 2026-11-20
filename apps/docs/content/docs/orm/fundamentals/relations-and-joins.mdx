@@ -204,7 +204,9 @@ const postsWithTags = await db.orm.public.Post
 [{ title: 'Hello Prisma 8', tags: [{ id: 't2…', name: 'databases' }] }]
 ```
 
-Writes reach the join table the same way: pass a callback for the relation and use `create`, `connect`, or `disconnect`:
+Writes reach the join table the same way: pass a callback for the relation and use `create`, `connect`, or `disconnect`. Inside `update()` you can also change or delete the related records a filter matches, as [Create a record and its related records](/orm/fundamentals/writing-data#create-a-record-and-its-related-records) shows; on a many-to-many relation, `deleteAll()` deletes the tags themselves, not only the links, and [`update()`](/orm/reference/orm-client#update) says when the database allows that.
+
+The three basic operations look like this:
 
 ```typescript
 // Create a post and two new tags in one call
@@ -239,7 +241,7 @@ await db.orm.public.Post.where({ id: post.id }).update({
 });
 ```
 
-The upsert is safe when two requests create the same tag at once, but the `connect` is not: if both requests also link that tag to the same post, the second fails with an error whose code is `ORM.RELATION_LINK_DUPLICATE`. Catch that code and treat it as done.
+Both steps are safe when two requests run them at once. The upsert creates the tag only once. Connecting a tag that is already linked to the post succeeds and writes nothing, because the join table's primary key is the two foreign keys.
 
 See [what is not available yet](/orm/coming-from-prisma-orm-7#not-available-yet) for the rest of the gaps, and [Upsert a record](/orm/fundamentals/writing-data#upsert-a-record) for the top-level `.upsert(...)` call. These nested writes are for relational databases, so on MongoDB, write the parent document and the child document in two calls, and set the reference field yourself:
 

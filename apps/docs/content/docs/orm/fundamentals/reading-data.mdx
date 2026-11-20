@@ -40,20 +40,20 @@ Your contract is the `contract.prisma` file that replaced `schema.prisma`: it is
 
 You can write `.where`, `.select`, `.orderBy`, `.limit`, and `.offset` in any order, but `.cursor(...)` must come after `.orderBy(...)`.
 
-For Prisma ORM 7 users, `findMany` and `findFirst` / `findUnique` map directly onto `.all()` and `.first()` ([Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) maps the rest of the API):
+For Prisma ORM 7 users, `findMany` maps onto `.all()`, and `findFirst` and `findUnique` map onto `.first()` ([Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7) maps the rest of the API):
 
 ```diff
 - const posts = await prisma.post.findMany({ where: { published: true } });
 + const posts = await db.orm.public.Post.where({ published: true }).all();
 
 - const user = await prisma.user.findUnique({ where: { email } });
-+ const user = await db.orm.public.User.where({ email }).first();
++ const user = await db.orm.public.User.whereUnique({ email }).first();
 
 - const page = await prisma.post.findMany({ take: 20, skip: 20 });
 + const page = await db.orm.public.Post.limit(20).offset(20).all();
 ```
 
-`.first()` asks the database for one row. `findUnique` and `findFirst` both become `.first()`, so if several records match you get one of them, in no guaranteed order; add `.orderBy(...)` to choose.
+`.first()` asks the database for one row. After `.where(...)`, as for `findFirst`, several records can match, and you get one of them in no guaranteed order; add `.orderBy(...)` to choose. After `.whereUnique(...)`, as for `findUnique`, TypeScript checks that you named a primary key or unique field, so at most one record matches. `.whereUnique(...)` is PostgreSQL only, so on MongoDB use `.where(...)`.
 
 ## Example schema
 

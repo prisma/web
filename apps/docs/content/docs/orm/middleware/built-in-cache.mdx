@@ -38,7 +38,7 @@ This is a cut-down `src/prisma/db.ts` from a generated project, with `middleware
 
 Writes are never cached, and the `*AndCount` methods return a count rather than rows, so there is nothing to cache in their case either.
 
-The cache works on PostgreSQL and on MongoDB. You register it on MongoDB the same way: pass `createCacheMiddleware()` in the `middleware` option of `mongo(...)`, which comes from `@prisma/orm-mongo/runtime`.
+The cache answers reads on PostgreSQL and the other SQL databases. A MongoDB client accepts the middleware in the `middleware` option of `mongo(...)`, but a MongoDB read cannot carry the annotation that opts it in: the MongoDB ORM and the pipeline builder have no `annotate` method and no `meta` callback. So on MongoDB the cache stores and serves nothing.
 
 ## Opt a query in
 
@@ -180,7 +180,19 @@ Now call the same annotated read twice. With the SQL query builder, the first ca
 
 ## Remove entries after a write [#remove-entries-after-a-write]
 
-Writes do not clear anything on their own. A `create`, `update`, or `delete` leaves every stored entry where it was, so a read can keep returning the old rows until the store drops them. To remove entries, call `invalidate` on the middleware after the write:
+Writes do not clear anything on their own. A `create`, `update`, or `delete` leaves every stored entry where it was, so a read can keep returning the old rows until the store drops them. To remove entries when a write happens, attach `invalidateAnnotation` to the write, with the keys to remove:
+
+```ts title="src/prisma/update-user.ts (excerpt)"
+import { invalidateAnnotation } from '@prisma/orm-extension-middleware-cache';
+
+await db.orm.public.User.where({ id }).update({ email }, (meta) =>
+  meta.annotate(invalidateAnnotation({ keys: [`user:${id}`] })),
+);
+```
+
+An ORM write takes the annotation in the same callback a read does, after its arguments. A SQL query builder `insert`, `update`, or `delete` takes it with `.annotate(invalidateAnnotation({ keys }))` before `.build()`. The cache removes the entries once the write is final: right after it, or, inside `db.transaction(...)`, after the transaction commits. When the transaction rolls back, the entries stay. The write's promise resolves only after the entries are removed. `invalidateAnnotation` takes the same `keys` and `meta` as `invalidate`, described below.
+
+You can also call `invalidate` on the middleware yourself after the write:
 
 ```ts title="src/prisma/update-user.ts (excerpt)"
 await db.orm.public.User.where({ id }).update({ email });
