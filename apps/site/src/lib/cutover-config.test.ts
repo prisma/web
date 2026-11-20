@@ -31,6 +31,16 @@ test("the shared policy permits the pinned analytics host and observed consented
   assert.equal(config.poweredByHeader, false);
 });
 
+test("the Console analytics frame permits the bare Google Analytics collection host", async () => {
+  const headers = await config.headers();
+  const policy = headers
+    .find((rule) => rule.source === "/console-analytics.html")!
+    .headers.find(({ key }) => key === "Content-Security-Policy")!.value;
+  const sources = new Set(policy.match(/connect-src[^;]+/)![0].split(/\s+/));
+  // A `*.` wildcard source does not match the bare host, and consented GA4 hits post to it.
+  assert.ok(sources.has("https://analytics.google.com"));
+});
+
 test("dashboard-only canonical-host redirects are exported with their original statuses", async () => {
   const redirects = await config.redirects();
   for (const [host, source, destination, permanent] of [
