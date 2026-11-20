@@ -132,10 +132,15 @@ npx prisma migration plan --name age_to_int --convert User.age --backfill User.d
 
 ## When nothing in the database changes [#no-database-change]
 
-If the storage part of the contract did not change, `migration plan` writes nothing and prints `✔ No changes detected`; with `--json`, the result's `summary` is `No changes detected between contracts`. That is not an error, and there is nothing to do. If the storage part changed but the database needs no change, `migration plan` writes nothing and fails with `MIGRATION.PLANNING_FAILED`. This happens after a Prisma upgrade that changes how `contract.json` records values, after you change how a field's values are written in `contract.json` while its database type stays the same, or after you change a control policy. In that case the message gives the next step:
+If the storage part of the contract did not change, `migration plan` writes nothing and prints `✔ No changes detected`; with `--json`, the result's `summary` is `No changes detected between contracts`. That is not an error, and there is nothing to do. If the storage part changed but the database needs no change, `migration plan` writes a migration with no operations and names what changed:
 
-- If you deploy with migrations, run `prisma migration new --from <hash>`, with the hash from the message, to write a migration with no operations, then `prisma db migrate`.
-- If you manage the database with `db init` or `db update`, run [`prisma db sign`](/cli/db-sign) on each database instead.
+```text
+⚠ Planned 0 operation(s). The storage the contract describes changed, but the database needs no operation for it, so the migration has none. What changed: table "public.user".
+```
+
+This happens after a Prisma upgrade that changes how `contract.json` records values, after you change how a field's values are written in `contract.json` while its database type stays the same, or after you change a control policy. Apply the migration with `prisma db migrate` as usual, so each database records the new contract. If you manage the database with `db init` or `db update` instead of migrations, run [`prisma db sign`](/cli/db-sign) on each database.
+
+The one case that fails is a first migration with no operations, from a contract that describes nothing to create: `migration plan` stops with `MIGRATION.PLANNING_FAILED`. If the database needs something the contract does not describe, write it by hand in a migration from [`prisma migration new`](/cli/migration-new).
 
 If you expected the database to change, report it with the output of `prisma migration plan --json`.
 

@@ -287,7 +287,7 @@ this.replaceStoredValue({ schema: 'public', table: 'task', column: 'state', from
 
 A [value object](/orm/contract-authoring/psl-syntax#value-objects) is stored as JSON in one column, so renaming, removing or filling one of its fields changes a key inside that JSON in every row. `migration plan` writes these calls for `--rename GeoPoint.lat:GeoPoint.latitude`, `--delete GeoPoint.lng` and `--backfill GeoPoint.country`, as [Renames and data loss](/cli/migration-plan#renames-and-data-loss) describes.
 
-`path` is a JSONPath that starts at the column's value, `$`, and ends at the key: `'$.lat'` is the key `lat` of the object in the column, and `'$[*].lat'` is the key `lat` of each object in a list. `[*]` and `.*` match every element of a list and every member value of an object. Only rows that hold the key are written.
+`path` is a JSONPath that starts at the column's value, `$`, and ends at the key: `'$.lat'` is the key `lat` of the object in the column, and `'$[*].lat'` is the key `lat` of each object in a list. `[*]` and `.*` match every element of a list and every member value of an object. `renameStoredKey` and `removeStoredKey` write only the rows that hold the key; `fillStoredKey` writes the rows with an object that lacks the key or holds `null` there.
 
 - `renameStoredKey` renames the key to `to`. Its precheck fails, and nothing changes, while an object holds both the old key and the new one.
 - `removeStoredKey` removes the key.
@@ -380,7 +380,7 @@ import { contractFromJson } from '@prisma/orm-postgres/static';
 const { sql: db, contract } = postgres({ contract: contractFromJson<End>(endContract) });
 ```
 
-`endContract` is the end snapshot's JSON, which the planned file already imports, and `End` is its type. `sql: db` names the query builder `db`, so it cannot clash with the `sql` that a planned file may import from `@prisma/orm-postgres/migration`. Pass `contract`, the object `postgres(...)` returns, because `db` was built from it; the JSON fails once the placeholders are replaced.
+`endContract` is the end snapshot's JSON, which the planned file already imports, and `End` is its type. When your contract uses an extension package, such as pgvector, pass its runtime export in `extensions`, as `db.ts` does: `postgres({ contract: contractFromJson<End>(endContract), extensions: [pgvector] })`, with `import pgvector from '@prisma/orm-extension-pgvector/runtime'`. Without it, `postgres(...)` fails with `RUNTIME.MISSING_EXTENSION_PACK`. `sql: db` names the query builder `db`, so it cannot clash with the `sql` that a planned file may import from `@prisma/orm-postgres/migration`. Pass `contract`, the object `postgres(...)` returns, because `db` was built from it; the JSON fails once the placeholders are replaced.
 
 Then the operation itself, from the worked example on Editing a migration. Inside each `where`, `f` holds the table's columns and `fns` the comparison functions:
 
