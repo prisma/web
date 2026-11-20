@@ -24,7 +24,7 @@ Install the package and arktype next to `@prisma/orm-postgres`:
 npm install @prisma/orm-extension-arktype-json arktype
 ```
 
-A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files: add the import and the `extensions` entry to `prisma.config.ts`, and add the import and `extensions: [...]` to every `postgres(...)` call in `src/prisma/db.ts`. The smallest files that work look like this:
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files. In `prisma.config.ts`, add the `/control` import and `extensions: [arktypeJsonControl]` inside the `ormConfig({ ... })` call. The generated file also has an `extensions` array inside `composer({ ... })`, which is for Prisma Composer and is the wrong place. In `src/prisma/db.ts`, add the `/runtime` import and `extensions: [arktypeJsonRuntime]` to every `postgres(...)` call. The smallest files that work look like this:
 
 ```ts title="prisma.config.ts"
 import 'dotenv/config';
@@ -91,7 +91,7 @@ npx prisma migration plan --name add-article-meta
 npx prisma db migrate --advance-ref db
 ```
 
-Two changes leave the database as it is, because the column stays `jsonb`: switching an existing `Jsonb` column to `arktypeJson(...)`, and changing the arktype type later. After either one, run the same three commands. `migration plan` warns `Planned 0 operation(s)` and writes a migration with no operations, which records the new contract, and `db migrate` applies it without changing the table.
+Two changes leave the database as it is, because the column stays `jsonb`: switching an existing `Jsonb` column to `arktypeJson(...)`, and changing the arktype type later. After either one, run the same three commands, with a new name for `--name`. `migration plan` warns `Planned 0 operation(s)` and writes a migration with no operations, which records the new contract, and `db migrate` applies it without changing the table.
 
 Rows already in the column are not checked until they are read.
 

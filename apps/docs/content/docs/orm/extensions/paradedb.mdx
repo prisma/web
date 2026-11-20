@@ -26,7 +26,7 @@ Install the package next to `@prisma/orm-postgres`:
 npm install @prisma/orm-extension-paradedb
 ```
 
-A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files: add the import and the `extensions` entry to `prisma.config.ts`, and add the import and `extensions: [...]` to every `postgres(...)` call in `src/prisma/db.ts`. The smallest files that work look like this:
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files. In `prisma.config.ts`, add the `/control` import and `extensions: [paradedb]` inside the `ormConfig({ ... })` call. The generated file also has an `extensions` array inside `composer({ ... })`, which is for Prisma Composer and is the wrong place. In `src/prisma/db.ts`, add the `/runtime` import and `extensions: [paradedb]` to every `postgres(...)` call. The smallest files that work look like this:
 
 ```ts title="prisma.config.ts"
 import 'dotenv/config';
@@ -148,8 +148,8 @@ In the SQL query builder, `fns` also has operations that change how a query matc
 | --- | --- |
 | `fns.paradeDbFuzzy(word, distance)` | Also matches words that are up to `distance` single-character changes (an added, removed, or replaced character) away from `word`. `distance` is 0, 1, or 2. |
 | `fns.paradeDbSlop(query, slop)` | Pass it to `paradeDbPhrase`. Also matches the phrase with up to `slop` other words between its words. `slop` is 0 or more. |
-| `fns.paradeDbProximity(word).within(distance, other)` | Pass it to `paradeDbMatch`. Matches `word` with `other` at most `distance` words away, in either order. `distance` is 0 or more. Pass `{ ordered: true }` as a third argument to `within` to require that order, and chain more `.within(...)` calls for more words. |
-| `fns.paradeDbBoost(query, weight)` | Weights the `paradeDbScore` of the rows this query matches by `weight`, an integer from -2048 to 2048. Use it in one part of an `or(...)`, such as the title match, so those rows rank higher. |
+| `fns.paradeDbProximity(word).within(distance, other)` | Pass it to `paradeDbMatch`. Matches `word` and `other` with at most `distance` other words between them, in either order. `distance` is 0 or more. Pass `{ ordered: true }` as a third argument to `within` to require that order, and chain more `.within(...)` calls for more words. |
+| `fns.paradeDbBoost(query, weight)` | Weights the `paradeDbScore` of the rows this query matches by `weight`, an integer from -2048 to 2048. Use it in one part of a `fns.or(...)`, such as the title match, so those rows rank higher, as the example below shows. |
 | `fns.paradeDbConst(query, value)` | Gives every row this query matches the same `paradeDbScore`, `value`, an integer. |
 
 ```ts
@@ -159,7 +159,7 @@ const plan = db.sql.public.Article.select('id')
   .build();
 
 const rows = await db.query(plan).toArray();
-// [{ id: 1 }, { id: 3 }, { id: 4 }]: every article whose body contains "migration", despite the typo
+// [{ id: 1 }, { id: 3 }]: the two articles from the ranked example, which both contain "migration"
 ```
 
 `paradeDbSlop` and `paradeDbProximity` go into a phrase search and a match:
@@ -171,6 +171,16 @@ const nearby = db.sql.public.Article.select('id')
 
 const loosePhrase = db.sql.public.Article.select('id')
   .where((f, fns) => fns.paradeDbPhrase(f.body, fns.paradeDbSlop('migration graph', 2)))
+  .build();
+```
+
+To rank title matches above body matches, boost the title part of a `fns.or(...)`:
+
+```ts
+const boosted = db.sql.public.Article.select('id', 'title')
+  .select('score', (f, fns) => fns.paradeDbScore(f.id))
+  .where((f, fns) => fns.or(fns.paradeDbMatch(f.title, fns.paradeDbBoost('migrations', 2)), fns.paradeDbMatch(f.body, 'migration')))
+  .orderBy((f, fns) => fns.paradeDbScore(f.id), { direction: 'desc' })
   .build();
 ```
 

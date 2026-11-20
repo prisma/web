@@ -153,7 +153,7 @@ const users = await db.query(plan);
 
 The example schema's `Embedding1536` column is a pgvector type, so a client for that schema also needs pgvector in `extensions`, as [Built-in functions](#built-in-functions) shows.
 
-SQLite works the same way: create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite, but every other one is. MySQL, an early preview, works like SQLite: create the client with `mysql(...)` from `@prisma/orm-mysql/runtime`, and the table is `db.sql.user`. On MySQL, row locks, lateral joins, `distinctOn()`, and `.returning(...)` are not available: TypeScript rejects them, or the query throws an error when it runs, because MySQL has no `RETURNING` or `DISTINCT ON` and Prisma ORM does not support its row locks or lateral joins yet. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
+SQLite works the same way: create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite, but every other one is. MySQL, an early preview, works like SQLite: create the client with `mysql(...)` from `@prisma/orm-mysql/runtime`, and the table is `db.sql.user`. On MySQL, row locks, lateral joins, `distinctOn()`, `.returning(...)`, and `outerFullJoin()` are not available, because MySQL has no `RETURNING`, `DISTINCT ON`, or `FULL JOIN`, and Prisma ORM does not support its row locks or lateral joins yet. TypeScript rejects all of them except `outerFullJoin()`, which type-checks and then throws an error whose `code` is `RUNTIME.AST_UNSUPPORTED` when the query runs. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
 
 ### Table access
 
@@ -312,7 +312,7 @@ const rows = await db.query(plan);
 
 ### `outerLeftJoin()`, `outerRightJoin()`, `outerFullJoin()`
 
-Keep unmatched rows from one or both sides, filling the missing side's columns with `null`. Each takes the same `(other, on)` arguments and returns a `SelectQuery` as [`innerJoin()`](#innerjoin) does. `outerLeftJoin()` is SQL's `LEFT OUTER JOIN` and keeps every left-table row. `outerRightJoin()` is `RIGHT OUTER JOIN` and keeps every right-table row. `outerFullJoin()` is `FULL OUTER JOIN` and keeps unmatched rows from both sides.
+Keep unmatched rows from one or both sides, filling the missing side's columns with `null`. Each takes the same `(other, on)` arguments and returns a `SelectQuery` as [`innerJoin()`](#innerjoin) does. `outerLeftJoin()` is SQL's `LEFT OUTER JOIN` and keeps every left-table row. `outerRightJoin()` is `RIGHT OUTER JOIN` and keeps every right-table row. `outerFullJoin()` is `FULL OUTER JOIN` and keeps unmatched rows from both sides. MySQL has no `FULL JOIN`, so there `outerFullJoin()` throws an error whose `code` is `RUNTIME.AST_UNSUPPORTED` when the query runs.
 
 #### Examples
 
@@ -1067,7 +1067,7 @@ Write a raw SQL fragment as a tagged template, and interpolate columns, typed ex
 #### Remarks
 
 - **Always call `.returns()`.** Nothing in the builder accepts a fragment without it.
-- **`.returns()` sets the type and, for most type ids, how the value is read.** In a `select()`, `pg/int4@1` reads the value as a `number`, `pg/int8@1` as a `bigint`, `pg/bool@1` as a `boolean`, `pg/numeric@1` as a `string`, and `pg/timestamptz-date@1` as a JavaScript `Date`. The date and time ids that take a setting such as a precision, among them `pg/timestamptz@1`, `pg/timestamp@1`, and `pg/date@1`, do not convert it, and the value then arrives as the text PostgreSQL sends, such as `'2026-11-20 10:48:42.034415+00'`. For a point in time, write `pg/timestamptz-date@1`.
+- **`.returns()` sets the type and how the value is read.** In a `select()`, `pg/int4@1` reads the value as a `number`, `pg/int8@1` as a `bigint`, `pg/bool@1` as a `boolean`, `pg/numeric@1` as a `string`, `pg/timestamptz-date@1` as a JavaScript `Date`, and `pg/timestamptz-string@1` as an ISO string. `.returns()` does not check the id: a misspelt id, or one Prisma ORM does not have, such as `pg/timestamptz@1`, converts nothing and raises no error, and the value arrives as the text PostgreSQL sends, such as `'2026-11-20 11:19:09.939031+00'`.
 - Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on. There is no `fns.coalesce` and no `fns.cast`.
 
 #### Examples

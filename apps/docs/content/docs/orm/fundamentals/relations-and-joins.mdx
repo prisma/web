@@ -204,9 +204,7 @@ const postsWithTags = await db.orm.public.Post
 [{ title: 'Hello Prisma 8', tags: [{ id: 't2…', name: 'databases' }] }]
 ```
 
-Writes reach the join table the same way: pass a callback for the relation and use `create`, `connect`, or `disconnect`. Inside `update()` you can also change or delete the related records a filter matches, as [Create a record and its related records](/orm/fundamentals/writing-data#create-a-record-and-its-related-records) shows; on a many-to-many relation, `deleteAll()` deletes the tags themselves, not only the links. Unless the join table's foreign keys cascade on delete, the database refuses to delete a tag that still has link records, and the whole update is rolled back.
-
-The three basic operations look like this:
+Writes reach the join table the same way: pass a callback for the relation and use `create`, `connect`, or `disconnect`:
 
 ```typescript
 // Create a post and two new tags in one call
@@ -225,6 +223,8 @@ await db.orm.public.Post.where({ id: post.id }).update({
   tags: (t) => t.disconnect([{ name: "typescript" }]),
 });
 ```
+
+Inside `update()` you can also change or delete the tags a filter matches with `where(...).updateAll(...)` or `where(...).deleteAll()`, as [Create a record and its related records](/orm/fundamentals/writing-data#create-a-record-and-its-related-records) shows. On a many-to-many relation, `deleteAll()` deletes the tags themselves, not only the links, so it works only when the join table's foreign keys cascade on delete. With the `PostTag` model above, it always fails and the whole update is rolled back. To allow it, add `onDelete: Cascade` to both `@relation(...)` attributes in `PostTag`.
 
 `connect` and `disconnect` identify the tag by any primary key or `@unique` field, so `{ name: "typescript" }` works here because `Tag.name` is `@unique`. When that key is made of several columns, pass every one of them in the object. `update(...)` returns the updated post, or `null` when no post matched the filter. `create` always inserts a new tag record, so creating a tag whose name already exists fails on that same unique constraint. Use `connect` for tags that already exist.
 
