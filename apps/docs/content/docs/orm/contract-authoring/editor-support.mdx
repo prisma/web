@@ -6,30 +6,31 @@ metaTitle: Editor support for Prisma ORM contracts
 metaDescription: 'How the Prisma VS Code extension detects a Prisma ORM contract, what it checks and completes, and how to fix false errors after an upgrade.'
 ---
 
-Install the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) to get error checking, formatting, and completion in your `.prisma` file.
+Install the [Prisma VS Code extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma) to get error checking, formatting, and completion in your `.prisma` file. Editors that install extensions from Open VSX, such as Cursor, get the same extension from [Open VSX](https://open-vsx.org/extension/Prisma/prisma).
 
-In Prisma ORM 8 that file is the [data contract](/orm/contract-authoring/the-data-contract): the description of your models that Prisma ORM 7 called the schema. Its path is the `contract` setting in your `prisma.config.ts`, which is `prisma/contract.prisma` in the config [`orm init`](/cli/orm-init) writes; see [Configuration](/cli/configuration#config-file).
+In Prisma ORM 8 that file is the [data contract](/orm/contract-authoring/the-data-contract): the description of your models that Prisma ORM 7 called the schema. The `contract` setting in your `prisma.config.ts` names the file, and [`orm init`](/cli/orm-init) sets it to `src/prisma/contract.prisma`; see [Configuration](/cli/configuration#config-file).
 
-Coming from Prisma ORM 7? Start with [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7). This page covers VS Code only.
+If you are coming from Prisma ORM 7, start with [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7). The commands this page names are VS Code's.
 
 ## The file header
 
-The extension only works on `.prisma` files whose first non-blank line is:
+The extension treats a `.prisma` file as a Prisma ORM 8 contract only when its first non-blank line is:
 
-```prisma title="prisma/contract.prisma"
+```prisma title="src/prisma/contract.prisma"
 // use prisma-8
 ```
 
-A file without that line gets no error checking, no completion, and no formatting. [`prisma contract emit`](/cli/contract-emit) also skips it without a warning, and when none of the files that the `contract` setting names has the line, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`. [`orm init`](/cli/orm-init) and [`contract infer`](/cli/contract-infer) write the line for you. Add it yourself when you create a contract by hand.
+The extension checks a file without that line as a Prisma ORM 7 schema, so every Prisma ORM 8 addition in it shows as an error, and your Prisma ORM 7 schemas keep the editor support they had. [`prisma contract emit`](/cli/contract-emit) also skips it without a warning, and when none of the files that the `contract` setting names has the line, `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`. [`orm init`](/cli/orm-init) and [`contract infer`](/cli/contract-infer) write the line for you. Add it yourself when you create a contract by hand.
 
 ## What the editor does
 
 - **Errors** appear inline as you type. They are the same errors you would get from [`prisma contract emit`](/cli/contract-emit), the command that checks the contract and writes `contract.json` and `contract.d.ts`.
-- **Formatting** reformats the whole file. In VS Code, run **Format Document**.
-- **Completion** starts when you type `@` or `@@`. The editor lists attribute names such as `@id`, `@default`, and `@@index`, each with a short description. Inside an attribute, it lists the names of the arguments you have not filled in yet and suggests values for them. It also suggests values inside `[ ]` and `{ }`. In a MongoDB index's field list, it suggests the option and its values in the parentheses after a field name, such as `sort` and `Desc` in `@@index([createdAt(sort: Desc)])`. Where an attribute expects a field name, it suggests only scalar fields. When an attribute has required arguments, VS Code inserts them as placeholders named after each argument, which you tab through. In a block such as `policy_select`, it completes the values, including inside lists and function calls, and offers `ns.` for a namespace. A block value can name an entity in another namespace, as in `target = auth.Account`.
+- **Formatting** reformats the whole file. In VS Code, run **Format Document**. It follows the `formatter` setting in `prisma.config.ts`, so it writes the same indentation and line endings as the [`prisma contract format`](/cli/configuration#schema-formatting) command.
+- **Completion** starts when you type `@` or `@@`. The editor lists attribute names such as `@id`, `@default`, and `@@index`, each with a short description. Inside an attribute, it lists the names of the arguments you have not filled in yet and suggests values for them. It also suggests values inside `[ ]` and `{ }`. In a MongoDB index's field list, it suggests `sort` and its directions, as in `@@index([sort(createdAt, Desc)])`. Where an attribute expects a field name, it suggests only scalar fields. When an attribute has required arguments, VS Code inserts them as placeholders named after each argument, which you tab through. In a block such as `policy_select`, it completes the values, including inside lists and function calls, and offers `ns.` for a namespace. A block value can name an entity in another namespace, as in `target = auth.Account`.
 - **Hover** shows what a name is. Over a model, field, type, or block, it shows the declaration and its `///` doc comment. Over an attribute, argument name, function, constant, or a type from an extension pack, it shows the signature and its documentation.
 - **Go to definition** jumps from a use of a name to its declaration, and **Find references** lists every place a name is used. Both work for models, composite types, named types, blocks, fields, and namespaces, across every file of the contract.
 - **Signature help** appears when you type `(` or `,` inside an attribute. It shows the attribute's arguments and describes the one you are typing.
+- **Rename** changes a name at its declaration and at every use, across every file of the contract. In VS Code, run **Rename Symbol** or press F2. When you rename a model or field that has no `@@map` or `@map`, the editor adds one with the old name, so the table or column in the database keeps its name.
 
 The list of attributes comes from your `prisma.config.ts`: the database it declares and the Prisma extension packs listed under `extensions`; see [Extension packs](/cli/configuration#extension-packs) for that config. Extension packs are add-on packages for database features such as [pgvector](/orm/extensions/using-extensions). If your config lists the pgvector pack, the editor also suggests pgvector's attributes. No database connection is needed.
 
@@ -37,18 +38,23 @@ The list of attributes comes from your `prisma.config.ts`: the database it decla
 
 When `contract` in `prisma.config.ts` is a glob, such as `./*.prisma`, the editor reads every matching file that starts with `// use prisma-8` as one contract, the same files that `prisma contract emit` reads. A model declared in a file you have not opened is known in the files you edit, and the editor reports the errors in every file of the contract, including the ones you have not opened. See [Split the schema across several files](/cli/configuration#split-the-schema-across-several-files).
 
+## Where the editor gets its checks
+
+For a file that starts with `// use prisma-8`, the extension uses the `prisma` package installed in your project, so install `prisma` as a dev dependency in the package that holds the contract. In a monorepo, it uses the `prisma` closest to the contract file. When it finds none, it offers to install `prisma@latest` at the workspace root, and until a `prisma` package is installed the file gets no error checking, completion, or formatting. The same happens in a window that VS Code opened in Restricted Mode: choose **Trust** in the banner to turn the checks on. If the checks stop, run **Prisma: Restart Language Server** from the Command Palette.
+
 ## False errors after an upgrade
 
-If the editor marks attributes as errors in a contract that `prisma contract emit` accepts, the likely cause is an old ORM package. That is the `@prisma/orm-postgres`, `@prisma/orm-mongo`, or `@prisma/orm-sqlite` package your project installs for its database. Check the installed version:
+If the editor marks attributes as errors in a contract that `prisma contract emit` accepts, the likely cause is an old package: either `prisma`, or the `@prisma/orm-postgres`, `@prisma/orm-mongo`, or `@prisma/orm-sqlite` package your project installs for its database. Check the installed versions:
 
 ```bash title="Terminal"
-npm ls @prisma/orm-postgres
+npm ls prisma @prisma/orm-postgres
 ```
 
-If it prints a version below `8.0.0-rc.9`, update it to the latest version:
+Then update both to the latest release:
 
 ```npm title="Terminal"
 npm install @prisma/orm-postgres@latest
+npm install --save-dev prisma@latest
 ```
 
 Replace `orm-postgres` with `orm-mongo` or `orm-sqlite` to match your database. Then reload the editor window. In VS Code, run **Developer: Reload Window** from the Command Palette.
