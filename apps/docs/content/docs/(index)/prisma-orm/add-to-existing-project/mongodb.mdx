@@ -33,7 +33,7 @@ npm install --save-dev tsx typescript
 
 ## 2. Initialize Prisma ORM
 
-The `orm init` command below changes your `tsconfig.json` and your `package.json`. In `tsconfig.json`, it sets `module` to `preserve` and `moduleResolution` to `bundler`. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
+The `orm init` command below changes your `tsconfig.json` and your `package.json`. If you have no `tsconfig.json`, it writes one. If you have one, it turns on `resolveJsonModule` and adds `"node"` to `types`. If your `moduleResolution` is `bundler`, or `nodenext` in a package with `"type": "module"`, it leaves `module` and `moduleResolution` as they are. Otherwise it sets `module` to `preserve` and `moduleResolution` to `bundler`. [`orm init`](/cli/orm-init) lists every pair it leaves alone. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
 
 From the root of your project, run:
 
@@ -69,7 +69,7 @@ The part after the last `/`, and before any `?`, is the name of the database. To
 import 'dotenv/config';
 import mongo from '@prisma/orm-mongo/runtime';
 import { contractFromJson } from '@prisma/orm-mongo/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -80,7 +80,7 @@ export const db = mongo({
 });
 ```
 
-The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports are written by `contract emit` in step 5.
+The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports, `contract.json` and `contract.d.ts`, are already there, because `orm init` emitted them from its starter contract. `contract emit` in step 5 writes them again for your own contract.
 
 ## 4. Describe your collections in the contract
 
@@ -155,8 +155,8 @@ npx tsx script.ts
 ```text no-copy
 {
   username: null,
-  id: '6abca6a1e7a9bb8d8c716f65',
   email: 'existing@example.com',
+  id: '6b001f5bb9fd640536ea8896',
   name: 'Existing User'
 }
 ```
@@ -205,7 +205,7 @@ npx tsx script.ts
   {
     email: 'existing@example.com',
     name: 'Existing User',
-    _id: '6abca6a1e7a9bb8d8c716f65'
+    _id: '6b001f5bb9fd640536ea8896'
   }
 ]
 ```
@@ -214,4 +214,26 @@ npx tsx script.ts
 
 When you change `src/prisma/contract.prisma`, run `npx prisma contract emit` again.
 
-You can read and write documents in collections that already exist without a migration. Use [`migration plan`](/cli/migration-plan) when you want Prisma ORM to create or change collections and indexes.
+You can read and write documents in collections that already exist without a migration. To let Prisma ORM create or change collections and indexes, first bring your database in line with the contract with [`db update`](/cli/db-update):
+
+```npm
+npx prisma db update --advance-ref db
+```
+
+`db update` compares the database with the contract and applies the difference. It creates the collections and indexes the contract declares and the database lacks. It also adds a validator to each collection the contract describes. A validator is a MongoDB rule that lists the fields a document may have. Pass `--dry-run` first to see the operations without applying them.
+
+:::warning[Other code that writes to these collections]
+
+Once a collection has a validator, MongoDB rejects any write that adds a field the contract does not declare, including writes from code that does not use Prisma ORM. Declare every field your other code writes before you run `db update`.
+
+:::
+
+Before it adds a validator, `db update` checks the documents already in the collection. If one has a field the contract does not declare, or lacks a required one, the command stops with `MIGRATION.PRECHECK_FAILED`, names the document, and leaves that collection's validator unchanged. Add the field to the contract, or change the document, and run the command again. Operations that ran before the failure, such as creating a missing collection, stay applied.
+
+When it succeeds, `db update` records which contract the database matches, in the database and in the file `migrations/app/refs/db.json`, called the `db` ref. `migration plan` starts from that record.
+
+After that, every change follows the same four steps as on a new database: edit `src/prisma/contract.prisma`, run `npx prisma contract emit`, run `npx prisma migration plan --name <name>`, and run `npx prisma db migrate --advance-ref db`. Commit the `migrations/` directory.
+
+Run `db update` before your first `migration plan`, not after it. Without the `db` ref, `migration plan` plans every collection from an empty database, and `db migrate` then stops with `MIGRATION.PRECHECK_FAILED` because the collection already exists. The operations that ran before the failure stay applied.
+
+The same holds for any other database whose collections already exist, such as production: run `npx prisma db update --db "$PRODUCTION_DATABASE_URL"` once, before the first `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"` there. Leave out `--advance-ref` for those databases, because the `db` ref tracks your development database.

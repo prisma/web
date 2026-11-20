@@ -29,7 +29,7 @@ npm create prisma@latest -- --provider postgres --no-deploy
 
 The command preselects PostgreSQL and prompts you for the project name, the template, the contract authoring style (PSL or TypeScript), your package manager, and whether to install agent skills. If you would rather add Prisma ORM to a project by hand, without the generated template, follow [Set up Prisma ORM from scratch](/prisma-orm/from-scratch).
 
-Setup gives you the app template, a starter contract, `prisma-8.md`, project-level Prisma ORM skills for your coding agent, and package scripts for the database steps below. Answer no at the skills prompt, or pass `--skills none`, to skip the agent skill files; to remove them later, see [`skills sync`](/cli/skills) and the [`skills` config section](/cli/configuration#agent-skills). Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
+Setup gives you the app template, a starter contract (the file that holds your models, which Prisma ORM 7 called the schema), a first migration that creates its tables in `migrations/app/<timestamp>_init`, `prisma-8.md`, project-level Prisma ORM skills for your coding agent, and package scripts for the database steps below. When the project folder is new or empty, setup also creates a Git repository with one commit, `Initial commit from create-prisma`. Answer no at the skills prompt, or pass `--skills none`, to skip the agent skill files; to remove them later, see [`skills sync`](/cli/skills) and the [`skills` config section](/cli/configuration#agent-skills). Sample users are seeded automatically the first time the app queries the database, so there is no separate seed step.
 
 Next, get a PostgreSQL database, connect the app to it, and run your first query. To keep everything on your machine, skip to [Run with a local database instead](#run-with-a-local-database-instead).
 
@@ -75,7 +75,7 @@ From the generated project directory, run `db:init` to apply the starter contrac
 npm run db:init
 ```
 
-The output includes a summary like `Applied 5 operation(s) across 1 contract space`, followed by the operations and the marker it wrote.
+The output includes a summary like `Applied 5 operation(s) across 1 contract space`, followed by the operations and the marker it wrote. It ends with a line starting `Advanced ref "db"`. That line means `db:init` wrote the file `migrations/app/refs/db.json`, called the `db` ref, which records the version of the contract your development database now has. Your next `migration plan` starts from it.
 
 ### Run the app [#4-run-the-app]
 
@@ -85,7 +85,7 @@ Start the app and confirm the sample query runs successfully.
 npm run dev
 ```
 
-Use the URL or terminal output shown by your template. You should see the seeded users returned from PostgreSQL. If the response is `Could not query users yet`, `DATABASE_URL` is not set in the environment the app runs in; export it in the same shell and restart.
+Use the URL or terminal output shown by your template. You should see the seeded users returned from PostgreSQL. If you see `Could not query users` instead, read the error the app printed in its terminal. `Postgres driver not connected` there means `DATABASE_URL` is not set in the environment the app runs in; export it in the same shell and restart the app.
 
 </Steps>
 
@@ -101,6 +101,6 @@ Open the URL the command prints. You should see the seeded users returned from P
 
 ## Next steps
 
-- Open `src/prisma/contract.prisma` or `src/prisma/contract.ts` and change the starter model.
+- Open `src/prisma/contract.prisma` or `src/prisma/contract.ts` and change the starter model. Then run `npm run contract:emit`, `npm run migration:plan -- --name <name>`, and `npm run migrate -- --advance-ref db`. Without `contract:emit`, `migration plan` reads the contract from before your change and reports `No changes detected`. Keep `--advance-ref db` on every apply to your development database: without it, the next plan repeats your last change and `npm run migrate` fails with `MIGRATION.PATH_UNREACHABLE`.
 - If you already have an app, follow [Add Prisma ORM and PostgreSQL to an existing app](/prisma-orm/quickstart/existing-app/postgresql) when its database is empty, or [Add Prisma ORM to an existing PostgreSQL database](/prisma-orm/add-to-existing-project/postgresql) when the database already has tables.
 - Read the [Prisma ORM overview](/orm) when you want the concepts behind contracts, query APIs, and migrations.

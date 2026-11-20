@@ -27,7 +27,7 @@ For what release candidate means, when the final release is expected, and how to
 
 ## 1. Add Prisma ORM to the project
 
-The `orm init` command below changes your `tsconfig.json` and your `package.json`. In `tsconfig.json`, it sets `module` to `preserve` and `moduleResolution` to `bundler`. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
+The `orm init` command below changes your `tsconfig.json` and your `package.json`. If you have no `tsconfig.json`, it writes one. If you have one, it turns on `resolveJsonModule` and adds `"node"` to `types`. If your `moduleResolution` is `bundler`, or `nodenext` in a package with `"type": "module"`, it leaves `module` and `moduleResolution` as they are. Otherwise it sets `module` to `preserve` and `moduleResolution` to `bundler`. [`orm init`](/cli/orm-init) lists every pair it leaves alone. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
 
 From the root of your project, run:
 
@@ -58,6 +58,7 @@ written
 installed
 ├─ @prisma/orm-mongo
 ├─ dotenv
+├─ mongodb
 ├─ prisma@latest (dev)
 ├─ @types/node (dev)
 └─ @prisma/cli-engine@0.10.0 (dev)
@@ -79,7 +80,7 @@ You do not need `prisma-8.md` for this page. It is a short reference for writing
 import 'dotenv/config';
 import mongo from '@prisma/orm-mongo/runtime';
 import { contractFromJson } from '@prisma/orm-mongo/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -90,7 +91,7 @@ export const db = mongo({
 });
 ```
 
-The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports are written by `contract emit` in step 4.
+The first line loads `.env`, so every file that imports `db` reads `DATABASE_URL` from there. The two `contract` files it imports, `contract.json` and `contract.d.ts`, are already there, because `orm init` emitted them from its starter contract. `contract emit` in step 4 writes them again for your own contract.
 
 From now on, every `prisma` command ends with the line `Prisma agent skills are out of date`. You can ignore it, because it does not change what the command does. Agent skills are instruction files that AI coding tools read, and the line appears because your project has none yet. To add them and stop the line, run [`npx prisma@latest init`](/cli/init). In Prisma ORM 8, `init` adds the skills and a `postinstall` script that keeps them up to date, and it leaves your contract and your `.env` alone. `orm init` is the command that sets up Prisma ORM.
 
@@ -138,6 +139,9 @@ npx prisma contract emit
 │  types:     src/prisma/contract.d.ts
 
 ✔ Emitted contract.json and contract.d.ts
+
+storageHash:  a54d34d81005b6a1c0fbf0b40d1b349f7497e2f9b9f8f144bf392979a891c1c8
+profileHash:  251b3ce23f6c9f561892e7c1af9d2cc941a13d64ba1aa7226b90036b09568cc3
 ```
 
 The command writes `contract.json` and `contract.d.ts` next to the contract. Commit both files, because `db.ts` imports them.
@@ -153,16 +157,16 @@ npx prisma db init
 ✔ Planning migration
 ✔ Initialising database across spaces
 │  contract:  src/prisma/contract.json
-│  database:  mongodb://127.0.0.1:27029/app1
+│  database:  mongodb://127.0.0.1:27129/app1
 
 ✔ Applied 2 operation(s) across 1 contract space
 
 App space
 ├─ Create collection users
-├─ Create index on users (email:1)
-└─ marker 778f20d8e17f0107ce8a9f84577123728a700cb38e1b2b2689949ae658d3776e
+├─ Create index email_1 on users (email:1)
+└─ marker a54d34d81005b6a1c0fbf0b40d1b349f7497e2f9b9f8f144bf392979a891c1c8
 
-✔ Advanced ref "db" → 778f20d8e17f0107ce8a9f84577123728a700cb38e1b2b2689949ae658d3776e
+✔ Advanced ref "db" → a54d34d81005b6a1c0fbf0b40d1b349f7497e2f9b9f8f144bf392979a891c1c8
 ```
 
 `db init` creates the collections and indexes your contract declares. It also gives each collection a validator, which is the MongoDB rule that lists the fields a document may have. MongoDB then rejects a document with a field that the contract does not declare. The output names two more things it wrote:
@@ -210,14 +214,14 @@ npx tsx script.ts
 
 ```text no-copy
 Created: {
-  id: '6abc2ce7b04f66be2c85564d',
+  id: '6b001d9195969b766f7e5604',
   email: 'alice@example.com',
   name: 'Alice'
 }
 All users: [
   {
-    id: '6abc2ce7b04f66be2c85564d',
     email: 'alice@example.com',
+    id: '6b001d9195969b766f7e5604',
     name: 'Alice'
   }
 ]
@@ -257,16 +261,16 @@ npx prisma migration plan --name add_user_phone
 
 ✔ Planned baseline (2 operation(s)) + 1 operation(s)
 
-migrations/app/20260929T2126_baseline
+migrations/app/20261120T1013_baseline
 ├─ Create collection users
-└─ Create index on users (email:1)
-migrations/app/20260929T2127_add_user_phone
-└─ Update validator on users
+└─ Create index email_1 on users (email:1)
+migrations/app/20261120T1014_add_user_phone
+└─ Update validator on users (added: phone)
 
-from:       778f20d8e17f0107ce8a9f84577123728a700cb38e1b2b2689949ae658d3776e
-to:         f0035d1963f127dc8ee91e154d51810755ee91b090659127881d1ab31e03e3cf
-baseline:   migrations/app/20260929T2126_baseline
-app space:  migrations/app/20260929T2127_add_user_phone
+from:       a54d34d81005b6a1c0fbf0b40d1b349f7497e2f9b9f8f144bf392979a891c1c8
+to:         a7d00abb0f8fc9c9f5ace78b306278673e60cc5774ec1833cd0cfd334beead54
+baseline:   migrations/app/20261120T1013_baseline
+app space:  migrations/app/20261120T1014_add_user_phone
 ```
 
 The output continues with a preview of the MongoDB commands. The first plan in a project writes two directories. The baseline holds the steps that create the collection and the index, which `db init` already ran on your development database. The second directory is your change. Your change updates the validator, so that a document may have the `phone` field.
@@ -280,15 +284,15 @@ npx prisma db migrate --advance-ref db
 ```text no-copy
 ✔ Running migration plan across spaces
 │  migrations:  migrations
-│  database:    mongodb://127.0.0.1:27029/app1
+│  database:    mongodb://127.0.0.1:27129/app1
 
 ✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 
 App space
-├─ Update validator on users
-└─ marker f0035d1963f127dc8ee91e154d51810755ee91b090659127881d1ab31e03e3cf
+├─ Update validator on users (added: phone)
+└─ marker a7d00abb0f8fc9c9f5ace78b306278673e60cc5774ec1833cd0cfd334beead54
 
-✔ Advanced ref "db" → f0035d1963f127dc8ee91e154d51810755ee91b090659127881d1ab31e03e3cf
+✔ Advanced ref "db" → a7d00abb0f8fc9c9f5ace78b306278673e60cc5774ec1833cd0cfd334beead54
 ```
 
 `db migrate` runs only the migrations that the database does not have yet, so here it runs only your change. `--advance-ref db` writes the new hash to the `db` ref, so that the next `migration plan` contains only your next change. Pass it every time you apply a migration to your development database. Commit the `migrations/` directory again.

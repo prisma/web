@@ -110,6 +110,8 @@ npx prisma contract emit
 │  contract:  prisma/contract.json
 │  types:     prisma/contract.d.ts
 ✔ Emitted contract.json and contract.d.ts
+storageHash:  a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
+profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 ```
 
 `db init` creates the tables the contract declares in your database. Then it signs the database: it stores a record in the database of which version of the contract the database matches, so later migrations know where to start from:
@@ -128,8 +130,8 @@ npx prisma db init
 App space
 ├─ Create table "User"
 ├─ Add unique constraint on "User" (email)
-└─ marker b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
-✔ Advanced ref "db" → b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
+└─ marker a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
+✔ Advanced ref "db" → a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
 ```
 
 `1 contract space` and `App space` in the output both refer to the migration history for your own models, which is in `migrations/app/` and is called the `app` [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page).
@@ -227,13 +229,25 @@ npx prisma migration plan --name add_user_phone
 
 ```text
 ✔ Planned baseline (3 operation(s)) + 1 operation(s)
-migrations/app/20260917T1457_add_user_phone
+migrations/app/20261120T1014_baseline
+├─ Create schema "public"
+├─ Create table "User"
+└─ Add unique constraint on "User" (email)
+migrations/app/20261120T1015_add_user_phone
 └─ Add column "phone" to "User"
-from:       b5ae4e66fad1f0b7dd5590568f75a12a6f4576e9f367a787a69a4e729abac1fb
-to:         300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
-baseline:   migrations/app/20260917T1456_baseline
-app space:  migrations/app/20260917T1457_add_user_phone
+from:       a62d15a094e80be7b342d75e0538935972b9699c76dabb5339940dd50d17a889
+to:         ff182ac239264ad5c8539c19c350b32d6f1e18e785875e42a0301cde744f70e3
+baseline:   migrations/app/20261120T1014_baseline
+app space:  migrations/app/20261120T1015_add_user_phone
 ℹ DDL preview
+CREATE SCHEMA IF NOT EXISTS "public";
+CREATE TABLE "public"."User" (
+  "email" text NOT NULL,
+  "id" SERIAL NOT NULL,
+  "name" text,
+  PRIMARY KEY ("id")
+);
+ALTER TABLE "public"."User" ADD CONSTRAINT "User_email_key" UNIQUE ("email");
 ALTER TABLE "public"."User" ADD COLUMN "phone" text;
 ```
 
@@ -249,8 +263,8 @@ npx prisma db migrate --advance-ref db
 ✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 App space
 ├─ Add column "phone" to "User"
-└─ marker 300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
-✔ Advanced ref "db" → 300832575ace8feebb3d3442d1bca52150c46628de3e4c6c32a61cb0ab21100f
+└─ marker ff182ac239264ad5c8539c19c350b32d6f1e18e785875e42a0301cde744f70e3
+✔ Advanced ref "db" → ff182ac239264ad5c8539c19c350b32d6f1e18e785875e42a0301cde744f70e3
 ```
 
 If you do not want migration files for a throwaway database, [`db update`](/cli/db-update) applies the contract change directly instead of `migration plan` and `db migrate`.
@@ -278,10 +292,10 @@ npx prisma migration status
 ```
 
 ```text
-○   3008325  @contract @db (db)
-│↑  20260917T1457_add_user_phone  b5ae4e6 → 3008325  1 ops  ✓ applied
-○   b5ae4e6
-│↑  20260917T1456_baseline              ∅ → b5ae4e6  3 ops
+○   ff182ac  @contract @db (db)
+│↑  20261120T1015_add_user_phone  a62d15a → ff182ac  1 ops  ✓ applied
+○   a62d15a
+│↑  20261120T1014_baseline              ∅ → a62d15a  3 ops
 ○   ∅
 ✔ Up to date
 ```
