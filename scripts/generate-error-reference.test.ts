@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 // @ts-expect-error The generator is a plain .mjs script with no type declarations.
-import { TARGETS, transform } from "../apps/docs/scripts/generate-error-reference.mjs";
+import {
+  TARGETS,
+  latestReleaseRef,
+  readFlag,
+  recordedRef,
+  run,
+  transform,
+} from "../apps/docs/scripts/generate-error-reference.mjs";
 
 function generate(body: string, target = TARGETS.orm): string {
   return transform(target, `# Error reference\n\n## PSL\n\n${body}\n`).mdx;
@@ -204,6 +211,113 @@ test("links into the source repo and the generated-from comment use the release 
     "v8.0.0-rc.24",
   );
   assert.match(mdx, /blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-reference\.md/);
-  assert.match(mdx, /\(https:\/\/github\.com\/prisma\/orm\/blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-conventions\.md\)/);
+  assert.match(
+    mdx,
+    /\(https:\/\/github\.com\/prisma\/orm\/blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-conventions\.md\)/,
+  );
   assert.doesNotMatch(mdx, /blob\/main\//);
+});
+
+function registry(body: unknown, status = 200) {
+  return async (url: string) => {
+    assert.equal(url, "https://registry.npmjs.org/@prisma/orm-postgres/latest");
+    return new Response(JSON.stringify(body), { status });
+  };
+}
+
+const ormRelease = {
+  version: "8.0.0-rc.24",
+  repository: { url: "git+https://github.com/prisma/orm.git" },
+};
+
+test("the release ref is the latest npm version with a v prefix", async () => {
+  assert.equal(await latestReleaseRef(TARGETS.orm, registry(ormRelease)), "v8.0.0-rc.24");
+});
+
+test("a failed registry response stops the lookup", async () => {
+  await assert.rejects(latestReleaseRef(TARGETS.orm, registry({}, 503)), /503/);
+});
+
+test("a registry response without a version stops the lookup", async () => {
+  await assert.rejects(
+    latestReleaseRef(TARGETS.orm, registry({ repository: ormRelease.repository })),
+    /no valid version/,
+  );
+});
+
+test("a latest release from another repository stops the lookup", async () => {
+  await assert.rejects(
+    latestReleaseRef(
+      TARGETS.cli,
+      async () =>
+        new Response(
+          JSON.stringify({
+            version: "7.10.2",
+            repository: { url: "git+https://github.com/prisma/prisma.git" },
+          }),
+        ),
+    ),
+    /not prisma\/prisma-cli/,
+  );
+});
+
+test("a repository whose name only starts with the source repo's name does not match", async () => {
+  await assert.rejects(
+    latestReleaseRef(
+      TARGETS.orm,
+      registry({ ...ormRelease, repository: { url: "https://github.com/prisma/orm-extras.git" } }),
+    ),
+    /not prisma\/orm/,
+  );
+});
+
+for (const argv of [["--ref"], ["--ref", ""], ["--ref", "--source", "x.md"]]) {
+  test(`readFlag rejects ${JSON.stringify(argv)}`, () => {
+    assert.throws(() => readFlag(argv, "--ref"), /--ref requires a value/);
+  });
+}
+
+test("recordedRef reads the tag from a generated page", () => {
+  const { mdx } = transform(
+    TARGETS.cli,
+    "# Error reference\n\n### CLI.NOT_LOGGED_IN\n",
+    "v8.0.0-rc.34",
+  );
+  assert.equal(recordedRef(TARGETS.cli, mdx), "v8.0.0-rc.34");
+  assert.throws(() => recordedRef(TARGETS.orm, mdx), /no ref generated from prisma\/orm/);
+});
+
+test("recordedRef refuses a page generated from main", () => {
+  const { mdx } = transform(TARGETS.orm, "# Error reference\n\n### PSL.INVALID_ATTRIBUTE\n");
+  assert.throws(() => recordedRef(TARGETS.orm, mdx), /not a release tag/);
+});
+
+test("without --ref, the page is generated from the tag of the npm release", async () => {
+  const fetched: string[] = [];
+  const written: string[] = [];
+  await run(["--target", "orm"], {
+    fetchImpl: async (url: string) => {
+      fetched.push(url);
+      return url.startsWith("https://registry.npmjs.org/")
+        ? new Response(JSON.stringify(ormRelease))
+        : new Response("# Error reference\n\n### PSL.INVALID_ATTRIBUTE\n");
+    },
+    writeFile: (_path: string, mdx: string) => written.push(mdx),
+    log: () => {},
+  });
+  assert.equal(
+    fetched[1],
+    "https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.24/docs/reference/error-reference.md",
+  );
+  assert.match(written[0], /blob\/v8\.0\.0-rc\.24\/docs\/reference\/error-reference\.md/);
+});
+
+test("--print-ref prints the resolved tag and writes nothing", async () => {
+  const logged: string[] = [];
+  await run(["--target", "orm", "--print-ref"], {
+    fetchImpl: registry(ormRelease),
+    writeFile: () => assert.fail("--print-ref must not write"),
+    log: (line: string) => logged.push(line),
+  });
+  assert.deepEqual(logged, ["v8.0.0-rc.24"]);
 });

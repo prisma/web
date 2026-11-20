@@ -1,12 +1,11 @@
 name: Error Reference Check
 
-# The published error-reference pages must list every structured error code
-# the released products can emit — prisma/orm errors link to
-# /docs/orm/reference/error-reference#<CODE>, prisma/prisma-cli errors to
-# /docs/cli/error-reference#<CODE>. Each repo is checked out at the tag of its
-# `latest` npm release, the same ref the sync workflow generates from, so
-# codes that exist only on main do not fail the check. This check fails if any
-# released code is missing from its page, even if the sync workflow breaks.
+# Each committed error-reference page records the release tag it was generated
+# from. This check checks out that tag, regenerates the page, and fails on any
+# difference: a hand edit, a page built from main, or a generator change that
+# was not applied. It then confirms the page lists every code that release
+# raises. It reads the recorded tag rather than npm's `latest`, so a new
+# release does not fail unrelated pull requests before the sync picks it up.
 #
 # Runs on pushes to main, on PRs that touch the page or its tooling, and on a
 # daily schedule so drift introduced upstream is flagged without blocking
@@ -20,6 +19,7 @@ on:
       - apps/docs/content/docs/orm/reference/error-reference.mdx
       - apps/docs/content/docs/cli/error-reference.mdx
       - apps/docs/scripts/generate-error-reference.mjs
+      - scripts/generate-error-reference.test.ts
       - .github/workflows/error-reference-check.yml
       - .github/workflows/sync-error-reference-docs.yml
   schedule:
@@ -44,14 +44,19 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Resolve the released versions
+      - name: Test the generator
+        run: node --test scripts/generate-error-reference.test.ts
+
+      - name: Read the release tag each page was generated from
         id: release
         working-directory: apps/docs
         run: |
-          echo "orm=$(node ./scripts/generate-error-reference.mjs --target orm --print-ref)" >> "$GITHUB_OUTPUT"
-          echo "cli=$(node ./scripts/generate-error-reference.mjs --target cli --print-ref)" >> "$GITHUB_OUTPUT"
+          orm=$(node ./scripts/generate-error-reference.mjs --target orm --recorded --print-ref)
+          cli=$(node ./scripts/generate-error-reference.mjs --target cli --recorded --print-ref)
+          echo "orm=$orm" >> "$GITHUB_OUTPUT"
+          echo "cli=$cli" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout prisma/orm (latest release)
+      - name: Checkout prisma/orm (recorded release)
         uses: actions/checkout@v4
         with:
           repository: prisma/orm
@@ -59,13 +64,29 @@ jobs:
           path: prisma-src
           persist-credentials: false
 
-      - name: Checkout prisma/prisma-cli (latest release)
+      - name: Checkout prisma/prisma-cli (recorded release)
         uses: actions/checkout@v4
         with:
           repository: prisma/prisma-cli
           ref: ${{ steps.release.outputs.cli }}
           path: prisma-cli-src
           persist-credentials: false
+
+      - name: Regenerate both pages from their recorded releases
+        working-directory: apps/docs
+        env:
+          ORM_REF: ${{ steps.release.outputs.orm }}
+          CLI_REF: ${{ steps.release.outputs.cli }}
+        run: |
+          node ./scripts/generate-error-reference.mjs --target orm --ref "$ORM_REF" --source ../../prisma-src/docs/reference/error-reference.md
+          node ./scripts/generate-error-reference.mjs --target cli --ref "$CLI_REF" --source ../../prisma-cli-src/docs/reference/error-reference.md
+
+      - name: Fail if a committed page differs from its regenerated version
+        run: |
+          if ! git diff --exit-code -- apps/docs/content/docs/orm/reference/error-reference.mdx apps/docs/content/docs/cli/error-reference.mdx; then
+            echo "::error::A committed error-reference page is not what the generator produces from the release it records. Regenerate it with scripts/generate-error-reference.mjs instead of editing it."
+            exit 1
+          fi
 
       - name: Verify ORM page lists every known error code
         run: node prisma-src/scripts/list-error-codes.mjs --root prisma-src --verify apps/docs/content/docs/orm/reference/error-reference.mdx

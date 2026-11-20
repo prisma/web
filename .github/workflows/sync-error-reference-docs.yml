@@ -1,5 +1,12 @@
 name: Sync Error Reference Docs
 
+# Regenerates both error-reference pages from the latest release of
+# prisma/orm and prisma/prisma-cli: the `latest` version on npm and its
+# `v<version>` tag. A new release is picked up by the next daily run or by a
+# manual run. The repository_dispatch from prisma-cli fires on pushes to its
+# main branch, which no longer change the output; it stays so a release
+# workflow can send the same event once its tag exists.
+
 on:
   repository_dispatch:
     types: [error-reference-updated]
@@ -33,10 +40,40 @@ jobs:
         id: release
         working-directory: apps/docs
         run: |
-          echo "orm=$(node ./scripts/generate-error-reference.mjs --target orm --print-ref)" >> "$GITHUB_OUTPUT"
-          echo "cli=$(node ./scripts/generate-error-reference.mjs --target cli --print-ref)" >> "$GITHUB_OUTPUT"
+          orm=$(node ./scripts/generate-error-reference.mjs --target orm --print-ref)
+          cli=$(node ./scripts/generate-error-reference.mjs --target cli --print-ref)
+          echo "orm=$orm" >> "$GITHUB_OUTPUT"
+          echo "cli=$cli" >> "$GITHUB_OUTPUT"
+
+      # npm publishes a release before its GitHub release creates the tag.
+      # In that window, publish nothing; a later run picks the release up.
+      - name: Check that both release tags exist
+        id: tags
+        env:
+          ORM_REF: ${{ steps.release.outputs.orm }}
+          CLI_REF: ${{ steps.release.outputs.cli }}
+        run: |
+          missing=()
+          for pair in "prisma/orm $ORM_REF" "prisma/prisma-cli $CLI_REF"; do
+            read -r repo ref <<< "$pair"
+            status=0
+            git ls-remote --exit-code --tags "https://github.com/$repo" "refs/tags/$ref" > /dev/null || status=$?
+            if [[ $status -eq 2 ]]; then
+              missing+=("$repo@$ref")
+            elif [[ $status -ne 0 ]]; then
+              echo "::error::Could not list the tags of $repo (git ls-remote exited $status)."
+              exit 1
+            fi
+          done
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "::warning::The latest npm release has no tag yet: ${missing[*]}. Nothing is generated or published; the next run picks it up."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Checkout prisma/orm (latest release)
+        if: steps.tags.outputs.ready == 'true'
         uses: actions/checkout@v4
         with:
           repository: prisma/orm
@@ -45,6 +82,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout prisma/prisma-cli (latest release)
+        if: steps.tags.outputs.ready == 'true'
         uses: actions/checkout@v4
         with:
           repository: prisma/prisma-cli
@@ -53,21 +91,30 @@ jobs:
           persist-credentials: false
 
       - name: Generate ORM error reference page
+        if: steps.tags.outputs.ready == 'true'
         working-directory: apps/docs
-        run: node ./scripts/generate-error-reference.mjs --target orm --ref ${{ steps.release.outputs.orm }} --source ../../prisma-src/docs/reference/error-reference.md
+        env:
+          REF: ${{ steps.release.outputs.orm }}
+        run: node ./scripts/generate-error-reference.mjs --target orm --ref "$REF" --source ../../prisma-src/docs/reference/error-reference.md
 
       - name: Verify ORM page lists every known error code
+        if: steps.tags.outputs.ready == 'true'
         run: node prisma-src/scripts/list-error-codes.mjs --root prisma-src --verify apps/docs/content/docs/orm/reference/error-reference.mdx
 
       - name: Generate CLI error reference page
+        if: steps.tags.outputs.ready == 'true'
         working-directory: apps/docs
-        run: node ./scripts/generate-error-reference.mjs --target cli --ref ${{ steps.release.outputs.cli }} --source ../../prisma-cli-src/docs/reference/error-reference.md
+        env:
+          REF: ${{ steps.release.outputs.cli }}
+        run: node ./scripts/generate-error-reference.mjs --target cli --ref "$REF" --source ../../prisma-cli-src/docs/reference/error-reference.md
 
       - name: Verify CLI page lists every known error code
+        if: steps.tags.outputs.ready == 'true'
         run: node prisma-cli-src/scripts/list-error-codes.mjs --root prisma-cli-src --verify apps/docs/content/docs/cli/error-reference.mdx
 
       - name: Check for changes
         id: changes
+        if: steps.tags.outputs.ready == 'true'
         run: |
           PAGES=(apps/docs/content/docs/orm/reference/error-reference.mdx apps/docs/content/docs/cli/error-reference.mdx)
           if [[ -z "$(git status --porcelain --untracked-files=all -- "${PAGES[@]}")" ]]; then
@@ -94,4 +141,6 @@ jobs:
 
       - name: Trigger Vercel deploy
         if: steps.changes.outputs.changed == 'true'
-        run: curl --fail -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}"
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: curl --fail -X POST "$DEPLOY_HOOK_URL"
