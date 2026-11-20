@@ -6,9 +6,21 @@ metaTitle: dev | Prisma CLI
 metaDescription: Complete reference for the prisma dev command and its url and stop subcommands, which run a Prisma Composer application locally against local emulators for Prisma Compute and Prisma Postgres.
 ---
 
-`dev` brings a [Prisma Composer](/composer) application up entirely on this machine. It loads the module whose default export is the application root, named by `entry` in the `composer` section of `prisma.config.ts`, typically `./module.ts`. The command runs credential-free against local emulators, programs on your machine that stand in for Prisma Compute, Prisma Postgres, and buckets. It watches the built output and restarts a service when its build changes. See [Local development](/composer/local-development).
+`dev` brings a [Prisma Composer](/composer) application up entirely on this machine. It loads the module whose default export is the application root, named by `entry` in the `composer` section of `prisma.config.ts`, typically `./module.ts`. The command runs credential-free against local emulators, programs on your machine that stand in for Prisma Compute, Prisma Postgres, and buckets. It watches the app and restarts a service when its build changes. See [Local development](/composer/local-development).
 
-Like [`deploy`](/cli/deploy), `dev` runs your *built* output, so build first.
+Like [`deploy`](/cli/deploy), `dev` runs your *built* output, so build first. Two kinds of service run a dev server instead of the built output: a Next.js service, which runs `next dev`, and a service whose `node()` build has a `dev` option. `dev` is the command as an array of arguments, run in the directory of the module that declares the service:
+
+```typescript
+build: node({
+  module: import.meta.url,
+  entry: '../dist/server.mjs',
+  dev: ['bun', '--watch', 'server.ts'],
+}),
+```
+
+The command gets the service's environment plus `PORT` and `HOST`, and must listen on `PORT`. `dev` prints the dev server's output prefixed with the service's address.
+
+`dev` does not run on Windows yet. There it fails with `DEV.PLATFORM_UNSUPPORTED`.
 
 ## Usage
 
@@ -85,7 +97,7 @@ Run it from the directory you ran `prisma dev` in, while the app runs. It starts
 
 ## dev stop
 
-`dev stop` stops the app that `prisma dev` ran from the current directory, in the environment `dev` unless you pass `--environment`: its service processes and local database servers, as `Ctrl-C` does in a foreground `prisma dev`.
+`dev stop` stops the app that `prisma dev` ran from the current directory. Give it the same `--environment`, `--name` and `--entry` you gave `prisma dev`; without `--environment` it stops the environment `dev`. It stops its service processes and local database servers, as `Ctrl-C` does in a foreground `prisma dev`.
 
 ```npm
 npx prisma dev stop
