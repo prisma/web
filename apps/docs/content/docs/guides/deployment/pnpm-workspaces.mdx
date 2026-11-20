@@ -11,8 +11,6 @@ metaDescription: Set up Prisma 8 in its own package inside a pnpm workspaces mon
 
 This guide shows you how to set up Prisma 8 in its own package inside a [pnpm workspaces](https://pnpm.io/workspaces) monorepo. The `database` package owns the contract, the emitted types, and the client. A Next.js app in the same workspace imports that client and renders users from the database.
 
-Every command and output below was run end to end with pnpm 12 against a PostgreSQL database.
-
 :::note[Using Prisma 7?]
 
 Prisma 8 is a [release candidate](/orm/release-status) of Prisma ORM. Prisma 7 remains fully supported; the Prisma 7 version of this guide is at [/guides/v7/deployment/pnpm-workspaces](/guides/v7/deployment/pnpm-workspaces).
@@ -22,7 +20,7 @@ Prisma 8 is a [release candidate](/orm/release-status) of Prisma ORM. Prisma 7 r
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended)
-- [pnpm](https://pnpm.io/installation) 10.26 or later, but not 12.0 to 12.4.0, which have a defect that breaks step 2.1 (this guide uses pnpm 12.7.0)
+- [pnpm](https://pnpm.io/installation) 10.26 or later, but not 12.0 to 12.4.0, which have a defect that breaks step 2.1
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
 ## 1. Create the workspace
@@ -105,7 +103,10 @@ installed
 → Edit your schema at src/prisma/contract.prisma, then emit again
 → Open prisma-8.md for a quick reference on writing your first typed query
 → Set up the Prisma agent skills for your coding agent: prisma init
+Prisma agent skills are out of date (installed @prisma/orm-postgres 8.0.0-rc.24, synced none). Run: prisma skills sync
 ```
+
+The last line is a reminder from the Prisma CLI, and every `prisma` command prints it from now on. Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into this package yet. Run `pnpm prisma init` once inside `packages/database` to copy them in, as [Use with your agent](#use-with-your-agent) describes. The line never makes a command fail, and [The staleness check](/cli/skills#the-staleness-check) lists the ways to turn it off.
 
 On pnpm 12.0 to 12.4.0, `orm init` writes all the files and then fails at `Emit the contract` with `CLI.INIT_EMIT_FAILED`. If you hit it, apply the `pnpm dedupe` fix from [Common gotchas](#common-gotchas) and continue.
 
@@ -169,8 +170,6 @@ App space
 → Confirm the space is up to date: prisma migration status
 Prisma agent skills are out of date (installed @prisma/orm-postgres 8.0.0-rc.24, synced none). Run: prisma skills sync
 ```
-
-The last line is a reminder from the Prisma CLI, and every `prisma` command prints it from now on. Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into this package yet. Run `pnpm prisma init` once inside `packages/database` to copy them in, as [Use with your agent](#use-with-your-agent) describes. The line never makes a command fail, and [The staleness check](/cli/skills#the-staleness-check) lists the ways to turn it off.
 
 If `db init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Database already matches contract` when there is nothing left to do.
 
@@ -331,7 +330,7 @@ export default async function Home() {
 }
 ```
 
-Model access is namespace-qualified on PostgreSQL: `db.orm.public.User`. `force-dynamic` makes Next.js query on each request instead of at build time, so `pnpm build` does not need a reachable database. Next.js compiles the package's TypeScript source through the `exports` map; no `transpilePackages` entry is needed.
+On PostgreSQL you reach a model through its database schema: `db.orm.public.User`, where `public` is the PostgreSQL schema. `force-dynamic` makes Next.js query on each request instead of at build time, so `pnpm build` does not need a reachable database. Next.js compiles the package's TypeScript source through the `exports` map; no `transpilePackages` entry is needed.
 
 ### 3.3. Add root scripts
 

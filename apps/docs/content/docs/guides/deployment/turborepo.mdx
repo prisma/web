@@ -11,9 +11,7 @@ metaDescription: 'Set up Prisma 8 as a shared database package in a Turborepo mo
 
 This guide shows you how to set up Prisma 8 as a standalone package in a [Turborepo](https://turborepo.dev/docs) monorepo, so that every app shares one database client, one contract, and one migration workflow. You scaffold a monorepo, add a `packages/database` package that owns the Prisma 8 setup, wire its tasks into `turbo.json`, and render users from the `web` Next.js app.
 
-To start a new project from a ready-made Turborepo instead, run `npm create prisma@latest -- --template turborepo`. It creates a `packages/database` package with a `User` model and a seed script, a Node.js HTTP server in `apps/server` that lists the users, and the scripts to deploy the app to [Prisma Compute](/compute). This guide builds the setup by hand, which is the way to add Prisma ORM to a monorepo you already have.
-
-Every command and output below was run end to end against a local PostgreSQL database.
+To start a new project from a ready-made Turborepo instead, run `npm create prisma@latest -- --template turborepo`. It creates a `packages/database` package with a `User` model and three starter users it adds on the first request, a Node.js HTTP server in `apps/server` that lists the users, and the scripts to deploy the app to [Prisma Compute](/compute). This guide builds the setup by hand, which is the way to add Prisma ORM to a monorepo you already have.
 
 :::note[Using Prisma 7?]
 
@@ -139,7 +137,7 @@ installed
 Prisma agent skills are out of date (installed @prisma/orm-postgres 8.0.0-rc.24, synced none). Run: prisma skills sync
 ```
 
-The last line is a reminder from the Prisma CLI, and every `prisma` command in this package prints it from now on. Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into the package yet. [Use with your agent](#use-with-your-agent) shows how to install them for your coding agent. The line never makes a command fail. To stop it in this package, run `pnpm prisma skills sync --disable` inside `packages/database`: the command copies the skills into the package and turns the reminder off there. [The staleness check](/cli/skills#the-staleness-check) lists the other ways.
+The last line is a reminder from the Prisma CLI, and every `prisma` command in this package prints it from now on. Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into the package yet. Run `pnpm prisma init` once inside `packages/database` to copy them in, as [Use with your agent](#use-with-your-agent) describes. The line never makes a command fail, and [The staleness check](/cli/skills#the-staleness-check) lists the ways to turn it off.
 
 `orm init` detects pnpm from the workspace, adds the packages to `@repo/db`, sets `"type": "module"`, and writes four files that matter for the rest of this guide:
 
@@ -239,9 +237,9 @@ Add the database scripts and a package entrypoint to `packages/database/package.
 
 Keep the package versions `orm init` wrote for you. The scripts replace the Prisma 7 scripts `db:generate`, `db:migrate`, and `db:deploy`:
 
-- `contract:emit` compiles `contract.prisma` into `contract.json` and `contract.d.ts`. It is offline and deterministic, which is what makes it cacheable in Turborepo.
+- `contract:emit` compiles `contract.prisma` into `contract.json` and `contract.d.ts`. It is offline, and the same contract always produces the same files, which is what makes it cacheable in Turborepo.
 - `migration:plan` diffs the emitted contract against your migration history and writes a reviewable migration directory. Also offline.
-- `db:migrate` applies pending migrations to your development database. `--advance-ref db` records the applied state in `migrations/app/refs/db.json`, so the next `migration:plan` knows where to start from and plans only the delta.
+- `db:migrate` applies pending migrations to your development database. `--advance-ref db` records the applied state in `migrations/app/refs/db.json`, so the next `migration:plan` knows where to start from and plans only your new change.
 - `db:deploy` applies pending migrations to any other database, such as staging or production, from CI or a deploy step. It runs the same command without `--advance-ref db`, because the ref describes your development database.
 
 Then create the package entrypoint. It re-exports the client and the contract type so apps import one module:
@@ -353,7 +351,7 @@ pnpm turbo run migration:plan --filter=@repo/db -- --name init
 ...
 ```
 
-Depending on your terminal, Turborepo shows the tasks in its terminal UI while they run, or prints each task's log with the task name in front of every line, as above. The Prisma CLI prints the same human-readable output either way, and in CI too. Because a task does not run in a terminal of its own, a command also writes its result to standard output: the list of files `contract emit` wrote, and the migration directory `migration plan` created.
+Depending on your terminal, Turborepo shows the tasks in its terminal UI while they run, or prints each task's log with the task name in front of every line, as above. The Prisma CLI prints the same human-readable output either way, and in CI too.
 
 The command is offline: it writes `packages/database/migrations/app/<timestamp>_init/` with the migration as TypeScript (`migration.ts`), the compiled operations (`ops.json`), and the history marker (`migration.json`), and prints the exact DDL it will run. Review it, then apply it:
 
@@ -383,6 +381,8 @@ pnpm turbo run db:migrate --filter=@repo/db
 @repo/db:db:migrate: ✔ Advanced ref "db" → 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
 @repo/db:db:migrate: → Check every space against the database: prisma migration status
 ```
+
+The tab-separated line near the top lists the migration that was applied, its start and end hashes, and its operation count. The CLI prints it because a Turborepo task has no terminal of its own; you can ignore it.
 
 Commit the `migrations/` directory with the rest of the package. CI or a deploy step runs `pnpm turbo run db:deploy --filter=@repo/db` against staging and production; it is the same `db migrate` command, without `--advance-ref db`, so there is no separate `migrate deploy` command in Prisma 8.
 
@@ -444,7 +444,7 @@ export default async function Home() {
 }
 ```
 
-Model access is namespace-qualified on PostgreSQL, so the `User` model lives at `db.orm.public.User`, and `select(...)` narrows both the query and the row type. `dynamic = "force-dynamic"` tells Next.js to run the query per request; without it, `next build` prerenders the page once and freezes the user list at build time.
+On PostgreSQL you reach a model through its database schema, so the `User` model is `db.orm.public.User`, where `public` is the PostgreSQL schema, and `select(...)` narrows both the query and the row type. `dynamic = "force-dynamic"` tells Next.js to run the query per request; without it, `next build` prerenders the page once and freezes the user list at build time.
 
 ### 5.3. Give the app its connection string
 
@@ -542,7 +542,7 @@ model User {
 }
 ```
 
-Plan it. `contract:emit` sees the changed input and re-emits, and because `db:migrate` advanced the `db` ref, the planner starts from the applied state and plans only the delta:
+Plan it. `contract:emit` sees the changed input and re-emits, and because `db:migrate` advanced the `db` ref, the planner starts from the applied state and plans only your new change:
 
 ```bash
 pnpm turbo run migration:plan --filter=@repo/db -- --name add-user-bio
@@ -624,8 +624,8 @@ To delegate this guide to your coding agent, copy the prompt below and hand it o
 ```text
 Set up Prisma 8 as a shared database package in a new Turborepo monorepo and render users from the web app.
 
-1. Scaffold: `npx create-turbo@latest turborepo-prisma` with pnpm. Then run `npx prisma@latest init` at the monorepo root so the Prisma agent skills are installed and stay current, and use them.
-2. Create `packages/database` with `{ "name": "@repo/db", "version": "0.0.0", "private": true }` as its package.json. Because pnpm refuses to run dependency build scripts until they are allowed, add `allowBuilds: { esbuild: true, msgpackr-extract: true, workerd: true }` to `pnpm-workspace.yaml` first. Then run `npx prisma@latest orm init --yes --target postgres --authoring psl` inside `packages/database`, and move the package to the current CLI with `pnpm add -D prisma@latest --filter @repo/db`.
+1. Scaffold: `npx create-turbo@latest turborepo-prisma` with pnpm.
+2. Create `packages/database` with `{ "name": "@repo/db", "version": "0.0.0", "private": true }` as its package.json. Because pnpm refuses to run dependency build scripts until they are allowed, add `allowBuilds: { esbuild: true, msgpackr-extract: true, workerd: true }` to `pnpm-workspace.yaml` first. Then run `npx prisma@latest orm init --yes --target postgres --authoring psl` inside `packages/database`, and move the package to the current CLI with `pnpm add -D prisma@latest --filter @repo/db`. Then run `pnpm prisma init` inside `packages/database` so the Prisma agent skills are installed and stay current, and use them.
 3. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Write it as `DATABASE_URL` into `packages/database/.env`.
 4. In `packages/database/package.json`, add `"exports": { ".": "./src/index.ts" }` and the scripts `contract:emit` (`prisma contract emit`), `migration:plan` (`prisma migration plan`), `db:migrate` (`prisma db migrate --advance-ref db`), `db:deploy` (`prisma db migrate`), `migration:status` (`prisma migration status`), and `check-types` (`tsc --noEmit`). Create `src/index.ts` that re-exports `db` from `./prisma/db` and the `Contract` type from `./prisma/contract.d`.
 5. In `turbo.json`, add `"globalEnv": ["DATABASE_URL"]`, a cached `contract:emit` task with inputs `src/prisma/contract.prisma` and `prisma.config.ts` and outputs `src/prisma/contract.json` and `src/prisma/contract.d.ts`, make `build`, `dev`, and `check-types` depend on `^contract:emit`, add `migration:plan` (dependsOn `contract:emit`, cache false), `db:migrate` (cache false), and `db:deploy` (cache false).
@@ -636,7 +636,7 @@ Set up Prisma 8 as a shared database package in a new Turborepo monorepo and ren
 
 </AgentPrompt>
 
-The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself at the monorepo root: it installs the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. It adds a root `prisma.config.ts` that only configures the skills, a `prisma` dev dependency, and a `postinstall` hook that re-syncs them. Prompts you can give your agent after this guide:
+The prompt above runs [`pnpm prisma init`](/cli/init) inside `packages/database`. If you followed the steps by hand, run it once yourself there: it installs the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent into the package and adds a `postinstall` script that keeps them matching your installed packages. It leaves the package's existing `prisma.config.ts` as it is. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add a `apps/docs` page that lists posts with their authors through `@repo/db`."
 - "Add a `published Boolean @default(false)` field to Post, plan the migration, and show me the DDL before applying it."

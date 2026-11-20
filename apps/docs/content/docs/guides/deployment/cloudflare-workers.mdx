@@ -13,8 +13,6 @@ In this guide, you add Prisma ORM to a Cloudflare Worker, create tables in a Pos
 
 Cloudflare Workers do not expose raw TCP sockets by default, which is why most PostgreSQL drivers cannot run in them. With the `nodejs_compat` compatibility flag enabled, the `pg` driver that `@prisma/orm-postgres` uses connects through Cloudflare's Node.js socket API, so Prisma ORM runs inside the Worker without a special build. This works with [Prisma Postgres](/postgres), which pools connections for you, with any PostgreSQL server reachable over TCP and TLS, and with [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) in front of your own database.
 
-Every command, code block, and output below was run with `wrangler dev` against a local PostgreSQL 17 database, and the same Worker was also run against a Prisma Postgres database over TLS.
-
 :::note[Using Prisma ORM 7?]
 
 Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/cloudflare-workers](/guides/v7/deployment/cloudflare-workers).
@@ -285,7 +283,7 @@ npx prisma db init --db "$PRODUCTION_DATABASE_URL"
 npm run deploy
 ```
 
-Wrangler bundles the Worker (about 1.4 MB, 300 KB gzipped, with Prisma ORM included) and prints the live URL, `https://prisma-cloudflare-worker.<your-subdomain>.workers.dev`. Open it: the Worker creates a user in your production database on every request, exactly as it did locally. The upload itself was not run while validating this guide; the bundle size comes from `wrangler deploy --dry-run`, and the production path (TLS to Prisma Postgres from inside `workerd`) was verified with `wrangler dev`.
+Wrangler bundles the Worker (about 1.4 MB, 300 KB gzipped, with Prisma ORM included) and prints the live URL, `https://prisma-cloudflare-worker.<your-subdomain>.workers.dev`. Open it: the Worker creates a user in your production database on every request, exactly as it did locally.
 
 ### 4.3. Optional: connect through Hyperdrive
 
@@ -295,7 +293,7 @@ If your database is not Prisma Postgres, [Hyperdrive](https://developers.cloudfl
 npx wrangler hyperdrive create prisma-cloudflare-worker --connection-string="postgres://user:password@host:5432/database"
 ```
 
-Add the binding it prints to `wrangler.jsonc`. The `localConnectionString` is what `wrangler dev` uses instead of Hyperdrive. The `hyperdrive create` command was not run while validating this guide; the local binding below was:
+Add the binding it prints to `wrangler.jsonc`. The `localConnectionString` is what `wrangler dev` uses instead of Hyperdrive:
 
 ```json title="wrangler.jsonc"
 {
