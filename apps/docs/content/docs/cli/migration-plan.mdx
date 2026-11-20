@@ -69,6 +69,16 @@ In a terminal, the command asks the questions you did not answer with a flag. Wi
 
 Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type, and setting `NOT NULL`, lose no data, so the command asks nothing about them.
 
+### A changed stored name [#a-changed-stored-name]
+
+On PostgreSQL and SQLite, a model, field or enum member that keeps its name in the contract is the same object, even when what it is stored as changes. When only its `@@map`, its `@map`, or the value an enum member stores changes, the migration renames the table or column, with the constraints and indexes named after it, or replaces the stored value in the rows, and asks nothing. A table or column is renamed only when its control policy is `managed` in both contracts. A `--delete` for such a change fails with `CLI.CONSENT_UNUSED`, because nothing asks about it.
+
+To start with an empty table under the new name instead, make two changes, each planned and applied before the next: remove the model and answer `--delete`, then add it back with its new `@@map`.
+
+Swaps, chains and takeovers are refused with `MIGRATION.PLANNING_FAILED`: two models or fields that trade tables or columns, one that moves to a name another frees, one that takes the storage of one the change removes, and enum members that trade stored values. Make the change in two steps through a name nothing uses, such as `prisma_swap_users`, planned and applied one after the other.
+
+MySQL and MongoDB plan these changes as before. Before `8.0.0-rc.25`, a changed `@@map` was planned as dropping the table and creating an empty one, and asked for `--delete`.
+
 On PostgreSQL, a changed `onDelete` or `onUpdate` on a relation is planned as dropping the foreign key and adding it back with the new actions. A changed or removed primary key is planned the same way, and because PostgreSQL does not drop a primary key while a foreign key points at it, the migration first drops every foreign key that points at the old key, then adds back each one the new contract still declares. A foreign key the new contract leaves out stays dropped. When such a foreign key is on a table the migration must not change, such as a table whose model has an [`@@control(...)`](/orm/contract-authoring/psl-syntax#control-policy) value other than `managed`, or a table in a schema the contract no longer declares, the command refuses and names that foreign key. Before `8.0.0-rc.20`, both changes failed with `MIGRATION.PLANNING_FAILED`.
 
 On PostgreSQL, a namespace is renamed, moved or removed with the same flags. `--rename billing:finance` renames the schema, and everything in it stays in it. `--rename public.Invoice:billing.Invoice` moves the model's table to another schema with its rows, constraints, indexes and policies, and creates the schema first when the database does not have it. Namespace renames run before the other renames, whatever order you give them in. `public` and a schema another contract space declares are not renamed.
@@ -83,12 +93,12 @@ A namespace is a PostgreSQL schema that your contract declares with a `namespace
 
 The command leaves alone a schema that no contract declared, such as Supabase's `auth`, and a namespace that only another contract space declares. Before `8.0.0-rc.20`, the command did not ask about a removed namespace and left its tables in place.
 
-On PostgreSQL and SQLite, removing a member from an `enum` block, or changing the value a member stores, is asked about too, because rows may hold the old value. The command asks once for each value, however many columns hold it:
+On PostgreSQL and SQLite, removing a member from an `enum` block is asked about too, because rows may hold its value. The command asks once for each value, however many columns hold it:
 
 - If you renamed the member, answer with `--rename Status.ARCHIVED:Status.RETIRED`. The migration changes the stored value in every column and list that holds it.
 - To let the value go, answer with `--delete Status.ARCHIVED`. Optional columns that hold it are set to `NULL`, and lists lose it. A required column cannot take `NULL`, so while any of its rows hold the value, the apply fails with `MIGRATION.PRECHECK_FAILED` before it changes anything. The error counts those rows and says how to keep them.
 
-A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value, and two members that swap their stored values, can only be answered with `--delete`. To keep those rows, the question names the `this.removeStoredValue(...)` call in the planned `migration.ts` to replace with `this.replaceStoredValue(...)` calls, and the `node migration.ts` command that runs it. [Stored enum values](/orm/reference/migration-api#stored-enum-values) in the migration API reference shows both calls.
+A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value is [a changed stored name](#a-changed-stored-name): the migration replaces the value in the rows and asks nothing. Two members that swap their stored values are refused; make the swap in two migrations through a value nothing uses. [Stored enum values](/orm/reference/migration-api#stored-enum-values) in the migration API reference shows the calls a migration uses.
 
 Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
 
@@ -105,9 +115,17 @@ A [variant](/orm/contract-authoring/psl-syntax#base-models-and-variants) whose d
 - `--rename Bug:Defect` of a variant whose value also changed rewrites the value in the same way.
 - `--delete Bug` deletes the rows that hold the old value, then drops a removed variant's own table or the columns only it used.
 
-On MongoDB, `--rename` of a value object field or of a variant whose discriminator value changes is refused, and so are `--convert` of a variant and `--backfill` of a value object field.
+On MongoDB, changes inside documents are asked about too, since `8.0.0-rc.25`:
 
-On MongoDB, a field type change that can lose values is asked about, as on SQL, and it has two answers. `--delete User.age` casts the stored values with `$convert` and stops on a value it cannot cast. `--convert User.age` writes a data transform that holds `placeholder('User.age:update')`, which you replace with your own update. A change such as `String` to `Boolean`, which `$convert` would get wrong, offers `--convert` only. A cast that keeps every value, such as `Int32` to `Int64`, is planned with nothing asked.
+- A field that a value object or an embedded model loses: `--rename Address.street:Address.line1` if you renamed it, or `--delete Address.street` to remove the key from every stored object.
+- A stored value that an enum loses: `--rename Status.ARCHIVED:Status.RETIRED` to keep the documents under another member, or `--delete Status.ARCHIVED` to unset it in optional fields and take it out of lists. Where a required field holds it, the apply stops with `MIGRATION.PRECHECK_FAILED`, counts the documents, and says how to keep them.
+- A variant whose discriminator value changes: `--convert Bug` to rewrite the value, or `--delete Bug` to delete its documents.
+- A variant the contract removes: `--rename Bug:Issue` if you renamed it, or `--delete Bug` to delete its documents.
+- A new required field inside a value object or an embedded model gets a temporary value in the objects that lack it. To write your own value, pass `--backfill Address.zip` and replace the placeholder in the migration with an aggregation expression, such as `{ $literal: 'unknown' }`.
+
+A plan in which one operation writes a field, key or value that another operation of the same plan reads, such as two renames that trade names, is refused with advice to make the change in two migrations, because MongoDB applies operations one at a time.
+
+On MongoDB, a field type change that can lose values is asked about, as on SQL, and it has two answers. `--delete User.age` casts the stored values with `$convert` and stops on a value it cannot cast. `--convert User.age` writes a data transform that holds `placeholder('User.age:update')`, which you replace with your own update. A change such as `String` to `Boolean`, which `$convert` would get wrong, offers `--convert` only. A cast that keeps every value, such as `Int` to `BigInt`, is planned with nothing asked.
 
 A new required field on MongoDB is filled with a temporary value in the documents that lack it. To set your own value instead, pass `--backfill User.plan`, which writes a data transform for it. A new required field that a unique index covers gets no temporary value, so plan it with `--backfill`. A change to a collection's validator checks the documents before it applies; see [how migrations work](/orm/migrations/how-migrations-work#the-same-model-for-sql-and-mongodb). This paragraph and the one before it apply since `8.0.0-rc.24`.
 

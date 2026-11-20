@@ -58,7 +58,22 @@ await db.transaction(async (tx) => {
 
 To type the helper's parameter, add this line to `src/prisma/db.ts`: `export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];`, then import `Tx` wherever a helper needs it. The package also exports a type for this, `PostgresTransactionContext<Contract>` from `@prisma/orm-postgres/runtime`, which the [reference](/orm/reference/transactions-and-runtime#dbtransactioncallback) describes.
 
-Do not open a second transaction inside the helper, because calling `db.transaction(...)` again inside a callback does not nest: the inner call is a separate transaction that commits or rolls back on its own, and the outer one cannot roll it back. Pass `tx` down instead.
+Do not call `db.transaction(...)` inside the helper: it does not nest, so the inner call is a separate transaction that commits or rolls back on its own, and the outer one cannot roll it back. Pass `tx` down instead. When part of the work may fail without undoing the rest, call `tx.transaction(...)`:
+
+```typescript
+await db.transaction(async (tx) => {
+  const user = await tx.orm.public.User.create({ email: "jane@prisma.io", name: "Jane" });
+  try {
+    await tx.transaction(async (inner) => {
+      await createWelcomePost(inner, user.id);
+    });
+  } catch {
+    // only the welcome post is rolled back; the user is still created
+  }
+});
+```
+
+`tx.transaction(callback)` runs a nested transaction in a savepoint, to any depth, on PostgreSQL, MySQL, MariaDB, SQLite and Supabase. When the inner callback throws, only its work is rolled back, the inner call rejects with the error, and `tx` stays usable. The inner callback receives the same kind of `tx`, with `orm`, `sql` and the other members. While it runs, a statement on the outer `tx` is refused with `RUNTIME.TRANSACTION_SUSPENDED`. Nested transactions are in Prisma ORM since `8.0.0-rc.25`.
 
 ### Options and isolation level
 

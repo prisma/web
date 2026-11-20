@@ -110,7 +110,7 @@ npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 
 A plain `orm init` offers the same setup when it finds a Prisma ORM 7 config, or a `prisma/schema.prisma` with a `datasource` block. The database target comes from the schema's `datasource` provider, and a `--target` that disagrees with it fails with `CLI.INIT_PRISMA7_TARGET_MISMATCH`.
 
-First, `orm init` installs `@prisma/orm-postgres` and `dotenv`, adding them to `package.json` if they are not there yet, and uses the installed package to check that Prisma ORM 8 can read the schema. Apart from that install, it changes nothing until the check passes. A schema it cannot read, for example one with a `view` block, stops the command with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`, which lists each problem with its line and the Prisma ORM 7 edit that removes it, and gives the command that removes the packages it just added.
+First, `orm init` installs `@prisma/orm-postgres`, `dotenv` and `pg`, adding them to `package.json` if they are not there yet, and uses the installed package to check that Prisma ORM 8 can read the schema. Apart from that install, it changes nothing until the check passes. A schema it cannot read, for example one with a `view` block, stops the command with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`, which lists each problem with its line and the Prisma ORM 7 edit that removes it, and gives the command that removes the packages it just added.
 
 When the check passes, `orm init` asks you to confirm by typing the name of the directory you run it in. In a script, where nobody can type, pass that name with `--confirm`, and add `--no-interactive` so that any other question takes its default answer. For a project in a directory named `my-app`:
 
@@ -153,6 +153,8 @@ In a script, pass `--yes` with `--target` and `--authoring` (see [Options](#opti
 npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
+Since `8.0.0-rc.25`, `orm init` installs the target package first, with `dotenv` and, on PostgreSQL, `pg`, and writes the project from that package's `init` entrypoint, so the files come from the version you install.
+
 Its exit code says how far it got:
 
 | Code | What happened | What to do |
@@ -160,7 +162,7 @@ Its exit code says how far it got:
 | `0` | It set up the project and emitted the contract. With `--skip-install`, it exits `0` without installing or emitting. | Nothing. After `--skip-install`, install the dependencies, then run `npx prisma contract emit`. |
 | `2` | It stopped because of one of the problems in the next table. Most of them stop it before it writes anything. | Fix the problem and run it again. |
 | `3` | You cancelled a prompt, for example with Ctrl-C ([`CLI.PROMPT_CANCELLED`](/cli/error-reference#CLI.PROMPT_CANCELLED)). | Run `orm init` again. In a script, pass the flags from the example above so that it asks nothing. |
-| `4` | Installing the dependencies failed ([`CLI.INIT_INSTALL_FAILED`](/orm/reference/error-reference#CLI.INIT_INSTALL_FAILED)). Usually the files are already written. On a [Prisma ORM 7 project](#on-a-prisma-orm-7-project), the install runs first, so nothing is written yet. | If files were written, run the install command it prints, then `npx prisma contract emit`. If none were, run `orm init` again once the dependencies install. |
+| `4` | Installing the dependencies failed ([`CLI.INIT_INSTALL_FAILED`](/orm/reference/error-reference#CLI.INIT_INSTALL_FAILED)). The first install, of the target package, runs before anything is written, because `orm init` writes the project from that package; when it fails, nothing is written yet. When a later install fails, the files are already written. A failed pnpm install is not run again with npm. | If files were written, run the install command it prints, then `npx prisma contract emit`. If none were, run `orm init` again once the dependencies install. |
 | `5` | It wrote the files and installed the dependencies, but emitting the contract failed ([`CLI.INIT_EMIT_FAILED`](/orm/reference/error-reference#CLI.INIT_EMIT_FAILED)). | Fix the contract source that the message names, then run `npx prisma contract emit`. |
 
 Do not run `orm init` again over files it has written, because a second run replaces them and needs `--confirm`.
@@ -179,6 +181,9 @@ These are the common causes of exit code `2`. The [error reference](/orm/referen
 | [`CLI.UNEXPECTED`](/orm/reference/error-reference#CLI.UNEXPECTED) | `package.json` or `tsconfig.json` cannot be read, for example because of its file permissions. | None |
 | [`CLI.INIT_WRITE_FAILED`](/orm/reference/error-reference#CLI.INIT_WRITE_FAILED) | A file could not be written, for example because a directory is in its place or the disk is full. | The ones written before it, which the error lists in `filesWritten`. On a Prisma ORM 7 project, the old `prisma.config.ts` may also be renamed, which the error lists in `filesRenamed`. |
 | [`CLI.INIT_PROBE_FAILED`](/orm/reference/error-reference#CLI.INIT_PROBE_FAILED) | With `--probe-db --strict-probe`, the database check failed. | All of them |
+| [`CLI.INIT_TARGET_PACKAGE_NOT_INSTALLED`](/orm/reference/error-reference#CLI.INIT_TARGET_PACKAGE_NOT_INSTALLED) | The target package, such as `@prisma/orm-postgres`, cannot be found from the project: `--skip-install` was passed and the project does not have it, or it is still missing after the install, as under Yarn Plug'n'Play. The next action gives the install command. | None |
+| [`CLI.INIT_CONTRIBUTION_UNAVAILABLE`](/orm/reference/error-reference#CLI.INIT_CONTRIBUTION_UNAVAILABLE) | The installed target package has no `init` entrypoint that `orm init` can load. Write `prisma.config.ts` by hand, importing `defineConfig` from the package. | None; the package stays installed |
+| [`CLI.INIT_AUTHORING_UNSUPPORTED`](/orm/reference/error-reference#CLI.INIT_AUTHORING_UNSUPPORTED) | `--authoring` names a way to write the contract that the target package does not offer. | None; the package stays installed |
 
 ## After initialization
 

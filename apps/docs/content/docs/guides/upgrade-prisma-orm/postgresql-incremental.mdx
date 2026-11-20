@@ -21,7 +21,7 @@ This guide covers **PostgreSQL only**, and guidance for other databases will fol
 
 :::info
 
-Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for the Prisma ORM 8 CLI as of `8.0.0-rc.34` and `@prisma/orm-postgres` as of `8.0.0-rc.24`. The two packages have separate version numbers. The Prisma ORM 7 side of the app stays at `7.10.1` throughout.
+Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for the Prisma ORM 8 CLI as of `8.0.0-rc.34` and `@prisma/orm-postgres` as of `8.0.0-rc.25`. The two packages have separate version numbers. The Prisma ORM 7 side of the app stays at `7.10.1` throughout.
 
 :::
 
@@ -57,7 +57,7 @@ npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 
 Write `prisma@latest`, because before this phase `npx prisma` runs version 7. The command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then continue with step 2.5, and in phase 3 use the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
 
-The command does not work yet if the `datasource` block lists `citext`, `vector` or `postgis` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres` and `dotenv` and changed nothing else. Keep both packages, and do phase 1 and steps 2.1 to 2.4 by hand.
+The command does not work yet if the `datasource` block lists `citext`, `vector` or `postgis` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres`, `dotenv` and `pg` and changed nothing else. Keep both packages, and do phase 1 and steps 2.1 to 2.4 by hand.
 
 ### 1.1. Confirm the application works
 
@@ -233,11 +233,11 @@ npx prisma7 migrate status
 ### 2.1. Install the Prisma ORM 8 packages
 
 ```npm
-npm install --save-dev prisma@latest
-npm install @prisma/orm-postgres
+npm install --save-dev prisma@latest @types/pg
+npm install @prisma/orm-postgres pg
 ```
 
-`prisma@latest` is the Prisma ORM 8 CLI, and its `prisma/config` subpath provides `definePrismaConfig` for the Prisma ORM 8 config file. Installing it locally (not only running it through `npx`) is what makes that import resolve. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import.
+`prisma@latest` is the Prisma ORM 8 CLI, and its `prisma/config` subpath provides `definePrismaConfig` for the Prisma ORM 8 config file. Installing it locally (not only running it through `npx`) is what makes that import resolve. `@prisma/orm-postgres` is the PostgreSQL ORM runtime your application code will import. It takes `pg` 8.22 or newer as a peer dependency, so your app declares the driver, and `@types/pg` 8.20 or newer for TypeScript.
 
 After this install, `npx prisma <command>` runs the Prisma ORM 8 CLI and `npx prisma7 <command>` runs Prisma ORM 7:
 

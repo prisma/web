@@ -10,6 +10,8 @@ metaDescription: Learn how to reconcile a database with the current Prisma ORM c
 
 Like Prisma ORM 7's `db push`, use it when you want a database to match your contract and do not need a migration file for the change, for example on your development database while you try out a contract change.
 
+A database whose [change policy](/orm/migrations/database-policies) does not include `reconcile` refuses `db update` with `MIGRATION.CHANGE_POLICY_FORBIDS`. Its [data protection policy](/orm/migrations/database-policies#data-protection-policy) decides whether the update asks before it loses data or changes access, refuses, or goes ahead without asking.
+
 ## Usage
 
 ```npm
@@ -27,6 +29,7 @@ npx prisma db update --db "$DATABASE_URL"
 | `--delete <subject>` | Lets the update lose the data of a model, a field, a table no model stores, every model of a namespace the contract removed, or, on PostgreSQL and SQLite, an enum value the contract removed, a field of a value object, or the rows of a variant. Repeatable. |
 | `--convert <Variant>` | On PostgreSQL and SQLite, rewrites the stored discriminator value of a variant whose value changed. Repeatable. |
 | `--allow <Model>` | Lets one operation change who can read or write the model's data. Repeatable. |
+| `--permit-policy-change` | With `--to <ref>`, checks the run against the ref's declared [policies](/orm/migrations/database-policies) and writes them into the database when it succeeds. Without it, a ref whose policies differ from the database's fails with `MIGRATION.POLICY_MISMATCH`. |
 | `--advance-ref <name>` | After the update, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Without it, `db update` points the `db` ref there when you leave out `--db`, and changes no ref when you pass `--db`. |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |
@@ -60,6 +63,16 @@ In a terminal, the command asks the questions you did not answer with a flag. In
 
 Dropping an index, a unique or foreign-key constraint, a check, a default or a native enum type loses no data, so the update asks nothing about it.
 
+### A changed stored name [#a-changed-stored-name]
+
+On PostgreSQL and SQLite, a model, field or enum member that keeps its name in the contract is the same object, even when what it is stored as changes. When only its `@@map`, its `@map`, or the value an enum member stores changes, the update renames the table or column, with the constraints and indexes named after it, or replaces the stored value in the rows, and asks nothing. A table or column is renamed only when its control policy is `managed` in both contracts. A `--delete` for such a change fails with `CLI.CONSENT_UNUSED`, because nothing asks about it.
+
+To start with an empty table under the new name instead, make two changes, each applied before the next: remove the model and answer `--delete`, then add it back with its new `@@map`.
+
+Swaps, chains and takeovers are refused with `MIGRATION.PLANNING_FAILED`: two models or fields that trade tables or columns, one that moves to a name another frees, one that takes the storage of one the change removes, and enum members that trade stored values. Make the change in two steps through a name nothing uses, such as `prisma_swap_users`, applied one after the other.
+
+MySQL and MongoDB plan these changes as before. Before `8.0.0-rc.25`, a changed `@@map` was planned as dropping the table and creating an empty one, and asked for `--delete`.
+
 `db update` names each subject by model and field from the contract the database was last updated to, which it stores when it advances a ref. With `--db`, pass `--advance-ref <name>` on every run so that contract is stored for the next run. Without a stored contract, each subject is its storage name, and a run with `--rename` fails with `MIGRATION.STATEMENT_ORIGIN_UNKNOWN`. Adding `--advance-ref` to that run does not help, because the missing contract is the one the database is at before it. To store it, emit the contract the database is at, run `db update --advance-ref db --dry-run` with the same `--db`, and check that it plans no operations. Then run it again without `--dry-run`, which changes nothing in the database and stores the contract. Then emit the new contract and run the rename.
 
 On PostgreSQL, a namespace is renamed, moved or removed with the same flags. `--rename billing:finance` renames the schema, and everything in it stays in it. `--rename public.Invoice:billing.Invoice` moves the model's table to another schema with its rows, constraints, indexes and policies, and creates the schema first when the database does not have it. Namespace renames run before the other renames, whatever order you give them in. `public` and a schema another contract space declares are not renamed.
@@ -74,12 +87,12 @@ The schema can also hold objects that no contract declares. A table created by h
 
 The command leaves alone a schema that no contract declared, such as Supabase's `auth`, and a namespace that only another contract space declares. Before `8.0.0-rc.20`, the command did not ask about a removed namespace and left its tables in place.
 
-On PostgreSQL and SQLite, removing a member from an `enum` block, or changing the value a member stores, is asked about too, because rows may hold the old value. The update asks once for each value, however many columns hold it:
+On PostgreSQL and SQLite, removing a member from an `enum` block is asked about too, because rows may hold its value. The update asks once for each value, however many columns hold it:
 
 - If you renamed the member, answer with `--rename Status.ARCHIVED:Status.RETIRED`. The update changes the stored value in every column and list that holds it.
 - To let the value go, answer with `--delete Status.ARCHIVED`. Optional columns that hold it are set to `NULL`, and lists lose it. A required column cannot take `NULL`, so while any of its rows hold the value, the apply fails with `MIGRATION.PRECHECK_FAILED` before it changes anything. The error counts those rows and says how to keep them.
 
-A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value, and two members that swap their stored values, can only be answered with `--delete`. `db update` cannot keep those rows in one run. Its question says to plan the change with [`migration plan --from <hash>`](/cli/migration-plan#renames-and-data-loss) instead, or, for a member that keeps its name, to rename it to a new member and back in two runs of `db update`. For a swap, only the migration works.
+A member you rename while keeping its stored value, such as `RETIRED = "archived"` in place of `ARCHIVED = "archived"`, changes no rows, so nothing is asked. A member that keeps its name but stores a new value is [a changed stored name](#a-changed-stored-name): the update replaces the value in the rows and asks nothing. Two members that swap their stored values are refused; make the swap in two runs through a value nothing uses.
 
 Native PostgreSQL enums (`pg.enum(...)`) are not affected. Before `8.0.0-rc.21`, PostgreSQL failed at apply when a row held the removed value, and SQLite planned nothing.
 
@@ -96,7 +109,7 @@ A [variant](/orm/contract-authoring/psl-syntax#base-models-and-variants) whose d
 - `--rename Bug:Defect` of a variant whose value also changed rewrites the value in the same way.
 - `--delete Bug` deletes the rows that hold the old value, then drops a removed variant's own table or the columns only it used.
 
-On MongoDB, `--rename` of a value object field or of a variant whose discriminator value changes is refused, and so is `--convert` of a variant.
+On MongoDB, changes inside documents are asked about too, since `8.0.0-rc.25`: a field a value object or an embedded model loses, a stored value an enum loses, and a variant that is removed or whose discriminator value changes. They take the same answers as in [`migration plan`](/cli/migration-plan#renames-and-data-loss). With `--no-interactive` and no answers, the update fails with `CLI.CONSENT_REQUIRED` and lists the flags to add.
 
 On MongoDB, a field type change that can lose values is asked about, as on SQL. Answer with `--delete` and the field, as in `--delete User.age`, which keeps the field and casts its stored values with `$convert`. To write the conversion yourself, use `migration plan --convert` instead, because `db update` writes no migration for you to edit.
 

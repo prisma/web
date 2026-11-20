@@ -6,7 +6,7 @@ metaTitle: db migrate | Prisma ORM CLI
 metaDescription: Learn how to apply pending Prisma ORM on-disk migrations with the db migrate command.
 ---
 
-`db migrate` applies the migrations on disk that the database has not run yet, including the ones that extension packages ship. It runs the extensions' migrations first, in alphabetical order of extension, and then yours. It never writes a new migration; [`migration plan`](/cli/migration-plan) does that.
+`db migrate` applies the migrations on disk that the database has not run yet, including the ones that extension packages ship. It runs the extensions' migrations first, in alphabetical order of extension, and then yours. It never writes a new migration; [`migration plan`](/cli/migration-plan) does that. It obeys the database's [policies](/orm/migrations/database-policies): a database whose change policy does not include `migrate` refuses it, and one whose data protection policy forbids an operation in a pending migration refuses the whole run before it applies anything.
 
 Prisma ORM keeps one migration history for your own models, called the `app` space, in `migrations/app/`, and one for each [extension package](/orm/extensions/using-extensions) that ships its own migrations, such as pgvector. Each of these histories is a [contract space](/orm/migrations/the-migration-graph#terms-used-on-this-page).
 
@@ -26,6 +26,7 @@ npx prisma db migrate --db "$DATABASE_URL"
 | `--to <contract>` | Applies migrations up to a target contract state. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
 | `--advance-ref <name>` | After a successful run, points the named [ref](/cli/migration-ref) at the contract state the database now matches. Pass `--advance-ref db` in development. |
 | `--show` | Prints the migrations `db migrate` would run, and runs nothing. |
+| `--permit-policy-change` | With `--to <ref>`, checks the run against the ref's declared [policies](/orm/migrations/database-policies) and writes them into the database when it succeeds. Without it, a ref whose policies differ from the database's fails with `MIGRATION.POLICY_MISMATCH`. |
 | `--from <contract>` | Use it with `--show`, where it sets the starting state for the preview. Accepts a [contract reference](/cli/migration-ref#contract-reference-forms): a hash, a hash prefix, a [ref name](#contract-references), a migration directory name, [`<dir>^`](#contract-references), [`@contract`](#contract-references), [`@db`](#contract-references), or [`@empty`](#contract-references). |
 | `--config <path>` | Read this config file instead of `./prisma.config.ts`. |
 | `--json` | Prints a machine-readable result. |

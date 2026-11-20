@@ -41,34 +41,35 @@ The name after `db.orm.` is the collection name, so with `@@map("users")` you wr
 
 ## Field types
 
-On MongoDB, each scalar type is named after the BSON type it stores:
+On MongoDB, `Int`, `BigInt`, `Float`, `Decimal`, `Boolean`, `Bytes`, `String` and `Json` are convenience types, named for what the field means. Each becomes one explicit type, named after the BSON type that stores it, and you can write either name. The other types have one name only:
 
-| Type | Stored as | In your code |
-| ---- | --------- | ------------ |
-| `String` | BSON string | `string` |
-| `Int32` | BSON int | `number` |
-| `Int64` | BSON long | `bigint` |
-| `Double` | BSON double | `number` |
-| `Decimal128` | BSON decimal | a string, so that no digit is lost |
-| `Bool` | BSON bool | `boolean` |
-| `DateTime` | BSON date | a JavaScript `Date` |
-| `Date` | BSON date at midnight UTC | a string, such as `"2024-02-29"` |
-| `Time` | BSON string | a string, such as `"09:30:00.000"` |
-| `Duration` | BSON string | an ISO 8601 duration, such as `"PT1H30M"` |
-| `Binary` | BSON binary | `Uint8Array` |
-| `Json` | a BSON object, array, string, number, bool or null | a JSON value |
-| `Bson` | any BSON value | the value the MongoDB driver returns |
-| `ObjectId` | BSON ObjectId | `string` |
+| Type | Explicit type | Stored as | In your code |
+| ---- | ------------- | --------- | ------------ |
+| `String` | `BsonString` | BSON string | `string` |
+| `Int` | `Int32` | BSON int | `number` |
+| `BigInt` | `Int64BigInt` | BSON long | `bigint` |
+| `BigInt(as: number)` | `Int64Number` | BSON long | `number` |
+| `Float` | `Double` | BSON double | `number` |
+| `Decimal` | `Decimal128` | BSON decimal | a string, so that no digit is lost |
+| `Boolean` | `Bool` | BSON bool | `boolean` |
+| `DateTime` | | BSON date | a JavaScript `Date` |
+| `Date` | | BSON date at midnight UTC | a string, such as `"2024-02-29"` |
+| `Time` | | BSON string | a string, such as `"09:30:00.000"` |
+| `Duration` | | BSON string | an ISO 8601 duration, such as `"PT1H30M"` |
+| `Bytes` | `Binary` | BSON binary | `Uint8Array` |
+| `Json` | `PlainJson` | a BSON object, array, string, number, bool or null | a JSON value |
+| `Bson` | | any BSON value | the value the MongoDB driver returns |
+| `ObjectId` | | BSON ObjectId | `string` |
 
 A `Json` field holds only JSON values. A read fails with `RUNTIME.DECODE_FAILED`, and a write with `RUNTIME.ENCODE_FAILED`, when the field holds a `Date`, an `ObjectId`, a `Decimal128`, a `Binary` or another value that is not JSON, at any depth. Type the field `Bson` when it holds such values. A contract whose source is a Prisma ORM 6 schema cannot declare `Bson`.
 
-Every value you write is checked against its field's type. A value of the wrong type, a fraction or a number outside the 32-bit range for an `Int32` field, a value that is not one of the field's enum values, or `null` for a field that is not optional makes the write fail with `RUNTIME.ENCODE_FAILED`, and the error names the field. A value you compare a field with in `.where(...)` is converted the same way, so a filter on an `Int64` field takes a `bigint`. Reads give you each value as the table shows, in included documents and embedded documents too, and an optional field that a document does not have reads as `null`.
+Every value you write is checked against its field's type. A value of the wrong type, a fraction or a number outside the 32-bit range for an `Int32` field, a value that is not one of the field's enum values, or `null` for a field that is not optional makes the write fail with `RUNTIME.ENCODE_FAILED`, and the error names the field. A value you compare a field with in `.where(...)` is converted the same way, so a filter on a `BigInt` field takes a `bigint`. Reads give you each value as the table shows, in included documents and embedded documents too, and an optional field that a document does not have reads as `null`.
 
 `DateTime(as: temporal)` reads an instant as a `Temporal.Instant`, `DateTime(as: string)` as text such as `"2024-01-01T00:00:00.000Z"`, and `Date(as: temporal)` and `Time(as: temporal)` read a `Temporal.PlainDate` and a `Temporal.PlainTime`. The `temporal` forms need the `temporal-polyfill` package, a peer dependency of `@prisma/orm-mongo` that npm, pnpm and bun install for you; with Yarn, or npm with `legacy-peer-deps`, add it to your dependencies yourself.
 
 Before `8.0.0-rc.24`, `Date` was an instant read as a JavaScript `Date`, the type `DateTime` is now. A contract written for an earlier release that types a timestamp as `Date` is still accepted by `contract emit`, but the field now holds a calendar date: reading a document whose value has a time of day fails, and `@onCreate(now())` writes today's date at midnight UTC. Rename such fields to `DateTime`; the [upgrade guide](https://github.com/prisma/orm/blob/v8.0.0-rc.24/skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.23-to-8.0.0-rc.24/) ships a script that does it. Renaming them leaves the emitted `contract.json` as it was before the upgrade.
 
-The names `Int`, `Float` and `Boolean` from earlier releases are deprecated. They still work and give the same contract, but `contract emit` reports a `PSL_DEPRECATED_SCALAR_NAME` warning for each use, and a later release removes them. Rename them to `Int32`, `Double` and `Bool`.
+`Int64` is deprecated since `8.0.0-rc.25`. It still works and gives the same contract as `BigInt`, but `contract emit` reports a `PSL_DEPRECATED_SCALAR_NAME` warning for each use, and a later release removes it. In a TypeScript contract, `type.Int64()` is removed; write `type.BigInt()` or `type.Int64BigInt()`. Before `8.0.0-rc.25`, `Int`, `Float` and `Boolean` were deprecated on MongoDB, and `BigInt`, `Decimal` and `Bytes` were refused. They are convenience types now, and give the same contract as the explicit types in the table.
 
 For a timestamp that Prisma ORM fills in, type the field `temporal.CreatedAt` or `temporal.UpdatedAt`:
 
