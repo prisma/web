@@ -13,10 +13,13 @@ import { fileURLToPath } from "node:url";
 import {
   communityExtensions,
   extensions,
+  getExtensionBySlug,
+  hiddenExtensions,
   officialExtensions,
   validateExtensionEntry,
 } from "@prisma-docs/ui/data/extensions";
 import {
+  assertNotListed,
   assertPublishedOnNpm,
   COMMUNITY_REGISTRY_PATH,
   fetchCurrentRegistry,
@@ -46,6 +49,29 @@ test("every checked-in registry entry validates and slugs are unique across file
     assert.deepEqual(validateExtensionEntry(entry), [], entry.slug);
   }
   assert.equal(new Set(extensions.map((entry) => entry.slug)).size, extensions.length);
+});
+
+test("hidden entries stay out of the public lists but keep their slug and package reserved", () => {
+  const listed = [...officialExtensions, ...communityExtensions, ...extensions];
+  for (const file of ["community.json", "official.json"]) {
+    const raw = JSON.parse(readFileSync(path.join(REGISTRY_DIR, file), "utf8")) as {
+      slug: string;
+      hidden?: boolean;
+    }[];
+    for (const entry of raw) {
+      const isListed = listed.some((candidate) => candidate.slug === entry.slug);
+      const isHidden = hiddenExtensions.some((candidate) => candidate.slug === entry.slug);
+      assert.equal(isListed, entry.hidden !== true, entry.slug);
+      assert.equal(isHidden, entry.hidden === true, entry.slug);
+    }
+  }
+  for (const entry of hiddenExtensions) {
+    assert.equal(getExtensionBySlug(entry.slug), undefined, entry.slug);
+    assert.throws(() => assertNotListed(entry, []), SubmissionError, entry.slug);
+  }
+  const base = communityExtensions[0]!;
+  assert.deepEqual(validateExtensionEntry({ ...base, hidden: true }), []);
+  assert.match(validateExtensionEntry({ ...base, hidden: "yes" }).join("; "), /^hidden/);
 });
 
 test("validateExtensionEntry rejects malformed entries", () => {

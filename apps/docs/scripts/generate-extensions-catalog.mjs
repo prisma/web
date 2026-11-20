@@ -54,8 +54,12 @@ const STATUS_LABELS = {
   experimental: "Experimental",
 };
 
+// An entry marked `hidden: true` stays in the registry file but is left out of
+// every table, the same way prisma.io/extensions leaves it out.
 function readRegistry(file) {
-  return JSON.parse(readFileSync(join(REGISTRY_DIR, file), "utf8"));
+  return JSON.parse(readFileSync(join(REGISTRY_DIR, file), "utf8")).filter(
+    (entry) => entry.hidden !== true,
+  );
 }
 
 const official = readRegistry("official.json");

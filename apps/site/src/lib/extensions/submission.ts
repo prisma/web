@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   extensions,
+  hiddenExtensions,
   validateExtensionEntry,
   type ExtensionEntry,
 } from "@prisma-docs/ui/data/extensions";
@@ -108,7 +109,7 @@ export class SubmissionError extends Error {
 
 /** Reject entries that collide with anything already listed. */
 export function assertNotListed(entry: ExtensionEntry, current: ExtensionEntry[]) {
-  const all = [...extensions, ...current];
+  const all = [...extensions, ...hiddenExtensions, ...current];
   if (all.some((listed) => listed.slug === entry.slug)) {
     throw new SubmissionError(409, `An extension with the slug "${entry.slug}" is already listed.`);
   }
