@@ -46,31 +46,33 @@ jobs:
           echo "cli=$cli" >> "$GITHUB_OUTPUT"
 
       # npm publishes a release before its GitHub release creates the tag.
-      # In that window, publish nothing; a later run picks the release up.
+      # For a day after publishing, a missing tag only skips this run; after
+      # that the generator fails the job, so stale pages do not go unnoticed.
       - name: Check that both release tags exist
         id: tags
+        working-directory: apps/docs
         env:
           ORM_REF: ${{ steps.release.outputs.orm }}
           CLI_REF: ${{ steps.release.outputs.cli }}
         run: |
-          missing=()
-          for pair in "prisma/orm $ORM_REF" "prisma/prisma-cli $CLI_REF"; do
-            read -r repo ref <<< "$pair"
+          ready=true
+          for entry in "orm prisma/orm $ORM_REF" "cli prisma/prisma-cli $CLI_REF"; do
+            read -r target repo ref <<< "$entry"
             status=0
             git ls-remote --exit-code --tags "https://github.com/$repo" "refs/tags/$ref" > /dev/null || status=$?
             if [[ $status -eq 2 ]]; then
-              missing+=("$repo@$ref")
+              if ! message=$(node ./scripts/generate-error-reference.mjs --target "$target" --missing-tag "$ref" 2>&1); then
+                echo "::error::$message"
+                exit 1
+              fi
+              echo "::warning::$message"
+              ready=false
             elif [[ $status -ne 0 ]]; then
               echo "::error::Could not list the tags of $repo (git ls-remote exited $status)."
               exit 1
             fi
           done
-          if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "::warning::The latest npm release has no tag yet: ${missing[*]}. Nothing is generated or published; the next run picks it up."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
 
       - name: Checkout prisma/orm (latest release)
         if: steps.tags.outputs.ready == 'true'

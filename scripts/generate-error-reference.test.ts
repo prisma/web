@@ -3,6 +3,7 @@ import test from "node:test";
 // @ts-expect-error The generator is a plain .mjs script with no type declarations.
 import {
   TARGETS,
+  checkMissingTag,
   latestReleaseRef,
   readFlag,
   recordedRef,
@@ -320,4 +321,90 @@ test("--print-ref prints the resolved tag and writes nothing", async () => {
     log: (line: string) => logged.push(line),
   });
   assert.deepEqual(logged, ["v8.0.0-rc.24"]);
+});
+
+test("a registry version that is not semver stops the lookup", async () => {
+  for (const version of ["latest", "8.0"]) {
+    await assert.rejects(
+      latestReleaseRef(TARGETS.orm, registry({ ...ormRelease, version })),
+      /no valid version/,
+    );
+  }
+});
+
+const cliPage = transform(
+  TARGETS.cli,
+  "# Error reference\n\n### CLI.NOT_LOGGED_IN\n",
+  "v8.0.0-rc.34",
+).mdx;
+
+function printRef(argv: string[]) {
+  const logged: string[] = [];
+  return run(["--target", "cli", ...argv, "--print-ref"], {
+    fetchImpl: async () => assert.fail("--recorded and --ref must not ask npm"),
+    readFile: (path: string) => {
+      assert.equal(path, TARGETS.cli.output);
+      return cliPage;
+    },
+    writeFile: () => assert.fail("--print-ref must not write"),
+    log: (line: string) => logged.push(line),
+  }).then(() => logged);
+}
+
+test("--recorded prints the tag the committed page records", async () => {
+  assert.deepEqual(await printRef(["--recorded"]), ["v8.0.0-rc.34"]);
+});
+
+test("--ref takes precedence over --recorded", async () => {
+  assert.deepEqual(await printRef(["--recorded", "--ref", "v8.0.0-rc.30"]), ["v8.0.0-rc.30"]);
+});
+
+const HOUR = 3_600_000;
+const published = Date.parse("2026-11-16T16:44:57.127Z");
+
+function publishTimes(time: Record<string, string>) {
+  return async (url: string) => {
+    assert.equal(url, "https://registry.npmjs.org/prisma");
+    return new Response(JSON.stringify({ time }));
+  };
+}
+
+test("a missing tag is only a warning for the first day after publishing", async () => {
+  const warning = await checkMissingTag(TARGETS.cli, "v8.0.0-rc.34", {
+    fetchImpl: publishTimes({ "8.0.0-rc.34": "2026-11-16T16:44:57.127Z" }),
+    now: () => published + 23 * HOUR,
+  });
+  assert.match(warning, /prisma@8\.0\.0-rc\.34 .* no tag v8\.0\.0-rc\.34/);
+  assert.match(warning, /Nothing is generated or published/);
+});
+
+test("a missing tag fails once the release is a day old", async () => {
+  await assert.rejects(
+    checkMissingTag(TARGETS.cli, "v8.0.0-rc.34", {
+      fetchImpl: publishTimes({ "8.0.0-rc.34": "2026-11-16T16:44:57.127Z" }),
+      now: () => published + 25 * HOUR,
+    }),
+    /prisma@8\.0\.0-rc\.34 .*prisma\/prisma-cli has no tag v8\.0\.0-rc\.34/,
+  );
+});
+
+test("a missing tag fails when npm has no publish time for the version", async () => {
+  await assert.rejects(
+    checkMissingTag(TARGETS.cli, "v8.0.0-rc.34", {
+      fetchImpl: publishTimes({}),
+      now: () => published,
+    }),
+    /no publish time/,
+  );
+});
+
+test("--missing-tag reports through the entry point and writes nothing", async () => {
+  const warned: string[] = [];
+  await run(["--target", "cli", "--missing-tag", "v8.0.0-rc.34"], {
+    fetchImpl: publishTimes({ "8.0.0-rc.34": "2026-11-16T16:44:57.127Z" }),
+    now: () => published + HOUR,
+    writeFile: () => assert.fail("--missing-tag must not write"),
+    warn: (line: string) => warned.push(line),
+  });
+  assert.equal(warned.length, 1);
 });

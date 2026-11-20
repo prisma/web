@@ -6,6 +6,7 @@
 // Usage:
 //   node scripts/generate-error-reference.mjs [--target orm|cli] [--ref <tag> | --recorded] [--source <path-to-error-reference.md>]
 //   node scripts/generate-error-reference.mjs [--target orm|cli] [--recorded] --print-ref
+//   node scripts/generate-error-reference.mjs [--target orm|cli] --missing-tag <tag>
 //
 // Targets:
 //   orm (default)  prisma/orm          -> content/docs/orm/reference/error-reference.mdx
@@ -18,6 +19,11 @@
 // tag directly. --print-ref prints the resolved tag and exits, so a workflow
 // checks out the same ref it generates from. Without --source, the file is
 // fetched at the ref from raw.githubusercontent.com.
+//
+// npm publishes a release before its tag exists. --missing-tag, which the
+// sync runs when a release's tag is not there, tolerates that for
+// MISSING_TAG_GRACE_HOURS after the version was published and fails after,
+// so pages that stop following releases do not go unnoticed.
 //
 // Every structured error carries (or can carry) a docsUrl pointing at its
 // code's entry on the hosted page — either as a fragment
@@ -227,6 +233,36 @@ export async function resolveRef(
   return latestReleaseRef(target, fetchImpl);
 }
 
+export const MISSING_TAG_GRACE_HOURS = 24;
+
+/**
+ * Whether a release whose tag is missing is still within the grace period.
+ * Returns the warning to print while it is; throws once it is not.
+ */
+export async function checkMissingTag(target, tag, { fetchImpl = fetch, now = Date.now } = {}) {
+  const version = tag.replace(/^v/, "");
+  const url = `https://registry.npmjs.org/${target.npmPackage}`;
+  const response = await fetchImpl(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+  const published = Date.parse((await response.json()).time?.[version] ?? "");
+  if (Number.isNaN(published)) {
+    throw new Error(`${url} has no publish time for ${target.npmPackage}@${version}.`);
+  }
+  const hours = (now() - published) / 3_600_000;
+  const missing =
+    `${target.npmPackage}@${version} is the latest release on npm, but ${target.sourceRepo} ` +
+    `has no tag ${tag}. It was published ${hours.toFixed(1)} hours ago.`;
+  if (hours >= MISSING_TAG_GRACE_HOURS) {
+    throw new Error(
+      `${missing} The error-reference pages cannot follow it until the tag exists; ` +
+        "create the tag, or fix how this generator names release tags.",
+    );
+  }
+  return `${missing} Nothing is generated or published; a later run picks it up.`;
+}
+
 async function loadSource(target, ref, argv, fetchImpl) {
   const path = readFlag(argv, "--source");
   if (path) return readFileSync(path, "utf8");
@@ -395,6 +431,7 @@ export async function run(
     writeFile = writeFileSync,
     log = console.log,
     warn = console.warn,
+    now = Date.now,
   } = {},
 ) {
   const targetName = readFlag(argv, "--target") ?? "orm";
@@ -403,6 +440,11 @@ export async function run(
     throw new Error(
       `Unknown --target ${JSON.stringify(targetName)}. Known: ${Object.keys(TARGETS).join(", ")}`,
     );
+  }
+  const missingTag = readFlag(argv, "--missing-tag");
+  if (missingTag !== undefined) {
+    warn(await checkMissingTag(target, missingTag, { fetchImpl, now }));
+    return;
   }
   const ref = await resolveRef(target, argv, { fetchImpl, readFile });
   if (argv.includes("--print-ref")) {
@@ -417,5 +459,10 @@ export async function run(
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  await run(process.argv.slice(2));
+  try {
+    await run(process.argv.slice(2));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 }
