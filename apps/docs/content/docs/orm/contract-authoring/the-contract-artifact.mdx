@@ -107,7 +107,7 @@ The sections, top to bottom:
 The declarations file gives the type system the same information. It exports:
 
 - `Contract`, the type the client is built from. `db.ts` imports it.
-- One type per hash: `StorageHash`, `ExecutionHash`, and `ProfileHash`. Each one carries the hash of that part of the contract.
+- One type per hash: `StorageHash`, `ExecutionHash`, and `ProfileHash`. Each one carries the hash of that part of the contract. `ExecutionHash` carries a hash only when the contract has values Prisma ORM generates; see [The content hashes](#the-content-hashes).
 - Input and output types for each [`type` block](/orm/contract-authoring/psl-syntax#value-objects) in your contract.
 
 ```typescript title="src/prisma/contract.d.ts (excerpt)"
@@ -138,7 +138,7 @@ export const db = postgres({
 
 `db` reads the connection string from the `DATABASE_URL` environment variable. `prisma orm init` always writes `.env.example`, and it also writes `.env` when you pass `--write-env` or answer yes when it asks. Put your `DATABASE_URL` in `.env`. The `tsconfig.json` settings the JSON import needs are on the [transactions and runtime page](/orm/reference/transactions-and-runtime).
 
-Import the type from `./contract.d.js`, not from `./contract`. The `.d` makes sure TypeScript reads `contract.d.ts` and not a `contract.ts` in the same folder. The `.js` ending works with each of the `bundler`, `node16`, and `nodenext` settings for `moduleResolution`. That matters when you write the contract in TypeScript and the config sets no `output`, because `contract emit` then writes its files next to `contract.ts`.
+Import the type from `./contract.d.js`, not from `./contract`. The `.d` makes sure TypeScript reads `contract.d.ts` and not a `contract.ts` in the same folder. That matters when you write the contract in TypeScript and the config sets no `output`, because `contract emit` then writes its files next to `contract.ts`. The `.js` ending works with each of the `bundler`, `node16`, and `nodenext` settings for `moduleResolution`.
 
 Before its first query, `db` reads a record in the database that says which contract the database matches. Error codes call this record the marker. `db` compares it with the contract's hashes, and if they do not match, it logs a warning whose `code` is `CONTRACT.MARKER_MISMATCH` and runs the query anyway. If there is no record at all, because nothing has signed the database yet, it logs a warning whose `code` is `CONTRACT.MARKER_MISSING` and again runs the query. {/* plain-language:defined */}
 

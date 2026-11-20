@@ -184,7 +184,7 @@ The string types are ISO 8601 on every server, whatever its `TimeZone` and `Date
 
 - `@id` marks the primary key. `@@id([a, b])` declares a composite key.
 - `@unique` adds a unique constraint on one field. `@@unique([userId, title])` adds one across several fields.
-- `map:` on `@id`, `@@id`, `@unique` or `@@unique` sets the exact name of the primary key or unique constraint in the database, as in `@id(map: "User_pkey")` or `@@unique([userId, title], map: "post_user_title_key")`. Use it for a constraint that already exists under that name, which is what [`contract infer`](/cli/contract-infer) writes for each one it finds.
+- On PostgreSQL, `map:` on `@id`, `@@id`, `@unique` or `@@unique` sets the exact name of the primary key or unique constraint in the database, as in `@id(map: "User_pkey")` or `@@unique([userId, title], map: "post_user_title_key")`. Use it for a constraint that already exists under that name, which is what [`contract infer`](/cli/contract-infer) writes for each one it finds.
 - `@@index([...])` declares a secondary index.
 - `@default(...)` sets a database default: the database fills in the column when an insert leaves it out. The default is a literal, `now()`, `autoincrement()`, or any other SQL expression. Write the SQL as a `sql` tagged literal, which is `sql` followed by the SQL in backticks, such as ``@default(sql`gen_random_uuid()`)``. See [Default values](#default-values) for how to write each kind of literal.
 - `@onCreate(...)` sets a value Prisma ORM generates when it creates the row, and `@onUpdate(...)` one it generates on every update. See [Generated values](#generated-values).
@@ -595,7 +595,7 @@ model User {
 
 On a SQL database, each relation's foreign key gets an index on its columns, so that deleting or updating a referenced row can find the rows that point at it. If the model already has a plain index, a unique constraint or a primary key on exactly those columns, that one serves instead and no second index is created. A partial index, or one with a non-default `type` or `options`, does not count. To use an index whose first columns are the foreign key's, name it on the relation with `index: "<name>"`, using the `name` or `map` you gave it; to have no index at all, write `index: false`. An unnamed `@@index` on exactly the columns of a unique constraint or the primary key is left out of the contract, because the unique one already serves its lookups.
 
-`map:` on `@relation` sets the exact name of the foreign key in the database, as in `@relation(fields: [userId], references: [id], map: "post_user_id_fkey")`. As on an index, use it for a foreign key that already exists under that name; [`contract infer`](/cli/contract-infer) writes it for each foreign key it finds.
+On PostgreSQL, `map:` on `@relation` sets the exact name of the foreign key in the database, as in `@relation(fields: [userId], references: [id], map: "post_user_id_fkey")`. As on an index, use it for a foreign key that already exists under that name; [`contract infer`](/cli/contract-infer) writes it for each foreign key it finds.
 
 When two relations join the same two models, as `Authored` and `Edited` do here, give each pair the same `@relation("Name")` on both ends so Prisma ORM can tell which list belongs to which foreign key; otherwise `npx prisma contract emit` fails with an error whose `code` is `PSL_AMBIGUOUS_BACKRELATION`. For a one-to-one, make the other side singular instead of a list, so `User` declares `profile Profile?`, and put `@unique` on the foreign-key field:
 
