@@ -6,7 +6,7 @@ metaTitle: Author the Prisma ORM contract in PSL
 metaDescription: 'Learn how to write a Prisma ORM contract in the Prisma schema language, including named types, enums, value objects, relations, and extension types.'
 ---
 
-PSL, the Prisma Schema Language, is the preferred way to author [your contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`. You usually write one file, `src/prisma/contract.prisma`, or [split it into several](#split-the-contract-across-several-files), and [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it. If you know the Prisma schema language, most of a contract file reads exactly as you expect. The five biggest additions are listed here, and the rest of the page is the full reference for every attribute and block:
+PSL, the Prisma Schema Language, is the preferred way to author [your contract](/orm/contract-authoring/the-data-contract), the `contract.prisma` file that replaced `schema.prisma`. You usually write one file, `src/prisma/contract.prisma`, or [split it into several](#split-the-contract-across-several-files), and [`npx prisma contract emit`](/cli/contract-emit) writes `contract.json` and `contract.d.ts` beside it. If you know the Prisma schema language, most of a contract file reads exactly as you expect. The six biggest additions are listed here, and the rest of the page is the full reference for every attribute and block:
 
 - mixins: write a set of fields, attributes or enum members once and include it in several blocks.
 - named types: give a database column type a name you can reuse on many fields.
@@ -125,7 +125,7 @@ export default definePrismaConfig({
 });
 ```
 
-`npx prisma orm init` writes a config like this, `DATABASE_URL` included. The import chooses the database: `@prisma/orm-postgres/config` makes it a PostgreSQL project, and `@prisma/orm-mongo/config` a MongoDB one. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#schema) lists the other keys.
+`npx prisma orm init` writes a config like this, `DATABASE_URL` included, except that it imports `definePrismaConfig` from `@prisma/cli-engine`. Both imports work, so keep the one your project has. The import chooses the database: `@prisma/orm-postgres/config` makes it a PostgreSQL project, and `@prisma/orm-mongo/config` a MongoDB one. [Coming from Prisma ORM 7](/orm/coming-from-prisma-orm-7#schema) lists the other keys.
 
 ### Split the contract across several files
 
@@ -184,6 +184,7 @@ The string types are ISO 8601 on every server, whatever its `TimeZone` and `Date
 
 - `@id` marks the primary key. `@@id([a, b])` declares a composite key.
 - `@unique` adds a unique constraint on one field. `@@unique([userId, title])` adds one across several fields.
+- On PostgreSQL, `map:` on `@id`, `@@id`, `@unique` or `@@unique` sets the exact name of the primary key or unique constraint in the database, as in `@id(map: "User_pkey")` or `@@unique([userId, title], map: "post_user_title_key")`. Use it for a constraint that already exists under that name, which is what [`contract infer`](/cli/contract-infer) writes for each one it finds.
 - `@@index([...])` declares a secondary index.
 - `@default(...)` sets a database default: the database fills in the column when an insert leaves it out. The default is a literal, `now()`, `autoincrement()`, or any other SQL expression. Write the SQL as a `sql` tagged literal, which is `sql` followed by the SQL in backticks, such as ``@default(sql`gen_random_uuid()`)``. See [Default values](#default-values) for how to write each kind of literal.
 - `@onCreate(...)` sets a value Prisma ORM generates when it creates the row, and `@onUpdate(...)` one it generates on every update. See [Generated values](#generated-values).
@@ -593,6 +594,8 @@ model User {
 ```
 
 On a SQL database, each relation's foreign key gets an index on its columns, so that deleting or updating a referenced row can find the rows that point at it. If the model already has a plain index, a unique constraint or a primary key on exactly those columns, that one serves instead and no second index is created. A partial index, or one with a non-default `type` or `options`, does not count. To use an index whose first columns are the foreign key's, name it on the relation with `index: "<name>"`, using the `name` or `map` you gave it; to have no index at all, write `index: false`. An unnamed `@@index` on exactly the columns of a unique constraint or the primary key is left out of the contract, because the unique one already serves its lookups.
+
+On PostgreSQL, `map:` on `@relation` sets the exact name of the foreign key in the database, as in `@relation(fields: [userId], references: [id], map: "post_user_id_fkey")`. As on an index, use it for a foreign key that already exists under that name; [`contract infer`](/cli/contract-infer) writes it for each foreign key it finds.
 
 When two relations join the same two models, as `Authored` and `Edited` do here, give each pair the same `@relation("Name")` on both ends so Prisma ORM can tell which list belongs to which foreign key; otherwise `npx prisma contract emit` fails with an error whose `code` is `PSL_AMBIGUOUS_BACKRELATION`. For a one-to-one, make the other side singular instead of a list, so `User` declares `profile Profile?`, and put `@unique` on the foreign-key field:
 
