@@ -6,6 +6,8 @@ Item numbers (A1, B11, C9, D4) are stable identifiers used in the audit files an
 
 Status as of 2026-11-20. The per-item notes below carry the history; this section is the summary, checked against `main` on that date.
 
+The site was audited in full a second time on 2026-11-20, against `prisma` 8.0.0-rc.34, the ORM packages at 8.0.0-rc.24 and `create-prisma` 0.14.8. Sections A to E record the first audit (2026-09-11, against rc.9) and what became of it. Section F is the second audit's list, and it is the open work now.
+
 ## Where things stand
 
 Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` and `@prisma/orm-mongo` 8.0.0-rc.24, `@prisma/cli-engine` 0.10.0.
@@ -16,7 +18,8 @@ Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` a
 | B. Corrections | 35 | 35 | 0 |
 | C. New pages | 24 | 22 | C10 and C23 |
 | E. Gaps found later | 25 | 25 | 0 |
-| D. ORM and tooling | 37 | 10 | 27, for the ORM team to schedule |
+| D. ORM and tooling | 37 | 10, and the second audit found D12 and D20 fixed | 25, for the ORM team to schedule |
+| F. Second audit, 2026-11-20 | 9 slices | 0 | 9 |
 
 ### Done
 
@@ -58,7 +61,7 @@ For the ORM team to schedule; none blocks a page. D4 (client APIs), D5 and D22 (
 
 ## Recommended order for the open work
 
-Proposed on 2026-11-17.
+Updated on 2026-11-20: the slices of section F come first, in the order F1 to F9. The list below is the order proposed on 2026-11-17 for what was left of the first audit.
 
 1. **E19**: done, merged as prisma/web#8863.
 2. **The A3 follow-up and the guide reader passes** (E22 and the three C9 follow-up guides): done, merged as prisma/web#8865.
@@ -240,6 +243,52 @@ Places where the docs are hard because the tool is. Grouped by who owns the fix.
 ### Monorepo docs hygiene
 
 - **D17. `docs/reference/` and `docs/Supported Versions.md` disagree with the site and partly with the source.** `reference/capabilities.md` disagrees with the site's capabilities page on key namespacing, pack key nesting, the error code spelling, and whether capabilities are fixed at emit or negotiated at connect. `Supported Versions.md` says Node 24 and documents `--merge-tsconfig`, which does not exist. `Telemetry.md` says no exit code is sent; rc.9 sends one. `docs/reference/error-reference.md`, from which the site's error reference is generated verbatim, still says `ref set` and `prisma ref set` in eight entries (the command is `migration ref set` since rc.5). `mongodb-user-promise.md` promises MongoDB referential actions that are not implemented. Until reconciled, the audit treats `packages/` and `docs/releases/` as the only truth. Rechecked on 2026-09-28: all five claims still hold, and `error-reference.md` now has nine bare `ref set` lines, two of them `prisma ref set`. The command names in `error-reference.md` are in review as prisma/orm#30527 (2026-09-30): 29 entries named `ref`, `migrate`, `format`, `init`, `inspect-live-schema`, or `db run` without the group or by an old name. No production message names a bare `ref` command. The other four claims are still open.
+
+## F. Findings of the second audit, 2026-11-20
+
+Ten reviewers each read one area in full and checked every name, flag, command, import, sample and printed output against the tagged sources; most also ran the published CLI against a throwaway database. The method is in `audit-2026-11-20/INSTRUCTIONS.md`, the areas in `audit-2026-11-20/AREAS.md`, and every finding, with its evidence, in `audit-2026-11-20/<area>.md`. The reviewers' scratch projects are under `/Users/wmadden/Projects/prisma/scratch/audit-<area>/`.
+
+Every finding of the first audit is fixed on `main` in the areas the reviewers compared. What follows is new: it comes from the fifteen releases since rc.9 and from pages written after the first audit.
+
+| Area file | Breaks copy-paste | Misleading | Missing | Unverified |
+| --- | --- | --- | --- | --- |
+| `migrations.md` | 5 | 9 | 2 | 2 |
+| `deploy-integrations.md` | 3 | 10 | 3 | 5 |
+| `cli.md` | 2 | 9 | 6 | 2 |
+| `contract.md` | 2 | 10 | 8 | 3 |
+| `upgrade-switch.md` | 2 | 15 | 5 | 3 |
+| `frameworks.md` | 1 | 12 | 4 | 4 |
+| `start.md` | 1 | 11 | 4 | 3 |
+| `reverse.md` | 1 | 4 | 13 | 1 |
+| `orm-client.md` | 0 | 11 | 5 | 2 |
+| `builders.md` | 0 | 5 | 5 | 4 |
+| Total | 17 | 96 | 55 | 29 |
+
+A few findings appear in two files, because the reverse pass and an area pass both met them. Eight of the most serious were checked a second time against the tagged sources on 2026-11-20 and all eight hold: the removed `ORM.RELATION_LINK_DUPLICATE` code, the removed free `createExtension`, `renameColumn` existing, the removed `@@index([field(sort: Desc)])` form, MySQL and MariaDB shipping, Windsurf not being a skills agent, `CLI.INIT_REINIT_NEEDS_FORCE` never raised, and `--permit-policy-change` accepted by no released CLI.
+
+### The slices
+
+Each slice is one pull request. Fix every finding in the named file, including its "Unverified" items, which the implementer settles by running the command.
+
+- **F1. Migrations and the Migration API reference.** `migrations.md`, plus the Migration API items of `reverse.md`. Three pages tell readers to add an `import { sql }` that the planned `migration.ts` already has, so the file fails to load. Two pages say a column cannot be renamed, although `migration plan --rename` writes `this.renameColumn(...)`. `editing-a-migration.mdx` calls the removed free `createExtension('pgcrypto')`. `applying-a-migration.mdx` shows `Set NOT NULL` as destructive; it is widening since rc.17. The reference leaves out nine PostgreSQL methods and seven MongoDB functions the planner writes. Also: the `jq` path on `cli/db-schema.mdx`, the wrong error code for a hand-edited migration, and `migration show` not accepting a ref name.
+- **F2. The getting-started pages and their agent prompts.** `start.md`. The prompts on the docs root, `/getting-started` and `/prisma-orm` apply changes with `db migrate --yes` without `--advance-ref db`, so the second schema change fails with `MIGRATION.PATH_UNREACHABLE`. The full-stack tutorial's step 7 pastes a `User` model that plans three operations and breaks the type check. The existing MongoDB database page sends readers to `migration plan` for existing collections, which fails. Four `orm init` pages are stale since rc.24 (`./contract.d.js`, the kept `tsconfig` settings, the contract files `orm init` already writes).
+- **F3. The framework and runtime guides.** `frameworks.md`. The five guides that deploy tell readers to change the schema with `contract:emit` and `db:update`, but the scaffold commits a starting migration and the deploy applies only committed migrations, so the change never reaches the hosted database. No guide mentions `migration:plan` or the `migrations/` folder. Ten pages print `db:init` output the terminal does not show. SolidStart shows an old starter contract. React Router needs Node.js 22.22; Elysia says Bun 1.1 where the floor is 1.3.
+- **F4. The deployment and integration guides.** `deploy-integrations.md`. The Docker guide's next step fails with `MIGRATION.PLAN_ORIGIN_UNKNOWN` because step 2.3 leaves out `--advance-ref db`. The Bun and Turborepo guides paste an outdated `User` model. Six output blocks show JSON the CLI no longer prints. The pgfence page says Prisma ORM 8 migrations have no SQL output. The VS Code page mentions only Prisma ORM 6 and 7. Thirteen pages in this area are Prisma ORM 7 guides and say so; the Firebase Studio page does not say which version its template uses.
+- **F5. The upgrade and switch guides.** `upgrade-switch.md`. On MongoDB: the type table says the Prisma 6 `Int` "still works", but in Prisma 8 it means `Int32` and its validator refuses the BSON longs Prisma 6 stored; the pages describe validator adoption as destructive and unchecked, while since rc.24 every apply checks the documents first; the guide's first command breaks the Prisma 6 CLI although the CLI supports a side-by-side setup the site never describes. On PostgreSQL: the index page and the route-by-route guide disagree on where the contract comes from; `pg_search` is missing from the extensions that need a pack; `migration status` prints `No migrations found`, not `Up to date`. The linked example repository `prisma/prisma8-and-7-example` pins `@prisma/orm-postgres` 8.0.0-rc.11.
+- **F6. The contract pages.** `contract.md`. `editor-support.mdx` shows the removed `@@index([createdAt(sort: Desc)])`. `data-modeling/index.mdx` says `contract emit` needs its own `Temporal`; it does not. `typescript-schema-builder.mdx` says PSL and the builder are interchangeable; on PostgreSQL the builder cannot write value objects or base models with variants. `cli/contract-infer.mdx` does not say inference is PostgreSQL only, or that without `--output` it overwrites the configured contract. No page explains the execution hash, or that a `contract.ts` fails to emit in a `"type": "commonjs"` project.
+- **F7. The ORM client, builder, extension and middleware pages.** `orm-client.md` and `builders.md`. `relations-and-joins.mdx` tells readers to catch a removed error code. `writing-data.mdx` says nested updates and deletes do not exist; they do since rc.24. `orm/index.mdx` says MySQL "comes later" and never names MariaDB; both ship. Two pages say a marker mismatch logs a warning, which nothing prints by default. The SQL builder and raw-query references say `.returns()` converts nothing; it decodes with the named codec. The cache pages say the cache works on MongoDB, but no public method lets a MongoDB read carry the cache annotation. Three middleware pages name a `connectDatabase` export the scaffold does not generate. `release-status.mdx` gives 19 November 2026 as the end of Prisma ORM 6 security patches, which has passed.
+- **F8. The CLI pages, the skills pages and the two error references.** `cli.md`. `orm/reference/error-reference.mdx` is generated from `main` of prisma/orm, not from the release: it lists 11 codes rc.24 never raises, describes a `--permit-policy-change` flag no released CLI accepts, and lacks 4 codes the release raises. The fix is in the sync workflow. `ai/tools/skills.mdx` lists Codex and Windsurf; the agents are claude, cursor, agents and devin. `cli/skills.mdx` says only deliberately installed packages are skill sources, but `@prisma/composer` arrives with `prisma`. On `/cli`, the adoption steps write the inferred contract where the generated config does not read it. No page says what telemetry collects, although the CLI's first-run notice sends users to the docs for it. The CLI error reference lacks 13 Composer codes.
+- **F9. Pages that do not exist.** The "Missing" section of `reverse.md` and of each area file. No page shows how to set up SQLite, MySQL or MariaDB, and there is no client reference for them. No page tells a reader how to move from one release candidate to the next. `prisma lsp` is documented nowhere. The `turborepo` template of `create-prisma` is documented nowhere. The guides overview does not list the Vercel, React Router, SolidStart and incremental-upgrade guides. Decide the shape of each page with Will before writing: this slice adds pages, the others correct them.
+
+### For the ORM and CLI teams, found by the second audit
+
+- The shipped `prisma-8` skill says the default `onDelete` is `Restrict` (`skills/prisma-8/references/contract.md`). No action is stored, so PostgreSQL applies `NO ACTION`. The site is right.
+- An engine `CLI.*` error raised by a Prisma ORM command carries a `docsUrl` to the ORM error reference, which has no entry for it. Example: `CLI.CONFIG_SECTION_INVALID` from `contract format`.
+- CLI error messages link to `https://docs.prisma.io/docs/orm/v8/reference/error-reference/...`, a host and path that differ from the docs site's. Not checked whether it redirects.
+- D12 is fixed: `postgres()` forwards `mode` since rc.19, and the budgets page documents `mode: 'permissive'`.
+- D20 no longer holds on rc.34: `db update` adopted a populated MongoDB collection and `db verify` passed. The `migration plan` path on existing collections still fails with `MIGRATION.PRECHECK_FAILED` (see F2).
+- D35 still holds on rc.24: a `bm25` index in `contract.prisma` fails `contract emit`.
+- An open question of this plan is answered: the temporary value MongoDB writes for a new required field is an empty string for `String`, `0` for the number types and `false` for `Bool` (citation in `reverse.md`).
 
 ## Naming
 
