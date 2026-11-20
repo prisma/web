@@ -13,8 +13,6 @@ This guide walks you through running a Prisma ORM application in Docker. You bui
 
 Prisma ORM has no query engines, no `prisma generate` step, and no `schema.prisma`. That makes the container story short: the image needs Node.js, your dependencies, the committed contract artifacts, and the migrations directory. The container applies pending migrations at start and then runs the server.
 
-Every command and output below was run end to end with Docker Desktop.
-
 :::note[Using Prisma ORM 7?]
 
 Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains fully supported; the Prisma ORM 7 version of this guide is at [/guides/v7/deployment/docker](/guides/v7/deployment/docker).
@@ -68,7 +66,7 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 ```
 
 ```text no-copy
-package.json declares "type": "commonjs" ... the scaffolded prisma/db.ts uses an ESM-only import attribute (`with { type: 'json' }`) and will not load under that module type.
+package.json declares "type": "commonjs" — keeping yours, but the scaffolded prisma/db.ts uses an ESM-only import attribute (`with { type: 'json' }`) and will not load under that module type.
 If you want the default, set "type": "module" in package.json.
 ✔ npm add @prisma/orm-postgres dotenv
 ✔ npm add -D prisma@latest @types/node
@@ -77,6 +75,7 @@ If you want the default, set "type": "module" in package.json.
 │  target:     postgres
 │  authoring:  psl
 │  schema:     src/prisma/contract.prisma
+
 written
 ├─ src/prisma/contract.prisma
 ├─ prisma.config.ts
@@ -87,7 +86,19 @@ written
 ├─ .gitignore
 ├─ .gitattributes
 └─ package.json
+installed
+├─ @prisma/orm-postgres
+├─ dotenv
+├─ prisma@latest (dev)
+├─ @types/node (dev)
+└─ @prisma/cli-engine@0.10.0 (dev)
+
 ✔ Done. Open prisma-8.md to get started.
+→ Set DATABASE_URL in your environment (export it or add it to .env)
+→ Edit your schema at src/prisma/contract.prisma, then emit again
+→ Open prisma-8.md for a quick reference on writing your first typed query
+→ Set up the Prisma agent skills for your coding agent: prisma init
+Prisma agent skills are out of date (installed @prisma/orm-postgres 8.0.0-rc.24, synced none). Run: prisma skills sync
 ```
 
 The command creates:
@@ -96,6 +107,8 @@ The command creates:
 - `src/prisma/contract.prisma`, your data model.
 - `src/prisma/contract.json` and `src/prisma/contract.d.ts`, the emitted artifacts the runtime and the CLI read. Commit both.
 - `src/prisma/db.ts`, the client your app imports. It reads `DATABASE_URL` from the environment.
+
+The last line of the output is a reminder from the Prisma CLI. Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into this project yet, so every `prisma` command prints this line until they are. Run `npx prisma init` once to copy them in, as [Use with your agent](#use-with-your-agent) describes. The line never makes a command fail, and [The staleness check](/cli/skills#the-staleness-check) lists the ways to turn it off.
 
 The warning at the top matters: `npm init -y` writes `"type": "commonjs"`, and the scaffolded `db.ts` is an ES module. Open `package.json`, switch the module type, and replace the scripts with the ones this guide uses:
 
@@ -149,7 +162,9 @@ npx prisma contract emit
 
 ```text no-copy
 ✔ Emitted contract.json and contract.d.ts
-storageHash:  f340195186d0acf8e9914097e58af0375650e7251358382aa9ad3ed5b724daf7
+
+storageHash:  bb77d554764035d2cba1c2662858382ed1abf746110e7a13a5ee6c97c49aedac
+profileHash:  3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2
 ```
 
 `contract emit` is offline; it needs no database.
@@ -194,7 +209,7 @@ process.on("SIGINT", shutdown); // Ctrl+C
 
 On PostgreSQL, models are grouped by the database schema their table is in. Your table is in the default `public` schema, so you write `db.orm.public.User`, and [counting](/orm/fundamentals/reading-data#count-records) goes through `.aggregate(...)`. There is no `PrismaClient`, no driver adapter, and nothing to instantiate: `db.ts` already exports the client.
 
-`shutdown` runs in two cases: when you press Ctrl+C, and when `docker stop` stops the container from [step 3.5](#35-build-and-run-the-application). `server.close()` stops accepting new requests and waits for the running ones to finish, and then its callback calls `db.close()`, the Prisma ORM 8 replacement for `$disconnect()`. You need no `process.exit()`: once the server and the client are closed, Node.js exits by itself. If it does not, something else in your app is still open, such as another database client or a timer, and `shutdown` should close that too. Without the handler, Node.js stops at once, and a request that is still running gets no response. Docker waits 10 seconds after `SIGTERM` and then stops the container by force, so a request that takes longer is cut off either way; to wait longer, set `stop_grace_period`, such as `stop_grace_period: 30s`, on the service in `docker-compose.yml`.
+`shutdown` runs in two cases: when you press Ctrl+C, and when `docker stop` stops the container from [step 3.4](#34-build-and-run-the-application). `server.close()` stops accepting new requests and waits for the running ones to finish, and then its callback calls `db.close()`, the Prisma ORM 8 replacement for `$disconnect()`. You need no `process.exit()`: once the server and the client are closed, Node.js exits by itself. If it does not, something else in your app is still open, such as another database client or a timer, and `shutdown` should close that too. Without the handler, Node.js stops at once, and a request that is still running gets no response. Docker waits 10 seconds after `SIGTERM` and then stops the container by force, so a request that takes longer is cut off either way; to wait longer, set `stop_grace_period`, such as `stop_grace_period: 30s`, on the service in `docker-compose.yml`.
 
 With the application in place, the next step is a PostgreSQL database to migrate against.
 
@@ -254,35 +269,49 @@ npx prisma migration plan --name init
 ```
 
 ```text no-copy
-✔ Planned 3 operation(s)
+│  contract:    src/prisma/contract.json
+│  migrations:  migrations/app
+│  name:        init
 
-migrations/app/20260910T1532_init
+✔ Planned 3 operation(s)
+ℹ No db ref set — planning from an empty database. Run db init, db update, or db sign if a database already exists.
+
+migrations/app/20261120T1035_init
 ├─ Create schema "public"
 ├─ Create table "User"
 └─ Add unique constraint on "User" (email)
 
 from:       (baseline)
-to:         f340195186d0acf8e9914097e58af0375650e7251358382aa9ad3ed5b724daf7
+to:         bb77d554764035d2cba1c2662858382ed1abf746110e7a13a5ee6c97c49aedac
+app space:  migrations/app/20261120T1035_init
 ```
 
-Apply it to the running database:
+The command also prints the SQL the migration will run, under `DDL preview`. Apply the migration to the running database:
 
 ```npm
-npx prisma db migrate
+npx prisma db migrate --advance-ref db
 ```
 
 ```text no-copy
+✔ Running migration plan across spaces
 │  migrations:  migrations
 │  database:    postgresql://****:****@localhost:5432/postgres
+
 ✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
+
 App space
 ├─ Create schema "public"
 ├─ Create table "User"
 ├─ Add unique constraint on "User" (email)
-└─ marker f340195186d0acf8e9914097e58af0375650e7251358382aa9ad3ed5b724daf7
+└─ marker bb77d554764035d2cba1c2662858382ed1abf746110e7a13a5ee6c97c49aedac
+
+✔ Advanced ref "db" → bb77d554764035d2cba1c2662858382ed1abf746110e7a13a5ee6c97c49aedac
+→ Check every space against the database: prisma migration status
 ```
 
-`db migrate` applies the migration packages in `migrations/` and records the resulting contract hash in the database. Running it again is safe; it reports `Already up to date`. This is the same command the container runs at start in step 3, which replaces `prisma migrate deploy` from Prisma ORM 7. There is no generate step afterwards: the runtime reads `contract.json`, which you already emitted.
+`db migrate` applies the migration packages in `migrations/` and records the resulting contract hash in the database. Running it again is safe; it reports `Already up to date`. The container runs the same command at start in step 3, without the `--advance-ref db` flag explained below; it replaces `prisma migrate deploy` from Prisma ORM 7. There is no generate step afterwards: the runtime reads `contract.json`, which you already emitted.
+
+`--advance-ref db` is for this development database only. It saves which contract the database now matches in `migrations/app/refs/db.json`, and the next `migration plan` starts from there, so it plans only your next change. Without it, the next `migration plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. If you already applied the migration without the flag, run `npx prisma migration ref set db <migration directory name>` once, with the folder name under `migrations/app/`. The container in step 3 runs plain `db migrate`, because the ref describes your development database and the container's database is a different one.
 
 Confirm the database and the contract agree:
 
@@ -291,9 +320,13 @@ npx prisma migration status
 ```
 
 ```text no-copy
-○   f340195  @contract @db
-│↑  20260910T1532_init         ∅ → f340195  3 ops  ✓ applied
+│  migrations:  migrations
+│  database:    postgresql://****:****@localhost:5432/postgres
+
+○   bb77d55  @contract @db (db)
+│↑  20261120T1035_init         ∅ → bb77d55  3 ops  ✓ applied
 ○   ∅
+
 ✔ Up to date
 ```
 
@@ -337,27 +370,9 @@ With the application tested locally, the next step is to containerize it.
 
 Containerizing the application means it runs the same way on any host that has Docker installed.
 
-### 3.1. Regenerate the lockfile
+### 3.1. Create the Dockerfile
 
-`orm init` installs its packages in three steps, and on macOS and Windows the resulting `package-lock.json` misses two Linux-only optional packages that the Prisma CLI depends on. `npm ci` inside the Linux image then refuses to install:
-
-```text no-copy
-npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
-npm error Missing: @emnapi/runtime@1.11.3 from lock file
-```
-
-Regenerate the lockfile once from a clean install before you build the image:
-
-```npm
-rm -rf node_modules package-lock.json
-npm install
-```
-
-The new lockfile records every platform's optional packages, so the same `npm ci` works on your machine and in the container.
-
-### 3.2. Create the Dockerfile
-
-Prisma ORM ships no native query engine, so the choice between Alpine and Debian base images is only about image size and your other dependencies. Both `node:24-alpine` and `node:24-slim` were tested with this guide and behave the same; no `openssl` or `libc6-compat` package is needed.
+Prisma ORM ships no native query engine, so the choice between Alpine and Debian base images is only about image size and your other dependencies. Both `node:24-alpine` and `node:24-slim` work with this guide; no `openssl` or `libc6-compat` package is needed.
 
 First, keep the host's `node_modules` and local environment files out of the image:
 
@@ -390,7 +405,7 @@ What the image needs, and why:
 - `CMD` applies pending migrations with `db migrate` and then starts the server. On a fresh database this creates the schema; on an existing one it reports `Already up to date` and moves on.
 - `DATABASE_URL` is not baked in. The CLI reads it through `prisma.config.ts` and the runtime through `src/prisma/db.ts`, both from the container's environment, which Compose sets in the next step.
 
-### 3.3. Create and configure a Docker Compose file
+### 3.2. Create and configure a Docker Compose file
 
 With the `Dockerfile` ready, use Docker Compose to manage the app and the database together.
 
@@ -430,7 +445,7 @@ services:
 
 The `server` service waits for the database healthcheck before it starts, so `db migrate` never runs against a database that is still booting.
 
-### 3.4. Configure the environment variable for the container
+### 3.3. Configure the environment variable for the container
 
 Inside the Compose network the database is reachable by its service name, not `localhost`. Create `.env.prod` with that hostname:
 
@@ -440,7 +455,7 @@ DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres" # [!code h
 
 Compose strips the quotes when it loads the file. `.env` (with the `localhost` URL) stays on your machine for local commands; `.dockerignore` keeps it out of the image.
 
-### 3.5. Build and run the application
+### 3.4. Build and run the application
 
 Build the image and start both services:
 
@@ -475,20 +490,23 @@ docker compose logs server
 ```text no-copy
 server-1  | > docker-test@1.0.0 db:migrate
 server-1  | > prisma db migrate
+server-1  |
 server-1  | ...
 server-1  | ✔ Applied 1 migration(s) (3 operation(s)) across 1 contract space(s)
+server-1  |
 server-1  | App space
 server-1  | ├─ Create schema "public"
 server-1  | ├─ Create table "User"
 server-1  | ├─ Add unique constraint on "User" (email)
-server-1  | └─ marker ...
+server-1  | └─ marker bb77d554764035d2cba1c2662858382ed1abf746110e7a13a5ee6c97c49aedac
 server-1  | ...
 server-1  | > docker-test@1.0.0 start
 server-1  | > node src/index.ts
+server-1  |
 server-1  | Server is running on http://localhost:3000
 ```
 
-The CLI prints the same human-readable output in a container as in a terminal, without color. (Before `8.0.0-rc.24` it printed JSON lines when it had no terminal attached.) Restart the server and the migration step becomes a no-op:
+The CLI prints the same human-readable output in a container as in a terminal, without color. Restart the server and the migration step becomes a no-op:
 
 ```bash
 docker compose restart server
@@ -508,7 +526,7 @@ Your Prisma ORM app and database now run together under Docker Compose. To stop 
 docker compose down -v
 ```
 
-### 3.6. Bonus: browse the database with Prisma Studio
+### 3.5. Bonus: browse the database with Prisma Studio
 
 [Prisma Studio](/studio) lets you view and edit your data in the browser. With the Compose stack running, the database is published on port `5432`, so run Studio on your machine against it. Studio ships with the Prisma ORM 7 CLI and takes the connection string directly; run it from a directory outside the project, because that CLI cannot read the Prisma ORM 8 `prisma.config.ts`:
 
@@ -532,9 +550,8 @@ Do not call `db.close()` in a route handler. The client's connection pool is sha
 
 :::
 
-- **`npm ci` fails in the image with `Missing: @emnapi/runtime ... from lock file`.** If you ran `orm init` on macOS or Windows, the lockfile is missing optional packages that Linux needs. Regenerate it as in [step 3.1](#31-regenerate-the-lockfile).
 - **`db.ts` will not load.** If `orm init` warned about `"type": "commonjs"`, set `"type": "module"` in `package.json`. The scaffolded `db.ts` imports `contract.json` with an ES module import attribute.
-- **The image is large.** The built image measured 2.12 GB on disk on `node:24-alpine` and 2.23 GB on `node:24-slim` (the `DISK USAGE` column of `docker image ls`), almost all of it the `prisma` dev dependency, which bundles the Composer and deploy toolchain. The image needs the CLI because it runs `db migrate` at start.
+- **The image is larger than the app.** The built image measured 637 MB on disk on `node:24-alpine` and 747 MB on `node:24-slim` (the `DISK USAGE` column of `docker image ls`), much of it the `prisma` dev dependency. The image needs the CLI because it runs `db migrate` at start.
 - **`docker run --env-file` keeps the quotes.** Compose strips the quotes around `DATABASE_URL` in `.env.prod`; plain `docker run --env-file` does not, and the Prisma CLI then rejects the URL. Pass `-e DATABASE_URL=...` without quotes when you run the image by hand.
 - **Port 3000 or 5432 is already in use.** Change the host side of the port mapping (`"3100:3000"`) or stop the service that holds the port; the container side stays the same.
 
@@ -549,14 +566,14 @@ Containerize a new Express app on Prisma ORM with Docker Compose, following http
 
 1. Create `docker-test`, run `npm init -y` and `npm install express`, then run `npx prisma@latest orm init --yes --target postgres --authoring psl`. Set `"type": "module"` in package.json and add the scripts `start` (`node src/index.ts`), `contract:emit` (`prisma contract emit`), and `db:migrate` (`prisma db migrate`). Run `npx prisma@latest init` so the Prisma agent skills are installed, and use them.
 2. Replace `src/prisma/contract.prisma` with a single `User` model (id, createdAt, email, name), run `npx prisma contract emit`, and write `src/index.ts`: an Express server whose `GET /` counts users with `db.orm.public.User.aggregate((a) => ({ total: a.count() }))` and reports whether any exist. Read the port from `PORT` with a default of 3000.
-3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma migration plan --name init` then `npx prisma db migrate`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
-4. Regenerate the lockfile with `rm -rf node_modules package-lock.json && npm install` so `npm ci` succeeds on Linux. Write a `.dockerignore` (node_modules, .env, .env.prod), a `Dockerfile` based on `node:24-alpine` that runs `npm ci`, copies the project, and uses `CMD ["sh", "-c", "npm run db:migrate && npm start"]`, a `docker-compose.yml` with a `postgres_db` service and a `server` service that builds the Dockerfile, publishes port 3000, waits for the database healthcheck, and loads `.env.prod`, and `.env.prod` with `DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres"`.
+3. Write `docker-compose.postgres.yml` with a `postgres:17` service on port 5432 (user postgres, password prisma, database postgres, with a pg_isready healthcheck). Start it with `docker compose -f docker-compose.postgres.yml up -d`, set `DATABASE_URL="postgresql://postgres:prisma@localhost:5432/postgres"` in `.env`, run `npx prisma migration plan --name init` then `npx prisma db migrate --advance-ref db`, start `npm start` in the background, verify `curl http://localhost:3000` returns "No users have been added yet.", stop the server, and run `docker compose -f docker-compose.postgres.yml down`.
+4. Write a `.dockerignore` (node_modules, .env, .env.prod), a `Dockerfile` based on `node:24-alpine` that runs `npm ci`, copies the project, and uses `CMD ["sh", "-c", "npm run db:migrate && npm start"]`, a `docker-compose.yml` with a `postgres_db` service and a `server` service that builds the Dockerfile, publishes port 3000, waits for the database healthcheck, and loads `.env.prod`, and `.env.prod` with `DATABASE_URL="postgresql://postgres:prisma@postgres_db:5432/postgres"`.
 5. Run `docker compose up --build -d`, verify `curl http://localhost:3000` returns "No users have been added yet.", show me the `server` logs, then run `docker compose down -v`.
 ```
 
 </AgentPrompt>
 
-The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Because `orm init` already wrote a `prisma.config.ts`, `init` leaves that file alone and warns `INIT.CONFIG_KEPT`, suggesting a `skills` setting for it. You can ignore the warning: the setting it suggests names the same four agents the CLI uses when there is no setting, so nothing in this guide changes. Add it only to choose fewer agents; see [Agent skills](/cli/configuration#agent-skills). Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add a POST /users route that creates a user from the request body."
 - "Add a `Post` model with an author relation to the contract, plan a migration named add_posts, and apply it with db migrate."
@@ -564,6 +581,6 @@ The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. I
 
 ## Next steps
 
-- Change the schema in `src/prisma/contract.prisma`, run `npm run contract:emit`, then `npx prisma migration plan --name <change>`; the next `docker compose up --build` applies it. See [Generating a migration](/orm/migrations/generating-a-migration) and [Applying a migration](/orm/migrations/applying-a-migration).
+- Change the schema in `src/prisma/contract.prisma`, run `npm run contract:emit`, then `npx prisma migration plan --name <change>`. Start the standalone database from step 2 again and run `npx prisma db migrate --advance-ref db`, so your next `migration plan` starts after this change. The next `docker compose up --build` applies the new migration to the app's database. See [Generating a migration](/orm/migrations/generating-a-migration) and [Applying a migration](/orm/migrations/applying-a-migration).
 - [Learn the fundamentals](/orm/fundamentals/reading-data): filtering, sorting, pagination, and writes.
 - [Read the Prisma ORM overview](/orm) for the concepts behind contracts and typed queries.
