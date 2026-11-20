@@ -33,7 +33,7 @@ npm install --save-dev tsx typescript
 
 ## 2. Initialize Prisma ORM
 
-The `orm init` command below changes your `tsconfig.json` and your `package.json`. If you have no `tsconfig.json`, it writes one. If you have one, it turns on `resolveJsonModule` and adds `"node"` to `types`. If your `moduleResolution` is `bundler`, or `nodenext` in a package with `"type": "module"`, it leaves `module` and `moduleResolution` as they are. Otherwise it sets `module` to `preserve` and `moduleResolution` to `bundler`. [`orm init`](/cli/orm-init) lists every pair it leaves alone. If your `package.json` has no `"type"` field, it adds `"type": "module"`. If it has `"type": "commonjs"`, the command keeps it and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
+The `orm init` command below changes your `tsconfig.json` and your `package.json`. If you have no `tsconfig.json`, it writes one. If you have one, it turns on `resolveJsonModule`, adds `"node"` to `types`, and may set `module` to `preserve` and `moduleResolution` to `bundler`. [`orm init`](/cli/orm-init) lists the `module` and `moduleResolution` settings it leaves as they are. If your `package.json` has no `"type"` field and no dependencies yet, it adds `"type": "module"`. If it already lists dependencies, or has `"type": "commonjs"`, the command keeps it as it is and prints a warning. If your app runs as CommonJS, for example because it loads files with `require` or because `tsc` compiles it to `require` calls, follow [In a CommonJS project](/cli/orm-init#in-a-commonjs-project) before you start your app again. `tsx` runs the scripts on this page in both kinds of app, so you can finish this page first.
 
 From the root of your project, run:
 
@@ -214,13 +214,9 @@ npx tsx script.ts
 
 When you change `src/prisma/contract.prisma`, run `npx prisma contract emit` again.
 
-You can read and write documents in collections that already exist without a migration. To let Prisma ORM create or change collections and indexes, first bring your database in line with the contract with [`db update`](/cli/db-update):
+You can read and write documents in collections that already exist without a migration. To let Prisma ORM create or change collections and indexes, first bring your development database in line with the contract with [`db update`](/cli/db-update). Do this before your first `migration plan`.
 
-```npm
-npx prisma db update --advance-ref db
-```
-
-`db update` compares the database with the contract and applies the difference. It creates the collections and indexes the contract declares and the database lacks. It also adds a validator to each collection the contract describes. A validator is a MongoDB rule that lists the fields a document may have. Pass `--dry-run` first to see the operations without applying them.
+`db update` compares the database with the contract and applies the difference. It creates the collections and indexes the contract declares and the database lacks. It also adds a validator to each collection the contract describes. A validator is a MongoDB rule that lists the fields a document may have.
 
 :::warning[Other code that writes to these collections]
 
@@ -228,12 +224,39 @@ Once a collection has a validator, MongoDB rejects any write that adds a field t
 
 :::
 
+See the operations first, without applying them:
+
+```npm
+npx prisma db update --dry-run
+```
+
+Then apply them:
+
+```npm
+npx prisma db update --advance-ref db
+```
+
 Before it adds a validator, `db update` checks the documents already in the collection. If one has a field the contract does not declare, or lacks a required one, the command stops with `MIGRATION.PRECHECK_FAILED`, names the document, and leaves that collection's validator unchanged. Add the field to the contract, or change the document, and run the command again. Operations that ran before the failure, such as creating a missing collection, stay applied.
 
-When it succeeds, `db update` records which contract the database matches, in the database and in the file `migrations/app/refs/db.json`, called the `db` ref. `migration plan` starts from that record.
+When it succeeds, `db update` records which contract the database matches, in the database and in the file `migrations/app/refs/db.json`, called the `db` ref. `migration plan` starts from that record. Without it, `migration plan` plans every collection from an empty database, and `db migrate` then stops with `MIGRATION.PRECHECK_FAILED` because the collection already exists. If that happened to you, delete the directory that `migration plan` wrote under `migrations/app/`, run `npx prisma db update --advance-ref db`, and plan again.
 
-After that, every change follows the same four steps as on a new database: edit `src/prisma/contract.prisma`, run `npx prisma contract emit`, run `npx prisma migration plan --name <name>`, and run `npx prisma db migrate --advance-ref db`. Commit the `migrations/` directory.
+After that, every change follows four steps: edit `src/prisma/contract.prisma`, run `npx prisma contract emit`, run `npx prisma migration plan --name <name>`, and run `npx prisma db migrate --advance-ref db`. Commit the `migrations/` directory. Your first `migration plan` writes two directories under `migrations/app/`: a baseline, whose name ends in `_baseline` and which describes the collections as `db update` left them, and your change.
 
-Run `db update` before your first `migration plan`, not after it. Without the `db` ref, `migration plan` plans every collection from an empty database, and `db migrate` then stops with `MIGRATION.PRECHECK_FAILED` because the collection already exists. The operations that ran before the failure stay applied.
+### Production and other databases
 
-The same holds for any other database whose collections already exist, such as production: run `npx prisma db update --db "$PRODUCTION_DATABASE_URL"` once, before the first `npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"` there. Leave out `--advance-ref` for those databases, because the `db` ref tracks your development database.
+Any other database whose collections already exist, such as production, needs the same first step before `db migrate` can run there. Leave out `--advance-ref` for those databases, because the `db` ref tracks your development database.
+
+If you have not planned a migration yet, run:
+
+```npm
+npx prisma db update --db "$PRODUCTION_DATABASE_URL"
+```
+
+If you have, bring the database only to the baseline, so that `db migrate` then runs your migrations on it, including any data changes in them. Pass the name of the baseline directory to `--to`:
+
+```npm
+npx prisma db update --db "$PRODUCTION_DATABASE_URL" --to <timestamp>_baseline
+npx prisma db migrate --db "$PRODUCTION_DATABASE_URL"
+```
+
+Without `--to`, `db update` would bring the database straight to your current contract, and your migrations would never run there.
