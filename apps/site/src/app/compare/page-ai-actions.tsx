@@ -53,6 +53,14 @@ const SUPABASE_PROMPT = `I am choosing between Prisma Postgres and Supabase for 
 
 Ask me up to three short questions if I need Auth/Storage/Realtime out of the box, whether I want the TypeScript app hosted next to Postgres, or whether HIPAA/SOC 2/ISO 27001 matter.`;
 
+const VERCEL_PROMPT = `I am choosing between Prisma Compute and Vercel for hosting a TypeScript app. Using only what the article states, plus my answers:
+
+1. Tell me which fits if I want Prisma Compute, Prisma Postgres, and Prisma ORM in one first-party platform vs if I want Vercel hosting and a Marketplace database.
+2. Call out the real tradeoffs (app next to the database vs Marketplace placement, preview branches vs Vercel previews, operations vs Pro credit plus usage, CDN vs TypeScript HTTP hosting) without selling.
+3. Give me the first steps to try the one you recommend.
+
+Ask me up to three short questions if I already use Vercel, whether I want the TypeScript app hosted next to Postgres, or whether I need a global CDN.`;
+
 const VERCEL_NEON_DRIZZLE_PROMPT = `I am choosing between the Prisma platform and Vercel + Neon + Drizzle for a TypeScript backend. Using only what the article states, plus my answers:
 
 1. Tell me which fits if I want Prisma ORM, Prisma Postgres, and Prisma Compute in one platform vs if I want to wire Drizzle, Neon, and Vercel myself.
@@ -73,17 +81,19 @@ Ask me up to three short questions if I need a copy of production data on previe
 export function choosePrompt(pageMdUrl: string) {
   const body = pageMdUrl.includes("/compare/vercel-neon-drizzle.md")
     ? VERCEL_NEON_DRIZZLE_PROMPT
-    : pageMdUrl.includes("/compare/planetscale.md")
-      ? PLANETSCALE_PROMPT
-      : pageMdUrl.includes("/compare/supabase.md")
-        ? SUPABASE_PROMPT
-        : pageMdUrl.includes("/compare/neon.md")
-          ? NEON_PROMPT
-          : pageMdUrl.includes("/compare/convex.md")
-            ? CONVEX_PROMPT
-            : pageMdUrl.includes("/compare/mongoose.md")
-              ? MONGOOSE_PROMPT
-              : KYSELY_PROMPT;
+    : pageMdUrl.includes("/compare/vercel.md")
+      ? VERCEL_PROMPT
+      : pageMdUrl.includes("/compare/planetscale.md")
+        ? PLANETSCALE_PROMPT
+        : pageMdUrl.includes("/compare/supabase.md")
+          ? SUPABASE_PROMPT
+          : pageMdUrl.includes("/compare/neon.md")
+            ? NEON_PROMPT
+            : pageMdUrl.includes("/compare/convex.md")
+              ? CONVEX_PROMPT
+              : pageMdUrl.includes("/compare/mongoose.md")
+                ? MONGOOSE_PROMPT
+                : KYSELY_PROMPT;
   return `Read this article and treat it as the source of truth:
 
 ${pageMdUrl}

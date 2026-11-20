@@ -22,6 +22,10 @@ import * as supabase from "@/app/compare/supabase/_content";
 import { getSupabaseArticleFields, getSupabaseFacts } from "@/app/compare/supabase/facts";
 import { GET as getSupabaseFactsResponse } from "@/app/compare/supabase.json/route";
 import { getSupabaseReadingStats } from "@/app/compare/supabase/_sections";
+import * as vercel from "@/app/compare/vercel/_content";
+import { getVercelArticleFields, getVercelFacts } from "@/app/compare/vercel/facts";
+import { GET as getVercelFactsResponse } from "@/app/compare/vercel.json/route";
+import { getVercelReadingStats } from "@/app/compare/vercel/_sections";
 import * as vercelNeonDrizzle from "@/app/compare/vercel-neon-drizzle/_content";
 import {
   getVercelNeonDrizzleArticleFields,
@@ -75,6 +79,7 @@ for (const entry of COMPARISONS) {
       neon,
       planetscale,
       supabase,
+      vercel,
       "vercel-neon-drizzle": vercelNeonDrizzle,
     }[entry.slug];
     const page = getMarkdownPage(`/compare/${entry.slug}`);
@@ -420,6 +425,21 @@ test("kysely Markdown keeps the 500K Prisma ORM figure in the closing copy", () 
     planetscaleMarkdown,
     /Need a database\? \[Create an instant database\]\(https:\/\/create-db\.prisma\.io\/web\)/,
   );
+  const vercelPage = getMarkdownPage("/compare/vercel");
+  assert.ok(vercelPage);
+  const vercelMarkdown = renderMarkdownDocument(vercelPage);
+  assert.ok(vercelMarkdown.includes("Free to start, no credit card required."));
+  assert.ok(vercelMarkdown.includes("Trusted by 500K+ developers globally"));
+  assert.ok(vercelMarkdown.includes("Prisma ORM is free and open source, and always will be."));
+  assert.ok(vercelMarkdown.includes("[Get started with Prisma](https://console.prisma.io)"));
+  assert.doesNotMatch(vercelMarkdown, /Get started with Prisma Postgres/);
+  assert.ok(vercelMarkdown.includes("Get started with Prisma and start building in minutes"));
+  assert.ok(vercelMarkdown.includes("Read the docs for guides and API reference"));
+  assert.ok(vercelMarkdown.includes("[Get started free](https://console.prisma.io)"));
+  assert.doesNotMatch(vercelMarkdown, /Create a database and start building in minutes/);
+  assert.doesNotMatch(vercelMarkdown, /create-db\.prisma\.io/);
+  assert.doesNotMatch(vercelMarkdown, /Create an instant database/);
+  assert.doesNotMatch(vercelMarkdown, /\[Talk to us\]/);
   const vercelNeonDrizzlePage = getMarkdownPage("/compare/vercel-neon-drizzle");
   assert.ok(vercelNeonDrizzlePage);
   const vercelNeonDrizzleMarkdown = renderMarkdownDocument(vercelNeonDrizzlePage);
@@ -1522,4 +1542,117 @@ test("vercel-neon-drizzle metadata advertises Markdown and JSON alternates", () 
   assert.ok(types);
   assert.match(types["text/markdown"] ?? "", /\/compare\/vercel-neon-drizzle\.md$/);
   assert.match(types["application/json"] ?? "", /\/compare\/vercel-neon-drizzle\.json$/);
+});
+
+test("Vercel Markdown carries the byline, disclosure, and Sources on the shared chrome", () => {
+  const page = getMarkdownPage("/compare/vercel");
+  assert.ok(page);
+  const markdown = renderMarkdownDocument(page);
+  const minutes = getVercelReadingStats().minutes;
+  assert.ok(
+    markdown.includes(
+      `By [${vercel.VERCEL_AUTHOR.name}](${vercel.VERCEL_AUTHOR.path}) · Updated ${vercel.VERCEL_UPDATED.label} · ${minutes} min read`,
+    ),
+  );
+  for (const social of MARTIN_SOCIALS) {
+    assert.ok(
+      markdown.includes(`[${social.label}](${social.href})`),
+      `missing ${social.label} profile`,
+    );
+  }
+  assert.ok(markdown.includes("Checked October 2026."));
+  assert.ok(markdown.includes(`dateModified: ${vercel.VERCEL_UPDATED.iso}`));
+  assert.ok(markdown.includes("Prisma makes Prisma Compute, Prisma Postgres, and Prisma ORM"));
+  assert.ok(markdown.includes("\n## Sources\n"));
+  assert.ok(markdown.includes("\n## When should I choose Vercel or Prisma?\n"));
+  const choose = markdown.slice(
+    markdown.indexOf("## When should I choose Vercel or Prisma?"),
+    markdown.indexOf("## How do Vercel and Prisma compare?"),
+  );
+  assert.match(choose, /^\| Vercel \| Prisma \|$/m);
+  assert.doesNotMatch(choose, /### Vercel/);
+  assert.ok(markdown.includes("\n## How do Vercel and Prisma compare?\n"));
+  assert.ok(markdown.includes("\n## Where does each one fit?\n"));
+  assert.ok(markdown.includes("\n## How much do Vercel and Prisma cost?\n"));
+  assert.ok(markdown.includes("| Feature | Vercel | Prisma |"));
+  assert.ok(markdown.includes("| Cost | Vercel | Prisma |"));
+  assert.ok(markdown.includes("1M"));
+  assert.ok(markdown.includes("$20"));
+  assert.ok(markdown.includes("200,000"));
+  assert.ok(markdown.includes("2 GB"));
+  assert.ok(markdown.includes(vercel.VERCEL_NEON_DRIZZLE_COMPARE_PATH));
+  assert.doesNotMatch(markdown, /500 MB storage on Free/);
+  assert.doesNotMatch(markdown, /database branching/);
+  assert.doesNotMatch(markdown, /one plan|one bill|three bills|three accounts/);
+  assert.doesNotMatch(markdown, /\]\(here\)|\[here\]/);
+  assert.doesNotMatch(markdown, /zero cold starts|no cold starts/);
+  assert.doesNotMatch(markdown, /requires Prisma ORM/);
+  assert.doesNotMatch(markdown, /the only|the first|the best/);
+  assert.doesNotMatch(markdown, /listed in one place/);
+  assert.doesNotMatch(markdown, /When should I choose Kysely/);
+  assert.doesNotMatch(markdown, /Copy link|Copied/);
+  assert.doesNotMatch(markdown, /Prisma ORM is free to start|ORM is free to start/i);
+  const article = readFileSync(join(compareDir, "article.tsx"), "utf8");
+  assert.match(article, /vercel: "\/compare\/vercel\.md"/);
+  const sections = readFileSync(join(compareDir, "vercel/_sections.tsx"), "utf8");
+  assert.match(sections, /comparisonChooseTable/);
+  assert.match(sections, /max-w-4xl text-balance font-heading/);
+  assert.match(sections, /mt-6 max-w-3xl text-pretty/);
+  assert.match(sections, /comparisonProofCards/);
+  assert.match(sections, /comparisonDisclosure/);
+  assert.match(sections, /secondary: false/);
+  assert.match(sections, /instantDatabase: false/);
+  assert.match(sections, /primaryLabel: "Get started with Prisma"/);
+  assert.match(sections, /firstCheck: "Get started with Prisma and start building in minutes"/);
+  assert.doesNotMatch(sections, /create-db\.prisma\.io/);
+  assert.doesNotMatch(sections, /defaultValue=/);
+  assert.doesNotMatch(sections, /PageAiActions/);
+  assert.doesNotMatch(sections, /dark:/);
+  const neonSections = readFileSync(join(compareDir, "neon/_sections.tsx"), "utf8");
+  assert.doesNotMatch(neonSections, /firstCheck:/);
+  assert.doesNotMatch(neonSections, /instantDatabase: false/);
+  const ai = readFileSync(join(compareDir, "page-ai-actions.tsx"), "utf8");
+  assert.match(ai, /pageMdUrl.includes\("\/compare\/vercel\.md"\)/);
+  assert.match(ai, /I am choosing between Prisma Compute and Vercel for hosting a TypeScript app/);
+  assert.match(ai, /Marketplace database/);
+});
+
+test("vercel JSON facts carry a source and dateChecked on every value", async () => {
+  const facts = getVercelFacts();
+  assert.equal(facts.path, "/compare/vercel");
+  assert.equal(facts.dateChecked, vercel.VERCEL_UPDATED.iso);
+  assert.equal(facts.tools.vercel.softwareVersion, "current");
+  assert.ok(!("license" in facts.tools.vercel));
+  assert.equal(facts.features.length, vercel.COMPARE_ROWS.length);
+  for (const row of [...facts.features, ...facts.pricing]) {
+    assert.match(row.vercel.source, /^https?:\/\//);
+    assert.match(row.prisma.source, /^https?:\/\//);
+    assert.equal(row.vercel.dateChecked, facts.dateChecked);
+    assert.equal(row.prisma.dateChecked, facts.dateChecked);
+  }
+  const response = getVercelFactsResponse();
+  assert.match(response.headers.get("content-type") ?? "", /^application\/json/);
+  assert.deepEqual(await response.json(), facts);
+
+  const fields = getVercelArticleFields();
+  const stats = getVercelReadingStats();
+  assert.equal(fields.datePublished, vercel.VERCEL_PUBLISHED.iso);
+  assert.equal(fields.dateModified, vercel.VERCEL_UPDATED.iso);
+  assert.equal(WORDS_PER_MINUTE, 225);
+  assert.equal(fields.wordCount, stats.wordCount);
+  assert.equal(fields.timeRequired, `PT${stats.minutes}M`);
+  assert.equal(stats.minutes, readingMinutes(stats.wordCount));
+  assert.ok(stats.wordCount > 800);
+  assert.deepEqual(
+    fields.about.map((entity) => entity.name),
+    ["Prisma", "Vercel"],
+  );
+  assert.ok(!("license" in (fields.about[1] ?? {})));
+});
+
+test("vercel metadata advertises Markdown and JSON alternates", () => {
+  const types = getComparisonMetadata("vercel").alternates?.types;
+  assert.ok(types);
+  assert.match(types["text/markdown"] ?? "", /\/compare\/vercel\.md$/);
+  assert.match(types["application/json"] ?? "", /\/compare\/vercel\.json$/);
 });

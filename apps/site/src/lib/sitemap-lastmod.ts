@@ -425,12 +425,19 @@ export const ROUTE_CONTENT_FILES: Readonly<Record<string, readonly string[]>> = 
   "/brand-kit": ["components/brand-kit/content.ts"],
   "/compare": ["app/compare/comparisons.ts"],
   ...Object.fromEntries(
-    ["convex", "kysely", "mongoose", "neon", "planetscale", "supabase", "vercel-neon-drizzle"].map(
-      (name) => [
-        `/compare/${name}`,
-        [`app/compare/${name}/_content.ts`, `app/compare/${name}/_sections.tsx`],
-      ],
-    ),
+    [
+      "convex",
+      "kysely",
+      "mongoose",
+      "neon",
+      "planetscale",
+      "supabase",
+      "vercel",
+      "vercel-neon-drizzle",
+    ].map((name) => [
+      `/compare/${name}`,
+      [`app/compare/${name}/_content.ts`, `app/compare/${name}/_sections.tsx`],
+    ]),
   ),
   "/legal/privacy": ["lib/legal/privacy.tsx"],
   "/legal/terms": ["lib/legal/terms.tsx"],
