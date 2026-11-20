@@ -4,7 +4,7 @@ This is the working list of changes to the Prisma ORM 8 documentation, built fro
 
 Item numbers (A1, B11, C9, D4) are stable identifiers used in the audit files and the PRs; some are out of sequence because items were added as they were found. "J1" to "J12" are the reader jobs defined in `journeys.md`. Source paths are in `prisma/orm` at rc.9 unless they start with `create-prisma`.
 
-Status as of 2026-11-17. The per-item notes below carry the history; this section is the summary, checked against `main` on that date.
+Status as of 2026-11-20. The per-item notes below carry the history; this section is the summary, checked against `main` on that date.
 
 ## Where things stand
 
@@ -12,10 +12,10 @@ Versions on 2026-11-17: `prisma` (the CLI) 8.0.0-rc.34, `@prisma/orm-postgres` a
 
 | Section | Items | Done | Open |
 | --- | --- | --- | --- |
-| A. Restructure | 8 | 8 | 0, with one follow-up (A3) |
+| A. Restructure | 8 | 8 | 0 |
 | B. Corrections | 35 | 35 | 0 |
 | C. New pages | 24 | 22 | C10 and C23 |
-| E. Gaps found later | 25 | 22 | E19, E22, and E23 |
+| E. Gaps found later | 25 | 25 | 0 |
 | D. ORM and tooling | 37 | 10 | 27, for the ORM team to schedule |
 
 ### Done
