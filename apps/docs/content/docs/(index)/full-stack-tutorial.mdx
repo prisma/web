@@ -248,14 +248,14 @@ Live apps outgrow their starter schema, so give users a role. Add one line to th
 // use prisma-8
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int                @id @default(autoincrement())
+  email     String             @unique
   username  String?
   name      String?
-  role      String   @default("member")
+  role      String             @default("member") // [!code ++]
   posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 ```
 
@@ -266,12 +266,12 @@ npx prisma contract emit
 npx prisma migration plan --name add-user-role --from <timestamp>_init
 ```
 
-`--from` names the migration you are building on, and here it is required: a Composer deploy never sets the `db` ref that `migration plan` chains from by default, so a plan without it would describe every table again. The [`migration plan`](/cli/migration-plan) and [`migration ref`](/cli/migration-ref) references cover the default, the ref, and how to keep plans chaining on their own.
+`--from` names the migration you are building on, and here it is required: a Composer deploy never sets the `db` ref that `migration plan` chains from by default, so a plan without it stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. The [`migration plan`](/cli/migration-plan) and [`migration ref`](/cli/migration-ref) references cover the default, the ref, and how to keep plans chaining on their own.
 
 The plan is your change and nothing else. Review it like any other diff, with [`migration show`](/cli/migration-show) or by reading the generated package:
 
 ```text no-copy
-ALTER TABLE "public"."User" ADD COLUMN "role" text DEFAULT 'member' NOT NULL
+ALTER TABLE "public"."User" ADD COLUMN "role" text DEFAULT 'member' NOT NULL;
 ```
 
 Emitting also updated the query types, so include the new field in the route's typed select in `src/prisma/users.ts`, adding `"role"` to the `.select(...)` list and `role: user.role` to the returned object:
