@@ -46,6 +46,12 @@ export interface DocsPageProps {
   breadcrumb?: Partial<BreadcrumbOptions>;
 
   /**
+   * Page actions, shown at the right end of the breadcrumb row (the page's
+   * top-right corner), so the title keeps the full width beneath them.
+   */
+  actions?: ReactNode;
+
+  /**
    * Footer navigation, located under the page body.
    *
    * You can specify `footer.children` to add extra components under the footer.
@@ -92,6 +98,7 @@ export function DocsPage({
   breadcrumb: { enabled: breadcrumbEnabled = true, component: breadcrumb, ...breadcrumbProps } = {},
   footer: { enabled: footerEnabled, component: footerReplace, ...footerProps } = {},
   full = false,
+  actions,
   tableOfContentPopover: {
     enabled: tocPopoverEnabled,
     component: tocPopover,
@@ -142,16 +149,27 @@ export function DocsPage({
             </PageTOCPopoverContent>
           </PageTOCPopover>
         ))}
+      {/* role="main": the page's main landmark (the layout has no <main>),
+          and the skip link's target, focusable by script only. */}
       <article
         id="nd-page"
+        role="main"
+        tabIndex={-1}
         data-full={full}
         className={cn(
-          "flex flex-col [grid-area:main] px-4 py-6 gap-4 md:px-6 md:pt-8 xl:px-8 xl:pt-14 *:max-w-225",
+          "flex flex-col [grid-area:main] px-4 py-6 gap-4 outline-none md:px-6 md:pt-8 xl:px-8 xl:pt-14 *:max-w-225",
           full && "*:max-w-321.25",
           className,
         )}
       >
-        {breadcrumbEnabled && (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />)}
+        {actions ? (
+          <div className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            {breadcrumbEnabled ? (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />) : <span />}
+            {actions}
+          </div>
+        ) : (
+          breadcrumbEnabled && (breadcrumb ?? <PageBreadcrumb {...breadcrumbProps} />)
+        )}
         {children}
         {footerEnabled !== false && (footerReplace ?? <PageFooter {...footerProps} />)}
       </article>
@@ -186,17 +204,17 @@ export function EditOnGitHub(props: ComponentProps<"a">) {
       target="_blank"
       rel="noreferrer noopener"
       {...props}
-      // The same hairline pill as the page actions under the title: no fill,
-      // label a step below ink at rest, full ink plus a faint tint on hover.
+      // A quiet text link in the page's closing line, beside the date: muted
+      // at rest, ink on hover. The page actions under the title stay pills.
       className={cn(
-        "not-prose quiet-hover inline-flex h-8 items-center gap-1.5 rounded-full border border-stroke-neutral px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-fd-foreground/60",
+        "not-prose inline-flex items-center gap-1.5 rounded-sm text-sm text-fd-muted-foreground transition-colors duration-[120ms] ease-out outline-none hover:text-fd-foreground hover:duration-0 focus-visible:ring-2 focus-visible:ring-fd-foreground/60 motion-reduce:transition-none",
         props.className,
       )}
     >
       {props.children ?? (
         <>
-          <Edit className="size-3.5" />
-          <T text="Edit on GitHub" note="edit page" />
+          <Edit className="size-3.5" aria-hidden="true" />
+          <T text="Edit this page on GitHub" note="edit page" />
         </>
       )}
     </a>
@@ -219,7 +237,16 @@ export function DocsDescription({ children, className, ...props }: ComponentProp
   if (children === undefined) return null;
 
   return (
-    <p {...props} className={cn("mb-2 text-lg text-fd-muted-foreground", className)}>
+    // The page's one-line summary, styled as an intro line rather than a
+    // faded paragraph: a step above the 17px body, in the body's warm ink at
+    // 72% (not the cool neutral grey), with balanced line breaks.
+    <p
+      {...props}
+      className={cn(
+        "mb-2 text-pretty text-[1.1875rem] leading-[1.55] text-fd-foreground/72",
+        className,
+      )}
+    >
       {children}
     </p>
   );

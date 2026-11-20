@@ -336,13 +336,6 @@ function formatWorkflowLink(attrs: string, content: string) {
   return `- **${label}**${badge ? ` (${badge})` : ""}${text ? `: ${text}` : ""}`;
 }
 
-function formatCliCallout(attrs: string, content: string) {
-  const href = getAttribute(attrs, "href");
-  const linkLabel = getAttribute(attrs, "linkLabel") ?? "CLI reference";
-  const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
-  return [text, href ? `See the [${linkLabel}](${href}).` : ""].filter(Boolean).join(" ");
-}
-
 function formatIconLink(attrs: string, _content: string) {
   const title = getAttribute(attrs, "title") ?? "Link";
   const href = getAttribute(attrs, "href");
@@ -573,6 +566,37 @@ export function protectInlineCode(markdown: string) {
   };
 }
 
+/**
+ * One bullet marker throughout: remark-stringify writes "*" for MDX lists
+ * while the component formatters write "-". Lines inside a code fence are
+ * left alone, including fences inside a blockquote ("> ```"), which
+ * protectFencedCodeBlocks does not cover; "* * *" rules are skipped too.
+ */
+function unifyBullets(markdown: string) {
+  let fence: string | null = null;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      const match = /^[ \t>]*(`{3,}|~{3,})(.*)$/.exec(line);
+      if (match) {
+        const [, marker, rest] = match;
+        if (fence === null) {
+          fence = marker;
+          return line;
+        }
+        // A closing fence uses the opening's character, is at least as
+        // long, and has nothing after it but spaces or tabs.
+        if (marker[0] === fence[0] && marker.length >= fence.length && /^[ \t]*$/.test(rest)) {
+          fence = null;
+        }
+        return line;
+      }
+      if (fence !== null) return line;
+      return line.replace(/^([ \t>]*)\* (?![* \t]*$)/, "$1- ");
+    })
+    .join("\n");
+}
+
 export function normalizeProcessedMarkdown(
   markdown: string,
   options?: { headingDepths?: ReadonlyMap<string, number> },
@@ -608,6 +632,32 @@ export function normalizeProcessedMarkdown(
     .replace(/<\/?Accordions[^>]*>/g, "")
     .replace(/<Step\b([^>]*)>([\s\S]*?)<\/Step>/g, (_match, attrs: string, content: string) =>
       formatSectionComponent(attrs, content, "Step"),
+    )
+    .replace(
+      // The docs' <Steps> (src/components/steps.tsx) numbers its h3 steps in
+      // CSS, so the headings carry no "1."; agents get the numbers back. The
+      // processed markdown writes headings as "Text [#anchor]" lines (the
+      // `###` is restored later from the toc), so a step is a line whose
+      // anchor sits at depth 3, or one already written as `### `.
+      /<Steps>([\s\S]*?)<\/Steps>/g,
+      (_match, content: string) => {
+        let step = 0;
+        return content.replace(
+          /^([ \t]*)(### )?(.+?)[ \t]*\[#([^\]\n]+)\][ \t]*$/gm,
+          (line, indent: string, hashes: string | undefined, text: string, anchor: string) => {
+            const isStep = hashes !== undefined || options?.headingDepths?.get(anchor) === 3;
+            if (!isStep || text.startsWith("#")) return line;
+            // A heading that already carries its number keeps it and moves
+            // the count on, so the next unnumbered step follows it.
+            const existing = /^(\d+)\.\s/.exec(text);
+            if (existing) {
+              step = Number(existing[1]);
+              return line;
+            }
+            return `${indent}${hashes ?? ""}${++step}. ${text} [#${anchor}]`;
+          },
+        );
+      },
     )
     .replace(/<\/?Steps[^>]*>/g, "")
     .replace(/<SharedContent\b[^>]*>([\s\S]*?)<\/SharedContent>/g, (_match, content: string) =>
@@ -653,8 +703,60 @@ export function normalizeProcessedMarkdown(
       },
     )
     .replace(
-      /<CliCallout\b([^>]*)>([\s\S]*?)<\/CliCallout>/g,
-      (_match, attrs: string, content: string) => formatCliCallout(attrs, content),
+      /<DeployCallout\b([^>]*)>([\s\S]*?)<\/DeployCallout>/g,
+      (_match, attrs: string, content: string) => {
+        const title = getAttribute(attrs, "title");
+        const command = getAttribute(attrs, "command");
+        const href = getAttribute(attrs, "href");
+        const linkLabel = getAttribute(attrs, "linkLabel") ?? "Deploy guide";
+        const text = stripJsxTags(trimComponentContent(content)).replace(/\n+/g, " ");
+        return [
+          title ? `**${title}**` : "",
+          command ? "```bash\n" + command + "\n```" : "",
+          text,
+          href ? `See the [${linkLabel}](${href}).` : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+      },
+    )
+    .replace(
+      // Each row becomes "- **Label:** `command` ([guide](href))".
+      /<CommandRows\b[^>]*>([\s\S]*?)<\/CommandRows>/g,
+      (_match, content: string) =>
+        [...content.matchAll(/<CommandRow\b([^>]*?)\/>/g)]
+          .map(([, attrs]) => {
+            const label = getAttribute(attrs, "label");
+            const command = getAttribute(attrs, "command");
+            const href = getAttribute(attrs, "href");
+            const linkLabel = getAttribute(attrs, "linkLabel");
+            const guide = href && linkLabel ? ` ([${linkLabel}](${href}))` : "";
+            return `- **${label}:** \`${command}\`${guide}`;
+          })
+          .join("\n"),
+    )
+    .replace(/<\/?SetupTabs[^>]*>/g, "")
+    .replace(/<\/?SetupPrompt[^>]*>/g, "")
+    .replace(
+      // A tab becomes a bold label, its text, the guide link, then the prompt
+      // (shown here in full: on the page it is copied rather than displayed).
+      /<SetupPath\b([^>]*)>([\s\S]*?)<\/SetupPath>/g,
+      (_match, attrs: string, content: string) => {
+        const label = getAttribute(attrs, "label");
+        const guideHref = getAttribute(attrs, "guideHref");
+        const guideTitle = getAttribute(attrs, "guideTitle") ?? "Guide";
+        const [text, ...prompt] = trimComponentContent(content).split(
+          /\n\n(?=\S*LLM_FENCED_CODE_BLOCK)/,
+        );
+        return [
+          label ? `**${label}**` : "",
+          text,
+          guideHref ? `Follow the guide: [${guideTitle}](${guideHref})` : "",
+          ...prompt,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+      },
     )
     .replace(
       // Same brace-tolerant attrs matcher as AgentPrompt: ModalRow takes
@@ -675,14 +777,18 @@ export function normalizeProcessedMarkdown(
   const withoutJsxComponents = replaceComponentBlocks(
     replaceComponentBlocks(
       replaceComponentBlocks(
-        replaceComponentBlocks(componentMarkdown, "Card", formatCard)
-          .replace(/<\/?Cards[^>]*>/g, "")
-          .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
-          .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
-        "WorkflowLink",
-        formatWorkflowLink,
-      ),
-      "IconLink",
+        replaceComponentBlocks(
+          replaceComponentBlocks(componentMarkdown, "Card", formatCard)
+            .replace(/<\/?Cards[^>]*>/g, "")
+            .replace(/<APIPage\b([\s\S]*?)\/>/g, (match: string) => formatApiPage(match))
+            .replace(/<Youtube\b([\s\S]*?)\/>/g, (_match, attrs: string) => formatYoutube(attrs)),
+          "WorkflowLink",
+          formatWorkflowLink,
+        ),
+        "IconLink",
+        formatIconLink,
+      ).replace(/<\/?DocsIndex[^>]*>/g, ""),
+      "IndexLink",
       formatIconLink,
     ),
     "Button",
@@ -697,7 +803,9 @@ export function normalizeProcessedMarkdown(
   // literal backslashes in code spans survive; fenced blocks are already
   // placeholders at this point.
   const withHeadings = restoreHeadingMarkers(withoutJsxComponents, options?.headingDepths);
-  const protectedInline = protectInlineCode(withHeadings);
+  // Bullets are unified before inline-code protection, which would otherwise
+  // swallow a "```" fence line as a code span and hide it from unifyBullets.
+  const protectedInline = protectInlineCode(unifyBullets(withHeadings));
   const unescaped = protectedInline.restore(protectedInline.markdown.replace(/\\([_{}])/g, "$1"));
 
   return protectedCode

@@ -15,7 +15,7 @@ for (const width of [768, 810, 873]) {
     await page.getByRole("button", { name: "Open Sidebar" }).click();
 
     await expect(drawer).toBeVisible();
-    await expect(drawer.getByRole("link", { name: "Login", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("link", { name: "Log in", exact: true })).toBeVisible();
     await expect(drawer.getByRole("link", { name: "Troubleshooting", exact: true })).toBeVisible();
   });
 }

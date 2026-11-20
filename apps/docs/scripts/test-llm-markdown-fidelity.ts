@@ -2,12 +2,14 @@ import { strict as assert } from "node:assert";
 import { normalizeProcessedMarkdown } from "../src/lib/llm-markdown";
 
 const rawComponentPattern =
-  /<(?:APIPage|CodeBlockTabs|CodeBlockTab|Tabs|Tab|Cards|Card|Accordions|Accordion|Youtube|Button|SharedContent|Steps|Step)\b/;
+  /<(?:APIPage|CodeBlockTabs|CodeBlockTab|Tabs|Tab|Cards|Card|Accordions|Accordion|Youtube|Button|SharedContent|Steps|Step|DeployCallout|CommandRows|CommandRow|SetupTabs|SetupPath|SetupPrompt|DocsIndex|IndexLink)\b/;
 
 type SnapshotCase = {
   name: string;
   input: string;
   expected: string;
+  /** anchor → toc depth, as getLLMText passes it for real pages */
+  headingDepths?: Record<string, number>;
 };
 
 const snapshots: SnapshotCase[] = [
@@ -147,6 +149,164 @@ pnpm add @prisma/client
 
 Run the command.`,
   },
+  {
+    name: "DeployCallout",
+    input: `<DeployCallout title="Deploy with one command" command="npx prisma deploy" href="/prisma-compute/deploy">
+  Ships everything your app declares to production. Use \`--environment\` for an isolated copy.
+</DeployCallout>`,
+    expected: `**Deploy with one command**
+
+\`\`\`bash
+npx prisma deploy
+\`\`\`
+
+Ships everything your app declares to production. Use \`--environment\` for an isolated copy.
+
+See the [Deploy guide](/prisma-compute/deploy).`,
+  },
+  {
+    name: "CommandRows",
+    input: `<CommandRows>
+  <CommandRow label="New project" command="npx create-prisma@stable" href="/v7/prisma-orm/quickstart/prisma-postgres" linkLabel="5-min quickstart" />
+  <CommandRow label="Existing project" command="npx prisma@prev init" href="/v7/getting-started" linkLabel="Setup paths" />
+</CommandRows>`,
+    expected: `- **New project:** \`npx create-prisma@stable\` ([5-min quickstart](/v7/prisma-orm/quickstart/prisma-postgres))
+- **Existing project:** \`npx prisma@prev init\` ([Setup paths](/v7/getting-started))`,
+  },
+  {
+    name: "SetupTabs",
+    input: `<SetupTabs>
+
+<SetupPath label="Postgres only" guideHref="/postgres/npx-create-db" guideTitle="create-db guide">
+
+Create a Prisma Postgres database with \`npx create-db\`.
+
+Using Kysely? Follow the [Kysely quickstart](/prisma-postgres/quickstart/kysely).
+
+<SetupPrompt>
+
+\`\`\`text
+Create a Prisma Postgres database for this project.
+
+1. Run \`npx create-db@latest\`.
+\`\`\`
+
+</SetupPrompt>
+
+</SetupPath>
+
+</SetupTabs>`,
+    expected: `**Postgres only**
+
+Create a Prisma Postgres database with \`npx create-db\`.
+
+Using Kysely? Follow the [Kysely quickstart](/prisma-postgres/quickstart/kysely).
+
+Follow the guide: [create-db guide](/postgres/npx-create-db)
+
+\`\`\`text
+Create a Prisma Postgres database for this project.
+
+1. Run \`npx create-db@latest\`.
+\`\`\``,
+  },
+  {
+    name: "DocsIndex",
+    input: `<DocsIndex>
+  <IndexLink href="/orm" title="Prisma ORM" description="Prisma ORM 8 and 7 docs" icon={<Boxes />} />
+  <IndexLink href="/cli" title="CLI reference" description="Every command and flag" icon={<Terminal />} />
+</DocsIndex>`,
+    expected: `- [Prisma ORM](/orm): Prisma ORM 8 and 7 docs
+- [CLI reference](/cli): Every command and flag`,
+  },
+  {
+    name: "Bullet markers",
+    input: `* [Model your data](/orm/data-modeling): describe your models.
+* **Bold** first word.
+  * Nested item.
+
+* * *
+
+\`\`\`text
+* stays as written in code
+\`\`\``,
+    expected: `- [Model your data](/orm/data-modeling): describe your models.
+- **Bold** first word.
+  - Nested item.
+
+* * *
+
+\`\`\`text
+* stays as written in code
+\`\`\``,
+  },
+  {
+    name: "Bullets in a blockquoted fence",
+    input: `> \`\`\`text
+> * keep this literal
+> \`\`\`
+
+* but convert this`,
+    expected: `> \`\`\`text
+> * keep this literal
+> \`\`\`
+
+- but convert this`,
+  },
+  {
+    name: "Fence close needs a bare marker",
+    input: `> \`\`\`text
+> \`\`\`not-a-close
+> * literal
+> \`\`\``,
+    expected: `> \`\`\`text
+> \`\`\`not-a-close
+> * literal
+> \`\`\``,
+  },
+  {
+    name: "Steps with a numbered heading",
+    input: `<Steps>
+
+### 1. Install [#install]
+
+Add it.
+
+### Configure [#configure]
+
+Set it up.
+
+</Steps>`,
+    expected: `### 1. Install [#install]
+
+Add it.
+
+### 2. Configure [#configure]
+
+Set it up.`,
+  },
+  {
+    name: "Steps",
+    input: `<Steps>
+
+  ### Get a database [#1-get-a-database]
+
+Create one.
+
+Run the app [#2-run-the-app]
+
+Start it.
+
+</Steps>`,
+    headingDepths: { "1-get-a-database": 3, "2-run-the-app": 3 },
+    expected: `### 1. Get a database [#1-get-a-database]
+
+Create one.
+
+### 2. Run the app [#2-run-the-app]
+
+Start it.`,
+  },
 ];
 
 function stripFencedCodeBlocks(markdown: string) {
@@ -154,7 +314,11 @@ function stripFencedCodeBlocks(markdown: string) {
 }
 
 for (const snapshot of snapshots) {
-  const actual = normalizeProcessedMarkdown(snapshot.input);
+  const actual = normalizeProcessedMarkdown(snapshot.input, {
+    headingDepths: snapshot.headingDepths
+      ? new Map(Object.entries(snapshot.headingDepths))
+      : undefined,
+  });
   assert.equal(actual, snapshot.expected, snapshot.name);
   assert.equal(
     rawComponentPattern.test(stripFencedCodeBlocks(actual)),

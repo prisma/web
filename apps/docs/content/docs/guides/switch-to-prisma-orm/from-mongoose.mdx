@@ -26,23 +26,6 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 - A MongoDB replica set. MongoDB Atlas is one already; locally, start `mongod` with `--replSet rs0` and run `rs.initiate()` once
 - Basic familiarity with Mongoose
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Migrate this Mongoose app to Prisma ORM against the same MongoDB database, following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-mongoose.md.
-
-1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
-2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma contract emit`.
-3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
-4. When no code imports mongoose: run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from all documents, preview the validators with `npx prisma db update --dry-run`, apply them with `npx prisma db update --no-interactive`, then run `npx prisma db verify`.
-```
-
-</AgentPrompt>
-
 ## 1. Prepare for migration
 
 ### 1.1. Understand the migration process
@@ -146,7 +129,7 @@ Choose `PSL` when asked for the contract authoring style and keep the default sc
 ```text no-copy
 ✔ npm add @prisma/orm-mongo dotenv
 ✔ npm add -D prisma@latest
-✔ npm add -D @prisma/cli-engine@0.9.0
+✔ npm add -D @prisma/cli-engine@0.10.0
 ✔ Emit the contract
 │  target:     mongodb
 │  authoring:  psl
@@ -165,7 +148,7 @@ installed
 ├─ @prisma/orm-mongo
 ├─ dotenv
 ├─ prisma@latest (dev)
-└─ @prisma/cli-engine@0.9.0 (dev)
+└─ @prisma/cli-engine@0.10.0 (dev)
 ✔ Done. Open prisma-8.md to get started.
 ```
 
@@ -510,7 +493,7 @@ Delete the `models/` directory and any `mongoose.connect` call that is left.
 
 ### 4.2. Remove the version key
 
-Mongoose wrote `__v` on every document. The validators Prisma ORM adds in the next step reject fields the contract does not declare, so strip it first. In `mongosh`, against your database:
+Mongoose wrote `__v` on every document. The validators Prisma ORM adds in the next step reject fields the contract does not declare, so strip it first. A deployed copy of the app that still uses Mongoose would write `__v` again and then fail against the validators, so make sure none is running before you go on. In `mongosh`, against your database:
 
 ```javascript
 for (const c of ["users", "posts", "categories"]) {
@@ -552,10 +535,10 @@ db.runCommand({ collMod: "users", validator: {"$jsonSchema":{"additionalProperti
 ℹ This is a dry run. No changes were applied.
 ```
 
-A validator applies only to later writes, so adding one loses no data, and `db update` applies it without asking. MongoDB does not check the documents already in a collection when it adds a validator. A document the validator would refuse stays as it is, and the next write to it fails. The documents in this guide match the validators once `__v` is gone. In your own database, find the documents a validator would refuse before you apply it. In `mongosh`, pass the `$jsonSchema` object from the preview above:
+A validator applies only to later writes, so adding one loses no data, and `db update` applies it without asking. MongoDB does not check the documents already in a collection when it adds a validator. A document the validator would refuse stays as it is, and the next write to it fails. The documents in this guide match the validators once `__v` is gone. In your own database, find the documents a validator would refuse before you apply it. In `mongosh`, put the whole `validator` value from the preview above, starting at `{"$jsonSchema":`, inside `$nor`:
 
 ```javascript
-db.users.find({ $nor: [{ $jsonSchema: { /* the users validator from the preview */ } }] })
+db.users.find({ $nor: [/* the users validator value from the preview */] })
 ```
 
 Fix or remove each document it returns, and repeat for `posts` and `categories`. Then apply the validators:
@@ -603,9 +586,24 @@ The MongoDB client has no `db.transaction(...)`. For multi-document atomicity, p
 
 :::
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`npx prisma@latest init`](/cli/init) once to install the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keep them matching your installed packages. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Migrate this Mongoose app to Prisma ORM against the same MongoDB database, following https://www.prisma.io/docs/guides/switch-to-prisma-orm/from-mongoose.md.
+
+1. Run `npx prisma@latest orm init --target mongodb` in the project root, choose PSL, then run `npx prisma@latest init` so the Prisma agent skills are installed, and use them. Make sure `.env` has DATABASE_URL pointing at the database the Mongoose app already uses.
+2. `contract infer` does not support MongoDB. Write `src/prisma/contract.prisma` by hand from the Mongoose schemas: one model per collection with `id ObjectId @id @map("_id")` and `@@map("<collection>")`, a `type` block per nested schema, `ObjectId` plus `@relation` for each `ref`, and `ObjectId[]` for arrays of refs. Then run `npx prisma contract emit`.
+3. Replace the Mongoose queries route by route with `db.orm.<collection>` calls and `.include(...)` for `populate` on single references. For `populate` on arrays of references, use the pipeline builder with `.lookup(...)`. Run the app and verify every route with curl before and after.
+4. When no code imports mongoose, ask me to confirm that no deployed copy of the app still uses Mongoose. Then run `npm uninstall mongoose && npm install mongodb`, remove the `__v` field from every document in the collections the contract declares, except a collection whose model maps a field to `__v`, preview the validators with `npx prisma db update --dry-run`, and for each collection find the documents its validator would refuse with `db.<collection>.find({ $nor: [<validator value from the preview>] })` in `mongosh`, where the validator value is the whole object that starts with `{"$jsonSchema":`. If any are returned, show them to me and ask before fixing or removing them. Then apply the validators with `npx prisma db update --no-interactive`, then run `npx prisma db verify`.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`npx prisma@latest init`](/cli/init) in its first step. If you followed the steps by hand, run it once yourself: it installs the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent and keeps them matching your installed packages. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, translate the Mongoose schemas in `src/models` into `src/prisma/contract.prisma` and emit it."
 - "Replace the Mongoose queries in `src/controllers/posts.ts` with `db.orm.posts` calls; use a `.lookup` pipeline for `populate` on arrays."

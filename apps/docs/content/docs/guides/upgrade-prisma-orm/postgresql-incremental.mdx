@@ -1,5 +1,6 @@
 ---
 title: Prisma ORM 7 to 8, route by route (PostgreSQL)
+sidebarTitle: "ORM 7 to 8, route by route"
 description: 'Use when a PostgreSQL app on Prisma ORM 7 should move to Prisma 8 gradually, with both versions running side by side and one route moving at a time'
 url: /guides/upgrade-prisma-orm/postgresql-incremental
 metaTitle: How to migrate a PostgreSQL project from Prisma ORM 7 to 8 route by route
@@ -20,7 +21,7 @@ This guide covers **PostgreSQL only**, and guidance for other databases will fol
 
 :::info
 
-Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for the Prisma ORM 8 CLI as of `8.0.0-rc.26` and `@prisma/orm-postgres` as of `8.0.0-rc.23`. The two packages have separate version numbers. The Prisma ORM 7 side of the app stays at `7.10.1` throughout.
+Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for the Prisma ORM 8 CLI as of `8.0.0-rc.34` and `@prisma/orm-postgres` as of `8.0.0-rc.24`. The two packages have separate version numbers. The Prisma ORM 7 side of the app stays at `7.10.1` throughout.
 
 :::
 
@@ -29,24 +30,34 @@ Step 2.1 installs the latest Prisma ORM 8 packages. This guide was written for t
 The migration runs in five phases. The application works at the end of each one.
 
 1. **Prepare Prisma ORM 7 for side-by-side operation.** Move Prisma ORM 7 onto its own package name, binary, and config file. No behavior changes.
-2. **Add Prisma ORM 8.** Install the Prisma ORM 8 CLI and runtime with their own config, schema contract, and generated client. No application code uses them yet.
+2. **Add Prisma ORM 8.** Install the Prisma ORM 8 CLI and runtime with their own config, which reads your `schema.prisma`. No application code uses them yet.
 3. **Migrate one route.** One route runs on Prisma ORM 8 while the rest stay on Prisma ORM 7, all against the same database.
 4. **Transfer migration ownership.** Prisma ORM 8 takes over planning and applying schema changes.
 5. **Remove Prisma ORM 7** once nothing imports it.
 
 The ownership timeline matters more than the code timeline. Prisma ORM 7 owns schema migrations through phases 1 to 3, and routes move to Prisma ORM 8 independently of that. Prisma ORM 8 takes over migrations only in phase 4, after a database signature and a `db` ref are in place; the first `migration plan` then writes the baseline migration itself. You can pause between phases for as long as you need.
 
-The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) repository shows the finished result of each phase (tags `step-0` through `step-3`).
+The [prisma8-and-7-example](https://github.com/prisma/prisma8-and-7-example) repository shows the finished result of each phase (tags `step-0` through `step-3`). Unlike this guide, the repository gives Prisma ORM 8 its own copy of the schema, `prisma8/contract.prisma`, instead of having it read `prisma/schema.prisma`.
 
 ## Prerequisites
 
 - **Node.js 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer**; Node.js 24 recommended
 - A working **Prisma ORM 7** application on PostgreSQL: `prisma.config.ts`, the `prisma-client` generator, and a driver adapter
-- **TypeScript 5.9 or newer** with `"strict": true`. [Step 2.6](#26-set-up-tsconfigjson-for-the-prisma-orm-8-client) tells you whether to change the `module` setting in `tsconfig.json`
+- **TypeScript 5.9 or newer** with `"strict": true`. [Step 2.5](#25-set-up-tsconfigjson-for-the-prisma-orm-8-client) tells you whether to change the `module` setting in `tsconfig.json`
 
 ## 1. Prepare Prisma ORM 7 for side-by-side operation
 
 Prisma ORM 8 expects the `prisma` package name, the `prisma` binary, and the `prisma.config.ts` file name. In this phase you move Prisma ORM 7 off those three names so Prisma ORM 8 can take them without ambiguity. Nothing migrates yet.
+
+One command does this phase and steps 2.1 to 2.4 for you:
+
+```npm title="Terminal"
+npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
+```
+
+Write `prisma@latest`, because before this phase `npx prisma` runs version 7. The command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then continue with step 2.5, and in phase 3 use the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
+
+The command does not work yet if the `datasource` block lists `citext`, `vector` or `postgis` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres` and `dotenv` and changed nothing else. Keep both packages, and do phase 1 and steps 2.1 to 2.4 by hand.
 
 ### 1.1. Confirm the application works
 
@@ -234,18 +245,20 @@ After this install, `npx prisma <command>` runs the Prisma ORM 8 CLI and `npx pr
 npx prisma --version
 ```
 
-**Expected result:** the command prints `8.0.0-rc.33` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
+**Expected result:** the command prints `8.0.0-rc.34` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
 
 ### 2.2. Create the Prisma ORM 8 config
+
+Prisma ORM 8 describes your models as a [contract](/orm/contract-authoring/the-data-contract). It can read `prisma/schema.prisma` as that contract, so both versions work from the same schema file and you keep editing the file you have. Create `prisma.config.ts`:
 
 ```typescript title="prisma.config.ts"
 import "dotenv/config";
 import { definePrismaConfig } from "prisma/config";
-import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config";
+import { defineConfig as definePostgresConfig, prisma7Schema } from "@prisma/orm-postgres/config";
 
 export default definePrismaConfig({
   orm: definePostgresConfig({
-    contract: "prisma8/contract.prisma",
+    contract: prisma7Schema("prisma/schema.prisma"),
     output: "generated/prisma8",
     db: {
       connection: process.env["DATABASE_URL"],
@@ -254,32 +267,50 @@ export default definePrismaConfig({
 });
 ```
 
-Both configs point at the **same** `DATABASE_URL`. Everything else is separate:
+Both configs point at the **same** `DATABASE_URL` and read the **same** schema file. Everything else is separate:
 
 | | Prisma ORM 7 | Prisma ORM 8 |
 |---|---|---|
 | CLI | `prisma7` | `prisma` |
 | Config | `prisma7.config.ts` | `prisma.config.ts` |
-| Schema | `prisma/schema.prisma` | `prisma8/contract.prisma` |
+| Schema | `prisma/schema.prisma` | `prisma/schema.prisma` |
 | Generated client | `generated/prisma` | `generated/prisma8` |
 
 Because the config carries the connection, the Prisma ORM 8 CLI commands below don't need a `--db` flag.
 
-:::tip[Read the Prisma ORM 7 schema instead]
+`prisma7Schema(...)` reads the file in Prisma ORM 7 syntax, so you do not change it. Prisma ORM 8 ignores the `generator` block, which `prisma7 generate` still uses.
 
-Instead of generating a contract file in steps 2.3 and 2.4, Prisma ORM 8 can read `prisma/schema.prisma` directly as its contract, so you keep one schema file while Prisma ORM 7 owns migrations. `schema.prisma` does not need the `// use prisma-8` first line that a contract file written for Prisma ORM 8 starts with (step 2.4 shows one). Skip steps 2.3 and 2.4, and change two lines in the `prisma.config.ts` you just wrote:
+Most fields read the same values in both clients. `DateTime` fields, including `@db.Timestamp` and `@db.Timestamptz`, are JavaScript `Date` objects in Prisma ORM 8 too. The exception is `@db.Date`, `@db.Time` and `@db.Timetz` fields: Prisma ORM 8 reads them as ISO 8601 strings, such as `"2026-09-14"`, `"10:00:00.5"` and `"10:00:00+02:00"`, where Prisma ORM 7 gave you `Date` objects. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) has the details.
+
+### 2.3. Add the packs for PostgreSQL extensions
+
+Skip this step if the `datasource` block in `schema.prisma` has no `extensions` list and no field uses `@db.Citext`.
+
+Prisma ORM 8 reads the `extensions` list, so it knows which PostgreSQL extensions your database needs. Three of them need an extension pack, an npm package that gives Prisma ORM 8 the extension's column types and creates the extension in a new database:
+
+| In `extensions = [...]` | Pack | Import in `prisma.config.ts` |
+| --- | --- | --- |
+| `citext` (also needed for a `@db.Citext` field) | `@prisma/orm-postgres-contrib` | `import citext from "@prisma/orm-postgres-contrib/citext/control"` |
+| `vector` | `@prisma/orm-extension-pgvector` | `import pgvector from "@prisma/orm-extension-pgvector/control"` |
+| `postgis` | `@prisma/orm-extension-postgis` | `import postgis from "@prisma/orm-extension-postgis/control"` |
+
+Install the pack for each of these that your list names, and add it to the config. For `extensions = [citext, pg_trgm]`:
+
+```npm
+npm install @prisma/orm-postgres-contrib
+```
 
 ```typescript title="prisma.config.ts"
 import "dotenv/config";
 import { definePrismaConfig } from "prisma/config";
-import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config"; // [!code --]
-import { defineConfig as definePostgresConfig, prisma7Schema } from "@prisma/orm-postgres/config"; // [!code ++]
+import { defineConfig as definePostgresConfig, prisma7Schema } from "@prisma/orm-postgres/config";
+import citext from "@prisma/orm-postgres-contrib/citext/control"; // [!code ++]
 
 export default definePrismaConfig({
   orm: definePostgresConfig({
-    contract: "prisma8/contract.prisma", // [!code --]
-    contract: prisma7Schema("prisma/schema.prisma"), // [!code ++]
+    contract: prisma7Schema("prisma/schema.prisma"),
     output: "generated/prisma8",
+    extensions: [citext], // [!code ++]
     db: {
       connection: process.env["DATABASE_URL"],
     },
@@ -287,72 +318,23 @@ export default definePrismaConfig({
 });
 ```
 
-Read this way, a `DateTime` field and the `@db.Timestamp` and `@db.Timestamptz` fields are JavaScript `Date` objects in Prisma ORM 8, as in Prisma ORM 7. The `@db.Date` and `@db.Time` fields are ISO 8601 strings, such as `"2026-09-14"` and `"10:00:00.5"`, where Prisma ORM 7 gave you `Date` objects. The Prisma ORM 8 client needs no `Temporal` for any of them. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) has the details.
+Without the pack, `contract emit` in the next step stops with `PSL.PRISMA7_EXTENSION_PACK_MISSING`, and the message names the import to add. Other extensions in the list, such as `pg_trgm` here, need nothing from you. For every extension in the list, `db sign` in phase 4 checks that the database has it, and Prisma ORM 8 creates it in a new, empty database. Step 3.1 adds the pack to the Prisma ORM 8 client as well. [Using extensions](/orm/extensions/using-extensions) covers each pack.
 
-After step 2.5, run `npx prisma db sign`. [`db sign`](/cli/db-sign) checks that the database matches the contract Prisma ORM 8 read from `schema.prisma` and records in the database that it does. Signing does not move your migrations to Prisma ORM 8. Prisma ORM 7 keeps planning and applying them, so after each Prisma ORM 7 migration, whether you ran `prisma7 migrate dev` or `prisma7 migrate deploy`, run `npx prisma contract emit` and then `npx prisma db sign` again. If you emit without signing, the Prisma ORM 8 client still runs queries, but `npx prisma db verify` reports that the contract no longer matches the one recorded in the database. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read.
-
-If you have not started phase 1 yet, one command does phase 1 and this setup for you:
-
-```npm title="Terminal"
-npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
-```
-
-Write `prisma@latest`, because in a Prisma ORM 7 project `npx prisma` runs version 7. The command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then run `npx prisma db sign` and continue with phase 3, using the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
-
-Prisma ORM 7 keeps owning migrations on this path until you are ready for [phase 4](#4-transfer-migration-ownership), where Prisma ORM 8 takes them over. Phase 4 needs a contract file written for Prisma ORM 8, so switch to one first. Either run `npx prisma contract print --output prisma8/contract.prisma`, which writes the contract Prisma ORM 8 read from `schema.prisma` as a Prisma ORM 8 contract file, or run steps 2.3 to 2.5. Then set `contract` in `prisma.config.ts` to `"prisma8/contract.prisma"`, the file you created. Then follow phase 4 as written. Its first step, `db sign`, checks the new contract against the database before Prisma ORM 8 takes over.
-
-:::
-
-### 2.3. Infer the contract from the live database
-
-Prisma ORM 8 describes your schema as a [contract](/orm/contract-authoring/the-data-contract). Generate it from the database Prisma ORM 7 built:
-
-```npm title="Terminal"
-npx prisma contract infer --output prisma8/contract.prisma
-```
-
-### 2.4. Review the inferred contract
-
-`contract infer` reads every table in the database except `_prisma_migrations`, the table where Prisma ORM 7 records which migrations it has applied, so the contract has no model for it and Prisma ORM 8 never manages it. The table itself stays in the database, and `db verify --strict` does not report it.
-
-You do not need to add `@@map` to the other models: a model without `@@map` uses its name, exactly as written, as its table name, so `User` reads and writes the `"User"` table that Prisma ORM 7 created.
-
-The inferred contract looks like this:
-
-```prisma title="prisma8/contract.prisma"
-// use prisma-8
-
-model User {
-  id    Int     @id(map: "User_pkey") @default(autoincrement())
-  email String
-  name  String?
-  posts Post[]
-
-  @@index([email], map: "User_email_key", unique: true)
-}
-
-model Post {
-  id        Int     @id(map: "Post_pkey") @default(autoincrement())
-  title     String
-  published Boolean @default(false)
-  authorId  Int
-  author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Post_authorId_fkey")
-
-  @@index([authorId], map: "Post_authorId_idx")
-}
-```
-
-Keep `// use prisma-8` as the first line of `prisma8/contract.prisma`. `contract emit` reads only `.prisma` files that start with this line, and this is the only file in your contract, so without it `contract emit` fails with `CONTRACT.SOURCE_LOAD_FAILED`. A `schema.prisma` that Prisma ORM 8 reads through `prisma7Schema(...)`, as in the tip at the end of step 2.2, does not need the line.
-
-### 2.5. Emit the contract artifacts
+### 2.4. Emit the contract
 
 ```npm
 npx prisma contract emit
 ```
 
-`contract emit` writes `contract.json` and `contract.d.ts` to `generated/prisma8`, the runtime and type inputs for the Prisma ORM 8 client. Re-run it after every contract change.
+**Expected result:** the command prints `Emitted contract.json and contract.d.ts` and writes the two files to `generated/prisma8`. `contract.json` is what the Prisma ORM 8 client reads at runtime, and `contract.d.ts` holds its types. With a pack from step 2.3, it also writes the pack's migrations, which create the extension, to a folder such as `migrations/citext/`. This top-level `migrations/` folder belongs to Prisma ORM 8 and is separate from `prisma/migrations`. Commit it. Nothing runs them until phase 4, and then only a new, empty database needs them, because your database already has the extension.
 
-### 2.6. Set up tsconfig.json for the Prisma ORM 8 client
+If `contract emit` fails, its error names the line in `schema.prisma` and the edit to make. [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema) lists the parts of a Prisma ORM 7 schema that Prisma ORM 8 cannot read, such as `view` blocks.
+
+A field marked `@ignore` and a model marked `@@ignore` stay out of the Prisma ORM 8 client, as they stay out of the Prisma ORM 7 client. A query on `db.orm.public.User` neither returns nor writes an ignored field of `User`, and an ignored model has no `db.orm.public.<Model>`. [Raw SQL](/orm/reference/raw-queries) still reaches them. Prisma ORM 8 keeps their columns and tables: they must still exist in the database, its migrations never drop them, and adding or removing `@ignore` never changes the database.
+
+Prisma ORM 7 keeps owning migrations until phase 4. Until then, run `npx prisma contract emit` again after each Prisma ORM 7 migration, so the Prisma ORM 8 client sees the change.
+
+### 2.5. Set up tsconfig.json for the Prisma ORM 8 client
 
 Your `tsconfig.json` must allow the JSON import you will write in step 3.1: `import contractJson from "../generated/prisma8/contract.json" with { type: "json" }`. TypeScript accepts the `with { type: "json" }` part only when `module` is `esnext`, `node18`, `node20`, `nodenext`, or `preserve`, and only in a file it treats as an ES module. Any other value, such as `commonjs`, `es2022`, or `node16`, rejects it, and leaving `module` unset fails too. Take the first case below that matches how your app runs:
 
@@ -411,6 +393,8 @@ export const db = postgres({ url: connectionString, contract }); // [!code ++]
 
 `prisma` is the Prisma ORM 7 client and `db` is the Prisma ORM 8 client, both connected to the same database. `contractFromJson` turns the emitted `contract.json` into a typed contract value, which the Prisma ORM 8 client takes as `contract`.
 
+If step 2.3 added a pack, pass the pack's `runtime` export to the client too. For citext, import it with `import citext from "@prisma/orm-postgres-contrib/citext/runtime"` and create the client with `postgres({ url: connectionString, contract, extensions: [citext] })`. For pgvector the import is `@prisma/orm-extension-pgvector/runtime`, and [Using extensions](/orm/extensions/using-extensions) lists the others. Without it, creating the client throws `Contract requires extension pack(s) 'citext'`.
+
 ### 3.2. Rewrite the route
 
 Move the users route to the Prisma ORM 8 [ORM client](/orm/reference/orm-client). Queries start from `db.orm.<schema>.<Model>` (`public` here) and chain instead of taking one options object:
@@ -460,6 +444,26 @@ users.post("/", async (c) => {
 
 `src/routes/posts.ts` stays unchanged, on Prisma ORM 7.
 
+If a route pages with `cursor`, drop the `skip: 1` when you rewrite it. In Prisma ORM 7, the page starts with the cursor row itself unless you skip it. `.cursor(...)` leaves the cursor row out, so the page starts with the row after it:
+
+```typescript title="Prisma ORM 8" tab="After"
+const page = await db.orm.public.User.orderBy((user) => user.id.asc())
+  .cursor({ id: lastId })
+  .limit(20)
+  .all();
+```
+
+```typescript title="Prisma ORM 7" tab="Before"
+const page = await prisma.user.findMany({
+  orderBy: { id: "asc" },
+  cursor: { id: lastId },
+  skip: 1,
+  take: 20,
+});
+```
+
+If a query had no `skip: 1`, its pages now start one row later. [Cursor pagination](/orm/fundamentals/reading-data#cursor-pagination) covers sorting by more than one field.
+
 ### 3.3. Exercise both code paths
 
 Start the app and hit both routes:
@@ -473,11 +477,11 @@ curl localhost:3000/users
 
 **Expected result:** the first request runs through Prisma ORM 8. The second writes through Prisma ORM 7. The third, through Prisma ORM 8 again, includes the post Prisma ORM 7 just wrote.
 
-Remaining routes can move over the same way, one at a time, on any schedule. Prisma ORM 7 still owns schema migrations in this phase. If the schema changes, run `prisma7 migrate dev`, then re-run `contract infer` and `contract emit` so the Prisma ORM 8 contract stays current.
+Remaining routes can move over the same way, one at a time, on any schedule. Prisma ORM 7 still owns schema migrations in this phase. If the schema changes, run `npx prisma7 migrate dev`, then `npx prisma contract emit`, so the Prisma ORM 8 client sees the change too.
 
 ## 4. Transfer migration ownership
 
-So far every schema change has gone through `prisma7 migrate dev`. In this phase Prisma ORM 8 takes over planning and applying schema changes, and `prisma/schema.prisma` is frozen.
+So far every schema change has gone through `prisma7 migrate dev`. In this phase Prisma ORM 8 takes over planning and applying schema changes. You keep editing `prisma/schema.prisma`, which Prisma ORM 8 goes on reading through `prisma7Schema(...)`.
 
 Treat the switch as a decision, not a routine step. After it, your team and your pipelines must stop using the Prisma ORM 7 migration workflow, even though routes still on the Prisma ORM 7 client keep working. See [how migrations work](/orm/migrations/how-migrations-work) for the full picture.
 
@@ -499,9 +503,11 @@ npx prisma db sign
 npx prisma migration status
 ```
 
-`db sign` verifies that the live schema matches the emitted contract, writes Prisma ORM 8's marker at that contract version, stores the contract snapshot under `migrations/snapshots/`, and points a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at it. `migration plan` starts from that ref, so plans chain from the schema Prisma ORM 7 built and contain only your own changes.
+`db sign` verifies that the live schema matches the contract emitted from `schema.prisma`, writes Prisma ORM 8's marker at that contract version, stores the contract snapshot under `migrations/snapshots/`, and points a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at it. `migration plan` starts from that ref, so each plan builds on the schema Prisma ORM 7 built. `db sign` does not change your tables.
 
-**Expected result:** `Database signed`, and `migration status` shows the current and target contract hashes match with nothing pending.
+**Expected result:** `Database signed` and `Advanced ref "db"`, and `migration status` ends with `Up to date`. With a pack from step 2.3, `db sign` signs the pack's part of the contract as well and prints a second line such as `Advanced ref "db" of space "citext"`.
+
+Run `db sign` once against every other existing database too, such as staging and production, with `DATABASE_URL` pointing at it. A new, empty database does not need it, because `db migrate` creates its tables.
 
 ### 4.2. Retire the Prisma ORM 7 migration scripts
 
@@ -519,15 +525,15 @@ Remove `prisma7 migrate` from your scripts so nobody runs it by accident. Keep `
 
 ### 4.3. Verify the handoff with a schema change
 
-Verify the migration handoff with a small additive schema change. Add a field to the contract:
+Verify the migration handoff with a small additive schema change. Add a field to `schema.prisma`:
 
-```prisma title="prisma8/contract.prisma (excerpt)"
+```prisma title="prisma/schema.prisma (excerpt)"
 model User {
-  id    Int     @id(map: "User_pkey") @default(autoincrement())
-  email String
+  id    Int     @id @default(autoincrement())
+  email String  @unique
   name  String?
   bio   String? // [!code ++]
-  ...
+  posts Post[]
 }
 ```
 
@@ -540,9 +546,9 @@ npx prisma db migrate --advance-ref db
 npx prisma db verify
 ```
 
-**Expected result:** `migration plan` reports `Planned baseline + 1 operation(s)` and writes two packages under `migrations/app/`: a baseline that records the schema you adopted in step 4.1, and `add_user_bio` with the single operation `Add column "bio" to "User"`. `db migrate` skips the baseline, because the marker already records that state, and applies `add_user_bio`. `--advance-ref db` moves the ref so the next plan chains correctly, and `db verify` reports that marker and schema match the contract.
+**Expected result:** `migration plan` reports `Planned baseline (6 operation(s)) + 1 operation(s)`, with your own number for the baseline, and writes two packages under `migrations/app/`: a baseline that records the schema you adopted in step 4.1, and `add_user_bio` with the single operation `Add column "bio" to "User"`. `db migrate` skips the baseline, because the marker already records that state, and applies `add_user_bio`. `--advance-ref db` points the `db` ref at the new contract, so the next plan starts from it, and `db verify` reports that marker and schema match the contract.
 
-Restart the app: the Prisma ORM 8 route returns users with `bio`, and the Prisma ORM 7 route keeps working untouched, because its client doesn't know about the new column. Additive changes like nullable columns are safe next to legacy Prisma ORM 7 code. Be careful with renames or drops of columns that Prisma ORM 7 routes still read.
+Restart the app: the Prisma ORM 8 route returns users with `bio`, and the Prisma ORM 7 route keeps working untouched. The Prisma ORM 7 client learns about the new column only when you run `npm run prisma7:generate`, which reads the same `schema.prisma`. Additive changes like nullable columns are safe next to legacy Prisma ORM 7 code. Be careful with renames or drops of columns that Prisma ORM 7 routes still read.
 
 ## 5. Remove Prisma ORM 7
 
@@ -556,8 +562,10 @@ npm uninstall @prisma/prisma7 @prisma/client @prisma/adapter-pg
 
 ```bash
 rm prisma7.config.ts
-rm -r prisma generated/prisma
+rm -r prisma/migrations generated/prisma
 ```
+
+Keep `prisma/schema.prisma`: it is still your contract. Prisma ORM 8 does not read `prisma/migrations`, because the baseline from step 4.3 already describes the schema those migrations built.
 
 Then delete the `prisma7:*` scripts from `package.json` and drop `generated/prisma/**/*.ts` from the `include` array in `tsconfig.json`.
 
@@ -576,8 +584,35 @@ Prisma ORM 7's `_prisma_migrations` table remains in the database. It is inert: 
 
 :::
 
+## Optional: switch to a Prisma ORM 8 contract file
+
+`schema.prisma` can stay your contract for as long as you like. Some Prisma ORM 8 features need a contract file written in Prisma ORM 8 syntax, such as reading a date as a [`Temporal` value](/cli/configuration#use-a-prisma-orm-7-schema), or marking [a table Prisma ORM must not change](/orm/contract-authoring/advanced-postgresql#a-table-prisma-orm-should-not-touch). Switch only after phase 5, because Prisma ORM 7 cannot read the new file, so while Prisma ORM 7 routes remain, `schema.prisma` has to stay the file you edit.
+
+`contract print`, the command that does the conversion, stops with `CONTRACT.PRINT_UNSUPPORTED` while the schema has an `@ignore` field, an `@@ignore` model, or an `Unsupported(...)` field. Remove `@ignore` and `@@ignore` from `schema.prisma` first. This does not change the database, but the fields and models then appear in the client. Keep `schema.prisma` as your contract while it has `Unsupported(...)` fields.
+
+Convert `schema.prisma` into a Prisma ORM 8 contract file:
+
+```npm
+npx prisma contract print --output prisma8/contract.prisma
+```
+
+Then point the config at it, emit, and check that nothing changed:
+
+```typescript title="prisma.config.ts (excerpt)"
+    contract: prisma7Schema("prisma/schema.prisma"), // [!code --]
+    contract: "prisma8/contract.prisma", // [!code ++]
+```
+
+```npm
+npx prisma contract emit
+npx prisma migration plan --name switch_contract
+```
+
+**Expected result:** `migration plan` prints `No changes detected` and writes no migration, because the new file describes the same database. Delete `prisma/schema.prisma` and remove `prisma7Schema` from the import in `prisma.config.ts`.
+
 ## Next steps
 
 - [How migrations work in Prisma ORM](/orm/migrations/how-migrations-work): the day-to-day `contract emit` → `migration plan` → `migrate` loop for schema changes
-- [Contract authoring](/orm/contract-authoring/psl-syntax): the full PSL syntax for evolving `contract.prisma`
+- [Use a Prisma ORM 7 schema](/cli/configuration#use-a-prisma-orm-7-schema): how Prisma ORM 8 reads each part of `schema.prisma`
+- [Contract authoring](/orm/contract-authoring/psl-syntax): the full syntax of a Prisma ORM 8 contract file
 - [Prisma ORM CLI reference](/cli): every command used in this guide

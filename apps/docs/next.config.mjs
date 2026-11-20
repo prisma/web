@@ -218,6 +218,7 @@ const config = {
       { source: "/guides/next", destination: "/guides", permanent: true },
       { source: "/guides/next/:path*", destination: "/guides/:path*", permanent: true },
       { source: "/llms/next.txt", destination: "/llms/orm.txt", permanent: true },
+      { source: "/composer/quickstart", destination: "/composer/getting-started", permanent: true },
       { source: "/prisma-orm/release-status", destination: "/orm/release-status", permanent: true },
       {
         source: "/prisma-orm/supported-databases",
@@ -387,7 +388,7 @@ const config = {
       },
       // Nested Prisma 7 core-concepts pages only. `:path*` also matched the
       // Prisma 8 hub at /orm/core-concepts (core-concepts.mdx) and sent it to
-      // /orm/v7/core-concepts/, which has no index and 404s (prisma/prisma#30136).
+      // /orm/v7/core-concepts/, which has no index and 404s (prisma/orm#30136).
       {
         source: "/orm/core-concepts/:path+",
         destination: "/orm/v7/core-concepts/:path+",

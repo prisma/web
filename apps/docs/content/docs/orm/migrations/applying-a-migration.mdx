@@ -166,7 +166,7 @@ In development, add `--advance-ref db` so the next `migration plan` starts from 
 
 When you deploy by hand, run the three commands in [Check before, preview, then apply](#check-before-preview-then-apply). The point of the `migration check` step is to tell you that what you are about to apply is still what was reviewed. In a pipeline, the deploy job runs only the last of them, `db migrate` with `--to <ref>`, which that section explains. That one command is all the pipeline needs, because `db migrate` refuses to run when a migration's `ops.json` or `migration.json` no longer matches the hash recorded for it.
 
-Each migration's `migration.json` records a hash, `migrationHash`, computed from the rest of `migration.json` and from `ops.json`. If either file changes after the hash was recorded, for example because you edited it by hand, `migration check` fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, as [Editing a migration](/orm/migrations/editing-a-migration) explains. To fix it, either restore the migration's files from Git, or move the hand edit into `migration.ts` and recompile with `node migrations/app/<dir>/migration.ts`.
+Each migration's `migration.json` records a hash, `migrationHash`, computed from the rest of `migration.json` and from `ops.json`. If either file changes after the hash was recorded, for example because you edited it by hand, `migration check` fails with an error whose `code` is `MIGRATION.CHECK_HASH_MISMATCH`, as [Editing a migration](/orm/migrations/editing-a-migration) explains. `db migrate` and `migration status` refuse the same edited migration with a different code, `MIGRATION.CONTRACT_SPACE_VIOLATION`, and the message names the migration, the hash it recorded, and the hash of the files as they are now. The fix is the same for both codes: either restore the migration's files from Git, or move the hand edit into `migration.ts` and recompile with `node migrations/app/<dir>/migration.ts`.
 
 One case needs a different fix. If the error comes back right after you recompile, and the migration's backfill updates a model with an `@onUpdate(now())` column, such as `temporal.UpdatedAt`, recompiling cannot fix it. [Editing a migration](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) shows how to write that backfill instead.
 
@@ -195,7 +195,7 @@ Applying, targeting, previewing, refs, the ledger, and applying several contract
 
 :::
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. In an existing project, run `npx prisma skills sync`. Ask your agent to:
 

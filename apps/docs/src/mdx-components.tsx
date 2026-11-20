@@ -6,17 +6,25 @@ import { DatabaseCodeTabs } from "@/components/database-code-tabs";
 import { DeployButtonGenerator } from "@/components/deploy-button-generator";
 import {
   AgentPrompt,
-  CliCallout,
+  CommandRow,
+  CommandRows,
+  DeployCallout,
+  DocsIndex,
   IconGrid,
   IconLink,
+  IndexLink,
   ModalRow,
   SectionRow,
+  SetupPath,
+  SetupPrompt,
+  SetupTabs,
   WorkflowGrid,
   WorkflowHero,
   WorkflowLink,
   WorkflowStage,
 } from "@/components/getting-started";
 import { BucketIcon } from "@/components/icons/bucket";
+import { Steps } from "@/components/steps";
 import { withDocsBasePath } from "@/lib/urls";
 import { cn } from "@prisma-docs/ui/lib/cn";
 
@@ -124,13 +132,21 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     AgentPrompt,
     // Same custom bucket the sidebar's Storage entry uses (lucide has none).
     Bucket: BucketIcon,
-    CliCallout,
+    CommandRow,
+    CommandRows,
+    DeployCallout,
+    DocsIndex,
+    IndexLink,
     ConceptAnimation,
     DeployButtonGenerator,
     IconGrid,
     IconLink,
     ModalRow,
     SectionRow,
+    SetupPath,
+    SetupPrompt,
+    SetupTabs,
+    Steps,
     TechIcon,
     WorkflowGrid,
     WorkflowHero,
@@ -155,7 +171,11 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     td: ({ ref: _ref, ...props }) => <TableCell {...props} />,
     caption: ({ ref: _ref, ...props }) => <TableCaption {...props} />,
     // Override Fumadocs Callout components with Eclipse Alert for alerts (:::ppg, :::error, :::success, :::warning)
-    CalloutTitle: ({ children }: any) => <div className="mb-3 font-semibold">{children}</div>,
+    CalloutTitle: ({ children }: any) => (
+      <div data-callout-title className="mb-3 font-semibold">
+        {children}
+      </div>
+    ),
     CalloutDescription: ({ children }: any) => <>{children}</>,
     CalloutContainer: ({ type, children, icon, className, ...props }: any) => {
       const variantMap: Record<string, "ppg" | "note" | "error" | "success" | "warning"> = {
@@ -170,7 +190,11 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
       };
 
       return (
+        // role="note": a callout is an aside, not a live alert; Eclipse's
+        // Alert defaults to role="alert", which screen readers announce
+        // as urgent the moment the page loads.
         <Alert
+          role="note"
           variant={variantMap[type] || "ppg"}
           icon={icon}
           // Roomier vertical rhythm: admonition prose was rendering cramped

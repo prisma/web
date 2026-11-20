@@ -199,14 +199,15 @@ export function SidebarDrawerOverlay(props: ComponentProps<"div">) {
   );
 }
 
-export function SidebarDrawerContent({ className, children, ...props }: ComponentProps<"aside">) {
+export function SidebarDrawerContent({ className, children, ...props }: ComponentProps<"nav">) {
   const { open, mode } = useSidebar();
   const [hidden, setHidden] = useState(!open);
 
   if (open && hidden) setHidden(false);
   if (mode !== "drawer") return;
   return (
-    <aside
+    <nav
+      aria-label="Docs"
       id="nd-sidebar-mobile"
       data-state={open ? "open" : "closed"}
       className={cn(hidden && "invisible", className)}
@@ -216,7 +217,7 @@ export function SidebarDrawerContent({ className, children, ...props }: Componen
       {...props}
     >
       {children}
-    </aside>
+    </nav>
   );
 }
 

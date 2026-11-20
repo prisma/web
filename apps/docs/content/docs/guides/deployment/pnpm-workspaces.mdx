@@ -25,26 +25,6 @@ Prisma 8 is a [release candidate](/orm/release-status) of Prisma ORM. Prisma 7 r
 - [pnpm](https://pnpm.io/installation) 10.26 or later, but not 12.0 to 12.4.0, which have a defect that breaks step 2.1 (this guide uses pnpm 12.7.0)
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
-## Use with your agent
-
-To delegate this guide to your coding agent, copy the prompt below and hand it over:
-
-<AgentPrompt>
-
-```text
-Set up a pnpm workspaces monorepo with a shared Prisma 8 database package and a Next.js app that renders users from it.
-
-1. Create `my-monorepo` with `pnpm init`, a `pnpm-workspace.yaml` listing `apps/*` and `packages/*` with `allowBuilds` for `esbuild`, `msgpackr-extract`, and `workerd`, and the directories `apps` and `packages/database`.
-2. In `packages/database`, run `pnpm init`, then `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `pnpm prisma init` in the same directory so the Prisma agent skills are installed, and use them.
-3. Write `packages/database/.env` with `DATABASE_URL` (use the connection string I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints). Run `pnpm prisma db init` in `packages/database`.
-4. Add `src/index.ts` exporting `db` from `./prisma/db`, set `"exports": { ".": "./src/index.ts" }` in the package's package.json, add a `src/seed.ts` that upserts two users with `db.orm.public.User.upsert(...)` and closes with `await db.close()`, and run it with `node src/seed.ts`.
-5. In `apps`, run `pnpm create next-app@latest web --yes --skip-install`, delete `apps/web/.git` and `apps/web/pnpm-workspace.yaml`, add `sharp: false` and `unrs-resolver: false` to `allowBuilds` in the root `pnpm-workspace.yaml`, add `"database": "workspace:*"` to `apps/web/package.json`, copy `packages/database/.env` to `apps/web/.env`, and run `pnpm install` from the workspace root.
-6. Replace `apps/web/app/page.tsx` with a server component that imports `{ db } from "database"`, exports `dynamic = "force-dynamic"`, queries `db.orm.public.User.select("id", "email", "name").all()`, and renders the list.
-7. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update`, and `seed` that filter to the right package, start `pnpm dev` in the background, verify http://localhost:3000 renders the seeded users, then stop it. Finally run `pnpm build` and confirm it completes.
-```
-
-</AgentPrompt>
-
 ## 1. Create the workspace
 
 Create the monorepo directory and initialize it:
@@ -95,8 +75,8 @@ Answer the prompts: choose `PSL` for the authoring style and keep the other defa
 ✔ pnpm add @prisma/orm-postgres dotenv
 ▸ pnpm add -D prisma@latest @types/node
 ✔ pnpm add -D prisma@latest @types/node
-▸ pnpm add -D @prisma/cli-engine@0.9.0
-✔ pnpm add -D @prisma/cli-engine@0.9.0
+▸ pnpm add -D @prisma/cli-engine@0.10.0
+✔ pnpm add -D @prisma/cli-engine@0.10.0
 ▸ Emit the contract
 ✔ Emit the contract
 │  target:     postgres
@@ -419,9 +399,27 @@ Open the URL Studio prints. The `User` and `Post` tables appear under **Tables**
 - Do not call `db.close()` in a page or route handler. The client is a module-level singleton whose connection pool is shared across requests; close it only in scripts that exit, like `seed.ts`.
 - After you change `src/prisma/contract.prisma`, run `pnpm --filter database contract:emit` so the app sees the new types, then `pnpm db:update` to apply the change. The root `build` script emits for you before every build.
 
-## Prompt your coding agent
+## Use with your agent
 
-Run [`pnpm prisma init`](/cli/init) once inside `packages/database` to install the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. It adds a `postinstall` script that keeps the skills matching your installed packages, and it installs them into `.claude/skills`, `.cursor/skills`, `.agents/skills`, and `.devin/skills` under the package. Prompts that map to this guide:
+To delegate this guide to your coding agent, copy the prompt below and hand it over:
+
+<AgentPrompt>
+
+```text
+Set up a pnpm workspaces monorepo with a shared Prisma 8 database package and a Next.js app that renders users from it.
+
+1. Create `my-monorepo` with `pnpm init`, a `pnpm-workspace.yaml` listing `apps/*` and `packages/*` with `allowBuilds` for `esbuild`, `msgpackr-extract`, and `workerd`, and the directories `apps` and `packages/database`.
+2. In `packages/database`, run `pnpm init`, then `npx prisma@latest orm init --yes --target postgres --authoring psl`. Then run `pnpm prisma init` in the same directory so the Prisma agent skills are installed, and use them.
+3. Write `packages/database/.env` with `DATABASE_URL` (use the connection string I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints). Run `pnpm prisma db init` in `packages/database`.
+4. Add `src/index.ts` exporting `db` from `./prisma/db`, set `"exports": { ".": "./src/index.ts" }` in the package's package.json, add a `src/seed.ts` that upserts two users with `db.orm.public.User.upsert(...)` and closes with `await db.close()`, and run it with `node src/seed.ts`.
+5. In `apps`, run `pnpm create next-app@latest web --yes --skip-install`, delete `apps/web/.git` and `apps/web/pnpm-workspace.yaml`, add `sharp: false` and `unrs-resolver: false` to `allowBuilds` in the root `pnpm-workspace.yaml`, add `"database": "workspace:*"` to `apps/web/package.json`, copy `packages/database/.env` to `apps/web/.env`, and run `pnpm install` from the workspace root.
+6. Replace `apps/web/app/page.tsx` with a server component that imports `{ db } from "database"`, exports `dynamic = "force-dynamic"`, queries `db.orm.public.User.select("id", "email", "name").all()`, and renders the list.
+7. Add root scripts `dev`, `build`, `start`, `db:init`, `db:update`, and `seed` that filter to the right package, start `pnpm dev` in the background, verify http://localhost:3000 renders the seeded users, then stop it. Finally run `pnpm build` and confirm it completes.
+```
+
+</AgentPrompt>
+
+The prompt above runs [`pnpm prisma init`](/cli/init) in its second step. If you followed the steps by hand, run it once yourself inside `packages/database`: it installs the [Prisma 8 skills](/ai/tools/skills#available-skills-for-prisma-8) for your coding agent. It adds a `postinstall` script that keeps the skills matching your installed packages, and it installs them into `.claude/skills`, `.cursor/skills`, `.agents/skills`, and `.devin/skills` under the package. Prompts you can give your agent after this guide:
 
 - "Using the prisma-8 skill, add a `Post` list under each user on the home page with `.include('posts')`."
 - "Add a `packages/database` script that creates a post for a given user email."

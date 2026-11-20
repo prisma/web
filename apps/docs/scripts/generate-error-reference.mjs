@@ -266,9 +266,10 @@ export function transform(target, markdown) {
   body = addScope(body, target, warnings);
   body = replaceNamespaceList(body, target);
 
-  // Repo-relative links point at files that only exist in the source repo.
+  // Repo-relative links point at files that only exist in the source repo:
+  // "./x.md", "../x.md", and bare sibling files like "transaction-options.md#timeout".
   const blobBase = `https://github.com/${target.sourceRepo}/blob/main/docs/reference/`;
-  body = body.replace(/\]\((\.\.?\/[^)]+)\)/g, (_, linkTarget) => {
+  body = body.replace(/\]\((\.\.?\/[^)]+|[\w-][^):\s]*\.md(?:#[^)]*)?)\)/g, (_, linkTarget) => {
     const url = new URL(linkTarget, `${blobBase}error-reference.md`);
     return `](${url.href})`;
   });

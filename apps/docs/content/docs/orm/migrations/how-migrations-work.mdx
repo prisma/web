@@ -55,7 +55,7 @@ The `app space:` line tells you which migration history the new directory was wr
 ✔ Applied 1 migration(s) (1 operation(s)) across 1 contract space(s)
 ```
 
-The first time you run `migration plan`, there are no migrations and no `db` ref on disk yet, so there is no earlier state to compare against and Prisma ORM plans as if the database were empty. If you want it to start somewhere else, pass `--from`, such as `--from 20260707T1006_add_user_phone` for the state after that migration. The [`migration plan` reference](/cli/migration-plan#options) lists the other forms `--from` accepts, and [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) covers what `migration plan` starts from when you leave `--from` off.
+When you run `migration plan` with no migrations and no `db` ref on disk, as in a new project, there is no earlier state to compare against, so Prisma ORM plans as if the database were empty. If you ran `db sign` first, the `db` ref exists and the plan starts from the signed state, as [The automatic baseline](/cli/migration-plan#the-automatic-baseline) describes. Once you have migrations, you can make a plan start from a state other than the one the `db` ref names by passing `--from` with a migration directory name, such as `--from 20260707T1006_add_user_phone` for the state after the migration above. The [`migration plan` reference](/cli/migration-plan#options) lists the other forms `--from` accepts, and [The db ref](/orm/migrations/generating-a-migration#the-db-ref-skipping---from) covers what `migration plan` starts from when you leave `--from` off.
 
 `db migrate` needs a database to talk to, and it takes that from `db.connection` in [`prisma.config.ts`](/orm/contract-authoring/the-data-contract), such as `db: { connection: process.env["DATABASE_URL"]! }`, unless you pass a URL with the `--db` flag. In CI and production, run `npx prisma db migrate --to <ref>`, where the ref names the state that environment should reach, as [Applying a migration](/orm/migrations/applying-a-migration) explains.
 
@@ -68,7 +68,7 @@ curl -O https://raw.githubusercontent.com/prisma/orm/v8.0.0-rc.12/skills/prisma-
 node add-model-map.mjs '**/*.prisma'
 ```
 
-The script adds `@@map` with the name the table has now, such as `@@map("userProfile")`, to each model that has no `@@map`, in every `.prisma` file in your project, including any you keep in a migration directory. If you plan without running it, `migration plan` stops with [`MIGRATION.TABLE_NAME_CASE_CHANGED`](/orm/reference/error-reference#MIGRATION.TABLE_NAME_CASE_CHANGED) instead of dropping the table and creating an empty one.
+The script adds `@@map` with the name the table has now, such as `@@map("userProfile")`, to each model that has no `@@map`. It changes every `.prisma` file in your project outside `node_modules` and `dist`. Migrations planned with those releases also kept a copy of `contract.prisma` under `migrations/`, and the script changes those copies too. If you plan without running it, `migration plan` stops with [`MIGRATION.TABLE_NAME_CASE_CHANGED`](/orm/reference/error-reference#MIGRATION.TABLE_NAME_CASE_CHANGED) instead of dropping the table and creating an empty one.
 
 :::
 
@@ -154,7 +154,7 @@ The migration commands are part of the [Prisma ORM CLI](/cli) and run as `npx pr
 | `migration graph`         | Draw your [migration history](/orm/migrations/the-migration-graph) as a graph |
 | `migration check`         | Check that each migration's `migrationHash` still matches its files and no files are missing, before you commit a hand edit |
 
-`<target>` is a migration's directory name, its path under `migrations/app/`, or the first 6 or more characters of its `migrationHash`. You find a migration's `migrationHash` in its `migration.json`, and `migration show` prints it on the `hash:` line. It is the migration's own hash, not a contract hash, so you cannot pass it to `--from` or `--to`, which take a contract reference, such as a contract hash prefix. [Contract references each command accepts](/orm/migrations/the-migration-graph#contract-reference-forms) lists the forms.
+`<target>` is a migration's directory name, its path under `migrations/app/`, or the first 6 or more characters of its `migrationHash`. You find a migration's `migrationHash` in its `migration.json`, and `migration show` prints it on the `hash:` line. It is the migration's own hash, not a contract hash, so you cannot pass it to `--from` or `--to`, which take a contract reference, such as a contract hash prefix. [Contract references each command accepts](/cli/migration-ref#contract-reference-forms) lists the forms.
 
 The commands in this table connect to a database:
 
@@ -192,7 +192,7 @@ The commands, the file layout, the migration history, and the checks work the sa
 
 On MongoDB, Prisma ORM gives each collection it manages a `$jsonSchema` validator, so that MongoDB itself refuses a document that does not match its model. The validator is closed: it refuses a field the model does not declare, as well as a missing required field and a value of the wrong BSON type. This is the same whether you write the contract in `contract.prisma` or in TypeScript with `defineContract`. One collection can store more than one model. When they are a base model and its [variants](/orm/contract-authoring/psl-syntax#base-models-and-variants), its validator accepts a document of the base model or of any variant. When they are separate models stored in the same collection, its validator accepts a document of any of those models.
 
-MongoDB does not check the documents already in a collection when a validator is added. So before you apply a validator, fix any stored document that does not match its model. Then apply it with `npx prisma db update`, or with `npx prisma migration plan` followed by `npx prisma db migrate`.
+MongoDB itself does not check the documents already in a collection when a validator changes, so Prisma ORM does. Since `8.0.0-rc.24`, every validator change that `migration plan` or `db update` writes checks the documents first, after the migration's own rewrites, with `checkDocuments: true` on its `collMod`. While a document does not fit the new validator, `db migrate` or `db update` stops with `MIGRATION.PRECHECK_FAILED` and prints a `mongosh` query that finds those documents. Fix them, and run the command again; operations that ran before the validator change stay applied, and a new run skips them. A document changed to the new shape may be refused by the old validator, so an update that fixes one can skip validation, with a data transform in `migration.ts` or with `bypassDocumentValidation: true` in `mongosh`. Under `db migrate` you can instead set `checkDocuments` to `false` on that `collMod` in `migration.ts`, run `node migration.ts`, and apply the validator over those documents; they then fail their next update until they fit. A database adopted from Prisma ORM 6 has no validator, so the first migration adds one and checks every collection.
 
 In a contract written in TypeScript, you can leave a collection without a validator, for example because other applications write fields your contract does not declare. Give its model `controlPolicy: 'observed'`, which tells Prisma ORM to leave the collection as it is: Prisma ORM then creates and changes nothing in it, not even a validator. The [TypeScript schema builder](/orm/contract-authoring/typescript-schema-builder) page shows the option.
 
@@ -204,7 +204,7 @@ Planning, editing, applying, and [rolling back](/orm/migrations/rollbacks-and-re
 
 :::
 
-## Prompt your coding agent
+## Use with your agent
 
 Projects created with `npm create prisma@latest` include the [Prisma ORM skills](/ai/tools/skills#available-skills-for-prisma-8), instruction files for your coding agent. In an existing project, run `npx prisma skills sync`. Ask your agent to:
 
