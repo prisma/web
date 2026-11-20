@@ -201,16 +201,25 @@ After you edit `src/prisma/contract.prisma`, for example to add a `bio String?` 
 ```bash
 bun run contract:emit
 bun run migration:plan --name add-user-bio
+```
+
+`contract:emit` updates the files your queries are type-checked against, and `migration:plan` writes the change as a new migration in `migrations/app/`. Then apply the migration to your local database, and point the `db` ref at it so that your next `migration:plan` starts from this migration. Without the ref step, the next plan would include this change a second time.
+
+If your development database is in `DATABASE_URL`, one command does both:
+
+```bash
+bun run migrate --advance-ref db
+```
+
+If you use `bun run dev:composer`, restart it: it applies new migrations when it starts. It does not update the `db` ref, so once it is running, set the ref yourself to the directory that `migration:plan` printed, such as `migrations/app/20261120T1104_add_user_bio`:
+
+```bash
 bunx prisma migration ref set db <new migration directory>
 ```
 
-`contract:emit` updates the files your queries are type-checked against. `migration:plan` writes the change as a new migration and prints its directory, such as `migrations/app/20261120T1104_add_user_bio`. Pointing the `db` ref at that directory makes your next `migration:plan` start from this migration. Without that step, the next plan would include this change a second time.
-
-Then apply the migration to your local database. If your database is in `DATABASE_URL`, run `bun run migrate`. If you use `bun run dev:composer`, restart it: it applies new migrations when it starts.
-
 Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `bun run build` and `bunx prisma@latest deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
 
-If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Name the newest directory that `ls migrations/app` lists, then continue with the `db` ref step:
+If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Name the newest directory that `ls migrations/app` lists, then apply the migration as above:
 
 ```bash
 bun run migration:plan --from <your newest migration directory> --name add-user-bio
