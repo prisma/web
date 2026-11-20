@@ -74,8 +74,9 @@ npx prisma@latest orm init --yes --target postgres --authoring psl
 With `--yes`, the command asks no questions and uses the default for anything the flags do not set, such as the schema path `src/prisma/contract.prisma`. It installs the packages and emits the contract. `@prisma/cli-engine` is the library the `prisma` commands are built on, not a query engine:
 
 ```text no-copy
+Updated tsconfig.json with required compiler options.
 ✔ npm add @prisma/orm-postgres dotenv
-✔ npm add -D prisma@latest @types/node
+✔ npm add -D prisma@latest
 ✔ npm add -D @prisma/cli-engine@0.10.0
 ✔ Emit the contract
 │  target:     postgres
@@ -96,9 +97,13 @@ installed
 ├─ @prisma/orm-postgres
 ├─ dotenv
 ├─ prisma@latest (dev)
-├─ @types/node (dev)
 └─ @prisma/cli-engine@0.10.0 (dev)
 ✔ Done. Open prisma-8.md to get started.
+→ Set DATABASE_URL in your environment (export it or add it to .env)
+→ Edit your schema at src/prisma/contract.prisma, then emit again
+→ Open prisma-8.md for a quick reference on writing your first typed query
+→ Set up the Prisma agent skills for your coding agent: prisma init
+Prisma agent skills are out of date (installed @prisma/orm-postgres 8.0.0-rc.24, synced none). Run: prisma skills sync
 ```
 
 The important files:
@@ -110,6 +115,8 @@ The important files:
 - `prisma-8.md`: a short quick reference for writing your first typed query.
 
 `orm init` also sets `"type": "module"` in `package.json` and adds a `contract:emit` script. Whenever you edit `src/prisma/contract.prisma`, run `npm run contract:emit` to refresh the emitted files.
+
+The last line of the output is a reminder from the Prisma CLI, and every `prisma` command prints it from now on. Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into this project yet. Run `npx prisma@latest init` once to copy them in, as [Use with your agent](#use-with-your-agent) describes. The line never makes a command fail, and [The staleness check](/cli/skills#the-staleness-check) lists the ways to turn it off.
 
 ### 2.2. Enable Node.js compatibility
 
@@ -146,10 +153,27 @@ npx prisma db init
 ```
 
 ```text no-copy
-"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+✔ Introspecting database schema
+✔ Planning migration
+✔ Initialising database across spaces
+│  contract:  src/prisma/contract.json
+│  database:  postgres://****:****@localhost:5432/mydb
+
+✔ Applied 5 operation(s) across 1 contract space
+
+App space
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
+
+✔ Advanced ref "db" → 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
+→ Confirm the space is up to date: prisma migration status
 ```
 
-`db init` creates the `user` and `post` tables from the contract and signs the database, which records that it matches the emitted contract. There is no `prisma migrate dev` in Prisma ORM; use [`db update`](/cli/db-update) for later schema changes during development and [`migration plan`](/cli/migration-plan) when you want a checked-in migration.
+`db init` creates the `User` and `Post` tables from the contract and signs the database, which records that it matches the emitted contract. There is no `prisma migrate dev` in Prisma ORM; use [`db update`](/cli/db-update) for later schema changes during development and [`migration plan`](/cli/migration-plan) when you want a checked-in migration.
 
 ## 3. Query the database from the Worker
 

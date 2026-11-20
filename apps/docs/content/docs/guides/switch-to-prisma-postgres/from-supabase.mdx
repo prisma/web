@@ -261,6 +261,8 @@ npx prisma db verify --db "$DIRECT_URL"
 
 The command exits with code `0` when the marker and schema match the contract. Exit code `4` means the database does not match. Check that the restore included the `prisma_contract` schema before you change anything else. Do not run `orm init` or `contract infer` against the new database; your existing contract already describes it.
 
+This works only if your contract does not use the [Supabase extension](/orm/extensions/using-extensions#available-extensions), `@prisma/orm-extension-supabase`. That extension describes what Supabase owns in the database: the tables in the `auth` and `storage` schemas, and the `anon`, `authenticated`, and `service_role` roles. `db verify` checks that they exist. Prisma Postgres has none of them, and this guide does not copy the `auth` or `storage` schema, so a contract that uses the extension does not match the new database. A relation from one of your models to a Supabase table, such as a user's `AuthUser`, also points at a table that is not there, and the `asUser`, `asAnon`, and `asServiceRole` clients switch to roles that do not exist. Before the final dump in step 4, remove the extension from your config and your client, replace those relations and role-bound clients with your new authorization design, and apply that contract change to the Supabase database.
+
 ### Use Prisma ORM 7 or earlier [#use-prisma-7-or-earlier]
 
 Set the pooled URL for runtime queries and the direct URL for Prisma CLI commands:

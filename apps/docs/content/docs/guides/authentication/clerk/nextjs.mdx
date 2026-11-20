@@ -104,20 +104,58 @@ rm -rf migrations
 npx prisma migration plan --name init
 ```
 
-```json no-copy
-"dir": "migrations/app/20261019T0955_init"
+```text no-copy
+│  contract:    src/prisma/contract.json
+│  migrations:  migrations/app
+│  name:        init
+
+✔ Planned 7 operation(s)
+ℹ No db ref set — planning from an empty database. Run db init, db update, or db sign if a database already exists.
+
+migrations/app/20261120T1059_init
+├─ Create schema "public"
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (clerkId)
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+└─ Add foreign key "Post_authorId_fkey" on "Post"
+
+from:       (baseline)
+to:         0262f4e9e969856ac0f374813d388960c604da8f600c785c617f6fcb81d3a335
+app space:  migrations/app/20261120T1059_init
 ```
+
+The command also prints the SQL the migration will run, under `DDL preview`.
 
 ### 2.4. Create the tables
 
-Now create the tables in the database from step 1. `db:init` applies the contract directly and records in the database which contract it matches (the output calls this signing). It does not replay the migration you just planned; that file is for the deploy:
+Now create the tables in the database from step 1. `db:init` applies the contract directly and records in the database which contract it matches (the `marker` line in the output). It does not replay the migration you just planned; that file is for the deploy:
 
 ```npm
 npm run db:init
 ```
 
 ```text no-copy
-"summary": "Applied 6 operation(s) across 1 space(s), database signed"
+✔ Introspecting database schema
+✔ Planning migration
+✔ Initialising database across spaces
+│  contract:  src/prisma/contract.json
+│  database:  postgres://****:****@db.prisma.io:5432/postgres?sslmode=require
+
+✔ Applied 6 operation(s) across 1 contract space
+
+App space
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (clerkId)
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 0262f4e9e969856ac0f374813d388960c604da8f600c785c617f6fcb81d3a335
+
+✔ Advanced ref "db" → 0262f4e9e969856ac0f374813d388960c604da8f600c785c617f6fcb81d3a335
+→ Confirm the space is up to date: prisma migration status
 ```
 
 If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat.

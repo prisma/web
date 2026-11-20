@@ -21,7 +21,7 @@ Prisma ORM 8 is a [release candidate](/orm/release-status). Prisma ORM 7 remains
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/docs/installation) 1.1 or later (`bun --version`)
+- [Bun](https://bun.sh/docs/installation) 1.3 or later (`bun --version`)
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended): Bun runs the scripts, and Next.js runs on Node.js
 - A PostgreSQL connection string, or nothing at all: `bunx create-db@latest` can create a [Prisma Postgres](/postgres) database for you
 
@@ -86,13 +86,21 @@ It also runs the first `contract emit`, which compiles the schema into `src/pris
 
 Bun installs the workspace's dependencies into the root `node_modules` and writes a single `bun.lock` at the root, even though you ran the command inside `packages/database`.
 
+From now on, every `prisma` command ends with this line:
+
+```text no-copy
+Prisma agent skills are out of date (installed @prisma/orm-postgres 8.0.0-rc.24, synced none). Run: prisma skills sync
+```
+
+Prisma ships instructions for coding agents, called skills, inside its packages, and none have been copied into this project yet. Run `bunx prisma@latest init` once inside `packages/database` to copy them in, as [Use with your agent](#use-with-your-agent) describes. The line never makes a command fail, and [The staleness check](/cli/skills#the-staleness-check) lists the ways to turn it off.
+
 The generated client reads `DATABASE_URL` from the environment and loads `.env` first:
 
 ```ts title="packages/database/src/prisma/db.ts"
 import 'dotenv/config';
 import postgres from '@prisma/orm-postgres/runtime';
 import { contractFromJson } from '@prisma/orm-postgres/static';
-import type { Contract } from './contract.d';
+import type { Contract } from './contract.d.js';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
@@ -136,10 +144,28 @@ bun run db:init
 ```
 
 ```text no-copy
-"summary": "Applied 5 operation(s) across 1 space(s), database signed"
+$ prisma db init
+✔ Introspecting database schema
+✔ Planning migration
+✔ Initialising database across spaces
+│  contract:  src/prisma/contract.json
+│  database:  postgresql://****:****@localhost:5432/mydb
+
+✔ Applied 5 operation(s) across 1 contract space
+
+App space
+├─ Create table "Post"
+├─ Create table "User"
+├─ Add unique constraint on "User" (email)
+├─ Create index "Post_authorId_idx_e47547ed" on "Post"
+├─ Add foreign key "Post_authorId_fkey" on "Post"
+└─ marker 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
+
+✔ Advanced ref "db" → 920a87b50729a867e21706dd0fa5c3739e273a84ed89eb2f3525633b2d6ef85c
+→ Confirm the space is up to date: prisma migration status
 ```
 
-If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Applied 0 operation(s)` when there is nothing left to do.
+If `db:init` stops with `Connection terminated unexpectedly`, a database you just created is still starting; wait a few seconds and run it again. The command is safe to repeat and reports `Database already matches contract` when there is nothing left to do.
 
 ### 2.4. Export the client
 
@@ -382,14 +408,14 @@ Schema changes happen in one place. Edit `packages/database/src/prisma/contract.
 
 ```prisma title="packages/database/src/prisma/contract.prisma"
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int                @id @default(autoincrement())
+  email     String             @unique
   username  String?
   name      String?
   bio       String? // [!code ++]
   posts     Post[]
-  createdAt TimestamptzString @default(now())
-  updatedAt DateTime(as: string) @onCreate(now()) @onUpdate(now())
+  createdAt DateTime           @default(now()) @onCreate(now())
+  updatedAt temporal.UpdatedAt
 }
 ```
 
@@ -401,7 +427,19 @@ bun run db:update
 ```
 
 ```text no-copy
-"summary": "Applied 1 operation(s) across 1 space(s), signature updated"
+$ bun run --filter database db:update
+database db:update $ prisma db update
+│ [8 lines elided]
+│
+│ ✔ Applied 1 operation(s) across 1 contract space
+│
+│ App space
+│ ├─ Add column "bio" to "User"
+│ └─ marker 6e69751dc224065276851f840d791cdf8a8c3b73e59f055af8a37af61421e8c9
+│
+│ ✔ Advanced ref "db" → 6e69751dc224065276851f840d791cdf8a8c3b73e59f055af8a37af61421e8c9
+│ → Confirm the space is up to date: prisma migration status
+└─ Done in 1.83 s
 ```
 
 The Next.js app picks up the new field on its next request because it imports the package's emitted `contract.d.ts` directly. For a checked-in migration instead of a direct update, use [`migration plan`](/cli/migration-plan) and [`db migrate`](/cli/db-migrate).
@@ -410,7 +448,7 @@ The Next.js app picks up the new field on its next request because it imports th
 
 :::warning
 
-If the app fails with `CONTRACT.MARKER_READ_FAILED` and `Postgres driver not connected`, `DATABASE_URL` is not set in the app's environment. The client is constructed in `packages/database`, but the environment it reads comes from the process that imports it. Make sure `apps/web/.env` exists, or export `DATABASE_URL` in the shell that runs `bun run dev`.
+If the app fails with `DRIVER.NOT_CONNECTED` and `Postgres driver not connected`, `DATABASE_URL` is not set in the app's environment. The client is constructed in `packages/database`, but the environment it reads comes from the process that imports it. Make sure `apps/web/.env` exists, or export `DATABASE_URL` in the shell that runs `bun run dev`.
 
 :::
 
