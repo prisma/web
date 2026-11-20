@@ -11,7 +11,7 @@ The SQL query builder builds typed queries from a table, with one method per SQL
 Some methods work only on some databases, and some fail only when the query runs. For a task-oriented guide to when and how to reach for the builder, see [Advanced queries](/orm/fundamentals/advanced-queries).
 
 :::note[The builder for SQL databases]
-The SQL query builder targets SQL databases; PostgreSQL and SQLite are supported today. MongoDB has no SQL builder: use the [ORM client](/orm/reference/orm-client) for MongoDB queries, and the [pipeline builder](/orm/reference/pipeline-builder) for aggregation pipelines.
+The SQL query builder targets SQL databases; PostgreSQL, SQLite, and the MySQL early preview are supported today. MongoDB has no SQL builder: use the [ORM client](/orm/reference/orm-client) for MongoDB queries, and the [pipeline builder](/orm/reference/pipeline-builder) for aggregation pipelines.
 :::
 
 ## Example schema
@@ -153,7 +153,7 @@ const users = await db.query(plan);
 
 The example schema's `Embedding1536` column is a pgvector type, so a client for that schema also needs pgvector in `extensions`, as [Built-in functions](#built-in-functions) shows.
 
-SQLite works the same way: create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite, but every other one is. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
+SQLite works the same way: create the client with `sqlite(...)` from `@prisma/orm-sqlite/runtime`. SQLite has no schemas, so there is no `public` in the path and the same table is `db.sql.user`. Of the SELECT methods on this page, `lateralJoin()`, `outerLateralJoin()`, and `distinctOn()` are not available on SQLite, but every other one is. MySQL, an early preview, works like SQLite: create the client with `mysql(...)` from `@prisma/orm-mysql/runtime`, and the table is `db.sql.user`. On MySQL, row locks, lateral joins, `distinctOn()`, `.returning(...)`, and `outerFullJoin()` are not available, because MySQL has no `RETURNING`, `DISTINCT ON`, or `FULL JOIN`, and Prisma ORM does not support its row locks or lateral joins yet. TypeScript rejects all of them except `outerFullJoin()`, which type-checks and then throws an error whose `code` is `RUNTIME.AST_UNSUPPORTED` when the query runs. The rest of this page shows PostgreSQL and writes the root as `db.sql.public`.
 
 ### Table access
 
@@ -312,7 +312,7 @@ const rows = await db.query(plan);
 
 ### `outerLeftJoin()`, `outerRightJoin()`, `outerFullJoin()`
 
-Keep unmatched rows from one or both sides, filling the missing side's columns with `null`. Each takes the same `(other, on)` arguments and returns a `SelectQuery` as [`innerJoin()`](#innerjoin) does. `outerLeftJoin()` is SQL's `LEFT OUTER JOIN` and keeps every left-table row. `outerRightJoin()` is `RIGHT OUTER JOIN` and keeps every right-table row. `outerFullJoin()` is `FULL OUTER JOIN` and keeps unmatched rows from both sides.
+Keep unmatched rows from one or both sides, filling the missing side's columns with `null`. Each takes the same `(other, on)` arguments and returns a `SelectQuery` as [`innerJoin()`](#innerjoin) does. `outerLeftJoin()` is SQL's `LEFT OUTER JOIN` and keeps every left-table row. `outerRightJoin()` is `RIGHT OUTER JOIN` and keeps every right-table row. `outerFullJoin()` is `FULL OUTER JOIN` and keeps unmatched rows from both sides. MySQL has no `FULL JOIN`, so there `outerFullJoin()` throws an error whose `code` is `RUNTIME.AST_UNSUPPORTED` when the query runs.
 
 #### Examples
 
@@ -520,9 +520,10 @@ Lock the rows a `SELECT` reads, so another transaction cannot change them, or lo
 
 #### Remarks
 
-- PostgreSQL only. SQLite has no row locks, so the methods do not exist on a SQLite builder.
+- PostgreSQL only. SQLite has no row locks, so the methods do not exist on a SQLite builder. MySQL does not support row locks yet.
+- A lock cannot be combined with `distinct()`, `distinctOn()`, `groupBy()`, `having()`, or an aggregate in `select()`, such as `fns.count(...)`, and a locked query cannot be used as a subquery. TypeScript accepts some of these combinations, but the query throws an error whose `code` is `ORM.LOCK_INCOMPATIBLE` before anything is sent to the database.
 - A lock lasts until the transaction ends, so run the query inside `db.transaction(...)`. Outside a transaction the lock ends as soon as the statement does.
-- The methods exist only when the contract records the capabilities that enable them. A contract emitted before `8.0.0-rc.15` has none of them: run `prisma contract emit` again to get them. See [supported database features](/orm/contract-authoring/capabilities).
+- The methods exist only when the contract records that your database supports them. A contract emitted before `8.0.0-rc.15` has none of them: run `prisma contract emit` again to get them. See [supported database features](/orm/contract-authoring/capabilities).
 
 #### Options
 
@@ -669,7 +670,7 @@ const rows = await db.query(plan);
 // rows === [{ yearPlaced: '2024', orderCount: 10 }]. PostgreSQL computes EXTRACT as numeric, which arrives as the string '2024'. Write Number(row.yearPlaced) for 2024.
 ```
 
-Annotate with the type PostgreSQL computes, not the type you want. Here `pg/numeric@1` types `yearPlaced` as `string`, which is what you receive, while `.returns('pg/int4@1')` would type it `number` and still hand you a string. `.groupBy('yearPlaced')` groups by the alias given to the selected value. To group by the expression itself, repeat the fragment inside `groupBy()`, `.returns()` and all:
+Here `pg/numeric@1` types `yearPlaced` as `string` and reads it as one, because PostgreSQL computes `EXTRACT` as `numeric`. You may declare a different type id when PostgreSQL's value can be read as it: a year has no fraction, so `.returns('pg/int4@1')` works too, and gives you the number `2024`. `.groupBy('yearPlaced')` groups by the alias given to the selected value. To group by the expression itself, repeat the fragment inside `groupBy()`, `.returns()` and all:
 
 ```ts
   .groupBy((f, fns) => fns.raw`EXTRACT(YEAR FROM ${f.placedAt})`.returns('pg/numeric@1'))
@@ -1066,7 +1067,7 @@ Write a raw SQL fragment as a tagged template, and interpolate columns, typed ex
 #### Remarks
 
 - **Always call `.returns()`.** Nothing in the builder accepts a fragment without it.
-- **`.returns()` only tells TypeScript what type to expect.** It does not convert the value. Convert the value in JavaScript, or run the statement with [`db.raw.sql` and `.returnsRow()`](/orm/reference/raw-queries), which does decode.
+- **`.returns()` sets the type and how the value is read.** In a `select()`, `pg/int4@1` reads the value as a `number`, `pg/int8@1` as a `bigint`, `pg/bool@1` as a `boolean`, `pg/numeric@1` as a `string`, `pg/timestamptz-date@1` as a JavaScript `Date`, and `pg/timestamptz-string@1` as an ISO string. `.returns()` does not check the id: a misspelt id, or one Prisma ORM does not have, such as `pg/timestamptz@1`, converts nothing and raises no error, and the value arrives as the text PostgreSQL sends, such as `'2026-11-20 11:19:09.939031+00'`.
 - Use `fns.raw` for any SQL feature without a dedicated helper: `COALESCE`, `CAST`, `LENGTH`, `UPPER`, `EXTRACT`, and so on. There is no `fns.coalesce` and no `fns.cast`.
 
 #### Examples
@@ -1080,6 +1081,27 @@ const plan = db.sql.public.user
 ```
 
 ## Compiling and executing
+
+### `annotate()`
+
+Attach notes that a middleware reads, such as the cache middleware's [`cacheAnnotation`](/orm/middleware/built-in-cache#opt-a-query-in) on a read or [`invalidateAnnotation`](/orm/middleware/built-in-cache#remove-entries-after-a-write) on a write.
+
+#### Remarks
+
+- Available on a `SELECT`, a grouped query, and `insert()`, `update()`, and `delete()`. Call it anywhere in the chain before `build()`, and pass one or more annotations.
+- Each annotation says whether it applies to reads, writes, or both. Passing a read annotation to a write, or a write annotation to a read, is a type error, and if you force it through, `annotate()` throws an error whose `code` is `RUNTIME.ANNOTATION_INAPPLICABLE`.
+- Calling `annotate()` again adds to the annotations already attached. A second annotation made by the same function, such as a second `cacheAnnotation(...)`, replaces the first.
+
+#### Example
+
+```ts
+import { cacheAnnotation } from '@prisma/orm-extension-middleware-cache';
+
+const plan = db.sql.public.user
+  .select('id', 'email')
+  .annotate(cacheAnnotation({}))
+  .build();
+```
 
 ### `build()`
 

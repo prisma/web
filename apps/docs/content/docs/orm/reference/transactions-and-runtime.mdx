@@ -35,10 +35,10 @@ Create a PostgreSQL client.
   const db = postgres({ contract, ...(url === undefined ? {} : { url }) });
   ```
 - `supabase(...)` from `@prisma/orm-extension-supabase/runtime` checks its database input the same way, but takes no `pg.Client`, because each role-bound query needs a connection of its own. A `pg.Client`, as `pg` or as a `binding` with `kind: 'pgClient'`, fails with an error whose `code` is `SUPABASE.CONFIG_INVALID`. `supabase(...)` checks only that the `pool` of a `{ kind: 'pgPool', pool }` binding is an object, so make sure it is a `pg.Pool`.
-- When you pass a `pg` pool or client, directly or as a `binding` with `kind: 'pgPool'` or `kind: 'pgClient'`, you own it: call `db.close()` first, then close it yourself with `pool.end()` for a pool or `client.end()` for a client. `db.close()` closes the client's runtime but leaves your pool or client open. The driver sets `DateStyle` to `ISO` on each connection of a pool or client you pass, before first use, so do not change `DateStyle` on those connections: a date or time read under another style fails with `RUNTIME.DATE_STYLE_NOT_ISO`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself.
+- When you pass a `pg` pool or client, directly or as a `binding` with `kind: 'pgPool'` or `kind: 'pgClient'`, you own it: call `db.close()` first, then close it yourself with `pool.end()` for a pool or `client.end()` for a client. `db.close()` closes the client's runtime but leaves your pool or client open. The driver sets `DateStyle` to `ISO` on each connection of a pool or client you pass, before first use, so do not change `DateStyle` on those connections: a date or time read under another style fails with `RUNTIME.DATE_STYLE_NOT_ISO`. When you pass a `url`, the client creates the pool and closes it. Set that pool's timeouts with `poolOptions`, which has no effect on a pool you supply yourself. `poolOptions` takes only `connectionTimeoutMillis` and `idleTimeoutMillis`. For any other `pg.Pool` setting, such as the maximum number of connections (`max`) or `ssl`, create the pool yourself with the `pg` package's `Pool` class, `import { Pool } from 'pg'` and `new Pool({ connectionString, max: 20 })`, and pass it as `pg`.
 - Some types come from a PostgreSQL extension, such as a `pgvector.Vector(1536)` type in your `contract.prisma`. Run `npm install @prisma/orm-extension-pgvector` first. Then `import pgvector from '@prisma/orm-extension-pgvector/runtime'` and pass `extensions: [pgvector]`.
-- A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeEncode: (plan) => { if (plan.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the statement. Prisma ORM runs every statement and transaction as an activity: the lifecycle hooks are `activityStarted`, `activityEnded`, and `activityFinalized`, and the hooks that change or stop a statement are `beforeCompile`, `beforeEncode`, `intercept.onQuery`, `intercept.onExecute`, and `onRow`. See [How middleware works](/orm/middleware/how-middleware-works).
-- Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record and logs a warning on a mismatch, then runs anyway. If you see the warning, run `npx prisma db update`. `verifyMarker: false` skips the check.
+- A middleware is an object with a name and one or more hooks, such as `{ name: 'no-big-deletes', beforeEncode: (plan) => { if (plan.sql.includes('DELETE')) throw new Error('blocked') } }`. Throw from a hook to block the statement. Prisma ORM runs every statement and transaction as an activity: the lifecycle hooks are `activityStarted`, `activityEnded`, and `activityFinalized`, and the hooks that change or stop a statement are `beforeCompile`, `beforeEncode`, `intercept.onQuery`, `intercept.onExecute`, and `onRow`. `intercept.onActivity` can return a result in place of running a whole ORM call, such as one `.first()`. See [How middleware works](/orm/middleware/how-middleware-works).
+- Migrations record in your database which contract it matches. With `verifyMarker: 'onFirstUse'`, the default, the first query checks that record. When the record is missing or does not match, the client logs a warning to `log` and runs the query anyway. Without `log`, nothing is printed, so pass `log: console` to see it. If you see the warning, apply your migrations with `npx prisma db migrate`, or run `npx prisma db update` on a database you change without migrations. `verifyMarker: false` skips the check.
 - `postgres(options)` does not open a connection. The client opens one on first use, so [`connect()`](#connect) is optional: call it to open the connection up front and fail early.
 - Without `cursor`, a read loads its whole result before it gives you the first row. With `cursor: { batchSize: 100 }`, reads go through a server-side cursor and fetch the rows in batches of that size, so a `for await` loop gets the first rows before the rest arrive. `cursor: {}` uses batches of 100. A `batchSize` that is not a positive integer makes `postgres(...)` throw an error whose `code` is `RUNTIME.ARGUMENT_INVALID`.
 - While a `for await` loop reads through a cursor, the cursor holds its database connection until the loop ends. A query inside the loop that needs the same connection waits forever. That happens when you loop over a query on a transaction's `tx` and query `tx` inside the loop, and on a client you created with one `pg` `Client`.
@@ -298,7 +298,7 @@ Create a serverless client.
 
 #### Remarks
 
-- It takes the options of `postgres(...)` that say how queries run: `contract`, `extensions`, `middleware`, `log`, `verifyMarker`, `cursor`, `mode`, and `collections`. The type of its options object is `PostgresServerlessOptions<Contract>`. It takes no database options. You pass the connection string to `connect()` instead.
+- It takes the options of `postgres(...)` that say how queries run: `contract`, `extensions`, `middleware`, `log`, `verifyMarker`, `cursor`, `mode`, `transactionOptions` (the defaults for each `transaction()` call on its connections), and `collections`. The type of its options object is `PostgresServerlessOptions<Contract>`. It takes no database options. You pass the connection string to `connect()` instead.
 - It has `sql`, `raw`, `enums`, `nativeEnums`, `contract`, and [`toSql()`](#dbtosqlplan), which need no connection, and `connect()`. It has no `orm`, `runtime()`, or `transaction()`. Those are on the connection.
 - As on `postgres(...)`, reads load the whole result unless you pass `cursor`. Behind Cloudflare Hyperdrive, reads through a cursor hang, so leave `cursor` out there.
 
@@ -389,7 +389,7 @@ import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 export const contract = contractFromJson<Contract>(contractJson);
-export const db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
+export const db = mongo({ contract, url: process.env.DATABASE_URL!, dbName: 'app' });
 ```
 
 ##### Share an existing `MongoClient`
@@ -402,7 +402,7 @@ import type { Contract } from './contract.d';
 import contractJson from './contract.json' with { type: 'json' };
 
 // `MongoClient` here is the driver's class; the `db` below is Prisma ORM's own MongoClient type
-const client = new MongoClient(process.env.MONGODB_URL!);
+const client = new MongoClient(process.env.DATABASE_URL!);
 const db = mongo({ contract: contractFromJson<Contract>(contractJson), mongoClient: client, dbName: 'app' });
 ```
 
@@ -413,7 +413,7 @@ Open a connection and return a runtime.
 #### Remarks
 
 - Returns a `Promise<MongoRuntime>`. You rarely need `connect()`: running a query connects the client. `connect()` without options is safe to call at any time, also after a query or a second time: it waits for a connection in progress, or resolves with the runtime the client's queries already use. `connect(options)` on a client that is already connected rejects with an error whose `code` is `DRIVER.ALREADY_CONNECTED` and whose message is `Mongo client is already bound`. A `connect()` still waiting when you call `close()` rejects with `DRIVER.NOT_CONNECTED`.
-- `connect()` takes the same database options as `mongo(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.MONGODB_URL!, dbName: 'app' })`.
+- `connect()` takes the same database options as `mongo(...)`, so a client you created without one can be given its database here: `await db.connect({ url: process.env.DATABASE_URL!, dbName: 'app' })`.
 
 #### Return type
 
@@ -500,7 +500,7 @@ The MongoDB client implements `Symbol.asyncDispose` too, so `await using` closes
 
 ```typescript
 {
-  await using db = mongo({ contract, url: process.env.MONGODB_URL!, dbName: 'app' });
+  await using db = mongo({ contract, url: process.env.DATABASE_URL!, dbName: 'app' });
   await db.connect();
   // ... run queries ...
 } // db is closed here
@@ -824,10 +824,11 @@ Prepare a statement on the client itself.
 #### Remarks
 
 - The callback takes one argument, the declared `params`, as it does on `runtime.prepare(...)`. Build the query with the client's own `db.sql` or `db.orm`.
-- The callback can return a built SQL query, or an ORM query that ends in `.prepared.all()`, `.prepared.first()`, or `.prepared.aggregate(...)`. `.prepared` always goes right before that last call, so a grouped aggregate is written `db.orm.public.Post.groupBy('userId').prepared.aggregate((agg) => ({ posts: agg.count() }))`.
+- The callback can return a built SQL query, or an ORM query that ends in `.prepared.all()`, `.prepared.first()`, `.prepared.firstOrThrow()`, or `.prepared.aggregate(...)`. `.prepared` always goes right before that last call, so a grouped aggregate is written `db.orm.public.Post.groupBy('userId').prepared.aggregate((agg) => ({ posts: agg.count() }))`.
 - The ORM query is built once. `db.prepare(...)` resolves to a prepared query, here called `ps`, and you run it with `ps.query(db.runtime(), values)`, where `values` holds a value for each declared parameter. A connection or a transaction also works in place of `db.runtime()`. Each run uses the new values and returns what the same call without `.prepared` returns:
   - `all()` returns the rows, as an [`AsyncIterableResult`](#asynciterableresult) that you `await` for an array.
   - `first()` returns a promise of one row, or of `null` when no row matches.
+  - `firstOrThrow()` returns a promise of one row, and rejects when no row matches, as [`firstOrThrow()`](/orm/reference/orm-client#firstorthrow) does.
   - `aggregate(...)` returns a promise of the aggregate object.
   - `groupBy(...)` followed by `aggregate(...)` returns a promise of an array with one object per group.
 - `prepare()` starts the connection itself. Call `db.runtime()` for the runtime. `db.connect()` resolves with the same runtime.

@@ -26,7 +26,13 @@ Install the package next to `@prisma/orm-postgres`:
 npm install @prisma/orm-extension-paradedb
 ```
 
-A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. Keep the rest of each file as it is; the full files look like this:
+In a project that `npm create prisma` generated, that command fails with `ERESOLVE`, because the project's Prisma Composer packages require the exact version of `@prisma/orm-postgres` that it installed, and the extension's latest version requires a newer one. Install the extension at the version of `@prisma/orm-postgres` in your `package.json` instead:
+
+```bash
+npm install --save-exact "@prisma/orm-extension-paradedb@$(npm pkg get 'dependencies.@prisma/orm-postgres' | tr -d '"')"
+```
+
+A Prisma ORM 8 extension is a package that both the `prisma` command-line tool and your app's client load, not a Prisma ORM 7 client extension made with `$extends`. Add it in three places: in `prisma.config.ts` from `/control`, in `src/prisma/db.ts` from `/runtime`, and in the contract from `/pack`, the part `defineContract` uses. If `npm create prisma` generated your project, do not replace these files. In `prisma.config.ts`, add the `/control` import and `extensions: [paradedb]` inside the `ormConfig({ ... })` call. The generated file also has an `extensions` array inside `composer({ ... })`, which is for Prisma Composer and is the wrong place. In `src/prisma/db.ts`, add the `/runtime` import and `extensions: [paradedb]` to every `postgres(...)` call. `npm run dev:composer` cannot run this extension: the local database it starts is PGlite, which does not include `pg_search`, so the extension's migration fails with `MIGRATION.EXECUTION_FAILED`. Start the app with `npm run dev` instead, with `DATABASE_URL` set to a PostgreSQL server that has `pg_search`, such as the `paradedb/paradedb` Docker image above. The smallest files that work look like this:
 
 ```ts title="prisma.config.ts"
 import 'dotenv/config';
@@ -101,6 +107,11 @@ npx prisma migration plan --name add-search
 npx prisma db migrate --advance-ref db
 ```
 
+In a project that `npm create prisma` generated, two things differ:
+
+- The project has a first migration but no `db` ref, so `migration plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN`. Unless you have run `npm run db:init` in this checkout, run `npx prisma migration ref set db <directory>` once before `migration plan`, with the name of the first directory that `ls migrations/app` lists, such as `20261120T1155_init`.
+- `db migrate` applies the migrations to the database in `DATABASE_URL`, so set it to the server with `pg_search` first.
+
 `migration plan` writes your migration under `migrations/app/`, and `contract emit` has already written the extension's files under `migrations/paradedb/`, whose migration installs `pg_search` in the database. Commit both. `pg_search` may already be installed in another schema on the connection's search path, and `db sign` and `db verify` accept it there. Do not declare `extension pg_search {}` in your own contract, because the extension declares it. [Generating a migration](/orm/migrations/generating-a-migration) explains `--advance-ref db`.
 
 ## Search
@@ -141,6 +152,52 @@ const plan = db.sql.public.Article.select('id', 'title')
 const ranked = await db.query(plan).toArray();
 // [{ id: 3, title: 'Migrations explained', score: 1.478 }, { id: 1, title: 'Prisma ORM 8 is here', score: 0.43 }]
 ```
+
+In the SQL query builder, `fns` also has operations that change how a query matches. Each one takes your query text and returns a new query, which you pass to a search operation in place of the text:
+
+| Operation | What it does |
+| --- | --- |
+| `fns.paradeDbFuzzy(word, distance)` | Also matches words that are up to `distance` single-character changes (an added, removed, or replaced character) away from `word`. `distance` is 0, 1, or 2. |
+| `fns.paradeDbSlop(query, slop)` | Pass it to `paradeDbPhrase`. Also matches the phrase with up to `slop` other words between its words. `slop` is 0 or more. |
+| `fns.paradeDbProximity(word).within(distance, other)` | Pass it to `paradeDbMatch`. Matches `word` and `other` with at most `distance` other words between them, in either order. `distance` is 0 or more. Pass `{ ordered: true }` as a third argument to `within` to require that order, and chain more `.within(...)` calls for more words. |
+| `fns.paradeDbBoost(query, weight)` | Weights the `paradeDbScore` of the rows this query matches by `weight`, an integer from -2048 to 2048. Use it in one part of a `fns.or(...)`, such as the title match, so those rows rank higher, as the example below shows. |
+| `fns.paradeDbConst(query, value)` | Gives every row this query matches the same `paradeDbScore`, `value`, an integer. |
+
+{/* cspell:ignore migraton */}
+
+```ts
+const plan = db.sql.public.Article.select('id')
+  .where((f, fns) => fns.paradeDbMatch(f.body, fns.paradeDbFuzzy('migraton', 1)))
+  .orderBy((f) => f.id)
+  .build();
+
+const rows = await db.query(plan).toArray();
+// [{ id: 1 }, { id: 3 }]: the two articles from the ranked example, which both contain "migration"
+```
+
+`paradeDbSlop` and `paradeDbProximity` go into a phrase search and a match:
+
+```ts
+const nearby = db.sql.public.Article.select('id')
+  .where((f, fns) => fns.paradeDbMatch(f.body, fns.paradeDbProximity('migration').within(3, 'graph')))
+  .build();
+
+const loosePhrase = db.sql.public.Article.select('id')
+  .where((f, fns) => fns.paradeDbPhrase(f.body, fns.paradeDbSlop('migration graph', 2)))
+  .build();
+```
+
+To rank title matches above body matches, boost the title part of a `fns.or(...)`:
+
+```ts
+const boosted = db.sql.public.Article.select('id', 'title')
+  .select('score', (f, fns) => fns.paradeDbScore(f.id))
+  .where((f, fns) => fns.or(fns.paradeDbMatch(f.title, fns.paradeDbBoost('migrations', 2)), fns.paradeDbMatch(f.body, 'migration')))
+  .orderBy((f, fns) => fns.paradeDbScore(f.id), { direction: 'desc' })
+  .build();
+```
+
+A value outside the range in the table, or a number that is not an integer, throws an error whose `code` is `PARADEDB.ARGUMENT_INVALID`, before anything is sent to the database.
 
 ## Next steps
 
