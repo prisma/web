@@ -13,10 +13,9 @@ interface NavigationWrapperProps {
 // swapping in the blog-local CF header does not change a single outbound URL.
 // Outbound links only ever carry UTMs the visitor arrived with — no default
 // UTMs are added (matching the site-wide drop of default console-CTA UTMs).
-// Visitors with no attribution at all still get `ref=prisma.io/blog/<slug>`
-// on console links, stamped at click time by the document-level UtmPersistence
-// listener; see `syncFallbackRef` in @prisma-docs/ui for why that is `ref` and
-// not a UTM.
+// Every visitor also gets `ref=prisma.io/blog/<slug>` on console links,
+// stamped at click time by the document-level UtmPersistence listener; see
+// `syncConsoleHandoff` in @prisma-docs/ui for why that is `ref` and not a UTM.
 /** Appends the visitor's own `utm_*` params to an internal or absolute link. */
 function buildHref(base: string, utm?: UtmParams) {
   if (!utm) return base;
