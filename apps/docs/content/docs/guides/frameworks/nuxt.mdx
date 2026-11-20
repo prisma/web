@@ -27,7 +27,7 @@ Answer the prompts, then export `DATABASE_URL` in your shell before running the 
 - [Node.js](https://nodejs.org) 22.18 or newer on the 22 line, 24.11 or newer on the 24 line, or 26 or newer (24 recommended). The Nuxt template needs Node.js 22.22.3 or newer on the 22 line, 24.15 or newer on the 24 line, or 26 or newer, because Nuxt itself requires it
 - A PostgreSQL connection string, or nothing at all: `npx create-db@latest` can create a Prisma Postgres database for you
 
-To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. A deploy does not create a MongoDB database for you: it reads your connection string from the `MONGODB_URL` environment variable.
+To use MongoDB instead of PostgreSQL, scaffold with `--provider mongo` and follow [Create a new app with MongoDB](/prisma-orm/quickstart/mongodb) for the database steps. A deploy does not create a MongoDB database for you. Export `MONGODB_URL` with your connection string in the shell you deploy from: the first deploy stores it on the project, and the app reads it from there.
 
 ## 1. Scaffold and enter the project
 
@@ -130,21 +130,35 @@ For previews per Git branch and deploy on push, see [Deploy on push](/compute/de
 
 ## Change the schema
 
-The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, so every schema change needs a migration of its own. After you edit `src/prisma/contract.prisma`, for example to add a `bio String?` field to `User`, run:
+The scaffold also writes a first migration to the `migrations/` directory. A deploy changes the hosted database only by applying the migrations in that directory, so every schema change needs a migration of its own.
+
+`migration:plan` writes each new migration as a step after the migration that `migrations/app/refs/db.json` names. That file is the `db` ref, and `db:init` creates it. If you have not run `db:init` in this checkout, for example because you only use `npm run dev:composer`, point the `db` ref at the first migration once. `ls migrations/app` lists its directory, whose name ends in `_init`:
+
+```npm
+npx prisma migration ref set db <your init directory>
+```
+
+After you edit `src/prisma/contract.prisma`, for example to add a `bio String?` field to `User`, run:
 
 ```npm
 npm run contract:emit
 npm run migration:plan -- --name add-user-bio
-npm run migrate -- --advance-ref db
+npx prisma migration ref set db <new migration directory>
 ```
 
-`contract:emit` updates the files your queries are type-checked against. `migration:plan` writes the change as a new migration in `migrations/app/`, and `migrate` applies it to the database in `DATABASE_URL`. If you run the app with `npm run dev:composer` instead, you can skip `migrate`: it applies the new migration to its local database when it starts. The `--advance-ref db` flag updates `migrations/app/refs/db.json`, the file that tells the next `migration:plan` which migration your database is at. Without the flag, the next `migration:plan` starts from the older migration and plans your change a second time. [Generating a migration](/orm/migrations/generating-a-migration) explains the files `migration:plan` writes.
+`contract:emit` updates the files your queries are type-checked against. `migration:plan` writes the change as a new migration and prints its directory, such as `migrations/app/20261120T1104_add_user_bio`. Pointing the `db` ref at that directory makes your next `migration:plan` start from this migration. Without that step, the next plan would include this change a second time.
+
+Then apply the migration to your local database. If your database is in `DATABASE_URL`, run `npm run migrate`. If you use `npm run dev:composer`, restart it: it applies new migrations when it starts.
 
 Nuxt builds on Vite, so the [Vite plugin](/cli/contract-emit#run-it-automatically) can do the `contract:emit` step for you whenever the contract changes while the dev server runs: import `prismaVitePlugin` from `@prisma/orm-postgres/vite-plugin-contract-emit` and add `vite: { plugins: [prismaVitePlugin("../prisma.config.ts")] }` to `nuxt.config.ts`. The path is needed because Nuxt runs Vite from the `app/` directory, one level below `prisma.config.ts`.
 
 Commit the `migrations/` directory with your change, including `migrations/app/refs/db.json`, then deploy again with `npm run build` and `npx prisma deploy`. The deploy applies the new migration to the hosted database before it starts the new version of your app. If you skip `migration:plan`, the deploy stops with `MIGRATION_PATH_NOT_FOUND`, because no migration in `migrations/` leads to your new schema.
 
-If `migration:plan` stops with `MIGRATION.PLAN_ORIGIN_UNKNOWN` or `MIGRATION.HASH_NOT_IN_GRAPH`, it cannot tell which migration your database is at. That happens when you have not run `db:init` in this checkout, or when you changed the database with `db:update`, which makes the database match the schema without writing a migration. Pass the name of the newest directory in `migrations/app/` that your database already has, such as the first migration's directory: `npm run migration:plan -- --from 20261120T1008_init --name add-user-bio`.
+If you changed your database with `db:update`, which makes the database match the schema without writing a migration, `migration:plan` stops with `MIGRATION.HASH_NOT_IN_GRAPH`. Name the newest directory that `ls migrations/app` lists, then continue with the `db` ref step:
+
+```npm
+npm run migration:plan -- --from <your newest migration directory> --name add-user-bio
+```
 
 ## Use with your agent
 
