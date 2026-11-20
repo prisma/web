@@ -1,14 +1,29 @@
 // Generates a hosted error-reference page from a canonical
-// docs/reference/error-reference.md in a product repo (main branch).
+// docs/reference/error-reference.md in a product repo, at the tag of the
+// release users install. A page built from the repo's main branch would list
+// codes and flags that no published version has.
 //
 // Usage:
-//   node scripts/generate-error-reference.mjs [--target orm|cli] [--source <path-to-error-reference.md>]
+//   node scripts/generate-error-reference.mjs [--target orm|cli] [--ref <tag> | --recorded] [--source <path-to-error-reference.md>]
+//   node scripts/generate-error-reference.mjs [--target orm|cli] [--recorded] --print-ref
+//   node scripts/generate-error-reference.mjs [--target orm|cli] --missing-tag <tag>
 //
 // Targets:
 //   orm (default)  prisma/orm          -> content/docs/orm/reference/error-reference.mdx
 //   cli            prisma/prisma-cli   -> content/docs/cli/error-reference.mdx
 //
-// Without --source, the file is fetched from raw.githubusercontent.com.
+// The release is the `latest` version on npm of the target's npm package,
+// and its tag is `v<version>`; the npm release must name the target's repo.
+// --recorded uses instead the tag the committed page says it was generated
+// from, so the check workflow can rebuild the page exactly. --ref names a
+// tag directly. --print-ref prints the resolved tag and exits, so a workflow
+// checks out the same ref it generates from. Without --source, the file is
+// fetched at the ref from raw.githubusercontent.com.
+//
+// npm publishes a release before its tag exists. --missing-tag, which the
+// sync runs when a release's tag is not there, tolerates that for
+// MISSING_TAG_GRACE_HOURS after the version was published and fails after,
+// so pages that stop following releases do not go unnoticed.
 //
 // Every structured error carries (or can carry) a docsUrl pointing at its
 // code's entry on the hosted page — either as a fragment
@@ -95,10 +110,12 @@ const CLI_PAGE = "[CLI error reference](/cli/error-reference)";
 export const TARGETS = {
   orm: {
     sourceRepo: "prisma/orm",
+    npmPackage: "@prisma/orm-postgres",
     output: join(HERE, "../content/docs/orm/reference/error-reference.mdx"),
     applyNamingStandard: applyOrmNamingStandard,
     hostedIntro:
-      "When an error prints a `docsUrl`, that link opens the code's entry on this page. " +
+      "When an error prints a `docsUrl`, that link opens the code's entry on this page, except for " +
+      "some `CLI.*` codes, which the next paragraph describes. " +
       "This page is generated from the `prisma/orm` repository.",
     scope:
       "This page lists the codes from the Prisma ORM commands, which start with `prisma contract`, " +
@@ -109,6 +126,8 @@ export const TARGETS = {
       "runs through, for its arguments, for loading `prisma.config.ts`, for prompts, and for consent. " +
       `Those are on the ${CLI_PAGE} even when you ran a Prisma ORM command. ` +
       "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
+      "When a Prisma ORM command raises one of these codes, its `docsUrl` still points to this page, " +
+      "which has no entry for it, so the page opens at the top. " +
       "The `CLI.*` codes on this page are the ones the Prisma ORM commands raise themselves. " +
       "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
@@ -122,6 +141,7 @@ metaDescription: The structured error codes of the Prisma ORM commands, runtime,
   },
   cli: {
     sourceRepo: "prisma/prisma-cli",
+    npmPackage: "prisma",
     output: join(HERE, "../content/docs/cli/error-reference.mdx"),
     applyNamingStandard: applyCliNamingStandard,
     hostedIntro:
@@ -136,6 +156,7 @@ metaDescription: The structured error codes of the Prisma ORM commands, runtime,
       "`prisma` command runs through, for its arguments, for loading `prisma.config.ts`, for prompts, " +
       "and for consent. They are on this page even when you ran a Prisma ORM command. " +
       "`CLI.CONFIG_SECTION_INVALID` from `prisma contract emit` is one of them. " +
+      `When a Prisma ORM command raises one of them, its \`docsUrl\` points to the ${ORM_PAGE} instead of this page. ` +
       `The Prisma ORM commands also raise \`CLI.*\` codes of their own, and those are on the ${ORM_PAGE}. ` +
       "If a `CLI.*` code is not on this page, it is on the other.",
     frontmatter: `---
@@ -149,19 +170,104 @@ metaDescription: The structured error codes of the Prisma CLI platform commands,
   },
 };
 
-function readFlag(name) {
-  const i = process.argv.indexOf(name);
+// A missing value, or one that is another flag, means a caller passed an
+// empty variable; refusing it keeps `--ref "" --source x` from becoming a
+// ref named `--source`.
+export function readFlag(argv, name) {
+  const i = argv.indexOf(name);
   if (i === -1) return undefined;
-  const value = process.argv[i + 1];
-  if (!value) throw new Error(`${name} requires a value`);
+  const value = argv[i + 1];
+  if (!value || value.startsWith("-")) {
+    throw new Error(`${name} requires a value, got ${JSON.stringify(value ?? "")}`);
+  }
   return value;
 }
 
-async function loadSource(target) {
-  const path = readFlag("--source");
+const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+const GITHUB_REPO = /github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?\/?$/i;
+
+export async function latestReleaseRef(target, fetchImpl = fetch) {
+  const url = `https://registry.npmjs.org/${target.npmPackage}/latest`;
+  const response = await fetchImpl(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+  const { version, repository } = await response.json();
+  if (typeof version !== "string" || !SEMVER.test(version)) {
+    throw new Error(`${url} returned no valid version: ${JSON.stringify(version)}`);
+  }
+  const repoUrl = typeof repository === "string" ? repository : repository?.url;
+  const repo = typeof repoUrl === "string" ? repoUrl.match(GITHUB_REPO)?.[1] : undefined;
+  if (repo?.toLowerCase() !== target.sourceRepo.toLowerCase()) {
+    throw new Error(
+      `${target.npmPackage}@${version}, the latest release on npm, comes from ` +
+        `${JSON.stringify(repoUrl ?? null)}, not ${target.sourceRepo}. Refusing to generate from it.`,
+    );
+  }
+  return `v${version}`;
+}
+
+const RECORDED_REF =
+  /\{\/\* Generated by scripts\/generate-error-reference\.mjs from\s+https:\/\/github\.com\/([^/]+\/[^/]+)\/blob\/([^/\s]+)\/docs\/reference\/error-reference\.md/;
+
+/** The tag a generated page records in its "Generated by" comment. */
+export function recordedRef(target, mdx) {
+  const match = mdx.match(RECORDED_REF);
+  if (!match || match[1] !== target.sourceRepo) {
+    throw new Error(`The page records no ref generated from ${target.sourceRepo}.`);
+  }
+  if (!/^v\d/.test(match[2])) {
+    throw new Error(`The page records ${JSON.stringify(match[2])}, which is not a release tag.`);
+  }
+  return match[2];
+}
+
+export async function resolveRef(
+  target,
+  argv,
+  { fetchImpl = fetch, readFile = readFileSync } = {},
+) {
+  const ref = readFlag(argv, "--ref");
+  if (ref !== undefined) return ref;
+  if (argv.includes("--recorded")) return recordedRef(target, readFile(target.output, "utf8"));
+  return latestReleaseRef(target, fetchImpl);
+}
+
+export const MISSING_TAG_GRACE_HOURS = 24;
+
+/**
+ * Whether a release whose tag is missing is still within the grace period.
+ * Returns the warning to print while it is; throws once it is not.
+ */
+export async function checkMissingTag(target, tag, { fetchImpl = fetch, now = Date.now } = {}) {
+  const version = tag.replace(/^v/, "");
+  const url = `https://registry.npmjs.org/${target.npmPackage}`;
+  const response = await fetchImpl(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+  const published = Date.parse((await response.json()).time?.[version] ?? "");
+  if (Number.isNaN(published)) {
+    throw new Error(`${url} has no publish time for ${target.npmPackage}@${version}.`);
+  }
+  const hours = (now() - published) / 3_600_000;
+  const missing =
+    `${target.npmPackage}@${version} is the latest release on npm, but ${target.sourceRepo} ` +
+    `has no tag ${tag}. It was published ${hours.toFixed(1)} hours ago.`;
+  if (hours >= MISSING_TAG_GRACE_HOURS) {
+    throw new Error(
+      `${missing} The error-reference pages cannot follow it until the tag exists; ` +
+        "create the tag, or fix how this generator names release tags.",
+    );
+  }
+  return `${missing} Nothing is generated or published; a later run picks it up.`;
+}
+
+async function loadSource(target, ref, argv, fetchImpl) {
+  const path = readFlag(argv, "--source");
   if (path) return readFileSync(path, "utf8");
-  const url = `https://raw.githubusercontent.com/${target.sourceRepo}/main/docs/reference/error-reference.md`;
-  const response = await fetch(url);
+  const url = `https://raw.githubusercontent.com/${target.sourceRepo}/${ref}/docs/reference/error-reference.md`;
+  const response = await fetchImpl(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status}`);
   }
@@ -248,7 +354,7 @@ function replaceNamespaceList(body, target) {
   return `${body.slice(0, at)}\n\n${target.sharedCliNamespace}${body.slice(at)}`;
 }
 
-export function transform(target, markdown) {
+export function transform(target, markdown, ref = "main") {
   assertMdxSafe(markdown);
 
   let body = markdown.replace(/^# Error reference\s*\n/, "");
@@ -268,7 +374,7 @@ export function transform(target, markdown) {
 
   // Repo-relative links point at files that only exist in the source repo:
   // "./x.md", "../x.md", and bare sibling files like "transaction-options.md#timeout".
-  const blobBase = `https://github.com/${target.sourceRepo}/blob/main/docs/reference/`;
+  const blobBase = `https://github.com/${target.sourceRepo}/blob/${ref}/docs/reference/`;
   body = body.replace(/\]\((\.\.?\/[^)]+|[\w-][^):\s]*\.md(?:#[^)]*)?)\)/g, (_, linkTarget) => {
     const url = new URL(linkTarget, `${blobBase}error-reference.md`);
     return `](${url.href})`;
@@ -309,7 +415,7 @@ export function transform(target, markdown) {
 
   const header = `${target.frontmatter}
 {/* Generated by scripts/generate-error-reference.mjs from
-    https://github.com/${target.sourceRepo}/blob/main/docs/reference/error-reference.md
+    https://github.com/${target.sourceRepo}/blob/${ref}/docs/reference/error-reference.md
     Do not edit by hand. The sync workflow overwrites changes. */}
 
 `;
@@ -317,16 +423,65 @@ export function transform(target, markdown) {
   return { mdx: header + body, codeCount: codes.length, warnings };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const targetName = readFlag("--target") ?? "orm";
+const VALUE_FLAGS = ["--target", "--ref", "--source", "--missing-tag"];
+const SWITCHES = ["--recorded", "--print-ref"];
+
+// A mistyped switch must fail: `--recorde` silently falling back to npm's
+// latest would make the check compare against the wrong release.
+export function assertKnownArguments(argv) {
+  const unknown = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (VALUE_FLAGS.includes(argv[i])) i++;
+    else if (!SWITCHES.includes(argv[i])) unknown.push(argv[i]);
+  }
+  if (unknown.length > 0) {
+    throw new Error(
+      `Unknown argument(s) ${JSON.stringify(unknown)}. Known: ${[...VALUE_FLAGS, ...SWITCHES].join(", ")}`,
+    );
+  }
+}
+
+export async function run(
+  argv,
+  {
+    fetchImpl = fetch,
+    readFile = readFileSync,
+    writeFile = writeFileSync,
+    log = console.log,
+    warn = console.warn,
+    now = Date.now,
+  } = {},
+) {
+  assertKnownArguments(argv);
+  const targetName = readFlag(argv, "--target") ?? "orm";
   const target = TARGETS[targetName];
   if (!target) {
     throw new Error(
       `Unknown --target ${JSON.stringify(targetName)}. Known: ${Object.keys(TARGETS).join(", ")}`,
     );
   }
-  const { mdx, codeCount, warnings } = transform(target, await loadSource(target));
-  for (const warning of warnings) console.warn(`Warning: ${warning}`);
-  writeFileSync(target.output, mdx);
-  console.log(`Wrote ${target.output} with ${codeCount} error codes.`);
+  const missingTag = readFlag(argv, "--missing-tag");
+  if (missingTag !== undefined) {
+    warn(await checkMissingTag(target, missingTag, { fetchImpl, now }));
+    return;
+  }
+  const ref = await resolveRef(target, argv, { fetchImpl, readFile });
+  if (argv.includes("--print-ref")) {
+    log(ref);
+    return;
+  }
+  const source = await loadSource(target, ref, argv, fetchImpl);
+  const { mdx, codeCount, warnings } = transform(target, source, ref);
+  for (const warning of warnings) warn(`Warning: ${warning}`);
+  writeFile(target.output, mdx);
+  log(`Wrote ${target.output} with ${codeCount} error codes.`);
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    await run(process.argv.slice(2));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 }

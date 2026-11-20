@@ -55,9 +55,11 @@ One command does this phase and steps 2.1 to 2.4 for you:
 npx prisma@latest orm init --from-prisma7-schema prisma/schema.prisma
 ```
 
-Write `prisma@latest`, because before this phase `npx prisma` runs version 7. The command moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes. Then continue with step 2.5, and in phase 3 use the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
+Write `prisma@latest`, because before this phase `npx prisma` runs version 7. The command asks you to confirm by typing the name of the project's folder. It moves Prisma ORM 7 to the `prisma7` command and `prisma7.config.ts`, installs the Prisma ORM 8 packages, writes `prisma.config.ts` and a Prisma ORM 8 client in `src/prisma/db.ts`, and emits the contract to `src/prisma/contract.json` and `src/prisma/contract.d.ts`. [`orm init` on a Prisma ORM 7 project](/cli/orm-init#on-a-prisma-orm-7-project) lists what it changes.
 
-The command does not work yet if the `datasource` block lists `citext`, `vector` or `postgis` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres` and `dotenv` and changed nothing else. Keep both packages, and do phase 1 and steps 2.1 to 2.4 by hand.
+Then continue with step 2.5. `orm init` has already added `"resolveJsonModule": true` to `tsconfig.json`, and it may have set `module` to `preserve`, so check `module` against the cases in step 2.5. In the CommonJS case, the `with { type: "json" }` to remove is in `src/prisma/db.ts`. An `include` that covers `src/**/*.ts` already sees `src/prisma/contract.d.ts`. In phase 3, import the `db` client from `src/prisma/db.ts` instead of adding one to `src/db.ts` in step 3.1.
+
+The command does not work yet if the `datasource` block lists `citext`, `vector`, `postgis` or `pg_search` in `extensions = [...]`, or a field uses `@db.Citext`. It then stops with `CLI.INIT_PRISMA7_SCHEMA_REFUSED`. By then it has installed `@prisma/orm-postgres` and `dotenv` and changed nothing else. Keep both packages, and do phase 1 and steps 2.1 to 2.4 by hand.
 
 ### 1.1. Confirm the application works
 
@@ -247,6 +249,8 @@ npx prisma --version
 
 **Expected result:** the command prints `8.0.0-rc.34` or a newer version. That number does not match the version of `@prisma/orm-postgres`, because the CLI is released separately.
 
+From now on, a Prisma ORM 7 command run through `prisma`, such as `npx prisma migrate dev` in a script you missed in step 1.4, stops with `CLI.V7_COMMAND`. The message names the Prisma ORM 8 commands that replace it and tells you to keep Prisma ORM 7 as `@prisma/prisma7`, which step 1.2 did, so run it as `prisma7 migrate dev` instead.
+
 ### 2.2. Create the Prisma ORM 8 config
 
 Prisma ORM 8 describes your models as a [contract](/orm/contract-authoring/the-data-contract). It can read `prisma/schema.prisma` as that contract, so both versions work from the same schema file and you keep editing the file you have. Create `prisma.config.ts`:
@@ -293,6 +297,8 @@ Prisma ORM 8 reads the `extensions` list, so it knows which PostgreSQL extension
 | `citext` (also needed for a `@db.Citext` field) | `@prisma/orm-postgres-contrib` | `import citext from "@prisma/orm-postgres-contrib/citext/control"` |
 | `vector` | `@prisma/orm-extension-pgvector` | `import pgvector from "@prisma/orm-extension-pgvector/control"` |
 | `postgis` | `@prisma/orm-extension-postgis` | `import postgis from "@prisma/orm-extension-postgis/control"` |
+
+{/* TODO(paradedb-hidden): ParadeDB is temporarily hidden from the docs. Restore "Four of them" above and this table row: `pg_search`, `@prisma/orm-extension-paradedb`, `import paradedb from "@prisma/orm-extension-paradedb/control"` */}
 
 Install the pack for each of these that your list names, and add it to the config. For `extensions = [citext, pg_trgm]`:
 
@@ -376,7 +382,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import postgres from "@prisma/orm-postgres/runtime"; // [!code ++]
 import { contractFromJson } from "@prisma/orm-postgres/static"; // [!code ++]
-import type { Contract } from "../generated/prisma8/contract.d"; // [!code ++]
+import type { Contract } from "../generated/prisma8/contract.d.js"; // [!code ++]
 import contractJson from "../generated/prisma8/contract.json" with { type: "json" }; // [!code ++]
 import { PrismaClient } from "../generated/prisma/client";
 
@@ -505,7 +511,7 @@ npx prisma migration status
 
 `db sign` verifies that the live schema matches the contract emitted from `schema.prisma`, writes Prisma ORM 8's marker at that contract version, stores the contract snapshot under `migrations/snapshots/`, and points a [ref](/orm/migrations/the-migration-graph#name-important-states-with-refs) named `db` at it. `migration plan` starts from that ref, so each plan builds on the schema Prisma ORM 7 built. `db sign` does not change your tables.
 
-**Expected result:** `Database signed` and `Advanced ref "db"`, and `migration status` ends with `Up to date`. With a pack from step 2.3, `db sign` signs the pack's part of the contract as well and prints a second line such as `Advanced ref "db" of space "citext"`.
+**Expected result:** `db sign` prints `Database signed` and `Advanced ref "db"`, and `migration status` prints `No migrations found`, because the first migration is written in step 4.3. With a pack from step 2.3, `db sign` signs the pack's part of the contract as well and prints a second line such as `Advanced ref "db" of space "citext"`.
 
 Run `db sign` once against every other existing database too, such as staging and production, with `DATABASE_URL` pointing at it. A new, empty database does not need it, because `db migrate` creates its tables.
 

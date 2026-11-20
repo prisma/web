@@ -24,13 +24,11 @@ When a run succeeds, it shows you what it did: each migration's operations, and 
 App space
 ├─ Add column "displayName" to "user"
 ├─ Data transform: backfill-user-displayName
-├─ ⚠ Set NOT NULL on "user"."displayName"
+├─ Set NOT NULL on "user"."displayName"
 └─ marker 866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
-
-⚠ This migration contains destructive operations that may cause data loss.
 ```
 
-Each `├─` line under `App space` is an operation, one step of an app migration. A data transform changes existing rows, here filling in `displayName`, and you write its queries in `migration.ts`, as [Editing a migration](/orm/migrations/editing-a-migration) shows. A `⚠` marks a [destructive](/orm/migrations/how-migrations-work#every-operation-checks-itself) operation, one that removes or changes something that already exists, such as setting `NOT NULL`, which deletes no rows but still counts. `db migrate` applies destructive operations without stopping to ask you, so the time to catch one is while you are reviewing the migration: run `npx prisma migration show <dir>` with the migration's directory name in `migrations/app/`.
+Each `├─` line under `App space` is an operation, one step of an app migration. A data transform changes existing rows, here filling in `displayName`, and you write its queries in `migration.ts`, as [Editing a migration](/orm/migrations/editing-a-migration) shows. When a migration has a [destructive](/orm/migrations/how-migrations-work#every-operation-checks-itself) operation, one that can lose data, such as dropping a column or changing its type, the output marks that line with `⚠` and ends with `⚠ This migration contains destructive operations that may cause data loss.` This run has none: setting `NOT NULL` loses no data. `db migrate` applies destructive operations without stopping to ask you, so the time to catch one is while you are reviewing the migration: run `npx prisma migration show <dir>` with the migration's directory name in `migrations/app/`.
 
 ## Check before, preview, then apply
 
@@ -120,9 +118,10 @@ When the state you want is an earlier one than the database already matches, pla
 When an operation fails, `db migrate` stops and prints what failed and why:
 
 ```text
-✘ [MIGRATION.EXECUTION_FAILED] Operation pgvector.install-vector-extension failed during execution: create extension "vector"
-  why: extension "vector" is not available
-  docs: https://www.prisma.io/docs/orm/reference/error-reference#MIGRATION.EXECUTION_FAILED
+✘ [MIGRATION.EXECUTION_FAILED] Operation extension.vector failed during execution: create extension "vector"
+  why: extension "vector" is not available. The failed apply changed nothing. The apply stopped in contract space "pgvector".
+→ Resolve the cause the failure names, then re-run `prisma db migrate`
+  docs: https://docs.prisma.io/docs/orm/v8/reference/error-reference#MIGRATION.EXECUTION_FAILED
 ```
 
 Here, an operation from the pgvector [extension package](#extension-spaces) failed because the `vector` PostgreSQL extension is not available on the database server. Install it there, or enable it in your database host's settings, and then run `db migrate` again.
@@ -179,14 +178,16 @@ If two deployments can run at once, what happens next depends on your database. 
 If your project uses a [Prisma ORM extension package](/orm/extensions/using-extensions), such as pgvector support, the output shows more than one **contract space**, which is a separate migration history: your app has one, and so does each extension package that ships migrations. `migration plan` writes an extension's migrations to `migrations/<space>/`, such as `migrations/pgvector/`, and you have to commit that directory, because `db migrate` fails without it. A single run applies every space and reports each one separately, while `--to` applies only to your app. What an extension space ends up matching is decided by what you committed rather than by what is in `node_modules`, because `db migrate` applies the migrations in that committed directory until the database matches the newest state there, not the package version you have installed:
 
 ```text
-✔ Applied 2 migration(s) (20 operation(s)) across 2 contract space(s)
+✔ Applied 2 migration(s) (4 operation(s)) across 2 contract space(s)
 
 Extension space: pgvector
-├─ Enable extension "vector"
-└─ marker 3d2c56a2944685bd21b05bc8a8d73164397df51c014201902932fbe7e80ff1b8
+├─ Create schema "public"
+├─ Create extension "vector"
+└─ marker e4ab7d4329212a72d8e440fd7bf95a03e5c861e1d304dce1025b0fcaa1910d15
 App space
+├─ Create schema "public"
 ├─ Create table "user"
-└─ ...
+└─ marker 11fd955c70ae8085d00c6da43f03db7487ecb1c67b16024d2bde29e788b12167
 ```
 
 :::note[What's early]
