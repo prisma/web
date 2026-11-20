@@ -34,6 +34,9 @@ migrations/app/20260707T1010_rollback_display_name
 
 ⚠ This migration contains destructive operations that may cause data loss.
 
+Statements applied
+└─ delete field "User.displayName" (1 operation)
+
 from:       866ab885a8a4bd8d9f5adc47784c068be7895a7182c55cc29f9f9967d3019484
 to:         967cb9f63587c1d90f64716780f04eec22b263424e89f07139233fc2c3d710c4
 app space:  migrations/app/20260707T1010_rollback_display_name
@@ -85,14 +88,19 @@ When a migration fails, `db migrate` stops at the operation that failed rather t
 
 ```text
 ✘ [MIGRATION.PRECHECK_FAILED] 3 rows of "user" hold NULL in "nickname", so it cannot become required.
-  why: Operation alterNullability.setNotNull.user.nickname failed during precheck: ensure no NULL values in "nickname"
-  docs: https://www.prisma.io/docs/orm/reference/error-reference#MIGRATION.PRECHECK_FAILED
+  why: Operation alterNullability.setNotNull.user.nickname failed during precheck: ensure no NULL values in "nickname". The failed apply changed nothing.
+→ Set a value in those 3 rows and re-run `prisma db migrate`
+→ Delete `migrations/app/20261120T1011_require_nickname` (copy any code you wrote in its migration.ts first), plan it again with `prisma migration plan --from a5337ca02e19e49dfd21cb28996e6ac81138311df69ed01a8c8e950bf1df1dd9 --name require_nickname --backfill User.nickname`, adding any other statements you planned it with, fill in the migration.ts it writes, run that migration.ts with the `node` command `migration plan` prints, and run `prisma db migrate`
+→ Keep the field optional: make it optional in the contract source again, delete `migrations/app/20261120T1011_require_nickname` (copy any code you wrote in its migration.ts first), and plan it again with `prisma migration plan --from a5337ca02e19e49dfd21cb28996e6ac81138311df69ed01a8c8e950bf1df1dd9 --name require_nickname`, adding any other statements you planned it with, put back any code you copied, run that migration.ts with the `node` command `migration plan` prints, and apply it with `prisma db migrate`
+  docs: https://docs.prisma.io/docs/orm/v8/reference/error-reference#MIGRATION.PRECHECK_FAILED
 ```
+
+The lines that start with `→` are the ways forward, each with the commands to run.
 
 How much a failed run leaves behind depends on your database, and [when something goes wrong](/orm/migrations/applying-a-migration#when-something-goes-wrong) explains what you are left to clean up on PostgreSQL and on MongoDB before you try again.
 
 1. **Read which check failed.** The error tells you where the run stopped, because it names the operation and the [check](/orm/migrations/how-migrations-work#every-operation-checks-itself) that failed, and a precheck is a check that runs before its operation rather than after. In the example above, the precheck found rows with `NULL` in `nickname`, so the run stopped before setting the column to `NOT NULL`.
-2. **Fix the cause, then run `npx prisma db migrate` again.** Re-running the same command is the whole of recovery, because there is no `migrate resolve` step first, and in development you add `--advance-ref db` as usual. Sometimes the cause is the environment, such as a PostgreSQL extension the server lacks or permissions it is missing. Sometimes it is the migration itself, which is why a migration can pass in development and fail in production, where the data is different. In the example above the data is what stopped the run, so you would edit the migration to [fill in `nickname` for existing rows](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) before the `setNotNull`, recompile as in the rollback's step 1, and apply again.
+2. **Fix the cause, then run `npx prisma db migrate` again.** Re-running the same command is the whole of recovery, because there is no `migrate resolve` step first, and in development you add `--advance-ref db` as usual. Sometimes the cause is the environment, such as a PostgreSQL extension the server lacks or permissions it is missing. Sometimes it is the migration itself, which is why a migration can pass in development and fail in production, where the data is different. In the example above the data is what stopped the run, so you would plan the migration again with `--backfill User.nickname`, as the error's second `→` line says, [fill in `nickname` for existing rows](/orm/migrations/editing-a-migration#worked-example-making-a-column-required) in the `migration.ts` it writes, recompile, and apply again.
 
 ### Drift: when the database changed without a migration [#drift-when-the-database-isnt-where-migrations-left-it]
 

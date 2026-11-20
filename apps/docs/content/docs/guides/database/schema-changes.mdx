@@ -57,7 +57,7 @@ Do not commit `.env`. `orm init` already lists it in `.gitignore`.
 
 ### 1.3. Where a plan starts
 
-`migration plan` is offline. It never asks the database which contract state it matches, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`, otherwise the empty database. Keep the `db` ref pointing at the state your local database matches by applying with `--advance-ref db`:
+`migration plan` is offline. It never asks the database which contract state it matches, so you have to tell it which state to plan from. It resolves the origin in this order: an explicit `--from`, otherwise the ref named `db` in `migrations/app/refs/db.json`. With neither, it plans from an empty database only while `migrations/app/` has no migrations; once it has some, it stops and asks you to name the origin, as [Common gotchas](#common-gotchas) shows. Keep the `db` ref pointing at the state your local database matches by applying with `--advance-ref db`:
 
 ```npm
 npx prisma db migrate --advance-ref db
@@ -345,7 +345,7 @@ npx prisma migration graph
 1 space(s), 4 contract(s), 3 migration(s)
 ```
 
-Read it bottom-up. From `init` (`91e7f9f`) two branches leave: Ania's ends at `b29af39`, Javier's at `18b24e5`. The merged contract you just emitted, `1e5059c`, sits at the top with no edge arriving at it. No database can reach it yet. `migration status` draws the same graph and marks where your database is, which is still on `init` (`@db`):
+Read it bottom-up. From `init` (`91e7f9f`) two branches leave: Ania's ends at `b29af39`, Javier's at `18b24e5`. The merged contract you just emitted, `1e5059c`, is at the top, and no migration leads to it. No database can reach it yet. `migration status` draws the same graph and marks the state your database matches, which is still `init` (`@db`):
 
 ```npm
 npx prisma migration status
@@ -600,6 +600,7 @@ const tag = await db.orm.public.Tag.create({ tagName: "arcade", tagCategory: "ga
 → Point the db ref at the origin contract: prisma migration ref set db <contract>
 → Plan from an explicit origin: prisma migration plan --from <contract>
 → Plan from an empty database deliberately: prisma migration plan --from @empty
+  docs: https://docs.prisma.io/docs/orm/v8/reference/error-reference/MIGRATION.PLAN_ORIGIN_UNKNOWN
 ```
 
 Pick the first or second. `--from @empty` over an existing history is only right for a deliberate rebuild.
@@ -608,7 +609,7 @@ Pick the first or second. `--from @empty` over an existing history is only right
 
 :::warning
 
-Never run `db update` against a database that changes only through migrations, such as production. It reconciles the database to your contract directly and leaves no migration behind, so when the contract it applied is one no migration starts or ends at, the next `db migrate` there finds a marker the graph does not know. Use `db update` only on a database whose migration history does not need to be kept, and switch to `migration plan` before you open a pull request. A `db update` without `--db` moves the `db` ref to the contract it applied, and `migration plan` starts from that ref. So to keep that change in your migration history, plan it from the state before it: `npx prisma migration plan --from <dir>`, where `<dir>` is your newest migration directory. If a shared database such as staging fails with `MIGRATION.MARKER_MISMATCH`, the error's `db update` commands move it back; [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) explains.
+Never run `db update` against a database that changes only through migrations, such as production. It changes the database to match your contract directly and leaves no migration behind, so when the contract it applied is one no migration starts or ends at, the next `db migrate` there finds a marker the graph does not know. Use `db update` only on a database whose migration history does not need to be kept, and switch to `migration plan` before you open a pull request. A `db update` without `--db` points the `db` ref at the contract it applied, and `migration plan` starts from that ref. So to keep that change in your migration history, plan it from the state before it: `npx prisma migration plan --from <dir>`, where `<dir>` is your newest migration directory. If a shared database such as staging fails with `MIGRATION.MARKER_MISMATCH`, the error's `db update` commands move it back; [Drift](/orm/migrations/rollbacks-and-recovery#drift-when-the-database-isnt-where-migrations-left-it) explains.
 
 :::
 
@@ -620,7 +621,7 @@ The merge conflict in `migrations/app/refs/db.json` is expected whenever two bra
 
 :::note
 
-Renaming a field plans as a destructive drop column plus add column, because the planner has no rename hint yet. Before a rename reaches a shared database, [edit the migration](/orm/migrations/editing-a-migration) to replace the pair with a `rawSql` `ALTER TABLE ... RENAME COLUMN`, then recompile it with `node migration.ts`.
+Renaming a field drops the old column, and its data with it, unless you say it is a rename. `migration plan` asks before it drops a field that holds data; answer with `--rename`, as in `npx prisma migration plan --name rename_full_name --rename User.name:User.fullName`, and the migration renames the column and keeps its values. [Renames and data loss](/cli/migration-plan#renames-and-data-loss) covers models and namespaces too.
 
 :::
 
